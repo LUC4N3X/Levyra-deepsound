@@ -1,5 +1,8 @@
 <div align="center">
 
+<img src="https://i.ibb.co/BKqT2235/levyra.png" alt="LEVYRA Logo" width="140" />
+<br><br>
+
 # ✦ LEVYRA ✦
 
 **The Next-Generation Hi-Fi Music Streaming Client for Android**
