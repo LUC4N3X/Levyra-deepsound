@@ -1,11 +1,11 @@
 <div align="center">
-  <img src="https://i.ibb.co/QvNtNX4T/Chat-GPT-Image-28-giu-2026-21-17-59.png" alt="LEVYRA Showcase Banner" width="640" />
+  <img src="https://i.ibb.co/QvNtNX4T/Chat-GPT-Image-28-giu-2026-21-17-59.png" alt="LEVYRA Showcase Banner" width="800" />
 
   # ─── LEVYRA ───
 
-  ### **The Next-Generation Hi-Fi Music Streaming Client for Android**
-
-  *Engineered with precision. Wrapped in a premium developer-tool dashboard.*
+  ### **A modern Android music player**
+  
+  *Deep ocean visuals, smart discovery, rich artwork, and immersive playback.*
 
   [Features](#-key-features) • [Architecture](#-architecture) • [Getting Started](#-getting-started) • [Disclaimer](#-legal-disclaimer-esonero-responsabilit%C3%A0)
 
@@ -21,29 +21,28 @@
   ---
 </div>
 
-Designed for developers and music lovers who appreciate sleek, modern aesthetics. LEVYRA combines a **Modern SaaS Landing Page & Developer Tool Dashboard** design system with the clean, intuitive search UX of **YouTube Music**.
+Designed for music lovers who appreciate a stunning, immersive visual experience. LEVYRA abandons generic aesthetics for a vibrant **Deep Ocean & Neon** design language. It brings your music to life with dynamic gradients, soft glassmorphism, and a meticulously crafted user interface that feels both futuristic and organic.
 
 ---
 
 ## ✨ Key Features
 
-### 🎨 Premium Aesthetics & UI
-- **Soft Glassmorphism**: Translucent panels with hairline borders and deep dark backdrops (`#030407`).
-- **Dynamic Color Accents**: The background mesh gradient and UI highlights dynamically adapt to the color palette of the current track's album art.
-- **SaaS Dashboard Layout**: A floating navigation bar, a Command-K search dock, and glowing progress indicators.
+### 🌊 Deep Ocean Visuals & Neon Accents
+- **Immersive Theming**: A deep navy backdrop (`#050A1F`) accented by vibrant Cyan (`#00E5FF`) and Pink/Magenta (`#FF007A`) neon highlights.
+- **Dynamic Artwork Mesh**: The UI seamlessly adapts its mesh gradients to the color palette of the currently playing track's album art.
+- **Glassmorphic Overlays**: Translucent, frosted-glass panels with subtle hairline borders that create a profound sense of depth.
 
-### 🔍 YouTube Music Search Experience
-- **YTM-Inspired Search**: Clean search header featuring quick back navigation, microphone voice search, and visualizer indicators.
-- **Ricerche Recenti (Recent Searches)**: A horizontal scrolling shelf displaying landscape cards of your recently played tracks.
-- **Smart Completions & Suggestions**: A vertical list of trending artists and real-time search completions featuring diagonal autocomplete arrows (`↖`).
+### 🔍 Smart Discovery
+- **YTM-Inspired Search Engine**: A powerful, clean search header featuring voice input, real-time visualizers, and quick back navigation.
+- **Recent Searches Shelf**: A beautifully animated horizontal shelf displaying landscape cards of your most recently played tracks.
+- **Predictive Autocomplete**: Instant search completions with intelligent suggestions to help you discover new music faster.
 
-### ⚡ Advanced Playback Engine
-- **AndroidX Media3 & ExoPlayer**: A robust foreground playback service supporting background play and lock screen media controls.
-- **Aggressive Audio Prefetching**: Smart pre-buffering of upcoming tracks in your queue to ensure zero-latency, instant transitions.
-- **Time-Synced Lyrics**: Dynamic, auto-scrolling lyrics overlay that perfectly tracks the song's position.
-- **SponsorBlock Integration**: Automatically skips sponsored segments, intros, and non-music sections.
-- **Skip Silence**: Intelligent audio processing to compress silent pauses in tracks.
-- **Smart Sleep Timer**: Pauses your music automatically after a set duration.
+### 🎧 Immersive Playback
+- **Media3 & ExoPlayer Engine**: A highly robust foreground playback service supporting background play and lock screen media controls.
+- **Zero-Latency Prefetching**: Smart pre-buffering of the upcoming queue ensures instantaneous, gapless transitions between tracks.
+- **Time-Synced Lyrics**: A dynamic, auto-scrolling lyrics overlay that perfectly tracks the vocal performance.
+- **SponsorBlock Integration**: Automatically skips sponsored segments, intros, and non-music sections for an uninterrupted experience.
+- **Smart Sleep Timer & Skip Silence**: Intelligent audio processing to compress silent pauses, plus an automatic sleep timer.
 
 ---
 
@@ -52,7 +51,7 @@ Designed for developers and music lovers who appreciate sleek, modern aesthetics
 - **UI Framework**: [Jetpack Compose](https://developer.android.com/jetpack/compose) (100% Declarative UI)
 - **Audio Engine**: [AndroidX Media3](https://developer.android.com/guide/topics/media/media3) + [ExoPlayer](https://developer.android.com/guide/topics/media/exoplayer)
 - **Concurrency**: Kotlin Coroutines & Reactive [StateFlow](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-state-flow/)
-- **Image Pipeline**: [Coil](https://github.com/coil-kt/coil) (with custom low-memory RGB_565 caching)
+- **Image Pipeline**: [Coil](https://github.com/coil-kt/coil) (with custom RGB_565 caching for ultimate performance)
 - **Local Persistence**: Encrypted SharedPreferences + JSON Serialization
 - **Network**: Retrofit & OkHttp
 
@@ -60,7 +59,7 @@ Designed for developers and music lovers who appreciate sleek, modern aesthetics
 
 ## 📐 Architecture
 
-LEVYRA is built following **Clean Architecture** and **MVVM** principles to ensure modularity, testability, and performance:
+LEVYRA is built following strict **Clean Architecture** and **MVVM** principles to ensure absolute modularity, testability, and peak performance:
 
 ```mermaid
 graph TD
@@ -72,7 +71,7 @@ graph TD
     D -->|Audio Stream| G[PlaybackResolver]
 ```
 
-- **Presentation Layer**: Declarative Compose components (`LevyraApp`, `HomeScreen`, `SearchScreen`, etc.) observing a single unified state.
+- **Presentation Layer**: Declarative Compose components (`LevyraApp`, `HomeScreen`, `SearchScreen`, etc.) observing a single, unified state.
 - **Domain Layer**: Core business models (`Track`, `Mood`, `LyricLine`) and engines.
 - **Data Layer**: Repositories managing remote APIs (YouTube Music, Apple Music Charts, LRCLIB) and local caching.
 
@@ -88,7 +87,7 @@ graph TD
 ### Building the Project
 1. Clone the repository:
    ```bash
-   git clone https://github.com/LUC4N3X/levyra-deepsound.git
+   git clone https://github.com/LUC4N3X/LevyraPlayer.git
    ```
 2. Open the project in Android Studio.
 3. Sync the Gradle files.
@@ -101,17 +100,17 @@ graph TD
 
 ## 🤝 Credits & Acknowledgements
 
-<table>
+<table style="border: none;">
   <tr>
-    <td align="center" valign="middle" width="120">
+    <td align="center" valign="middle" width="120" style="border: none;">
       <a href="https://github.com/LUC4N3X">
-        <img src="https://github.com/LUC4N3X.png" width="100" height="100" style="border-radius: 50%;" alt="LUC4N3X" />
+        <img src="https://github.com/LUC4N3X.png" width="100" height="100" style="border-radius: 50%; border: 2px solid #00E5FF;" alt="LUC4N3X" />
       </a>
     </td>
-    <td valign="middle">
-      <h3><strong>LUC4N3X</strong></h3>
-      <p><strong>Creator & Lead Developer</strong></p>
-      <p>Architected the UI redesign, player integration, background services, and caching pipelines.</p>
+    <td valign="middle" style="border: none;">
+      <h3 style="margin: 0; color: #FF007A;"><strong>LUC4N3X</strong></h3>
+      <p style="margin: 5px 0;"><strong>Creator & Lead Developer</strong></p>
+      <p style="margin: 0; color: #8892B0;">Architected the UI redesign, player integration, background services, and caching pipelines.</p>
     </td>
   </tr>
 </table>

@@ -7,17 +7,17 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-val LevyraBlack = Color(0xFF030407)
-val LevyraInk = Color(0xFF08090E)
-val LevyraPanel = Color(0xFF0E101A)
-val LevyraPanelSoft = Color(0xFF151827)
-val LevyraCyan = Color(0xFF00F5FF)
-val LevyraBlue = Color(0xFF0066FF)
-val LevyraViolet = Color(0xFF7C3AED)
-val LevyraPink = Color(0xFFEC4899)
-val LevyraOrange = Color(0xFFF97316)
+val LevyraBlack = Color(0xFF050A1F)
+val LevyraInk = Color(0xFF081229)
+val LevyraPanel = Color(0xFF0E1A38)
+val LevyraPanelSoft = Color(0xFF16254B)
+val LevyraCyan = Color(0xFF00E5FF)
+val LevyraBlue = Color(0xFF0055FF)
+val LevyraViolet = Color(0xFF9D00FF)
+val LevyraPink = Color(0xFFFF007A)
+val LevyraOrange = Color(0xFFFF3D00)
 val LevyraText = Color(0xFFF8FAFC)
-val LevyraMuted = Color(0xFF94A3B8)
+val LevyraMuted = Color(0xFF8892B0)
 
 private val LevyraScheme: ColorScheme = darkColorScheme(
     primary = LevyraCyan,
