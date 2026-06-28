@@ -1,13 +1,11 @@
 <div align="center">
 
 <img src="https://i.ibb.co/BKqT2235/levyra.png" alt="LEVYRA Logo" width="450" />
-<br><br>
 
-**The Next-Generation Hi-Fi Music Streaming Client for Android**
-
-*Engineered with precision. Wrapped in a premium developer-tool dashboard.*
-
-<br>
+<h3 align="center">The Next-Generation Hi-Fi Music Streaming Client for Android</h3>
+<p align="center">
+  <em>Engineered with precision. Wrapped in a premium developer-tool dashboard.</em>
+</p>
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-000000?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-000000?style=for-the-badge&logo=jetpack-compose&logoColor=white)](https://developer.android.com/jetpack/compose)
@@ -16,7 +14,7 @@
 
 <br>
 
-[Features](#-key-features) • [Architecture](#-architecture) • [Getting Started](#-getting-started) • [Disclaimer](#-legal-disclaimer)
+**[ ✦ Features ](#-key-features)** &nbsp;&nbsp;—&nbsp;&nbsp; **[ ✦ Architecture ](#-architecture)** &nbsp;&nbsp;—&nbsp;&nbsp; **[ ✦ Getting Started ](#-getting-started)** &nbsp;&nbsp;—&nbsp;&nbsp; **[ ✦ Disclaimer ](#-legal-disclaimer)**
 
 ---
 </div>
