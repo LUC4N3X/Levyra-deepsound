@@ -1,23 +1,27 @@
-<p align="center">
-  <img src="https://i.ibb.co/WWFLNYPh/levyra-icon-transparent-1.png" alt="Levyra Logo" width="120" height="120" />
-</p>
+<div align="center">
+  <img src="https://i.ibb.co/WWFLNYPh/levyra-icon-transparent-1.png" alt="Levyra Logo" width="140" />
 
-<h1 align="center">LEVYRA</h1>
+  # ─── LEVYRA ───
 
-<p align="center">
-  <strong>A premium, high-performance music streaming player for Android.</strong>
-</p>
+  ### **The Next-Generation Hi-Fi Music Streaming Client for Android**
 
-<p align="center">
-  <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Kotlin-1.9.22-purple.svg?style=flat-square&logo=kotlin" alt="Kotlin" /></a>
-  <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg?style=flat-square&logo=jetpackcompose" alt="Jetpack Compose" /></a>
-  <a href="https://developer.android.com/guide/topics/media/media3"><img src="https://img.shields.io/badge/Media-AndroidX%20Media3-green.svg?style=flat-square" alt="Media3" /></a>
-  <a href="https://github.com/LUC4N3X/levyra-deepsound/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License" /></a>
-</p>
+  *Engineered with precision. Wrapped in a premium developer-tool dashboard.*
 
-<p align="center">
-  Designed for developers and music lovers who appreciate sleek, modern aesthetics. LEVYRA combines a <strong>Modern SaaS Landing Page & Developer Tool Dashboard</strong> design system with the clean, intuitive search UX of <strong>YouTube Music</strong>.
-</p>
+  [Features](#-key-features) • [Architecture](#-architecture) • [Getting Started](#-getting-started) • [Disclaimer](#-legal-disclaimer-esonero-responsabilit%C3%A0)
+
+  <br>
+
+  [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+  [![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpack-compose&logoColor=white)](https://developer.android.com/jetpack/compose)
+  [![Media3](https://img.shields.io/badge/AndroidX_Media3-00F5FF?style=for-the-badge&logo=android&logoColor=black)](https://developer.android.com/guide/topics/media/media3)
+  [![License](https://img.shields.io/badge/License-MIT-EC4899?style=for-the-badge)](LICENSE)
+
+  <br>
+
+  ---
+</div>
+
+Designed for developers and music lovers who appreciate sleek, modern aesthetics. LEVYRA combines a **Modern SaaS Landing Page & Developer Tool Dashboard** design system with the clean, intuitive search UX of **YouTube Music**.
 
 ---
 
