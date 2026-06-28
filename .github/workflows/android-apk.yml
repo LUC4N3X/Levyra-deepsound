@@ -1,0 +1,54 @@
+name: Build LEVYRA APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Test and build APK
+        run: gradle --no-daemon clean testDebugUnitTest assembleDebug assembleRelease
+
+      - name: Collect APK
+        run: |
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk artifacts/LEVYRA-debug.apk
+          cp app/build/outputs/apk/release/app-release.apk artifacts/LEVYRA-release.apk
+          ls -la artifacts
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: levyra-apk
+          path: artifacts/*.apk
+          if-no-files-found: error
