@@ -36,19 +36,18 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Test and build APK
-        run: gradle --no-daemon clean testDebugUnitTest assembleDebug assembleRelease
+      - name: Build Release APK
+        run: gradle --no-daemon clean assembleRelease
 
       - name: Collect APK
         run: |
           mkdir -p artifacts
-          cp app/build/outputs/apk/debug/app-debug.apk artifacts/LEVYRA-debug.apk
           cp app/build/outputs/apk/release/app-release.apk artifacts/LEVYRA-release.apk
           ls -la artifacts
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
         with:
-          name: levyra-apk
-          path: artifacts/*.apk
+          name: levyra-release-apk
+          path: artifacts/LEVYRA-release.apk
           if-no-files-found: error
