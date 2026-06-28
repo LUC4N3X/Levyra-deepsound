@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Gradient swoosh ring around the disc -->
+    <path
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M54,18 a36,36 0 1,1 -0.1,0">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="sweep"
+                android:centerX="54"
+                android:centerY="54"
+                android:startColor="#FF2EC5FF"
+                android:centerColor="#FF8E57FF"
+                android:endColor="#FFFF3DAE" />
+        </aapt:attr>
+    </path>
+
+    <!-- Vinyl disc -->
+    <path
+        android:fillColor="#FF15171F"
+        android:pathData="M26,54 a28,28 0 1,0 56,0 a28,28 0 1,0 -56,0 Z" />
+    <path
+        android:strokeColor="#33FFFFFF"
+        android:strokeWidth="1.4"
+        android:fillColor="#00000000"
+        android:pathData="M37,54 a17,17 0 1,0 34,0 a17,17 0 1,0 -34,0 Z" />
+    <path
+        android:strokeColor="#22FFFFFF"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000"
+        android:pathData="M32,54 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0 Z" />
+
+    <!-- Center label -->
+    <path
+        android:pathData="M46,54 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="46" android:startY="46"
+                android:endX="62" android:endY="62"
+                android:startColor="#FFFF7A18"
+                android:endColor="#FFFF3DAE" />
+        </aapt:attr>
+    </path>
+
+    <!-- Play triangle -->
+    <path
+        android:fillColor="#FFFF3B3B"
+        android:pathData="M49,46 L65,54 L49,62 Z" />
+
+    <!-- Music notes -->
+    <path
+        android:fillColor="#FFFF3DAE"
+        android:pathData="M24,24 L34,21 L34,35 A4,3.4 0 1,1 31,32 L31,25 L27,26 L27,38 A4,3.4 0 1,1 24,35 Z" />
+    <path
+        android:fillColor="#FF2EC5FF"
+        android:pathData="M80,70 L88,67.6 L88,79 A3.2,2.7 0 1,1 85.6,76.6 L85.6,71 L82.4,71.9 L82.4,81 A3.2,2.7 0 1,1 80,78.6 Z" />
+</vector>
