@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://i.ibb.co/WWFLNYPh/levyra-icon-transparent-1.png" alt="Levyra Logo" width="140" />
+  <img src="https://i.ibb.co/QvNtNX4T/Chat-GPT-Image-28-giu-2026-21-17-59.png" alt="LEVYRA Showcase Banner" width="640" />
 
   # ─── LEVYRA ───
 
