@@ -95,6 +95,27 @@ graph TD
 
 ---
 
-## 📄 License
+## 🤝 Credits & Acknowledgements
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+<p align="left">
+  <a href="https://github.com/LUC4N3X">
+    <img src="https://github.com/LUC4N3X.png" width="80" height="80" style="border-radius:50%; border:2px solid #00F5FF;" alt="LUC4N3X" />
+  </a>
+</p>
+
+- **Creator & Lead Developer**: [LUC4N3X](https://github.com/LUC4N3X) — Architected the UI redesign, player integration, and caching pipelines.
+- **Inspirations & Concept Credits**:
+  - Special thanks to [Metrolist](https://github.com/MetrolistGroup/Metrolist) for inspiring the design paradigms, modular list flows, and seamless catalog navigation concepts.
+
+---
+
+## ⚖️ Legal Disclaimer (Esonero Responsabilità)
+
+> [!WARNING]
+> **PLEASE READ CAREFULLY**
+
+LEVYRA is an open-source media client designed and developed strictly for **educational, personal, and research purposes**. 
+
+- **No Media Hosting**: This application does not host, store, download, or distribute any copyrighted media files or audio streams. All audio resources are resolved dynamically and streamed directly from public third-party platforms (such as YouTube and YouTube Music) via public APIs.
+- **Third-Party Terms**: The developer ([LUC4N3X](https://github.com/LUC4N3X)) is in no way affiliated with, authorized, maintained, sponsored, or endorsed by YouTube, Google LLC, or any of their affiliates or partners. Users are solely responsible for ensuring that their use of this application complies with applicable local laws and the Terms of Service of the respective streaming platforms.
+- **Limitation of Liability**: Under no circumstances shall the developer be held liable for any copyright infringement, data usage, account suspensions, or legal disputes arising from the use or misuse of this software. The software is provided **"as is"**, without warranty of any kind, express or implied. Use of this application is entirely at your own risk.
