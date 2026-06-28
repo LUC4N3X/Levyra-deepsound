@@ -101,15 +101,24 @@ graph TD
 
 ## 🤝 Credits & Acknowledgements
 
-<p align="left">
-  <a href="https://github.com/LUC4N3X">
-    <img src="https://github.com/LUC4N3X.png" width="80" height="80" style="border-radius:50%; border:2px solid #00F5FF;" alt="LUC4N3X" />
-  </a>
-</p>
+<table>
+  <tr>
+    <td align="center" valign="middle" width="120">
+      <a href="https://github.com/LUC4N3X">
+        <img src="https://github.com/LUC4N3X.png" width="100" height="100" style="border-radius: 50%;" alt="LUC4N3X" />
+      </a>
+    </td>
+    <td valign="middle">
+      <h3><strong>LUC4N3X</strong></h3>
+      <p><strong>Creator & Lead Developer</strong></p>
+      <p>Architected the UI redesign, player integration, background services, and caching pipelines.</p>
+    </td>
+  </tr>
+</table>
 
-- **Creator & Lead Developer**: [LUC4N3X](https://github.com/LUC4N3X) — Architected the UI redesign, player integration, and caching pipelines.
-- **Inspirations & Concept Credits**:
-  - Special thanks to [Metrolist](https://github.com/MetrolistGroup/Metrolist) for inspiring the design paradigms, modular list flows, and seamless catalog navigation concepts.
+### 💡 Inspirations & Special Thanks
+
+*   **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** — Special thanks for inspiring the design paradigms, modular list flows, and seamless catalog navigation concepts.
 
 ---
 
