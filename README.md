@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/BKqT2235/levyra.png" alt="LEVYRA Logo" width="750" />
+<img src="https://i.ibb.co/BKqT2235/levyra.png" alt="LEVYRA Logo" width="450" />
 <br><br>
 
 # ✦ LEVYRA ✦
