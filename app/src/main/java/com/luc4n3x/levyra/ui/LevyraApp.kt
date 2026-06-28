@@ -210,7 +210,7 @@ private fun QueueOverlay(state: LevyraUiState, onPlay: (Track) -> Unit, onClose:
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B0F1C), LevyraBlack)))
+            .background(Brush.verticalGradient(listOf(Color(0xFF0A1428), LevyraBlack)))
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
@@ -292,7 +292,7 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(accentStart.copy(alpha = 0.28f), Color(0xFF070A12), LevyraBlack)
+                    listOf(accentStart.copy(alpha = 0.28f), Color(0xFF050A1F), LevyraBlack)
                 )
             )
             .clickable(interactionSource = blocker, indication = null) {}
@@ -1272,7 +1272,7 @@ private fun OnboardingOverlay(tastes: List<Taste>, onDone: (String, Set<String>)
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(listOf(Color(0xFF0B0F1C), LevyraBlack))
+                Brush.verticalGradient(listOf(Color(0xFF0A1428), LevyraBlack))
             )
             // Consume taps so controls behind the overlay are not reachable.
             .clickable(interactionSource = blocker, indication = null) {}
@@ -1393,7 +1393,7 @@ private fun SettingsOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B0F1C), LevyraBlack)))
+            .background(Brush.verticalGradient(listOf(Color(0xFF0A1428), LevyraBlack)))
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
@@ -2102,7 +2102,7 @@ private fun TrackRow(
 @Composable
 private fun MiniPlayer(track: Track, isPlaying: Boolean, isResolving: Boolean, progress: Float, onOpen: () -> Unit, onToggle: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
     Surface(
-        color = Color(0xEC0E101A),
+        color = Color(0xEC0E1A38),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
@@ -2195,7 +2195,7 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 @Composable
 private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
     Surface(
-        color = Color(0xDF07090D),
+        color = Color(0xDF030614),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier.fillMaxWidth()
