@@ -592,7 +592,7 @@ private fun buildQuickPickTracks(state: LevyraUiState, heroTrack: Track?): List<
     }
         .distinctBy { it.id }
         .filterNot { it.id in excluded }
-        .take(8)
+        .take(6)
 }
 
 @Composable
@@ -950,31 +950,43 @@ private fun QuickSongList(
     onOpenPlayer: (Track) -> Unit,
     onOffline: (Track) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        tracks.forEach { track ->
-            QuickSongRow(
-                track = track,
-                isCurrent = track.id == currentId,
-                isPlaying = isPlaying && track.id == currentId,
-                isResolving = isResolving && track.id == currentId,
-                isFavorite = track.id in favoriteIds,
-                onPlay = { onPlay(track) },
-                onFavorite = { onFavorite(track) },
-                onAddToQueue = { onAddToQueue(track) },
-                onOpenPlayer = { onOpenPlayer(track) },
-                onOffline = { onOffline(track) }
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        tracks.take(6).chunked(2).forEach { rowTracks ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                rowTracks.forEach { track ->
+                    QuickSongCompactCard(
+                        track = track,
+                        isCurrent = track.id == currentId,
+                        isPlaying = isPlaying && track.id == currentId,
+                        isResolving = isResolving && track.id == currentId,
+                        isFavorite = track.id in favoriteIds,
+                        modifier = Modifier.weight(1f),
+                        onPlay = { onPlay(track) },
+                        onFavorite = { onFavorite(track) },
+                        onAddToQueue = { onAddToQueue(track) },
+                        onOpenPlayer = { onOpenPlayer(track) },
+                        onOffline = { onOffline(track) }
+                    )
+                }
+                if (rowTracks.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun QuickSongRow(
+private fun QuickSongCompactCard(
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     isFavorite: Boolean,
+    modifier: Modifier,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onAddToQueue: () -> Unit,
@@ -982,39 +994,40 @@ private fun QuickSongRow(
     onOffline: () -> Unit
 ) {
     Surface(
-        color = if (isCurrent) LevyraCyan.copy(alpha = 0.10f) else Color.Transparent,
+        color = if (isCurrent) LevyraCyan.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.055f),
+        border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.36f) else Color.White.copy(alpha = 0.08f)),
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
+            .height(92.dp)
             .pressable(onClick = onPlay)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 2.dp, vertical = 10.dp),
+                .padding(9.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
         ) {
             Box(
-                modifier = Modifier.size(66.dp),
+                modifier = Modifier.size(52.dp),
                 contentAlignment = Alignment.Center
             ) {
                 CoverImage(
                     track = track,
                     modifier = Modifier
-                        .size(66.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(13.dp))
                 )
                 if (isCurrent) {
                     Surface(
-                        color = Color.Black.copy(alpha = 0.42f),
+                        color = Color.Black.copy(alpha = 0.48f),
                         shape = CircleShape,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(25.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             when {
                                 isResolving -> CircularProgressIndicator(
-                                    modifier = Modifier.size(14.dp),
+                                    modifier = Modifier.size(13.dp),
                                     strokeWidth = 2.dp,
                                     color = LevyraCyan
                                 )
@@ -1022,61 +1035,67 @@ private fun QuickSongRow(
                                     imageVector = Icons.Rounded.Equalizer,
                                     contentDescription = null,
                                     tint = LevyraCyan,
-                                    modifier = Modifier.size(15.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                                 else -> Icon(
                                     imageVector = Icons.Rounded.PlayArrow,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(15.dp)
                                 )
                             }
                         }
                     }
                 }
             }
+
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
                     text = track.title,
                     color = if (isCurrent) LevyraCyan else LevyraText,
-                    fontSize = 18.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
-                    maxLines = 1,
+                    maxLines = 2,
+                    lineHeight = 15.sp,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = track.artist,
                     color = LevyraMuted,
-                    fontSize = 15.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = track.album,
-                    color = LevyraMuted.copy(alpha = 0.72f),
-                    fontSize = 13.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                IconButton(
+                    onClick = onFavorite,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = "Preferito",
+                        tint = if (isFavorite) LevyraPink else LevyraMuted,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+                TrackOverflowMenu(
+                    track = track,
+                    iconSize = 17.dp,
+                    buttonSize = 28.dp,
+                    onAddToQueue = onAddToQueue,
+                    onOpenPlayer = onOpenPlayer,
+                    onOffline = onOffline
                 )
             }
-            IconButton(onClick = onFavorite) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = "Preferito",
-                    tint = if (isFavorite) LevyraPink else LevyraMuted,
-                    modifier = Modifier.size(23.dp)
-                )
-            }
-            TrackOverflowMenu(
-                track = track,
-                onAddToQueue = onAddToQueue,
-                onOpenPlayer = onOpenPlayer,
-                onOffline = onOffline
-            )
         }
     }
 }
@@ -1084,6 +1103,8 @@ private fun QuickSongRow(
 @Composable
 private fun TrackOverflowMenu(
     track: Track,
+    iconSize: androidx.compose.ui.unit.Dp = 23.dp,
+    buttonSize: androidx.compose.ui.unit.Dp = 48.dp,
     onAddToQueue: () -> Unit,
     onOpenPlayer: () -> Unit,
     onOffline: () -> Unit
@@ -1091,12 +1112,15 @@ private fun TrackOverflowMenu(
     val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(buttonSize)
+        ) {
             Icon(
                 imageVector = Icons.Rounded.MoreVert,
                 contentDescription = "Azioni",
                 tint = LevyraMuted,
-                modifier = Modifier.size(23.dp)
+                modifier = Modifier.size(iconSize)
             )
         }
         DropdownMenu(
