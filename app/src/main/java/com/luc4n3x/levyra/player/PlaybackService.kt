@@ -12,10 +12,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.luc4n3x.levyra.data.LevyraPreferences
-import okhttp3.ConnectionPool
-import okhttp3.OkHttpClient
-import okhttp3.Protocol
-import java.util.concurrent.TimeUnit
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import androidx.media3.common.util.UnstableApi
 
 @OptIn(UnstableApi::class)
@@ -28,15 +25,7 @@ class PlaybackService : MediaSessionService() {
             .setBufferDurationsMs(2_500, 50_000, 150, 350)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
-        val okHttpClient = OkHttpClient.Builder()
-            .connectionPool(ConnectionPool(8, 5, TimeUnit.MINUTES))
-            .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
-            .connectTimeout(6, TimeUnit.SECONDS)
-            .readTimeout(18, TimeUnit.SECONDS)
-            .writeTimeout(8, TimeUnit.SECONDS)
-            .callTimeout(28, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-            .build()
+        val okHttpClient = LevyraHttpClientFactory.media(this)
         val upstreamFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent("LevyraPlayer/1.13 Android Music")
             .setDefaultRequestProperties(
