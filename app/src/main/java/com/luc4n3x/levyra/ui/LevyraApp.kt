@@ -422,7 +422,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             .fillMaxSize()
             .statusBarsPadding(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 188.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp)
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         item {
             GreetingBar(
@@ -480,9 +480,10 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (quickTracks.isNotEmpty()) {
             item {
-                SectionHeaderAction(
-                    "Scelte rapide",
-                    onPlayAll = { viewModel.playAll(quickTracks) }
+                QuickSectionHeader(
+                    title = "Scelte rapide",
+                    actionLabel = "Riproduci",
+                    onAction = { viewModel.playAll(quickTracks) }
                 )
             }
             item {
@@ -592,8 +593,9 @@ private fun buildQuickPickTracks(state: LevyraUiState, heroTrack: Track?): List<
     }
         .distinctBy { it.id }
         .filterNot { it.id in excluded }
-        .take(6)
+        .take(4)
 }
+
 
 @Composable
 private fun HomeDiscoveryHero(
@@ -616,109 +618,111 @@ private fun HomeDiscoveryHero(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            accentStart.copy(alpha = 0.36f),
-                            Color(0xFF09101E),
-                            accentEnd.copy(alpha = 0.32f)
+                            accentStart.copy(alpha = 0.34f),
+                            Color(0xFF0B1020),
+                            accentEnd.copy(alpha = 0.30f)
                         )
                     )
                 )
-                .padding(18.dp)
+                .padding(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Surface(
-                    color = Color.Black.copy(alpha = 0.22f),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Headphones,
-                            contentDescription = null,
-                            tint = LevyraCyan,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = "PER TE ORA",
-                            color = LevyraText,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.24f),
+                            shape = RoundedCornerShape(15.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Headphones,
+                                    contentDescription = null,
+                                    tint = LevyraCyan,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                                Text(
+                                    text = "PER TE ORA",
+                                    color = LevyraText,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                        }
                         Text(
                             text = "Scoperta del giorno",
-                            color = LevyraText,
-                            fontSize = 28.sp,
+                            fontSize = 21.sp,
                             fontWeight = FontWeight.Black,
-                            lineHeight = 31.sp
+                            lineHeight = 23.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            style = TextStyle(brush = Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
                         )
                         Text(
                             text = track.title,
                             color = LevyraText,
-                            fontSize = 24.sp,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
                             maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 20.sp
                         )
                         Text(
                             text = track.artist,
                             color = LevyraMuted,
-                            fontSize = 17.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Una traccia scelta per farti scoprire qualcosa adesso, separata da ciò che stavi già ascoltando.",
+                            text = "Un mix esplosivo di attitude urban e vibe potenti.",
                             color = LevyraMuted,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     CoverImage(
                         track = track,
                         modifier = Modifier
-                            .size(168.dp)
-                            .clip(RoundedCornerShape(24.dp))
+                            .size(136.dp)
+                            .clip(RoundedCornerShape(22.dp))
                             .border(
                                 width = 1.dp,
                                 color = Color.White.copy(alpha = 0.14f),
-                                shape = RoundedCornerShape(24.dp)
+                                shape = RoundedCornerShape(22.dp)
                             ),
                         highRes = true
                     )
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Surface(
                         color = Color.Transparent,
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(18.dp),
                         modifier = Modifier
                             .weight(1f)
+                            .height(52.dp)
                             .pressable(onClick = onPlay)
                     ) {
                         Box(
-                            modifier = Modifier
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(LevyraCyan, LevyraViolet, LevyraPink)
-                                    )
-                                )
-                                .padding(vertical = 16.dp),
+                            modifier = Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet, LevyraPink))),
                             contentAlignment = Alignment.Center
                         ) {
                             Row(
@@ -729,29 +733,28 @@ private fun HomeDiscoveryHero(
                                     imageVector = Icons.Rounded.PlayArrow,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(21.dp)
                                 )
                                 Text(
                                     text = "Ascolta ora",
                                     color = Color.White,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Black
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1
                                 )
                             }
                         }
                     }
                     Surface(
                         color = Color.White.copy(alpha = 0.05f),
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(0.74f)
+                            .height(52.dp)
                             .pressable(onClick = onSave)
                     ) {
-                        Box(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(contentAlignment = Alignment.Center) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -765,8 +768,9 @@ private fun HomeDiscoveryHero(
                                 Text(
                                     text = if (isFavorite) "Salvato" else "Salva",
                                     color = LevyraText,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Black
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -776,6 +780,8 @@ private fun HomeDiscoveryHero(
         }
     }
 }
+
+
 
 @Composable
 private fun ContinueListeningCard(
@@ -937,6 +943,53 @@ private fun HomeShortcutRow(
     }
 }
 
+
+@Composable
+private fun QuickSectionHeader(title: String, actionLabel: String, onAction: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = title,
+            color = LevyraText,
+            fontSize = 23.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.weight(1f)
+        )
+        Surface(
+            color = Color.White.copy(alpha = 0.05f),
+            shape = RoundedCornerShape(18.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+            modifier = Modifier.pressable(onClick = onAction)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = LevyraCyan,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = actionLabel,
+                    color = LevyraText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+
+
+
 @Composable
 private fun QuickSongList(
     tracks: List<Track>,
@@ -950,155 +1003,132 @@ private fun QuickSongList(
     onOpenPlayer: (Track) -> Unit,
     onOffline: (Track) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        tracks.take(6).chunked(2).forEach { rowTracks ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                rowTracks.forEach { track ->
-                    QuickSongCompactCard(
-                        track = track,
-                        isCurrent = track.id == currentId,
-                        isPlaying = isPlaying && track.id == currentId,
-                        isResolving = isResolving && track.id == currentId,
-                        isFavorite = track.id in favoriteIds,
-                        modifier = Modifier.weight(1f),
-                        onPlay = { onPlay(track) },
-                        onFavorite = { onFavorite(track) },
-                        onAddToQueue = { onAddToQueue(track) },
-                        onOpenPlayer = { onOpenPlayer(track) },
-                        onOffline = { onOffline(track) }
-                    )
-                }
-                if (rowTracks.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        tracks.take(4).forEach { track ->
+            QuickSongRow(
+                track = track,
+                isCurrent = track.id == currentId,
+                isPlaying = isPlaying && track.id == currentId,
+                isResolving = isResolving && track.id == currentId,
+                isFavorite = track.id in favoriteIds,
+                onPlay = { onPlay(track) },
+                onFavorite = { onFavorite(track) },
+                onAddToQueue = { onAddToQueue(track) },
+                onOpenPlayer = { onOpenPlayer(track) },
+                onOffline = { onOffline(track) }
+            )
         }
     }
 }
 
+
+
+
 @Composable
-private fun QuickSongCompactCard(
+private fun QuickSongRow(
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     isFavorite: Boolean,
-    modifier: Modifier,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onAddToQueue: () -> Unit,
     onOpenPlayer: () -> Unit,
     onOffline: () -> Unit
 ) {
-    Surface(
-        color = if (isCurrent) LevyraCyan.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.055f),
-        border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.36f) else Color.White.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(18.dp),
-        modifier = modifier
-            .height(92.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(14.dp))
             .pressable(onClick = onPlay)
+            .padding(horizontal = 0.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(9.dp)
+        Box(
+            modifier = Modifier.size(58.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.size(52.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CoverImage(
-                    track = track,
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                )
-                if (isCurrent) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.48f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(25.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            when {
-                                isResolving -> CircularProgressIndicator(
-                                    modifier = Modifier.size(13.dp),
-                                    strokeWidth = 2.dp,
-                                    color = LevyraCyan
-                                )
-                                isPlaying -> Icon(
-                                    imageVector = Icons.Rounded.Equalizer,
-                                    contentDescription = null,
-                                    tint = LevyraCyan,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                else -> Icon(
-                                    imageVector = Icons.Rounded.PlayArrow,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                            }
+            CoverImage(
+                track = track,
+                modifier = Modifier
+                    .size(58.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+            if (isCurrent) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.46f),
+                    shape = CircleShape,
+                    modifier = Modifier.size(25.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        when {
+                            isResolving -> CircularProgressIndicator(
+                                modifier = Modifier.size(13.dp),
+                                strokeWidth = 2.dp,
+                                color = LevyraCyan
+                            )
+                            isPlaying -> Icon(
+                                imageVector = Icons.Rounded.Equalizer,
+                                contentDescription = null,
+                                tint = LevyraCyan,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            else -> Icon(
+                                imageVector = Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp)
+                            )
                         }
                     }
                 }
             }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Text(
-                    text = track.title,
-                    color = if (isCurrent) LevyraCyan else LevyraText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 2,
-                    lineHeight = 15.sp,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = track.artist,
-                    color = LevyraMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                IconButton(
-                    onClick = onFavorite,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = "Preferito",
-                        tint = if (isFavorite) LevyraPink else LevyraMuted,
-                        modifier = Modifier.size(17.dp)
-                    )
-                }
-                TrackOverflowMenu(
-                    track = track,
-                    iconSize = 17.dp,
-                    buttonSize = 28.dp,
-                    onAddToQueue = onAddToQueue,
-                    onOpenPlayer = onOpenPlayer,
-                    onOffline = onOffline
-                )
-            }
         }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = track.title,
+                color = if (isCurrent) LevyraCyan else LevyraText,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = track.artist,
+                color = LevyraMuted,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        IconButton(onClick = onFavorite, modifier = Modifier.size(38.dp)) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                contentDescription = "Preferito",
+                tint = if (isFavorite) LevyraPink else LevyraMuted,
+                modifier = Modifier.size(23.dp)
+            )
+        }
+        TrackOverflowMenu(
+            track = track,
+            iconSize = 21.dp,
+            buttonSize = 38.dp,
+            onAddToQueue = onAddToQueue,
+            onOpenPlayer = onOpenPlayer,
+            onOffline = onOffline
+        )
     }
 }
+
+
 
 @Composable
 private fun TrackOverflowMenu(
