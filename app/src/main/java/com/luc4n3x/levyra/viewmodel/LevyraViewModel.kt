@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import androidx.work.getWorkInfoByIdFlow
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -33,8 +32,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -313,10 +310,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val result = runCatching {
                 val appContext = getApplication<Application>().applicationContext
                 val workId = OfflineExportWorker.enqueue(appContext, TrackPayloadCodec.encode(track))
-                WorkManager.getInstance(appContext)
-                    .getWorkInfoByIdFlow(workId)
-                    .filterNotNull()
-                    .first { it.state.isFinished }
+                val workManager = WorkManager.getInstance(appContext)
+                var finished: WorkInfo? = null
+                while (isActive && finished == null) {
+                    val info = withContext(Dispatchers.IO) { workManager.getWorkInfoById(workId).get() }
+                    if (info != null && info.state.isFinished) {
+                        finished = info
+                    } else {
+                        delay(350L)
+                    }
+                }
+                finished ?: throw CancellationException("Offline export observation cancelled")
             }
             result.onSuccess { workInfo ->
                 when (workInfo.state) {
