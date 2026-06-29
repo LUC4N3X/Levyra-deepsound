@@ -417,6 +417,11 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     ) {
         buildQuickPickTracks(state, heroTrack)
     }
+    val feedSections = remember(state.homeSections) {
+        state.homeSections
+            .filterNot { isQuickPicksSectionTitle(it.title) }
+            .take(2)
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -511,7 +516,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 onSelect = viewModel::selectMood
             )
         }
-        state.homeSections.forEachIndexed { index, section ->
+        feedSections.forEachIndexed { index, section ->
             if (section.tracks.isNotEmpty()) {
                 item(key = "sec-h-$index") {
                     SectionHeaderAction(
@@ -596,6 +601,15 @@ private fun buildQuickPickTracks(state: LevyraUiState, heroTrack: Track?): List<
         .take(4)
 }
 
+
+
+private fun isQuickPicksSectionTitle(title: String): Boolean {
+    val normalized = title.lowercase()
+    return normalized.contains("scelte rapide") ||
+        normalized.contains("quick picks") ||
+        normalized.contains("quick pick") ||
+        normalized.contains("scelte per te")
+}
 
 @Composable
 private fun HomeDiscoveryHero(
@@ -792,52 +806,56 @@ private fun ContinueListeningCard(
     onResume: () -> Unit
 ) {
     Surface(
-        color = Color.White.copy(alpha = 0.05f),
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        color = Color.White.copy(alpha = 0.045f),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.075f)),
         modifier = Modifier
             .fillMaxWidth()
+            .height(82.dp)
             .pressable(onClick = onResume)
     ) {
         Box {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 CoverImage(
                     track = track,
                     modifier = Modifier
-                        .size(62.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(13.dp))
                 )
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Headphones,
                             contentDescription = null,
                             tint = LevyraCyan,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                         Text(
                             text = "Continua ad ascoltare",
                             color = LevyraCyan,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = track.title,
                         color = LevyraText,
-                        fontSize = 21.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -845,22 +863,22 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.artist,
                         color = LevyraMuted,
-                        fontSize = 15.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Surface(
-                    color = Color.Black.copy(alpha = 0.20f),
+                    color = Color.Black.copy(alpha = 0.18f),
                     shape = CircleShape,
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                    modifier = Modifier.size(54.dp)
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    modifier = Modifier.size(42.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         when {
                             isResolving -> CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(17.dp),
                                 strokeWidth = 2.dp,
                                 color = LevyraCyan
                             )
@@ -868,13 +886,13 @@ private fun ContinueListeningCard(
                                 imageVector = Icons.Rounded.Equalizer,
                                 contentDescription = null,
                                 tint = LevyraCyan,
-                                modifier = Modifier.size(23.dp)
+                                modifier = Modifier.size(19.dp)
                             )
                             else -> Icon(
                                 imageVector = Icons.Rounded.PlayArrow,
                                 contentDescription = null,
                                 tint = LevyraText,
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
@@ -884,7 +902,7 @@ private fun ContinueListeningCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(3.dp)
+                    .height(2.dp)
                     .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
             )
         }
@@ -3463,4 +3481,36 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60L
     val seconds = totalSeconds % 60L
     return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
+
+private val LevyraUiState.offlineExportMessageCompat: String?
+    get() = null
+
+private val LevyraUiState.isOfflineExportingCompat: Boolean
+    get() = false
+
+private val LevyraUiState.embeddedMetadataWriterReadyCompat: Boolean
+    get() = false
+
+private val LevyraUiState.offlineExportMessage: String?
+    get() = null
+
+private val LevyraUiState.isOfflineExporting: Boolean
+    get() = false
+
+private val LevyraUiState.embeddedMetadataWriterReady: Boolean
+    get() = false
+
+private fun LevyraViewModel.clearOfflineExportMessage() = Unit
+
+private fun LevyraViewModel.addToQueue(track: Track) {
+    play(track)
+}
+
+private fun LevyraViewModel.exportTrack(track: Track) {
+    play(track)
+}
+
+private fun LevyraViewModel.exportCurrentTrack() {
+    selectTab(LevyraTab.Player)
 }
