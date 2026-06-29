@@ -622,9 +622,9 @@ private fun HomeDiscoveryHero(
     val accentEnd = Color(track.accentEnd)
     Surface(
         color = Color.Transparent,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-        shape = RoundedCornerShape(28.dp),
-        shadowElevation = 10.dp,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 0.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Box(
@@ -712,12 +712,12 @@ private fun HomeDiscoveryHero(
                     CoverImage(
                         track = track,
                         modifier = Modifier
-                            .size(136.dp)
-                            .clip(RoundedCornerShape(22.dp))
+                            .size(112.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .border(
                                 width = 1.dp,
-                                color = Color.White.copy(alpha = 0.14f),
-                                shape = RoundedCornerShape(22.dp)
+                                color = Color.White.copy(alpha = 0.06f),
+                                shape = RoundedCornerShape(12.dp)
                             ),
                         highRes = true
                     )
@@ -729,14 +729,14 @@ private fun HomeDiscoveryHero(
                 ) {
                     Surface(
                         color = Color.Transparent,
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .height(52.dp)
+                            .height(48.dp)
                             .pressable(onClick = onPlay)
                     ) {
                         Box(
-                            modifier = Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet, LevyraPink))),
+                            modifier = Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))),
                             contentAlignment = Alignment.Center
                         ) {
                             Row(
@@ -747,25 +747,25 @@ private fun HomeDiscoveryHero(
                                     imageVector = Icons.Rounded.PlayArrow,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(21.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                                 Text(
                                     text = "Ascolta ora",
                                     color = Color.White,
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Black,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1
                                 )
                             }
                         }
                     }
                     Surface(
-                        color = Color.White.copy(alpha = 0.05f),
-                        shape = RoundedCornerShape(18.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                        color = Color.White.copy(alpha = 0.04f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
                         modifier = Modifier
                             .weight(0.74f)
-                            .height(52.dp)
+                            .height(48.dp)
                             .pressable(onClick = onSave)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -782,8 +782,8 @@ private fun HomeDiscoveryHero(
                                 Text(
                                     text = if (isFavorite) "Salvato" else "Salva",
                                     color = LevyraText,
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Black,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1
                                 )
                             }
@@ -2846,14 +2846,14 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
             text = title,
             color = LevyraText,
             fontSize = 19.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
         Surface(
-            color = Color.White.copy(alpha = 0.08f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+            color = Color.White.copy(alpha = 0.05f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
             shape = CircleShape,
             modifier = Modifier.pressable(onClick = onPlayAll)
         ) {
@@ -2863,7 +2863,7 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
-                Text("Riproduci", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                Text("Riproduci", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -2884,9 +2884,9 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track
             ) {
                 Surface(
                     color = Color.Transparent,
-                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.08f)),
-                    shape = RoundedCornerShape(22.dp),
-                    shadowElevation = if (isCurrent) 12.dp else 4.dp
+                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.05f)),
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 0.dp
                 ) {
                     Box(
                         modifier = Modifier
@@ -2898,13 +2898,12 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track
                             track = track,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(5.dp)
-                                .clip(RoundedCornerShape(19.dp))
+                                .clip(RoundedCornerShape(12.dp))
                         )
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.58f))))
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.4f))))
                         )
                         Surface(
                             color = Color.Black.copy(alpha = 0.42f),
