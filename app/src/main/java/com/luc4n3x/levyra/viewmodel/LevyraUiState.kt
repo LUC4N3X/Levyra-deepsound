@@ -54,5 +54,8 @@ data class LevyraUiState(
     val sleepTimerMinutes: Int = 0,
     val sponsorBlockEnabled: Boolean = true,
     val skipSilence: Boolean = false,
-    val showQueue: Boolean = false
+    val showQueue: Boolean = false,
+    val isOfflineExporting: Boolean = false,
+    val offlineExportMessage: String? = null,
+    val embeddedMetadataWriterReady: Boolean = false
 )

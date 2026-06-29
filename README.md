@@ -12,7 +12,7 @@
 
 <p>
   <a href="https://kotlinlang.org/">
-    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-1.9.22-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
+    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
   </a>
   <a href="https://developer.android.com/jetpack/compose">
     <img alt="Jetpack Compose" src="https://img.shields.io/badge/Jetpack%20Compose-UI-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
@@ -51,6 +51,7 @@ It combines a polished dark interface with smart discovery, background audio, sy
 ### 1. Premium Android Interface
 - **Clean dark UI:** deep black surfaces, soft contrast, glass-style cards, and readable typography.
 - **Artwork-first experience:** album covers, gradients, and ambient visuals are treated as part of the player.
+- **Metro-inspired discovery deck:** KMP-style hero card, album shelves, trend rail and floating mini-player rewritten for Levyra.
 - **Smooth navigation:** fast search, compact sections, and a layout designed to feel native on Android.
 
 ### 2. Smart Music Discovery
@@ -63,6 +64,7 @@ It combines a polished dark interface with smart discovery, background audio, sy
 - **Queue-aware playback:** preloading and queue handling for smoother track transitions.
 - **Synced lyrics:** lyric rendering designed around playback position and smooth scrolling.
 - **Playback tools:** skip-silence logic and optional non-music segment skipping where supported.
+- **Offline export pipeline:** save resolved tracks into `Music/Levyra` through WorkManager, Android MediaStore metadata, Room download history, and Levyra-owned M4A cover-art embedding.
 
 ---
 
@@ -78,7 +80,9 @@ graph TD
     VM -->|Playback Intent| Player[Media3 / ExoPlayer]
     VM -->|Track Data| Resolver[Music Resolver]
     VM -->|Lyrics| Lyrics[LRCLIB Repository]
-    VM -->|Cache| Storage[Encrypted Local Storage]
+    VM -->|Cache| Storage[Room + DataStore]
+    VM -->|Offline Export| Worker[WorkManager Export Worker]
+    Worker --> Exporter[MediaStore + Levyra M4A Tagger]
 ```
 
 </div>
@@ -87,8 +91,9 @@ graph TD
 | :--- | :--- | :--- |
 | **Presentation** | Declarative screens driven by a unified UI state. | `Jetpack Compose` |
 | **Domain** | Playback commands, media models, queue logic, and app use-cases. | `Kotlin Coroutines`, `StateFlow` |
-| **Data** | Remote resolving, artwork loading, caching, and local persistence. | `Retrofit`, `OkHttp`, `Coil` |
+| **Data** | Remote resolving, artwork loading, favorites, download history, and settings. | `OkHttp`, `Coil`, `Room`, `DataStore`, `kotlinx.serialization` |
 | **Playback** | Audio session, notification controls, queue handling, and background service. | `Media3`, `ExoPlayer` |
+| **Offline Export** | Public music export, background retry, MediaStore tagging, Room history, and embedded M4A metadata/cover writing through Levyra clean-room code. | `WorkManager`, `OkHttp`, `MediaStore`, pure Kotlin MP4 atom writer |
 
 ---
 
@@ -114,6 +119,35 @@ cd LevyraPlayer
 ./gradlew clean assembleRelease
 ```
 
+
+### Dependency Guardrails
+
+Levyra now includes a strict dependency gate with CashApp Licensee. The build allows permissive licenses such as Apache-2.0, MIT, BSD and ISC, while `NewPipeExtractor` stays as an explicit project exception because it is intentionally kept in the app. Any new dependency with GPL/LGPL-style licensing must be reviewed instead of silently entering the APK.
+
+Core Android infrastructure added in this version:
+
+```text
+Room persistence for favorites and download history
+DataStore preferences with SharedPreferences migration
+WorkManager export worker with network constraint and retry
+kotlinx.serialization payload codec for background workers
+Timber logging
+Chucker network inspector in debug builds only
+LeakCanary in debug builds only
+Licensee dependency license gate
+```
+
+### Levyra M4A Tagger
+
+Levyra includes its own pure Kotlin M4A metadata writer. It does not vendor Bento4, `metrolist-coverart-lib`, JNI code, NDK binaries, CMake files, or GPL native libraries. For compatible M4A/MP4 audio files, the exporter writes iTunes-style `moov/udta/meta/ilst` atoms for title, artist, album, album artist, year and cover art. If the file is malformed or not an M4A/MP4 container, Levyra falls back to Android MediaStore metadata and still saves the track.
+
+Supported embedded artwork formats:
+
+```text
+JPEG
+PNG
+```
+
 ---
 
 ## ✦ Credits
@@ -135,6 +169,8 @@ cd LevyraPlayer
 
 **Inspiration:**  
 Special thanks to [Metrolist](https://github.com/MetrolistGroup/Metrolist) for its open-source work around music client architecture and catalog navigation.
+
+UI research also reviewed [MusicApp-KMP](https://github.com/SEAbdulbasit/MusicApp-KMP) as a Compose Multiplatform music-player reference. Levyra does not vendor or copy its source files; the discovery deck, shelves and player polish are clean Levyra implementations inspired by common Compose music-app patterns.
 
 ---
 

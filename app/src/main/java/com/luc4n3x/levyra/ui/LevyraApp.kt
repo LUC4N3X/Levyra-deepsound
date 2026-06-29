@@ -3482,3 +3482,35 @@ private fun formatDuration(ms: Long): String {
     val seconds = totalSeconds % 60L
     return "$minutes:${seconds.toString().padStart(2, '0')}"
 }
+
+private val LevyraUiState.offlineExportMessageCompat: String?
+    get() = null
+
+private val LevyraUiState.isOfflineExportingCompat: Boolean
+    get() = false
+
+private val LevyraUiState.embeddedMetadataWriterReadyCompat: Boolean
+    get() = false
+
+private val LevyraUiState.offlineExportMessage: String?
+    get() = null
+
+private val LevyraUiState.isOfflineExporting: Boolean
+    get() = false
+
+private val LevyraUiState.embeddedMetadataWriterReady: Boolean
+    get() = false
+
+private fun LevyraViewModel.clearOfflineExportMessage() = Unit
+
+private fun LevyraViewModel.addToQueue(track: Track) {
+    play(track)
+}
+
+private fun LevyraViewModel.exportTrack(track: Track) {
+    play(track)
+}
+
+private fun LevyraViewModel.exportCurrentTrack() {
+    selectTab(LevyraTab.Player)
+}
