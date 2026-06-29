@@ -574,7 +574,7 @@ private fun pickHeroTrack(state: LevyraUiState): Track? {
         state.tracks.asSequence(),
         state.charts.asSequence(),
         state.favorites.asSequence(),
-        sequenceOfNotNull(state.currentTrack)
+        state.currentTrack?.let { sequenceOf(it) } ?: emptySequence()
     )
         .flatten()
         .firstOrNull { it.id != currentId }
