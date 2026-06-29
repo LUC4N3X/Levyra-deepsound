@@ -241,6 +241,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(tracks.first())
     }
 
+    fun addToQueue(track: Track) {
+        val current = _state.value.queue.ifEmpty { currentQueue() }
+        val updated = (current + track).distinctBy { it.id }
+        _state.update {
+            it.copy(
+                queue = updated,
+                offlineExportMessage = "Aggiunto alla coda: ${track.title}"
+            )
+        }
+    }
+
     fun selectChart(regionId: String) {
         if (regionId == _state.value.selectedChartId && _state.value.charts.isNotEmpty()) return
         _state.update { it.copy(selectedChartId = regionId) }
@@ -304,6 +315,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun exportCurrentTrack() {
         val track = _state.value.currentTrack ?: return
+        exportTrack(track)
+    }
+
+    fun exportTrack(track: Track) {
         if (offlineExportJob?.isActive == true) return
         offlineExportJob = viewModelScope.launch {
             _state.update { it.copy(isOfflineExporting = true, offlineExportMessage = null) }
