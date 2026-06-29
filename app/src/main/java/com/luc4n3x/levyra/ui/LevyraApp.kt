@@ -1698,14 +1698,21 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 @Composable
 private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val track = state.currentTrack
-    LazyColumn(
+    val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
+    val bgEnd = track?.let { Color(it.accentEnd) } ?: LevyraViolet
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 130.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .background(Brush.verticalGradient(listOf(bgStart.copy(alpha = 0.45f), LevyraBlack.copy(alpha = 0.8f), LevyraBlack)))
     ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 130.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1729,14 +1736,13 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             item { EmptyState("Cerca un brano e premi play") }
         } else {
             item {
-                MetroArtworkPanel(
+                FloatingArtwork(
                     track = track,
                     isPlaying = state.isPlaying,
                     isResolving = state.isResolving,
-                    progress = progressOf(state.positionMs, state.durationMs),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp, start = 4.dp, end = 4.dp)
+                        .padding(top = 16.dp, bottom = 16.dp)
                 )
             }
             item {
@@ -1745,8 +1751,8 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         Text(
                             text = track.title,
                             color = LevyraText,
-                            fontSize = 25.sp,
-                            lineHeight = 29.sp,
+                            fontSize = 32.sp,
+                            lineHeight = 36.sp,
                             fontWeight = FontWeight.Black,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -1755,7 +1761,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         Text(
                             text = track.artist,
                             color = LevyraMuted,
-                            fontSize = 15.sp,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -1820,6 +1826,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             }
         }
+    }
     }
 }
 
@@ -2583,66 +2590,43 @@ private fun MetroDiscoveryRail(tracks: List<Track>, currentId: String?, onPlay: 
 }
 
 @Composable
-private fun MetroArtworkPanel(track: Track, isPlaying: Boolean, isResolving: Boolean, progress: Float, modifier: Modifier = Modifier) {
+private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boolean, modifier: Modifier = Modifier) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    Surface(
-        color = Color.Transparent,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(34.dp),
-        shadowElevation = 18.dp,
-        modifier = modifier.aspectRatio(0.94f)
+    
+    // Breathing animation for the shadow
+    val scale by animateFloatAsState(
+        targetValue = if (isPlaying && !isResolving) 1.05f else 1.0f,
+        label = "BreathingShadow"
+    )
+    
+    Box(
+        modifier = modifier.aspectRatio(1f),
+        contentAlignment = Alignment.Center
     ) {
+        // Glowing animated shadow behind the artwork
         Box(
             modifier = Modifier
-                .background(Brush.verticalGradient(listOf(accentStart.copy(alpha = 0.34f), Color(0xFF0B0F1C), accentEnd.copy(alpha = 0.22f))))
-                .padding(20.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(230.dp)
-                    .background(Brush.radialGradient(listOf(accentStart.copy(alpha = 0.26f), Color.Transparent)), CircleShape)
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.86f)
-                    .aspectRatio(1f)
-            ) {
-                CoverImage(
-                    track = track,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .border(2.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(32.dp))
-                        .clip(RoundedCornerShape(32.dp)),
-                    highRes = true
-                )
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth(progress.coerceIn(0.04f, 1f))
-                        .height(5.dp)
-                        .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraPink)))
-                )
-            }
-            Surface(
-                color = Color.Black.copy(alpha = 0.36f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                shape = CircleShape,
-                modifier = Modifier.align(Alignment.TopStart)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (isResolving) CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                    else Icon(if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.Album, null, tint = LevyraCyan, modifier = Modifier.size(15.dp))
-                    Text(if (isResolving) "BUFFER" else if (isPlaying) "LIVE" else "READY", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                .fillMaxSize(0.9f)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = 0.6f
                 }
-            }
-        }
+                .background(
+                    Brush.radialGradient(listOf(accentStart, accentEnd.copy(alpha = 0.5f), Color.Transparent)),
+                    CircleShape
+                )
+        )
+        // Actual Artwork
+        CoverImage(
+            track = track,
+            modifier = Modifier
+                .fillMaxSize(0.88f)
+                .clip(RoundedCornerShape(32.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(32.dp)),
+            highRes = true
+        )
     }
 }
 
