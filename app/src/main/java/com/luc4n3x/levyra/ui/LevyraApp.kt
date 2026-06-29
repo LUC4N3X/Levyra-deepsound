@@ -426,7 +426,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 188.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
         item {
@@ -1284,7 +1284,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 188.dp),
+            contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 188.dp else 100.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             val queryClean = state.query.trim()
@@ -1674,7 +1674,7 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 188.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item { PageHeader("Libreria", "I tuoi preferiti e la cronologia") }
