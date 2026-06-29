@@ -427,23 +427,21 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             .fillMaxSize()
             .statusBarsPadding(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 188.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
         item {
-            GreetingBar(
-                state.userName,
-                state.isResolving,
-                onSettings = viewModel::openSettings
-            )
-        }
-        item {
-            SearchDock(
-                query = state.query,
-                isSearching = state.isSearching,
-                onQuery = viewModel::setQuery,
-                onSearch = viewModel::searchNow,
-                onFocus = { viewModel.selectTab(LevyraTab.Search) }
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                GreetingBar(
+                    state.userName,
+                    state.isResolving,
+                    onSettings = viewModel::openSettings
+                )
+                MoodRow(
+                    moods = state.moods,
+                    selectedId = state.selectedMood?.id,
+                    onSelect = viewModel::selectMood
+                )
+            }
         }
         if (heroTrack != null) {
             item {
@@ -474,15 +472,6 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             }
         }
-        item {
-            HomeShortcutRow(
-                hasTracks = quickTracks.isNotEmpty(),
-                onShuffle = { viewModel.playAll(quickTracks.shuffled()) },
-                onFavorites = { viewModel.selectTab(LevyraTab.Library) },
-                onNewReleases = { viewModel.playAll(state.charts.take(20)) },
-                onGenres = { viewModel.selectTab(LevyraTab.Search) }
-            )
-        }
         if (quickTracks.isNotEmpty()) {
             item {
                 QuickSectionHeader(
@@ -508,13 +497,6 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     onOffline = viewModel::exportTrack
                 )
             }
-        }
-        item {
-            MoodRow(
-                moods = state.moods,
-                selectedId = state.selectedMood?.id,
-                onSelect = viewModel::selectMood
-            )
         }
         feedSections.forEachIndexed { index, section ->
             if (section.tracks.isNotEmpty()) {
@@ -557,7 +539,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
         }
-        itemsIndexed(state.charts.take(50), key = { _, track -> track.id }) { index, track ->
+        itemsIndexed(state.charts.take(5), key = { _, track -> track.id }) { index, track ->
             ChartRow(
                 rank = index + 1,
                 track = track,
