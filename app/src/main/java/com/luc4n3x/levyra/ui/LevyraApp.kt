@@ -539,17 +539,35 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
         }
-        itemsIndexed(state.charts.take(5), key = { _, track -> track.id }) { index, track ->
-            ChartRow(
-                rank = index + 1,
-                track = track,
-                isCurrent = track.id == state.currentTrack?.id,
-                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                isFavorite = track.id in state.favoriteIds,
-                onClick = { viewModel.playFrom(state.charts, track) },
-                onFavorite = { viewModel.toggleFavorite(track) }
-            )
+        if (state.charts.isNotEmpty()) {
+            item {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val chunks = state.charts.chunked(4)
+                    itemsIndexed(chunks) { chunkIndex, chunk ->
+                        Column(
+                            modifier = Modifier.width(320.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            chunk.forEachIndexed { itemIndex, track ->
+                                val rank = chunkIndex * 4 + itemIndex + 1
+                                ChartRow(
+                                    rank = rank,
+                                    track = track,
+                                    isCurrent = track.id == state.currentTrack?.id,
+                                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                                    isFavorite = track.id in state.favoriteIds,
+                                    onClick = { viewModel.playFrom(state.charts, track) },
+                                    onFavorite = { viewModel.toggleFavorite(track) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
         item { StatusBlock(state) }
     }
