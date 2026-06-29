@@ -3,12 +3,16 @@ package com.luc4n3x.levyra.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.getWorkInfoByIdFlow
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.SponsorBlockRepository
+import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.SponsorSegment
@@ -19,6 +23,8 @@ import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraPlayer
+import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
+import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -27,12 +33,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import timber.log.Timber
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository()
@@ -43,6 +52,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val moodEngine = MoodEngine()
     private val lyricsEngine = LyricsEngine()
     private val player = LevyraPlayer(application.applicationContext)
+    private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
     private val _state = MutableStateFlow(
@@ -51,7 +61,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             tastes = moodEngine.tastes,
             chartRegions = ChartsCatalog.regions,
             selectedMood = moodEngine.moods.firstOrNull(),
-            isSearching = true
+            isSearching = true,
+            embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady
         )
     )
     private var searchJob: Job? = null
@@ -62,6 +73,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var lyricsJob: Job? = null
     private var sponsorJob: Job? = null
     private var listPrefetchJob: Job? = null
+    private var offlineExportJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private var playRequestId: Long = 0L
     private var pendingSeekMs: Long = 0L
@@ -291,6 +303,60 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val updated = if (exists) current.filterNot { it.id == track.id } else listOf(track) + current
         favoritesStore.save(updated)
         _state.update { it.copy(favorites = updated, favoriteIds = updated.map { fav -> fav.id }.toSet()) }
+    }
+
+    fun exportCurrentTrack() {
+        val track = _state.value.currentTrack ?: return
+        if (offlineExportJob?.isActive == true) return
+        offlineExportJob = viewModelScope.launch {
+            _state.update { it.copy(isOfflineExporting = true, offlineExportMessage = null) }
+            val result = runCatching {
+                val appContext = getApplication<Application>().applicationContext
+                val workId = OfflineExportWorker.enqueue(appContext, TrackPayloadCodec.encode(track))
+                WorkManager.getInstance(appContext)
+                    .getWorkInfoByIdFlow(workId)
+                    .filterNotNull()
+                    .first { it.state.isFinished }
+            }
+            result.onSuccess { workInfo ->
+                when (workInfo.state) {
+                    WorkInfo.State.SUCCEEDED -> handleOfflineExportSuccess(workInfo)
+                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> handleOfflineExportFailure(workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR))
+                    else -> handleOfflineExportFailure("Esportazione non riuscita")
+                }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                Timber.e(error, "Offline export work failed")
+                handleOfflineExportFailure(error.message)
+            }
+        }
+    }
+
+    private fun handleOfflineExportSuccess(workInfo: WorkInfo) {
+        val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
+        val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
+        val tagStatus = if (embedded) "con cover e metadata Levyra" else "con metadata Android"
+        _state.update {
+            it.copy(
+                isOfflineExporting = false,
+                offlineExportMessage = "Salvato in Music/Levyra: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
+                embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady
+            )
+        }
+    }
+
+    private fun handleOfflineExportFailure(message: String?) {
+        _state.update {
+            it.copy(
+                isOfflineExporting = false,
+                offlineExportMessage = message ?: "Esportazione non riuscita",
+                embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady
+            )
+        }
+    }
+
+    fun clearOfflineExportMessage() {
+        _state.update { it.copy(offlineExportMessage = null) }
     }
 
     fun selectTab(tab: LevyraTab) {
@@ -754,6 +820,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         lyricsJob?.cancel()
         sponsorJob?.cancel()
         listPrefetchJob?.cancel()
+        offlineExportJob?.cancel()
         player.release()
         searchJob?.cancel()
         super.onCleared()

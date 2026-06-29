@@ -2,6 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.licensee)
 }
 
 android {
@@ -12,8 +15,8 @@ android {
         applicationId = "com.luc4n3x.levyra"
         minSdk = 26
         targetSdk = 35
-        versionCode = 20
-        versionName = "1.13.0"
+        versionCode = 21
+        versionName = "1.14.0"
         vectorDrawables.useSupportLibrary = true
     }
 
@@ -54,6 +57,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -92,8 +96,32 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.okhttp)
     implementation(libs.newpipe.extractor)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.timber)
+    ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     testImplementation(libs.junit)
     testImplementation("org.json:json:20240303")
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.chucker)
+    releaseImplementation(libs.chucker.no.op)
+    debugImplementation(libs.leakcanary.android)
 }
+
+licensee {
+    allow("Apache-2.0")
+    allow("MIT")
+    allow("BSD-2-Clause")
+    allow("BSD-3-Clause")
+    allow("ISC")
+    allow("JSON")
+    allowDependency("com.github.teamnewpipe", "NewPipeExtractor", libs.versions.newpipe.get())
+    allowDependency("com.github.TeamNewPipe", "NewPipeExtractor", libs.versions.newpipe.get())
+    allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "extractor", libs.versions.newpipe.get())
+    allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "timeago-parser", libs.versions.newpipe.get())
+}
+
