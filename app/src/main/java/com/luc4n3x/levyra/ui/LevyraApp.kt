@@ -458,15 +458,16 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
 
 @Composable
 private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
-    val heroTrack = remember(
+    val heroUpdate = remember(
         state.currentTrack,
         state.tracks,
         state.homeSections,
         state.charts,
         state.favorites
     ) {
-        pickHeroTrack(state)
+        pickHeroUpdate(state)
     }
+    val heroTrack = heroUpdate?.track
     val quickTracks = remember(
         state.currentTrack,
         state.tracks,
@@ -502,10 +503,11 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (heroTrack != null) {
+        if (heroUpdate != null) {
+            val heroTrack = heroUpdate.track
             item {
                 HomeDiscoveryHero(
-                    track = heroTrack,
+                    update = heroUpdate,
                     isFavorite = heroTrack.id in state.favoriteIds,
                     onPlay = {
                         val sourceList = when {
@@ -632,24 +634,48 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     }
 }
 
-private fun pickHeroTrack(state: LevyraUiState): Track? {
+private data class HomeHeroUpdate(
+    val track: Track,
+    val sourceTitle: String,
+    val verifiedRelease: Boolean
+)
+
+private fun pickHeroUpdate(state: LevyraUiState): HomeHeroUpdate? {
     val currentId = state.currentTrack?.id
-    val releaseUpdates = state.homeSections
+    val verifiedReleases = state.homeSections
         .asSequence()
-        .filter { isReleaseUpdateSectionTitle(it.title) }
-        .flatMap { it.tracks.asSequence() }
-    return sequenceOf(
-        releaseUpdates,
-        state.homeSections.asSequence().flatMap { it.tracks.asSequence() },
+        .filter { isVerifiedReleaseSectionTitle(it.title) }
+        .flatMap { section ->
+            section.tracks.asSequence()
+                .filter { isReliableMusicUpdateCandidate(it) }
+                .map { track -> HomeHeroUpdate(track, section.title, true) }
+        }
+    val trustedEditorial = state.homeSections
+        .asSequence()
+        .filterNot { isQuickPicksSectionTitle(it.title) }
+        .filterNot { isVerifiedReleaseSectionTitle(it.title) }
+        .flatMap { section ->
+            section.tracks.asSequence()
+                .filter { isReliableMusicUpdateCandidate(it) }
+                .map { track -> HomeHeroUpdate(track, section.title, false) }
+        }
+    val chartUpdates = state.charts
+        .asSequence()
+        .filter { isReliableMusicUpdateCandidate(it) }
+        .map { track -> HomeHeroUpdate(track, "YouTube Charts Italia", false) }
+    val libraryUpdates = sequenceOf(
         state.tracks.asSequence(),
-        state.charts.asSequence(),
         state.favorites.asSequence(),
         state.currentTrack?.let { sequenceOf(it) } ?: emptySequence()
     )
         .flatten()
-        .distinctBy { it.id }
-        .firstOrNull { it.id != currentId }
-        ?: state.currentTrack
+        .filter { isReliableMusicUpdateCandidate(it) }
+        .map { track -> HomeHeroUpdate(track, track.source.ifBlank { "YouTube Music" }, false) }
+    return sequenceOf(verifiedReleases, trustedEditorial, chartUpdates, libraryUpdates)
+        .flatten()
+        .distinctBy { it.track.id }
+        .firstOrNull { it.track.id != currentId }
+        ?: state.currentTrack?.let { HomeHeroUpdate(it, it.source.ifBlank { "YouTube Music" }, false) }
 }
 
 private fun buildQuickPickTracks(state: LevyraUiState, heroTrack: Track?): List<Track> {
@@ -666,8 +692,6 @@ private fun buildQuickPickTracks(state: LevyraUiState, heroTrack: Track?): List<
         .take(4)
 }
 
-
-
 private fun isQuickPicksSectionTitle(title: String): Boolean {
     val normalized = title.lowercase()
     return normalized.contains("scelte rapide") ||
@@ -676,19 +700,64 @@ private fun isQuickPicksSectionTitle(title: String): Boolean {
         normalized.contains("scelte per te")
 }
 
-private fun isReleaseUpdateSectionTitle(title: String): Boolean {
+private fun isVerifiedReleaseSectionTitle(title: String): Boolean {
     val normalized = title.lowercase()
     return normalized.contains("novità") ||
         normalized.contains("nuove uscite") ||
+        normalized.contains("appena usciti") ||
+        normalized.contains("ultime uscite") ||
         normalized.contains("nuovi album") ||
         normalized.contains("nuovi singoli") ||
+        normalized.contains("new releases") ||
         normalized.contains("new release") ||
+        normalized.contains("latest releases") ||
+        normalized.contains("latest release") ||
         normalized.contains("new albums") ||
-        normalized.contains("new singles") ||
-        normalized.contains("release") ||
-        normalized.contains("uscite") ||
-        normalized.contains("album") ||
-        normalized.contains("singoli")
+        normalized.contains("new singles")
+}
+
+private fun releaseKindFromSource(title: String, track: Track): String {
+    val normalized = title.lowercase()
+    val album = track.album.trim()
+    return when {
+        normalized.contains("album") -> "album"
+        normalized.contains("single") || normalized.contains("singol") -> "singolo"
+        album.isNotBlank() &&
+            !album.equals("YouTube Music", ignoreCase = true) &&
+            !album.equals(track.title, ignoreCase = true) -> "album"
+        else -> "uscita"
+    }
+}
+
+private fun isReliableMusicUpdateCandidate(track: Track): Boolean {
+    val title = track.title.trim()
+    val artist = track.artist.trim()
+    if (title.length < 2 || artist.length < 2) return false
+    if (artist.equals("YouTube Music", ignoreCase = true) || artist.equals("YouTube", ignoreCase = true)) return false
+    return !isLikelyPlaylistOrCompilation(track)
+}
+
+private fun isLikelyPlaylistOrCompilation(track: Track): Boolean {
+    val combined = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+    val markers = listOf(
+        "playlist",
+        "mix",
+        "top hit",
+        "top hits",
+        "hit italiane",
+        "canzoni italiane",
+        "musica italiana",
+        "estate mix",
+        "summer mix",
+        "best of",
+        "compilation",
+        "classifica",
+        "radio edit",
+        "sped up",
+        "slowed",
+        "nightcore"
+    )
+    return markers.any { combined.contains(it) }
 }
 
 private data class HomeUpdateCopy(
@@ -696,31 +765,61 @@ private data class HomeUpdateCopy(
     val headline: String,
     val detail: String,
     val caption: String,
+    val sourceLabel: String,
+    val primaryAction: String,
     val icon: ImageVector
 )
 
-private fun buildHomeUpdateCopy(track: Track): HomeUpdateCopy {
+private fun buildHomeUpdateCopy(update: HomeHeroUpdate): HomeUpdateCopy {
+    val track = update.track
     val artist = track.artist.ifBlank { "Artista" }
-    val title = track.title.ifBlank { "Nuova traccia" }
+    val title = track.title.ifBlank { "Brano" }
+    val source = track.source.ifBlank { "YouTube Music" }
+    val sourceTitle = update.sourceTitle.trim().ifBlank { source }
+    val sourceLabel = if (sourceTitle.equals(source, ignoreCase = true)) source else "$source · $sourceTitle"
+    if (!update.verifiedRelease) {
+        return HomeUpdateCopy(
+            badge = "FONTE YOUTUBE MUSIC",
+            headline = "Aggiornamento affidabile",
+            detail = "$artist · $title",
+            caption = "Segnalato dalla fonte, senza marcarlo come nuova uscita.",
+            sourceLabel = "Fonte: $sourceLabel",
+            primaryAction = "Ascolta ora",
+            icon = Icons.Rounded.GraphicEq
+        )
+    }
+    val kind = releaseKindFromSource(sourceTitle, track)
     val album = track.album.trim().takeIf {
         it.isNotBlank() &&
             !it.equals("YouTube Music", ignoreCase = true) &&
             !it.equals(title, ignoreCase = true)
     }
-    return if (album != null) {
-        HomeUpdateCopy(
+    return when (kind) {
+        "album" -> HomeUpdateCopy(
             badge = "NUOVO ALBUM",
-            headline = "Aggiornamento release",
-            detail = "$artist · $album",
-            caption = "Include anche “$title”.",
+            headline = "Release da YouTube Music",
+            detail = "$artist · ${album ?: title}",
+            caption = if (album != null) "Contiene anche “$title”." else "Album segnalato nelle nuove uscite.",
+            sourceLabel = "Fonte: $sourceLabel",
+            primaryAction = "Apri album",
             icon = Icons.Rounded.Album
         )
-    } else {
-        HomeUpdateCopy(
+        "singolo" -> HomeUpdateCopy(
             badge = "NUOVO SINGOLO",
-            headline = "Aggiornamento release",
+            headline = "Release da YouTube Music",
             detail = "$artist · $title",
-            caption = "Una nuova uscita da tenere d’occhio oggi.",
+            caption = "Singolo presente nella sezione nuove uscite.",
+            sourceLabel = "Fonte: $sourceLabel",
+            primaryAction = "Apri singolo",
+            icon = Icons.Rounded.MusicNote
+        )
+        else -> HomeUpdateCopy(
+            badge = "NUOVA USCITA",
+            headline = "Release da YouTube Music",
+            detail = "$artist · $title",
+            caption = "Uscita presente nella sezione novità.",
+            sourceLabel = "Fonte: $sourceLabel",
+            primaryAction = "Apri uscita",
             icon = Icons.Rounded.MusicNote
         )
     }
@@ -728,14 +827,17 @@ private fun buildHomeUpdateCopy(track: Track): HomeUpdateCopy {
 
 @Composable
 private fun HomeDiscoveryHero(
-    track: Track,
+    update: HomeHeroUpdate,
     isFavorite: Boolean,
     onPlay: () -> Unit,
     onSave: () -> Unit
 ) {
+    val track = update.track
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    val copy = remember(track.id, track.title, track.artist, track.album) { buildHomeUpdateCopy(track) }
+    val copy = remember(track.id, track.title, track.artist, track.album, update.sourceTitle, update.verifiedRelease) {
+        buildHomeUpdateCopy(update)
+    }
     Surface(
         color = Color.Transparent,
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
@@ -754,9 +856,9 @@ private fun HomeDiscoveryHero(
                         )
                     )
                 )
-                .padding(14.dp)
+                .padding(12.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -780,12 +882,12 @@ private fun HomeDiscoveryHero(
                                     imageVector = copy.icon,
                                     contentDescription = null,
                                     tint = LevyraCyan,
-                                    modifier = Modifier.size(15.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                                 Text(
                                     text = copy.badge,
                                     color = LevyraText,
-                                    fontSize = 10.sp,
+                                    fontSize = 9.sp,
                                     fontWeight = FontWeight.Black,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -794,9 +896,9 @@ private fun HomeDiscoveryHero(
                         }
                         Text(
                             text = copy.headline,
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Black,
-                            lineHeight = 20.sp,
+                            lineHeight = 19.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = TextStyle(brush = Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
@@ -804,18 +906,26 @@ private fun HomeDiscoveryHero(
                         Text(
                             text = copy.detail,
                             color = LevyraText,
-                            fontSize = 16.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Black,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            lineHeight = 18.sp
+                            lineHeight = 17.sp
                         )
                         Text(
                             text = copy.caption,
                             color = LevyraMuted,
-                            fontSize = 12.sp,
-                            lineHeight = 15.sp,
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
                             maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = copy.sourceLabel,
+                            color = LevyraCyan.copy(alpha = 0.88f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -823,8 +933,8 @@ private fun HomeDiscoveryHero(
                         CoverImage(
                             track = track,
                             modifier = Modifier
-                                .size(94.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .size(86.dp)
+                                .clip(RoundedCornerShape(15.dp))
                                 .border(
                                     width = 1.dp,
                                     color = Color.White.copy(alpha = 0.08f),
@@ -862,7 +972,7 @@ private fun HomeDiscoveryHero(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .height(42.dp)
+                            .height(40.dp)
                             .pressable(onClick = onPlay)
                     ) {
                         Box(
@@ -880,7 +990,7 @@ private fun HomeDiscoveryHero(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = "Apri uscita",
+                                    text = copy.primaryAction,
                                     color = Color.White,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
@@ -895,7 +1005,7 @@ private fun HomeDiscoveryHero(
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
                         modifier = Modifier
                             .weight(0.68f)
-                            .height(42.dp)
+                            .height(40.dp)
                             .pressable(onClick = onSave)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
