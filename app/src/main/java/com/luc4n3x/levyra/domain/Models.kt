@@ -125,3 +125,43 @@ fun Track.smartWeightFor(mood: Mood?): Int {
     val energyPenalty = (energy - mood.energyTarget).absoluteValue
     return (replayScore + cacheScore + tagScore - energyPenalty).coerceIn(0, 100)
 }
+
+data class ArtistProfile(
+    val browseId: String,
+    val name: String,
+    val bio: String,
+    val subscribers: String,
+    val monthlyListeners: String,
+    val thumbnailUrl: String,
+    val bannerUrl: String,
+    val topSongs: List<Track>,
+    val albums: List<ArtistRelease>,
+    val singles: List<ArtistRelease>,
+    val accentStart: Int,
+    val accentEnd: Int
+) {
+    val hasBio: Boolean
+        get() = bio.isNotBlank()
+}
+
+data class ArtistRelease(
+    val browseId: String,
+    val title: String,
+    val subtitle: String,
+    val thumbnailUrl: String,
+    val year: String
+)
+
+data class DownloadedTrack(
+    val id: Long,
+    val trackId: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val durationMs: Long,
+    val fileName: String,
+    val uri: String,
+    val mimeType: String,
+    val embeddedMetadata: Boolean,
+    val savedAt: Long
+)
