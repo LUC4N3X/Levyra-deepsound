@@ -136,8 +136,11 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.Taste
@@ -2010,7 +2013,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         "fedez"
                     )
                     SuggestionsList(
-                        title = "Potrebbe piacerti anche",
+                        title = "Esplora artisti",
                         suggestions = fallbackSuggestions,
                         onSuggestionClick = { query ->
                             focusManager.clearFocus()
@@ -2023,7 +2026,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             } else if (state.searchSuggestions.isNotEmpty() && !state.isSearching && state.searchResults.isEmpty() && state.searchError == null) {
                 item {
                     SuggestionsList(
-                        title = "Potrebbe piacerti anche",
+                        title = "Suggerimenti",
                         suggestions = state.searchSuggestions,
                         onSuggestionClick = { suggestion ->
                             focusManager.clearFocus()
@@ -2060,24 +2063,85 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         }
                     }
                     state.searchError != null -> item { GlassMessage(state.searchError, LevyraOrange) }
-                    state.searchResults.isNotEmpty() -> {
+                    !state.searchData.isEmpty -> {
+                        val data = state.searchData
+                        val filter = state.searchFilter
                         item {
-                            SearchResultsHeader()
-                        }
-                        items(state.searchResults, key = { "search-result-${it.id}" }) { track ->
-                            SearchSuggestionTrackCard(
-                                track = track,
-                                isCurrent = track.id == state.currentTrack?.id,
-                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                                isFavorite = track.id in state.favoriteIds,
-                                onClick = {
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.playFrom(state.searchResults, track)
-                                },
-                                onFavorite = { viewModel.toggleFavorite(track) }
+                            SearchFilterChips(
+                                selected = filter,
+                                hasArtists = data.artists.isNotEmpty(),
+                                hasAlbums = data.albums.isNotEmpty(),
+                                onSelect = viewModel::setSearchFilter
                             )
+                        }
+                        if (filter == SearchFilter.All && data.topTrack != null) {
+                            item {
+                                TopResultCard(
+                                    track = data.topTrack,
+                                    isCurrent = data.topTrack.id == state.currentTrack?.id,
+                                    isPlaying = state.isPlaying && data.topTrack.id == state.currentTrack?.id,
+                                    isResolving = state.isResolving && data.topTrack.id == state.currentTrack?.id,
+                                    isFavorite = data.topTrack.id in state.favoriteIds,
+                                    onPlay = {
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.playFrom(data.songs, data.topTrack)
+                                    },
+                                    onFavorite = { viewModel.toggleFavorite(data.topTrack) },
+                                    onArtist = { viewModel.openArtist(data.topTrack) }
+                                )
+                            }
+                        }
+                        if ((filter == SearchFilter.All || filter == SearchFilter.Artists) && data.artists.isNotEmpty()) {
+                            item { SectionTitle("👤 Artisti") }
+                            item {
+                                ArtistHitRow(
+                                    artists = data.artists,
+                                    onClick = { hit ->
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.openArtistFromHit(hit)
+                                    }
+                                )
+                            }
+                        }
+                        if ((filter == SearchFilter.All || filter == SearchFilter.Albums) && data.albums.isNotEmpty()) {
+                            item { SectionTitle("💿 Album e singoli") }
+                            item {
+                                AlbumHitRow(
+                                    albums = data.albums,
+                                    onClick = { album ->
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.searchAlbum(album)
+                                    }
+                                )
+                            }
+                        }
+                        if (filter == SearchFilter.All || filter == SearchFilter.Songs) {
+                            val songs = if (filter == SearchFilter.All) data.songs.drop(if (data.topTrack != null) 1 else 0) else data.songs
+                            if (songs.isNotEmpty()) {
+                                item { SectionTitle("🎵 Brani") }
+                                items(songs, key = { "search-song-${it.id}" }) { track ->
+                                    SearchTrackCard(
+                                        track = track,
+                                        isCurrent = track.id == state.currentTrack?.id,
+                                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                                        isFavorite = track.id in state.favoriteIds,
+                                        isDownloading = track.id in state.downloadingTrackIds,
+                                        isDownloaded = track.id in state.downloadedTrackIds,
+                                        onClick = {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                            viewModel.playFrom(data.songs, track)
+                                        },
+                                        onFavorite = { viewModel.toggleFavorite(track) },
+                                        onDownload = { viewModel.exportTrack(track) },
+                                        onArtist = { viewModel.openArtist(track) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -4200,6 +4264,252 @@ private fun SearchSuggestionTrackCard(
                     contentDescription = "Preferito",
                     tint = if (isFavorite) LevyraPink else LevyraMuted,
                     modifier = Modifier.size(21.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchFilterChips(
+    selected: SearchFilter,
+    hasArtists: Boolean,
+    hasAlbums: Boolean,
+    onSelect: (SearchFilter) -> Unit
+) {
+    val chips = buildList {
+        add(SearchFilter.All to "Tutti")
+        add(SearchFilter.Songs to "Brani")
+        if (hasArtists) add(SearchFilter.Artists to "Artisti")
+        if (hasAlbums) add(SearchFilter.Albums to "Album")
+    }
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        chips.forEach { (filter, label) ->
+            val active = filter == selected
+            Surface(
+                color = if (active) LevyraText else Color.White.copy(alpha = 0.06f),
+                shape = RoundedCornerShape(99.dp),
+                border = if (active) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                modifier = Modifier.clickable { onSelect(filter) }
+            ) {
+                Text(
+                    text = label,
+                    color = if (active) LevyraBlack else LevyraText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopResultCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    isFavorite: Boolean,
+    onPlay: () -> Unit,
+    onFavorite: () -> Unit,
+    onArtist: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Risultato principale", color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color(track.accentStart).copy(alpha = 0.30f),
+                            Color(track.accentEnd).copy(alpha = 0.14f),
+                            Color.White.copy(alpha = 0.04f)
+                        )
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+                .pressable(onClick = onPlay)
+                .padding(16.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    CoverImage(track, Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)), highRes = true)
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(track.title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            track.artist,
+                            color = LevyraMuted,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.clickable { onArtist() }
+                        )
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Surface(
+                        color = LevyraText,
+                        shape = RoundedCornerShape(99.dp),
+                        modifier = Modifier.weight(1f).pressable(onClick = onPlay)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraBlack)
+                            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isPlaying) "In riproduzione" else "Riproduci", color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onFavorite() }) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                null,
+                                tint = if (isFavorite) LevyraPink else LevyraText,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchTrackCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    isFavorite: Boolean,
+    isDownloading: Boolean,
+    isDownloaded: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+    onDownload: () -> Unit,
+    onArtist: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressable(onClick = onClick)
+            .padding(vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp)
+    ) {
+        Box {
+            CoverImage(track, Modifier.size(52.dp).clip(RoundedCornerShape(9.dp)))
+            if (isPlaying || isResolving) {
+                Surface(color = Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(9.dp), modifier = Modifier.matchParentSize()) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                        else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                track.artist,
+                color = LevyraMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable { onArtist() }
+            )
+        }
+        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, onDownload = onDownload)
+        IconButton(onClick = onFavorite) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                contentDescription = "Preferito",
+                tint = if (isFavorite) LevyraPink else LevyraMuted
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArtistHitRow(artists: List<ArtistHit>, onClick: (ArtistHit) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        items(artists, key = { "artist-hit-${it.name}" }) { hit ->
+            Column(
+                modifier = Modifier.width(104.dp).clickable { onClick(hit) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(104.dp)
+                        .clip(CircleShape)
+                        .background(Brush.linearGradient(listOf(Color(hit.accentStart), Color(hit.accentEnd)))),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (hit.thumbnailUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(hit.thumbnailUrl).crossfade(true).build(),
+                            contentDescription = hit.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize().clip(CircleShape)
+                        )
+                    } else {
+                        Icon(Icons.Rounded.Person, null, tint = LevyraText, modifier = Modifier.size(40.dp))
+                    }
+                }
+                Text(hit.name, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Artista", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlbumHitRow(albums: List<AlbumHit>, onClick: (AlbumHit) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(albums, key = { "album-hit-${it.title}-${it.artist}" }) { album ->
+            Column(
+                modifier = Modifier.width(150.dp).clickable { onClick(album) },
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(150.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(LevyraPanelSoft),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (album.thumbnailUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(album.thumbnailUrl).crossfade(true).build(),
+                            contentDescription = album.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Icon(Icons.Rounded.Album, null, tint = LevyraMuted, modifier = Modifier.size(40.dp))
+                    }
+                }
+                Text(album.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    listOf(album.year, album.artist).filter { it.isNotBlank() }.joinToString(" · "),
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
