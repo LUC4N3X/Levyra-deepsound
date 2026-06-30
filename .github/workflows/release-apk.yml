@@ -30,8 +30,10 @@ jobs:
           java-version: 17
 
       - name: Setup Android SDK
+        shell: bash
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Setup Gradle
@@ -45,6 +47,7 @@ jobs:
       - name: Prepare Release
         shell: bash
         run: |
+          set -euo pipefail
           TAG_NAME="${GITHUB_REF_NAME}"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG_NAME="${{ inputs.tag }}"
@@ -52,13 +55,13 @@ jobs:
           VERSION="${TAG_NAME#v}"
           mkdir -p artifacts
           cp app/build/outputs/apk/release/app-release.apk "artifacts/LEVYRA-${VERSION}.apk"
-          cat > release-notes.md <<EOF_NOTES
-LEVYRA ${VERSION}
-
-Nuova build disponibile per il download diretto dall'app.
-
-Aggiorna dall'app aprendo Impostazioni > Aggiornamenti > Check.
-EOF_NOTES
+          {
+            echo "LEVYRA ${VERSION}"
+            echo
+            echo "Nuova build disponibile per il download diretto dall'app."
+            echo
+            echo "Aggiorna dall'app aprendo Impostazioni > Aggiornamenti > Check."
+          } > release-notes.md
           echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
           echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
@@ -72,7 +75,9 @@ EOF_NOTES
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          set -euo pipefail
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" "artifacts/LEVYRA-${VERSION}.apk" --clobber
             gh release edit "$TAG_NAME" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
