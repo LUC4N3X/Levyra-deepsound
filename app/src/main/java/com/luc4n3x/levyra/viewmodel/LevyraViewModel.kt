@@ -18,8 +18,11 @@ import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LyricsEngine
@@ -626,9 +629,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun runSearch(clean: String) {
         moveToTab(LevyraTab.Search, rememberCurrent = true)
-        _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList()) }
-        val result = runCatching { repository.search(clean) }
-        result.onSuccess { tracks ->
+        _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList(), searchFilter = SearchFilter.All) }
+        val result = runCatching { repository.searchEverything(clean) }
+        result.onSuccess { data ->
+            val tracks = data.songs
             val mood = _state.value.selectedMood
             val queue = moodEngine.buildQueue(mood, tracks.ifEmpty { repository.cachedTracks() })
             _state.update {
@@ -636,10 +640,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     tracks = mergeTracks(it.tracks, tracks),
                     queue = queue,
                     searchResults = tracks,
+                    searchData = data,
                     cacheReport = repository.cacheReport(),
                     smartScore = calculateSmartScore(queue),
                     isSearching = false,
-                    searchError = if (tracks.isEmpty()) "Nessun risultato trovato per $clean" else null
+                    searchError = if (data.isEmpty) "Nessun risultato trovato per $clean" else null
                 )
             }
             prefetchTop(tracks, 16)
@@ -651,6 +656,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
         }
+    }
+
+    fun setSearchFilter(filter: SearchFilter) {
+        _state.update { it.copy(searchFilter = filter) }
+    }
+
+    fun searchAlbum(album: AlbumHit) {
+        _state.update { it.copy(query = album.query) }
+        searchNow(album.query)
+    }
+
+    fun openArtistFromHit(hit: ArtistHit) {
+        openArtistByName(hit.name)
     }
 
     private fun addToRecentSearches(track: Track) {
