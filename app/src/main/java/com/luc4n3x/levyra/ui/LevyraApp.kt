@@ -634,7 +634,12 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 
 private fun pickHeroTrack(state: LevyraUiState): Track? {
     val currentId = state.currentTrack?.id
+    val releaseUpdates = state.homeSections
+        .asSequence()
+        .filter { isReleaseUpdateSectionTitle(it.title) }
+        .flatMap { it.tracks.asSequence() }
     return sequenceOf(
+        releaseUpdates,
         state.homeSections.asSequence().flatMap { it.tracks.asSequence() },
         state.tracks.asSequence(),
         state.charts.asSequence(),
@@ -642,6 +647,7 @@ private fun pickHeroTrack(state: LevyraUiState): Track? {
         state.currentTrack?.let { sequenceOf(it) } ?: emptySequence()
     )
         .flatten()
+        .distinctBy { it.id }
         .firstOrNull { it.id != currentId }
         ?: state.currentTrack
 }
@@ -670,6 +676,56 @@ private fun isQuickPicksSectionTitle(title: String): Boolean {
         normalized.contains("scelte per te")
 }
 
+private fun isReleaseUpdateSectionTitle(title: String): Boolean {
+    val normalized = title.lowercase()
+    return normalized.contains("novità") ||
+        normalized.contains("nuove uscite") ||
+        normalized.contains("nuovi album") ||
+        normalized.contains("nuovi singoli") ||
+        normalized.contains("new release") ||
+        normalized.contains("new albums") ||
+        normalized.contains("new singles") ||
+        normalized.contains("release") ||
+        normalized.contains("uscite") ||
+        normalized.contains("album") ||
+        normalized.contains("singoli")
+}
+
+private data class HomeUpdateCopy(
+    val badge: String,
+    val headline: String,
+    val detail: String,
+    val caption: String,
+    val icon: ImageVector
+)
+
+private fun buildHomeUpdateCopy(track: Track): HomeUpdateCopy {
+    val artist = track.artist.ifBlank { "Artista" }
+    val title = track.title.ifBlank { "Nuova traccia" }
+    val album = track.album.trim().takeIf {
+        it.isNotBlank() &&
+            !it.equals("YouTube Music", ignoreCase = true) &&
+            !it.equals(title, ignoreCase = true)
+    }
+    return if (album != null) {
+        HomeUpdateCopy(
+            badge = "NUOVO ALBUM",
+            headline = "Aggiornamento release",
+            detail = "$artist · $album",
+            caption = "Include anche “$title”.",
+            icon = Icons.Rounded.Album
+        )
+    } else {
+        HomeUpdateCopy(
+            badge = "NUOVO SINGOLO",
+            headline = "Aggiornamento release",
+            detail = "$artist · $title",
+            caption = "Una nuova uscita da tenere d’occhio oggi.",
+            icon = Icons.Rounded.MusicNote
+        )
+    }
+}
+
 @Composable
 private fun HomeDiscoveryHero(
     track: Track,
@@ -679,10 +735,11 @@ private fun HomeDiscoveryHero(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
+    val copy = remember(track.id, track.title, track.artist, track.album) { buildHomeUpdateCopy(track) }
     Surface(
         color = Color.Transparent,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
-        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(18.dp),
         shadowElevation = 0.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -691,98 +748,112 @@ private fun HomeDiscoveryHero(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            accentStart.copy(alpha = 0.34f),
-                            Color(0xFF0B1020),
-                            accentEnd.copy(alpha = 0.30f)
+                            accentStart.copy(alpha = 0.30f),
+                            Color(0xFF07111F),
+                            accentEnd.copy(alpha = 0.26f)
                         )
                     )
                 )
-                .padding(16.dp)
+                .padding(14.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    horizontalArrangement = Arrangement.spacedBy(13.dp)
                 ) {
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(7.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Surface(
-                            color = Color.Black.copy(alpha = 0.24f),
-                            shape = RoundedCornerShape(15.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
+                            color = Color.Black.copy(alpha = 0.22f),
+                            shape = RoundedCornerShape(13.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Headphones,
+                                    imageVector = copy.icon,
                                     contentDescription = null,
                                     tint = LevyraCyan,
-                                    modifier = Modifier.size(17.dp)
+                                    modifier = Modifier.size(15.dp)
                                 )
                                 Text(
-                                    text = "PER TE ORA",
+                                    text = copy.badge,
                                     color = LevyraText,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Black
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
                         Text(
-                            text = "Scoperta del giorno",
-                            fontSize = 21.sp,
+                            text = copy.headline,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
-                            lineHeight = 23.sp,
-                            maxLines = 2,
+                            lineHeight = 20.sp,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = TextStyle(brush = Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
                         )
                         Text(
-                            text = track.title,
+                            text = copy.detail,
                             color = LevyraText,
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            lineHeight = 20.sp
+                            lineHeight = 18.sp
                         )
                         Text(
-                            text = track.artist,
-                            color = LevyraMuted,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = "Un mix esplosivo di attitude urban e vibe potenti.",
+                            text = copy.caption,
                             color = LevyraMuted,
                             fontSize = 12.sp,
-                            lineHeight = 16.sp,
+                            lineHeight = 15.sp,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    CoverImage(
-                        track = track,
-                        modifier = Modifier
-                            .size(112.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(
-                                width = 1.dp,
-                                color = Color.White.copy(alpha = 0.06f),
-                                shape = RoundedCornerShape(12.dp)
-                            ),
-                        highRes = true
-                    )
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        CoverImage(
+                            track = track,
+                            modifier = Modifier
+                                .size(94.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .border(
+                                    width = 1.dp,
+                                    color = Color.White.copy(alpha = 0.08f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ),
+                            highRes = true
+                        )
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.42f),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier
+                                .padding(6.dp)
+                                .size(30.dp)
+                                .pressable(onClick = onPlay)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.PlayArrow,
+                                    contentDescription = null,
+                                    tint = LevyraText,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
                 }
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -791,7 +862,7 @@ private fun HomeDiscoveryHero(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp)
+                            .height(42.dp)
                             .pressable(onClick = onPlay)
                     ) {
                         Box(
@@ -800,18 +871,18 @@ private fun HomeDiscoveryHero(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.PlayArrow,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = "Ascolta ora",
+                                    text = "Apri uscita",
                                     color = Color.White,
-                                    fontSize = 15.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1
                                 )
@@ -819,29 +890,29 @@ private fun HomeDiscoveryHero(
                         }
                     }
                     Surface(
-                        color = Color.White.copy(alpha = 0.04f),
+                        color = Color.White.copy(alpha = 0.045f),
                         shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
                         modifier = Modifier
-                            .weight(0.74f)
-                            .height(48.dp)
+                            .weight(0.68f)
+                            .height(42.dp)
                             .pressable(onClick = onSave)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
                                 Icon(
                                     imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                                     contentDescription = null,
                                     tint = if (isFavorite) LevyraPink else LevyraText,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Text(
                                     text = if (isFavorite) "Salvato" else "Salva",
                                     color = LevyraText,
-                                    fontSize = 15.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1
                                 )
