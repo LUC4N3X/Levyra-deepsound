@@ -3704,21 +3704,11 @@ private fun FeaturedTrackCard(
 
 @Composable
 private fun SearchResultsHeader() {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        LevyraCyan.copy(alpha = 0.22f),
-                        LevyraViolet.copy(alpha = 0.16f),
-                        LevyraPink.copy(alpha = 0.10f)
-                    )
-                ),
-                RoundedCornerShape(22.dp)
-            )
-            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(22.dp))
-            .padding(14.dp)
+            .padding(top = 2.dp, bottom = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -3727,29 +3717,47 @@ private fun SearchResultsHeader() {
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .background(Color.White.copy(alpha = 0.10f), CircleShape)
-                    .border(1.dp, LevyraCyan.copy(alpha = 0.32f), CircleShape),
+                    .size(38.dp)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                LevyraCyan.copy(alpha = 0.28f),
+                                LevyraViolet.copy(alpha = 0.22f),
+                                LevyraPink.copy(alpha = 0.18f)
+                            )
+                        ),
+                        CircleShape
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.13f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Rounded.Headphones, null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
+                Icon(Icons.Rounded.MusicNote, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
             }
             Text(
                 text = "Potrebbe piacerti anche",
                 color = LevyraText,
-                fontSize = 20.sp,
+                fontSize = 23.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            Box(
-                modifier = Modifier
-                    .width(42.dp)
-                    .height(4.dp)
-                    .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraPink)), RoundedCornerShape(99.dp))
-            )
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.62f)
+                .height(3.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            LevyraCyan.copy(alpha = 0.95f),
+                            LevyraViolet.copy(alpha = 0.72f),
+                            Color.Transparent
+                        )
+                    ),
+                    RoundedCornerShape(99.dp)
+                )
+        )
     }
 }
 
@@ -3769,48 +3777,74 @@ private fun SearchSuggestionTrackCard(
             .background(
                 Brush.linearGradient(
                     listOf(
-                        Color(track.accentStart).copy(alpha = if (isCurrent) 0.30f else 0.16f),
-                        Color(track.accentEnd).copy(alpha = if (isCurrent) 0.20f else 0.08f),
+                        Color(track.accentStart).copy(alpha = if (isCurrent) 0.24f else 0.12f),
+                        Color(track.accentEnd).copy(alpha = if (isCurrent) 0.16f else 0.07f),
                         Color.White.copy(alpha = 0.035f)
                     )
                 ),
-                RoundedCornerShape(20.dp)
+                RoundedCornerShape(22.dp)
             )
             .border(
                 1.dp,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.08f),
-                RoundedCornerShape(20.dp)
+                if (isCurrent) LevyraCyan.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.075f),
+                RoundedCornerShape(22.dp)
             )
             .pressable(onClick = onClick)
-            .padding(10.dp)
+            .padding(horizontal = 12.dp, vertical = 11.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box {
-                CoverImage(track, Modifier.size(58.dp).clip(RoundedCornerShape(16.dp)))
-                if (isPlaying || isResolving) {
-                    Surface(color = Color.Black.copy(alpha = 0.48f), shape = RoundedCornerShape(16.dp), modifier = Modifier.matchParentSize()) {
-                        Box(contentAlignment = Alignment.Center) {
-                            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                            else Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(23.dp))
-                        }
-                    }
+            Box(
+                modifier = Modifier
+                    .width(5.dp)
+                    .height(48.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color(track.accentStart).copy(alpha = 0.95f),
+                                Color(track.accentEnd).copy(alpha = 0.78f)
+                            )
+                        ),
+                        RoundedCornerShape(99.dp)
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(
+                        if (isCurrent) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.065f),
+                        CircleShape
+                    )
+                    .border(
+                        1.dp,
+                        if (isCurrent) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.08f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    isResolving -> CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                    isPlaying -> Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
+                    else -> Icon(Icons.Rounded.PlayArrow, null, tint = if (isCurrent) LevyraCyan else LevyraText, modifier = Modifier.size(24.dp))
                 }
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
-                    track.title,
+                    text = track.title,
                     color = if (isCurrent) LevyraCyan else LevyraText,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    track.artist,
+                    text = track.artist,
                     color = LevyraMuted,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -3818,7 +3852,7 @@ private fun SearchSuggestionTrackCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            IconButton(onClick = onFavorite, modifier = Modifier.size(40.dp)) {
+            IconButton(onClick = onFavorite, modifier = Modifier.size(38.dp)) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                     contentDescription = "Preferito",
