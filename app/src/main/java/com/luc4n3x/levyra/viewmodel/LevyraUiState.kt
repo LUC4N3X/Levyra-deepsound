@@ -10,6 +10,8 @@ import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.RepeatMode
+import com.luc4n3x.levyra.domain.SearchFilter
+import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
 
@@ -71,5 +73,7 @@ data class LevyraUiState(
     val showArtist: Boolean = false,
     val artistLoading: Boolean = false,
     val artistError: String? = null,
-    val artistProfile: ArtistProfile? = null
+    val artistProfile: ArtistProfile? = null,
+    val searchData: SearchResults = SearchResults(),
+    val searchFilter: SearchFilter = SearchFilter.All
 )
