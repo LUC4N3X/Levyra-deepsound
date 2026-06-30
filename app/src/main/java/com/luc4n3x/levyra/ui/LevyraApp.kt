@@ -776,16 +776,17 @@ private fun buildHomeUpdateCopy(update: HomeHeroUpdate): HomeUpdateCopy {
     val title = track.title.ifBlank { "Brano" }
     val source = track.source.ifBlank { "YouTube Music" }
     val sourceTitle = update.sourceTitle.trim().ifBlank { source }
-    val sourceLabel = if (sourceTitle.equals(source, ignoreCase = true)) source else "$source · $sourceTitle"
+    val sourceLabel = buildProfessionalSourceLabel(source, sourceTitle)
     if (!update.verifiedRelease) {
+        val chartDriven = isChartDrivenSource(sourceTitle) || isChartDrivenSource(source)
         return HomeUpdateCopy(
-            badge = "FONTE YOUTUBE MUSIC",
-            headline = "Aggiornamento affidabile",
-            detail = "$artist · $title",
-            caption = "Segnalato dalla fonte, senza marcarlo come nuova uscita.",
-            sourceLabel = "Fonte: $sourceLabel",
-            primaryAction = "Ascolta ora",
-            icon = Icons.Rounded.GraphicEq
+            badge = if (chartDriven) "TREND ITALIA" else "RADAR MUSICALE",
+            headline = title,
+            detail = artist,
+            caption = if (chartDriven) "In evidenza nelle classifiche italiane." else "Selezionato oggi dal tuo flusso musicale.",
+            sourceLabel = sourceLabel,
+            primaryAction = "Ascolta",
+            icon = if (chartDriven) Icons.Rounded.Equalizer else Icons.Rounded.GraphicEq
         )
     }
     val kind = releaseKindFromSource(sourceTitle, track)
@@ -797,32 +798,50 @@ private fun buildHomeUpdateCopy(update: HomeHeroUpdate): HomeUpdateCopy {
     return when (kind) {
         "album" -> HomeUpdateCopy(
             badge = "NUOVO ALBUM",
-            headline = "Release da YouTube Music",
-            detail = "$artist · ${album ?: title}",
-            caption = if (album != null) "Contiene anche “$title”." else "Album segnalato nelle nuove uscite.",
-            sourceLabel = "Fonte: $sourceLabel",
-            primaryAction = "Apri album",
+            headline = album ?: title,
+            detail = artist,
+            caption = if (album != null) "Include anche “$title”." else "Disponibile nelle nuove uscite.",
+            sourceLabel = sourceLabel,
+            primaryAction = "Apri",
             icon = Icons.Rounded.Album
         )
         "singolo" -> HomeUpdateCopy(
             badge = "NUOVO SINGOLO",
-            headline = "Release da YouTube Music",
-            detail = "$artist · $title",
-            caption = "Singolo presente nella sezione nuove uscite.",
-            sourceLabel = "Fonte: $sourceLabel",
-            primaryAction = "Apri singolo",
+            headline = title,
+            detail = artist,
+            caption = "Disponibile ora nelle nuove uscite.",
+            sourceLabel = sourceLabel,
+            primaryAction = "Apri",
             icon = Icons.Rounded.MusicNote
         )
         else -> HomeUpdateCopy(
             badge = "NUOVA USCITA",
-            headline = "Release da YouTube Music",
-            detail = "$artist · $title",
-            caption = "Uscita presente nella sezione novità.",
-            sourceLabel = "Fonte: $sourceLabel",
-            primaryAction = "Apri uscita",
+            headline = title,
+            detail = artist,
+            caption = "Una novità appena entrata nel radar.",
+            sourceLabel = sourceLabel,
+            primaryAction = "Apri",
             icon = Icons.Rounded.MusicNote
         )
     }
+}
+
+private fun buildProfessionalSourceLabel(source: String, sourceTitle: String): String {
+    return listOf(source, sourceTitle)
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .map { it.removePrefix("Fonte:").trim() }
+        .distinctBy { it.lowercase() }
+        .joinToString(" · ")
+        .ifBlank { "YouTube Music" }
+}
+
+private fun isChartDrivenSource(source: String): Boolean {
+    val normalized = source.lowercase()
+    return normalized.contains("chart") ||
+        normalized.contains("classifica") ||
+        normalized.contains("trend") ||
+        normalized.contains("top")
 }
 
 @Composable
