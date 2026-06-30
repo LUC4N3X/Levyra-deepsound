@@ -1840,41 +1840,22 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 state.searchError != null -> item { GlassMessage(state.searchError, LevyraOrange) }
                 state.searchResults.isNotEmpty() -> {
                     item {
-                        Text("Miglior Risultato", color = LevyraText, fontSize = 19.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                        SearchResultsHeader()
                     }
-                    item {
-                        val topTrack = state.searchResults.first()
-                        FeaturedTrackCard(
-                            track = topTrack,
-                            isCurrent = topTrack.id == state.currentTrack?.id,
-                            isPlaying = state.isPlaying && topTrack.id == state.currentTrack?.id,
-                            isResolving = state.isResolving && topTrack.id == state.currentTrack?.id,
+                    items(state.searchResults, key = { "search-result-${it.id}" }) { track ->
+                        SearchSuggestionTrackCard(
+                            track = track,
+                            isCurrent = track.id == state.currentTrack?.id,
+                            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                            isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                            isFavorite = track.id in state.favoriteIds,
                             onClick = {
                                 focusManager.clearFocus()
                                 keyboardController?.hide()
-                                viewModel.playFrom(state.searchResults, topTrack)
-                            }
+                                viewModel.playFrom(state.searchResults, track)
+                            },
+                            onFavorite = { viewModel.toggleFavorite(track) }
                         )
-                    }
-                    if (state.searchResults.size > 1) {
-                        item {
-                            Text("Brani", color = LevyraText, fontSize = 19.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-                        }
-                        items(state.searchResults.drop(1), key = { it.id }) { track ->
-                            TrackRow(
-                                track = track,
-                                isCurrent = track.id == state.currentTrack?.id,
-                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                                isFavorite = track.id in state.favoriteIds,
-                                onClick = {
-                                    focusManager.clearFocus()
-                                    keyboardController?.hide()
-                                    viewModel.playFrom(state.searchResults, track)
-                                },
-                                onFavorite = { viewModel.toggleFavorite(track) }
-                            )
-                        }
                     }
                 }
             }
@@ -3716,6 +3697,134 @@ private fun FeaturedTrackCard(
                 shape = RoundedCornerShape(12.dp),
             ) {
                 Text(track.source, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultsHeader() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = 0.22f),
+                        LevyraViolet.copy(alpha = 0.16f),
+                        LevyraPink.copy(alpha = 0.10f)
+                    )
+                ),
+                RoundedCornerShape(22.dp)
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(22.dp))
+            .padding(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(Color.White.copy(alpha = 0.10f), CircleShape)
+                    .border(1.dp, LevyraCyan.copy(alpha = 0.32f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Headphones, null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                text = "Potrebbe piacerti anche",
+                color = LevyraText,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier
+                    .width(42.dp)
+                    .height(4.dp)
+                    .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraPink)), RoundedCornerShape(99.dp))
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchSuggestionTrackCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(track.accentStart).copy(alpha = if (isCurrent) 0.30f else 0.16f),
+                        Color(track.accentEnd).copy(alpha = if (isCurrent) 0.20f else 0.08f),
+                        Color.White.copy(alpha = 0.035f)
+                    )
+                ),
+                RoundedCornerShape(20.dp)
+            )
+            .border(
+                1.dp,
+                if (isCurrent) LevyraCyan.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.08f),
+                RoundedCornerShape(20.dp)
+            )
+            .pressable(onClick = onClick)
+            .padding(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box {
+                CoverImage(track, Modifier.size(58.dp).clip(RoundedCornerShape(16.dp)))
+                if (isPlaying || isResolving) {
+                    Surface(color = Color.Black.copy(alpha = 0.48f), shape = RoundedCornerShape(16.dp), modifier = Modifier.matchParentSize()) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                            else Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(23.dp))
+                        }
+                    }
+                }
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    track.title,
+                    color = if (isCurrent) LevyraCyan else LevyraText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    track.artist,
+                    color = LevyraMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(onClick = onFavorite, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = "Preferito",
+                    tint = if (isFavorite) LevyraPink else LevyraMuted,
+                    modifier = Modifier.size(21.dp)
+                )
             }
         }
     }
