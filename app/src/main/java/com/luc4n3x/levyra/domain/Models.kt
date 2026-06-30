@@ -165,3 +165,36 @@ data class DownloadedTrack(
     val embeddedMetadata: Boolean,
     val savedAt: Long
 )
+
+data class ArtistHit(
+    val name: String,
+    val subscribers: String,
+    val thumbnailUrl: String,
+    val accentStart: Int,
+    val accentEnd: Int
+)
+
+data class AlbumHit(
+    val title: String,
+    val artist: String,
+    val year: String,
+    val thumbnailUrl: String,
+    val query: String
+)
+
+data class SearchResults(
+    val topTrack: Track? = null,
+    val songs: List<Track> = emptyList(),
+    val artists: List<ArtistHit> = emptyList(),
+    val albums: List<AlbumHit> = emptyList()
+) {
+    val isEmpty: Boolean
+        get() = topTrack == null && songs.isEmpty() && artists.isEmpty() && albums.isEmpty()
+}
+
+enum class SearchFilter {
+    All,
+    Songs,
+    Artists,
+    Albums
+}
