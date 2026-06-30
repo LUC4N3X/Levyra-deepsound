@@ -3,8 +3,10 @@ package com.luc4n3x.levyra
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.app.ActivityCompat
@@ -29,6 +31,20 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
+        window.setBackgroundDrawable(ColorDrawable(Color.BLACK))
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
+        if (Build.VERSION.SDK_INT >= 28) {
+            val params = window.attributes
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            window.attributes = params
+        }
         setContent {
             LevyraTheme {
                 val viewModel: LevyraViewModel = viewModel()
@@ -51,7 +67,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Aggressive, low-memory image pipeline so covers appear instantly. */
     private fun configureFastImageLoader() {
         val loader = ImageLoader.Builder(this)
             .memoryCache {
