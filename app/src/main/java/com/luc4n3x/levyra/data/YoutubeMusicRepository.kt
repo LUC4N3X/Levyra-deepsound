@@ -1,7 +1,10 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.CacheReport
 import com.luc4n3x.levyra.domain.HomeSection
+import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,6 +38,119 @@ class YoutubeMusicRepository {
 
     /** First YouTube Music match for a query, used to make chart entries playable. */
     suspend fun searchOne(query: String): Track? = search(query, 1).firstOrNull()
+
+    suspend fun searchEverything(query: String): SearchResults = withContext(Dispatchers.IO) {
+        val cleanQuery = query.trim()
+        if (cleanQuery.length < 2) return@withContext SearchResults()
+        val root = runCatching { searchInnerTubeRaw(cleanQuery) }.getOrNull() ?: return@withContext fallbackResults(cleanQuery)
+        val renderers = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
+        val songs = LinkedHashMap<String, Track>()
+        val artists = LinkedHashMap<String, ArtistHit>()
+        val albums = LinkedHashMap<String, AlbumHit>()
+        renderers.forEach { renderer ->
+            val lines = extractFlexLines(renderer)
+            val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return@forEach
+            val subtitleTokens = lines.drop(1).flatMap { it.split(" • ", " · ") }.map { it.trim() }
+            val kind = subtitleTokens.firstOrNull()?.lowercase().orEmpty()
+            val thumb = findBestThumbnail(renderer)
+            when {
+                kind.startsWith("artist") || kind.startsWith("artista") -> {
+                    if (!artists.containsKey(title.lowercase())) {
+                        val subs = subtitleTokens.firstOrNull { it.contains("scritt", ignoreCase = true) || it.contains("subscriber", ignoreCase = true) || it.contains("iscritt", ignoreCase = true) }.orEmpty()
+                        val seed = stableSeed(title)
+                        artists[title.lowercase()] = ArtistHit(
+                            name = title,
+                            subscribers = subs,
+                            thumbnailUrl = upgradeThumbnail(thumb),
+                            accentStart = palette(seed).first,
+                            accentEnd = palette(seed).second
+                        )
+                    }
+                }
+                kind.startsWith("album") || kind.startsWith("single") || kind.startsWith("singol") || kind.startsWith("ep") -> {
+                    val albumArtist = subtitleTokens.getOrNull(1).orEmpty()
+                    val year = subtitleTokens.firstNotNullOfOrNull { Regex("\\b(19|20)\\d{2}\\b").find(it)?.value }.orEmpty()
+                    val key = "${title.lowercase()}|${albumArtist.lowercase()}"
+                    if (!albums.containsKey(key)) {
+                        albums[key] = AlbumHit(
+                            title = title,
+                            artist = albumArtist.ifBlank { "Album" },
+                            year = year,
+                            thumbnailUrl = upgradeThumbnail(thumb),
+                            query = "$title $albumArtist"
+                        )
+                    }
+                }
+                else -> {
+                    val track = parseMusicRenderer(renderer, cleanQuery) ?: return@forEach
+                    if (!songs.containsKey(track.id)) songs[track.id] = track
+                }
+            }
+        }
+        if (songs.isEmpty()) {
+            val videoRenderers = mutableListOf<JSONObject>()
+            collectObjectsByKey(root, "videoRenderer", videoRenderers)
+            videoRenderers.forEach { renderer ->
+                val track = parseVideoRenderer(renderer, cleanQuery) ?: return@forEach
+                if (!songs.containsKey(track.id)) songs[track.id] = track
+            }
+        }
+        songs.values.forEach { memory[it.id] = it }
+        val songList = songs.values.toList()
+        val results = SearchResults(
+            topTrack = songList.firstOrNull(),
+            songs = songList.take(20),
+            artists = artists.values.take(8).toList(),
+            albums = albums.values.take(10).toList()
+        )
+        if (results.isEmpty) fallbackResults(cleanQuery) else results
+    }
+
+    private suspend fun fallbackResults(query: String): SearchResults {
+        val songs = search(query, 20)
+        return SearchResults(topTrack = songs.firstOrNull(), songs = songs)
+    }
+
+    private fun searchInnerTubeRaw(query: String): JSONObject? {
+        val endpoint = "https://music.youtube.com/youtubei/v1/search?key=$apiKey&prettyPrint=false"
+        val body = JSONObject()
+            .put(
+                "context",
+                JSONObject().put(
+                    "client",
+                    JSONObject()
+                        .put("clientName", "WEB_REMIX")
+                        .put("clientVersion", clientVersion)
+                        .put("hl", "it")
+                        .put("gl", "IT")
+                        .put("platform", "DESKTOP")
+                )
+            )
+            .put("query", query)
+            .toString()
+        val bytes = body.toByteArray(StandardCharsets.UTF_8)
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 15000
+            readTimeout = 20000
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Origin", "https://music.youtube.com")
+            setRequestProperty("Referer", "https://music.youtube.com/search?q=${query.replace(" ", "+")}")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            setRequestProperty("X-Youtube-Client-Name", "67")
+            setRequestProperty("X-Youtube-Client-Version", clientVersion)
+            setRequestProperty("Content-Length", bytes.size.toString())
+        }
+        connection.outputStream.use { it.write(bytes) }
+        val code = connection.responseCode
+        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+        val response = BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { it.readText() }
+        if (code !in 200..299) return null
+        return JSONObject(response)
+    }
 
     suspend fun home(
         queries: List<String> = listOf("top hits italia 2026", "global top hits 2026", "rap italiano 2026", "pop hits 2026")
