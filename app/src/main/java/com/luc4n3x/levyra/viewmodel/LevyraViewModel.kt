@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.luc4n3x.levyra.data.AppUpdateRepository
+import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -14,7 +15,11 @@ import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.SponsorBlockRepository
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.data.local.DownloadEntity
+import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ChartsCatalog
+import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LyricsEngine
@@ -33,6 +38,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -43,7 +49,9 @@ import timber.log.Timber
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository()
+    private val artistRepository = ArtistRepository(repository)
     private val chartsRepository = ChartsRepository()
+    private val downloadedTracksDao = LevyraDatabase.get(application.applicationContext).downloadedTracksDao()
     private val appUpdateRepository = AppUpdateRepository(application.applicationContext)
     private val lyricsRepository = LyricsRepository()
     private val sponsorBlockRepository = SponsorBlockRepository()
@@ -72,8 +80,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var lyricsJob: Job? = null
     private var sponsorJob: Job? = null
     private var listPrefetchJob: Job? = null
-    private var offlineExportJob: Job? = null
     private var updateJob: Job? = null
+    private var artistJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val tabBackStack = ArrayDeque<LevyraTab>()
     private var playRequestId: Long = 0L
@@ -111,8 +119,37 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadHomeFeed()
         loadCharts()
         startTicker()
+        observeDownloads()
         checkForUpdates(silent = true)
     }
+
+    private fun observeDownloads() {
+        viewModelScope.launch {
+            downloadedTracksDao.observeRecent().collectLatest { entities ->
+                val mapped = entities.map { it.toDownloadedTrack() }
+                _state.update {
+                    it.copy(
+                        downloads = mapped,
+                        downloadedTrackIds = mapped.map { item -> item.trackId }.toSet()
+                    )
+                }
+            }
+        }
+    }
+
+    private fun DownloadEntity.toDownloadedTrack(): DownloadedTrack = DownloadedTrack(
+        id = id,
+        trackId = trackId,
+        title = title,
+        artist = artist,
+        album = album,
+        durationMs = durationMs,
+        fileName = fileName,
+        uri = uri,
+        mimeType = mimeType,
+        embeddedMetadata = embeddedMetadata,
+        savedAt = savedAt
+    )
 
     private fun onTrackCompleted() {
         val snapshot = _state.value
@@ -360,10 +397,70 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exportTrack(track)
     }
 
+    fun openArtist(track: Track) {
+        openArtistByName(track.artist)
+    }
+
+    fun openArtistByName(name: String) {
+        val clean = name.trim()
+        if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
+        artistJob?.cancel()
+        _state.update {
+            it.copy(
+                showArtist = true,
+                artistLoading = true,
+                artistError = null,
+                artistProfile = if (it.artistProfile?.name.equals(clean, ignoreCase = true)) it.artistProfile else null
+            )
+        }
+        artistJob = viewModelScope.launch {
+            val profile = runCatching { artistRepository.profileFor(clean) }.getOrNull()
+            if (!isActive) return@launch
+            if (profile == null || (profile.topSongs.isEmpty() && !profile.hasBio)) {
+                _state.update {
+                    it.copy(
+                        artistLoading = false,
+                        artistError = "Profilo artista non disponibile",
+                        artistProfile = profile
+                    )
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        artistLoading = false,
+                        artistError = null,
+                        artistProfile = profile
+                    )
+                }
+            }
+        }
+    }
+
+    fun closeArtist() {
+        artistJob?.cancel()
+        _state.update { it.copy(showArtist = false, artistLoading = false, artistError = null) }
+    }
+
+    fun playArtistSong(track: Track) {
+        val profile = _state.value.artistProfile ?: return
+        closeArtist()
+        playFrom(profile.topSongs, track)
+    }
+
     fun exportTrack(track: Track) {
-        if (offlineExportJob?.isActive == true) return
-        offlineExportJob = viewModelScope.launch {
-            _state.update { it.copy(isOfflineExporting = true, offlineExportMessage = null) }
+        if (track.id in _state.value.downloadingTrackIds) return
+        if (track.id in _state.value.downloadedTrackIds) {
+            _state.update { it.copy(offlineExportMessage = "Già scaricato: ${track.title}") }
+            return
+        }
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isOfflineExporting = true,
+                    offlineExportMessage = null,
+                    downloadingTrackIds = it.downloadingTrackIds + track.id
+                )
+            }
             val result = runCatching {
                 val appContext = getApplication<Application>().applicationContext
                 val workId = OfflineExportWorker.enqueue(appContext, TrackPayloadCodec.encode(track))
@@ -381,37 +478,49 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             result.onSuccess { workInfo ->
                 when (workInfo.state) {
-                    WorkInfo.State.SUCCEEDED -> handleOfflineExportSuccess(workInfo)
-                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> handleOfflineExportFailure(workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR))
-                    else -> handleOfflineExportFailure("Esportazione non riuscita")
+                    WorkInfo.State.SUCCEEDED -> handleOfflineExportSuccess(workInfo, track.id)
+                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> handleOfflineExportFailure(workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR), track.id)
+                    else -> handleOfflineExportFailure("Esportazione non riuscita", track.id)
                 }
             }.onFailure { error ->
-                if (error is CancellationException) throw error
+                if (error is CancellationException) {
+                    _state.update { it.copy(downloadingTrackIds = it.downloadingTrackIds - track.id) }
+                    throw error
+                }
                 Timber.e(error, "Offline export work failed")
-                handleOfflineExportFailure(error.message)
+                handleOfflineExportFailure(error.message, track.id)
             }
         }
     }
 
-    private fun handleOfflineExportSuccess(workInfo: WorkInfo) {
+    fun deleteDownload(download: DownloadedTrack) {
+        viewModelScope.launch {
+            runCatching { downloadedTracksDao.deleteById(download.id) }
+            _state.update { it.copy(offlineExportMessage = "Rimosso dai download: ${download.title}") }
+        }
+    }
+
+    private fun handleOfflineExportSuccess(workInfo: WorkInfo, trackId: String) {
         val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
         val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
         val tagStatus = if (embedded) "con cover e metadata Levyra" else "con metadata Android"
         _state.update {
             it.copy(
-                isOfflineExporting = false,
+                isOfflineExporting = it.downloadingTrackIds.size > 1,
                 offlineExportMessage = "Salvato in Music/Levyra: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
-                embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady
+                embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
+                downloadingTrackIds = it.downloadingTrackIds - trackId
             )
         }
     }
 
-    private fun handleOfflineExportFailure(message: String?) {
+    private fun handleOfflineExportFailure(message: String?, trackId: String) {
         _state.update {
             it.copy(
-                isOfflineExporting = false,
+                isOfflineExporting = it.downloadingTrackIds.size > 1,
                 offlineExportMessage = message ?: "Esportazione non riuscita",
-                embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady
+                embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
+                downloadingTrackIds = it.downloadingTrackIds - trackId
             )
         }
     }
@@ -429,6 +538,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return when {
             snapshot.showUpdatePrompt -> {
                 dismissUpdatePrompt()
+                true
+            }
+            snapshot.showArtist -> {
+                closeArtist()
                 true
             }
             snapshot.showQueue -> {
@@ -930,7 +1043,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         lyricsJob?.cancel()
         sponsorJob?.cancel()
         listPrefetchJob?.cancel()
-        offlineExportJob?.cancel()
+        artistJob?.cancel()
         player.release()
         searchJob?.cancel()
         super.onCleared()
