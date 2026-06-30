@@ -11,7 +11,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -197,9 +196,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                             animationSpec = tween(240, easing = FastOutSlowInEasing),
                             targetOffsetX = { -it * direction / 3 }
                         ) + fadeOut(animationSpec = tween(160, easing = FastOutSlowInEasing))
-                        (enter togetherWith exit).apply {
-                            sizeTransform = SizeTransform(clip = false)
-                        }
+                        enter togetherWith exit
                     }
                 },
                 label = "levyra-page-transition"
