@@ -82,12 +82,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val favorites = favoritesStore.load()
         val onboarded = preferences.isOnboarded()
         val recentSearches = preferences.loadRecentSearches()
-        // Restore the last played track so reopening the app continues from where it stopped.
-        val lastTrack = preferences.lastTrack()
-        val lastPosition = preferences.lastPositionMs()
-        if (lastTrack != null) {
-            pendingSeekMs = lastPosition
-        }
         _state.update {
             it.copy(
                 favorites = favorites,
@@ -99,10 +93,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 sponsorBlockEnabled = preferences.sponsorBlock(),
                 skipSilence = preferences.skipSilence(),
                 showOnboarding = !onboarded,
-                currentTrack = lastTrack ?: it.currentTrack,
-                positionMs = if (lastTrack != null) lastPosition else 0L,
-                durationMs = lastTrack?.durationMs ?: 0L,
-                lyrics = lastTrack?.let(lyricsEngine::syntheticLyrics).orEmpty()
+                currentTrack = null,
+                positionMs = 0L,
+                durationMs = 0L,
+                lyrics = emptyList()
             )
         }
         player.setSkipSilence(preferences.skipSilence())
@@ -200,8 +194,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     tracks = flat,
                     queue = queue,
                     searchResults = flat.take(12),
-                    currentTrack = it.currentTrack ?: flat.firstOrNull(),
-                    lyrics = if (it.currentTrack != null) it.lyrics else flat.firstOrNull()?.let(lyricsEngine::syntheticLyrics).orEmpty(),
                     isSearching = false,
                     cacheReport = repository.cacheReport(),
                     searchError = null
@@ -723,9 +715,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         tracks = tracks,
                         queue = queue,
                         searchResults = tracks.take(12),
-                        // Keep the restored "now playing" track if one exists, otherwise feature the top result.
-                        currentTrack = it.currentTrack ?: tracks.firstOrNull(),
-                        lyrics = if (it.currentTrack != null) it.lyrics else tracks.firstOrNull()?.let(lyricsEngine::syntheticLyrics).orEmpty(),
                         isSearching = false,
                         smartScore = calculateSmartScore(queue),
                         cacheReport = repository.cacheReport(),
