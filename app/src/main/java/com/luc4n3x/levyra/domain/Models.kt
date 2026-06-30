@@ -105,6 +105,20 @@ data class SponsorSegment(
     val category: String
 )
 
+data class AppUpdateInfo(
+    val currentVersionName: String,
+    val latestVersionName: String,
+    val latestTag: String,
+    val releaseTitle: String,
+    val releaseNotes: String,
+    val publishedAt: String,
+    val downloadUrl: String,
+    val releaseUrl: String,
+    val assetName: String,
+    val directApk: Boolean,
+    val isNewer: Boolean
+)
+
 fun Track.smartWeightFor(mood: Mood?): Int {
     if (mood == null) return replayScore
     val tagScore = mood.tags.intersect(moodTags).size * 18

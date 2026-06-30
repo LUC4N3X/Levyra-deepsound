@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.domain.CacheReport
+import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ChartRegion
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
@@ -57,5 +58,9 @@ data class LevyraUiState(
     val showQueue: Boolean = false,
     val isOfflineExporting: Boolean = false,
     val offlineExportMessage: String? = null,
-    val embeddedMetadataWriterReady: Boolean = false
+    val embeddedMetadataWriterReady: Boolean = false,
+    val updateInfo: AppUpdateInfo? = null,
+    val isCheckingUpdates: Boolean = false,
+    val updateMessage: String? = null,
+    val showUpdatePrompt: Boolean = false
 )

@@ -1,0 +1,81 @@
+name: Publish LEVYRA Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+        default: v1.2.0
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Build Release APK
+        run: gradle --no-daemon clean assembleRelease
+
+      - name: Prepare Release
+        shell: bash
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG_NAME="${{ inputs.tag }}"
+          fi
+          VERSION="${TAG_NAME#v}"
+          mkdir -p artifacts
+          cp app/build/outputs/apk/release/app-release.apk "artifacts/LEVYRA-${VERSION}.apk"
+          cat > release-notes.md <<EOF_NOTES
+LEVYRA ${VERSION}
+
+Nuova build disponibile per il download diretto dall'app.
+
+Aggiorna dall'app aprendo Impostazioni > Aggiornamenti > Check.
+EOF_NOTES
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: levyra-release-${{ env.VERSION }}
+          path: artifacts/LEVYRA-${{ env.VERSION }}.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" "artifacts/LEVYRA-${VERSION}.apk" --clobber
+            gh release edit "$TAG_NAME" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
+          else
+            gh release create "$TAG_NAME" "artifacts/LEVYRA-${VERSION}.apk" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
+          fi

@@ -15,16 +15,16 @@ android {
         applicationId = "com.luc4n3x.levyra"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "1.14.0"
+        versionCode = 24
+        versionName = "1.2.0"
         vectorDrawables.useSupportLibrary = true
+        buildConfigField("String", "UPDATE_REPOSITORY", "\"LUC4N3X/Levyra-deepsound\"")
+        buildConfigField("String", "UPDATE_LATEST_URL", "\"https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases/latest\"")
     }
 
     signingConfigs {
         getByName("debug")
         create("release") {
-            // Stable self-signed release key so the APK is not flagged as a debug build
-            // and stays updatable across versions.
             storeFile = rootProject.file("app/levyra-release.jks")
             storePassword = "levyra2026"
             keyAlias = "levyra"
