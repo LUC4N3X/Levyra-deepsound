@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -43,6 +44,7 @@ import timber.log.Timber
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository()
     private val chartsRepository = ChartsRepository()
+    private val appUpdateRepository = AppUpdateRepository(application.applicationContext)
     private val lyricsRepository = LyricsRepository()
     private val sponsorBlockRepository = SponsorBlockRepository()
     private val resolver = PlaybackResolver.getInstance(application.applicationContext)
@@ -71,6 +73,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var sponsorJob: Job? = null
     private var listPrefetchJob: Job? = null
     private var offlineExportJob: Job? = null
+    private var updateJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val tabBackStack = ArrayDeque<LevyraTab>()
     private var playRequestId: Long = 0L
@@ -108,6 +111,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadHomeFeed()
         loadCharts()
         startTicker()
+        checkForUpdates(silent = true)
     }
 
     private fun onTrackCompleted() {
@@ -210,6 +214,51 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeSettings() {
         _state.update { it.copy(showSettings = false) }
+    }
+
+    fun checkForUpdates(silent: Boolean = false) {
+        if (updateJob?.isActive == true) return
+        updateJob = viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isCheckingUpdates = true,
+                    updateMessage = if (silent) it.updateMessage else null
+                )
+            }
+            val result = runCatching { appUpdateRepository.latest() }
+            result.onSuccess { info ->
+                val dismissed = preferences.dismissedUpdateVersion()
+                _state.update {
+                    it.copy(
+                        updateInfo = info,
+                        isCheckingUpdates = false,
+                        showUpdatePrompt = info.isNewer && (!silent || dismissed != info.latestVersionName),
+                        updateMessage = when {
+                            silent -> null
+                            info.isNewer -> "LEVYRA ${info.latestVersionName} è disponibile"
+                            else -> "LEVYRA è già aggiornata"
+                        }
+                    )
+                }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                _state.update {
+                    it.copy(
+                        isCheckingUpdates = false,
+                        updateMessage = if (silent) null else error.message ?: "Controllo aggiornamenti non riuscito"
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissUpdatePrompt() {
+        _state.value.updateInfo?.latestVersionName?.let { preferences.setDismissedUpdateVersion(it) }
+        _state.update { it.copy(showUpdatePrompt = false) }
+    }
+
+    fun clearUpdateMessage() {
+        _state.update { it.copy(updateMessage = null) }
     }
 
     fun setAnimationsEnabled(value: Boolean) {
@@ -378,6 +427,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun navigateBack(): Boolean {
         val snapshot = _state.value
         return when {
+            snapshot.showUpdatePrompt -> {
+                dismissUpdatePrompt()
+                true
+            }
             snapshot.showQueue -> {
                 closeQueue()
                 true
