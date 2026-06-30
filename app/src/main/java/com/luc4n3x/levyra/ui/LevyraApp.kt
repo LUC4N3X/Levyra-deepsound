@@ -1,14 +1,29 @@
 package com.luc4n3x.levyra.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.luc4n3x.levyra.R
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.using
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +37,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -134,11 +150,29 @@ private val LocalAnimationsEnabled = compositionLocalOf { true }
 fun LevyraApp(viewModel: LevyraViewModel) {
     val state by viewModel.state.collectAsState()
     val toastContext = LocalContext.current
+    val activity = toastContext as? Activity
     val accent = if (state.dynamicColor) state.currentTrack ?: state.tracks.firstOrNull() else null
+    val overlayEnter = if (state.animationsEnabled) fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) else EnterTransition.None
+    val overlayExit = if (state.animationsEnabled) fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing)) else ExitTransition.None
+    val miniEnter = if (state.animationsEnabled) {
+        slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing), initialOffsetY = { it / 2 }) + fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing))
+    } else {
+        EnterTransition.None
+    }
+    val miniExit = if (state.animationsEnabled) {
+        slideOutVertically(animationSpec = tween(180, easing = FastOutSlowInEasing), targetOffsetY = { it / 3 }) + fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing))
+    } else {
+        ExitTransition.None
+    }
     LaunchedEffect(state.offlineExportMessage) {
         state.offlineExportMessage?.let { message ->
             Toast.makeText(toastContext, message, Toast.LENGTH_LONG).show()
             viewModel.clearOfflineExportMessage()
+        }
+    }
+    BackHandler(enabled = state.showQueue || state.showLyrics || state.showSettings || state.selectedTab != LevyraTab.Home) {
+        if (!viewModel.navigateBack()) {
+            activity?.finish()
         }
     }
     CompositionLocalProvider(LocalAnimationsEnabled provides state.animationsEnabled) {
@@ -149,11 +183,34 @@ fun LevyraApp(viewModel: LevyraViewModel) {
         ) {
             LevyraBackground(accent?.accentStart, accent?.accentEnd)
 
-            when (state.selectedTab) {
-                LevyraTab.Home -> HomeScreen(viewModel, state)
-                LevyraTab.Search -> SearchScreen(viewModel, state)
-                LevyraTab.Library -> LibraryScreen(viewModel, state)
-                LevyraTab.Player -> PlayerScreen(viewModel, state)
+            AnimatedContent(
+                targetState = state.selectedTab,
+                transitionSpec = {
+                    if (!state.animationsEnabled) {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    } else {
+                        val direction = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                        val enter = slideInHorizontally(
+                            animationSpec = tween(320, easing = FastOutSlowInEasing),
+                            initialOffsetX = { it * direction }
+                        ) + fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing))
+                        val exit = slideOutHorizontally(
+                            animationSpec = tween(240, easing = FastOutSlowInEasing),
+                            targetOffsetX = { -it * direction / 3 }
+                        ) + fadeOut(animationSpec = tween(160, easing = FastOutSlowInEasing))
+                        enter togetherWith exit using SizeTransform(clip = false)
+                    }
+                },
+                label = "levyra-page-transition"
+            ) { tab ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when (tab) {
+                        LevyraTab.Home -> HomeScreen(viewModel, state)
+                        LevyraTab.Search -> SearchScreen(viewModel, state)
+                        LevyraTab.Library -> LibraryScreen(viewModel, state)
+                        LevyraTab.Player -> PlayerScreen(viewModel, state)
+                    }
+                }
             }
 
             Column(
@@ -163,7 +220,11 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                AnimatedVisibility(visible = state.selectedTab != LevyraTab.Player && state.currentTrack != null) {
+                AnimatedVisibility(
+                    visible = state.selectedTab != LevyraTab.Player && state.currentTrack != null,
+                    enter = miniEnter,
+                    exit = miniExit
+                ) {
                     state.currentTrack?.let { track ->
                         MiniPlayer(
                             track = track,
@@ -180,13 +241,13 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 BottomTabs(selected = state.selectedTab, onSelect = viewModel::selectTab)
             }
 
-            AnimatedVisibility(visible = state.showOnboarding, enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(visible = state.showOnboarding, enter = overlayEnter, exit = overlayExit) {
                 if (state.showOnboarding) {
                     OnboardingOverlay(tastes = state.tastes, onDone = viewModel::completeOnboarding)
                 }
             }
 
-            AnimatedVisibility(visible = state.showSettings, enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
                 SettingsOverlay(
                     animationsEnabled = state.animationsEnabled,
                     dynamicColor = state.dynamicColor,
@@ -201,11 +262,11 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 )
             }
 
-            AnimatedVisibility(visible = state.showLyrics, enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(visible = state.showLyrics, enter = overlayEnter, exit = overlayExit) {
                 LyricsOverlay(state = state, onClose = viewModel::closeLyrics)
             }
 
-            AnimatedVisibility(visible = state.showQueue, enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(visible = state.showQueue, enter = overlayEnter, exit = overlayExit) {
                 QueueOverlay(
                     state = state,
                     onPlay = { viewModel.playFrom(state.queue, it) },
@@ -3272,12 +3333,22 @@ private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
 }
 
 @Composable
-private fun TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    val selectedScale by animateFloatAsState(
+        targetValue = if (selected && LocalAnimationsEnabled.current) 1.07f else 1f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "tab-selection-scale"
+    )
     Box(
         modifier = Modifier
+            .weight(1f)
             .pressable(onClick = onClick)
-            .width(78.dp)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .graphicsLayer {
+                scaleX = selectedScale
+                scaleY = selectedScale
+                alpha = if (selected) 1f else 0.82f
+            },
         contentAlignment = Alignment.Center
     ) {
         Column(
