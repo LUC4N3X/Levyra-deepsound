@@ -1,8 +1,10 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.CacheReport
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ChartRegion
+import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LyricLine
@@ -62,5 +64,12 @@ data class LevyraUiState(
     val updateInfo: AppUpdateInfo? = null,
     val isCheckingUpdates: Boolean = false,
     val updateMessage: String? = null,
-    val showUpdatePrompt: Boolean = false
+    val showUpdatePrompt: Boolean = false,
+    val downloads: List<DownloadedTrack> = emptyList(),
+    val downloadingTrackIds: Set<String> = emptySet(),
+    val downloadedTrackIds: Set<String> = emptySet(),
+    val showArtist: Boolean = false,
+    val artistLoading: Boolean = false,
+    val artistError: String? = null,
+    val artistProfile: ArtistProfile? = null
 )
