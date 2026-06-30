@@ -72,6 +72,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listPrefetchJob: Job? = null
     private var offlineExportJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
+    private val tabBackStack = ArrayDeque<LevyraTab>()
     private var playRequestId: Long = 0L
     private var pendingSeekMs: Long = 0L
     private var queueIndex: Int = -1
@@ -371,11 +372,58 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectTab(tab: LevyraTab) {
+        moveToTab(tab, rememberCurrent = true)
+    }
+
+    fun navigateBack(): Boolean {
+        val snapshot = _state.value
+        return when {
+            snapshot.showQueue -> {
+                closeQueue()
+                true
+            }
+            snapshot.showLyrics -> {
+                closeLyrics()
+                true
+            }
+            snapshot.showSettings -> {
+                closeSettings()
+                true
+            }
+            snapshot.selectedTab != LevyraTab.Home -> {
+                val previous = previousTab(snapshot.selectedTab)
+                moveToTab(previous, rememberCurrent = false)
+                true
+            }
+            else -> false
+        }
+    }
+
+    private fun moveToTab(tab: LevyraTab, rememberCurrent: Boolean) {
+        val current = _state.value.selectedTab
+        if (current == tab) return
+        if (rememberCurrent) {
+            tabBackStack.remove(tab)
+            tabBackStack.remove(current)
+            tabBackStack.addLast(current)
+            while (tabBackStack.size > 8) {
+                tabBackStack.removeFirst()
+            }
+        }
         _state.update { it.copy(selectedTab = tab) }
     }
 
+    private fun previousTab(current: LevyraTab): LevyraTab {
+        while (tabBackStack.isNotEmpty()) {
+            val candidate = tabBackStack.removeLast()
+            if (candidate != current) return candidate
+        }
+        return LevyraTab.Home
+    }
+
     fun selectMood(mood: Mood) {
-        _state.update { it.copy(selectedMood = mood, selectedTab = LevyraTab.Home) }
+        moveToTab(LevyraTab.Home, rememberCurrent = true)
+        _state.update { it.copy(selectedMood = mood) }
         searchMood(mood)
     }
 
@@ -411,7 +459,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun runSearch(clean: String) {
-        _state.update { it.copy(isSearching = true, searchError = null, selectedTab = LevyraTab.Search, searchSuggestions = emptyList()) }
+        moveToTab(LevyraTab.Search, rememberCurrent = true)
+        _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList()) }
         val result = runCatching { repository.search(clean) }
         result.onSuccess { tracks ->
             val mood = _state.value.selectedMood
