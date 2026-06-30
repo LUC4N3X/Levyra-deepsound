@@ -2,9 +2,11 @@ package com.luc4n3x.levyra.ui
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -127,6 +129,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.Taste
@@ -168,7 +171,13 @@ fun LevyraApp(viewModel: LevyraViewModel) {
             viewModel.clearOfflineExportMessage()
         }
     }
-    BackHandler(enabled = state.showQueue || state.showLyrics || state.showSettings || state.selectedTab != LevyraTab.Home) {
+    LaunchedEffect(state.updateMessage) {
+        state.updateMessage?.let { message ->
+            Toast.makeText(toastContext, message, Toast.LENGTH_LONG).show()
+            viewModel.clearUpdateMessage()
+        }
+    }
+    BackHandler(enabled = state.showUpdatePrompt || state.showQueue || state.showLyrics || state.showSettings || state.selectedTab != LevyraTab.Home) {
         if (!viewModel.navigateBack()) {
             activity?.finish()
         }
@@ -251,10 +260,14 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     dynamicColor = state.dynamicColor,
                     sponsorBlock = state.sponsorBlockEnabled,
                     skipSilence = state.skipSilence,
+                    updateInfo = state.updateInfo,
+                    isCheckingUpdates = state.isCheckingUpdates,
                     onAnimations = viewModel::setAnimationsEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
                     onSponsorBlock = viewModel::setSponsorBlock,
                     onSkipSilence = viewModel::setSkipSilence,
+                    onCheckUpdates = { viewModel.checkForUpdates(silent = false) },
+                    onDownloadUpdate = { state.updateInfo?.let { openExternalUrl(toastContext, it.downloadUrl) } },
                     onRedoQuestionnaire = viewModel::restartOnboarding,
                     onClose = viewModel::closeSettings
                 )
@@ -262,6 +275,19 @@ fun LevyraApp(viewModel: LevyraViewModel) {
 
             AnimatedVisibility(visible = state.showLyrics, enter = overlayEnter, exit = overlayExit) {
                 LyricsOverlay(state = state, onClose = viewModel::closeLyrics)
+            }
+
+            AnimatedVisibility(visible = state.showUpdatePrompt && state.updateInfo?.isNewer == true, enter = overlayEnter, exit = overlayExit) {
+                state.updateInfo?.let { update ->
+                    UpdateAvailableOverlay(
+                        update = update,
+                        onDownload = {
+                            openExternalUrl(toastContext, update.downloadUrl)
+                            viewModel.dismissUpdatePrompt()
+                        },
+                        onLater = viewModel::dismissUpdatePrompt
+                    )
+                }
             }
 
             AnimatedVisibility(visible = state.showQueue, enter = overlayEnter, exit = overlayExit) {
@@ -272,6 +298,180 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun UpdateAvailableOverlay(
+    update: AppUpdateInfo,
+    onDownload: () -> Unit,
+    onLater: () -> Unit
+) {
+    val blocker = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.72f))
+            .clickable(interactionSource = blocker, indication = null) {},
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            color = Color.Transparent,
+            shape = RoundedCornerShape(28.dp),
+            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                LevyraCyan.copy(alpha = 0.22f),
+                                Color(0xFF0B1020),
+                                LevyraViolet.copy(alpha = 0.20f)
+                            )
+                        )
+                    )
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Surface(
+                        color = LevyraCyan.copy(alpha = 0.15f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.25f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Icon(Icons.Rounded.Bolt, null, tint = LevyraCyan, modifier = Modifier.size(17.dp))
+                            Text("AGGIORNAMENTO", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+                        }
+                    }
+                    CircleIconButton(
+                        icon = Icons.Rounded.Close,
+                        tint = LevyraText,
+                        background = Color.White.copy(alpha = 0.08f),
+                        onClick = onLater
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(
+                        text = "LEVYRA ${update.latestVersionName} è pronta",
+                        color = LevyraText,
+                        fontSize = 27.sp,
+                        lineHeight = 30.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "Puoi scaricare la nuova versione e installarla quando vuoi.",
+                        color = LevyraMuted,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Surface(
+                    color = Color.White.copy(alpha = 0.055f),
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(update.releaseTitle.ifBlank { "Nuova versione" }, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            text = compactReleaseNotes(update.releaseNotes),
+                            color = LevyraMuted,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .pressable(onClick = onDownload)
+                    ) {
+                        Box(
+                            modifier = Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(19.dp))
+                                Text("Scarica", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+                    Surface(
+                        color = Color.White.copy(alpha = 0.06f),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
+                        modifier = Modifier
+                            .weight(0.72f)
+                            .height(48.dp)
+                            .pressable(onClick = onLater)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("Più tardi", color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+
+                Text(
+                    text = "Installata: ${update.currentVersionName} · Ultima: ${update.latestVersionName}",
+                    color = LevyraMuted.copy(alpha = 0.78f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+private fun compactReleaseNotes(notes: String): String {
+    val clean = notes
+        .lineSequence()
+        .map { it.trim().trimStart('-', '*', '•').trim() }
+        .filter { it.isNotBlank() }
+        .take(3)
+        .joinToString(" · ")
+    return clean.ifBlank { "Correzioni, rifiniture e miglioramenti generali." }
+}
+
+private fun openExternalUrl(context: android.content.Context, url: String) {
+    if (url.isBlank()) {
+        Toast.makeText(context, "Link aggiornamento non disponibile", Toast.LENGTH_LONG).show()
+        return
+    }
+    runCatching {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+    }.onFailure {
+        Toast.makeText(context, "Impossibile aprire il download", Toast.LENGTH_LONG).show()
     }
 }
 
@@ -2413,10 +2613,14 @@ private fun SettingsOverlay(
     dynamicColor: Boolean,
     sponsorBlock: Boolean,
     skipSilence: Boolean,
+    updateInfo: AppUpdateInfo?,
+    isCheckingUpdates: Boolean,
     onAnimations: (Boolean) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onSponsorBlock: (Boolean) -> Unit,
     onSkipSilence: (Boolean) -> Unit,
+    onCheckUpdates: () -> Unit,
+    onDownloadUpdate: () -> Unit,
     onRedoQuestionnaire: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -2500,9 +2704,18 @@ private fun SettingsOverlay(
                     onClick = onRedoQuestionnaire
                 )
             }
+            item { SettingsSectionLabel("APP") }
+            item {
+                SettingsUpdateCard(
+                    updateInfo = updateInfo,
+                    isChecking = isCheckingUpdates,
+                    onCheck = onCheckUpdates,
+                    onDownload = onDownloadUpdate
+                )
+            }
             item {
                 Text(
-                    "LEVYRA • YouTube & YouTube Music engine",
+                    "LEVYRA ${BuildConfig.VERSION_NAME} • YouTube & YouTube Music engine",
                     color = LevyraMuted,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -2584,6 +2797,150 @@ private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, o
                 Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
                 Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsUpdateCard(
+    updateInfo: AppUpdateInfo?,
+    isChecking: Boolean,
+    onCheck: () -> Unit,
+    onDownload: () -> Unit
+) {
+    val hasUpdate = updateInfo?.isNewer == true
+    Surface(
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, if (hasUpdate) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.1f)),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            if (hasUpdate) LevyraCyan.copy(alpha = 0.17f) else Color.White.copy(alpha = 0.055f),
+                            Color.White.copy(alpha = 0.035f),
+                            if (hasUpdate) LevyraViolet.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.04f)
+                        )
+                    )
+                )
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(LevyraCyan.copy(alpha = 0.16f), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isChecking) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                    } else {
+                        Icon(Icons.Rounded.Bolt, null, tint = LevyraCyan, modifier = Modifier.size(21.dp))
+                    }
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = if (hasUpdate) "Aggiornamento disponibile" else "Aggiornamenti",
+                        color = LevyraText,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = when {
+                            isChecking -> "Controllo ultima versione…"
+                            hasUpdate -> "LEVYRA ${updateInfo?.latestVersionName.orEmpty()} pronta al download"
+                            updateInfo != null -> "Installata la versione più recente"
+                            else -> "Verifica nuove versioni pubblicate"
+                        },
+                        color = LevyraMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            if (hasUpdate && updateInfo != null) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(updateInfo.releaseTitle.ifBlank { "LEVYRA ${updateInfo.latestVersionName}" }, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            text = if (updateInfo.directApk) "APK firmato pronto da installare" else "Pagina release pronta da aprire",
+                            color = LevyraMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SettingsMiniButton(
+                    label = if (isChecking) "Controllo" else "Check",
+                    accent = LevyraCyan,
+                    enabled = !isChecking,
+                    modifier = Modifier.weight(1f),
+                    onClick = onCheck
+                )
+                if (hasUpdate) {
+                    SettingsMiniButton(
+                        label = "Scarica",
+                        accent = LevyraViolet,
+                        enabled = !isChecking,
+                        modifier = Modifier.weight(1f),
+                        onClick = onDownload
+                    )
+                }
+            }
+            Text(
+                text = "Versione installata: ${BuildConfig.VERSION_NAME}",
+                color = LevyraMuted.copy(alpha = 0.8f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsMiniButton(
+    label: String,
+    accent: Color,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (enabled) accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.045f),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, if (enabled) accent.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.07f)),
+        modifier = modifier
+            .height(42.dp)
+            .pressable(onClick = { if (enabled) onClick() })
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = label,
+                color = if (enabled) LevyraText else LevyraMuted,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
+            )
         }
     }
 }

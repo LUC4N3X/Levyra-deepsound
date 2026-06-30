@@ -72,6 +72,12 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_SKIP_SILENCE] = value }
     }
 
+    fun dismissedUpdateVersion(): String = read("") { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
+
+    fun setDismissedUpdateVersion(version: String) {
+        write { it[KEY_DISMISSED_UPDATE_VERSION] = version }
+    }
+
     fun saveLastPlayback(track: Track?, positionMs: Long) {
         write {
             if (track == null) {
@@ -140,5 +146,6 @@ class LevyraPreferences(context: Context) {
         val KEY_SKIP_SILENCE = booleanPreferencesKey("skip_silence")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
+        val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
     }
 }
