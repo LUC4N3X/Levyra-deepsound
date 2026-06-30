@@ -23,7 +23,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.using
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -198,7 +197,9 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                             animationSpec = tween(240, easing = FastOutSlowInEasing),
                             targetOffsetX = { -it * direction / 3 }
                         ) + fadeOut(animationSpec = tween(160, easing = FastOutSlowInEasing))
-                        enter togetherWith exit using SizeTransform(clip = false)
+                        (enter togetherWith exit).apply {
+                            sizeTransform = SizeTransform(clip = false)
+                        }
                     }
                 },
                 label = "levyra-page-transition"
