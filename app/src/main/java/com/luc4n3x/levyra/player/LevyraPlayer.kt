@@ -19,7 +19,7 @@ class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
     var onError: ((String) -> Unit)? = null
 
-    private var controller: MediaController? = null
+    var controller: MediaController? = null
     private val controllerFuture = MediaController.Builder(
         context,
         SessionToken(context, ComponentName(context, PlaybackService::class.java))
@@ -68,6 +68,10 @@ class LevyraPlayer(context: Context) {
             val duration = controller?.duration ?: return 0L
             return if (duration == C.TIME_UNSET) 0L else duration.coerceAtLeast(0L)
         }
+
+    fun seekTo(positionMs: Long) {
+        controller?.seekTo(positionMs)
+    }
 
     fun play(track: Track) {
         require(track.streamUrl.isNotBlank()) { "Stream URL assente per ${track.title}" }

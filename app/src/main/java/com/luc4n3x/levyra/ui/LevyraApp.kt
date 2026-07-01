@@ -2578,24 +2578,15 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
                 
                 if (state.isVideoMode && track.videoUrl.isNotBlank()) {
-                    val videoId = track.id
                     AndroidView(
                         factory = { ctx ->
-                            android.webkit.WebView(ctx).apply {
-                                settings.javaScriptEnabled = true
-                                settings.mediaPlaybackRequiresUserGesture = false
-                                settings.domStorageEnabled = true
-                                webChromeClient = android.webkit.WebChromeClient()
-                                webViewClient = android.webkit.WebViewClient()
-                                val html = """
-                                    <html>
-                                    <body style="margin:0;padding:0;background-color:#000;">
-                                        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/$videoId?autoplay=1&controls=0&modestbranding=1&playsinline=1" frameborder="0" allow="autoplay; fullscreen"></iframe>
-                                    </body>
-                                    </html>
-                                """.trimIndent()
-                                loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "UTF-8", null)
+                            androidx.media3.ui.PlayerView(ctx).apply {
+                                useController = false
+                                player = viewModel.playerController
                             }
+                        },
+                        update = { view -> 
+                            view.player = viewModel.playerController
                         },
                         modifier = Modifier
                             .fillMaxWidth()
