@@ -90,10 +90,16 @@ class LevyraPlayer(context: Context) {
 
     private fun buildItem(track: Track): MediaItem {
         val art = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+        val extras = android.os.Bundle().apply {
+            if (track.videoStreamUrl.isNotBlank()) {
+                putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
+            }
+        }
         val metadata = MediaMetadata.Builder()
             .setTitle(track.title)
             .setArtist(track.artist)
             .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
+            .setExtras(extras)
             .build()
         return MediaItem.Builder()
             .setUri(track.streamUrl)
