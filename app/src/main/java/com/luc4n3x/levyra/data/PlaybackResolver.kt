@@ -74,7 +74,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track = coroutineScope {
         track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) }?.let { return@coroutineScope track }
-        cached(track)?.let { return@coroutineScope it }
+        cached(track, isVideoMode)?.let { return@coroutineScope it }
 
         val key = cacheKey(track, isVideoMode)
         val deferred = async(Dispatchers.IO, start = CoroutineStart.LAZY) {
@@ -104,7 +104,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
-        val stream = raceInnerTube(track, errors)
+        val stream = raceInnerTube(track, errors, isVideoMode)
         if (stream != null) {
             val resolved = track.copy(
                 streamUrl = stream.url,
@@ -131,12 +131,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw PlaybackBlockedException(reason)
     }
 
-    private suspend fun raceInnerTube(track: Track, errors: MutableList<String>): DirectStream? = coroutineScope {
+    private suspend fun raceInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean = false): DirectStream? = coroutineScope {
         val winner = CompletableDeferred<DirectStream?>()
         val workers = profiles.map { profile ->
             launch {
                 if (profile.delayMs > 0L) delay(profile.delayMs)
-                val attempt = runCatching { resolveWithInnerTube(track, profile) }
+                val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode) }
                 attempt.onSuccess { stream ->
                     if (stream.url.isNotBlank()) winner.complete(stream)
                 }.onFailure { error ->
@@ -254,10 +254,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             val streamingData = root.optJSONObject("streamingData") ?: throw IllegalStateException("Nessun blocco streamingData")
                         val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
             val muxedFormats = streamingData.optJSONArray("formats") ?: JSONArray()
-            
+
             var bestUrl = ""
             var bestScore = -1
-            
+
             if (isVideoMode) {
                 for (i in 0 until muxedFormats.length()) {
                     val format = muxedFormats.optJSONObject(i) ?: continue
@@ -265,9 +265,23 @@ class PlaybackResolver private constructor(private val context: Context) {
                     val url = format.optString("url")
                     if (!mime.startsWith("video/", true) || url.isBlank()) continue
                     val height = format.optInt("height", 0)
-                    if (height > bestScore) {
-                        bestScore = height
+                    val score = height + 100_000
+                    if (score > bestScore) {
+                        bestScore = score
                         bestUrl = url
+                    }
+                }
+                if (bestUrl.isBlank()) {
+                    for (i in 0 until adaptiveFormats.length()) {
+                        val format = adaptiveFormats.optJSONObject(i) ?: continue
+                        val mime = format.optString("mimeType")
+                        val url = format.optString("url")
+                        if (!mime.startsWith("video/", true) || url.isBlank()) continue
+                        val height = format.optInt("height", 0)
+                        if (height > bestScore) {
+                            bestScore = height
+                            bestUrl = url
+                        }
                     }
                 }
             } else {
