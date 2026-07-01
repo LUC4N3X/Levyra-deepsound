@@ -38,6 +38,8 @@ data class LevyraUiState(
     val homeSections: List<HomeSection> = emptyList(),
     val favorites: List<Track> = emptyList(),
     val favoriteIds: Set<String> = emptySet(),
+    val playlists: List<com.luc4n3x.levyra.domain.Playlist> = emptyList(),
+    val openPlaylist: com.luc4n3x.levyra.domain.Playlist? = null,
     val currentTrack: Track? = null,
     val lyrics: List<LyricLine> = emptyList(),
     val activeLyric: LyricLine? = null,

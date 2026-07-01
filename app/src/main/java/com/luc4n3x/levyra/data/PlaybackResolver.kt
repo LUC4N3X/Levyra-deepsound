@@ -18,6 +18,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.AudioStream
+import org.schabi.newpipe.extractor.stream.VideoStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -104,7 +105,40 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
-        val stream = raceInnerTube(track, errors, isVideoMode)
+
+        // VIDEO-MODE: NewPipe per primo. NewPipe applica cipher deobfuscation e n-transform
+        // internamente, quindi restituisce URL video/audio già riproducibili — cosa che il
+        // nostro InnerTube "grezzo" non fa (URL cifrati o throttlati = schermo nero).
+        if (isVideoMode) {
+            val npVideo = runCatching { resolveVideoWithNewPipe(track) }
+            if (npVideo.isSuccess) {
+                val resolved = npVideo.getOrThrow()
+                store(resolved, isVideoMode)
+                return@withContext resolved
+            }
+            npVideo.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "NewPipe video: $it" }
+            // fallback: InnerTube muxed/HLS (a volte un muxed o l'HLS ATV passa senza cipher)
+            val stream = raceInnerTube(track, errors, true)
+            if (stream != null) {
+                val resolved = track.copy(
+                    streamUrl = stream.url,
+                    videoStreamUrl = stream.videoUrl,
+                    durationMs = stream.durationMs.takeIf { it > 0L } ?: track.durationMs,
+                    thumbnailUrl = stream.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                    largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
+                    source = stream.source
+                )
+                store(resolved, isVideoMode)
+                return@withContext resolved
+            }
+            val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
+                ?: errors.firstOrNull()
+                ?: "Video non disponibile"
+            throw PlaybackBlockedException(reason)
+        }
+
+        // AUDIO-MODE: InnerTube per primo (più veloce), NewPipe come fallback.
+        val stream = raceInnerTube(track, errors, false)
         if (stream != null) {
             val resolved = track.copy(
                 streamUrl = stream.url,
@@ -389,6 +423,87 @@ class PlaybackResolver private constructor(private val context: Context) {
             largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
             source = "NewPipe YouTube"
         )
+    }
+
+    /**
+     * Risoluzione video "nostra": NewPipe restituisce URL già decifrati (applica cipher e
+     * n-transform internamente). Prendiamo il miglior video-only + il miglior audio-only e li
+     * lasciamo mergiare al player (MergingMediaSource). Se non esistono video-only usiamo un
+     * muxed (audio+video insieme), infine HLS. Questo è ciò che rende i video effettivamente
+     * riproducibili invece del quadrato nero.
+     */
+    private fun resolveVideoWithNewPipe(track: Track): Track {
+        NewPipeRuntime.ensure()
+        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
+
+        val bestThumb = info.thumbnails.maxByOrNull { image ->
+            image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
+        }?.url.orEmpty()
+        val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
+
+        // Miglior audio-only (traccia audio del merge)
+        val bestAudio = info.audioStreams
+            .filter { it.isUrl && it.content.isNotBlank() }
+            .maxWithOrNull(compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId })
+            ?.content
+
+        // Miglior video-only <= 1080p (evita 4K/decrypt pesante), preferendo mp4/h264
+        val bestVideoOnly = info.videoOnlyStreams
+            .filter { it.isUrl && it.content.isNotBlank() }
+            .filter { heightOf(it.getResolution()) in 1..1080 }
+            .maxWithOrNull(
+                compareBy<VideoStream> { heightOf(it.getResolution()) }
+                    .thenBy { if (it.getFormat()?.name?.contains("MPEG", true) == true) 1 else 0 }
+            )
+            ?.content
+
+        if (bestVideoOnly != null && bestAudio != null) {
+            return track.copy(
+                streamUrl = bestAudio,          // traccia audio
+                videoStreamUrl = bestVideoOnly, // traccia video (merge nel player)
+                durationMs = durationMs,
+                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
+                source = "NewPipe Video"
+            )
+        }
+
+        // Fallback muxed (audio+video già insieme, di solito max 720p)
+        val muxed = info.videoStreams
+            .filter { it.isUrl && it.content.isNotBlank() }
+            .maxByOrNull { heightOf(it.getResolution()) }
+            ?.content
+        if (muxed != null) {
+            return track.copy(
+                streamUrl = muxed,
+                videoStreamUrl = "",
+                durationMs = durationMs,
+                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
+                source = "NewPipe Muxed"
+            )
+        }
+
+        // Ultimo tentativo: HLS
+        val hls = info.hlsUrl.takeIf { it.isNotBlank() }
+        if (hls != null) {
+            return track.copy(
+                streamUrl = hls,
+                videoStreamUrl = "",
+                durationMs = durationMs,
+                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
+                source = "NewPipe HLS"
+            )
+        }
+
+        throw IllegalStateException("Nessuno stream video disponibile per ${track.title}")
+    }
+
+    /** Estrae l'altezza numerica da una resolution NewPipe tipo "1080p60" / "720p". */
+    private fun heightOf(resolution: String?): Int {
+        if (resolution.isNullOrBlank()) return 0
+        return Regex("(\\d+)p").find(resolution)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
     }
 
     private fun buildPlayerBody(videoId: String, profile: ClientProfile): JSONObject {

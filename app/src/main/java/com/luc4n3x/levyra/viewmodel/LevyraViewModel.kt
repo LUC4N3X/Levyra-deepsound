@@ -64,6 +64,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val player = LevyraPlayer(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
+    private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
     private val _state = MutableStateFlow(
         LevyraUiState(
@@ -124,7 +125,83 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadCharts()
         startTicker()
         observeDownloads()
+        loadPlaylists()
         checkForUpdates(silent = true)
+    }
+
+    // ---- Playlist ----
+
+    private fun loadPlaylists() {
+        viewModelScope.launch {
+            val lists = playlistStore.loadAll()
+            _state.update { it.copy(playlists = lists) }
+        }
+    }
+
+    fun createPlaylist(name: String, firstTrack: Track? = null) {
+        viewModelScope.launch {
+            playlistStore.create(name, firstTrack)
+            loadPlaylists()
+        }
+    }
+
+    fun renamePlaylist(playlistId: String, name: String) {
+        viewModelScope.launch {
+            playlistStore.rename(playlistId, name)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun deletePlaylist(playlistId: String) {
+        viewModelScope.launch {
+            playlistStore.delete(playlistId)
+            _state.update { if (it.openPlaylist?.id == playlistId) it.copy(openPlaylist = null) else it }
+            loadPlaylists()
+        }
+    }
+
+    fun addToPlaylist(playlistId: String, track: Track) {
+        viewModelScope.launch {
+            playlistStore.addTrack(playlistId, track.copy(streamUrl = ""))
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun removeFromPlaylist(playlistId: String, trackId: String) {
+        viewModelScope.launch {
+            playlistStore.removeTrack(playlistId, trackId)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun openPlaylist(playlistId: String) {
+        viewModelScope.launch {
+            val pl = playlistStore.load(playlistId)
+            _state.update { it.copy(openPlaylist = pl) }
+        }
+    }
+
+    fun closePlaylist() {
+        _state.update { it.copy(openPlaylist = null) }
+    }
+
+    /** Riproduce una playlist a partire dalla traccia indicata (o dalla prima). */
+    fun playPlaylist(playlistId: String, startTrackId: String? = null) {
+        viewModelScope.launch {
+            val pl = playlistStore.load(playlistId) ?: return@launch
+            if (pl.tracks.isEmpty()) return@launch
+            val start = startTrackId?.let { id -> pl.tracks.firstOrNull { it.id == id } } ?: pl.tracks.first()
+            playFrom(pl.tracks, start)
+        }
+    }
+
+    private suspend fun refreshOpenPlaylist(playlistId: String) {
+        if (_state.value.openPlaylist?.id != playlistId) return
+        val pl = playlistStore.load(playlistId)
+        _state.update { it.copy(openPlaylist = pl) }
     }
 
     private fun observeDownloads() {
