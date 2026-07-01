@@ -108,6 +108,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (stream != null) {
             val resolved = track.copy(
                 streamUrl = stream.url,
+                videoStreamUrl = stream.videoUrl,
                 durationMs = stream.durationMs.takeIf { it > 0L } ?: track.durationMs,
                 thumbnailUrl = stream.thumbnailUrl.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
@@ -180,6 +181,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         val key = cacheKey(track, isVideoMode)
         val expiresAt = expiresAtFor(track.streamUrl)
         streamCache[key] = CachedStream(track, expiresAt)
+        // Il video-mode usa due URL separati (audio + video) che scadono: niente persistenza su disco
+        if (isVideoMode || track.videoStreamUrl.isNotBlank()) return
         val json = JSONObject()
             .put("expiresAt", expiresAt)
             .put("streamUrl", track.streamUrl)
@@ -252,68 +255,111 @@ class PlaybackResolver private constructor(private val context: Context) {
                 throw IllegalStateException(reason.ifBlank { subreason.ifBlank { status } })
             }
             val streamingData = root.optJSONObject("streamingData") ?: throw IllegalStateException("Nessun blocco streamingData")
-                        val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
+            val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
             val muxedFormats = streamingData.optJSONArray("formats") ?: JSONArray()
 
-            var bestUrl = ""
-            var bestScore = -1
+            // Selezione best audio-only (usato sempre come traccia audio)
+            var bestAudioUrl = ""
+            var bestAudioScore = -1
+            for (i in 0 until adaptiveFormats.length()) {
+                val format = adaptiveFormats.optJSONObject(i) ?: continue
+                val mime = format.optString("mimeType")
+                val url = format.optString("url")
+                if (!mime.startsWith("audio/", true) || url.isBlank()) continue
+                val bitrate = format.optInt("bitrate", 0)
+                val audioQuality = format.optString("audioQuality")
+                val mimeBoost = when {
+                    mime.contains("mp4", true) -> 120_000
+                    mime.contains("webm", true) -> 80_000
+                    else -> 0
+                }
+                val score = bitrate + mimeBoost + when {
+                    audioQuality.contains("HIGH", true) -> 900_000
+                    audioQuality.contains("MEDIUM", true) -> 500_000
+                    else -> 0
+                }
+                if (score > bestAudioScore) {
+                    bestAudioScore = score
+                    bestAudioUrl = url
+                }
+            }
 
             if (isVideoMode) {
+                // Best video-only adaptive (verrà mergiato con l'audio dal player)
+                var bestVideoUrl = ""
+                var bestVideoScore = -1
+                for (i in 0 until adaptiveFormats.length()) {
+                    val format = adaptiveFormats.optJSONObject(i) ?: continue
+                    val mime = format.optString("mimeType")
+                    val url = format.optString("url")
+                    if (!mime.startsWith("video/", true) || url.isBlank()) continue
+                    val height = format.optInt("height", 0)
+                    // cap a 1080p per fluidità e per evitare formati che richiedono decrypt
+                    val penalty = if (height > 1080) -1 else 0
+                    val mimeBoost = if (mime.contains("mp4", true)) 5000 else 0
+                    val score = height + mimeBoost + penalty
+                    if (score > bestVideoScore) {
+                        bestVideoScore = score
+                        bestVideoUrl = url
+                    }
+                }
+                // Fallback: formato muxed (audio+video insieme) se manca l'adaptive
+                var muxedUrl = ""
+                var muxedScore = -1
                 for (i in 0 until muxedFormats.length()) {
                     val format = muxedFormats.optJSONObject(i) ?: continue
                     val mime = format.optString("mimeType")
                     val url = format.optString("url")
                     if (!mime.startsWith("video/", true) || url.isBlank()) continue
                     val height = format.optInt("height", 0)
-                    val score = height + 100_000
-                    if (score > bestScore) {
-                        bestScore = score
-                        bestUrl = url
+                    if (height > muxedScore) {
+                        muxedScore = height
+                        muxedUrl = url
                     }
                 }
-                if (bestUrl.isBlank()) {
-                    for (i in 0 until adaptiveFormats.length()) {
-                        val format = adaptiveFormats.optJSONObject(i) ?: continue
-                        val mime = format.optString("mimeType")
-                        val url = format.optString("url")
-                        if (!mime.startsWith("video/", true) || url.isBlank()) continue
-                        val height = format.optInt("height", 0)
-                        if (height > bestScore) {
-                            bestScore = height
-                            bestUrl = url
-                        }
-                    }
-                }
-            } else {
-                for (i in 0 until adaptiveFormats.length()) {
-                    val format = adaptiveFormats.optJSONObject(i) ?: continue
-                    val mime = format.optString("mimeType")
-                    val url = format.optString("url")
-                    if (!mime.startsWith("audio/", true) || url.isBlank()) continue
-                    val bitrate = format.optInt("bitrate", 0)
-                    val audioQuality = format.optString("audioQuality")
-                    val mimeBoost = when {
-                        mime.contains("mp4", true) -> 120_000
-                        mime.contains("webm", true) -> 80_000
-                        else -> 0
-                    }
-                    val score = bitrate + mimeBoost + when {
-                        audioQuality.contains("HIGH", true) -> 900_000
-                        audioQuality.contains("MEDIUM", true) -> 500_000
-                        else -> 0
-                    }
-                    if (score > bestScore) {
-                        bestScore = score
-                        bestUrl = url
-                    }
+                // Fallback finale: HLS master playlist (music video ATV)
+                val hlsUrl = streamingData.optString("hlsManifestUrl")
+
+                val details = root.optJSONObject("videoDetails")
+                val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
+                val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
+
+                return when {
+                    // caso ideale: audio-only + video-only separati → merge nel player
+                    bestAudioUrl.isNotBlank() && bestVideoUrl.isNotBlank() -> DirectStream(
+                        url = bestAudioUrl,
+                        videoUrl = bestVideoUrl,
+                        durationMs = duration,
+                        thumbnailUrl = thumbnail,
+                        source = "YouTube Video ${profile.label}"
+                    )
+                    // muxed unico (già audio+video)
+                    muxedUrl.isNotBlank() -> DirectStream(
+                        url = muxedUrl,
+                        videoUrl = "",
+                        durationMs = duration,
+                        thumbnailUrl = thumbnail,
+                        source = "YouTube Muxed ${profile.label}"
+                    )
+                    // HLS master (il player sceglie la variante)
+                    hlsUrl.isNotBlank() -> DirectStream(
+                        url = hlsUrl,
+                        videoUrl = "",
+                        durationMs = duration,
+                        thumbnailUrl = thumbnail,
+                        source = "YouTube HLS ${profile.label}"
+                    )
+                    else -> throw IllegalStateException("Nessuno stream video disponibile")
                 }
             }
-            if (bestUrl.isBlank()) throw IllegalStateException("URL streaming assente")
+
+            if (bestAudioUrl.isBlank()) throw IllegalStateException("URL streaming assente")
             val details = root.optJSONObject("videoDetails")
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
             return DirectStream(
-                url = bestUrl,
+                url = bestAudioUrl,
+                videoUrl = "",
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
                 source = "YouTube Music ${profile.label}"
@@ -417,6 +463,7 @@ private data class ClientProfile(
 
 private data class DirectStream(
     val url: String,
+    val videoUrl: String = "",
     val durationMs: Long,
     val thumbnailUrl: String,
     val source: String
