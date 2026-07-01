@@ -46,14 +46,14 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
-    private val resolveTimeoutMs = 14_000L
+    private val resolveTimeoutMs = 9_000L
 
     private val profiles = listOf(
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L),
-        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 50L),
-        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 100L),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 180L),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 240L)
+        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 40L),
+        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 80L),
+        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 130L),
+        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 180L)
     )
 
     init {
@@ -94,40 +94,50 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    suspend fun prefetch(track: Track) {
+    suspend fun prefetch(track: Track, isVideoMode: Boolean = false) {
         if (track.streamUrl.isNotBlank()) {
             if (streamStillFresh(track.streamUrl)) store(track)
             return
         }
-        if (cached(track) != null) return
-        runCatching { resolve(track) }
+        if (cached(track, isVideoMode) != null) return
+        runCatching { resolve(track, isVideoMode) }
     }
 
     private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
-        // VIDEO-MODE: NewPipe per primo. NewPipe applica cipher deobfuscation e n-transform
-        // internamente, quindi restituisce URL video/audio già riproducibili — cosa che il
-        // nostro InnerTube "grezzo" non fa (URL cifrati o throttlati = schermo nero).
         if (isVideoMode) {
-            val npVideo = runCatching { resolveVideoWithNewPipe(track) }
-            if (npVideo.isSuccess) {
-                val resolved = npVideo.getOrThrow()
-                store(resolved, isVideoMode)
-                return@withContext resolved
+            val resolved = coroutineScope {
+                val winner = CompletableDeferred<Track?>()
+                val npJob = launch {
+                    val r = runCatching { resolveVideoWithNewPipe(track) }
+                    r.onSuccess { winner.complete(it) }
+                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "NewPipe video: $m" } }
+                }
+                val itJob = launch {
+                    val stream = runCatching { raceInnerTube(track, errors, true) }.getOrNull()
+                    if (stream != null) {
+                        winner.complete(
+                            track.copy(
+                                streamUrl = stream.url,
+                                videoStreamUrl = stream.videoUrl,
+                                durationMs = stream.durationMs.takeIf { it > 0L } ?: track.durationMs,
+                                thumbnailUrl = stream.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                                largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
+                                source = stream.source
+                            )
+                        )
+                    }
+                }
+                launch {
+                    npJob.join(); itJob.join()
+                    winner.complete(null)
+                }
+                val result = winner.await()
+                coroutineContext.cancelChildren()
+                result
             }
-            npVideo.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "NewPipe video: $it" }
-            // fallback: InnerTube muxed/HLS (a volte un muxed o l'HLS ATV passa senza cipher)
-            val stream = raceInnerTube(track, errors, true)
-            if (stream != null) {
-                val resolved = track.copy(
-                    streamUrl = stream.url,
-                    videoStreamUrl = stream.videoUrl,
-                    durationMs = stream.durationMs.takeIf { it > 0L } ?: track.durationMs,
-                    thumbnailUrl = stream.thumbnailUrl.ifBlank { track.thumbnailUrl },
-                    largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
-                    source = stream.source
-                )
+            if (resolved != null) {
                 store(resolved, isVideoMode)
                 return@withContext resolved
             }
@@ -137,7 +147,6 @@ class PlaybackResolver private constructor(private val context: Context) {
             throw PlaybackBlockedException(reason)
         }
 
-        // AUDIO-MODE: InnerTube per primo (più veloce), NewPipe come fallback.
         val stream = raceInnerTube(track, errors, false)
         if (stream != null) {
             val resolved = track.copy(
@@ -215,7 +224,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         val key = cacheKey(track, isVideoMode)
         val expiresAt = expiresAtFor(track.streamUrl)
         streamCache[key] = CachedStream(track, expiresAt)
-        // Il video-mode usa due URL separati (audio + video) che scadono: niente persistenza su disco
         if (isVideoMode || track.videoStreamUrl.isNotBlank()) return
         val json = JSONObject()
             .put("expiresAt", expiresAt)
@@ -292,7 +300,6 @@ class PlaybackResolver private constructor(private val context: Context) {
             val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
             val muxedFormats = streamingData.optJSONArray("formats") ?: JSONArray()
 
-            // Selezione best audio-only (usato sempre come traccia audio)
             var bestAudioUrl = ""
             var bestAudioScore = -1
             for (i in 0 until adaptiveFormats.length()) {
@@ -319,7 +326,6 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
 
             if (isVideoMode) {
-                // Best video-only adaptive (verrà mergiato con l'audio dal player)
                 var bestVideoUrl = ""
                 var bestVideoScore = -1
                 for (i in 0 until adaptiveFormats.length()) {
@@ -328,7 +334,6 @@ class PlaybackResolver private constructor(private val context: Context) {
                     val url = format.optString("url")
                     if (!mime.startsWith("video/", true) || url.isBlank()) continue
                     val height = format.optInt("height", 0)
-                    // cap a 1080p per fluidità e per evitare formati che richiedono decrypt
                     val penalty = if (height > 1080) -1 else 0
                     val mimeBoost = if (mime.contains("mp4", true)) 5000 else 0
                     val score = height + mimeBoost + penalty
@@ -337,7 +342,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                         bestVideoUrl = url
                     }
                 }
-                // Fallback: formato muxed (audio+video insieme) se manca l'adaptive
+
                 var muxedUrl = ""
                 var muxedScore = -1
                 for (i in 0 until muxedFormats.length()) {
@@ -351,7 +356,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                         muxedUrl = url
                     }
                 }
-                // Fallback finale: HLS master playlist (music video ATV)
+
                 val hlsUrl = streamingData.optString("hlsManifestUrl")
 
                 val details = root.optJSONObject("videoDetails")
@@ -359,7 +364,6 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
 
                 return when {
-                    // caso ideale: audio-only + video-only separati → merge nel player
                     bestAudioUrl.isNotBlank() && bestVideoUrl.isNotBlank() -> DirectStream(
                         url = bestAudioUrl,
                         videoUrl = bestVideoUrl,
@@ -367,7 +371,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                         thumbnailUrl = thumbnail,
                         source = "YouTube Video ${profile.label}"
                     )
-                    // muxed unico (già audio+video)
+
                     muxedUrl.isNotBlank() -> DirectStream(
                         url = muxedUrl,
                         videoUrl = "",
@@ -375,7 +379,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                         thumbnailUrl = thumbnail,
                         source = "YouTube Muxed ${profile.label}"
                     )
-                    // HLS master (il player sceglie la variante)
+
                     hlsUrl.isNotBlank() -> DirectStream(
                         url = hlsUrl,
                         videoUrl = "",
@@ -425,13 +429,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
     }
 
-    /**
-     * Risoluzione video "nostra": NewPipe restituisce URL già decifrati (applica cipher e
-     * n-transform internamente). Prendiamo il miglior video-only + il miglior audio-only e li
-     * lasciamo mergiare al player (MergingMediaSource). Se non esistono video-only usiamo un
-     * muxed (audio+video insieme), infine HLS. Questo è ciò che rende i video effettivamente
-     * riproducibili invece del quadrato nero.
-     */
     private fun resolveVideoWithNewPipe(track: Track): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
@@ -441,13 +438,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         }?.url.orEmpty()
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
 
-        // Miglior audio-only (traccia audio del merge)
         val bestAudio = info.audioStreams
             .filter { it.isUrl && it.content.isNotBlank() }
             .maxWithOrNull(compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId })
             ?.content
 
-        // Miglior video-only <= 1080p (evita 4K/decrypt pesante), preferendo mp4/h264
         val bestVideoOnly = info.videoOnlyStreams
             .filter { it.isUrl && it.content.isNotBlank() }
             .filter { heightOf(it.getResolution()) in 1..1080 }
@@ -459,8 +454,8 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         if (bestVideoOnly != null && bestAudio != null) {
             return track.copy(
-                streamUrl = bestAudio,          // traccia audio
-                videoStreamUrl = bestVideoOnly, // traccia video (merge nel player)
+                streamUrl = bestAudio,          
+                videoStreamUrl = bestVideoOnly, 
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
@@ -468,7 +463,6 @@ class PlaybackResolver private constructor(private val context: Context) {
             )
         }
 
-        // Fallback muxed (audio+video già insieme, di solito max 720p)
         val muxed = info.videoStreams
             .filter { it.isUrl && it.content.isNotBlank() }
             .maxByOrNull { heightOf(it.getResolution()) }
@@ -484,7 +478,6 @@ class PlaybackResolver private constructor(private val context: Context) {
             )
         }
 
-        // Ultimo tentativo: HLS
         val hls = info.hlsUrl.takeIf { it.isNotBlank() }
         if (hls != null) {
             return track.copy(
@@ -500,7 +493,6 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw IllegalStateException("Nessuno stream video disponibile per ${track.title}")
     }
 
-    /** Estrae l'altezza numerica da una resolution NewPipe tipo "1080p60" / "720p". */
     private fun heightOf(resolution: String?): Int {
         if (resolution.isNullOrBlank()) return 0
         return Regex("(\\d+)p").find(resolution)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
