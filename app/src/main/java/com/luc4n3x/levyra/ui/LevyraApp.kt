@@ -873,8 +873,8 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val newReleases = remember(state.homeSections) {
         state.homeSections.firstOrNull { isVerifiedReleaseSectionTitle(it.title) }
     }
-    val albumsForYou = remember(state.homeSections) {
-        state.homeSections.firstOrNull { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
+    val otherSections = remember(state.homeSections) {
+        state.homeSections.filter { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -952,22 +952,25 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (albumsForYou != null && albumsForYou.tracks.isNotEmpty()) {
-            item(key = "sec-albums-for-you-header") {
-                SectionHeaderAction("Albums For You", onPlayAll = { viewModel.playAll(albumsForYou.tracks) })
-            }
-            item(key = "sec-albums-for-you-row") {
-                AlbumCardRow(
-                    tracks = albumsForYou.tracks,
-                    currentId = state.currentTrack?.id,
-                    animationsEnabled = state.animationsEnabled,
-                    onPlay = { viewModel.playFrom(albumsForYou.tracks, it) }
-                )
+        otherSections.forEachIndexed { index, section ->
+            if (section.tracks.isNotEmpty()) {
+                val title = if (index == 0) "Albums For You" else section.title
+                item(key = "sec-other-${index}-header") {
+                    SectionHeaderAction(title, onPlayAll = { viewModel.playAll(section.tracks) })
+                }
+                item(key = "sec-other-${index}-row") {
+                    AlbumCardRow(
+                        tracks = section.tracks,
+                        currentId = state.currentTrack?.id,
+                        animationsEnabled = state.animationsEnabled,
+                        onPlay = { viewModel.playFrom(section.tracks, it) }
+                    )
+                }
             }
         }
         item {
             val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-            SectionHeaderAction("Chart ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
+            SectionHeaderAction("Top 50 ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
         }
         item {
             ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
@@ -975,9 +978,9 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         if (state.charts.isEmpty()) {
             item {
                 if (state.isLoadingCharts) {
-                    GlassMessage("Loading chart...", LevyraCyan)
+                    GlassMessage("Loading Top 50...", LevyraCyan)
                 } else {
-                    GlassMessage("Chart not available, try again later", LevyraOrange)
+                    GlassMessage("Top 50 not available, try again later", LevyraOrange)
                 }
             }
         }
