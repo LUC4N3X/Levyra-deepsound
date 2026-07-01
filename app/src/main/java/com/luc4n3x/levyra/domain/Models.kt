@@ -19,7 +19,8 @@ data class Track(
     val replayScore: Int,
     val cacheScore: Int,
     val accentStart: Int,
-    val accentEnd: Int
+    val accentEnd: Int,
+    val videoStreamUrl: String = ""
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()
@@ -197,4 +198,15 @@ enum class SearchFilter {
     Songs,
     Artists,
     Albums
+}
+
+data class Playlist(
+    val id: String,
+    val name: String,
+    val coverUrl: String,
+    val tracks: List<Track>,
+    val createdAt: Long,
+    val updatedAt: Long
+) {
+    val size: Int get() = tracks.size
 }
