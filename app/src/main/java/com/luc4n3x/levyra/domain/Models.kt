@@ -19,7 +19,8 @@ data class Track(
     val replayScore: Int,
     val cacheScore: Int,
     val accentStart: Int,
-    val accentEnd: Int
+    val accentEnd: Int,
+    val videoStreamUrl: String = ""
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()
