@@ -1,3 +1,4 @@
+@file:OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.core.spring
@@ -2578,22 +2579,39 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
                 
                 if (state.isVideoMode && track.videoUrl.isNotBlank()) {
-                    AndroidView(
-                        factory = { ctx ->
-                            androidx.media3.ui.PlayerView(ctx).apply {
-                                useController = false
-                                player = viewModel.playerController
-                            }
-                        },
-                        update = { view -> 
-                            view.player = viewModel.playerController
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .padding(bottom = 16.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                    )
+                    val ctrl = viewModel.playerController
+                    if (ctrl != null) {
+                        AndroidView(
+                            factory = { ctx ->
+                                androidx.media3.ui.PlayerView(ctx).apply {
+                                    useController = false
+                                    setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
+                                    setBackgroundColor(android.graphics.Color.BLACK)
+                                    player = ctrl
+                                }
+                            },
+                            update = { view ->
+                                if (view.player !== ctrl) view.player = ctrl
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .padding(bottom = 16.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .padding(bottom = 16.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Black),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
+                        }
+                    }
                 } else {
                     FloatingArtwork(
                         track = track,
