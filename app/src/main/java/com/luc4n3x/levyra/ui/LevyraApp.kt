@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
