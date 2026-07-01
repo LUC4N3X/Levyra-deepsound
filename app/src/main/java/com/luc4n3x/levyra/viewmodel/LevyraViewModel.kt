@@ -64,6 +64,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val player = LevyraPlayer(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
+    private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
     private val _state = MutableStateFlow(
         LevyraUiState(
@@ -92,6 +93,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var queueIndex: Int = -1
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
+    val playerController get() = player.controller
 
     init {
         val favorites = favoritesStore.load()
@@ -123,7 +125,81 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         loadCharts()
         startTicker()
         observeDownloads()
+        loadPlaylists()
         checkForUpdates(silent = true)
+    }
+
+
+    private fun loadPlaylists() {
+        viewModelScope.launch {
+            val lists = playlistStore.loadAll()
+            _state.update { it.copy(playlists = lists) }
+        }
+    }
+
+    fun createPlaylist(name: String, firstTrack: Track? = null) {
+        viewModelScope.launch {
+            playlistStore.create(name, firstTrack)
+            loadPlaylists()
+        }
+    }
+
+    fun renamePlaylist(playlistId: String, name: String) {
+        viewModelScope.launch {
+            playlistStore.rename(playlistId, name)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun deletePlaylist(playlistId: String) {
+        viewModelScope.launch {
+            playlistStore.delete(playlistId)
+            _state.update { if (it.openPlaylist?.id == playlistId) it.copy(openPlaylist = null) else it }
+            loadPlaylists()
+        }
+    }
+
+    fun addToPlaylist(playlistId: String, track: Track) {
+        viewModelScope.launch {
+            playlistStore.addTrack(playlistId, track.copy(streamUrl = ""))
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun removeFromPlaylist(playlistId: String, trackId: String) {
+        viewModelScope.launch {
+            playlistStore.removeTrack(playlistId, trackId)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun openPlaylist(playlistId: String) {
+        viewModelScope.launch {
+            val pl = playlistStore.load(playlistId)
+            _state.update { it.copy(openPlaylist = pl) }
+        }
+    }
+
+    fun closePlaylist() {
+        _state.update { it.copy(openPlaylist = null) }
+    }
+
+    fun playPlaylist(playlistId: String, startTrackId: String? = null) {
+        viewModelScope.launch {
+            val pl = playlistStore.load(playlistId) ?: return@launch
+            if (pl.tracks.isEmpty()) return@launch
+            val start = startTrackId?.let { id -> pl.tracks.firstOrNull { it.id == id } } ?: pl.tracks.first()
+            playFrom(pl.tracks, start)
+        }
+    }
+
+    private suspend fun refreshOpenPlaylist(playlistId: String) {
+        if (_state.value.openPlaylist?.id != playlistId) return
+        val pl = playlistStore.load(playlistId)
+        _state.update { it.copy(openPlaylist = pl) }
     }
 
     private fun observeDownloads() {
@@ -183,6 +259,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         player.setRepeatOne(mode == RepeatMode.One)
         _state.update { it.copy(repeatMode = mode) }
+    }
+
+    fun toggleVideoMode() {
+        val current = _state.value.isVideoMode
+        val track = _state.value.currentTrack ?: return
+        val newVideoMode = !current
+        _state.update { it.copy(isVideoMode = newVideoMode, isResolving = true) }
+        val oldPosition = player.positionMs
+        player.stop()
+        viewModelScope.launch {
+            try {
+                val resolved = withContext(Dispatchers.IO) {
+                    resolver.resolve(track.copy(streamUrl = ""), newVideoMode)
+                }
+                _state.update { it.copy(currentTrack = resolved, isResolving = false, isPlaying = true) }
+                player.play(resolved)
+                if (oldPosition > 0L) {
+                    delay(300)
+                    player.seekTo(oldPosition)
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _state.update { it.copy(isResolving = false, isVideoMode = current, playerError = e.message) }
+            }
+        }
     }
 
     fun toggleShuffle() {
@@ -353,10 +454,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /**
-     * Charts come from Apple with title/artist; fetch a YouTube match for each entry to get a
-     * reliable cover and a ready-to-play video id (covers and playback always work via YouTube).
-     */
     private fun enrichCharts(regionId: String, charts: List<Track>) {
         chartEnrichJob?.cancel()
         chartEnrichJob = viewModelScope.launch {
@@ -672,7 +769,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun addToRecentSearches(track: Track) {
-        // Don't track empty or invalid tracks
         if (track.id.isBlank() || track.title.isBlank()) return
         val current = _state.value.recentSearches
         val updated = listOf(track) + current.filterNot { it.id == track.id }
@@ -687,7 +783,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(track)
     }
 
-    /** Play a track as part of a specific list so next/previous follow that list. */
     fun playFrom(list: List<Track>, track: Track) {
         addToRecentSearches(track)
         _state.update { it.copy(queue = list) }
@@ -699,9 +794,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val requestId = ++playRequestId
         playJob?.cancel()
 
-        // Instant path: the stream is already resolved or warm in cache, start immediately.
         val playableTrack = youtubePlayableTrack(track) ?: track
-        val instant = resolver.cached(playableTrack)
+        val instant = resolver.cached(playableTrack, _state.value.isVideoMode)
         if (instant != null) {
             startPlayback(instant)
             prefetchAround(instant)
@@ -837,11 +931,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (queue.isEmpty()) return@launch
             val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { it.id == playable.id }
             if (base < 0) return@launch
-            val candidates = listOf(1, 2, -1)
+            val offsets = if (_state.value.isVideoMode) listOf(1) else listOf(1, 2, -1)
+            val candidates = offsets
                 .map { offset -> queue[(base + offset + queue.size) % queue.size] }
                 .filterNot { it.id == playable.id }
                 .distinctBy { it.id }
-            warmTracks(candidates, concurrency = 2, delayStepMs = 70L)
+            warmTracks(candidates, concurrency = 2, delayStepMs = 50L)
         }
     }
 
@@ -864,19 +959,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun warmTrack(track: Track) {
+        val videoMode = _state.value.isVideoMode
         val youtube = youtubePlayableTrack(track)
         if (youtube != null) {
-            resolver.prefetch(youtube)
+            resolver.prefetch(youtube, videoMode)
             return
         }
         val match = runCatching { repository.searchOne("${track.title} ${track.artist}") }.getOrNull() ?: return
-        resolver.prefetch(match)
+        resolver.prefetch(match, videoMode)
     }
 
     private fun currentQueue(): List<Track> {
         val snapshot = _state.value
         return snapshot.queue.ifEmpty { snapshot.searchResults }.ifEmpty { snapshot.tracks }
     }
+
+    fun play() = _state.value.currentTrack?.let { player.play(it) }
+    fun pause() = player.pause()
 
     fun togglePlay() {
         val current = _state.value.currentTrack ?: return
@@ -979,13 +1078,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val snapshot = _state.value
                 val current = snapshot.currentTrack
                 val duration = current?.let { effectiveDuration(it) } ?: player.durationMs
-                // SponsorBlock: skip past non-music / sponsor segments automatically.
+  
                 if (snapshot.sponsorBlockEnabled && sponsorSegments.isNotEmpty() && player.isPlaying) {
                     val pos = player.positionMs
                     val segment = sponsorSegments.firstOrNull { pos >= it.startMs && pos < it.endMs - 250 }
                     if (segment != null) player.seekTo(segment.endMs)
                 }
-                // Until the restored track is actually played, keep showing the saved resume position.
+ 
                 val position = if (!player.isPlaying && player.positionMs == 0L && pendingSeekMs > 0L) {
                     pendingSeekMs
                 } else {
@@ -1000,7 +1099,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         activeLyric = active
                     )
                 }
-                // Persist the last playback roughly every 2s so reopening resumes the same spot.
+
                 if (current != null && player.isPlaying && ticks % 4 == 0) {
                     preferences.saveLastPlayback(current, position)
                 }
@@ -1011,7 +1110,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
 
-    /** Chart entries have no YouTube id yet: match them on YouTube first, then pass to player. */
     private suspend fun resolveForPlayback(track: Track): Track {
         youtubePlayableTrack(track)?.let { return resolvePlayableTrack(it) }
         val match = repository.searchOne("${track.title} ${track.artist}")
@@ -1024,7 +1122,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun resolvePlayableTrack(track: Track): Track {
-        val resolved = resolver.resolve(track.copy(streamUrl = ""))
+        val resolved = resolver.resolve(track.copy(streamUrl = ""), _state.value.isVideoMode)
         if (resolved.id != track.id) {
             throw IllegalStateException("Resolver bloccato: il brano risolto non corrisponde al brano selezionato")
         }
