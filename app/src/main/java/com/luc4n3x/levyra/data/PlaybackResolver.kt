@@ -59,11 +59,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         restoreCache()
     }
 
-    fun cached(track: Track): Track? {
+    fun cached(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
             return if (streamStillFresh(track.streamUrl)) track else null
         }
-        val key = cacheKey(track)
+        val key = cacheKey(track, isVideoMode)
         val hit = streamCache[key] ?: return null
         if (!isFresh(hit.expiresAt)) {
             remove(key)
@@ -72,14 +72,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         return hit.track
     }
 
-    suspend fun resolve(track: Track): Track = coroutineScope {
+    suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track = coroutineScope {
         track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) }?.let { return@coroutineScope track }
         cached(track)?.let { return@coroutineScope it }
 
-        val key = cacheKey(track)
+        val key = cacheKey(track, isVideoMode)
         val deferred = async(Dispatchers.IO, start = CoroutineStart.LAZY) {
             withTimeout(resolveTimeoutMs) {
-                resolveUncached(track.copy(streamUrl = ""))
+                resolveUncached(track.copy(streamUrl = ""), isVideoMode)
             }
         }
         val previous = inFlight.putIfAbsent(key, deferred)
@@ -102,7 +102,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         runCatching { resolve(track) }
     }
 
-    private suspend fun resolveUncached(track: Track): Track = withContext(Dispatchers.IO) {
+    private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
         val stream = raceInnerTube(track, errors)
         if (stream != null) {
@@ -177,7 +177,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun store(track: Track) {
         if (track.streamUrl.isBlank() || !streamStillFresh(track.streamUrl)) return
-        val key = cacheKey(track)
+        val key = cacheKey(track, isVideoMode)
         val expiresAt = expiresAtFor(track.streamUrl)
         streamCache[key] = CachedStream(track, expiresAt)
         val json = JSONObject()
@@ -215,11 +215,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         return Regex("(?:[?&])expire=(\\d+)").find(url)?.groupValues?.getOrNull(1)?.toLongOrNull()
     }
 
-    private fun cacheKey(track: Track): String {
-        return track.id.trim().ifBlank { track.videoUrl.trim() }
+    private fun cacheKey(track: Track, isVideoMode: Boolean = false): String {
+        val base = track.id.trim().ifBlank { track.videoUrl.trim() }
+        return if (isVideoMode) "${base}_video" else base
     }
 
-    private fun resolveWithInnerTube(track: Track, profile: ClientProfile): DirectStream {
+    private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false): DirectStream {
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
         val body = buildPlayerBody(track.id, profile).toString().toByteArray(StandardCharsets.UTF_8)
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
@@ -251,32 +252,49 @@ class PlaybackResolver private constructor(private val context: Context) {
                 throw IllegalStateException(reason.ifBlank { subreason.ifBlank { status } })
             }
             val streamingData = root.optJSONObject("streamingData") ?: throw IllegalStateException("Nessun blocco streamingData")
-            val formats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
+                        val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
+            val muxedFormats = streamingData.optJSONArray("formats") ?: JSONArray()
+            
             var bestUrl = ""
             var bestScore = -1
-            for (i in 0 until formats.length()) {
-                val format = formats.optJSONObject(i) ?: continue
-                val mime = format.optString("mimeType")
-                val url = format.optString("url")
-                if (!mime.startsWith("audio/", true) || url.isBlank()) continue
-                val bitrate = format.optInt("bitrate", 0)
-                val audioQuality = format.optString("audioQuality")
-                val mimeBoost = when {
-                    mime.contains("mp4", true) -> 120_000
-                    mime.contains("webm", true) -> 80_000
-                    else -> 0
+            
+            if (isVideoMode) {
+                for (i in 0 until muxedFormats.length()) {
+                    val format = muxedFormats.optJSONObject(i) ?: continue
+                    val mime = format.optString("mimeType")
+                    val url = format.optString("url")
+                    if (!mime.startsWith("video/", true) || url.isBlank()) continue
+                    val height = format.optInt("height", 0)
+                    if (height > bestScore) {
+                        bestScore = height
+                        bestUrl = url
+                    }
                 }
-                val score = bitrate + mimeBoost + when {
-                    audioQuality.contains("HIGH", true) -> 900_000
-                    audioQuality.contains("MEDIUM", true) -> 500_000
-                    else -> 0
-                }
-                if (score > bestScore) {
-                    bestScore = score
-                    bestUrl = url
+            } else {
+                for (i in 0 until adaptiveFormats.length()) {
+                    val format = adaptiveFormats.optJSONObject(i) ?: continue
+                    val mime = format.optString("mimeType")
+                    val url = format.optString("url")
+                    if (!mime.startsWith("audio/", true) || url.isBlank()) continue
+                    val bitrate = format.optInt("bitrate", 0)
+                    val audioQuality = format.optString("audioQuality")
+                    val mimeBoost = when {
+                        mime.contains("mp4", true) -> 120_000
+                        mime.contains("webm", true) -> 80_000
+                        else -> 0
+                    }
+                    val score = bitrate + mimeBoost + when {
+                        audioQuality.contains("HIGH", true) -> 900_000
+                        audioQuality.contains("MEDIUM", true) -> 500_000
+                        else -> 0
+                    }
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestUrl = url
+                    }
                 }
             }
-            if (bestUrl.isBlank()) throw IllegalStateException("Audio URL diretta assente")
+            if (bestUrl.isBlank()) throw IllegalStateException("URL streaming assente")
             val details = root.optJSONObject("videoDetails")
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
