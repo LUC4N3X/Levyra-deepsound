@@ -2579,19 +2579,24 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
                 
                 if (state.isVideoMode && track.videoUrl.isNotBlank()) {
-                    val ctrl = viewModel.playerController
-                    if (ctrl != null) {
+                    val exo = com.luc4n3x.levyra.player.PlaybackService.activePlayer
+                    if (exo != null) {
                         AndroidView(
                             factory = { ctx ->
                                 androidx.media3.ui.PlayerView(ctx).apply {
                                     useController = false
                                     setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
                                     setBackgroundColor(android.graphics.Color.BLACK)
-                                    player = ctrl
+                                    // Collego la surface direttamente all'ExoPlayer che decodifica i frame.
+                                    player = exo
                                 }
                             },
                             update = { view ->
-                                if (view.player !== ctrl) view.player = ctrl
+                                val current = com.luc4n3x.levyra.player.PlaybackService.activePlayer
+                                if (view.player !== current) view.player = current
+                            },
+                            onRelease = { view ->
+                                view.player = null
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
