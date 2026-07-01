@@ -113,14 +113,14 @@ class PlaybackResolver private constructor(private val context: Context) {
                 largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
                 source = stream.source
             )
-            store(resolved)
+            store(resolved, isVideoMode)
             return@withContext resolved
         }
 
         val newPipe = runCatching { resolveWithNewPipe(track) }
         if (newPipe.isSuccess) {
             val resolved = newPipe.getOrThrow()
-            store(resolved)
+            store(resolved, isVideoMode)
             return@withContext resolved
         }
         newPipe.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "NewPipe: $it" }
@@ -175,7 +175,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun store(track: Track) {
+    private fun store(track: Track, isVideoMode: Boolean = false) {
         if (track.streamUrl.isBlank() || !streamStillFresh(track.streamUrl)) return
         val key = cacheKey(track, isVideoMode)
         val expiresAt = expiresAtFor(track.streamUrl)
