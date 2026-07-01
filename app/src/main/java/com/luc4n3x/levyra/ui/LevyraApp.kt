@@ -104,6 +104,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -152,6 +156,8 @@ import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
+import com.luc4n3x.levyra.ui.theme.LevyraInk
+import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraOrange
@@ -194,8 +200,10 @@ fun LevyraApp(viewModel: LevyraViewModel) {
             viewModel.clearUpdateMessage()
         }
     }
-    BackHandler(enabled = state.showUpdatePrompt || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.selectedTab != LevyraTab.Home) {
-        if (!viewModel.navigateBack()) {
+    BackHandler(enabled = state.openPlaylist != null || state.showUpdatePrompt || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.selectedTab != LevyraTab.Home) {
+        if (state.openPlaylist != null) {
+            viewModel.closePlaylist()
+        } else if (!viewModel.navigateBack()) {
             activity?.finish()
         }
     }
@@ -323,6 +331,10 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onDownload = viewModel::exportTrack,
                     onClose = viewModel::closeArtist
                 )
+            }
+
+            AnimatedVisibility(visible = state.openPlaylist != null, enter = overlayEnter, exit = overlayExit) {
+                PlaylistDetailOverlay(viewModel = viewModel, state = state)
             }
         }
     }
@@ -2410,6 +2422,8 @@ private fun SuggestionsList(
 
 @Composable
 private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+    var addTarget by remember { mutableStateOf<Track?>(null) }
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -2417,7 +2431,45 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        item { PageHeader("Libreria", "Preferiti, download e cronologia") }
+        item { PageHeader("Libreria", "Playlist, preferiti, download e cronologia") }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                SectionTitle("🎵 Le tue playlist")
+                var showCreate by remember { mutableStateOf(false) }
+                TextButton(onClick = { showCreate = true }) {
+                    Icon(Icons.Rounded.Add, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Nuova", color = LevyraCyan, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+                if (showCreate) {
+                    PlaylistCreateDialog(
+                        onDismiss = { showCreate = false },
+                        onConfirm = { name ->
+                            viewModel.createPlaylist(name)
+                            showCreate = false
+                        }
+                    )
+                }
+            }
+        }
+        if (state.playlists.isEmpty()) {
+            item { EmptyState("Crea una playlist e aggiungi i tuoi brani preferiti") }
+        } else {
+            items(state.playlists, key = { "pl-${it.id}" }) { playlist ->
+                PlaylistRow(
+                    playlist = playlist,
+                    onOpen = { viewModel.openPlaylist(playlist.id) },
+                    onPlay = { viewModel.playPlaylist(playlist.id) },
+                    onDelete = { viewModel.deletePlaylist(playlist.id) }
+                )
+            }
+        }
+
         item { SectionTitle("⬇️ Download offline") }
         if (state.downloads.isEmpty()) {
             item { EmptyState("Tocca l'icona di download su un brano per salvarlo in Music/Levyra") }
@@ -2446,7 +2498,8 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     isDownloading = track.id in state.downloadingTrackIds,
                     isDownloaded = track.id in state.downloadedTrackIds,
                     onDownload = { viewModel.exportTrack(track) },
-                    onArtist = { viewModel.openArtist(track) }
+                    onArtist = { viewModel.openArtist(track) },
+                    onAddToPlaylist = { addTarget = track }
                 )
             }
         }
@@ -2463,9 +2516,27 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 isDownloading = track.id in state.downloadingTrackIds,
                 isDownloaded = track.id in state.downloadedTrackIds,
                 onDownload = { viewModel.exportTrack(track) },
-                onArtist = { viewModel.openArtist(track) }
+                onArtist = { viewModel.openArtist(track) },
+                onAddToPlaylist = { addTarget = track }
             )
         }
+    }
+
+    addTarget?.let { track ->
+        AddToPlaylistDialog(
+            track = track,
+            playlists = state.playlists,
+            onDismiss = { addTarget = null },
+            onAddTo = { playlistId ->
+                viewModel.addToPlaylist(playlistId, track)
+                addTarget = null
+            },
+            onCreateWith = { name ->
+                viewModel.createPlaylist(name, track)
+                addTarget = null
+            }
+        )
+    }
     }
 }
 
@@ -2501,6 +2572,220 @@ private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onDelete:
         }
         IconButton(onClick = onDelete) {
             Icon(Icons.Rounded.Delete, contentDescription = "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun PlaylistRow(
+    playlist: com.luc4n3x.levyra.domain.Playlist,
+    onOpen: () -> Unit,
+    onPlay: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onOpen() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.32f), LevyraViolet.copy(alpha = 0.32f)))),
+            contentAlignment = Alignment.Center
+        ) {
+            if (playlist.coverUrl.isNotBlank()) {
+                AsyncImage(
+                    model = playlist.coverUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(Icons.Rounded.QueueMusic, null, tint = LevyraCyan, modifier = Modifier.size(26.dp))
+            }
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(playlist.name, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                if (playlist.size == 1) "1 brano" else "${playlist.size} brani",
+                color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium
+            )
+        }
+        IconButton(onClick = onPlay) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = "Riproduci", tint = LevyraCyan, modifier = Modifier.size(26.dp))
+        }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Rounded.Delete, contentDescription = "Elimina", tint = LevyraMuted, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun PlaylistCreateDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LevyraPanel,
+        title = { Text("Nuova playlist", color = LevyraText, fontWeight = FontWeight.Black) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                placeholder = { Text("Nome della playlist", color = LevyraMuted) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = LevyraText,
+                    unfocusedTextColor = LevyraText,
+                    focusedBorderColor = LevyraCyan,
+                    unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                    cursorColor = LevyraCyan
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { if (name.isNotBlank()) onConfirm(name) }) {
+                Text("Crea", color = LevyraCyan, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annulla", color = LevyraMuted) }
+        }
+    )
+}
+
+/** Dialog per aggiungere un brano a una playlist esistente o crearne una nuova al volo. */
+@Composable
+private fun AddToPlaylistDialog(
+    track: Track,
+    playlists: List<com.luc4n3x.levyra.domain.Playlist>,
+    onDismiss: () -> Unit,
+    onAddTo: (String) -> Unit,
+    onCreateWith: (String) -> Unit
+) {
+    var creating by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LevyraPanel,
+        title = { Text("Aggiungi a playlist", color = LevyraText, fontWeight = FontWeight.Black) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (creating) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        singleLine = true,
+                        placeholder = { Text("Nome nuova playlist", color = LevyraMuted) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = LevyraText,
+                            unfocusedTextColor = LevyraText,
+                            focusedBorderColor = LevyraCyan,
+                            unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                            cursorColor = LevyraCyan
+                        )
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { creating = true }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(Icons.Rounded.Add, null, tint = LevyraCyan)
+                        Text("Crea nuova playlist", color = LevyraCyan, fontWeight = FontWeight.Bold)
+                    }
+                    playlists.forEach { pl ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onAddTo(pl.id) }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.QueueMusic, null, tint = LevyraMuted)
+                            Text(pl.name, color = LevyraText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (creating) {
+                TextButton(onClick = { if (name.isNotBlank()) onCreateWith(name) }) {
+                    Text("Crea e aggiungi", color = LevyraCyan, fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Chiudi", color = LevyraMuted) }
+        }
+    )
+}
+
+/** Overlay a schermo intero con il contenuto di una playlist. */
+@Composable
+private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiState) {
+    val playlist = state.openPlaylist ?: return
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LevyraInk)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { viewModel.closePlaylist() }) {
+                        Icon(Icons.Rounded.ArrowBack, contentDescription = "Indietro", tint = LevyraText)
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(playlist.name, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (playlist.size == 1) "1 brano" else "${playlist.size} brani", color = LevyraMuted, fontSize = 14.sp)
+                    }
+                    if (playlist.tracks.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.playPlaylist(playlist.id) }) {
+                            Icon(Icons.Rounded.PlaylistPlay, contentDescription = "Riproduci tutto", tint = LevyraCyan, modifier = Modifier.size(30.dp))
+                        }
+                    }
+                }
+            }
+            if (playlist.tracks.isEmpty()) {
+                item { EmptyState("Playlist vuota. Aggiungi brani dai tre puntini su un brano.") }
+            } else {
+                items(playlist.tracks, key = { "pldetail-${it.id}" }) { track ->
+                    TrackRow(
+                        track = track,
+                        isCurrent = track.id == state.currentTrack?.id,
+                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                        isFavorite = track.id in state.favoriteIds,
+                        onClick = { viewModel.playPlaylist(playlist.id, track.id) },
+                        onFavorite = { viewModel.toggleFavorite(track) },
+                        isDownloading = track.id in state.downloadingTrackIds,
+                        isDownloaded = track.id in state.downloadedTrackIds,
+                        onDownload = { viewModel.exportTrack(track) },
+                        onArtist = { viewModel.openArtist(track) },
+                        onRemove = { viewModel.removeFromPlaylist(playlist.id, track.id) }
+                    )
+                }
+            }
         }
     }
 }
@@ -4552,7 +4837,9 @@ private fun TrackRow(
     isDownloading: Boolean = false,
     isDownloaded: Boolean = false,
     onDownload: (() -> Unit)? = null,
-    onArtist: (() -> Unit)? = null
+    onArtist: (() -> Unit)? = null,
+    onAddToPlaylist: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -4596,6 +4883,34 @@ private fun TrackRow(
                 contentDescription = "Preferito",
                 tint = if (isFavorite) LevyraPink else LevyraMuted
             )
+        }
+        if (onAddToPlaylist != null || onRemove != null) {
+            var menuOpen by remember { mutableStateOf(false) }
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Rounded.MoreVert, contentDescription = "Altro", tint = LevyraMuted)
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                    modifier = Modifier.background(LevyraPanel)
+                ) {
+                    if (onAddToPlaylist != null) {
+                        DropdownMenuItem(
+                            text = { Text("Aggiungi a playlist", color = LevyraText) },
+                            leadingIcon = { Icon(Icons.Rounded.Add, null, tint = LevyraCyan) },
+                            onClick = { menuOpen = false; onAddToPlaylist() }
+                        )
+                    }
+                    if (onRemove != null) {
+                        DropdownMenuItem(
+                            text = { Text("Rimuovi dalla playlist", color = LevyraText) },
+                            leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = LevyraMuted) },
+                            onClick = { menuOpen = false; onRemove() }
+                        )
+                    }
+                }
+            }
         }
     }
 }
