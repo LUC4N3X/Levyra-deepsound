@@ -38,6 +38,13 @@
   ·
   <a href="#-legal-disclaimer"><strong>Disclaimer</strong></a>
 </p>
+<br>
+
+<p align="center">
+  <img src="https://i.ibb.co/QvvyvjbB/file-00000000510c7246bfd7ea7570fbe726.png" alt="Levyra app preview" width="100%" />
+</p>
+
+<br>
 
 </div>
 
