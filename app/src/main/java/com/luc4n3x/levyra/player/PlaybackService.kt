@@ -26,13 +26,8 @@ class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
 
     companion object {
-        /** Chiave extra nel MediaItem per lo stream video-only da mergiare con l'audio. */
         const val EXTRA_VIDEO_URL = "levyra.videoUrl"
 
-        /**
-         * ExoPlayer reale della sessione attiva. Serve alla UI per collegare la video
-         * surface (PlayerView) direttamente al player che decodifica i frame.
-         */
         @Volatile
         var activePlayer: ExoPlayer? = null
             private set
@@ -41,7 +36,7 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(2_500, 50_000, 150, 350)
+            .setBufferDurationsMs(1_500, 50_000, 500, 1_000)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
         val okHttpClient = LevyraHttpClientFactory.media(this)
@@ -64,11 +59,8 @@ class PlaybackService : MediaSessionService() {
             .setCacheWriteDataSinkFactory(cacheSinkFactory)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 
-        // Factory di default: gestisce progressive (audio-only, muxed) e HLS.
         val defaultFactory = DefaultMediaSourceFactory(cacheDataSourceFactory)
 
-        // Factory custom: se il MediaItem porta un extra video, costruisce un
-        // MergingMediaSource(video-only + audio-only). Altrimenti delega al default.
         val mergingFactory = LevyraMediaSourceFactory(defaultFactory, cacheDataSourceFactory)
 
         val player = ExoPlayer.Builder(this)
@@ -107,13 +99,6 @@ class PlaybackService : MediaSessionService() {
     }
 }
 
-/**
- * MediaSource.Factory che intercetta i MediaItem con extra [PlaybackService.EXTRA_VIDEO_URL].
- * Quando presente, costruisce un [MergingMediaSource] combinando la traccia video-only
- * (uri video) con la traccia audio-only (uri principale del MediaItem). È il pattern usato
- * da NewPipe/Metrolist per riprodurre i music video di YouTube, dove YouTube fornisce
- * audio e video come stream adaptive separati.
- */
 @UnstableApi
 private class LevyraMediaSourceFactory(
     private val delegate: DefaultMediaSourceFactory,
@@ -141,11 +126,9 @@ private class LevyraMediaSourceFactory(
             ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_URL)
 
         if (videoUrl.isNullOrBlank()) {
-            // Audio-only, muxed o HLS: percorso standard.
             return delegate.createMediaSource(mediaItem)
         }
 
-        // MediaItem principale = traccia audio (uri già impostato).
         val audioSource = ProgressiveMediaSource.Factory(dataSourceFactory)
             .createMediaSource(mediaItem)
 
@@ -153,7 +136,6 @@ private class LevyraMediaSourceFactory(
         val videoSource = ProgressiveMediaSource.Factory(dataSourceFactory)
             .createMediaSource(videoItem)
 
-        // video prima, audio dopo: il timeline segue la traccia più lunga.
         return MergingMediaSource(
             /* adjustPeriodTimeOffsets = */ true,
             /* clipDurations = */ false,
