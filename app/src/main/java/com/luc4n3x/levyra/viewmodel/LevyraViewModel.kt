@@ -92,6 +92,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var queueIndex: Int = -1
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
+    val playerController get() = player.controller
 
     init {
         val favorites = favoritesStore.load()
@@ -185,21 +186,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(repeatMode = mode) }
     }
 
-    
-        fun toggleVideoMode() {
+    fun toggleVideoMode() {
         val current = _state.value.isVideoMode
         val track = _state.value.currentTrack ?: return
-        
-        _state.update { it.copy(isVideoMode = !current, isResolving = true) }
+        val newVideoMode = !current
+        _state.update { it.copy(isVideoMode = newVideoMode, isResolving = true) }
         val oldPosition = player.positionMs
-        
+        player.stop()
         viewModelScope.launch {
-            val resolved = resolver.resolve(track.copy(streamUrl = ""), !current)
-            _state.update { it.copy(currentTrack = resolved, isResolving = false) }
-            player.play(resolved)
-            if (oldPosition > 0) {
-                kotlinx.coroutines.delay(200) // Give player a moment to prepare
-                player.seekTo(oldPosition)
+            try {
+                val resolved = withContext(Dispatchers.IO) {
+                    resolver.resolve(track.copy(streamUrl = ""), newVideoMode)
+                }
+                _state.update { it.copy(currentTrack = resolved, isResolving = false, isPlaying = true) }
+                player.play(resolved)
+                if (oldPosition > 0L) {
+                    delay(300)
+                    player.seekTo(oldPosition)
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                _state.update { it.copy(isResolving = false, isVideoMode = current, playerError = e.message) }
             }
         }
     }

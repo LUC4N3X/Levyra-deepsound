@@ -69,9 +69,6 @@ class LevyraPlayer(context: Context) {
             return if (duration == C.TIME_UNSET) 0L else duration.coerceAtLeast(0L)
         }
 
-    fun seekTo(positionMs: Long) {
-        controller?.seekTo(positionMs)
-    }
 
     fun play(track: Track) {
         require(track.streamUrl.isNotBlank()) { "Stream URL assente per ${track.title}" }
