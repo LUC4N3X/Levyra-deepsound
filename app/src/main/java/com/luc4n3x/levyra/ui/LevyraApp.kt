@@ -840,10 +840,6 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
     }
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Background                                                                          */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     val start = accentStart?.let { Color(it) } ?: LevyraCyan
@@ -861,73 +857,47 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     )
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Home                                                                                */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
-    val heroUpdate = remember(
-        state.currentTrack,
-        state.tracks,
-        state.homeSections,
-        state.charts,
-        state.favorites
-    ) {
+    val heroUpdate = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
         pickHeroUpdate(state)
     }
     val heroTrack = heroUpdate?.track
-    val quickTracks = remember(
-        state.currentTrack,
-        state.tracks,
-        state.homeSections,
-        state.charts,
-        state.favorites
-    ) {
+    val quickTracks = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
         buildQuickPickTracks(state, heroTrack)
     }
-    val feedSections = remember(state.homeSections) {
-        state.homeSections
-            .filterNot { isQuickPicksSectionTitle(it.title) }
-            .take(2)
+    val newReleases = remember(state.homeSections) {
+        state.homeSections.firstOrNull { isVerifiedReleaseSectionTitle(it.title) }
+    }
+    val albumsForYou = remember(state.homeSections) {
+        state.homeSections.firstOrNull { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
     }
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding(),
+        modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                GreetingBar(
-                    state.userName,
-                    state.isResolving,
-                    onSettings = viewModel::openSettings
-                )
-                MoodRow(
-                    moods = state.moods,
-                    selectedId = state.selectedMood?.id,
-                    onSelect = viewModel::selectMood
-                )
+                GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
+                MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
             }
         }
         if (heroUpdate != null) {
-            val heroTrack = heroUpdate.track
             item {
                 HomeDiscoveryHero(
                     update = heroUpdate,
-                    isFavorite = heroTrack.id in state.favoriteIds,
+                    isFavorite = heroUpdate.track.id in state.favoriteIds,
                     onPlay = {
                         val sourceList = when {
-                            state.tracks.any { it.id == heroTrack.id } -> state.tracks
-                            state.charts.any { it.id == heroTrack.id } -> state.charts
-                            state.favorites.any { it.id == heroTrack.id } -> state.favorites
-                            else -> listOf(heroTrack)
+                            state.tracks.any { it.id == heroUpdate.track.id } -> state.tracks
+                            state.charts.any { it.id == heroUpdate.track.id } -> state.charts
+                            state.favorites.any { it.id == heroUpdate.track.id } -> state.favorites
+                            else -> listOf(heroUpdate.track)
                         }
-                        viewModel.playFrom(sourceList, heroTrack)
+                        viewModel.playFrom(sourceList, heroUpdate.track)
                     },
-                    onSave = { viewModel.toggleFavorite(heroTrack) }
+                    onSave = { viewModel.toggleFavorite(heroUpdate.track) }
                 )
             }
         }
@@ -944,11 +914,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (quickTracks.isNotEmpty()) {
             item {
-                QuickSectionHeader(
-                    title = "Scelte rapide",
-                    actionLabel = "Riproduci",
-                    onAction = { viewModel.playAll(quickTracks) }
-                )
+                QuickSectionHeader("Quick Picks", "Play", onAction = { viewModel.playAll(quickTracks) })
             }
             item {
                 QuickSongList(
@@ -969,59 +935,54 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             }
         }
-        feedSections.forEachIndexed { index, section ->
-            if (section.tracks.isNotEmpty()) {
-                item(key = "sec-h-$index") {
-                    SectionHeaderAction(
-                        section.title,
-                        onPlayAll = { viewModel.playAll(section.tracks) }
-                    )
-                }
-                item(key = "sec-r-$index") {
-                    AlbumCardRow(
-                        tracks = section.tracks,
-                        currentId = state.currentTrack?.id,
-                        onPlay = { viewModel.playFrom(section.tracks, it) }
-                    )
-                }
+        if (newReleases != null && newReleases.tracks.isNotEmpty()) {
+            item(key = "sec-new-releases-header") {
+                SectionHeaderAction("New Releases", onPlayAll = { viewModel.playAll(newReleases.tracks) })
+            }
+            item(key = "sec-new-releases-row") {
+                AlbumCardRow(
+                    tracks = newReleases.tracks,
+                    currentId = state.currentTrack?.id,
+                    animationsEnabled = state.animationsEnabled,
+                    onPlay = { viewModel.playFrom(newReleases.tracks, it) }
+                )
+            }
+        }
+        if (albumsForYou != null && albumsForYou.tracks.isNotEmpty()) {
+            item(key = "sec-albums-for-you-header") {
+                SectionHeaderAction("Albums For You", onPlayAll = { viewModel.playAll(albumsForYou.tracks) })
+            }
+            item(key = "sec-albums-for-you-row") {
+                AlbumCardRow(
+                    tracks = albumsForYou.tracks,
+                    currentId = state.currentTrack?.id,
+                    animationsEnabled = state.animationsEnabled,
+                    onPlay = { viewModel.playFrom(albumsForYou.tracks, it) }
+                )
             }
         }
         item {
             val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-            SectionHeaderAction(
-                "📈 Classifica ${region?.label ?: "Italia"} ${region?.emoji ?: ""}",
-                onPlayAll = { viewModel.playAll(state.charts) }
-            )
+            SectionHeaderAction("Chart ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
         }
         item {
-            ChartRegionRow(
-                regions = state.chartRegions,
-                selectedId = state.selectedChartId,
-                loading = state.isLoadingCharts,
-                onSelect = viewModel::selectChart
-            )
+            ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
         }
         if (state.charts.isEmpty()) {
             item {
                 if (state.isLoadingCharts) {
-                    GlassMessage("Carico la classifica…", LevyraCyan)
+                    GlassMessage("Loading chart...", LevyraCyan)
                 } else {
-                    GlassMessage("Classifica non disponibile, riprova tra poco", LevyraOrange)
+                    GlassMessage("Chart not available, try again later", LevyraOrange)
                 }
             }
         }
         if (state.charts.isNotEmpty()) {
             item {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     val chunks = state.charts.chunked(4)
                     itemsIndexed(chunks) { chunkIndex, chunk ->
-                        Column(
-                            modifier = Modifier.width(320.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
+                        Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             chunk.forEachIndexed { itemIndex, track ->
                                 val rank = chunkIndex * 4 + itemIndex + 1
                                 ChartRow(
@@ -1464,8 +1425,6 @@ private fun HomeDiscoveryHero(
     }
 }
 
-
-
 @Composable
 private fun ContinueListeningCard(
     track: Track,
@@ -1630,7 +1589,6 @@ private fun HomeShortcutRow(
     }
 }
 
-
 @Composable
 private fun QuickSectionHeader(title: String, actionLabel: String, onAction: () -> Unit) {
     Row(
@@ -1674,9 +1632,6 @@ private fun QuickSectionHeader(title: String, actionLabel: String, onAction: () 
     }
 }
 
-
-
-
 @Composable
 private fun QuickSongList(
     tracks: List<Track>,
@@ -1709,9 +1664,6 @@ private fun QuickSongList(
         }
     }
 }
-
-
-
 
 @Composable
 private fun QuickSongRow(
@@ -1819,8 +1771,6 @@ private fun QuickSongRow(
         )
     }
 }
-
-
 
 @Composable
 private fun TrackOverflowMenu(
@@ -1934,10 +1884,6 @@ private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
         }
     }
 }
-
-/* ----------------------------------------------------------------------------------- */
-/* Search                                                                              */
-/* ----------------------------------------------------------------------------------- */
 
 @Composable
 private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
@@ -2228,7 +2174,7 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = { /* Decorative or voice trigger */ },
+            onClick = {  },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
@@ -2242,7 +2188,7 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = { /* Decorative or visualizer trigger */ },
+            onClick = {  },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
@@ -2453,10 +2399,6 @@ private fun SuggestionsList(
     }
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Library                                                                             */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     LazyColumn(
@@ -2553,10 +2495,6 @@ private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onDelete:
         }
     }
 }
-
-/* ----------------------------------------------------------------------------------- */
-/* Player                                                                              */
-/* ----------------------------------------------------------------------------------- */
 
 @Composable
 private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
@@ -2877,10 +2815,6 @@ private fun trimSpeed(speed: Float): String {
     return if (speed % 1f == 0f) speed.toInt().toString() else speed.toString().trimEnd('0').trimEnd('.')
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Onboarding                                                                          */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun OnboardingOverlay(tastes: List<Taste>, onDone: (String, Set<String>) -> Unit) {
     var selected by remember { mutableStateOf(setOf<String>()) }
@@ -2892,7 +2826,7 @@ private fun OnboardingOverlay(tastes: List<Taste>, onDone: (String, Set<String>)
             .background(
                 Brush.verticalGradient(listOf(Color(0xFF0B0F1C), LevyraBlack))
             )
-            // Consume taps so controls behind the overlay are not reachable.
+
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
@@ -2989,10 +2923,6 @@ private fun TasteCard(taste: Taste, selected: Boolean, modifier: Modifier, onCli
         }
     }
 }
-
-/* ----------------------------------------------------------------------------------- */
-/* Settings                                                                            */
-/* ----------------------------------------------------------------------------------- */
 
 @Composable
 private fun SettingsOverlay(
@@ -3332,10 +3262,6 @@ private fun SettingsMiniButton(
     }
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Reusable pieces                                                                     */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit) {
     Row(
@@ -3614,18 +3540,17 @@ private fun MetroDiscoveryRail(tracks: List<Track>, currentId: String?, onPlay: 
 private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boolean, modifier: Modifier = Modifier) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    
-    // Breathing animation for the shadow
+
     val scale by animateFloatAsState(
         targetValue = if (isPlaying && !isResolving) 1.05f else 1.0f,
         label = "BreathingShadow"
     )
-    
+
     Box(
         modifier = modifier.aspectRatio(1f),
         contentAlignment = Alignment.Center
     ) {
-        // Glowing animated shadow behind the artwork
+
         Box(
             modifier = Modifier
                 .fillMaxSize(0.9f)
@@ -3639,7 +3564,7 @@ private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boole
                     CircleShape
                 )
         )
-        // Actual Artwork
+
         CoverImage(
             track = track,
             modifier = Modifier
@@ -3832,8 +3757,8 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
         Text(
             text = title,
             color = LevyraText,
-            fontSize = 19.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
@@ -3845,35 +3770,57 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
             modifier = Modifier.pressable(onClick = onPlayAll)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
-                Text("Riproduci", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(16.dp))
+                Text("Play All", color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-/** Horizontal row of square cover cards with title/subtitle, our take on the YT Music shelves. */
 @Composable
-private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track) -> Unit) {
+private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         itemsIndexed(tracks, key = { index, track -> "album-card-$index-${track.id}" }) { index, track ->
             val isCurrent = track.id == currentId
+            var isPressed by remember { mutableStateOf(false) }
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed && animationsEnabled) 0.95f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "scale"
+            )
+            val modifier = if (animationsEnabled) {
+                Modifier.graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+            } else Modifier
             Column(
-                modifier = Modifier
-                    .width(158.dp)
-                    .pressable(onClick = { onPlay(track) }),
-                verticalArrangement = Arrangement.spacedBy(9.dp)
+                modifier = modifier
+                    .width(164.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                isPressed = true
+                                tryAwaitRelease()
+                                isPressed = false
+                            },
+                            onTap = { onPlay(track) }
+                        )
+                    },
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
                     color = Color.Transparent,
-                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.05f)),
-                    shape = RoundedCornerShape(12.dp),
-                    shadowElevation = 0.dp
+                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f)),
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = if (animationsEnabled) 8.dp else 0.dp
                 ) {
                     Box(
                         modifier = Modifier
@@ -3885,19 +3832,20 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track
                             track = track,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(16.dp)),
+                            highRes = true
                         )
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.4f))))
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))))
                         )
                         Surface(
-                            color = Color.Black.copy(alpha = 0.42f),
+                            color = Color.Black.copy(alpha = 0.5f),
                             shape = CircleShape,
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(10.dp)
+                                .padding(12.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
@@ -3910,16 +3858,16 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track
                         }
                     }
                 }
-                Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 13.sp, lineHeight = 15.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val kind = if (track.album.isNotBlank() && track.album != track.title && track.album != "YouTube Music") "Album" else "Single"
+                    Text("$kind • ${track.artist}", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }
 }
 
-
-
-/** Horizontally paged stacked track rows (YouTube Music "Brani di tendenza" style). */
 @Composable
 private fun RowCarousel(
     tracks: List<Track>,
@@ -4823,7 +4771,7 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     if (raw.isBlank()) {
         EmptyCover(modifier)
     } else {
-        // Lists request a tiny image (fast to download); only the player loads full quality.
+
         val model = if (highRes) raw else smallThumb(raw)
         val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 200 else 0
         AsyncImage(
@@ -4838,7 +4786,6 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     }
 }
 
-/** Rewrites known cover URLs (YouTube, Apple) to a small, fast-loading size for list thumbnails. */
 private fun smallThumb(url: String): String {
     var u = url
     u = u.replace(Regex("=w\\d+-h\\d+[^=]*$"), "=w160-h160-l90-rj")
