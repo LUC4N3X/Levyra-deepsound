@@ -186,13 +186,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     
-    fun toggleVideoMode() {
+        fun toggleVideoMode() {
         val current = _state.value.isVideoMode
-        _state.update { it.copy(isVideoMode = !current) }
-        if (!current) {
-            player.pause()
-        } else {
-            _state.value.currentTrack?.let { player.play(it) }
+        val track = _state.value.currentTrack ?: return
+        
+        _state.update { it.copy(isVideoMode = !current, isResolving = true) }
+        val oldPosition = player.positionMs
+        
+        viewModelScope.launch {
+            val resolved = resolver.resolve(track.copy(streamUrl = ""), !current)
+            _state.update { it.copy(currentTrack = resolved, isResolving = false) }
+            player.play(resolved)
+            if (oldPosition > 0) {
+                kotlinx.coroutines.delay(200) // Give player a moment to prepare
+                player.seekTo(oldPosition)
+            }
         }
     }
 
@@ -712,7 +720,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
         // Instant path: the stream is already resolved or warm in cache, start immediately.
         val playableTrack = youtubePlayableTrack(track) ?: track
-        val instant = resolver.cached(playableTrack)
+        val instant = resolver.cached(playableTrack, _state.value.isVideoMode)
         if (instant != null) {
             startPlayback(instant)
             prefetchAround(instant)
@@ -1038,7 +1046,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun resolvePlayableTrack(track: Track): Track {
-        val resolved = resolver.resolve(track.copy(streamUrl = ""))
+        val resolved = resolver.resolve(track.copy(streamUrl = ""), _state.value.isVideoMode)
         if (resolved.id != track.id) {
             throw IllegalStateException("Resolver bloccato: il brano risolto non corrisponde al brano selezionato")
         }
