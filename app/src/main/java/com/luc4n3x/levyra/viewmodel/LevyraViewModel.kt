@@ -185,6 +185,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(repeatMode = mode) }
     }
 
+    
+    fun toggleVideoMode() {
+        val current = _state.value.isVideoMode
+        _state.update { it.copy(isVideoMode = !current) }
+        if (!current) {
+            player.pause()
+        } else {
+            _state.value.currentTrack?.let { player.play(it) }
+        }
+    }
+
     fun toggleShuffle() {
         _state.update { it.copy(shuffleEnabled = !it.shuffleEnabled) }
     }
@@ -877,6 +888,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = _state.value
         return snapshot.queue.ifEmpty { snapshot.searchResults }.ifEmpty { snapshot.tracks }
     }
+
+    fun play() = _state.value.currentTrack?.let { player.play(it) }
+    fun pause() = player.pause()
 
     fun togglePlay() {
         val current = _state.value.currentTrack ?: return

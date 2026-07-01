@@ -120,6 +120,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -2544,14 +2545,74 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             item { EmptyState("Cerca un brano e premi play") }
         } else {
             item {
-                FloatingArtwork(
-                    track = track,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 16.dp)
-                )
+                if (track.videoUrl.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp, bottom = 12.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                        ) {
+                            Row(modifier = Modifier.padding(4.dp)) {
+                                Surface(
+                                    color = if (!state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent,
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.clickable { if (state.isVideoMode) viewModel.toggleVideoMode() }
+                                ) {
+                                    Text("Brano", color = if (!state.isVideoMode) Color.White else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                                }
+                                Surface(
+                                    color = if (state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent,
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.clickable { if (!state.isVideoMode) viewModel.toggleVideoMode() }
+                                ) {
+                                    Text("Video", color = if (state.isVideoMode) Color.White else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (state.isVideoMode && track.videoUrl.isNotBlank()) {
+                    val videoId = track.id
+                    AndroidView(
+                        factory = { ctx ->
+                            android.webkit.WebView(ctx).apply {
+                                settings.javaScriptEnabled = true
+                                settings.mediaPlaybackRequiresUserGesture = false
+                                settings.domStorageEnabled = true
+                                webChromeClient = android.webkit.WebChromeClient()
+                                webViewClient = android.webkit.WebViewClient()
+                                val html = """
+                                    <html>
+                                    <body style="margin:0;padding:0;background-color:#000;">
+                                        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/$videoId?autoplay=1&controls=0&modestbranding=1&playsinline=1" frameborder="0" allow="autoplay; fullscreen"></iframe>
+                                    </body>
+                                    </html>
+                                """.trimIndent()
+                                loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "UTF-8", null)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .padding(bottom = 16.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                } else {
+                    FloatingArtwork(
+                        track = track,
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                }
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2788,14 +2849,14 @@ private fun OptionChip(icon: ImageVector, label: String, active: Boolean, modifi
 }
 
 @Composable
-private fun ShareOptionChip(track: Track, modifier: Modifier) {
+private fun ShareOptionChip(track: Track, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     Surface(
         color = Color.White.copy(alpha = 0.06f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(16.dp),
+        shape = CircleShape,
         modifier = modifier
-            .height(48.dp)
+            .size(48.dp)
             .pressable {
                 val link = track.videoUrl.ifBlank { "https://music.youtube.com/watch?v=${track.id}" }
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -2806,14 +2867,8 @@ private fun ShareOptionChip(track: Track, modifier: Modifier) {
                 context.startActivity(Intent.createChooser(intent, "Condividi brano"))
             }
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Rounded.Share, null, tint = LevyraText, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(7.dp))
-            Text("Condividi", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        Box(contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Share, null, tint = LevyraText, modifier = Modifier.size(20.dp))
         }
     }
 }
