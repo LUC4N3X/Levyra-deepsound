@@ -4,6 +4,8 @@
 
 <br>
 
+---
+
 <h3>Modern Android music player built for fast discovery, rich artwork and immersive playback.</h3>
 
 <p>
