@@ -1,5 +1,10 @@
+@file:OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -99,6 +104,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -116,6 +125,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -146,6 +156,8 @@ import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
+import com.luc4n3x.levyra.ui.theme.LevyraInk
+import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraOrange
@@ -188,8 +200,10 @@ fun LevyraApp(viewModel: LevyraViewModel) {
             viewModel.clearUpdateMessage()
         }
     }
-    BackHandler(enabled = state.showUpdatePrompt || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.selectedTab != LevyraTab.Home) {
-        if (!viewModel.navigateBack()) {
+    BackHandler(enabled = state.openPlaylist != null || state.showUpdatePrompt || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.selectedTab != LevyraTab.Home) {
+        if (state.openPlaylist != null) {
+            viewModel.closePlaylist()
+        } else if (!viewModel.navigateBack()) {
             activity?.finish()
         }
     }
@@ -317,6 +331,10 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onDownload = viewModel::exportTrack,
                     onClose = viewModel::closeArtist
                 )
+            }
+
+            AnimatedVisibility(visible = state.openPlaylist != null, enter = overlayEnter, exit = overlayExit) {
+                PlaylistDetailOverlay(viewModel = viewModel, state = state)
             }
         }
     }
@@ -840,10 +858,6 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
     }
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Background                                                                          */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     val start = accentStart?.let { Color(it) } ?: LevyraCyan
@@ -861,73 +875,47 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     )
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Home                                                                                */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
-    val heroUpdate = remember(
-        state.currentTrack,
-        state.tracks,
-        state.homeSections,
-        state.charts,
-        state.favorites
-    ) {
+    val heroUpdate = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
         pickHeroUpdate(state)
     }
     val heroTrack = heroUpdate?.track
-    val quickTracks = remember(
-        state.currentTrack,
-        state.tracks,
-        state.homeSections,
-        state.charts,
-        state.favorites
-    ) {
+    val quickTracks = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
         buildQuickPickTracks(state, heroTrack)
     }
-    val feedSections = remember(state.homeSections) {
-        state.homeSections
-            .filterNot { isQuickPicksSectionTitle(it.title) }
-            .take(2)
+    val newReleases = remember(state.homeSections) {
+        state.homeSections.firstOrNull { isVerifiedReleaseSectionTitle(it.title) }
+    }
+    val otherSections = remember(state.homeSections) {
+        state.homeSections.filter { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
     }
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding(),
+        modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                GreetingBar(
-                    state.userName,
-                    state.isResolving,
-                    onSettings = viewModel::openSettings
-                )
-                MoodRow(
-                    moods = state.moods,
-                    selectedId = state.selectedMood?.id,
-                    onSelect = viewModel::selectMood
-                )
+                GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
+                MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
             }
         }
         if (heroUpdate != null) {
-            val heroTrack = heroUpdate.track
             item {
                 HomeDiscoveryHero(
                     update = heroUpdate,
-                    isFavorite = heroTrack.id in state.favoriteIds,
+                    isFavorite = heroUpdate.track.id in state.favoriteIds,
                     onPlay = {
                         val sourceList = when {
-                            state.tracks.any { it.id == heroTrack.id } -> state.tracks
-                            state.charts.any { it.id == heroTrack.id } -> state.charts
-                            state.favorites.any { it.id == heroTrack.id } -> state.favorites
-                            else -> listOf(heroTrack)
+                            state.tracks.any { it.id == heroUpdate.track.id } -> state.tracks
+                            state.charts.any { it.id == heroUpdate.track.id } -> state.charts
+                            state.favorites.any { it.id == heroUpdate.track.id } -> state.favorites
+                            else -> listOf(heroUpdate.track)
                         }
-                        viewModel.playFrom(sourceList, heroTrack)
+                        viewModel.playFrom(sourceList, heroUpdate.track)
                     },
-                    onSave = { viewModel.toggleFavorite(heroTrack) }
+                    onSave = { viewModel.toggleFavorite(heroUpdate.track) }
                 )
             }
         }
@@ -944,11 +932,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (quickTracks.isNotEmpty()) {
             item {
-                QuickSectionHeader(
-                    title = "Scelte rapide",
-                    actionLabel = "Riproduci",
-                    onAction = { viewModel.playAll(quickTracks) }
-                )
+                QuickSectionHeader("Quick Picks", "Play", onAction = { viewModel.playAll(quickTracks) })
             }
             item {
                 QuickSongList(
@@ -969,18 +953,30 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             }
         }
-        feedSections.forEachIndexed { index, section ->
+        if (newReleases != null && newReleases.tracks.isNotEmpty()) {
+            item(key = "sec-new-releases-header") {
+                SectionHeaderAction("New Releases", onPlayAll = { viewModel.playAll(newReleases.tracks) })
+            }
+            item(key = "sec-new-releases-row") {
+                AlbumCardRow(
+                    tracks = newReleases.tracks,
+                    currentId = state.currentTrack?.id,
+                    animationsEnabled = state.animationsEnabled,
+                    onPlay = { viewModel.playFrom(newReleases.tracks, it) }
+                )
+            }
+        }
+        otherSections.forEachIndexed { index, section ->
             if (section.tracks.isNotEmpty()) {
-                item(key = "sec-h-$index") {
-                    SectionHeaderAction(
-                        section.title,
-                        onPlayAll = { viewModel.playAll(section.tracks) }
-                    )
+                val title = if (index == 0) "Albums For You" else section.title
+                item(key = "sec-other-${index}-header") {
+                    SectionHeaderAction(title, onPlayAll = { viewModel.playAll(section.tracks) })
                 }
-                item(key = "sec-r-$index") {
+                item(key = "sec-other-${index}-row") {
                     AlbumCardRow(
                         tracks = section.tracks,
                         currentId = state.currentTrack?.id,
+                        animationsEnabled = state.animationsEnabled,
                         onPlay = { viewModel.playFrom(section.tracks, it) }
                     )
                 }
@@ -988,40 +984,26 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         item {
             val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-            SectionHeaderAction(
-                "📈 Classifica ${region?.label ?: "Italia"} ${region?.emoji ?: ""}",
-                onPlayAll = { viewModel.playAll(state.charts) }
-            )
+            SectionHeaderAction("Top 50 ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
         }
         item {
-            ChartRegionRow(
-                regions = state.chartRegions,
-                selectedId = state.selectedChartId,
-                loading = state.isLoadingCharts,
-                onSelect = viewModel::selectChart
-            )
+            ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
         }
         if (state.charts.isEmpty()) {
             item {
                 if (state.isLoadingCharts) {
-                    GlassMessage("Carico la classifica…", LevyraCyan)
+                    GlassMessage("Loading Top 50...", LevyraCyan)
                 } else {
-                    GlassMessage("Classifica non disponibile, riprova tra poco", LevyraOrange)
+                    GlassMessage("Top 50 not available, try again later", LevyraOrange)
                 }
             }
         }
         if (state.charts.isNotEmpty()) {
             item {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     val chunks = state.charts.chunked(4)
                     itemsIndexed(chunks) { chunkIndex, chunk ->
-                        Column(
-                            modifier = Modifier.width(320.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
+                        Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             chunk.forEachIndexed { itemIndex, track ->
                                 val rank = chunkIndex * 4 + itemIndex + 1
                                 ChartRow(
@@ -1464,8 +1446,6 @@ private fun HomeDiscoveryHero(
     }
 }
 
-
-
 @Composable
 private fun ContinueListeningCard(
     track: Track,
@@ -1630,7 +1610,6 @@ private fun HomeShortcutRow(
     }
 }
 
-
 @Composable
 private fun QuickSectionHeader(title: String, actionLabel: String, onAction: () -> Unit) {
     Row(
@@ -1674,9 +1653,6 @@ private fun QuickSectionHeader(title: String, actionLabel: String, onAction: () 
     }
 }
 
-
-
-
 @Composable
 private fun QuickSongList(
     tracks: List<Track>,
@@ -1709,9 +1685,6 @@ private fun QuickSongList(
         }
     }
 }
-
-
-
 
 @Composable
 private fun QuickSongRow(
@@ -1819,8 +1792,6 @@ private fun QuickSongRow(
         )
     }
 }
-
-
 
 @Composable
 private fun TrackOverflowMenu(
@@ -1934,10 +1905,6 @@ private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
         }
     }
 }
-
-/* ----------------------------------------------------------------------------------- */
-/* Search                                                                              */
-/* ----------------------------------------------------------------------------------- */
 
 @Composable
 private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
@@ -2228,7 +2195,7 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = { /* Decorative or voice trigger */ },
+            onClick = {  },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
@@ -2242,7 +2209,7 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = { /* Decorative or visualizer trigger */ },
+            onClick = {  },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
@@ -2453,12 +2420,10 @@ private fun SuggestionsList(
     }
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Library                                                                             */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+    var addTarget by remember { mutableStateOf<Track?>(null) }
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -2466,7 +2431,45 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        item { PageHeader("Libreria", "Preferiti, download e cronologia") }
+        item { PageHeader("Libreria", "Playlist, preferiti, download e cronologia") }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                SectionTitle("🎵 Le tue playlist")
+                var showCreate by remember { mutableStateOf(false) }
+                TextButton(onClick = { showCreate = true }) {
+                    Icon(Icons.Rounded.Add, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Nuova", color = LevyraCyan, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+                if (showCreate) {
+                    PlaylistCreateDialog(
+                        onDismiss = { showCreate = false },
+                        onConfirm = { name ->
+                            viewModel.createPlaylist(name)
+                            showCreate = false
+                        }
+                    )
+                }
+            }
+        }
+        if (state.playlists.isEmpty()) {
+            item { EmptyState("Crea una playlist e aggiungi i tuoi brani preferiti") }
+        } else {
+            items(state.playlists, key = { "pl-${it.id}" }) { playlist ->
+                PlaylistRow(
+                    playlist = playlist,
+                    onOpen = { viewModel.openPlaylist(playlist.id) },
+                    onPlay = { viewModel.playPlaylist(playlist.id) },
+                    onDelete = { viewModel.deletePlaylist(playlist.id) }
+                )
+            }
+        }
+
         item { SectionTitle("⬇️ Download offline") }
         if (state.downloads.isEmpty()) {
             item { EmptyState("Tocca l'icona di download su un brano per salvarlo in Music/Levyra") }
@@ -2495,7 +2498,8 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     isDownloading = track.id in state.downloadingTrackIds,
                     isDownloaded = track.id in state.downloadedTrackIds,
                     onDownload = { viewModel.exportTrack(track) },
-                    onArtist = { viewModel.openArtist(track) }
+                    onArtist = { viewModel.openArtist(track) },
+                    onAddToPlaylist = { addTarget = track }
                 )
             }
         }
@@ -2512,9 +2516,27 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 isDownloading = track.id in state.downloadingTrackIds,
                 isDownloaded = track.id in state.downloadedTrackIds,
                 onDownload = { viewModel.exportTrack(track) },
-                onArtist = { viewModel.openArtist(track) }
+                onArtist = { viewModel.openArtist(track) },
+                onAddToPlaylist = { addTarget = track }
             )
         }
+    }
+
+    addTarget?.let { track ->
+        AddToPlaylistDialog(
+            track = track,
+            playlists = state.playlists,
+            onDismiss = { addTarget = null },
+            onAddTo = { playlistId ->
+                viewModel.addToPlaylist(playlistId, track)
+                addTarget = null
+            },
+            onCreateWith = { name ->
+                viewModel.createPlaylist(name, track)
+                addTarget = null
+            }
+        )
+    }
     }
 }
 
@@ -2554,9 +2576,219 @@ private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onDelete:
     }
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Player                                                                              */
-/* ----------------------------------------------------------------------------------- */
+@Composable
+private fun PlaylistRow(
+    playlist: com.luc4n3x.levyra.domain.Playlist,
+    onOpen: () -> Unit,
+    onPlay: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onOpen() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.32f), LevyraViolet.copy(alpha = 0.32f)))),
+            contentAlignment = Alignment.Center
+        ) {
+            if (playlist.coverUrl.isNotBlank()) {
+                AsyncImage(
+                    model = playlist.coverUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(Icons.Rounded.QueueMusic, null, tint = LevyraCyan, modifier = Modifier.size(26.dp))
+            }
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(playlist.name, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                if (playlist.size == 1) "1 brano" else "${playlist.size} brani",
+                color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Medium
+            )
+        }
+        IconButton(onClick = onPlay) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = "Riproduci", tint = LevyraCyan, modifier = Modifier.size(26.dp))
+        }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Rounded.Delete, contentDescription = "Elimina", tint = LevyraMuted, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun PlaylistCreateDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LevyraPanel,
+        title = { Text("Nuova playlist", color = LevyraText, fontWeight = FontWeight.Black) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                placeholder = { Text("Nome della playlist", color = LevyraMuted) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = LevyraText,
+                    unfocusedTextColor = LevyraText,
+                    focusedBorderColor = LevyraCyan,
+                    unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                    cursorColor = LevyraCyan
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { if (name.isNotBlank()) onConfirm(name) }) {
+                Text("Crea", color = LevyraCyan, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annulla", color = LevyraMuted) }
+        }
+    )
+}
+
+/** Dialog per aggiungere un brano a una playlist esistente o crearne una nuova al volo. */
+@Composable
+private fun AddToPlaylistDialog(
+    track: Track,
+    playlists: List<com.luc4n3x.levyra.domain.Playlist>,
+    onDismiss: () -> Unit,
+    onAddTo: (String) -> Unit,
+    onCreateWith: (String) -> Unit
+) {
+    var creating by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LevyraPanel,
+        title = { Text("Aggiungi a playlist", color = LevyraText, fontWeight = FontWeight.Black) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (creating) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        singleLine = true,
+                        placeholder = { Text("Nome nuova playlist", color = LevyraMuted) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = LevyraText,
+                            unfocusedTextColor = LevyraText,
+                            focusedBorderColor = LevyraCyan,
+                            unfocusedBorderColor = LevyraMuted.copy(alpha = 0.4f),
+                            cursorColor = LevyraCyan
+                        )
+                    )
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { creating = true }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(Icons.Rounded.Add, null, tint = LevyraCyan)
+                        Text("Crea nuova playlist", color = LevyraCyan, fontWeight = FontWeight.Bold)
+                    }
+                    playlists.forEach { pl ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onAddTo(pl.id) }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.QueueMusic, null, tint = LevyraMuted)
+                            Text(pl.name, color = LevyraText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (creating) {
+                TextButton(onClick = { if (name.isNotBlank()) onCreateWith(name) }) {
+                    Text("Crea e aggiungi", color = LevyraCyan, fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Chiudi", color = LevyraMuted) }
+        }
+    )
+}
+
+/** Overlay a schermo intero con il contenuto di una playlist. */
+@Composable
+private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiState) {
+    val playlist = state.openPlaylist ?: return
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LevyraInk)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { viewModel.closePlaylist() }) {
+                        Icon(Icons.Rounded.ArrowBack, contentDescription = "Indietro", tint = LevyraText)
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(playlist.name, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (playlist.size == 1) "1 brano" else "${playlist.size} brani", color = LevyraMuted, fontSize = 14.sp)
+                    }
+                    if (playlist.tracks.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.playPlaylist(playlist.id) }) {
+                            Icon(Icons.Rounded.PlaylistPlay, contentDescription = "Riproduci tutto", tint = LevyraCyan, modifier = Modifier.size(30.dp))
+                        }
+                    }
+                }
+            }
+            if (playlist.tracks.isEmpty()) {
+                item { EmptyState("Playlist vuota. Aggiungi brani dai tre puntini su un brano.") }
+            } else {
+                items(playlist.tracks, key = { "pldetail-${it.id}" }) { track ->
+                    TrackRow(
+                        track = track,
+                        isCurrent = track.id == state.currentTrack?.id,
+                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                        isFavorite = track.id in state.favoriteIds,
+                        onClick = { viewModel.playPlaylist(playlist.id, track.id) },
+                        onFavorite = { viewModel.toggleFavorite(track) },
+                        isDownloading = track.id in state.downloadingTrackIds,
+                        isDownloaded = track.id in state.downloadedTrackIds,
+                        onDownload = { viewModel.exportTrack(track) },
+                        onArtist = { viewModel.openArtist(track) },
+                        onRemove = { viewModel.removeFromPlaylist(playlist.id, track.id) }
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
@@ -2599,14 +2831,87 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             item { EmptyState("Cerca un brano e premi play") }
         } else {
             item {
-                FloatingArtwork(
-                    track = track,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 16.dp)
-                )
+                if (track.videoUrl.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp, bottom = 12.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(24.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                        ) {
+                            Row(modifier = Modifier.padding(4.dp)) {
+                                Surface(
+                                    color = if (!state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent,
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.clickable { if (state.isVideoMode) viewModel.toggleVideoMode() }
+                                ) {
+                                    Text("Brano", color = if (!state.isVideoMode) Color.White else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                                }
+                                Surface(
+                                    color = if (state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent,
+                                    shape = RoundedCornerShape(20.dp),
+                                    modifier = Modifier.clickable { if (!state.isVideoMode) viewModel.toggleVideoMode() }
+                                ) {
+                                    Text("Video", color = if (state.isVideoMode) Color.White else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (state.isVideoMode && track.videoUrl.isNotBlank()) {
+                    val exo = com.luc4n3x.levyra.player.PlaybackService.activePlayer
+                    if (exo != null) {
+                        AndroidView(
+                            factory = { ctx ->
+                                androidx.media3.ui.PlayerView(ctx).apply {
+                                    useController = false
+                                    setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
+                                    setBackgroundColor(android.graphics.Color.BLACK)
+                                    // Collego la surface direttamente all'ExoPlayer che decodifica i frame.
+                                    player = exo
+                                }
+                            },
+                            update = { view ->
+                                val current = com.luc4n3x.levyra.player.PlaybackService.activePlayer
+                                if (view.player !== current) view.player = current
+                            },
+                            onRelease = { view ->
+                                view.player = null
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .padding(bottom = 16.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .padding(bottom = 16.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.Black),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
+                        }
+                    }
+                } else {
+                    FloatingArtwork(
+                        track = track,
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    )
+                }
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2843,14 +3148,14 @@ private fun OptionChip(icon: ImageVector, label: String, active: Boolean, modifi
 }
 
 @Composable
-private fun ShareOptionChip(track: Track, modifier: Modifier) {
+private fun ShareOptionChip(track: Track, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     Surface(
         color = Color.White.copy(alpha = 0.06f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(16.dp),
+        shape = CircleShape,
         modifier = modifier
-            .height(48.dp)
+            .size(48.dp)
             .pressable {
                 val link = track.videoUrl.ifBlank { "https://music.youtube.com/watch?v=${track.id}" }
                 val intent = Intent(Intent.ACTION_SEND).apply {
@@ -2861,14 +3166,8 @@ private fun ShareOptionChip(track: Track, modifier: Modifier) {
                 context.startActivity(Intent.createChooser(intent, "Condividi brano"))
             }
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Rounded.Share, null, tint = LevyraText, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(7.dp))
-            Text("Condividi", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        Box(contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.Share, null, tint = LevyraText, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -2876,10 +3175,6 @@ private fun ShareOptionChip(track: Track, modifier: Modifier) {
 private fun trimSpeed(speed: Float): String {
     return if (speed % 1f == 0f) speed.toInt().toString() else speed.toString().trimEnd('0').trimEnd('.')
 }
-
-/* ----------------------------------------------------------------------------------- */
-/* Onboarding                                                                          */
-/* ----------------------------------------------------------------------------------- */
 
 @Composable
 private fun OnboardingOverlay(tastes: List<Taste>, onDone: (String, Set<String>) -> Unit) {
@@ -2892,7 +3187,7 @@ private fun OnboardingOverlay(tastes: List<Taste>, onDone: (String, Set<String>)
             .background(
                 Brush.verticalGradient(listOf(Color(0xFF0B0F1C), LevyraBlack))
             )
-            // Consume taps so controls behind the overlay are not reachable.
+
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
@@ -2989,10 +3284,6 @@ private fun TasteCard(taste: Taste, selected: Boolean, modifier: Modifier, onCli
         }
     }
 }
-
-/* ----------------------------------------------------------------------------------- */
-/* Settings                                                                            */
-/* ----------------------------------------------------------------------------------- */
 
 @Composable
 private fun SettingsOverlay(
@@ -3332,10 +3623,6 @@ private fun SettingsMiniButton(
     }
 }
 
-/* ----------------------------------------------------------------------------------- */
-/* Reusable pieces                                                                     */
-/* ----------------------------------------------------------------------------------- */
-
 @Composable
 private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit) {
     Row(
@@ -3614,18 +3901,17 @@ private fun MetroDiscoveryRail(tracks: List<Track>, currentId: String?, onPlay: 
 private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boolean, modifier: Modifier = Modifier) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    
-    // Breathing animation for the shadow
+
     val scale by animateFloatAsState(
         targetValue = if (isPlaying && !isResolving) 1.05f else 1.0f,
         label = "BreathingShadow"
     )
-    
+
     Box(
         modifier = modifier.aspectRatio(1f),
         contentAlignment = Alignment.Center
     ) {
-        // Glowing animated shadow behind the artwork
+
         Box(
             modifier = Modifier
                 .fillMaxSize(0.9f)
@@ -3639,7 +3925,7 @@ private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boole
                     CircleShape
                 )
         )
-        // Actual Artwork
+
         CoverImage(
             track = track,
             modifier = Modifier
@@ -3832,8 +4118,8 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
         Text(
             text = title,
             color = LevyraText,
-            fontSize = 19.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
@@ -3845,35 +4131,57 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
             modifier = Modifier.pressable(onClick = onPlayAll)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
-                Text("Riproduci", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(16.dp))
+                Text("Play All", color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-/** Horizontal row of square cover cards with title/subtitle, our take on the YT Music shelves. */
 @Composable
-private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track) -> Unit) {
+private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         itemsIndexed(tracks, key = { index, track -> "album-card-$index-${track.id}" }) { index, track ->
             val isCurrent = track.id == currentId
+            var isPressed by remember { mutableStateOf(false) }
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed && animationsEnabled) 0.95f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "scale"
+            )
+            val modifier = if (animationsEnabled) {
+                Modifier.graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+            } else Modifier
             Column(
-                modifier = Modifier
-                    .width(158.dp)
-                    .pressable(onClick = { onPlay(track) }),
-                verticalArrangement = Arrangement.spacedBy(9.dp)
+                modifier = modifier
+                    .width(164.dp)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                isPressed = true
+                                tryAwaitRelease()
+                                isPressed = false
+                            },
+                            onTap = { onPlay(track) }
+                        )
+                    },
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
                     color = Color.Transparent,
-                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.05f)),
-                    shape = RoundedCornerShape(12.dp),
-                    shadowElevation = 0.dp
+                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f)),
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = if (animationsEnabled) 8.dp else 0.dp
                 ) {
                     Box(
                         modifier = Modifier
@@ -3885,19 +4193,20 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track
                             track = track,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(16.dp)),
+                            highRes = true
                         )
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.4f))))
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))))
                         )
                         Surface(
-                            color = Color.Black.copy(alpha = 0.42f),
+                            color = Color.Black.copy(alpha = 0.5f),
                             shape = CircleShape,
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(10.dp)
+                                .padding(12.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
@@ -3910,16 +4219,16 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, onPlay: (Track
                         }
                     }
                 }
-                Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 13.sp, lineHeight = 15.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val kind = if (track.album.isNotBlank() && track.album != track.title && track.album != "YouTube Music") "Album" else "Single"
+                    Text("$kind • ${track.artist}", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }
 }
 
-
-
-/** Horizontally paged stacked track rows (YouTube Music "Brani di tendenza" style). */
 @Composable
 private fun RowCarousel(
     tracks: List<Track>,
@@ -4528,7 +4837,9 @@ private fun TrackRow(
     isDownloading: Boolean = false,
     isDownloaded: Boolean = false,
     onDownload: (() -> Unit)? = null,
-    onArtist: (() -> Unit)? = null
+    onArtist: (() -> Unit)? = null,
+    onAddToPlaylist: (() -> Unit)? = null,
+    onRemove: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -4572,6 +4883,34 @@ private fun TrackRow(
                 contentDescription = "Preferito",
                 tint = if (isFavorite) LevyraPink else LevyraMuted
             )
+        }
+        if (onAddToPlaylist != null || onRemove != null) {
+            var menuOpen by remember { mutableStateOf(false) }
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Rounded.MoreVert, contentDescription = "Altro", tint = LevyraMuted)
+                }
+                DropdownMenu(
+                    expanded = menuOpen,
+                    onDismissRequest = { menuOpen = false },
+                    modifier = Modifier.background(LevyraPanel)
+                ) {
+                    if (onAddToPlaylist != null) {
+                        DropdownMenuItem(
+                            text = { Text("Aggiungi a playlist", color = LevyraText) },
+                            leadingIcon = { Icon(Icons.Rounded.Add, null, tint = LevyraCyan) },
+                            onClick = { menuOpen = false; onAddToPlaylist() }
+                        )
+                    }
+                    if (onRemove != null) {
+                        DropdownMenuItem(
+                            text = { Text("Rimuovi dalla playlist", color = LevyraText) },
+                            leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = LevyraMuted) },
+                            onClick = { menuOpen = false; onRemove() }
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -4823,7 +5162,7 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     if (raw.isBlank()) {
         EmptyCover(modifier)
     } else {
-        // Lists request a tiny image (fast to download); only the player loads full quality.
+
         val model = if (highRes) raw else smallThumb(raw)
         val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 200 else 0
         AsyncImage(
@@ -4838,7 +5177,6 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     }
 }
 
-/** Rewrites known cover URLs (YouTube, Apple) to a small, fast-loading size for list thumbnails. */
 private fun smallThumb(url: String): String {
     var u = url
     u = u.replace(Regex("=w\\d+-h\\d+[^=]*$"), "=w160-h160-l90-rj")

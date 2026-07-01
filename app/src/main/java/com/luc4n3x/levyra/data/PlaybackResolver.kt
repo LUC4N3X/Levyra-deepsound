@@ -18,6 +18,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.AudioStream
+import org.schabi.newpipe.extractor.stream.VideoStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -45,25 +46,25 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
-    private val resolveTimeoutMs = 14_000L
+    private val resolveTimeoutMs = 9_000L
 
     private val profiles = listOf(
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L),
-        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 50L),
-        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 100L),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 180L),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 240L)
+        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 40L),
+        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 80L),
+        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 130L),
+        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 180L)
     )
 
     init {
         restoreCache()
     }
 
-    fun cached(track: Track): Track? {
+    fun cached(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
             return if (streamStillFresh(track.streamUrl)) track else null
         }
-        val key = cacheKey(track)
+        val key = cacheKey(track, isVideoMode)
         val hit = streamCache[key] ?: return null
         if (!isFresh(hit.expiresAt)) {
             remove(key)
@@ -72,14 +73,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         return hit.track
     }
 
-    suspend fun resolve(track: Track): Track = coroutineScope {
+    suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track = coroutineScope {
         track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) }?.let { return@coroutineScope track }
-        cached(track)?.let { return@coroutineScope it }
+        cached(track, isVideoMode)?.let { return@coroutineScope it }
 
-        val key = cacheKey(track)
+        val key = cacheKey(track, isVideoMode)
         val deferred = async(Dispatchers.IO, start = CoroutineStart.LAZY) {
             withTimeout(resolveTimeoutMs) {
-                resolveUncached(track.copy(streamUrl = ""))
+                resolveUncached(track.copy(streamUrl = ""), isVideoMode)
             }
         }
         val previous = inFlight.putIfAbsent(key, deferred)
@@ -93,34 +94,77 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    suspend fun prefetch(track: Track) {
+    suspend fun prefetch(track: Track, isVideoMode: Boolean = false) {
         if (track.streamUrl.isNotBlank()) {
             if (streamStillFresh(track.streamUrl)) store(track)
             return
         }
-        if (cached(track) != null) return
-        runCatching { resolve(track) }
+        if (cached(track, isVideoMode) != null) return
+        runCatching { resolve(track, isVideoMode) }
     }
 
-    private suspend fun resolveUncached(track: Track): Track = withContext(Dispatchers.IO) {
+    private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
-        val stream = raceInnerTube(track, errors)
+
+        if (isVideoMode) {
+            val resolved = coroutineScope {
+                val winner = CompletableDeferred<Track?>()
+                val npJob = launch {
+                    val r = runCatching { resolveVideoWithNewPipe(track) }
+                    r.onSuccess { winner.complete(it) }
+                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "NewPipe video: $m" } }
+                }
+                val itJob = launch {
+                    val stream = runCatching { raceInnerTube(track, errors, true) }.getOrNull()
+                    if (stream != null) {
+                        winner.complete(
+                            track.copy(
+                                streamUrl = stream.url,
+                                videoStreamUrl = stream.videoUrl,
+                                durationMs = stream.durationMs.takeIf { it > 0L } ?: track.durationMs,
+                                thumbnailUrl = stream.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                                largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
+                                source = stream.source
+                            )
+                        )
+                    }
+                }
+                launch {
+                    npJob.join(); itJob.join()
+                    winner.complete(null)
+                }
+                val result = winner.await()
+                coroutineContext.cancelChildren()
+                result
+            }
+            if (resolved != null) {
+                store(resolved, isVideoMode)
+                return@withContext resolved
+            }
+            val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
+                ?: errors.firstOrNull()
+                ?: "Video non disponibile"
+            throw PlaybackBlockedException(reason)
+        }
+
+        val stream = raceInnerTube(track, errors, false)
         if (stream != null) {
             val resolved = track.copy(
                 streamUrl = stream.url,
+                videoStreamUrl = stream.videoUrl,
                 durationMs = stream.durationMs.takeIf { it > 0L } ?: track.durationMs,
                 thumbnailUrl = stream.thumbnailUrl.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
                 source = stream.source
             )
-            store(resolved)
+            store(resolved, isVideoMode)
             return@withContext resolved
         }
 
         val newPipe = runCatching { resolveWithNewPipe(track) }
         if (newPipe.isSuccess) {
             val resolved = newPipe.getOrThrow()
-            store(resolved)
+            store(resolved, isVideoMode)
             return@withContext resolved
         }
         newPipe.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "NewPipe: $it" }
@@ -131,12 +175,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw PlaybackBlockedException(reason)
     }
 
-    private suspend fun raceInnerTube(track: Track, errors: MutableList<String>): DirectStream? = coroutineScope {
+    private suspend fun raceInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean = false): DirectStream? = coroutineScope {
         val winner = CompletableDeferred<DirectStream?>()
         val workers = profiles.map { profile ->
             launch {
                 if (profile.delayMs > 0L) delay(profile.delayMs)
-                val attempt = runCatching { resolveWithInnerTube(track, profile) }
+                val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode) }
                 attempt.onSuccess { stream ->
                     if (stream.url.isNotBlank()) winner.complete(stream)
                 }.onFailure { error ->
@@ -175,11 +219,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun store(track: Track) {
+    private fun store(track: Track, isVideoMode: Boolean = false) {
         if (track.streamUrl.isBlank() || !streamStillFresh(track.streamUrl)) return
-        val key = cacheKey(track)
+        val key = cacheKey(track, isVideoMode)
         val expiresAt = expiresAtFor(track.streamUrl)
         streamCache[key] = CachedStream(track, expiresAt)
+        if (isVideoMode || track.videoStreamUrl.isNotBlank()) return
         val json = JSONObject()
             .put("expiresAt", expiresAt)
             .put("streamUrl", track.streamUrl)
@@ -215,11 +260,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         return Regex("(?:[?&])expire=(\\d+)").find(url)?.groupValues?.getOrNull(1)?.toLongOrNull()
     }
 
-    private fun cacheKey(track: Track): String {
-        return track.id.trim().ifBlank { track.videoUrl.trim() }
+    private fun cacheKey(track: Track, isVideoMode: Boolean = false): String {
+        val base = track.id.trim().ifBlank { track.videoUrl.trim() }
+        return if (isVideoMode) "${base}_video" else base
     }
 
-    private fun resolveWithInnerTube(track: Track, profile: ClientProfile): DirectStream {
+    private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false): DirectStream {
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
         val body = buildPlayerBody(track.id, profile).toString().toByteArray(StandardCharsets.UTF_8)
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
@@ -251,11 +297,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                 throw IllegalStateException(reason.ifBlank { subreason.ifBlank { status } })
             }
             val streamingData = root.optJSONObject("streamingData") ?: throw IllegalStateException("Nessun blocco streamingData")
-            val formats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
-            var bestUrl = ""
-            var bestScore = -1
-            for (i in 0 until formats.length()) {
-                val format = formats.optJSONObject(i) ?: continue
+            val adaptiveFormats = streamingData.optJSONArray("adaptiveFormats") ?: JSONArray()
+            val muxedFormats = streamingData.optJSONArray("formats") ?: JSONArray()
+
+            var bestAudioUrl = ""
+            var bestAudioScore = -1
+            for (i in 0 until adaptiveFormats.length()) {
+                val format = adaptiveFormats.optJSONObject(i) ?: continue
                 val mime = format.optString("mimeType")
                 val url = format.optString("url")
                 if (!mime.startsWith("audio/", true) || url.isBlank()) continue
@@ -271,17 +319,85 @@ class PlaybackResolver private constructor(private val context: Context) {
                     audioQuality.contains("MEDIUM", true) -> 500_000
                     else -> 0
                 }
-                if (score > bestScore) {
-                    bestScore = score
-                    bestUrl = url
+                if (score > bestAudioScore) {
+                    bestAudioScore = score
+                    bestAudioUrl = url
                 }
             }
-            if (bestUrl.isBlank()) throw IllegalStateException("Audio URL diretta assente")
+
+            if (isVideoMode) {
+                var bestVideoUrl = ""
+                var bestVideoScore = -1
+                for (i in 0 until adaptiveFormats.length()) {
+                    val format = adaptiveFormats.optJSONObject(i) ?: continue
+                    val mime = format.optString("mimeType")
+                    val url = format.optString("url")
+                    if (!mime.startsWith("video/", true) || url.isBlank()) continue
+                    val height = format.optInt("height", 0)
+                    val penalty = if (height > 1080) -1 else 0
+                    val mimeBoost = if (mime.contains("mp4", true)) 5000 else 0
+                    val score = height + mimeBoost + penalty
+                    if (score > bestVideoScore) {
+                        bestVideoScore = score
+                        bestVideoUrl = url
+                    }
+                }
+
+                var muxedUrl = ""
+                var muxedScore = -1
+                for (i in 0 until muxedFormats.length()) {
+                    val format = muxedFormats.optJSONObject(i) ?: continue
+                    val mime = format.optString("mimeType")
+                    val url = format.optString("url")
+                    if (!mime.startsWith("video/", true) || url.isBlank()) continue
+                    val height = format.optInt("height", 0)
+                    if (height > muxedScore) {
+                        muxedScore = height
+                        muxedUrl = url
+                    }
+                }
+
+                val hlsUrl = streamingData.optString("hlsManifestUrl")
+
+                val details = root.optJSONObject("videoDetails")
+                val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
+                val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
+
+                return when {
+                    bestAudioUrl.isNotBlank() && bestVideoUrl.isNotBlank() -> DirectStream(
+                        url = bestAudioUrl,
+                        videoUrl = bestVideoUrl,
+                        durationMs = duration,
+                        thumbnailUrl = thumbnail,
+                        source = "YouTube Video ${profile.label}"
+                    )
+
+                    muxedUrl.isNotBlank() -> DirectStream(
+                        url = muxedUrl,
+                        videoUrl = "",
+                        durationMs = duration,
+                        thumbnailUrl = thumbnail,
+                        source = "YouTube Muxed ${profile.label}"
+                    )
+
+                    hlsUrl.isNotBlank() -> DirectStream(
+                        url = hlsUrl,
+                        videoUrl = "",
+                        durationMs = duration,
+                        thumbnailUrl = thumbnail,
+                        source = "YouTube HLS ${profile.label}"
+                    )
+                    else -> throw IllegalStateException("Nessuno stream video disponibile")
+                }
+            }
+
+            if (bestAudioUrl.isBlank()) throw IllegalStateException("URL streaming assente")
             val details = root.optJSONObject("videoDetails")
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
             return DirectStream(
-                url = bestUrl,
+                url = bestAudioUrl,
+                videoUrl = "",
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
                 source = "YouTube Music ${profile.label}"
@@ -311,6 +427,75 @@ class PlaybackResolver private constructor(private val context: Context) {
             largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
             source = "NewPipe YouTube"
         )
+    }
+
+    private fun resolveVideoWithNewPipe(track: Track): Track {
+        NewPipeRuntime.ensure()
+        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
+
+        val bestThumb = info.thumbnails.maxByOrNull { image ->
+            image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
+        }?.url.orEmpty()
+        val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
+
+        val bestAudio = info.audioStreams
+            .filter { it.isUrl && it.content.isNotBlank() }
+            .maxWithOrNull(compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId })
+            ?.content
+
+        val bestVideoOnly = info.videoOnlyStreams
+            .filter { it.isUrl && it.content.isNotBlank() }
+            .filter { heightOf(it.getResolution()) in 1..1080 }
+            .maxWithOrNull(
+                compareBy<VideoStream> { heightOf(it.getResolution()) }
+                    .thenBy { if (it.getFormat()?.name?.contains("MPEG", true) == true) 1 else 0 }
+            )
+            ?.content
+
+        if (bestVideoOnly != null && bestAudio != null) {
+            return track.copy(
+                streamUrl = bestAudio,          
+                videoStreamUrl = bestVideoOnly, 
+                durationMs = durationMs,
+                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
+                source = "NewPipe Video"
+            )
+        }
+
+        val muxed = info.videoStreams
+            .filter { it.isUrl && it.content.isNotBlank() }
+            .maxByOrNull { heightOf(it.getResolution()) }
+            ?.content
+        if (muxed != null) {
+            return track.copy(
+                streamUrl = muxed,
+                videoStreamUrl = "",
+                durationMs = durationMs,
+                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
+                source = "NewPipe Muxed"
+            )
+        }
+
+        val hls = info.hlsUrl.takeIf { it.isNotBlank() }
+        if (hls != null) {
+            return track.copy(
+                streamUrl = hls,
+                videoStreamUrl = "",
+                durationMs = durationMs,
+                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
+                source = "NewPipe HLS"
+            )
+        }
+
+        throw IllegalStateException("Nessuno stream video disponibile per ${track.title}")
+    }
+
+    private fun heightOf(resolution: String?): Int {
+        if (resolution.isNullOrBlank()) return 0
+        return Regex("(\\d+)p").find(resolution)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
     }
 
     private fun buildPlayerBody(videoId: String, profile: ClientProfile): JSONObject {
@@ -385,6 +570,7 @@ private data class ClientProfile(
 
 private data class DirectStream(
     val url: String,
+    val videoUrl: String = "",
     val durationMs: Long,
     val thumbnailUrl: String,
     val source: String

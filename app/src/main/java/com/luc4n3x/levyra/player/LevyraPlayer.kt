@@ -19,7 +19,7 @@ class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
     var onError: ((String) -> Unit)? = null
 
-    private var controller: MediaController? = null
+    var controller: MediaController? = null
     private val controllerFuture = MediaController.Builder(
         context,
         SessionToken(context, ComponentName(context, PlaybackService::class.java))
@@ -69,6 +69,7 @@ class LevyraPlayer(context: Context) {
             return if (duration == C.TIME_UNSET) 0L else duration.coerceAtLeast(0L)
         }
 
+
     fun play(track: Track) {
         require(track.streamUrl.isNotBlank()) { "Stream URL assente per ${track.title}" }
         val active = controller
@@ -89,10 +90,16 @@ class LevyraPlayer(context: Context) {
 
     private fun buildItem(track: Track): MediaItem {
         val art = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+        val extras = android.os.Bundle().apply {
+            if (track.videoStreamUrl.isNotBlank()) {
+                putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
+            }
+        }
         val metadata = MediaMetadata.Builder()
             .setTitle(track.title)
             .setArtist(track.artist)
             .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
+            .setExtras(extras)
             .build()
         return MediaItem.Builder()
             .setUri(track.streamUrl)
