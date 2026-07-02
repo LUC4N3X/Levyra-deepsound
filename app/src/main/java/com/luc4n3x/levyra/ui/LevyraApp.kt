@@ -1102,6 +1102,7 @@ private fun buildQuickPickTracks(state: LevyraUiState, heroTrack: Track?): List<
         addAll(state.charts)
         addAll(state.favorites)
     }
+        .filter { it.id.length == 11 && isReliableMusicUpdateCandidate(it) }
         .distinctBy { it.id }
         .filterNot { it.id in excluded }
         .take(4)
@@ -1117,6 +1118,7 @@ private fun buildPersonalListeningTracks(state: LevyraUiState): List<Track> {
         addAll(state.charts)
     }
         .asSequence()
+        .filter { it.id.length == 11 && isReliableMusicUpdateCandidate(it) }
         .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
         .distinctBy { it.id }
         .take(12)
@@ -1132,6 +1134,7 @@ private fun buildResonanceTracks(state: LevyraUiState): List<Track> {
         state.currentTrack?.let { add(it) }
     }
         .asSequence()
+        .filter { it.id.length == 11 && isReliableMusicUpdateCandidate(it) }
         .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
         .distinctBy { it.id }
         .sortedWith(compareByDescending<Track> { it.replayScore + it.vocal + it.cacheScore / 2 }.thenBy { it.title })
@@ -1235,7 +1238,7 @@ private fun ResonanceCard(
         shape = RoundedCornerShape(30.dp),
         modifier = Modifier
             .width(316.dp)
-            .height(186.dp)
+            .height(206.dp)
             .pressable(onClick = onClick)
     ) {
         Box(
