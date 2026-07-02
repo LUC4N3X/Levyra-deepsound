@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/wF5cX93h/file-000000008ca87243a306131530fb5838.png" alt="Levyra" width="520" />
+<img src="https://i.ibb.co/h1ZNCyRc/LEV.png" alt="Levyra" width="520" />
 
 <br>
 
@@ -41,7 +41,7 @@
 <br>
 
 <p align="center">
-  <img src="https://i.ibb.co/QvvyvjbB/file-00000000510c7246bfd7ea7570fbe726.png" alt="Levyra app preview" width="100%" />
+  <img src="https://i.ibb.co/tMpp10vW/prev.png" alt="Levyra app preview" width="100%" />
 </p>
 
 <br>
