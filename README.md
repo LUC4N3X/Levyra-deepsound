@@ -41,7 +41,7 @@
 <br>
 
 <p align="center">
-  <img src="https://i.ibb.co/5hJ6y4ck/luca.png" alt="Levyra app preview" width="80%" />
+  <img src="https://i.ibb.co/5hJ6y4ck/luca.png" alt="Levyra app preview" width="85%" />
 </p>
 
 <br>
