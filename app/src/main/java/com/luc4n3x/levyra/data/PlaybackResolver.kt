@@ -42,6 +42,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private val apiKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
     private val prefs = context.getSharedPreferences("levyra_stream_cache", Context.MODE_PRIVATE)
+    private val userPreferences = LevyraPreferences(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
     private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
     private val fallbackTtlMs = 90L * 60L * 1000L
@@ -262,7 +263,8 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun cacheKey(track: Track, isVideoMode: Boolean = false): String {
         val base = track.id.trim().ifBlank { track.videoUrl.trim() }
-        return if (isVideoMode) "${base}_video" else base
+        val quality = userPreferences.audioQuality().lowercase()
+        return if (isVideoMode) "${base}_video_$quality" else "${base}_audio_$quality"
     }
 
     private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false): DirectStream {
@@ -314,11 +316,24 @@ class PlaybackResolver private constructor(private val context: Context) {
                     mime.contains("webm", true) -> 80_000
                     else -> 0
                 }
-                val score = bitrate + mimeBoost + when {
-                    audioQuality.contains("HIGH", true) -> 900_000
-                    audioQuality.contains("MEDIUM", true) -> 500_000
-                    else -> 0
+                val qualityBias = when (userPreferences.audioQuality().lowercase()) {
+                    "high" -> bitrate + when {
+                        audioQuality.contains("HIGH", true) -> 900_000
+                        audioQuality.contains("MEDIUM", true) -> 500_000
+                        else -> 0
+                    }
+                    "low" -> -bitrate + when {
+                        audioQuality.contains("LOW", true) -> 900_000
+                        audioQuality.contains("MEDIUM", true) -> 300_000
+                        else -> 0
+                    }
+                    else -> bitrate + when {
+                        audioQuality.contains("HIGH", true) -> 900_000
+                        audioQuality.contains("MEDIUM", true) -> 500_000
+                        else -> 0
+                    }
                 }
+                val score = qualityBias + mimeBoost
                 if (score > bestAudioScore) {
                     bestAudioScore = score
                     bestAudioUrl = url
@@ -407,12 +422,20 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
+    private fun selectAudioStream(streams: List<AudioStream>): AudioStream? {
+        val comparator = compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId }
+        return when (userPreferences.audioQuality().lowercase()) {
+            "low" -> streams.minWithOrNull(comparator)
+            else -> streams.maxWithOrNull(comparator)
+        }
+    }
+
     private fun resolveWithNewPipe(track: Track): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         val audio = info.audioStreams
             .filter { it.isUrl && it.content.isNotBlank() }
-            .maxWithOrNull(compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId })
+            .let { selectAudioStream(it) }
         val url = audio?.content
             ?: info.hlsUrl.takeIf { it.isNotBlank() }
             ?: info.videoStreams.firstOrNull { it.isUrl && it.content.isNotBlank() }?.content
@@ -440,7 +463,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         val bestAudio = info.audioStreams
             .filter { it.isUrl && it.content.isNotBlank() }
-            .maxWithOrNull(compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId })
+            .let { selectAudioStream(it) }
             ?.content
 
         val bestVideoOnly = info.videoOnlyStreams
