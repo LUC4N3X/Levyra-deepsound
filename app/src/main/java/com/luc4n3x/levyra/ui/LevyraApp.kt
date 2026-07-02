@@ -372,8 +372,8 @@ private fun ArtistOverlay(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(360.dp)
-                .background(Brush.verticalGradient(listOf(accentStart.copy(alpha = 0.5f), accentEnd.copy(alpha = 0.22f), LevyraBlack)))
+                .height(440.dp)
+                .background(Brush.verticalGradient(listOf(accentStart.copy(alpha = 0.75f), accentEnd.copy(alpha = 0.35f), LevyraBlack, LevyraBlack)))
         )
         LazyColumn(
             modifier = Modifier
@@ -447,11 +447,11 @@ private fun ArtistOverlay(
 
 @Composable
 private fun ArtistHeader(profile: ArtistProfile, accentStart: Color, accentEnd: Color) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Box(
             modifier = Modifier
-                .size(132.dp)
-                .clip(CircleShape)
+                .size(164.dp)
+                .clip(RoundedCornerShape(42.dp))
                 .background(Brush.linearGradient(listOf(accentStart, accentEnd))),
             contentAlignment = Alignment.Center
         ) {
@@ -460,15 +460,15 @@ private fun ArtistHeader(profile: ArtistProfile, accentStart: Color, accentEnd: 
                     model = ImageRequest.Builder(LocalContext.current).data(profile.thumbnailUrl).crossfade(true).build(),
                     contentDescription = profile.name,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.matchParentSize().clip(CircleShape)
+                    modifier = Modifier.matchParentSize().clip(RoundedCornerShape(42.dp))
                 )
             } else {
-                Icon(Icons.Rounded.Person, null, tint = LevyraText, modifier = Modifier.size(54.dp))
+                Icon(Icons.Rounded.Person, null, tint = LevyraText, modifier = Modifier.size(64.dp))
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(profile.name, color = LevyraText, fontSize = 30.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Rounded.Verified, null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
+            Text(profile.name, color = LevyraText, fontSize = 38.sp, lineHeight = 42.sp, letterSpacing = (-1.2).sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Icon(Icons.Rounded.Verified, null, tint = LevyraCyan, modifier = Modifier.size(26.dp))
         }
         val meta = listOf(profile.subscribers, profile.monthlyListeners).filter { it.isNotBlank() }.joinToString(" · ")
         if (meta.isNotBlank()) {
@@ -3277,7 +3277,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(bgStart.copy(alpha = 0.45f), LevyraBlack.copy(alpha = 0.8f), LevyraBlack)))
+            .background(Brush.verticalGradient(listOf(bgStart.copy(alpha = 0.6f), bgEnd.copy(alpha = 0.15f), LevyraBlack, LevyraBlack)))
     ) {
         LazyColumn(
             modifier = Modifier
@@ -3393,23 +3393,24 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
             item {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = track.title,
                             color = LevyraText,
-                            fontSize = 32.sp,
-                            lineHeight = 36.sp,
+                            fontSize = 36.sp,
+                            lineHeight = 40.sp,
+                            letterSpacing = (-0.8).sp,
                             fontWeight = FontWeight.Black,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = track.artist,
-                            color = LevyraMuted,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            color = LevyraMuted.copy(alpha = 0.9f),
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.clickable { viewModel.openArtist(track) }
@@ -3716,13 +3717,17 @@ private fun MainPlayerControls(
         }
         Box(
             modifier = Modifier
-                .size(82.dp)
+                .size(88.dp)
+                .graphicsLayer {
+                    shadowElevation = 18f
+                    shape = CircleShape
+                }
                 .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)), CircleShape)
                 .pressable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {
-            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(34.dp), strokeWidth = 3.dp, color = LevyraBlack)
-            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(44.dp))
+            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(36.dp), strokeWidth = 4.dp, color = LevyraBlack)
+            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(46.dp))
         }
         IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) {
             Icon(Icons.Rounded.SkipNext, null, tint = LevyraText, modifier = Modifier.size(36.dp))
@@ -4578,14 +4583,14 @@ private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boole
 
         Box(
             modifier = Modifier
-                .fillMaxSize(0.9f)
+                .fillMaxSize(0.92f)
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                    alpha = 0.6f
+                    alpha = 0.8f
                 }
                 .background(
-                    Brush.radialGradient(listOf(accentStart, accentEnd.copy(alpha = 0.5f), Color.Transparent)),
+                    Brush.radialGradient(listOf(accentStart.copy(alpha = 0.8f), accentEnd.copy(alpha = 0.4f), Color.Transparent)),
                     CircleShape
                 )
         )
@@ -4593,9 +4598,9 @@ private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boole
         CoverImage(
             track = track,
             modifier = Modifier
-                .fillMaxSize(0.88f)
-                .clip(RoundedCornerShape(32.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(32.dp)),
+                .fillMaxSize(0.9f)
+                .clip(RoundedCornerShape(38.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(38.dp)),
             highRes = true
         )
     }
@@ -4782,7 +4787,8 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
         Text(
             text = title,
             color = LevyraText,
-            fontSize = 22.sp,
+            fontSize = 26.sp,
+            letterSpacing = (-0.5).sp,
             fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -4842,10 +4848,10 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f)),
-                    shape = RoundedCornerShape(16.dp),
-                    shadowElevation = if (animationsEnabled) 8.dp else 0.dp
+                    color = Color.White.copy(alpha = 0.02f),
+                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.08f)),
+                    shape = RoundedCornerShape(22.dp),
+                    shadowElevation = if (animationsEnabled) 12.dp else 0.dp
                 ) {
                     Box(
                         modifier = Modifier
@@ -4857,7 +4863,7 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                             track = track,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(16.dp)),
+                                .clip(RoundedCornerShape(22.dp)),
                             highRes = true
                         )
                         Box(
@@ -5514,18 +5520,18 @@ private fun TrackRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Box {
-            CoverImage(track, Modifier.size(54.dp).clip(RoundedCornerShape(8.dp)))
+            CoverImage(track, Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)))
             if (isPlaying || isResolving) {
-                Surface(color = Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp), modifier = Modifier.matchParentSize()) {
+                Surface(color = Color.Black.copy(alpha = 0.5f), shape = RoundedCornerShape(12.dp), modifier = Modifier.matchParentSize()) {
                     Box(contentAlignment = Alignment.Center) {
                         if (isResolving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                        else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
+                        else Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
                     }
                 }
             }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     track.artist,
@@ -5595,56 +5601,52 @@ private fun MiniPlayer(track: Track, isPlaying: Boolean, isResolving: Boolean, p
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 6.dp)
-            .background(Brush.linearGradient(listOf(Color(track.accentStart).copy(alpha = 0.5f), Color(track.accentEnd).copy(alpha = 0.35f))), RoundedCornerShape(24.dp))
-            .padding(1.dp)
+            .padding(horizontal = 8.dp)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(Color(0xFF121214).copy(alpha = 0.9f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(percent = 50))
+            .pressable(onClick = onOpen)
     ) {
-        Surface(
-            color = Color(0xF20E101A),
-            shape = RoundedCornerShape(23.dp),
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .pressable(onClick = onOpen)
-        ) {
-            Column {
-                Row(
-                    modifier = Modifier.padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box {
-                        CoverImage(track, Modifier.size(46.dp).clip(RoundedCornerShape(13.dp)))
-                        if (isPlaying || isResolving) {
-                            Surface(color = Color.Black.copy(alpha = 0.48f), shape = RoundedCornerShape(13.dp), modifier = Modifier.matchParentSize()) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (isResolving) CircularProgressIndicator(modifier = Modifier.size(17.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                                    else Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(19.dp))
-                                }
+                .matchParentSize()
+                .background(Brush.horizontalGradient(listOf(Color(track.accentStart).copy(alpha = 0.15f), Color.Transparent, Color(track.accentEnd).copy(alpha = 0.15f))))
+        )
+        Column {
+            Row(
+                modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp, end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Box {
+                    CoverImage(track, Modifier.size(48.dp).clip(CircleShape))
+                    if (isPlaying || isResolving) {
+                        Surface(color = Color.Black.copy(alpha = 0.5f), shape = CircleShape, modifier = Modifier.matchParentSize()) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                                else Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
                             }
                         }
                     }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(track.title, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    IconButton(onClick = onToggle, modifier = Modifier.size(36.dp)) {
-                        if (isResolving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                        else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(26.dp))
-                    }
-                    IconButton(onClick = onNext, modifier = Modifier.size(34.dp)) {
-                        Icon(Icons.Rounded.SkipNext, null, tint = LevyraText, modifier = Modifier.size(23.dp))
-                    }
-                    IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) {
-                        Icon(Icons.Rounded.Close, null, tint = LevyraMuted, modifier = Modifier.size(21.dp))
-                    }
                 }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(progress.coerceIn(0.01f, 1f))
-                        .height(3.dp)
-                        .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraPink)))
-                )
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(track.title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.artist, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                IconButton(onClick = onToggle, modifier = Modifier.size(38.dp)) {
+                    if (isResolving) CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                    else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(28.dp))
+                }
+                IconButton(onClick = onNext, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Rounded.SkipNext, null, tint = LevyraText, modifier = Modifier.size(26.dp))
+                }
             }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress.coerceIn(0.01f, 1f))
+                    .height(3.dp)
+                    .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+            )
         }
     }
 }
@@ -5693,10 +5695,10 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 @Composable
 private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
     Surface(
-        color = Color(0xDF07090D),
+        color = Color(0xFF121214).copy(alpha = 0.85f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth()
+        shape = RoundedCornerShape(percent = 50),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
     ) {
         Row(
             modifier = Modifier.padding(6.dp),
@@ -5714,19 +5716,19 @@ private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
 @Composable
 private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
     val selectedScale by animateFloatAsState(
-        targetValue = if (selected && LocalAnimationsEnabled.current) 1.07f else 1f,
-        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        targetValue = if (selected && LocalAnimationsEnabled.current) 1.15f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "tab-selection-scale"
     )
     Box(
         modifier = Modifier
             .weight(1f)
             .pressable(onClick = onClick)
-            .padding(vertical = 8.dp)
+            .padding(vertical = 10.dp)
             .graphicsLayer {
                 scaleX = selectedScale
                 scaleY = selectedScale
-                alpha = if (selected) 1f else 0.82f
+                alpha = if (selected) 1f else 0.65f
             },
         contentAlignment = Alignment.Center
     ) {
