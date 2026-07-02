@@ -109,6 +109,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 dynamicColor = preferences.dynamicColor(),
                 sponsorBlockEnabled = preferences.sponsorBlock(),
                 skipSilence = preferences.skipSilence(),
+                audioQuality = preferences.audioQuality(),
                 showOnboarding = !onboarded,
                 currentTrack = null,
                 positionMs = 0L,
@@ -296,6 +297,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val next = steps[(steps.indexOf(current).coerceAtLeast(0) + 1) % steps.size]
         player.setSpeed(next)
         _state.update { it.copy(playbackSpeed = next) }
+    }
+
+
+    fun openAudioQualityPanel() {
+        _state.update { it.copy(showAudioQualityPanel = true) }
+    }
+
+    fun closeAudioQualityPanel() {
+        _state.update { it.copy(showAudioQualityPanel = false) }
+    }
+
+    fun setAudioQuality(value: String) {
+        val normalized = when (value.lowercase()) {
+            "high" -> "High"
+            "low" -> "Low"
+            else -> "Auto"
+        }
+        preferences.setAudioQuality(normalized)
+        _state.update { it.copy(audioQuality = normalized, showAudioQualityPanel = false) }
     }
 
     fun cycleSleepTimer() {
