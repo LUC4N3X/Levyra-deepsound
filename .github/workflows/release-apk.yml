@@ -3,19 +3,20 @@ name: Publish LEVYRA Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag
+        description: "Release tag"
         required: true
-        default: v2.0.0
+        default: "v2.0.0"
 
 permissions:
   contents: write
 
 jobs:
   release:
+    name: Build Release APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -27,51 +28,64 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          java-version: "17"
 
       - name: Setup Android SDK
         shell: bash
         run: |
           set -euo pipefail
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: '8.13'
+          gradle-version: "8.13"
 
       - name: Resolve Release Version
         shell: bash
         run: |
           set -euo pipefail
+
           TAG_NAME="${GITHUB_REF_NAME}"
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG_NAME="${{ inputs.tag }}"
           fi
+
           VERSION="${TAG_NAME#v}"
           VERSION="${VERSION#V}"
-          if ! echo "$VERSION" | grep -Eq '^[0-9]+(\.[0-9]+){0,3}([-+][0-9A-Za-z.-]+)?$'; then
-            echo "Invalid release version: $VERSION" >&2
+
+          if ! echo "${VERSION}" | grep -Eq '^[0-9]+(\.[0-9]+){0,3}([-+][0-9A-Za-z.-]+)?$'; then
+            echo "Invalid release version: ${VERSION}" >&2
             exit 1
           fi
-          VERSION_CODE="$(python3 - "$VERSION" <<'PY'
+
+          VERSION_CODE="$(python3 - "${VERSION}" <<'PY'
 import re
 import sys
+
 version = sys.argv[1]
 parts = [int(x) for x in re.findall(r"\d+", version)[:4]]
+
 while len(parts) < 4:
     parts.append(0)
+
 major = min(max(parts[0], 0), 999)
 minor = min(max(parts[1], 0), 99)
 patch = min(max(parts[2], 0), 99)
 build = min(max(parts[3], 0), 99)
+
 print(major * 1_000_000 + minor * 10_000 + patch * 100 + build)
 PY
-          )"
-          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+)"
+
+          echo "TAG_NAME=${TAG_NAME}" >> "${GITHUB_ENV}"
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "${GITHUB_ENV}"
 
       - name: Build Release APK
         run: gradle --no-daemon clean assembleRelease -PlevyraVersionName="${VERSION}" -PlevyraVersionCode="${VERSION_CODE}"
@@ -80,8 +94,10 @@ PY
         shell: bash
         run: |
           set -euo pipefail
+
           mkdir -p artifacts
           cp app/build/outputs/apk/release/app-release.apk "artifacts/LEVYRA-${VERSION}.apk"
+
           {
             echo "LEVYRA ${VERSION}"
             echo
@@ -103,9 +119,10 @@ PY
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release upload "$TAG_NAME" "artifacts/LEVYRA-${VERSION}.apk" --clobber
-            gh release edit "$TAG_NAME" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
+
+          if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
+            gh release upload "${TAG_NAME}" "artifacts/LEVYRA-${VERSION}.apk" --clobber
+            gh release edit "${TAG_NAME}" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
           else
-            gh release create "$TAG_NAME" "artifacts/LEVYRA-${VERSION}.apk" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
+            gh release create "${TAG_NAME}" "artifacts/LEVYRA-${VERSION}.apk" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
           fi
