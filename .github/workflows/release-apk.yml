@@ -40,7 +40,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.13"
+          gradle-version: "8.14.4"
 
       - name: Resolve Release Version
         shell: bash
@@ -114,3 +114,4 @@ jobs:
           else
             gh release create "${TAG_NAME}" "artifacts/LEVYRA-${VERSION}.apk" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
           fi
+
