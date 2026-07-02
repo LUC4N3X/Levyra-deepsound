@@ -3232,7 +3232,13 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                         onArtist = { viewModel.openArtist(track) },
                         onRemove = { viewModel.removeFromPlaylist(playlist.id, track.id) }
                     )
-      @Composable
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val track = state.currentTrack
     val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
