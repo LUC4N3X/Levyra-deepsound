@@ -3394,6 +3394,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
             item {
                 Column(modifier = Modifier.fillMaxWidth()) {
+                    WaveformVisualizer(color = LevyraCyan, modifier = Modifier.padding(bottom = 16.dp))
                     Slider(
                         value = progressOf(state.positionMs, state.durationMs),
                         onValueChange = viewModel::seekTo,
@@ -3429,10 +3430,12 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     exporting = state.isOfflineExporting,
                     metadataWriterReady = state.embeddedMetadataWriterReady,
                     audioQuality = state.audioQuality,
+                    audioNormalization = state.audioNormalization,
                     onSpeed = viewModel::cycleSpeed,
                     onSleep = viewModel::cycleSleepTimer,
                     onQuality = viewModel::openAudioQualityPanel,
-                    onExport = viewModel::exportCurrentTrack
+                    onExport = viewModel::exportCurrentTrack,
+                    onNormalization = viewModel::toggleAudioNormalization
                 )
             }
             item { PlayerError(state.playerError) }
@@ -3715,15 +3718,24 @@ private fun PlayerOptionsRow(
     exporting: Boolean,
     metadataWriterReady: Boolean,
     audioQuality: String,
+    audioNormalization: Boolean,
     onSpeed: () -> Unit,
     onSleep: () -> Unit,
     onQuality: () -> Unit,
-    onExport: () -> Unit
+    onExport: () -> Unit,
+    onNormalization: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        OptionChip(
+            icon = Icons.Rounded.GraphicEq,
+            label = "Norm",
+            active = audioNormalization,
+            modifier = Modifier.weight(1f),
+            onClick = onNormalization
+        )
         OptionChip(
             icon = Icons.Rounded.Speed,
             label = "${trimSpeed(speed)}x",
