@@ -35,7 +35,10 @@ jobs:
         run: |
           set -euo pipefail
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -74,9 +77,24 @@ jobs:
           echo "TAG_NAME=${TAG_NAME}" >> "${GITHUB_ENV}"
           echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
           echo "VERSION_CODE=${VERSION_CODE}" >> "${GITHUB_ENV}"
+          echo "LEVYRA_VERSION_NAME=${VERSION}" >> "${GITHUB_ENV}"
+          echo "LEVYRA_VERSION_CODE=${VERSION_CODE}" >> "${GITHUB_ENV}"
 
       - name: Build Release APK
-        run: gradle --no-daemon clean assembleRelease -PlevyraVersionName="${VERSION}" -PlevyraVersionCode="${VERSION_CODE}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon clean assembleRelease -PlevyraVersionName="${VERSION}" -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Verify APK Version
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          BADGING="$(${ANDROID_HOME}/build-tools/36.0.0/aapt dump badging "${APK}")"
+          printf "%s\n" "${BADGING}"
+          printf "%s\n" "${BADGING}" | grep -F "versionName='${VERSION}'"
+          printf "%s\n" "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
 
       - name: Prepare Release
         shell: bash
@@ -114,4 +132,3 @@ jobs:
           else
             gh release create "${TAG_NAME}" "artifacts/LEVYRA-${VERSION}.apk" --latest --title "LEVYRA ${VERSION}" --notes-file release-notes.md
           fi
-
