@@ -31,6 +31,7 @@ import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.LevyraPlayer
+import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
@@ -62,6 +63,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val moodEngine = MoodEngine()
     private val lyricsEngine = LyricsEngine()
     private val player = LevyraPlayer(application.applicationContext)
+    private val playbackWarmup = PlaybackWarmup(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
@@ -365,7 +367,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = null
                 )
             }
-            prefetchTop(sections.first().tracks, 16)
+            prefetchTop(sections.first().tracks, 24)
         }
     }
 
@@ -764,7 +766,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = if (data.isEmpty) "Nessun risultato trovato per $clean" else null
                 )
             }
-            prefetchTop(tracks, 16)
+            prefetchTop(tracks, 24)
         }.onFailure { error ->
             _state.update {
                 it.copy(
@@ -951,12 +953,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (queue.isEmpty()) return@launch
             val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { it.id == playable.id }
             if (base < 0) return@launch
-            val offsets = if (_state.value.isVideoMode) listOf(1) else listOf(1, 2, -1)
+            val offsets = if (_state.value.isVideoMode) listOf(1) else listOf(1, 2, 3, -1)
             val candidates = offsets
                 .map { offset -> queue[(base + offset + queue.size) % queue.size] }
                 .filterNot { it.id == playable.id }
                 .distinctBy { it.id }
-            warmTracks(candidates, concurrency = 2, delayStepMs = 50L)
+            warmTracks(candidates, concurrency = 3, delayStepMs = 20L)
         }
     }
 
@@ -964,7 +966,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (tracks.isEmpty()) return
         listPrefetchJob?.cancel()
         listPrefetchJob = viewModelScope.launch {
-            warmTracks(tracks.take(count), concurrency = 3, delayStepMs = 55L)
+            warmTracks(tracks.take(count), concurrency = 4, delayStepMs = 25L)
         }
     }
 
@@ -981,12 +983,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun warmTrack(track: Track) {
         val videoMode = _state.value.isVideoMode
         val youtube = youtubePlayableTrack(track)
-        if (youtube != null) {
+        val resolved = if (youtube != null) {
             resolver.prefetch(youtube, videoMode)
-            return
+        } else {
+            val match = runCatching { repository.searchOne("${track.title} ${track.artist}") }.getOrNull() ?: return
+            resolver.prefetch(match, videoMode)
         }
-        val match = runCatching { repository.searchOne("${track.title} ${track.artist}") }.getOrNull() ?: return
-        resolver.prefetch(match, videoMode)
+        if (!videoMode && resolved != null) {
+            runCatching { playbackWarmup.prime(resolved) }
+        }
     }
 
     private fun currentQueue(): List<Track> {
@@ -1073,7 +1078,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         searchError = if (tracks.isEmpty()) "Home remota vuota: prova una ricerca" else null
                     )
                 }
-                prefetchTop(tracks, 16)
+                prefetchTop(tracks, 24)
             }.onFailure { error ->
                 _state.update {
                     it.copy(
