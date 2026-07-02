@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/wF4WQ3r6/levyra-github-banner-perfect-Photoroom-1.png" alt="Levyra" width="580" />
+<img src="https://i.ibb.co/MxQHB14R/levyra-unique-vinyl-Photoroom-1.png" alt="Levyra" width="580" />
 
 <br>
 
