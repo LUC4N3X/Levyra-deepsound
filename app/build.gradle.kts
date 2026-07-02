@@ -26,9 +26,21 @@ fun generatedVersionCode(versionName: String): Int {
     return major * 1_000_000 + minor * 10_000 + patch * 100 + build
 }
 
+fun githubTagVersionName(): String? {
+    val refType = System.getenv("GITHUB_REF_TYPE").orEmpty()
+    val refName = System.getenv("GITHUB_REF_NAME").orEmpty()
+    val ref = System.getenv("GITHUB_REF").orEmpty()
+    return when {
+        refType == "tag" && refName.isNotBlank() -> refName
+        ref.startsWith("refs/tags/") -> ref.substringAfterLast("/")
+        else -> null
+    }
+}
+
 val levyraVersionName = normalizedVersionName(
     (findProperty("levyraVersionName") as? String)
         ?: System.getenv("LEVYRA_VERSION_NAME")
+        ?: githubTagVersionName()
         ?: "2.1.0"
 )
 
@@ -138,32 +150,4 @@ dependencies {
     implementation(libs.shimmer)
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
-    testImplementation(libs.junit)
-    testImplementation("org.json:json:20240303")
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.chucker)
-    releaseImplementation(libs.chucker.no.op)
-    debugImplementation(libs.leakcanary.android)
 }
-
-licensee {
-    allow("Apache-2.0")
-    allow("MIT")
-    allow("BSD-2-Clause")
-    allow("BSD-3-Clause")
-    allow("ISC")
-    allow("JSON")
-    allowDependency("com.github.teamnewpipe", "NewPipeExtractor", libs.versions.newpipe.get())
-    allowDependency("com.github.TeamNewPipe", "NewPipeExtractor", libs.versions.newpipe.get())
-    allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "extractor", libs.versions.newpipe.get())
-    allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "timeago-parser", libs.versions.newpipe.get())
-}
-configurations.configureEach {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "org.jetbrains.kotlin" && requested.name.startsWith("kotlin-stdlib")) {
-            useVersion(libs.versions.kotlin.get())
-            because("Keep Kotlin runtime metadata aligned with the D8/R8 version bundled by the Android Gradle Plugin.")
-        }
-    }
-}
-
