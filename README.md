@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/h1ZNCyRc/LEV.png" alt="Levyra" width="520" />
+<img src="https://i.ibb.co/C3WBJyhZ/l-1.png" alt="Levyra" width="580" />
 
 <br>
 
