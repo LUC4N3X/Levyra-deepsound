@@ -9,7 +9,7 @@ on:
       tag:
         description: Release tag
         required: true
-        default: v1.2.0
+        default: v2.0.0
 
 permissions:
   contents: write
@@ -41,10 +41,7 @@ jobs:
         with:
           gradle-version: '8.13'
 
-      - name: Build Release APK
-        run: gradle --no-daemon clean assembleRelease
-
-      - name: Prepare Release
+      - name: Resolve Release Version
         shell: bash
         run: |
           set -euo pipefail
@@ -53,6 +50,36 @@ jobs:
             TAG_NAME="${{ inputs.tag }}"
           fi
           VERSION="${TAG_NAME#v}"
+          VERSION="${VERSION#V}"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+(\.[0-9]+){0,3}([-+][0-9A-Za-z.-]+)?$'; then
+            echo "Invalid release version: $VERSION" >&2
+            exit 1
+          fi
+          VERSION_CODE="$(python3 - "$VERSION" <<'PY'
+import re
+import sys
+version = sys.argv[1]
+parts = [int(x) for x in re.findall(r"\d+", version)[:4]]
+while len(parts) < 4:
+    parts.append(0)
+major = min(max(parts[0], 0), 999)
+minor = min(max(parts[1], 0), 99)
+patch = min(max(parts[2], 0), 99)
+build = min(max(parts[3], 0), 99)
+print(major * 1_000_000 + minor * 10_000 + patch * 100 + build)
+PY
+          )"
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+
+      - name: Build Release APK
+        run: gradle --no-daemon clean assembleRelease -PlevyraVersionName="${VERSION}" -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Prepare Release
+        shell: bash
+        run: |
+          set -euo pipefail
           mkdir -p artifacts
           cp app/build/outputs/apk/release/app-release.apk "artifacts/LEVYRA-${VERSION}.apk"
           {
@@ -62,8 +89,6 @@ jobs:
             echo
             echo "Aggiorna dall'app aprendo Impostazioni > Aggiornamenti > Check."
           } > release-notes.md
-          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v6
