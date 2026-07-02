@@ -20,7 +20,7 @@ class AutoPlayManager(
     private val player: ExoPlayer,
     private val scope: CoroutineScope
 ) {
-    private val repository = YoutubeMusicRepository
+    private val repository = YoutubeMusicRepository()
     private var fetchJob: Job? = null
     
     init {
