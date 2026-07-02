@@ -75,7 +75,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             chartRegions = ChartsCatalog.regions,
             selectedMood = moodEngine.moods.firstOrNull(),
             isSearching = true,
-            embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady
+            embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
+            audioNormalization = preferences.snapshot().audioNormalization
         )
     )
     private var searchJob: Job? = null
@@ -112,6 +113,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 sponsorBlockEnabled = settings.sponsorBlock,
                 skipSilence = settings.skipSilence,
                 audioQuality = settings.audioQuality,
+                audioNormalization = settings.audioNormalization,
                 showOnboarding = !settings.onboarded,
                 currentTrack = null,
                 positionMs = 0L,
@@ -287,6 +289,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { it.copy(isResolving = false, isVideoMode = current, playerError = e.message) }
             }
         }
+    }
+
+    fun toggleAudioNormalization() {
+        val next = !_state.value.audioNormalization
+        preferences.setAudioNormalization(next)
+        _state.update { it.copy(audioNormalization = next) }
+        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = next
     }
 
     fun toggleShuffle() {
