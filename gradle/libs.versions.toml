@@ -5,10 +5,10 @@ composeBom = "2024.12.01"
 coreKtx = "1.15.0"
 activityCompose = "1.9.3"
 lifecycle = "2.8.7"
-media3 = "1.5.1"
+media3 = "1.10.1"
 coroutines = "1.9.0"
-coil = "2.7.0"
-okhttp = "4.12.0"
+coil = "3.5.0"
+okhttp = "5.4.0"
 newpipe = "v0.26.3"
 desugar = "2.1.4"
 junit = "4.13.2"
@@ -19,6 +19,7 @@ serialization = "1.7.3"
 ksp = "2.0.21-1.0.28"
 licensee = "1.14.1"
 timber = "5.0.1"
+shimmer = "1.4.0"
 chucker = "4.1.0"
 leakcanary = "2.14"
 
@@ -40,8 +41,10 @@ androidx-media3-session = { group = "androidx.media3", name = "media3-session", 
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
 androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "media3" }
 androidx-media3-database = { group = "androidx.media3", name = "media3-database", version.ref = "media3" }
+androidx-media3-datasource = { group = "androidx.media3", name = "media3-datasource", version.ref = "media3" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 newpipe-extractor = { group = "com.github.teamnewpipe", name = "NewPipeExtractor", version.ref = "newpipe" }
 desugar-jdk-libs-nio = { group = "com.android.tools", name = "desugar_jdk_libs_nio", version.ref = "desugar" }
@@ -53,6 +56,7 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+shimmer = { group = "com.valentinilk.shimmer", name = "compose-shimmer", version.ref = "shimmer" }
 chucker = { group = "com.github.chuckerteam.chucker", name = "library", version.ref = "chucker" }
 chucker-no-op = { group = "com.github.chuckerteam.chucker", name = "library-no-op", version.ref = "chucker" }
 leakcanary-android = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }

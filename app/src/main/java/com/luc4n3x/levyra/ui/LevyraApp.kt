@@ -142,8 +142,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -167,6 +167,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
+import com.valentinilk.shimmer.shimmer
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
 
@@ -1015,7 +1016,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         if (state.charts.isEmpty()) {
             item {
                 if (state.isLoadingCharts) {
-                    GlassMessage("Loading Top 50...", LevyraCyan)
+                    ChartLoadingSkeleton()
                 } else {
                     GlassMessage("Top 50 not available, try again later", LevyraOrange)
                 }
@@ -2473,15 +2474,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             if (queryClean.isNotEmpty()) {
                 when {
                     state.isSearching -> item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.5.dp, color = LevyraCyan)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("Sto cercando…", color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        }
+                        SearchLoadingSkeleton()
                     }
                     state.searchError != null -> item { GlassMessage(state.searchError, LevyraOrange) }
                     !state.searchData.isEmpty -> {
@@ -3326,7 +3319,6 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                     useController = false
                                     setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
                                     setBackgroundColor(android.graphics.Color.BLACK)
-                                    // Collego la surface direttamente all'ExoPlayer che decodifica i frame.
                                     player = exo
                                 }
                             },
@@ -3353,7 +3345,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                 .background(Color.Black),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
+                            VideoLoadingSkeleton()
                         }
                     }
                 } else {
@@ -5783,6 +5775,72 @@ private fun StatusBlock(state: LevyraUiState) {
 @Composable
 private fun PlayerError(error: String?) {
     if (error != null) GlassMessage(error, LevyraOrange)
+}
+
+@Composable
+private fun SearchLoadingSkeleton() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shimmer()
+            .padding(vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        repeat(4) {
+            LoadingLine(height = 72.dp, radius = 18.dp)
+        }
+    }
+}
+
+@Composable
+private fun ChartLoadingSkeleton() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shimmer(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        repeat(2) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                repeat(4) { LoadingLine(height = 56.dp, radius = 16.dp) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VideoLoadingSkeleton() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .shimmer()
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.08f),
+                        LevyraCyan.copy(alpha = 0.12f),
+                        Color.White.copy(alpha = 0.05f)
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
+    }
+}
+
+@Composable
+private fun LoadingLine(height: androidx.compose.ui.unit.Dp, radius: androidx.compose.ui.unit.Dp) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(radius))
+            .background(Color.White.copy(alpha = 0.08f))
+    )
 }
 
 @Composable
