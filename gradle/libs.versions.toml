@@ -1,6 +1,6 @@
 [versions]
 agp = "8.13.2"
-kotlin = "2.4.0"
+kotlin = "2.3.20"
 composeBom = "2024.12.01"
 coreKtx = "1.15.0"
 activityCompose = "1.9.3"
@@ -68,3 +68,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 licensee = { id = "app.cash.licensee", version.ref = "licensee" }
+

@@ -158,3 +158,12 @@ licensee {
     allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "extractor", libs.versions.newpipe.get())
     allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "timeago-parser", libs.versions.newpipe.get())
 }
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin" && requested.name.startsWith("kotlin-stdlib")) {
+            useVersion(libs.versions.kotlin.get())
+            because("Keep Kotlin runtime metadata aligned with the D8/R8 version bundled by the Android Gradle Plugin.")
+        }
+    }
+}
+
