@@ -28,8 +28,25 @@ private val Context.levyraDataStore by preferencesDataStore(
     produceMigrations = { context -> listOf(SharedPreferencesMigration(context, PREFERENCES_NAME)) }
 )
 
+data class LevyraPreferencesSnapshot(
+    val onboarded: Boolean,
+    val tastes: Set<String>,
+    val userName: String,
+    val animationsEnabled: Boolean,
+    val dynamicColor: Boolean,
+    val sponsorBlock: Boolean,
+    val skipSilence: Boolean,
+    val audioQuality: String,
+    val dismissedUpdateVersion: String,
+    val lastTrack: Track?,
+    val lastPositionMs: Long,
+    val recentSearches: List<Track>
+)
+
 class LevyraPreferences(context: Context) {
     private val dataStore = context.applicationContext.levyraDataStore
+
+    fun snapshot(): LevyraPreferencesSnapshot = read(defaultSnapshot()) { snapshotFrom(it) }
 
     fun isOnboarded(): Boolean = read(false) { it[KEY_ONBOARDED] ?: false }
 
@@ -72,10 +89,10 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_SKIP_SILENCE] = value }
     }
 
-    fun audioQuality(): String = read("Auto") { it[KEY_AUDIO_QUALITY].orEmpty().ifBlank { "Auto" } }
+    fun audioQuality(): String = read("Auto") { normalizeAudioQuality(it[KEY_AUDIO_QUALITY].orEmpty()) }
 
     fun setAudioQuality(value: String) {
-        write { it[KEY_AUDIO_QUALITY] = value }
+        write { it[KEY_AUDIO_QUALITY] = normalizeAudioQuality(value) }
     }
 
     fun dismissedUpdateVersion(): String = read("") { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
@@ -96,18 +113,58 @@ class LevyraPreferences(context: Context) {
         }
     }
 
-    fun lastTrack(): Track? {
-        val raw = read("") { it[KEY_LAST_TRACK].orEmpty() }
-        if (raw.isBlank()) return null
-        return runCatching { TrackJson.fromJson(JSONObject(raw)) }
-            .onFailure { Timber.w(it, "Last track restore failed") }
-            .getOrNull()
-    }
+    fun lastTrack(): Track? = snapshot().lastTrack
 
     fun lastPositionMs(): Long = read(0L) { it[KEY_LAST_POSITION] ?: 0L }
 
-    fun loadRecentSearches(): List<Track> {
-        val raw = read("") { it[KEY_RECENT_SEARCHES].orEmpty() }
+    fun loadRecentSearches(): List<Track> = snapshot().recentSearches
+
+    fun saveRecentSearches(tracks: List<Track>) {
+        val array = JSONArray()
+        tracks.forEach { array.put(TrackJson.toJson(it)) }
+        write { it[KEY_RECENT_SEARCHES] = array.toString() }
+    }
+
+    private fun snapshotFrom(preferences: Preferences): LevyraPreferencesSnapshot {
+        return LevyraPreferencesSnapshot(
+            onboarded = preferences[KEY_ONBOARDED] ?: false,
+            tastes = preferences[KEY_TASTES].orEmpty(),
+            userName = preferences[KEY_USER_NAME].orEmpty(),
+            animationsEnabled = preferences[KEY_ANIMATIONS] ?: true,
+            dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: true,
+            sponsorBlock = preferences[KEY_SPONSORBLOCK] ?: true,
+            skipSilence = preferences[KEY_SKIP_SILENCE] ?: false,
+            audioQuality = normalizeAudioQuality(preferences[KEY_AUDIO_QUALITY].orEmpty()),
+            dismissedUpdateVersion = preferences[KEY_DISMISSED_UPDATE_VERSION].orEmpty(),
+            lastTrack = parseTrack(preferences[KEY_LAST_TRACK].orEmpty(), "Last track restore failed"),
+            lastPositionMs = preferences[KEY_LAST_POSITION] ?: 0L,
+            recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty())
+        )
+    }
+
+    private fun defaultSnapshot(): LevyraPreferencesSnapshot = LevyraPreferencesSnapshot(
+        onboarded = false,
+        tastes = emptySet(),
+        userName = "",
+        animationsEnabled = true,
+        dynamicColor = true,
+        sponsorBlock = true,
+        skipSilence = false,
+        audioQuality = "Auto",
+        dismissedUpdateVersion = "",
+        lastTrack = null,
+        lastPositionMs = 0L,
+        recentSearches = emptyList()
+    )
+
+    private fun parseTrack(raw: String, warning: String): Track? {
+        if (raw.isBlank()) return null
+        return runCatching { TrackJson.fromJson(JSONObject(raw)) }
+            .onFailure { Timber.w(it, warning) }
+            .getOrNull()
+    }
+
+    private fun parseTrackList(raw: String): List<Track> {
         if (raw.isBlank()) return emptyList()
         return runCatching {
             val array = JSONArray(raw)
@@ -115,10 +172,10 @@ class LevyraPreferences(context: Context) {
         }.onFailure { Timber.w(it, "Recent searches restore failed") }.getOrDefault(emptyList())
     }
 
-    fun saveRecentSearches(tracks: List<Track>) {
-        val array = JSONArray()
-        tracks.forEach { array.put(TrackJson.toJson(it)) }
-        write { it[KEY_RECENT_SEARCHES] = array.toString() }
+    private fun normalizeAudioQuality(value: String): String = when (value.lowercase()) {
+        "high" -> "High"
+        "low" -> "Low"
+        else -> "Auto"
     }
 
     private fun <T> read(default: T, selector: (Preferences) -> T): T = runBlocking(Dispatchers.IO) {

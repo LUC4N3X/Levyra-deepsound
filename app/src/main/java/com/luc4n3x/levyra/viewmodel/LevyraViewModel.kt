@@ -99,27 +99,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         val favorites = favoritesStore.load()
-        val onboarded = preferences.isOnboarded()
-        val recentSearches = preferences.loadRecentSearches()
+        val settings = preferences.snapshot()
+        resolver.setAudioQuality(settings.audioQuality)
         _state.update {
             it.copy(
                 favorites = favorites,
                 favoriteIds = favorites.map { fav -> fav.id }.toSet(),
-                recentSearches = recentSearches,
-                userName = preferences.userName(),
-                animationsEnabled = preferences.animationsEnabled(),
-                dynamicColor = preferences.dynamicColor(),
-                sponsorBlockEnabled = preferences.sponsorBlock(),
-                skipSilence = preferences.skipSilence(),
-                audioQuality = preferences.audioQuality(),
-                showOnboarding = !onboarded,
+                recentSearches = settings.recentSearches,
+                userName = settings.userName,
+                animationsEnabled = settings.animationsEnabled,
+                dynamicColor = settings.dynamicColor,
+                sponsorBlockEnabled = settings.sponsorBlock,
+                skipSilence = settings.skipSilence,
+                audioQuality = settings.audioQuality,
+                showOnboarding = !settings.onboarded,
                 currentTrack = null,
                 positionMs = 0L,
                 durationMs = 0L,
                 lyrics = emptyList()
             )
         }
-        player.setSkipSilence(preferences.skipSilence())
+        player.setSkipSilence(settings.skipSilence)
         player.onCompletion = { onTrackCompleted() }
         player.onError = { errorMsg ->
             _state.update { it.copy(playerError = errorMsg, isPlaying = false, isResolving = false) }
@@ -317,6 +317,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             else -> "Auto"
         }
         preferences.setAudioQuality(normalized)
+        resolver.setAudioQuality(normalized)
         _state.update { it.copy(audioQuality = normalized, showAudioQualityPanel = false) }
     }
 
@@ -989,8 +990,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val match = runCatching { repository.searchOne("${track.title} ${track.artist}") }.getOrNull() ?: return
             resolver.prefetch(match, videoMode)
         }
-        if (!videoMode && resolved != null) {
-            runCatching { playbackWarmup.prime(resolved) }
+        if (resolved != null) {
+            if (videoMode) {
+                runCatching { playbackWarmup.primeVideo(resolved) }
+            } else {
+                runCatching { playbackWarmup.prime(resolved) }
+            }
         }
     }
 

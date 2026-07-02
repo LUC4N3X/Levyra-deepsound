@@ -27,6 +27,7 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val EXTRA_VIDEO_URL = "levyra.videoUrl"
+        const val EXTRA_VIDEO_CACHE_KEY = "levyra.videoCacheKey"
 
         @Volatile
         var activePlayer: ExoPlayer? = null
@@ -75,7 +76,7 @@ class PlaybackService : MediaSessionService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
-        player.skipSilenceEnabled = LevyraPreferences(this).skipSilence()
+        player.skipSilenceEnabled = LevyraPreferences(this).snapshot().skipSilence
         activePlayer = player
         mediaSession = MediaSession.Builder(this, player).build()
     }
@@ -126,21 +127,28 @@ private class LevyraMediaSourceFactory(
             ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_URL)
 
         if (videoUrl.isNullOrBlank()) {
-            return delegate.createMediaSource(mediaItem)
+            return mediaSourceFor(mediaItem)
         }
 
-        val audioSource = ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(mediaItem)
+        val videoCacheKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_CACHE_KEY)
+            ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_CACHE_KEY)
 
-        val videoItem = MediaItem.fromUri(videoUrl)
-        val videoSource = ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(videoItem)
+        val audioSource = mediaSourceFor(mediaItem)
+        val videoItem = MediaItem.Builder()
+            .setUri(videoUrl)
+            .apply { if (!videoCacheKey.isNullOrBlank()) setCustomCacheKey(videoCacheKey) }
+            .build()
+        val videoSource = mediaSourceFor(videoItem)
 
-        return MergingMediaSource(
-            /* adjustPeriodTimeOffsets = */ true,
-            /* clipDurations = */ false,
-            videoSource,
-            audioSource
-        )
+        return MergingMediaSource(true, false, videoSource, audioSource)
+    }
+
+    private fun mediaSourceFor(mediaItem: MediaItem): MediaSource {
+        val uri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
+        return if (uri.contains(".m3u8", true) || uri.contains("hls", true)) {
+            HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+        } else {
+            ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+        }
     }
 }

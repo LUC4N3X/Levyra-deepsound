@@ -40,7 +40,7 @@ val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
 
 android {
     namespace = "com.luc4n3x.levyra"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.luc4n3x.levyra"
@@ -122,10 +122,11 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.datasource.okhttp)
-    implementation("androidx.media3:media3-datasource:1.5.1")
+    implementation(libs.androidx.media3.datasource)
     implementation(libs.androidx.media3.database)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(libs.okhttp)
     implementation(libs.newpipe.extractor)
     implementation(libs.androidx.room.runtime)
@@ -134,6 +135,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
+    implementation(libs.shimmer)
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     testImplementation(libs.junit)
@@ -156,3 +158,12 @@ licensee {
     allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "extractor", libs.versions.newpipe.get())
     allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "timeago-parser", libs.versions.newpipe.get())
 }
+configurations.configureEach {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.jetbrains.kotlin" && requested.name.startsWith("kotlin-stdlib")) {
+            useVersion(libs.versions.kotlin.get())
+            because("Keep Kotlin runtime metadata aligned with the D8/R8 version bundled by the Android Gradle Plugin.")
+        }
+    }
+}
+
