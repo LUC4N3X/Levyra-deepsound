@@ -7,17 +7,17 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-val LevyraBlack = Color(0xFF050505) // Deeper, neutral black
+val LevyraBlack = Color(0xFF000000) // True OLED Black
 val LevyraInk = Color(0xFF0A0A0A) // Slightly elevated neutral black
-val LevyraPanel = Color(0xFF141414) // Soft panel color
-val LevyraPanelSoft = Color(0xFF1C1C1E) // Premium soft gray for panels (Apple/Linear style)
-val LevyraCyan = Color(0xFF4AC2F5) // Delicate light blue/cyan
-val LevyraBlue = Color(0xFF3B82F6) // Calmer blue
-val LevyraViolet = Color(0xFF9370DB) // Softer violet (Medium Purple)
-val LevyraPink = Color(0xFFFF7EB3) // Delicate pastel pink
-val LevyraOrange = Color(0xFFFF9F43) // Soft orange
-val LevyraText = Color(0xFFFAFAFA) // Very soft off-white
-val LevyraMuted = Color(0xFFA1A1AA) // Zinc-400 for muted text
+val LevyraPanel = Color(0xFF121214) // Premium soft gray for panels (Vercel/Linear style)
+val LevyraPanelSoft = Color(0xFF18181B) // Slightly lighter premium gray (Zinc 900)
+val LevyraCyan = Color(0xFF00E5FF) // Vibrant neon cyan
+val LevyraBlue = Color(0xFF2563EB) // Stronger brand blue
+val LevyraViolet = Color(0xFF9D4EDD) // Deep vibrant violet
+val LevyraPink = Color(0xFFFF4D85) // Sharp neon pink
+val LevyraOrange = Color(0xFFFF7A00) // Punchy neon orange
+val LevyraText = Color(0xFFF4F4F5) // Zinc 50 for pristine off-white
+val LevyraMuted = Color(0xFFA1A1AA) // Zinc 400 for muted text
 
 private val LevyraScheme: ColorScheme = darkColorScheme(
     primary = LevyraCyan,
@@ -31,7 +31,7 @@ private val LevyraScheme: ColorScheme = darkColorScheme(
     onSurface = LevyraText,
     surfaceVariant = LevyraPanel,
     onSurfaceVariant = LevyraMuted,
-    outline = Color(0x3348E9FF)
+    outline = Color(0x3300E5FF)
 )
 
 @Composable
