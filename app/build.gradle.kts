@@ -7,6 +7,37 @@ plugins {
     alias(libs.plugins.licensee)
 }
 
+fun normalizedVersionName(value: String): String {
+    val clean = value.trim().removePrefix("v").removePrefix("V")
+    val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
+    return match ?: clean.ifBlank { "2.0.0" }
+}
+
+fun generatedVersionCode(versionName: String): Int {
+    val parts = Regex("\\d+")
+        .findAll(versionName)
+        .mapNotNull { it.value.toIntOrNull() }
+        .take(4)
+        .toList()
+    val major = parts.getOrElse(0) { 0 }.coerceIn(0, 999)
+    val minor = parts.getOrElse(1) { 0 }.coerceIn(0, 99)
+    val patch = parts.getOrElse(2) { 0 }.coerceIn(0, 99)
+    val build = parts.getOrElse(3) { 0 }.coerceIn(0, 99)
+    return major * 1_000_000 + minor * 10_000 + patch * 100 + build
+}
+
+val levyraVersionName = normalizedVersionName(
+    (findProperty("levyraVersionName") as? String)
+        ?: System.getenv("LEVYRA_VERSION_NAME")
+        ?: "2.0.0"
+)
+
+val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
+    ?: System.getenv("LEVYRA_VERSION_CODE"))
+    ?.toIntOrNull()
+    ?.takeIf { it > 0 }
+    ?: generatedVersionCode(levyraVersionName)
+
 android {
     namespace = "com.luc4n3x.levyra"
     compileSdk = 35
@@ -15,8 +46,8 @@ android {
         applicationId = "com.luc4n3x.levyra"
         minSdk = 26
         targetSdk = 35
-        versionCode = 24
-        versionName = "1.2.0"
+        versionCode = levyraVersionCode
+        versionName = levyraVersionName
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "UPDATE_REPOSITORY", "\"LUC4N3X/Levyra-deepsound\"")
         buildConfigField("String", "UPDATE_LATEST_URL", "\"https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases/latest\"")
@@ -125,4 +156,3 @@ licensee {
     allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "extractor", libs.versions.newpipe.get())
     allowDependency("com.github.TeamNewPipe.NewPipeExtractor", "timeago-parser", libs.versions.newpipe.get())
 }
-
