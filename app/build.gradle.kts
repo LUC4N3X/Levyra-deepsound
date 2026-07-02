@@ -40,7 +40,7 @@ val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
 
 android {
     namespace = "com.luc4n3x.levyra"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.luc4n3x.levyra"
