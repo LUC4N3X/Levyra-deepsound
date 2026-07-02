@@ -3232,222 +3232,230 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                         onArtist = { viewModel.openArtist(track) },
                         onRemove = { viewModel.removeFromPlaylist(playlist.id, track.id) }
                     )
+      @Composable
+private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+    val track = state.currentTrack
+    val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(bgStart.copy(alpha = 0.15f), LevyraBlack, LevyraBlack, LevyraBlack)))
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 120.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("IN RIPRODUZIONE", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                        Text(track?.source ?: "LEVYRA", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
+            }
+            if (track == null) {
+                item { EmptyState("Cerca un brano e premi play") }
+            } else {
+                item {
+                    if (track.videoUrl.isNotBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp, bottom = 12.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(24.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                            ) {
+                                Row(modifier = Modifier.padding(4.dp)) {
+                                    Surface(
+                                        color = if (!state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent,
+                                        shape = RoundedCornerShape(20.dp),
+                                        modifier = Modifier.clickable { if (state.isVideoMode) viewModel.toggleVideoMode() }
+                                    ) {
+                                        Text("Brano", color = if (!state.isVideoMode) Color.White else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                                    }
+                                    Surface(
+                                        color = if (state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent,
+                                        shape = RoundedCornerShape(20.dp),
+                                        modifier = Modifier.clickable { if (!state.isVideoMode) viewModel.toggleVideoMode() }
+                                    ) {
+                                        Text("Video", color = if (state.isVideoMode) Color.White else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (state.isVideoMode && track.videoUrl.isNotBlank()) {
+                        val exo = com.luc4n3x.levyra.player.PlaybackService.activePlayer
+                        if (exo != null) {
+                            AndroidView(
+                                factory = { ctx ->
+                                    androidx.media3.ui.PlayerView(ctx).apply {
+                                        useController = false
+                                        setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
+                                        setBackgroundColor(android.graphics.Color.BLACK)
+                                        player = exo
+                                    }
+                                },
+                                update = { view ->
+                                    val current = com.luc4n3x.levyra.player.PlaybackService.activePlayer
+                                    if (view.player !== current) view.player = current
+                                },
+                                onRelease = { view ->
+                                    view.player = null
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .padding(bottom = 16.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 9f)
+                                    .padding(bottom = 16.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.Black),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                VideoLoadingSkeleton()
+                            }
+                        }
+                    } else {
+                        FloatingArtwork(
+                            track = track,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                        )
+                    }
+                }
+                item {
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = track.title,
+                                color = LevyraText,
+                                fontSize = 28.sp,
+                                lineHeight = 32.sp,
+                                letterSpacing = (-0.5).sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = track.artist,
+                                color = LevyraMuted.copy(alpha = 0.9f),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.clickable { viewModel.openArtist(track) }
+                            )
+                        }
+                        CircleIconButton(
+                            icon = if (track.id in state.favoriteIds) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            tint = if (track.id in state.favoriteIds) LevyraPink else LevyraText,
+                            background = Color.Transparent,
+                            onClick = { viewModel.toggleFavorite(track) }
+                        )
+                    }
+                }
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        WaveformVisualizer(color = LevyraCyan, modifier = Modifier.padding(bottom = 4.dp))
+                        Slider(
+                            value = progressOf(state.positionMs, state.durationMs),
+                            onValueChange = viewModel::seekTo,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color.White,
+                                activeTrackColor = Color.White,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
+                            )
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(formatDuration(state.positionMs), color = LevyraMuted, fontSize = 12.sp)
+                            Text(formatDuration(state.durationMs), color = LevyraMuted, fontSize = 12.sp)
+                        }
+                    }
+                }
+                item {
+                    MainPlayerControls(
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        shuffleOn = state.shuffleEnabled,
+                        repeatMode = state.repeatMode,
+                        onShuffle = viewModel::toggleShuffle,
+                        onPrevious = viewModel::previous,
+                        onToggle = viewModel::togglePlay,
+                        onNext = viewModel::next,
+                        onRepeat = viewModel::toggleRepeat
+                    )
+                }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BottomTabButton("IN CODA") { viewModel.openQueue() }
+                        BottomTabButton("TESTO") { viewModel.openLyrics() }
+                        BottomTabButton("CORRELATI") { /* not yet implemented */ }
+                    }
+                }
+                item {
+                    PlayerOptionsRow(
+                        speed = state.playbackSpeed,
+                        sleepMinutes = state.sleepTimerMinutes,
+                        exporting = state.isOfflineExporting,
+                        metadataWriterReady = state.embeddedMetadataWriterReady,
+                        audioQuality = state.audioQuality,
+                        audioNormalization = state.audioNormalization,
+                        onSpeed = viewModel::cycleSpeed,
+                        onSleep = viewModel::cycleSleepTimer,
+                        onQuality = viewModel::openAudioQualityPanel,
+                        onExport = viewModel::exportCurrentTrack,
+                        onNormalization = viewModel::toggleAudioNormalization
+                    )
+                }
+                item { PlayerError(state.playerError) }
             }
         }
     }
 }
 
 @Composable
-private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
-    val track = state.currentTrack
-    val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
-    val bgEnd = track?.let { Color(it.accentEnd) } ?: LevyraViolet
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(bgStart.copy(alpha = 0.6f), bgEnd.copy(alpha = 0.15f), LevyraBlack, LevyraBlack)))
+private fun BottomTabButton(text: String, onClick: () -> Unit) {
+    Surface(
+        color = Color.White.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 130.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Spacer(modifier = Modifier.size(46.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("IN RIPRODUZIONE", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                    Text(track?.source ?: "LEVYRA", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
-                CircleIconButton(
-                    icon = Icons.Rounded.QueueMusic,
-                    tint = LevyraText,
-                    background = Color.White.copy(alpha = 0.08f),
-                    onClick = { viewModel.openQueue() }
-                )
-            }
-        }
-        if (track == null) {
-            item { EmptyState("Cerca un brano e premi play") }
-        } else {
-            item {
-                if (track.videoUrl.isNotBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp, bottom = 12.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Surface(
-                            color = Color.Black.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(24.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
-                        ) {
-                            Row(modifier = Modifier.padding(4.dp)) {
-                                Surface(
-                                    color = if (!state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent,
-                                    shape = RoundedCornerShape(20.dp),
-                                    modifier = Modifier.clickable { if (state.isVideoMode) viewModel.toggleVideoMode() }
-                                ) {
-                                    Text("Brano", color = if (!state.isVideoMode) Color.White else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
-                                }
-                                Surface(
-                                    color = if (state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent,
-                                    shape = RoundedCornerShape(20.dp),
-                                    modifier = Modifier.clickable { if (!state.isVideoMode) viewModel.toggleVideoMode() }
-                                ) {
-                                    Text("Video", color = if (state.isVideoMode) Color.White else LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if (state.isVideoMode && track.videoUrl.isNotBlank()) {
-                    val exo = com.luc4n3x.levyra.player.PlaybackService.activePlayer
-                    if (exo != null) {
-                        AndroidView(
-                            factory = { ctx ->
-                                androidx.media3.ui.PlayerView(ctx).apply {
-                                    useController = false
-                                    setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
-                                    setBackgroundColor(android.graphics.Color.BLACK)
-                                    player = exo
-                                }
-                            },
-                            update = { view ->
-                                val current = com.luc4n3x.levyra.player.PlaybackService.activePlayer
-                                if (view.player !== current) view.player = current
-                            },
-                            onRelease = { view ->
-                                view.player = null
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(16f / 9f)
-                                .padding(bottom = 16.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(16f / 9f)
-                                .padding(bottom = 16.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color.Black),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            VideoLoadingSkeleton()
-                        }
-                    }
-                } else {
-                    FloatingArtwork(
-                        track = track,
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    )
-                }
-            }
-            item {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = track.title,
-                            color = LevyraText,
-                            fontSize = 36.sp,
-                            lineHeight = 40.sp,
-                            letterSpacing = (-0.8).sp,
-                            fontWeight = FontWeight.Black,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = track.artist,
-                            color = LevyraMuted.copy(alpha = 0.9f),
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.clickable { viewModel.openArtist(track) }
-                        )
-                    }
-                    CircleIconButton(
-                        icon = if (track.id in state.favoriteIds) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        tint = if (track.id in state.favoriteIds) LevyraPink else LevyraText,
-                        background = if (track.id in state.favoriteIds) LevyraPink.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f),
-                        onClick = { viewModel.toggleFavorite(track) }
-                    )
-                }
-            }
-            item {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    WaveformVisualizer(color = LevyraCyan, modifier = Modifier.padding(bottom = 16.dp))
-                    Slider(
-                        value = progressOf(state.positionMs, state.durationMs),
-                        onValueChange = viewModel::seekTo,
-                        colors = SliderDefaults.colors(
-                            thumbColor = LevyraCyan,
-                            activeTrackColor = LevyraCyan,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.15f)
-                        )
-                    )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(formatDuration(state.positionMs), color = LevyraMuted, fontSize = 12.sp)
-                        Text(formatDuration(state.durationMs), color = LevyraMuted, fontSize = 12.sp)
-                    }
-                }
-            }
-            item {
-                MainPlayerControls(
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    shuffleOn = state.shuffleEnabled,
-                    repeatMode = state.repeatMode,
-                    onShuffle = viewModel::toggleShuffle,
-                    onPrevious = viewModel::previous,
-                    onToggle = viewModel::togglePlay,
-                    onNext = viewModel::next,
-                    onRepeat = viewModel::toggleRepeat
-                )
-            }
-            item {
-                PlayerOptionsRow(
-                    speed = state.playbackSpeed,
-                    sleepMinutes = state.sleepTimerMinutes,
-                    exporting = state.isOfflineExporting,
-                    metadataWriterReady = state.embeddedMetadataWriterReady,
-                    audioQuality = state.audioQuality,
-                    audioNormalization = state.audioNormalization,
-                    onSpeed = viewModel::cycleSpeed,
-                    onSleep = viewModel::cycleSleepTimer,
-                    onQuality = viewModel::openAudioQualityPanel,
-                    onExport = viewModel::exportCurrentTrack,
-                    onNormalization = viewModel::toggleAudioNormalization
-                )
-            }
-            item { PlayerError(state.playerError) }
-            item {
-                LyricsButton(
-                    loading = state.lyricsLoading,
-                    available = state.lyrics.isNotEmpty(),
-                    onClick = { viewModel.openLyrics() }
-                )
-            }
-        }
-    }
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
     }
 }
 
@@ -4548,11 +4556,8 @@ private fun MetroDiscoveryRail(tracks: List<Track>, currentId: String?, onPlay: 
 
 @Composable
 private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boolean, modifier: Modifier = Modifier) {
-    val accentStart = Color(track.accentStart)
-    val accentEnd = Color(track.accentEnd)
-
     val scale by animateFloatAsState(
-        targetValue = if (isPlaying && !isResolving) 1.05f else 1.0f,
+        targetValue = if (isPlaying && !isResolving) 1.02f else 1.0f,
         label = "BreathingShadow"
     )
 
@@ -4560,27 +4565,17 @@ private fun FloatingArtwork(track: Track, isPlaying: Boolean, isResolving: Boole
         modifier = modifier.aspectRatio(1f),
         contentAlignment = Alignment.Center
     ) {
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize(0.92f)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    alpha = 0.8f
-                }
-                .background(
-                    Brush.radialGradient(listOf(accentStart.copy(alpha = 0.8f), accentEnd.copy(alpha = 0.4f), Color.Transparent)),
-                    CircleShape
-                )
-        )
-
         CoverImage(
             track = track,
             modifier = Modifier
                 .fillMaxSize(0.9f)
-                .clip(RoundedCornerShape(38.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(38.dp)),
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .shadow(24.dp, RoundedCornerShape(12.dp), spotColor = Color.Black, ambientColor = Color.Black)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp)),
             highRes = true
         )
     }

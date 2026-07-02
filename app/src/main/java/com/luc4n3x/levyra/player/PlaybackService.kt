@@ -15,9 +15,13 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import android.app.PendingIntent
+import android.content.Intent
+import com.luc4n3x.levyra.MainActivity
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.luc4n3x.levyra.data.LevyraPreferences
@@ -129,7 +133,19 @@ class PlaybackService : MediaLibraryService() {
             }
         }
         
-        mediaSession = MediaLibrarySession.Builder(this, player, callback).build()
+        val sessionActivity = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        
+        mediaSession = MediaLibrarySession.Builder(this, player, callback)
+            .setSessionActivity(sessionActivity)
+            .build()
+            
+        val notificationProvider = DefaultMediaNotificationProvider(this)
+        setMediaNotificationProvider(notificationProvider)
         
         autoPlayManager = AutoPlayManager(this, player, serviceScope)
     }
