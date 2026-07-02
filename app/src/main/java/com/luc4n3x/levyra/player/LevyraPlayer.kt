@@ -78,13 +78,13 @@ class LevyraPlayer(context: Context) {
             return
         }
         ignoreEndedFromManualStop = false
+        active.playWhenReady = true
         if (loadedTrackId != track.id || loadedStreamUrl != track.streamUrl) {
             loadedTrackId = track.id
             loadedStreamUrl = track.streamUrl
             active.setMediaItem(buildItem(track))
             active.prepare()
         }
-        active.playWhenReady = true
         active.play()
     }
 
@@ -103,7 +103,7 @@ class LevyraPlayer(context: Context) {
             .build()
         return MediaItem.Builder()
             .setUri(track.streamUrl)
-            .setCustomCacheKey("levyra:${track.id}")
+            .setCustomCacheKey(LevyraPlaybackCacheKey.stream(track))
             .setMediaId(track.id)
             .setMediaMetadata(metadata)
             .build()
