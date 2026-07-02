@@ -9,7 +9,7 @@ import androidx.media3.common.util.UnstableApi
 
 @OptIn(UnstableApi::class)
 object LevyraMediaCache {
-    private const val MAX_BYTES = 384L * 1024L * 1024L
+    private const val MAX_BYTES = 768L * 1024L * 1024L
 
     @Volatile
     private var cache: SimpleCache? = null
