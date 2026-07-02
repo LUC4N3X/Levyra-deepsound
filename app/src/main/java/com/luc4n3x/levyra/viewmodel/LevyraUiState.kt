@@ -61,6 +61,7 @@ data class LevyraUiState(
     val playbackSpeed: Float = 1f,
     val audioQuality: String = "Auto",
     val showAudioQualityPanel: Boolean = false,
+    val audioNormalization: Boolean = false,
     val sleepTimerMinutes: Int = 0,
     val sponsorBlockEnabled: Boolean = true,
     val skipSilence: Boolean = false,

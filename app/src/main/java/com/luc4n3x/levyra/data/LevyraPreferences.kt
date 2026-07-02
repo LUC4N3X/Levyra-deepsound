@@ -40,7 +40,8 @@ data class LevyraPreferencesSnapshot(
     val dismissedUpdateVersion: String,
     val lastTrack: Track?,
     val lastPositionMs: Long,
-    val recentSearches: List<Track>
+    val recentSearches: List<Track>,
+    val audioNormalization: Boolean
 )
 
 class LevyraPreferences(context: Context) {
@@ -87,6 +88,12 @@ class LevyraPreferences(context: Context) {
 
     fun setSkipSilence(value: Boolean) {
         write { it[KEY_SKIP_SILENCE] = value }
+    }
+
+    fun audioNormalization(): Boolean = read(false) { it[KEY_AUDIO_NORMALIZATION] ?: false }
+
+    fun setAudioNormalization(value: Boolean) {
+        write { it[KEY_AUDIO_NORMALIZATION] = value }
     }
 
     fun audioQuality(): String = read("Auto") { normalizeAudioQuality(it[KEY_AUDIO_QUALITY].orEmpty()) }
@@ -138,7 +145,8 @@ class LevyraPreferences(context: Context) {
             dismissedUpdateVersion = preferences[KEY_DISMISSED_UPDATE_VERSION].orEmpty(),
             lastTrack = parseTrack(preferences[KEY_LAST_TRACK].orEmpty(), "Last track restore failed"),
             lastPositionMs = preferences[KEY_LAST_POSITION] ?: 0L,
-            recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty())
+            recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty()),
+            audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false
         )
     }
 
@@ -154,7 +162,8 @@ class LevyraPreferences(context: Context) {
         dismissedUpdateVersion = "",
         lastTrack = null,
         lastPositionMs = 0L,
-        recentSearches = emptyList()
+        recentSearches = emptyList(),
+        audioNormalization = false
     )
 
     private fun parseTrack(raw: String, warning: String): Track? {
@@ -211,5 +220,6 @@ class LevyraPreferences(context: Context) {
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
+        val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
     }
 }

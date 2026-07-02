@@ -21,6 +21,10 @@
         android:resizeableActivity="true"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Levyra">
+        
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -40,6 +44,7 @@
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="androidx.media3.session.MediaLibraryService" />
             </intent-filter>
         </service>
     </application>

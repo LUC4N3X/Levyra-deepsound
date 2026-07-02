@@ -15,15 +15,32 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
+import android.app.PendingIntent
+import com.luc4n3x.levyra.MainActivity
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.RenderersFactory
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 @OptIn(UnstableApi::class)
-class PlaybackService : MediaSessionService() {
-    private var mediaSession: MediaSession? = null
+class PlaybackService : MediaLibraryService() {
+    private var mediaSession: MediaLibrarySession? = null
 
     companion object {
         const val EXTRA_VIDEO_URL = "levyra.videoUrl"
@@ -32,12 +49,18 @@ class PlaybackService : MediaSessionService() {
         @Volatile
         var activePlayer: ExoPlayer? = null
             private set
+            
+        val normalizationProcessor = NormalizationAudioProcessor()
+        val visualizerProcessor = VisualizerAudioProcessor()
     }
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var autoPlayManager: AutoPlayManager? = null
 
     override fun onCreate() {
         super.onCreate()
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(900, 36_000, 160, 450)
+            .setBufferDurationsMs(32_000, 32_000, 0, 0)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
         val okHttpClient = LevyraHttpClientFactory.media(this)
@@ -64,8 +87,23 @@ class PlaybackService : MediaSessionService() {
 
         val mergingFactory = LevyraMediaSourceFactory(defaultFactory, cacheDataSourceFactory)
 
+        val renderersFactory = object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink {
+                return DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(normalizationProcessor, visualizerProcessor))
+                    .build()
+            }
+        }
+
         val player = ExoPlayer.Builder(this)
             .setLoadControl(loadControl)
+            .setRenderersFactory(renderersFactory)
             .setMediaSourceFactory(mergingFactory)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -76,12 +114,42 @@ class PlaybackService : MediaSessionService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
-        player.skipSilenceEnabled = LevyraPreferences(this).snapshot().skipSilence
+        val prefs = LevyraPreferences(this)
+        player.skipSilenceEnabled = prefs.snapshot().skipSilence
+        normalizationProcessor.enabled = prefs.snapshot().audioNormalization
+        
         activePlayer = player
-        mediaSession = MediaSession.Builder(this, player).build()
+        
+        val callback = object : MediaLibrarySession.Callback {
+            override fun onGetLibraryRoot(
+                session: MediaLibrarySession,
+                browser: MediaSession.ControllerInfo,
+                params: LibraryParams?
+            ): ListenableFuture<LibraryResult<MediaItem>> {
+                return Futures.immediateFuture(LibraryResult.ofItem(
+                    MediaItem.Builder().setMediaId("root").build(), params
+                ))
+            }
+        }
+        
+        val sessionActivity = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        
+        mediaSession = MediaLibrarySession.Builder(this, player, callback)
+            .setSessionActivity(sessionActivity)
+            .build()
+            
+        val notificationProvider = DefaultMediaNotificationProvider(this)
+        setMediaNotificationProvider(notificationProvider)
+        
+        autoPlayManager = AutoPlayManager(this, player, serviceScope)
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         val player = mediaSession?.player
@@ -89,12 +157,14 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        serviceScope.cancel()
         mediaSession?.run {
             player.release()
             release()
         }
         activePlayer = null
         mediaSession = null
+        autoPlayManager = null
         LevyraMediaCache.release()
         super.onDestroy()
     }
