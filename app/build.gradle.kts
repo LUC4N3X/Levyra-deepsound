@@ -148,6 +148,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
     implementation(libs.shimmer)
+    debugImplementation(libs.chucker)
+    releaseImplementation(libs.chucker.no.op)
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
 }
