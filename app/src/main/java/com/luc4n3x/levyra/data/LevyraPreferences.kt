@@ -72,6 +72,12 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_SKIP_SILENCE] = value }
     }
 
+    fun audioQuality(): String = read("Auto") { it[KEY_AUDIO_QUALITY].orEmpty().ifBlank { "Auto" } }
+
+    fun setAudioQuality(value: String) {
+        write { it[KEY_AUDIO_QUALITY] = value }
+    }
+
     fun dismissedUpdateVersion(): String = read("") { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
 
     fun setDismissedUpdateVersion(version: String) {
@@ -144,6 +150,7 @@ class LevyraPreferences(context: Context) {
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val KEY_SPONSORBLOCK = booleanPreferencesKey("sponsorblock_enabled")
         val KEY_SKIP_SILENCE = booleanPreferencesKey("skip_silence")
+        val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
