@@ -47,14 +47,14 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
-    private val resolveTimeoutMs = 9_000L
+    private val resolveTimeoutMs = 7_500L
 
     private val profiles = listOf(
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L),
-        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 40L),
-        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 80L),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 130L),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 180L)
+        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L),
+        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 15L),
+        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 35L),
+        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 60L)
     )
 
     init {
@@ -95,13 +95,16 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    suspend fun prefetch(track: Track, isVideoMode: Boolean = false) {
+    suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
-            if (streamStillFresh(track.streamUrl)) store(track)
-            return
+            if (streamStillFresh(track.streamUrl)) {
+                store(track, isVideoMode)
+                return track
+            }
+            return null
         }
-        if (cached(track, isVideoMode) != null) return
-        runCatching { resolve(track, isVideoMode) }
+        cached(track, isVideoMode)?.let { return it }
+        return runCatching { resolve(track, isVideoMode) }.getOrNull()
     }
 
     private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false): Track = withContext(Dispatchers.IO) {
@@ -148,33 +151,48 @@ class PlaybackResolver private constructor(private val context: Context) {
             throw PlaybackBlockedException(reason)
         }
 
-        val stream = raceInnerTube(track, errors, false)
-        if (stream != null) {
-            val resolved = track.copy(
-                streamUrl = stream.url,
-                videoStreamUrl = stream.videoUrl,
-                durationMs = stream.durationMs.takeIf { it > 0L } ?: track.durationMs,
-                thumbnailUrl = stream.thumbnailUrl.ifBlank { track.thumbnailUrl },
-                largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
-                source = stream.source
-            )
+        val resolved = resolveAudioFast(track, errors)
+        if (resolved != null) {
             store(resolved, isVideoMode)
             return@withContext resolved
         }
-
-        val newPipe = runCatching { resolveWithNewPipe(track) }
-        if (newPipe.isSuccess) {
-            val resolved = newPipe.getOrThrow()
-            store(resolved, isVideoMode)
-            return@withContext resolved
-        }
-        newPipe.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "NewPipe: $it" }
 
         val reason = errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) || it.contains("login", true) }
             ?: errors.firstOrNull()
             ?: "Stream non disponibile"
         throw PlaybackBlockedException(reason)
     }
+
+    private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>): Track? = coroutineScope {
+        val winner = CompletableDeferred<Track?>()
+        val innerTubeJob = launch {
+            val stream = runCatching { raceInnerTube(track, errors, false) }.getOrNull()
+            if (stream != null) winner.complete(track.withDirectStream(stream))
+        }
+        val newPipeJob = launch {
+            delay(350L)
+            val resolved = runCatching { resolveWithNewPipe(track) }
+            resolved.onSuccess { winner.complete(it) }
+                .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "NewPipe: $message" } }
+        }
+        launch {
+            innerTubeJob.join()
+            newPipeJob.join()
+            winner.complete(null)
+        }
+        val result = winner.await()
+        coroutineContext.cancelChildren()
+        result
+    }
+
+    private fun Track.withDirectStream(stream: DirectStream): Track = copy(
+        streamUrl = stream.url,
+        videoStreamUrl = stream.videoUrl,
+        durationMs = stream.durationMs.takeIf { it > 0L } ?: durationMs,
+        thumbnailUrl = stream.thumbnailUrl.ifBlank { thumbnailUrl },
+        largeThumbnailUrl = stream.thumbnailUrl.ifBlank { largeThumbnailUrl },
+        source = stream.source
+    )
 
     private suspend fun raceInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean = false): DirectStream? = coroutineScope {
         val winner = CompletableDeferred<DirectStream?>()
@@ -272,8 +290,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         val body = buildPlayerBody(track.id, profile).toString().toByteArray(StandardCharsets.UTF_8)
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = 3_500
-            readTimeout = 6_500
+            connectTimeout = 2_400
+            readTimeout = 5_000
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Accept", "application/json")
