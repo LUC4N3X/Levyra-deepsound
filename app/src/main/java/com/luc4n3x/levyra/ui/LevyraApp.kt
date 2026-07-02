@@ -3845,103 +3845,115 @@ private fun OnboardingOverlay(tastes: List<Taste>, onDone: (String, Set<String>)
     var selected by remember { mutableStateOf(setOf<String>()) }
     var name by remember { mutableStateOf("") }
     val blocker = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(listOf(Color(0xFF0B0F1C), LevyraBlack))
-            )
-
-            .clickable(interactionSource = blocker, indication = null) {}
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding(),
-            contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 30.dp, bottom = 110.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🎵", fontSize = 30.sp)
-                }
-            }
-            item {
-                Text("Ciao 👋", color = LevyraText, fontSize = 32.sp, fontWeight = FontWeight.Black)
-                Text("Come ti chiami?", color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                BasicTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    textStyle = TextStyle(color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Bold),
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp).background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp)).padding(16.dp),
-                    cursorBrush = SolidColor(LevyraCyan)
-                )
-                Text(
-                    "Cosa ti va di ascoltare? Scegli i tuoi generi e ti prepariamo la home.",
-                    color = LevyraMuted,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-            }
-            items(tastes.chunked(2)) { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    row.forEach { taste ->
-                        TasteCard(
-                            taste = taste,
-                            selected = taste.id in selected,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                selected = if (taste.id in selected) selected - taste.id else selected + taste.id
-                            }
-                        )
-                    }
-                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(22.dp)
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(interactionSource = blocker, indication = null) {}
         ) {
-            GradientButton(
-                text = if (selected.isEmpty() && name.isBlank()) "Salta e continua" else "Inizia ad ascoltare",
-                onClick = { onDone(name, selected) }
-            )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 40.dp, bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Text("🎵 Benvenuto", color = LevyraCyan, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Iniziamo.", color = LevyraText, fontSize = 46.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    Text("Come ti chiami?", color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    BasicTextField(
+                        value = name,
+                        onValueChange = { newName -> 
+                            name = newName.replaceFirstChar { char -> 
+                                if (char.isLowerCase()) char.titlecase(java.util.Locale.getDefault()) else char.toString() 
+                            }
+                        },
+                        textStyle = TextStyle(color = LevyraText, fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 32.dp)
+                            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+                            .padding(20.dp),
+                        cursorBrush = SolidColor(LevyraCyan),
+                        decorationBox = { innerTextField ->
+                            if (name.isEmpty()) {
+                                Text("Il tuo nome...", color = LevyraMuted, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                            }
+                            innerTextField()
+                        }
+                    )
+                    
+                    Text("Scegli 3 o più generi che ami.", color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                items(tastes.chunked(2)) { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        row.forEach { taste ->
+                            TasteCard(
+                                taste = taste,
+                                selected = taste.id in selected,
+                                modifier = Modifier.weight(1f),
+                                onClick = {
+                                    selected = if (taste.id in selected) selected - taste.id else selected + taste.id
+                                }
+                            )
+                        }
+                        if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black, Color.Black)))
+                    .padding(bottom = 24.dp, top = 32.dp, start = 24.dp, end = 24.dp)
+                    .navigationBarsPadding()
+            ) {
+                val isActive = selected.size >= 3 || name.isNotBlank()
+                Surface(
+                    color = if (isActive) LevyraCyan else Color.White.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(50),
+                    modifier = Modifier.fillMaxWidth().height(56.dp).pressable(onClick = { onDone(name, selected) })
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = if (selected.isEmpty() && name.isBlank()) "Salta e continua" else "Inizia ad ascoltare",
+                            color = if (isActive) Color.Black else LevyraMuted,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
         }
-    }
 }
 
 @Composable
 private fun TasteCard(taste: Taste, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Surface(
-        color = if (selected) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.06f),
-        border = BorderStroke(1.5.dp, if (selected) LevyraCyan else Color.White.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(20.dp),
+        color = if (selected) LevyraCyan else Color.White.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(percent = 50),
         modifier = modifier
-            .height(76.dp)
             .pressable(onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.Center
         ) {
-            Text(taste.emoji, fontSize = 26.sp)
+            Text(taste.emoji, fontSize = 22.sp)
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 taste.label,
-                color = LevyraText,
+                color = if (selected) Color.Black else LevyraText,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -4056,13 +4068,45 @@ private fun SettingsOverlay(
                 )
             }
             item {
-                Text(
-                    "LEVYRA ${BuildConfig.VERSION_NAME} • YouTube & YouTube Music engine",
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "LEVYRA ${BuildConfig.VERSION_NAME}",
+                        color = LevyraMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            "Made with ❤️ by ",
+                            color = LevyraMuted,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        AsyncImage(
+                            model = "https://github.com/LUC4N3X.png",
+                            contentDescription = "LUC4N3X",
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clip(CircleShape)
+                                .border(1.dp, LevyraCyan.copy(alpha = 0.3f), CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "LUC4N3X",
+                            color = LevyraText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }
