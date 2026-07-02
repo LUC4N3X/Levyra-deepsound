@@ -1316,25 +1316,24 @@ private fun ResonanceCard(
                             Text("Commenti totali", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             Text(formatCompactNumber(comments), color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black)
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
-                        ) {
-                            listOf(0.38f, 0.58f, 0.44f, 0.76f, 0.52f, 0.68f, 0.48f).forEachIndexed { bubbleIndex, widthFactor ->
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Engagement", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("${minOf(99, score % 100)}%", color = LevyraViolet, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(Color.White.copy(alpha = 0.05f))
+                            ) {
                                 Box(
                                     modifier = Modifier
-                                        .weight(widthFactor)
-                                        .height((16 + ((score + bubbleIndex * 9) % 18)).dp)
+                                        .fillMaxWidth(pulseWidth.coerceIn(0.1f, 1f))
+                                        .height(5.dp)
                                         .clip(RoundedCornerShape(999.dp))
-                                        .background(
-                                            Brush.horizontalGradient(
-                                                listOf(
-                                                    accentStart.copy(alpha = 0.85f),
-                                                    accentEnd.copy(alpha = 0.92f)
-                                                )
-                                            )
-                                        )
+                                        .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
                                 )
                             }
                         }
@@ -1452,7 +1451,7 @@ private fun PersonalListeningCard(
         shape = RoundedCornerShape(28.dp),
         modifier = Modifier
             .width(264.dp)
-            .height(172.dp)
+            .height(190.dp)
             .pressable(onClick = onClick)
     ) {
         Box(
@@ -1528,12 +1527,12 @@ private fun PersonalListeningCard(
                         )
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(
                         text = track.title,
                         color = LevyraText,
-                        fontSize = 18.sp,
-                        lineHeight = 20.sp,
+                        fontSize = 20.sp,
+                        lineHeight = 22.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
