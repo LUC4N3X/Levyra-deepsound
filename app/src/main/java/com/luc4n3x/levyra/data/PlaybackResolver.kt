@@ -20,6 +20,7 @@ import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.VideoStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
+import timber.log.Timber
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -49,6 +50,9 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val maxTtlMs = 5L * 60L * 60L * 1000L
     private val resolveTimeoutMs = 7_500L
 
+    @Volatile
+    private var selectedAudioQuality = userPreferences.audioQuality()
+
     private val profiles = listOf(
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L),
         ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L),
@@ -59,6 +63,14 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     init {
         restoreCache()
+    }
+
+    fun setAudioQuality(value: String) {
+        selectedAudioQuality = when (value.lowercase()) {
+            "high" -> "High"
+            "low" -> "Low"
+            else -> "Auto"
+        }
     }
 
     fun cached(track: Track, isVideoMode: Boolean = false): Track? {
@@ -79,13 +91,17 @@ class PlaybackResolver private constructor(private val context: Context) {
         cached(track, isVideoMode)?.let { return@coroutineScope it }
 
         val key = cacheKey(track, isVideoMode)
+        Timber.d("resolver start mode=%s id=%s quality=%s", if (isVideoMode) "video" else "audio", track.id, selectedAudioQuality)
         val deferred = async(Dispatchers.IO, start = CoroutineStart.LAZY) {
             withTimeout(resolveTimeoutMs) {
                 resolveUncached(track.copy(streamUrl = ""), isVideoMode)
             }
         }
         val previous = inFlight.putIfAbsent(key, deferred)
-        if (previous != null) return@coroutineScope previous.await()
+        if (previous != null) {
+            Timber.d("resolver in-flight join mode=%s id=%s", if (isVideoMode) "video" else "audio", track.id)
+            return@coroutineScope previous.await()
+        }
 
         try {
             deferred.start()
@@ -281,7 +297,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun cacheKey(track: Track, isVideoMode: Boolean = false): String {
         val base = track.id.trim().ifBlank { track.videoUrl.trim() }
-        val quality = userPreferences.audioQuality().lowercase()
+        val quality = selectedAudioQuality.lowercase()
         return if (isVideoMode) "${base}_video_$quality" else "${base}_audio_$quality"
     }
 
@@ -334,7 +350,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     mime.contains("webm", true) -> 80_000
                     else -> 0
                 }
-                val qualityBias = when (userPreferences.audioQuality().lowercase()) {
+                val qualityBias = when (selectedAudioQuality.lowercase()) {
                     "high" -> bitrate + when {
                         audioQuality.contains("HIGH", true) -> 900_000
                         audioQuality.contains("MEDIUM", true) -> 500_000
@@ -397,6 +413,14 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
 
                 return when {
+                    muxedUrl.isNotBlank() && muxedScore >= 480 -> DirectStream(
+                        url = muxedUrl,
+                        videoUrl = "",
+                        durationMs = duration,
+                        thumbnailUrl = thumbnail,
+                        source = "YouTube Fast Muxed ${profile.label}"
+                    )
+
                     bestAudioUrl.isNotBlank() && bestVideoUrl.isNotBlank() -> DirectStream(
                         url = bestAudioUrl,
                         videoUrl = bestVideoUrl,
@@ -442,7 +466,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun selectAudioStream(streams: List<AudioStream>): AudioStream? {
         val comparator = compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId }
-        return when (userPreferences.audioQuality().lowercase()) {
+        return when (selectedAudioQuality.lowercase()) {
             "low" -> streams.minWithOrNull(comparator)
             else -> streams.maxWithOrNull(comparator)
         }
@@ -484,6 +508,21 @@ class PlaybackResolver private constructor(private val context: Context) {
             .let { selectAudioStream(it) }
             ?.content
 
+        val muxed = info.videoStreams
+            .filter { it.isUrl && it.content.isNotBlank() }
+            .maxByOrNull { heightOf(it.getResolution()) }
+
+        if (muxed != null && heightOf(muxed.getResolution()) >= 480) {
+            return track.copy(
+                streamUrl = muxed.content,
+                videoStreamUrl = "",
+                durationMs = durationMs,
+                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
+                source = "NewPipe Fast Muxed"
+            )
+        }
+
         val bestVideoOnly = info.videoOnlyStreams
             .filter { it.isUrl && it.content.isNotBlank() }
             .filter { heightOf(it.getResolution()) in 1..1080 }
@@ -495,8 +534,8 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         if (bestVideoOnly != null && bestAudio != null) {
             return track.copy(
-                streamUrl = bestAudio,          
-                videoStreamUrl = bestVideoOnly, 
+                streamUrl = bestAudio,
+                videoStreamUrl = bestVideoOnly,
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
@@ -504,13 +543,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             )
         }
 
-        val muxed = info.videoStreams
-            .filter { it.isUrl && it.content.isNotBlank() }
-            .maxByOrNull { heightOf(it.getResolution()) }
-            ?.content
         if (muxed != null) {
             return track.copy(
-                streamUrl = muxed,
+                streamUrl = muxed.content,
                 videoStreamUrl = "",
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },

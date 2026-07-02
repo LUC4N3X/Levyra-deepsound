@@ -93,6 +93,7 @@ class LevyraPlayer(context: Context) {
         val extras = android.os.Bundle().apply {
             if (track.videoStreamUrl.isNotBlank()) {
                 putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
+                putString(PlaybackService.EXTRA_VIDEO_CACHE_KEY, LevyraPlaybackCacheKey.video(track))
             }
         }
         val metadata = MediaMetadata.Builder()
