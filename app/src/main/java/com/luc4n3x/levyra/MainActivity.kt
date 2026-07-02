@@ -22,6 +22,7 @@ import coil3.request.crossfade
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
+import okio.Path.Companion.toOkioPath
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,7 +79,7 @@ class MainActivity : ComponentActivity() {
                 }
                 .diskCache {
                     DiskCache.Builder()
-                        .directory(context.cacheDir.resolve("levyra_images"))
+                        .directory(context.cacheDir.resolve("levyra_images").toOkioPath())
                         .maxSizeBytes(256L * 1024 * 1024)
                         .build()
                 }
