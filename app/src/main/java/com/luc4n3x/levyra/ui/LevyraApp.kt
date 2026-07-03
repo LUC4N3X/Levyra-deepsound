@@ -113,6 +113,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -3056,21 +3057,15 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         if (state.favorites.isEmpty()) {
             item { EmptyState("Tocca il cuore su un brano per salvarlo qui") }
         } else {
-            items(state.favorites, key = { "fav-${it.id}" }) { track ->
-                TrackRow(
-                    track = track,
-                    isCurrent = track.id == state.currentTrack?.id,
-                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                    isFavorite = true,
-                    onClick = { viewModel.playFrom(state.favorites, track) },
-                    onFavorite = { viewModel.toggleFavorite(track) },
-                    isDownloading = track.id in state.downloadingTrackIds,
-                    isDownloaded = track.id in state.downloadedTrackIds,
-                    downloadProgress = state.downloadProgressByTrackId[track.id],
-                    onDownload = { viewModel.exportTrack(track) },
-                    onArtist = { viewModel.openArtist(track) },
-                    onAddToPlaylist = { addTarget = track }
+            item {
+                RowCarousel(
+                    tracks = state.favorites,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    favoriteIds = state.favoriteIds,
+                    onPlay = { viewModel.playFrom(state.favorites, it) },
+                    onFavorite = { viewModel.toggleFavorite(it) }
                 )
             }
         }
@@ -5865,39 +5860,22 @@ private fun TrackRow(
         if (onDownload != null) {
             DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
         }
+        if (onAddToPlaylist != null) {
+            IconButton(onClick = onAddToPlaylist) {
+                Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+            }
+        }
         IconButton(onClick = onFavorite) {
             Icon(
                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                 contentDescription = "Preferito",
-                tint = if (isFavorite) LevyraPink else LevyraMuted
+                tint = if (isFavorite) LevyraPink else LevyraMuted,
+                modifier = Modifier.size(24.dp)
             )
         }
-        if (onAddToPlaylist != null || onRemove != null) {
-            var menuOpen by remember { mutableStateOf(false) }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = "Altro", tint = LevyraMuted)
-                }
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                    modifier = Modifier.background(LevyraPanel)
-                ) {
-                    if (onAddToPlaylist != null) {
-                        DropdownMenuItem(
-                            text = { Text("Aggiungi a playlist", color = LevyraText) },
-                            leadingIcon = { Icon(Icons.Rounded.Add, null, tint = LevyraCyan) },
-                            onClick = { menuOpen = false; onAddToPlaylist() }
-                        )
-                    }
-                    if (onRemove != null) {
-                        DropdownMenuItem(
-                            text = { Text("Rimuovi dalla playlist", color = LevyraText) },
-                            leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = LevyraMuted) },
-                            onClick = { menuOpen = false; onRemove() }
-                        )
-                    }
-                }
+        if (onRemove != null) {
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Rounded.Delete, contentDescription = "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(22.dp))
             }
         }
     }
