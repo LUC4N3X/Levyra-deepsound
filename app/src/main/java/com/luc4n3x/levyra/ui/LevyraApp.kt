@@ -2462,6 +2462,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    var addTarget by remember { mutableStateOf<Track?>(null) }
 
     Column(
         modifier = Modifier
@@ -2599,6 +2600,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                         viewModel.playFrom(data.songs, data.topTrack)
                                     },
                                     onFavorite = { viewModel.toggleFavorite(data.topTrack) },
+                                    onAddToPlaylist = { addTarget = data.topTrack },
                                     onArtist = { viewModel.openArtist(data.topTrack) }
                                 )
                             }
@@ -2649,6 +2651,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                             viewModel.playFrom(data.songs, track)
                                         },
                                         onFavorite = { viewModel.toggleFavorite(track) },
+                                        onAddToPlaylist = { addTarget = track },
                                         onDownload = { viewModel.exportTrack(track) },
                                         onArtist = { viewModel.openArtist(track) }
                                     )
@@ -2658,7 +2661,24 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     }
                 }
             }
+            }
         }
+    }
+
+    addTarget?.let { track ->
+        AddToPlaylistDialog(
+            track = track,
+            playlists = state.playlists,
+            onDismiss = { addTarget = null },
+            onAddTo = { playlistId ->
+                viewModel.addToPlaylist(playlistId, track)
+                addTarget = null
+            },
+            onCreateWith = { name ->
+                viewModel.createPlaylist(name, track)
+                addTarget = null
+            }
+        )
     }
 }
 
@@ -5606,6 +5626,7 @@ private fun TopResultCard(
     isFavorite: Boolean,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onArtist: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -5660,6 +5681,11 @@ private fun TopResultCard(
                             Text(if (isPlaying) "In riproduzione" else "Riproduci", color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
                         }
                     }
+                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onAddToPlaylist() }) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.PlaylistAdd, null, tint = LevyraText, modifier = Modifier.size(22.dp))
+                        }
+                    }
                     Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onFavorite() }) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -5688,6 +5714,7 @@ private fun SearchTrackCard(
     downloadProgress: Int?,
     onClick: () -> Unit,
     onFavorite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onDownload: () -> Unit,
     onArtist: () -> Unit
 ) {
@@ -5723,11 +5750,15 @@ private fun SearchTrackCard(
             )
         }
         DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+        IconButton(onClick = onAddToPlaylist) {
+            Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+        }
         IconButton(onClick = onFavorite) {
             Icon(
                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                 contentDescription = "Preferito",
-                tint = if (isFavorite) LevyraPink else LevyraMuted
+                tint = if (isFavorite) LevyraPink else LevyraMuted,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
