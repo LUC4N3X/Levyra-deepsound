@@ -9,6 +9,9 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.luc4n3x.levyra.BuildConfig
@@ -21,6 +24,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,6 +51,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -444,6 +450,7 @@ private fun ArtistOverlay(
                                 onFavorite = { onFavorite(track) },
                                 isDownloading = track.id in state.downloadingTrackIds,
                                 isDownloaded = track.id in state.downloadedTrackIds,
+                                downloadProgress = state.downloadProgressByTrackId[track.id],
                                 onDownload = { onDownload(track) }
                             )
                         }
@@ -890,21 +897,72 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
 
 @Composable
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
-    val start = accentStart?.let { Color(it) } ?: LevyraCyan
-    val end = accentEnd?.let { Color(it) } ?: LevyraViolet
+    val startColor = accentStart?.let { Color(it) } ?: LevyraCyan
+    val endColor = accentEnd?.let { Color(it) } ?: LevyraViolet
+    
+    val animStart by androidx.compose.animation.animateColorAsState(
+        targetValue = startColor,
+        animationSpec = tween(1500, easing = LinearOutSlowInEasing)
+    )
+    val animEnd by androidx.compose.animation.animateColorAsState(
+        targetValue = endColor,
+        animationSpec = tween(1500, easing = LinearOutSlowInEasing)
+    )
+
+    // Breathing animation for the aura's glow intensity
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition()
+    val breathAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.08f,
+        targetValue = 0.22f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = tween(4000, easing = androidx.compose.animation.core.EaseInOutSine),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        )
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LevyraBlack)
-            .background(
-                Brush.verticalGradient(
-                    0.0f to start.copy(alpha = 0.12f),
-                    0.25f to Color(0xFF070709),
-                    0.75f to Color(0xFF070709),
-                    1.0f to end.copy(alpha = 0.08f)
+            .background(LevyraBlack) // The pure OLED black foundation
+    ) {
+        // 1. THE AURA: A vertically stretched, pulsing glowing pillar in the center
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(350.dp) // Base circle
+                .graphicsLayer {
+                    scaleX = 0.7f
+                    scaleY = 3.0f // GPU stretch makes it a tall pillar
+                    alpha = breathAlpha
+                }
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            animStart, 
+                            animEnd.copy(alpha = 0.4f), 
+                            Color.Transparent
+                        )
+                    )
                 )
-            )
-    )
+        )
+
+        // 2. THE GLASS SLASH: A very subtle, sharp diagonal light reflection 
+        // to give a physical "dark frosted glass" texture to the void.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        0.0f to Color.Transparent,
+                        0.45f to Color.Transparent,
+                        0.48f to Color.White.copy(alpha = 0.008f), // Soft leading edge
+                        0.50f to Color.White.copy(alpha = 0.025f),  // Sharp peak
+                        0.501f to Color.Transparent,               // Immediate drop-off
+                        1.0f to Color.Transparent
+                    )
+                )
+        )
+    }
 }
 
 @Composable
@@ -2567,6 +2625,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                         isFavorite = track.id in state.favoriteIds,
                                         isDownloading = track.id in state.downloadingTrackIds,
                                         isDownloaded = track.id in state.downloadedTrackIds,
+                                        downloadProgress = state.downloadProgressByTrackId[track.id],
                                         onClick = {
                                             focusManager.clearFocus()
                                             keyboardController?.hide()
@@ -2596,6 +2655,21 @@ private fun SearchHeader(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
+
+    val speechRecognizerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = result.data
+            val matches = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            if (!matches.isNullOrEmpty()) {
+                val spokenText = matches[0]
+                onQuery(spokenText)
+                onSearch(spokenText)
+            }
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -2664,7 +2738,17 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = {  },
+            onClick = { 
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Ascoltando...")
+                }
+                try {
+                    speechRecognizerLauncher.launch(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Ricerca vocale non supportata", Toast.LENGTH_SHORT).show()
+                }
+            },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
@@ -2678,7 +2762,7 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = {  },
+            onClick = { Toast.makeText(context, "Filtri musicali in arrivo!", Toast.LENGTH_SHORT).show() },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
@@ -2967,6 +3051,7 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     onFavorite = { viewModel.toggleFavorite(track) },
                     isDownloading = track.id in state.downloadingTrackIds,
                     isDownloaded = track.id in state.downloadedTrackIds,
+                    downloadProgress = state.downloadProgressByTrackId[track.id],
                     onDownload = { viewModel.exportTrack(track) },
                     onArtist = { viewModel.openArtist(track) },
                     onAddToPlaylist = { addTarget = track }
@@ -2985,6 +3070,7 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 onFavorite = { viewModel.toggleFavorite(track) },
                 isDownloading = track.id in state.downloadingTrackIds,
                 isDownloaded = track.id in state.downloadedTrackIds,
+                downloadProgress = state.downloadProgressByTrackId[track.id],
                 onDownload = { viewModel.exportTrack(track) },
                 onArtist = { viewModel.openArtist(track) },
                 onAddToPlaylist = { addTarget = track }
@@ -3250,6 +3336,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                         onFavorite = { viewModel.toggleFavorite(track) },
                         isDownloading = track.id in state.downloadingTrackIds,
                         isDownloaded = track.id in state.downloadedTrackIds,
+                        downloadProgress = state.downloadProgressByTrackId[track.id],
                         onDownload = { viewModel.exportTrack(track) },
                         onArtist = { viewModel.openArtist(track) },
                         onRemove = { viewModel.removeFromPlaylist(playlist.id, track.id) }
@@ -5587,6 +5674,7 @@ private fun SearchTrackCard(
     isFavorite: Boolean,
     isDownloading: Boolean,
     isDownloaded: Boolean,
+    downloadProgress: Int?,
     onClick: () -> Unit,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
@@ -5623,7 +5711,7 @@ private fun SearchTrackCard(
                 modifier = Modifier.clickable { onArtist() }
             )
         }
-        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, onDownload = onDownload)
+        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
         IconButton(onClick = onFavorite) {
             Icon(
                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -5719,6 +5807,7 @@ private fun TrackRow(
     onFavorite: () -> Unit,
     isDownloading: Boolean = false,
     isDownloaded: Boolean = false,
+    downloadProgress: Int? = null,
     onDownload: (() -> Unit)? = null,
     onArtist: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
@@ -5758,7 +5847,7 @@ private fun TrackRow(
             }
         }
         if (onDownload != null) {
-            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, onDownload = onDownload)
+            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
         }
         IconButton(onClick = onFavorite) {
             Icon(
@@ -5799,10 +5888,16 @@ private fun TrackRow(
 }
 
 @Composable
-private fun DownloadButton(isDownloading: Boolean, isDownloaded: Boolean, onDownload: () -> Unit) {
+private fun DownloadButton(isDownloading: Boolean, isDownloaded: Boolean, progress: Int? = null, onDownload: () -> Unit) {
     IconButton(onClick = { if (!isDownloading && !isDownloaded) onDownload() }) {
         when {
-            isDownloading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
+            isDownloading -> {
+                val label = progress?.coerceIn(1, 99)?.let { "$it%" } ?: "..."
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(34.dp)) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                    Text(label, color = LevyraCyan, fontSize = 8.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                }
+            }
             isDownloaded -> Icon(Icons.Rounded.DownloadDone, contentDescription = "Scaricato", tint = LevyraCyan, modifier = Modifier.size(23.dp))
             else -> Icon(Icons.Rounded.Download, contentDescription = "Scarica", tint = LevyraMuted, modifier = Modifier.size(23.dp))
         }
