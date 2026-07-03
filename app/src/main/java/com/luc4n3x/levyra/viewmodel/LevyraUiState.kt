@@ -25,6 +25,7 @@ data class LevyraUiState(
     val animationsEnabled: Boolean = true,
     val dynamicColor: Boolean = true,
     val userName: String = "",
+    val languageCode: String = "en",
     val selectedMood: Mood? = null,
     val tracks: List<Track> = emptyList(),
     val queue: List<Track> = emptyList(),
