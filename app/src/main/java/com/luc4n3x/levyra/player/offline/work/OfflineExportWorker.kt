@@ -25,7 +25,12 @@ class OfflineExportWorker(
         val payload = inputData.getString(KEY_TRACK_PAYLOAD).orEmpty()
         val track = TrackPayloadCodec.decode(payload) ?: return Result.failure(errorData("Traccia non valida"))
         return try {
-            val exporter = OfflineAudioExporter(applicationContext, PlaybackResolver.getInstance(applicationContext))
+            setProgress(workDataOf(KEY_PROGRESS to 1))
+            val exporter = OfflineAudioExporter(
+                context = applicationContext,
+                resolver = PlaybackResolver.getInstance(applicationContext),
+                progress = { value -> setProgress(workDataOf(KEY_PROGRESS to value.coerceIn(0, 100))) }
+            )
             val result = exporter.export(track)
             Result.success(
                 workDataOf(
@@ -55,6 +60,7 @@ class OfflineExportWorker(
         const val KEY_MIME_TYPE = "mime_type"
         const val KEY_URI = "uri"
         const val KEY_ERROR = "error"
+        const val KEY_PROGRESS = "progress"
 
         fun enqueue(context: Context, trackId: String, trackPayload: String): UUID {
             val workManager = WorkManager.getInstance(context.applicationContext)
