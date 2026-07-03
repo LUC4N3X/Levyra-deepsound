@@ -1042,6 +1042,9 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     tracks = quickTracks,
                     currentId = state.currentTrack?.id,
                     favoriteIds = state.favoriteIds,
+                    downloadingIds = state.downloadingTrackIds,
+                    downloadedIds = state.downloadedTrackIds,
+                    downloadProgressByTrackId = state.downloadProgressByTrackId,
                     isPlaying = state.isPlaying,
                     isResolving = state.isResolving,
                     onPlay = { track -> viewModel.playFrom(quickTracks, track) },
@@ -1774,6 +1777,9 @@ private fun isChartDrivenSource(source: String): Boolean {
 private fun HomeDiscoveryHero(
     update: HomeHeroUpdate,
     isFavorite: Boolean,
+    isDownloading: Boolean,
+    isDownloaded: Boolean,
+    downloadProgress: Int?,
     onPlay: () -> Unit,
     onSave: () -> Unit
 ) {
@@ -2192,6 +2198,9 @@ private fun QuickSongList(
     tracks: List<Track>,
     currentId: String?,
     favoriteIds: Set<String>,
+    downloadingIds: Set<String>,
+    downloadedIds: Set<String>,
+    downloadProgressByTrackId: Map<String, Int>,
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: (Track) -> Unit,
@@ -2209,6 +2218,9 @@ private fun QuickSongList(
                 isPlaying = isPlaying && track.id == currentId,
                 isResolving = isResolving && track.id == currentId,
                 isFavorite = track.id in favoriteIds,
+                isDownloading = track.id in downloadingIds,
+                isDownloaded = track.id in downloadedIds,
+                downloadProgress = downloadProgressByTrackId[track.id],
                 onPlay = { onPlay(track) },
                 onFavorite = { onFavorite(track) },
                 onAddToQueue = { onAddToQueue(track) },
@@ -2227,6 +2239,9 @@ private fun QuickSongRow(
     isPlaying: Boolean,
     isResolving: Boolean,
     isFavorite: Boolean,
+    isDownloading: Boolean,
+    isDownloaded: Boolean,
+    downloadProgress: Int?,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onAddToQueue: () -> Unit,
@@ -2307,6 +2322,7 @@ private fun QuickSongRow(
                 modifier = Modifier.clickable { onArtist() }
             )
         }
+        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onOffline)
         IconButton(onClick = onFavorite, modifier = Modifier.size(38.dp)) {
             Icon(
                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
