@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -32,6 +33,7 @@ data class LevyraPreferencesSnapshot(
     val onboarded: Boolean,
     val tastes: Set<String>,
     val userName: String,
+    val languageCode: String,
     val animationsEnabled: Boolean,
     val dynamicColor: Boolean,
     val sponsorBlock: Boolean,
@@ -64,6 +66,12 @@ class LevyraPreferences(context: Context) {
 
     fun setUserName(name: String) {
         write { it[KEY_USER_NAME] = name }
+    }
+
+    fun languageCode(): String = read(LevyraLanguageCatalog.deviceDefault()) { LevyraLanguageCatalog.normalize(it[KEY_LANGUAGE_CODE].orEmpty().ifBlank { LevyraLanguageCatalog.deviceDefault() }) }
+
+    fun setLanguageCode(code: String) {
+        write { it[KEY_LANGUAGE_CODE] = LevyraLanguageCatalog.normalize(code) }
     }
 
     fun animationsEnabled(): Boolean = read(true) { it[KEY_ANIMATIONS] ?: true }
@@ -137,6 +145,7 @@ class LevyraPreferences(context: Context) {
             onboarded = preferences[KEY_ONBOARDED] ?: false,
             tastes = preferences[KEY_TASTES].orEmpty(),
             userName = preferences[KEY_USER_NAME].orEmpty(),
+            languageCode = LevyraLanguageCatalog.normalize(preferences[KEY_LANGUAGE_CODE].orEmpty().ifBlank { LevyraLanguageCatalog.deviceDefault() }),
             animationsEnabled = preferences[KEY_ANIMATIONS] ?: true,
             dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: true,
             sponsorBlock = preferences[KEY_SPONSORBLOCK] ?: true,
@@ -154,6 +163,7 @@ class LevyraPreferences(context: Context) {
         onboarded = false,
         tastes = emptySet(),
         userName = "",
+        languageCode = LevyraLanguageCatalog.deviceDefault(),
         animationsEnabled = true,
         dynamicColor = true,
         sponsorBlock = true,
@@ -218,6 +228,7 @@ class LevyraPreferences(context: Context) {
         val KEY_SKIP_SILENCE = booleanPreferencesKey("skip_silence")
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
+        val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")

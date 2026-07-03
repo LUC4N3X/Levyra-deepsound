@@ -24,6 +24,7 @@ import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SponsorSegment
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
@@ -109,6 +110,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 favoriteIds = favorites.map { fav -> fav.id }.toSet(),
                 recentSearches = settings.recentSearches,
                 userName = settings.userName,
+                languageCode = settings.languageCode,
                 animationsEnabled = settings.animationsEnabled,
                 dynamicColor = settings.dynamicColor,
                 sponsorBlockEnabled = settings.sponsorBlock,
@@ -349,10 +351,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun completeOnboarding(name: String, tasteIds: Set<String>) {
+    fun completeOnboarding(name: String, tasteIds: Set<String>, languageCode: String) {
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
+        preferences.setLanguageCode(normalizedLanguage)
         preferences.setUserName(name.trim())
         preferences.setOnboarded(tasteIds)
-        _state.update { it.copy(showOnboarding = false, userName = name.trim()) }
+        _state.update { it.copy(showOnboarding = false, userName = name.trim(), languageCode = normalizedLanguage) }
         loadHomeFeed()
     }
 
@@ -443,6 +447,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setDynamicColor(value: Boolean) {
         preferences.setDynamicColor(value)
         _state.update { it.copy(dynamicColor = value) }
+    }
+
+    fun setLanguage(code: String) {
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(code)
+        preferences.setLanguageCode(normalizedLanguage)
+        _state.update { it.copy(languageCode = normalizedLanguage) }
     }
 
     fun restartOnboarding() {
