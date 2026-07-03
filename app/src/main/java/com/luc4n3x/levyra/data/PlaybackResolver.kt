@@ -107,6 +107,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun cached(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
+            if (!isVideoMode && isLegacyWebmAudioUrl(track.streamUrl)) return null
             return if (streamStillFresh(track.streamUrl)) track else null
         }
         val key = cacheKey(track, isVideoMode)
@@ -115,11 +116,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             remove(key)
             return null
         }
+        if (!isVideoMode && isLegacyWebmAudioUrl(hit.track.streamUrl)) {
+            remove(key)
+            return null
+        }
         return hit.track
     }
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track = coroutineScope {
-        track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) }?.let { return@coroutineScope track }
+        track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) && (isVideoMode || !isLegacyWebmAudioUrl(it)) }?.let { return@coroutineScope track }
         cached(track, isVideoMode)?.let { return@coroutineScope it }
 
         val key = cacheKey(track, isVideoMode)
@@ -145,6 +150,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
+            if (!isVideoMode && isLegacyWebmAudioUrl(track.streamUrl)) return null
             if (streamStillFresh(track.streamUrl)) {
                 store(track, isVideoMode)
                 return track
@@ -311,6 +317,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         return System.currentTimeMillis() + 90_000L < expire * 1000L
     }
 
+    private fun isLegacyWebmAudioUrl(url: String): Boolean {
+        val clean = url.lowercase()
+        return clean.contains("mime=audio%2fwebm") || clean.substringBefore('?').endsWith(".webm")
+    }
+
     private fun expiresAtFor(url: String): Long {
         val now = System.currentTimeMillis()
         val fromUrl = expireSeconds(url)?.times(1000L)?.minus(4L * 60L * 1000L)
@@ -373,8 +384,9 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val bitrate = format.optInt("bitrate", 0)
                 val audioQuality = format.optString("audioQuality")
                 val mimeBoost = when {
-                    mime.contains("mp4", true) -> 120_000
-                    mime.contains("webm", true) -> 80_000
+                    mime.contains("mp4", true) -> 2_000_000
+                    mime.contains("m4a", true) -> 2_000_000
+                    mime.contains("webm", true) -> 40_000
                     else -> 0
                 }
                 val qualityBias = when (selectedAudioQuality.lowercase()) {
@@ -490,11 +502,22 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun selectAudioStream(streams: List<AudioStream>): AudioStream? {
+        val preferred = streams.filter { isMp4AudioStream(it) }.ifEmpty { streams }
         val comparator = compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId }
         return when (selectedAudioQuality.lowercase()) {
-            "low" -> streams.minWithOrNull(comparator)
-            else -> streams.maxWithOrNull(comparator)
+            "low" -> preferred.minWithOrNull(comparator)
+            else -> preferred.maxWithOrNull(comparator)
         }
+    }
+
+    private fun isMp4AudioStream(stream: AudioStream): Boolean {
+        val formatName = stream.getFormat()?.name.orEmpty()
+        val content = stream.content.lowercase()
+        return formatName.contains("MPEG", ignoreCase = true) ||
+            formatName.contains("M4A", ignoreCase = true) ||
+            content.contains("mime=audio%2fmp4") ||
+            content.substringBefore('?').endsWith(".m4a") ||
+            content.substringBefore('?').endsWith(".mp4")
     }
 
     private fun resolveWithNewPipe(track: Track): Track {
