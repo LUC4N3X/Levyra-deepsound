@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.player.offline.work
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -16,6 +17,7 @@ import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import timber.log.Timber
 import java.io.IOException
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class OfflineExportWorker(
     appContext: Context,
@@ -74,6 +76,7 @@ class OfflineExportWorker(
                         .setRequiredNetworkType(NetworkType.CONNECTED)
                         .build()
                 )
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
                 .addTag("levyra_offline_export")
                 .addTag(uniqueName)
                 .build()
