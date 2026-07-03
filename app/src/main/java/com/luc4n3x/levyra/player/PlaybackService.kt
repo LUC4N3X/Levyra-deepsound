@@ -60,7 +60,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(32_000, 32_000, 0, 0)
+            .setBufferDurationsMs(1_500, 24_000, 100, 250)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
         val okHttpClient = LevyraHttpClientFactory.media(this)
@@ -76,7 +76,7 @@ class PlaybackService : MediaLibraryService() {
         val cache = LevyraMediaCache.get(this)
         val cacheSinkFactory = CacheDataSink.Factory()
             .setCache(cache)
-            .setFragmentSize(512L * 1024L)
+            .setFragmentSize(256L * 1024L)
         val cacheDataSourceFactory = CacheDataSource.Factory()
             .setCache(cache)
             .setUpstreamDataSourceFactory(upstreamFactory)
