@@ -2,6 +2,8 @@
 
 <img src="https://i.ibb.co/7tMpTVX6/levyra-saas-logo-Photoroom.png" alt="Levyra" width="470" />
 
+---
+
 <br>
 
 <h3>Modern Android music player with fast discovery, immersive playback, offline exports and a polished Spotify-style experience.</h3>
