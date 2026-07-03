@@ -36,6 +36,7 @@ import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -131,7 +132,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setSkipSilence(settings.skipSilence)
         player.onCompletion = { onTrackCompleted() }
         player.onError = { errorMsg ->
-            _state.update { it.copy(playerError = errorMsg, isPlaying = false, isResolving = false) }
+            _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
         }
         loadHomeFeed()
         loadCharts()
@@ -295,7 +296,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                _state.update { it.copy(isResolving = false, isVideoMode = current, playerError = e.message) }
+                _state.update { it.copy(isResolving = false, isVideoMode = current, playerError = cleanUserError(e)) }
             }
         }
     }
@@ -638,7 +639,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             result.onSuccess { workInfo ->
                 when (workInfo.state) {
                     WorkInfo.State.SUCCEEDED -> handleOfflineExportSuccess(workInfo, downloadKey)
-                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> handleOfflineExportFailure(workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR), downloadKey)
+                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> handleOfflineExportFailure(cleanUserError(workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR)), downloadKey)
                     else -> handleOfflineExportFailure("Esportazione non riuscita", downloadKey)
                 }
             }.onFailure { error ->
@@ -653,7 +654,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     throw error
                 }
                 Timber.e(error, "Offline export work failed")
-                handleOfflineExportFailure(error.message, downloadKey)
+                handleOfflineExportFailure(cleanUserError(error), downloadKey)
             }
         }
     }
@@ -686,12 +687,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update {
             it.copy(
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
-                offlineExportMessage = message ?: "Esportazione non riuscita",
+                offlineExportMessage = cleanUserError(message),
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
                 downloadProgressByTrackId = it.downloadProgressByTrackId - trackId
             )
         }
+    }
+
+
+    private fun cleanUserError(error: Throwable): String {
+        if (error is TimeoutCancellationException) return "YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo"
+        return cleanUserError(error.message)
+    }
+
+    private fun cleanUserError(message: String?): String {
+        val raw = message?.trim().orEmpty()
+        if (raw.isBlank()) return "Operazione non riuscita"
+        if (raw.contains("Timed out waiting", ignoreCase = true)) return "YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo"
+        if (raw.contains("timeout", ignoreCase = true)) return "Connessione lenta: riprova tra qualche secondo"
+        return raw
     }
 
     private fun updateDownloadProgress(trackId: String, progress: Int) {
@@ -915,7 +930,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         positionMs = 0L,
                         durationMs = track.durationMs,
                         currentTrack = track.copy(streamUrl = ""),
-                        playerError = error.message ?: "Stream non disponibile per questo brano"
+                        playerError = cleanUserError(error)
                     )
                 }
             }
