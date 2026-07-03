@@ -1,10 +1,8 @@
-org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8 -XX:+UseParallelGC
-org.gradle.parallel=true
-org.gradle.caching=true
-org.gradle.configuration-cache=true
-android.useAndroidX=true
-android.nonTransitiveRClass=true
-android.enableR8.fullMode=true
-kotlin.code.style=official
-levyraVersionName=2.2.0
-levyraVersionCode=2020000
+plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.licensee) apply false
+}
