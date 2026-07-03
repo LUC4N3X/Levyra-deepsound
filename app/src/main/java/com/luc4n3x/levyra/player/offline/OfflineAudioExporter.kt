@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aMetadata
 import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -33,12 +34,19 @@ class OfflineAudioExporter(
         get() = LevyraM4aTagWriter.isAvailable
 
     suspend fun export(track: Track): OfflineExportResult = withContext(Dispatchers.IO) {
-        val playable = if (track.streamUrl.isBlank()) resolver.resolve(track.copy(streamUrl = "")) else track
+        var playable = if (track.streamUrl.isBlank()) resolver.resolve(track.copy(streamUrl = "")) else track
         if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
         val workspace = File(context.cacheDir, "levyra_offline_export").apply { mkdirs() }
         Timber.i("Offline export started: %s", track.title)
         cleanupWorkspace(workspace)
-        val downloaded = downloadAudio(playable, workspace)
+        val downloaded = runCatching {
+            downloadAudio(playable, workspace)
+        }.getOrElse { firstError ->
+            val canRefresh = track.id.isNotBlank() || track.videoUrl.isNotBlank()
+            if (!canRefresh) throw firstError
+            playable = resolver.resolve(track.copy(streamUrl = ""))
+            downloadAudio(playable, workspace)
+        }
         var embeddedFile: PreparedAudioFile? = null
         try {
             val artwork = downloadArtwork(playable)
@@ -59,11 +67,28 @@ class OfflineAudioExporter(
         }
     }
 
-    private fun downloadAudio(track: Track, workspace: File): DownloadedAudio {
+    private suspend fun downloadAudio(track: Track, workspace: File): DownloadedAudio {
+        var lastError: IOException? = null
+        val rangeAttempts = listOf(true, false, true)
+        for ((index, useRange) in rangeAttempts.withIndex()) {
+            try {
+                return downloadAudioAttempt(track, workspace, useRange)
+            } catch (error: IOException) {
+                lastError = error
+                if (index < rangeAttempts.lastIndex) delay(350L * (index + 1))
+            }
+        }
+        throw lastError ?: IOException("Download audio non riuscito")
+    }
+
+    private fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
         val request = Request.Builder()
             .url(track.streamUrl)
             .header("User-Agent", USER_AGENT)
             .header("Accept", "audio/*,*/*;q=0.8")
+            .header("Accept-Encoding", "identity")
+            .header("Connection", "keep-alive")
+            .apply { if (useRange) header("Range", "bytes=0-") }
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
@@ -73,22 +98,27 @@ class OfflineAudioExporter(
             val contentType = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.US)
             val container = detectContainer(contentType, track.streamUrl)
             val temp = File(workspace, "raw-${System.nanoTime()}.${container.extension}")
-            body.byteStream().use { input ->
-                FileOutputStream(temp).use { output ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var total = 0L
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        total += read.toLong()
-                        if (total > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
-                        output.write(buffer, 0, read)
+            try {
+                body.byteStream().use { input ->
+                    FileOutputStream(temp).use { output ->
+                        val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
+                        var total = 0L
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            total += read.toLong()
+                            if (total > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
+                            output.write(buffer, 0, read)
+                        }
+                        output.flush()
                     }
-                    output.flush()
                 }
+                if (temp.length() <= 0L) throw IOException("File audio esportato vuoto")
+                return DownloadedAudio(temp, container)
+            } catch (error: IOException) {
+                runCatching { temp.delete() }
+                throw error
             }
-            if (temp.length() <= 0L) throw IOException("File audio esportato vuoto")
-            return DownloadedAudio(temp, container)
         }
     }
 
@@ -254,8 +284,9 @@ class OfflineAudioExporter(
     }
 
     companion object {
-        private const val MAX_AUDIO_BYTES = 96L * 1024L * 1024L
+        private const val MAX_AUDIO_BYTES = 128L * 1024L * 1024L
         private const val MAX_ARTWORK_BYTES = 4 * 1024 * 1024
+        private const val DOWNLOAD_BUFFER_BYTES = 256 * 1024
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
     }
 }
