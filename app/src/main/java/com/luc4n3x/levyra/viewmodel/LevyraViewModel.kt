@@ -611,7 +611,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 isOfflineExporting = true,
                 offlineExportMessage = null,
-                downloadingTrackIds = it.downloadingTrackIds + downloadKey
+                downloadingTrackIds = it.downloadingTrackIds + downloadKey,
+                downloadProgressByTrackId = it.downloadProgressByTrackId + (downloadKey to 1)
             )
         }
         viewModelScope.launch {
@@ -628,6 +629,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     if (info != null && info.state.isFinished) {
                         finished = info
                     } else {
+                        info?.let { updateDownloadProgress(downloadKey, it.progress.getInt(OfflineExportWorker.KEY_PROGRESS, 0)) }
                         delay(350L)
                     }
                 }
@@ -642,7 +644,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }.onFailure { error ->
                 if (error is CancellationException) {
                     activeDownloadKeys.remove(downloadKey)
-                    _state.update { it.copy(downloadingTrackIds = it.downloadingTrackIds - downloadKey) }
+                    _state.update {
+                        it.copy(
+                            downloadingTrackIds = it.downloadingTrackIds - downloadKey,
+                            downloadProgressByTrackId = it.downloadProgressByTrackId - downloadKey
+                        )
+                    }
                     throw error
                 }
                 Timber.e(error, "Offline export work failed")
@@ -668,7 +675,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
                 offlineExportMessage = "Salvato in Music/Levyra: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
-                downloadingTrackIds = it.downloadingTrackIds - trackId
+                downloadingTrackIds = it.downloadingTrackIds - trackId,
+                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId
             )
         }
     }
@@ -680,8 +688,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
                 offlineExportMessage = message ?: "Esportazione non riuscita",
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
-                downloadingTrackIds = it.downloadingTrackIds - trackId
+                downloadingTrackIds = it.downloadingTrackIds - trackId,
+                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId
             )
+        }
+    }
+
+    private fun updateDownloadProgress(trackId: String, progress: Int) {
+        val safeProgress = progress.coerceIn(1, 99)
+        _state.update {
+            if (trackId !in it.downloadingTrackIds) it else it.copy(downloadProgressByTrackId = it.downloadProgressByTrackId + (trackId to safeProgress))
         }
     }
 
