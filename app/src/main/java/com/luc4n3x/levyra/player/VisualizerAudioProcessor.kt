@@ -1,21 +1,20 @@
 package com.luc4n3x.levyra.player
 
+import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class VisualizerAudioProcessor : AudioProcessor {
 
     companion object {
         private val _waveformState = MutableStateFlow(FloatArray(0))
         val waveformState: StateFlow<FloatArray> = _waveformState.asStateFlow()
-        
-        // Settings per downsampling dell'onda (es. vogliamo 60 barre)
         private const val BARS_COUNT = 60
     }
 
@@ -23,15 +22,16 @@ class VisualizerAudioProcessor : AudioProcessor {
     private var inputAudioFormat = AudioFormat.NOT_SET
     private var outputAudioFormat = AudioFormat.NOT_SET
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
+    private var inputEnded = false
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
-        if (inputAudioFormat.encoding != androidx.media3.common.C.ENCODING_PCM_16BIT) {
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         this.inputAudioFormat = inputAudioFormat
-        this.outputAudioFormat = inputAudioFormat
+        outputAudioFormat = inputAudioFormat
         isActive = true
-        return inputAudioFormat
+        return outputAudioFormat
     }
 
     override fun isActive(): Boolean = isActive
@@ -40,54 +40,68 @@ class VisualizerAudioProcessor : AudioProcessor {
         val position = inputBuffer.position()
         val limit = inputBuffer.limit()
         val size = limit - position
-        
-        if (size > 0) {
-            // Processing audio to extract waveform
-            extractWaveform(inputBuffer.asReadOnlyBuffer())
-            
-            // Pass through the audio data untouched
-            if (outputBuffer.capacity() < size) {
-                outputBuffer = ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder())
-            } else {
-                outputBuffer.clear()
-            }
-            outputBuffer.put(inputBuffer)
-            outputBuffer.flip()
+
+        if (size <= 0) {
+            outputBuffer = AudioProcessor.EMPTY_BUFFER
+            return
         }
+
+        extractWaveform(inputBuffer.asReadOnlyBuffer())
+
+        val output = replaceOutputBuffer(size)
+        output.put(inputBuffer)
+        output.flip()
+        inputBuffer.position(limit)
+    }
+
+    private fun replaceOutputBuffer(size: Int): ByteBuffer {
+        outputBuffer = if (outputBuffer.capacity() < size) {
+            ByteBuffer.allocateDirect(size)
+        } else {
+            outputBuffer.clear()
+            outputBuffer
+        }
+        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
+        return outputBuffer
     }
 
     private fun extractWaveform(buffer: ByteBuffer) {
-        val sampleCount = buffer.remaining() / 2 // 16-bit PCM = 2 bytes per sample
-        if (sampleCount == 0) return
-        
-        // Simple decimation for waveform
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+
+        val sampleCount = buffer.remaining() / 2
+        if (sampleCount <= 0) return
+
         val decimationFactor = maxOf(1, sampleCount / BARS_COUNT)
         val wave = FloatArray(BARS_COUNT)
-        
-        var waveIdx = 0
-        var i = 0
-        while (i < sampleCount && waveIdx < BARS_COUNT) {
+
+        var waveIndex = 0
+        var sampleIndex = 0
+
+        while (sampleIndex < sampleCount && waveIndex < BARS_COUNT) {
             var sum = 0f
             var count = 0
-            for (j in 0 until decimationFactor) {
+
+            repeat(decimationFactor) {
                 if (buffer.remaining() >= 2) {
-                    val sample = buffer.short.toFloat() / Short.MAX_VALUE
+                    val sample = buffer.short.toFloat() / Short.MAX_VALUE.toFloat()
                     sum += abs(sample)
                     count++
                 }
             }
+
             if (count > 0) {
-                wave[waveIdx] = sum / count
+                wave[waveIndex] = sum / count
             }
-            waveIdx++
-            i += decimationFactor
+
+            waveIndex++
+            sampleIndex += decimationFactor
         }
-        
+
         _waveformState.value = wave
     }
 
     override fun queueEndOfStream() {
-        // Nothing to do
+        inputEnded = true
     }
 
     override fun getOutput(): ByteBuffer {
@@ -96,10 +110,11 @@ class VisualizerAudioProcessor : AudioProcessor {
         return output
     }
 
-    override fun isEnded(): Boolean = false
+    override fun isEnded(): Boolean = inputEnded && !outputBuffer.hasRemaining()
 
     override fun flush() {
         outputBuffer = AudioProcessor.EMPTY_BUFFER
+        inputEnded = false
     }
 
     override fun reset() {

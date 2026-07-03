@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
@@ -21,11 +22,12 @@ import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.VideoStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
 import timber.log.Timber
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
-import java.nio.charset.StandardCharsets
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
@@ -46,19 +48,24 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val userPreferences = LevyraPreferences(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
     private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
+    private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
+    private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
-    private val resolveTimeoutMs = 7_500L
+    private val resolveTimeoutMs = 4_800L
 
     @Volatile
     private var selectedAudioQuality = userPreferences.audioQuality()
 
+    @Volatile
+    private var lastNetworkWarmAt = 0L
+
     private val profiles = listOf(
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L),
         ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L),
-        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 15L),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 35L),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 60L)
+        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L),
+        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 8L),
+        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 18L)
     )
 
     init {
@@ -70,6 +77,31 @@ class PlaybackResolver private constructor(private val context: Context) {
             "high" -> "High"
             "low" -> "Low"
             else -> "Auto"
+        }
+    }
+
+    fun warmNetwork() {
+        val now = System.currentTimeMillis()
+        if (now - lastNetworkWarmAt < 45_000L) return
+        lastNetworkWarmAt = now
+        listOf(
+            "https://www.youtube.com/generate_204",
+            "https://music.youtube.com/generate_204"
+        ).forEach { url ->
+            val request = Request.Builder()
+                .url(url)
+                .head()
+                .header("User-Agent", profiles.first().userAgent)
+                .build()
+            youtubeHttpClient.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    Timber.d(e, "youtube warmup failed")
+                }
+
+                override fun onResponse(call: Call, response: okhttp3.Response) {
+                    response.close()
+                }
+            })
         }
     }
 
@@ -186,7 +218,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         val newPipeJob = launch {
-            delay(350L)
+            delay(60L)
             val resolved = runCatching { resolveWithNewPipe(track) }
             resolved.onSuccess { winner.complete(it) }
                 .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "NewPipe: $message" } }
@@ -303,28 +335,23 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false): DirectStream {
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
-        val body = buildPlayerBody(track.id, profile).toString().toByteArray(StandardCharsets.UTF_8)
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 2_400
-            readTimeout = 5_000
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Origin", if (profile.clientName == "WEB_REMIX") "https://music.youtube.com" else "https://www.youtube.com")
-            setRequestProperty("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/${track.id}" else track.videoUrl)
-            setRequestProperty("User-Agent", profile.userAgent)
-            setRequestProperty("X-Youtube-Client-Name", profile.clientHeaderName)
-            setRequestProperty("X-Youtube-Client-Version", profile.clientVersion)
-            setRequestProperty("Content-Length", body.size.toString())
-        }
-        try {
-            connection.outputStream.use { it.write(body) }
-            val code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.let { input -> BufferedReader(InputStreamReader(input, StandardCharsets.UTF_8)).use { reader -> reader.readText() } }.orEmpty()
-            if (code !in 200..299) throw IllegalStateException("HTTP $code")
-            val root = JSONObject(response)
+        val body = buildPlayerBody(track.id, profile).toString()
+        val request = Request.Builder()
+            .url(endpoint)
+            .post(body.toRequestBody(jsonMediaType))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .header("Origin", if (profile.clientName == "WEB_REMIX") "https://music.youtube.com" else "https://www.youtube.com")
+            .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/${track.id}" else track.videoUrl)
+            .header("User-Agent", profile.userAgent)
+            .header("X-Youtube-Client-Name", profile.clientHeaderName)
+            .header("X-Youtube-Client-Version", profile.clientVersion)
+            .build()
+
+        youtubeHttpClient.newCall(request).execute().use { response ->
+            val responseText = response.body.string()
+            if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}")
+            val root = JSONObject(responseText)
             val playability = root.optJSONObject("playabilityStatus")
             val status = playability?.optString("status").orEmpty()
             if (status.isNotBlank() && status != "OK") {
@@ -459,8 +486,6 @@ class PlaybackResolver private constructor(private val context: Context) {
                 thumbnailUrl = thumbnail,
                 source = "YouTube Music ${profile.label}"
             )
-        } finally {
-            connection.disconnect()
         }
     }
 
