@@ -21,6 +21,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,6 +48,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -890,19 +893,72 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
 
 @Composable
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
-    val start = accentStart?.let { Color(it) } ?: LevyraCyan
-    val end = accentEnd?.let { Color(it) } ?: LevyraViolet
+    val startColor = accentStart?.let { Color(it) } ?: LevyraCyan
+    val endColor = accentEnd?.let { Color(it) } ?: LevyraViolet
+    
+    val animStart by androidx.compose.animation.animateColorAsState(
+        targetValue = startColor,
+        animationSpec = tween(1500, easing = LinearOutSlowInEasing)
+    )
+    val animEnd by androidx.compose.animation.animateColorAsState(
+        targetValue = endColor,
+        animationSpec = tween(1500, easing = LinearOutSlowInEasing)
+    )
+
+    // Breathing animation for the aura's glow intensity
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition()
+    val breathAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.08f,
+        targetValue = 0.22f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = tween(4000, easing = androidx.compose.animation.core.EaseInOutSine),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        )
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    0f to start.copy(alpha = 0.16f),
-                    0.35f to LevyraBlack,
-                    1f to end.copy(alpha = 0.07f)
+            .background(LevyraBlack) // The pure OLED black foundation
+    ) {
+        // 1. THE AURA: A vertically stretched, pulsing glowing pillar in the center
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(350.dp) // Base circle
+                .graphicsLayer {
+                    scaleX = 0.7f
+                    scaleY = 3.0f // GPU stretch makes it a tall pillar
+                    alpha = breathAlpha
+                }
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            animStart, 
+                            animEnd.copy(alpha = 0.4f), 
+                            Color.Transparent
+                        )
+                    )
                 )
-            )
-    )
+        )
+
+        // 2. THE GLASS SLASH: A very subtle, sharp diagonal light reflection 
+        // to give a physical "dark frosted glass" texture to the void.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        0.0f to Color.Transparent,
+                        0.45f to Color.Transparent,
+                        0.48f to Color.White.copy(alpha = 0.008f), // Soft leading edge
+                        0.50f to Color.White.copy(alpha = 0.025f),  // Sharp peak
+                        0.501f to Color.Transparent,               // Immediate drop-off
+                        1.0f to Color.Transparent
+                    )
+                )
+        )
+    }
 }
 
 @Composable
@@ -3832,35 +3888,37 @@ private fun PlayerOptionsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Spacer(modifier = Modifier.width(4.dp))
         OptionChip(
             icon = Icons.Rounded.GraphicEq,
             label = "Norm",
             active = audioNormalization,
-            modifier = Modifier.width(104.dp),
+            modifier = Modifier.width(110.dp),
             onClick = onNormalization
         )
         OptionChip(
             icon = Icons.Rounded.Speed,
             label = "${trimSpeed(speed)}x",
             active = speed != 1f,
-            modifier = Modifier.width(92.dp),
+            modifier = Modifier.width(100.dp),
             onClick = onSpeed
         )
         OptionChip(
             icon = Icons.Rounded.Bedtime,
             label = if (sleepMinutes > 0) "${sleepMinutes}m" else "Timer",
             active = sleepMinutes > 0,
-            modifier = Modifier.width(108.dp),
+            modifier = Modifier.width(114.dp),
             onClick = onSleep
         )
         OptionChip(
             icon = Icons.Rounded.Equalizer,
             label = audioQuality,
             active = audioQuality != "Auto",
-            modifier = Modifier.width(100.dp),
+            modifier = Modifier.width(106.dp),
             onClick = onQuality
         )
         OptionChip(
@@ -3872,33 +3930,42 @@ private fun PlayerOptionsRow(
             },
             active = exporting || metadataWriterReady,
             enabled = !exporting,
-            modifier = Modifier.width(104.dp),
+            modifier = Modifier.width(110.dp),
             onClick = onExport
         )
+        Spacer(modifier = Modifier.width(4.dp))
     }
 }
 
 @Composable
 private fun OptionChip(icon: ImageVector, label: String, active: Boolean, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) {
-    val alpha = if (enabled) 1f else 0.62f
+    val alpha by animateFloatAsState(targetValue = if (enabled) 1f else 0.5f, animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f))
+    val scale by animateFloatAsState(targetValue = if (active) 1.03f else 1f, animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f))
+    val bgColor = if (active) LevyraCyan.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.05f)
+    val borderColor = if (active) LevyraCyan.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.08f)
+    
     Surface(
-        color = if (active) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.07f),
-        border = BorderStroke(1.dp, if (active) LevyraCyan.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.12f)),
-        shape = RoundedCornerShape(18.dp),
+        color = bgColor,
+        border = BorderStroke(1.dp, borderColor),
+        shape = RoundedCornerShape(22.dp),
         modifier = modifier
-            .height(52.dp)
-            .graphicsLayer { this.alpha = alpha }
+            .height(56.dp)
+            .graphicsLayer { 
+                this.alpha = alpha 
+                this.scaleX = scale
+                this.scaleY = scale
+            }
             .pressable(enabled = enabled, onClick = onClick)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 10.dp),
+                .padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, tint = if (active) LevyraCyan else LevyraText, modifier = Modifier.size(19.dp))
-            Spacer(modifier = Modifier.width(7.dp))
+            Icon(icon, null, tint = if (active) LevyraCyan else LevyraText.copy(alpha = 0.9f), modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(label, color = if (active) LevyraCyan else LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -3937,26 +4004,58 @@ private fun trimSpeed(speed: Float): String {
 private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
     LazyRow(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp)
     ) {
         items(LevyraLanguageCatalog.languages, key = { it.code }) { language ->
             val selected = language.code == LevyraLanguageCatalog.normalize(selectedCode)
+            val scale by animateFloatAsState(
+                targetValue = if (selected) 1.04f else 1f,
+                animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f)
+            )
+            val bgAlpha by animateFloatAsState(targetValue = if (selected) 0.18f else 0.04f)
+            val borderAlpha by animateFloatAsState(targetValue = if (selected) 0.6f else 0.06f)
+
             Surface(
-                color = if (selected) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.08f),
-                border = BorderStroke(1.dp, if (selected) LevyraCyan.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.1f)),
-                shape = RoundedCornerShape(999.dp),
-                modifier = Modifier.pressable(onClick = { onSelect(language.code) })
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(language.flag, fontSize = 18.sp)
-                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        Text(language.englishName, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(language.nativeName, color = if (selected) LevyraCyan else LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                color = LevyraCyan.copy(alpha = bgAlpha),
+                border = BorderStroke(1.dp, LevyraCyan.copy(alpha = borderAlpha)),
+                shape = RoundedCornerShape(26.dp),
+                modifier = Modifier
+                    .width(130.dp)
+                    .height(130.dp)
+                    .graphicsLayer {
+                        this.scaleX = scale
+                        this.scaleY = scale
                     }
+                    .pressable(onClick = { onSelect(language.code) })
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = language.flag,
+                        fontSize = 42.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    Text(
+                        text = language.englishName,
+                        color = LevyraText,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = language.nativeName,
+                        color = if (selected) LevyraCyan else LevyraMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
