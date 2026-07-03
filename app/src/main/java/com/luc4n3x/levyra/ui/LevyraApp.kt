@@ -904,36 +904,56 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
         animationSpec = tween(1500, easing = LinearOutSlowInEasing)
     )
 
+    // Breathing animation for the aura's glow intensity
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition()
+    val breathAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.08f,
+        targetValue = 0.22f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = tween(4000, easing = androidx.compose.animation.core.EaseInOutSine),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        )
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LevyraBlack)
+            .background(LevyraBlack) // The pure OLED black foundation
     ) {
-        // Ultra-minimal top ambient light bleed (Linear/Cursor style)
+        // 1. THE AURA: A vertically stretched, pulsing glowing pillar in the center
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.3f)
-                .align(Alignment.TopCenter)
+                .align(Alignment.Center)
+                .size(350.dp) // Base circle
+                .androidx.compose.ui.graphics.graphicsLayer {
+                    scaleX = 0.7f
+                    scaleY = 3.0f // GPU stretch makes it a tall pillar
+                    alpha = breathAlpha
+                }
                 .background(
-                    Brush.verticalGradient(
-                        0.0f to animStart.copy(alpha = 0.12f),
-                        0.5f to animStart.copy(alpha = 0.03f),
-                        1.0f to Color.Transparent
+                    Brush.radialGradient(
+                        colors = listOf(
+                            animStart, 
+                            animEnd.copy(alpha = 0.4f), 
+                            Color.Transparent
+                        )
                     )
                 )
         )
-        
-        // Subtle base anchoring (very slight white reflection at the bottom)
+
+        // 2. THE GLASS SLASH: A very subtle, sharp diagonal light reflection 
+        // to give a physical "dark frosted glass" texture to the void.
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.15f)
-                .align(Alignment.BottomCenter)
+                .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
+                    Brush.linearGradient(
                         0.0f to Color.Transparent,
-                        1.0f to Color.White.copy(alpha = 0.02f)
+                        0.45f to Color.Transparent,
+                        0.48f to Color.White.copy(alpha = 0.008f), // Soft leading edge
+                        0.50f to Color.White.copy(alpha = 0.025f),  // Sharp peak
+                        0.501f to Color.Transparent,               // Immediate drop-off
+                        1.0f to Color.Transparent
                     )
                 )
         )
