@@ -47,6 +47,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -926,7 +928,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                 .fillMaxWidth(0.9f)
                 .fillMaxHeight(0.55f)
                 .align(Alignment.TopStart)
-                .androidx.compose.foundation.layout.offset(x = (-60).dp, y = (-40).dp)
+                .offset(x = (-60).dp, y = (-40).dp)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(animStart.copy(alpha = 0.55f), Color.Transparent)
@@ -939,7 +941,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                 .fillMaxWidth(1.0f)
                 .fillMaxHeight(0.6f)
                 .align(Alignment.BottomEnd)
-                .androidx.compose.foundation.layout.offset(x = 80.dp, y = 60.dp)
+                .offset(x = 80.dp, y = 60.dp)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(animEnd.copy(alpha = 0.45f), Color.Transparent)
