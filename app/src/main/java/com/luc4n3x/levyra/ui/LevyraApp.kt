@@ -21,6 +21,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -925,7 +926,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
             modifier = Modifier
                 .align(Alignment.Center)
                 .size(350.dp) // Base circle
-                .androidx.compose.ui.graphics.graphicsLayer {
+                .graphicsLayer {
                     scaleX = 0.7f
                     scaleY = 3.0f // GPU stretch makes it a tall pillar
                     alpha = breathAlpha
