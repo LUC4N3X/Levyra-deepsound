@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
@@ -30,6 +31,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 class PlaybackResolver private constructor(private val context: Context) {
     companion object {
@@ -52,7 +54,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
-    private val resolveTimeoutMs = 4_800L
+    private val playbackResolveTimeoutMs = 18_000L
+    private val offlineResolveTimeoutMs = 60_000L
 
     @Volatile
     private var selectedAudioQuality = userPreferences.audioQuality()
@@ -107,6 +110,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun cached(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
+            if (!isVideoMode && isLegacyWebmAudioUrl(track.streamUrl)) return null
             return if (streamStillFresh(track.streamUrl)) track else null
         }
         val key = cacheKey(track, isVideoMode)
@@ -115,23 +119,58 @@ class PlaybackResolver private constructor(private val context: Context) {
             remove(key)
             return null
         }
+        if (!isVideoMode && isLegacyWebmAudioUrl(hit.track.streamUrl)) {
+            remove(key)
+            return null
+        }
         return hit.track
     }
 
-    suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track = coroutineScope {
-        track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) }?.let { return@coroutineScope track }
+    suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
+        return resolveInternal(
+            track = track,
+            isVideoMode = isVideoMode,
+            timeoutMs = playbackResolveTimeoutMs,
+            preferMp4Audio = false,
+            requestKind = "playback"
+        )
+    }
+
+    suspend fun resolveForOffline(track: Track): Track {
+        return resolveInternal(
+            track = track,
+            isVideoMode = false,
+            timeoutMs = offlineResolveTimeoutMs,
+            preferMp4Audio = true,
+            requestKind = "offline"
+        )
+    }
+
+    private suspend fun resolveInternal(
+        track: Track,
+        isVideoMode: Boolean,
+        timeoutMs: Long,
+        preferMp4Audio: Boolean,
+        requestKind: String
+    ): Track = coroutineScope {
+        track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) && (isVideoMode || !isLegacyWebmAudioUrl(it)) }?.let { return@coroutineScope track }
         cached(track, isVideoMode)?.let { return@coroutineScope it }
 
-        val key = cacheKey(track, isVideoMode)
-        Timber.d("resolver start mode=%s id=%s quality=%s", if (isVideoMode) "video" else "audio", track.id, selectedAudioQuality)
+        val key = "${cacheKey(track, isVideoMode)}_$requestKind"
+        Timber.d("resolver start kind=%s mode=%s id=%s quality=%s", requestKind, if (isVideoMode) "video" else "audio", track.id, selectedAudioQuality)
         val deferred = async(Dispatchers.IO, start = CoroutineStart.LAZY) {
-            withTimeout(resolveTimeoutMs) {
-                resolveUncached(track.copy(streamUrl = ""), isVideoMode)
+            try {
+                withTimeout(timeoutMs) {
+                    resolveUncached(track.copy(streamUrl = ""), isVideoMode, preferMp4Audio)
+                }
+            } catch (error: TimeoutCancellationException) {
+                val label = if (requestKind == "offline") "Download" else "YouTube"
+                throw PlaybackBlockedException("$label lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo")
             }
         }
         val previous = inFlight.putIfAbsent(key, deferred)
         if (previous != null) {
-            Timber.d("resolver in-flight join mode=%s id=%s", if (isVideoMode) "video" else "audio", track.id)
+            Timber.d("resolver in-flight join kind=%s mode=%s id=%s", requestKind, if (isVideoMode) "video" else "audio", track.id)
             return@coroutineScope previous.await()
         }
 
@@ -145,6 +184,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
+            if (!isVideoMode && isLegacyWebmAudioUrl(track.streamUrl)) return null
             if (streamStillFresh(track.streamUrl)) {
                 store(track, isVideoMode)
                 return track
@@ -155,7 +195,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         return runCatching { resolve(track, isVideoMode) }.getOrNull()
     }
 
-    private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false): Track = withContext(Dispatchers.IO) {
+    private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false, preferMp4Audio: Boolean = false): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         if (isVideoMode) {
@@ -167,7 +207,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                         .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "NewPipe video: $m" } }
                 }
                 val itJob = launch {
-                    val stream = runCatching { raceInnerTube(track, errors, true) }.getOrNull()
+                    val stream = runCatching { raceInnerTube(track, errors, true, preferMp4Audio = false) }.getOrNull()
                     if (stream != null) {
                         winner.complete(
                             track.copy(
@@ -199,7 +239,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             throw PlaybackBlockedException(reason)
         }
 
-        val resolved = resolveAudioFast(track, errors)
+        val resolved = resolveAudioFast(track, errors, preferMp4Audio)
         if (resolved != null) {
             store(resolved, isVideoMode)
             return@withContext resolved
@@ -211,14 +251,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw PlaybackBlockedException(reason)
     }
 
-    private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>): Track? = coroutineScope {
+    private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? = coroutineScope {
         val winner = CompletableDeferred<Track?>()
         val innerTubeJob = launch {
-            val stream = runCatching { raceInnerTube(track, errors, false) }.getOrNull()
+            val stream = runCatching { raceInnerTube(track, errors, false, preferMp4Audio) }.getOrNull()
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         val newPipeJob = launch {
-            delay(60L)
+            if (!preferMp4Audio) delay(60L)
             val resolved = runCatching { resolveWithNewPipe(track) }
             resolved.onSuccess { winner.complete(it) }
                 .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "NewPipe: $message" } }
@@ -242,14 +282,25 @@ class PlaybackResolver private constructor(private val context: Context) {
         source = stream.source
     )
 
-    private suspend fun raceInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean = false): DirectStream? = coroutineScope {
+    private suspend fun raceInnerTube(
+        track: Track,
+        errors: MutableList<String>,
+        isVideoMode: Boolean = false,
+        preferMp4Audio: Boolean = false
+    ): DirectStream? = coroutineScope {
         val winner = CompletableDeferred<DirectStream?>()
+        val fallback = AtomicReference<DirectStream?>(null)
         val workers = profiles.map { profile ->
             launch {
                 if (profile.delayMs > 0L) delay(profile.delayMs)
                 val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode) }
                 attempt.onSuccess { stream ->
-                    if (stream.url.isNotBlank()) winner.complete(stream)
+                    if (stream.url.isBlank()) return@onSuccess
+                    if (!isVideoMode && preferMp4Audio && !isMp4AudioUrl(stream.url)) {
+                        fallback.compareAndSet(null, stream)
+                    } else {
+                        winner.complete(stream)
+                    }
                 }.onFailure { error ->
                     error.message?.takeIf { it.isNotBlank() }?.let { errors += "${profile.label}: $it" }
                 }
@@ -257,7 +308,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         launch {
             workers.joinAll()
-            winner.complete(null)
+            val candidate = fallback.get()
+            if (!isVideoMode && preferMp4Audio && candidate != null) delay(700L)
+            winner.complete(candidate)
         }
         val result = winner.await()
         coroutineContext.cancelChildren()
@@ -309,6 +362,17 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun streamStillFresh(url: String): Boolean {
         val expire = expireSeconds(url) ?: return true
         return System.currentTimeMillis() + 90_000L < expire * 1000L
+    }
+
+    private fun isLegacyWebmAudioUrl(url: String): Boolean {
+        val clean = url.lowercase()
+        return clean.contains("mime=audio%2fwebm") || clean.substringBefore('?').endsWith(".webm")
+    }
+
+    private fun isMp4AudioUrl(url: String): Boolean {
+        val clean = url.lowercase()
+        val path = clean.substringBefore('?')
+        return clean.contains("mime=audio%2fmp4") || clean.contains("mime=audio/mp4") || path.endsWith(".m4a") || path.endsWith(".mp4")
     }
 
     private fun expiresAtFor(url: String): Long {
@@ -373,8 +437,9 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val bitrate = format.optInt("bitrate", 0)
                 val audioQuality = format.optString("audioQuality")
                 val mimeBoost = when {
-                    mime.contains("mp4", true) -> 120_000
-                    mime.contains("webm", true) -> 80_000
+                    mime.contains("mp4", true) -> 2_000_000
+                    mime.contains("m4a", true) -> 2_000_000
+                    mime.contains("webm", true) -> 40_000
                     else -> 0
                 }
                 val qualityBias = when (selectedAudioQuality.lowercase()) {
@@ -490,11 +555,22 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun selectAudioStream(streams: List<AudioStream>): AudioStream? {
+        val preferred = streams.filter { isMp4AudioStream(it) }.ifEmpty { streams }
         val comparator = compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId }
         return when (selectedAudioQuality.lowercase()) {
-            "low" -> streams.minWithOrNull(comparator)
-            else -> streams.maxWithOrNull(comparator)
+            "low" -> preferred.minWithOrNull(comparator)
+            else -> preferred.maxWithOrNull(comparator)
         }
+    }
+
+    private fun isMp4AudioStream(stream: AudioStream): Boolean {
+        val formatName = stream.getFormat()?.name.orEmpty()
+        val content = stream.content.lowercase()
+        return formatName.contains("MPEG", ignoreCase = true) ||
+            formatName.contains("M4A", ignoreCase = true) ||
+            content.contains("mime=audio%2fmp4") ||
+            content.substringBefore('?').endsWith(".m4a") ||
+            content.substringBefore('?').endsWith(".mp4")
     }
 
     private fun resolveWithNewPipe(track: Track): Track {

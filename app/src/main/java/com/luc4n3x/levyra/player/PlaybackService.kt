@@ -55,7 +55,6 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private var autoPlayManager: AutoPlayManager? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -146,7 +145,6 @@ class PlaybackService : MediaLibraryService() {
         val notificationProvider = DefaultMediaNotificationProvider(this)
         setMediaNotificationProvider(notificationProvider)
         
-        autoPlayManager = AutoPlayManager(this, player, serviceScope)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
@@ -164,7 +162,6 @@ class PlaybackService : MediaLibraryService() {
         }
         activePlayer = null
         mediaSession = null
-        autoPlayManager = null
         LevyraMediaCache.release()
         super.onDestroy()
     }

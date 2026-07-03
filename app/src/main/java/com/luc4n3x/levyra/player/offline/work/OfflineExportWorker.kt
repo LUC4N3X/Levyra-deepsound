@@ -1,9 +1,11 @@
 package com.luc4n3x.levyra.player.offline.work
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -15,6 +17,7 @@ import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import timber.log.Timber
 import java.io.IOException
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class OfflineExportWorker(
     appContext: Context,
@@ -24,7 +27,12 @@ class OfflineExportWorker(
         val payload = inputData.getString(KEY_TRACK_PAYLOAD).orEmpty()
         val track = TrackPayloadCodec.decode(payload) ?: return Result.failure(errorData("Traccia non valida"))
         return try {
-            val exporter = OfflineAudioExporter(applicationContext, PlaybackResolver.getInstance(applicationContext))
+            setProgress(workDataOf(KEY_PROGRESS to 1))
+            val exporter = OfflineAudioExporter(
+                context = applicationContext,
+                resolver = PlaybackResolver.getInstance(applicationContext),
+                progress = { value -> setProgress(workDataOf(KEY_PROGRESS to value.coerceIn(0, 100))) }
+            )
             val result = exporter.export(track)
             Result.success(
                 workDataOf(
@@ -54,8 +62,13 @@ class OfflineExportWorker(
         const val KEY_MIME_TYPE = "mime_type"
         const val KEY_URI = "uri"
         const val KEY_ERROR = "error"
+        const val KEY_PROGRESS = "progress"
 
-        fun enqueue(context: Context, trackPayload: String): UUID {
+        fun enqueue(context: Context, trackId: String, trackPayload: String): UUID {
+            val workManager = WorkManager.getInstance(context.applicationContext)
+            val uniqueName = uniqueNameFor(trackId)
+            val existing = workManager.getWorkInfosForUniqueWork(uniqueName).get().firstOrNull { !it.state.isFinished }
+            if (existing != null) return existing.id
             val request = OneTimeWorkRequestBuilder<OfflineExportWorker>()
                 .setInputData(workDataOf(KEY_TRACK_PAYLOAD to trackPayload))
                 .setConstraints(
@@ -63,10 +76,17 @@ class OfflineExportWorker(
                         .setRequiredNetworkType(NetworkType.CONNECTED)
                         .build()
                 )
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
                 .addTag("levyra_offline_export")
+                .addTag(uniqueName)
                 .build()
-            WorkManager.getInstance(context.applicationContext).enqueue(request)
+            workManager.enqueueUniqueWork(uniqueName, ExistingWorkPolicy.KEEP, request)
             return request.id
+        }
+
+        private fun uniqueNameFor(trackId: String): String {
+            val safe = trackId.trim().ifBlank { "unknown" }.replace(Regex("[^A-Za-z0-9_.-]+"), "_").take(120)
+            return "levyra_offline_export_$safe"
         }
     }
 }
