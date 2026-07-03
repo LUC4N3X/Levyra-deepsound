@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -55,7 +56,11 @@ class OfflineExportWorker(
         const val KEY_URI = "uri"
         const val KEY_ERROR = "error"
 
-        fun enqueue(context: Context, trackPayload: String): UUID {
+        fun enqueue(context: Context, trackId: String, trackPayload: String): UUID {
+            val workManager = WorkManager.getInstance(context.applicationContext)
+            val uniqueName = uniqueNameFor(trackId)
+            val existing = workManager.getWorkInfosForUniqueWork(uniqueName).get().firstOrNull { !it.state.isFinished }
+            if (existing != null) return existing.id
             val request = OneTimeWorkRequestBuilder<OfflineExportWorker>()
                 .setInputData(workDataOf(KEY_TRACK_PAYLOAD to trackPayload))
                 .setConstraints(
@@ -64,9 +69,15 @@ class OfflineExportWorker(
                         .build()
                 )
                 .addTag("levyra_offline_export")
+                .addTag(uniqueName)
                 .build()
-            WorkManager.getInstance(context.applicationContext).enqueue(request)
+            workManager.enqueueUniqueWork(uniqueName, ExistingWorkPolicy.KEEP, request)
             return request.id
+        }
+
+        private fun uniqueNameFor(trackId: String): String {
+            val safe = trackId.trim().ifBlank { "unknown" }.replace(Regex("[^A-Za-z0-9_.-]+"), "_").take(120)
+            return "levyra_offline_export_$safe"
         }
     }
 }
