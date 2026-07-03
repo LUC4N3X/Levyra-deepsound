@@ -909,54 +909,31 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
             .fillMaxSize()
             .background(LevyraBlack)
     ) {
-        // Deep ambient mesh
+        // Ultra-minimal top ambient light bleed (Linear/Cursor style)
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .fillMaxHeight(0.3f)
+                .align(Alignment.TopCenter)
                 .background(
                     Brush.verticalGradient(
-                        0.0f to animStart.copy(alpha = 0.28f),
-                        0.35f to Color(0xFF08080C),
-                        0.65f to Color(0xFF08080C),
-                        1.0f to animEnd.copy(alpha = 0.22f)
+                        0.0f to animStart.copy(alpha = 0.12f),
+                        0.5f to animStart.copy(alpha = 0.03f),
+                        1.0f to Color.Transparent
                     )
                 )
         )
-        // Top-Left Orb Glow
+        
+        // Subtle base anchoring (very slight white reflection at the bottom)
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.55f)
-                .align(Alignment.TopStart)
-                .offset(x = (-60).dp, y = (-40).dp)
+                .fillMaxWidth()
+                .fillMaxHeight(0.15f)
+                .align(Alignment.BottomCenter)
                 .background(
-                    Brush.radialGradient(
-                        colors = listOf(animStart.copy(alpha = 0.55f), Color.Transparent)
-                    )
-                )
-        )
-        // Bottom-Right Orb Glow
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(1.0f)
-                .fillMaxHeight(0.6f)
-                .align(Alignment.BottomEnd)
-                .offset(x = 80.dp, y = 60.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(animEnd.copy(alpha = 0.45f), Color.Transparent)
-                    )
-                )
-        )
-        // Subtle Center Accent connecting them
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.7f)
-                .fillMaxHeight(0.5f)
-                .align(Alignment.Center)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(LevyraViolet.copy(alpha = 0.15f), Color.Transparent)
+                    Brush.verticalGradient(
+                        0.0f to Color.Transparent,
+                        1.0f to Color.White.copy(alpha = 0.02f)
                     )
                 )
         )
