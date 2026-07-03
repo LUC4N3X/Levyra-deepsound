@@ -574,142 +574,108 @@ private fun UpdateAvailableOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f))
+            .background(Color.Black.copy(alpha = 0.85f))
             .clickable(interactionSource = blocker, indication = null) {},
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            color = Color.Transparent,
+            color = Color(0xFF0B1020),
             shape = RoundedCornerShape(28.dp),
-            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f)),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 22.dp)
+                .padding(horizontal = 20.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = 0.22f),
-                                Color(0xFF0B1020),
-                                LevyraViolet.copy(alpha = 0.20f)
+            Column {
+                // Hero Section
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(LevyraCyan.copy(alpha = 0.6f), LevyraViolet.copy(alpha = 0.6f))
                             )
-                        )
-                    )
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Surface(
-                        color = LevyraCyan.copy(alpha = 0.15f),
-                        shape = CircleShape,
-                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.25f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
-                        ) {
-                            Icon(Icons.Rounded.Bolt, null, tint = LevyraCyan, modifier = Modifier.size(17.dp))
-                            Text("AGGIORNAMENTO", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("LEVYRA", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                        Surface(color = Color.Black.copy(alpha = 0.3f), shape = RoundedCornerShape(8.dp)) {
+                            Text("NUOVO AGGIORNAMENTO", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), letterSpacing = 1.sp)
                         }
                     }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = LevyraText,
-                        background = Color.White.copy(alpha = 0.08f),
-                        onClick = onLater
-                    )
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text(
-                        text = "LEVYRA ${update.latestVersionName} è pronta",
-                        color = LevyraText,
-                        fontSize = 27.sp,
-                        lineHeight = 30.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        text = "Puoi scaricare la nuova versione e installarla quando vuoi.",
-                        color = LevyraMuted,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                Surface(
-                    color = Color.White.copy(alpha = 0.055f),
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Text(update.releaseTitle.ifBlank { "Nuova versione" }, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = compactReleaseNotes(update.releaseNotes),
+                            text = "Versione ${update.latestVersionName}",
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = update.releaseTitle.ifBlank { "Miglioramenti generali e risoluzione di bug." },
                             color = LevyraMuted,
-                            fontSize = 12.sp,
-                            lineHeight = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
-                }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .pressable(onClick = onDownload)
-                    ) {
-                        Box(
-                            modifier = Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(19.dp))
-                                Text("Scarica", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    // Changelog
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Novità", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        val notes = update.releaseNotes.split("\n").filter { it.isNotBlank() }
+                        if (notes.isEmpty()) {
+                            Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                Text("Miglioramenti alle prestazioni e stabilità dell'app.", color = LevyraMuted, fontSize = 13.sp, modifier = Modifier.padding(12.dp))
+                            }
+                        } else {
+                            notes.take(4).forEach { note ->
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.05f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Box(modifier = Modifier.size(6.dp).background(LevyraCyan, CircleShape))
+                                        Text(note.removePrefix("- ").removePrefix("* ").trim(), color = LevyraMuted, fontSize = 13.sp, lineHeight = 18.sp)
+                                    }
+                                }
                             }
                         }
                     }
-                    Surface(
-                        color = Color.White.copy(alpha = 0.06f),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
-                        modifier = Modifier
-                            .weight(0.72f)
-                            .height(48.dp)
-                            .pressable(onClick = onLater)
+
+                    // Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("Più tardi", color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                        Surface(
+                            color = Color.Transparent,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                            modifier = Modifier.weight(1f).height(52.dp).pressable(onClick = onLater)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("Più tardi", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Surface(
+                            color = LevyraCyan,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.weight(1f).height(52.dp).pressable(onClick = onDownload)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("Aggiorna", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            }
                         }
                     }
                 }
-
-                Text(
-                    text = "Installata: ${update.currentVersionName} · Ultima: ${update.latestVersionName}",
-                    color = LevyraMuted.copy(alpha = 0.78f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
             }
         }
     }
@@ -5748,17 +5714,19 @@ private fun SearchTrackCard(
                 modifier = Modifier.clickable { onArtist() }
             )
         }
-        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
-        IconButton(onClick = onAddToPlaylist) {
-            Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
-        }
-        IconButton(onClick = onFavorite) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = "Preferito",
-                tint = if (isFavorite) LevyraPink else LevyraMuted,
-                modifier = Modifier.size(24.dp)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+            IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+            }
+            IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = "Preferito",
+                    tint = if (isFavorite) LevyraPink else LevyraMuted,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }
@@ -5887,25 +5855,27 @@ private fun TrackRow(
                 )
             }
         }
-        if (onDownload != null) {
-            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
-        }
-        if (onAddToPlaylist != null) {
-            IconButton(onClick = onAddToPlaylist) {
-                Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            if (onDownload != null) {
+                DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
             }
-        }
-        IconButton(onClick = onFavorite) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = "Preferito",
-                tint = if (isFavorite) LevyraPink else LevyraMuted,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        if (onRemove != null) {
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Rounded.Delete, contentDescription = "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(22.dp))
+            if (onAddToPlaylist != null) {
+                IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                }
+            }
+            IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = "Preferito",
+                    tint = if (isFavorite) LevyraPink else LevyraMuted,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            if (onRemove != null) {
+                IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Rounded.Delete, contentDescription = "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(22.dp))
+                }
             }
         }
     }
