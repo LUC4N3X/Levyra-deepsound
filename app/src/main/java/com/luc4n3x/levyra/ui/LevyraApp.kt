@@ -2661,7 +2661,6 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     }
                 }
             }
-            }
         }
     }
 
