@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/7tMpTVX6/levyra-saas-logo-Photoroom.png" alt="Levyra" width="470" />
-
----
+<img src="https://i.ibb.co/7tMpTVX6/levyra-saas-logo-Photoroom.png" alt="Levyra" width="430" />
 
 <br>
 
