@@ -201,34 +201,23 @@ graph TD
 
 ---
 
-## ✦ Project structure
+## ✦ Implementation highlights
 
-```text
-Levyra-deepsound/
-├── .github/
-│   └── workflows/
-│       ├── android-apk.yml
-│       └── release-apk.yml
-├── app/
-│   ├── build.gradle.kts
-│   ├── proguard-rules.pro
-│   └── src/main/
-│       ├── AndroidManifest.xml
-│       ├── java/com/luc4n3x/levyra/
-│       │   ├── data/
-│       │   ├── domain/
-│       │   ├── player/
-│       │   ├── ui/
-│       │   └── viewmodel/
-│       └── res/
-├── gradle/
-│   └── libs.versions.toml
-├── build.gradle.kts
-├── gradle.properties
-├── settings.gradle.kts
-├── LICENSE
-└── README.md
-```
+Levyra is structured to keep the app fast on real Android devices, not only clean on paper.
+
+| Area | Production approach |
+| :--- | :--- |
+| **Startup** | Heavy playback and network work is kept outside the first Compose render path, so the app can open quickly and load music progressively. |
+| **Search** | Queries are debounced, recent searches are cached locally, and discovery sections are reused where possible instead of reloading the same content repeatedly. |
+| **Playback resolving** | Stream resolution is centralized in `PlaybackResolver`, with cache validation, request deduplication and fallback clients to reduce startup latency and failed playback. |
+| **Queue playback** | Playlist sessions keep their own queue context, continue automatically to the next track and loop back when the playlist reaches the end. |
+| **Downloads** | Offline exports run through WorkManager with progress reporting, retry handling, duplicate guards and MediaStore integration. |
+| **Metadata writing** | The M4A tagger is pure Kotlin and writes compatible MP4 atoms directly, avoiding native binaries and heavy external tooling. |
+| **State management** | UI state is owned by `LevyraViewModel` and exposed through StateFlow, keeping Composables focused on rendering. |
+| **Updates** | GitHub Release assets are selected by version-aware matching, preventing old APK files from being picked when a newer release is available. |
+| **Release safety** | CI builds versioned APK names, validates the generated package version and replaces stale APK assets on the release. |
+
+This keeps the codebase easier to evolve: UI polish, playback performance, download reliability and release automation can improve independently without turning the app into one huge coupled screen file.
 
 ---
 
@@ -426,7 +415,12 @@ WRITE_EXTERNAL_STORAGE on Android 9 and lower only
 
 ### Inspiration
 
-Special thanks to the open-source Android music ecosystem. Levyra takes design and architecture inspiration from modern music clients such as Metrolist and Compose-based player references, while keeping Levyra-specific UI, playback, export and app logic inside this project.
+Special thanks to the open-source Android music ecosystem.
+
+- [Metrolist](https://github.com/MetrolistGroup/Metrolist) — reference for modern Android music-client architecture, catalog navigation and player experience.
+- [MusicApp-KMP](https://github.com/SEAbdulbasit/MusicApp-KMP) — Compose Multiplatform music-player reference used for UI research and general layout inspiration.
+
+Levyra keeps its own UI, playback engine, offline export flow, update system and app logic inside this repository.
 
 ---
 
