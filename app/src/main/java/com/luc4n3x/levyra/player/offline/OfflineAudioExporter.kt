@@ -28,14 +28,21 @@ import timber.log.Timber
 class OfflineAudioExporter(
     private val context: Context,
     private val resolver: PlaybackResolver,
-    private val client: OkHttpClient = LevyraHttpClientFactory.general(context.applicationContext)
+    private val client: OkHttpClient = LevyraHttpClientFactory.general(context.applicationContext),
+    private val progress: suspend (Int) -> Unit = {}
 ) {
     val embeddedMetadataWriterReady: Boolean
         get() = LevyraM4aTagWriter.isAvailable
 
     suspend fun export(track: Track): OfflineExportResult = withContext(Dispatchers.IO) {
-        var playable = if (track.streamUrl.isBlank()) resolver.resolve(track.copy(streamUrl = "")) else track
+        reportProgress(1)
+        var playable = runCatching {
+            if (track.id.isNotBlank() || track.videoUrl.isNotBlank()) resolver.resolve(track.copy(streamUrl = "")) else track
+        }.getOrElse { error ->
+            if (track.streamUrl.isNotBlank()) track else throw error
+        }
         if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
+        reportProgress(5)
         val workspace = File(context.cacheDir, "levyra_offline_export").apply { mkdirs() }
         Timber.i("Offline export started: %s", track.title)
         cleanupWorkspace(workspace)
@@ -44,17 +51,23 @@ class OfflineAudioExporter(
         }.getOrElse { firstError ->
             val canRefresh = track.id.isNotBlank() || track.videoUrl.isNotBlank()
             if (!canRefresh) throw firstError
+            reportProgress(6)
             playable = resolver.resolve(track.copy(streamUrl = ""))
             downloadAudio(playable, workspace)
         }
         var embeddedFile: PreparedAudioFile? = null
         try {
+            reportProgress(84)
             val artwork = downloadArtwork(playable)
+            reportProgress(88)
             embeddedFile = maybeEmbedMetadata(downloaded.file, playable, artwork, downloaded.container, workspace)
+            reportProgress(92)
             val exported = saveToMusicCollection(embeddedFile.file, playable, embeddedFile.container)
+            reportProgress(98)
             val fileName = buildFileName(playable, embeddedFile.container.extension)
             persistDownload(playable, fileName, exported, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
             Timber.i("Offline export completed: %s", fileName)
+            reportProgress(100)
             OfflineExportResult(
                 uri = exported,
                 fileName = fileName,
@@ -81,7 +94,8 @@ class OfflineAudioExporter(
         throw lastError ?: IOException("Download audio non riuscito")
     }
 
-    private fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
+    private suspend fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
+        reportProgress(8)
         val request = Request.Builder()
             .url(track.streamUrl)
             .header("User-Agent", USER_AGENT)
@@ -103,17 +117,24 @@ class OfflineAudioExporter(
                     FileOutputStream(temp).use { output ->
                         val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
                         var total = 0L
+                        var lastProgress = 8
                         while (true) {
                             val read = input.read(buffer)
                             if (read < 0) break
                             total += read.toLong()
                             if (total > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
                             output.write(buffer, 0, read)
+                            val nextProgress = downloadProgress(total, declaredLength)
+                            if (nextProgress > lastProgress) {
+                                lastProgress = nextProgress
+                                reportProgress(nextProgress)
+                            }
                         }
                         output.flush()
                     }
                 }
                 if (temp.length() <= 0L) throw IOException("File audio esportato vuoto")
+                reportProgress(82)
                 return DownloadedAudio(temp, container)
             } catch (error: IOException) {
                 runCatching { temp.delete() }
@@ -177,6 +198,18 @@ class OfflineAudioExporter(
     }
 
     private fun saveScoped(input: File, track: Track, container: AudioContainer): Uri {
+        if (!container.audioMediaStoreSafe) return saveScopedFile(input, track, container)
+        return runCatching { saveScopedAudio(input, track, container) }.getOrElse { error ->
+            if (error is IllegalArgumentException && error.message.orEmpty().contains("Unsupported MIME type", ignoreCase = true)) {
+                Timber.w(error, "Audio collection refused %s, falling back to file collection", container.mimeType)
+                saveScopedFile(input, track, container)
+            } else {
+                throw error
+            }
+        }
+    }
+
+    private fun saveScopedAudio(input: File, track: Track, container: AudioContainer): Uri {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, buildFileName(track, container.extension))
@@ -191,6 +224,30 @@ class OfflineAudioExporter(
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val uri = resolver.insert(collection, values) ?: throw IOException("MediaStore non ha creato il file")
+        try {
+            resolver.openOutputStream(uri, "w")?.use { output -> input.inputStream().use { it.copyTo(output) } }
+                ?: throw IOException("Impossibile scrivere il file esportato")
+            values.clear()
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+            return uri
+        } catch (error: Throwable) {
+            resolver.delete(uri, null, null)
+            throw error
+        }
+    }
+
+    private fun saveScopedFile(input: File, track: Track, container: AudioContainer): Uri {
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, buildFileName(track, container.extension))
+            put(MediaStore.MediaColumns.MIME_TYPE, container.fileCollectionMimeType)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_MUSIC}/Levyra")
+            put(MediaStore.MediaColumns.SIZE, input.length())
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val uri = resolver.insert(collection, values) ?: throw IOException("MediaStore non ha creato il file")
         try {
             resolver.openOutputStream(uri, "w")?.use { output -> input.inputStream().use { it.copyTo(output) } }
@@ -221,7 +278,11 @@ class OfflineAudioExporter(
             put(MediaStore.Audio.Media.DURATION, track.durationMs.coerceAtLeast(0L))
             put(MediaStore.Audio.Media.IS_MUSIC, 1)
         }
-        return context.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values) ?: Uri.fromFile(target)
+        return runCatching {
+            context.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values) ?: Uri.fromFile(target)
+        }.getOrElse {
+            Uri.fromFile(target)
+        }
     }
 
     private fun downloadArtwork(track: Track): ByteArray? {
@@ -243,10 +304,24 @@ class OfflineAudioExporter(
     private fun detectContainer(contentType: String, url: String): AudioContainer {
         val cleanUrl = url.substringBefore('?').lowercase(Locale.US)
         return when {
-            contentType.contains("mp4") || contentType.contains("m4a") || cleanUrl.endsWith(".m4a") || cleanUrl.endsWith(".mp4") -> AudioContainer("m4a", "audio/mp4", true)
-            contentType.contains("webm") || cleanUrl.endsWith(".webm") -> AudioContainer("webm", "audio/webm", false)
-            contentType.contains("mpeg") || contentType.contains("mp3") || cleanUrl.endsWith(".mp3") -> AudioContainer("mp3", "audio/mpeg", false)
-            else -> AudioContainer("m4a", "audio/mp4", true)
+            contentType.contains("mp4") || contentType.contains("m4a") || cleanUrl.endsWith(".m4a") || cleanUrl.endsWith(".mp4") -> AudioContainer("m4a", "audio/mp4", "audio/mp4", true, true)
+            contentType.contains("webm") || cleanUrl.endsWith(".webm") -> AudioContainer("webm", "audio/webm", "application/octet-stream", false, false)
+            contentType.contains("mpeg") || contentType.contains("mp3") || cleanUrl.endsWith(".mp3") -> AudioContainer("mp3", "audio/mpeg", "audio/mpeg", false, true)
+            else -> AudioContainer("m4a", "audio/mp4", "audio/mp4", true, true)
+        }
+    }
+
+    private suspend fun reportProgress(value: Int) {
+        progress(value.coerceIn(0, 100))
+    }
+
+    private fun downloadProgress(downloadedBytes: Long, declaredLength: Long): Int {
+        return if (declaredLength > 0L) {
+            val ratio = downloadedBytes.toDouble() / declaredLength.toDouble()
+            (8 + ratio * 74).toInt().coerceIn(8, 82)
+        } else {
+            val step = (downloadedBytes / (512L * 1024L)).toInt()
+            (8 + step).coerceIn(8, 78)
         }
     }
 
@@ -313,5 +388,7 @@ private data class PreparedAudioFile(
 private data class AudioContainer(
     val extension: String,
     val mimeType: String,
-    val supportsEmbeddedMetadata: Boolean
+    val fileCollectionMimeType: String,
+    val supportsEmbeddedMetadata: Boolean,
+    val audioMediaStoreSafe: Boolean
 )
