@@ -37,12 +37,13 @@ class OfflineAudioExporter(
     suspend fun export(track: Track): OfflineExportResult = withContext(Dispatchers.IO) {
         reportProgress(1)
         var playable = runCatching {
-            if (track.id.isNotBlank() || track.videoUrl.isNotBlank()) resolver.resolve(track.copy(streamUrl = "")) else track
+            reportProgress(4)
+            if (track.id.isNotBlank() || track.videoUrl.isNotBlank()) resolver.resolveForOffline(track.copy(streamUrl = "")) else track
         }.getOrElse { error ->
             if (track.streamUrl.isNotBlank()) track else throw error
         }
         if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
-        reportProgress(5)
+        reportProgress(10)
         val workspace = File(context.cacheDir, "levyra_offline_export").apply { mkdirs() }
         Timber.i("Offline export started: %s", track.title)
         cleanupWorkspace(workspace)
@@ -51,8 +52,9 @@ class OfflineAudioExporter(
         }.getOrElse { firstError ->
             val canRefresh = track.id.isNotBlank() || track.videoUrl.isNotBlank()
             if (!canRefresh) throw firstError
-            reportProgress(6)
-            playable = resolver.resolve(track.copy(streamUrl = ""))
+            reportProgress(7)
+            playable = resolver.resolveForOffline(track.copy(streamUrl = ""))
+            reportProgress(10)
             downloadAudio(playable, workspace)
         }
         var embeddedFile: PreparedAudioFile? = null
@@ -95,7 +97,7 @@ class OfflineAudioExporter(
     }
 
     private suspend fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
-        reportProgress(8)
+        reportProgress(12)
         val request = Request.Builder()
             .url(track.streamUrl)
             .header("User-Agent", USER_AGENT)
@@ -318,10 +320,10 @@ class OfflineAudioExporter(
     private fun downloadProgress(downloadedBytes: Long, declaredLength: Long): Int {
         return if (declaredLength > 0L) {
             val ratio = downloadedBytes.toDouble() / declaredLength.toDouble()
-            (8 + ratio * 74).toInt().coerceIn(8, 82)
+            (12 + ratio * 70).toInt().coerceIn(12, 82)
         } else {
             val step = (downloadedBytes / (512L * 1024L)).toInt()
-            (8 + step).coerceIn(8, 78)
+            (12 + step).coerceIn(12, 78)
         }
     }
 
