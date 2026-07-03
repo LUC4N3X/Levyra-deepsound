@@ -890,21 +890,75 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
 
 @Composable
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
-    val start = accentStart?.let { Color(it) } ?: LevyraCyan
-    val end = accentEnd?.let { Color(it) } ?: LevyraViolet
+    val startColor = accentStart?.let { Color(it) } ?: LevyraCyan
+    val endColor = accentEnd?.let { Color(it) } ?: LevyraViolet
+    
+    val animStart by androidx.compose.animation.animateColorAsState(
+        targetValue = startColor,
+        animationSpec = tween(1500, easing = LinearOutSlowInEasing)
+    )
+    val animEnd by androidx.compose.animation.animateColorAsState(
+        targetValue = endColor,
+        animationSpec = tween(1500, easing = LinearOutSlowInEasing)
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .background(
-                Brush.verticalGradient(
-                    0.0f to start.copy(alpha = 0.12f),
-                    0.25f to Color(0xFF070709),
-                    0.75f to Color(0xFF070709),
-                    1.0f to end.copy(alpha = 0.08f)
+    ) {
+        // Deep ambient mesh
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to animStart.copy(alpha = 0.28f),
+                        0.35f to Color(0xFF08080C),
+                        0.65f to Color(0xFF08080C),
+                        1.0f to animEnd.copy(alpha = 0.22f)
+                    )
                 )
-            )
-    )
+        )
+        // Top-Left Orb Glow
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.55f)
+                .align(Alignment.TopStart)
+                .androidx.compose.foundation.layout.offset(x = (-60).dp, y = (-40).dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(animStart.copy(alpha = 0.55f), Color.Transparent)
+                    )
+                )
+        )
+        // Bottom-Right Orb Glow
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(1.0f)
+                .fillMaxHeight(0.6f)
+                .align(Alignment.BottomEnd)
+                .androidx.compose.foundation.layout.offset(x = 80.dp, y = 60.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(animEnd.copy(alpha = 0.45f), Color.Transparent)
+                    )
+                )
+        )
+        // Subtle Center Accent connecting them
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .fillMaxHeight(0.5f)
+                .align(Alignment.Center)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(LevyraViolet.copy(alpha = 0.15f), Color.Transparent)
+                    )
+                )
+        )
+    }
 }
 
 @Composable
