@@ -36,6 +36,7 @@ import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -51,6 +52,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository()
@@ -95,6 +98,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var playRequestId: Long = 0L
     private var pendingSeekMs: Long = 0L
     private var queueIndex: Int = -1
+    private var loopCurrentQueueOnCompletion: Boolean = false
+    private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
     val playerController get() = player.controller
@@ -127,7 +132,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setSkipSilence(settings.skipSilence)
         player.onCompletion = { onTrackCompleted() }
         player.onError = { errorMsg ->
-            _state.update { it.copy(playerError = errorMsg, isPlaying = false, isResolving = false) }
+            _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
         }
         loadHomeFeed()
         loadCharts()
@@ -200,7 +205,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val pl = playlistStore.load(playlistId) ?: return@launch
             if (pl.tracks.isEmpty()) return@launch
             val start = startTrackId?.let { id -> pl.tracks.firstOrNull { it.id == id } } ?: pl.tracks.first()
-            playFrom(pl.tracks, start)
+            playFrom(pl.tracks, start, loopOnCompletion = true)
         }
     }
 
@@ -246,12 +251,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
         val queue = snapshot.queue.ifEmpty { currentQueue() }
         when {
-            _state.value.shuffleEnabled && queue.isNotEmpty() -> {
-                queueIndex = queue.indices.random()
+            _state.value.shuffleEnabled && queue.size > 1 -> {
+                queueIndex = (queue.indices - queueIndex).ifEmpty { queue.indices.toList() }.random()
                 startResolve(queue[queueIndex])
             }
             _state.value.repeatMode == RepeatMode.All -> next()
             queueIndex in 0 until queue.lastIndex -> next()
+            loopCurrentQueueOnCompletion && queue.size > 1 -> next()
+            loopCurrentQueueOnCompletion && queue.size == 1 -> next()
             else -> {
                 player.pause()
                 _state.update { it.copy(isPlaying = false, positionMs = 0L) }
@@ -289,7 +296,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                _state.update { it.copy(isResolving = false, isVideoMode = current, playerError = e.message) }
+                _state.update { it.copy(isResolving = false, isVideoMode = current, playerError = cleanUserError(e)) }
             }
         }
     }
@@ -591,22 +598,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun exportTrack(track: Track) {
-        if (track.id in _state.value.downloadingTrackIds) return
-        if (track.id in _state.value.downloadedTrackIds) {
+        val downloadKey = downloadKeyFor(track)
+        if (downloadKey in _state.value.downloadingTrackIds || !activeDownloadKeys.add(downloadKey)) {
+            _state.update { it.copy(offlineExportMessage = "Download già in corso: ${track.title}") }
+            return
+        }
+        if (track.id.isNotBlank() && track.id in _state.value.downloadedTrackIds) {
+            activeDownloadKeys.remove(downloadKey)
             _state.update { it.copy(offlineExportMessage = "Già scaricato: ${track.title}") }
             return
         }
+        _state.update {
+            it.copy(
+                isOfflineExporting = true,
+                offlineExportMessage = null,
+                downloadingTrackIds = it.downloadingTrackIds + downloadKey,
+                downloadProgressByTrackId = it.downloadProgressByTrackId + (downloadKey to 1)
+            )
+        }
         viewModelScope.launch {
-            _state.update {
-                it.copy(
-                    isOfflineExporting = true,
-                    offlineExportMessage = null,
-                    downloadingTrackIds = it.downloadingTrackIds + track.id
-                )
-            }
             val result = runCatching {
                 val appContext = getApplication<Application>().applicationContext
-                val workId = OfflineExportWorker.enqueue(appContext, TrackPayloadCodec.encode(track))
+                val payload = TrackPayloadCodec.encode(track)
+                val workId = withContext(Dispatchers.IO) {
+                    OfflineExportWorker.enqueue(appContext, downloadKey, payload)
+                }
                 val workManager = WorkManager.getInstance(appContext)
                 var finished: WorkInfo? = null
                 while (isActive && finished == null) {
@@ -614,6 +630,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     if (info != null && info.state.isFinished) {
                         finished = info
                     } else {
+                        info?.let { updateDownloadProgress(downloadKey, it.progress.getInt(OfflineExportWorker.KEY_PROGRESS, 0)) }
                         delay(350L)
                     }
                 }
@@ -621,17 +638,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             result.onSuccess { workInfo ->
                 when (workInfo.state) {
-                    WorkInfo.State.SUCCEEDED -> handleOfflineExportSuccess(workInfo, track.id)
-                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> handleOfflineExportFailure(workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR), track.id)
-                    else -> handleOfflineExportFailure("Esportazione non riuscita", track.id)
+                    WorkInfo.State.SUCCEEDED -> handleOfflineExportSuccess(workInfo, downloadKey)
+                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> handleOfflineExportFailure(cleanUserError(workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR)), downloadKey)
+                    else -> handleOfflineExportFailure("Esportazione non riuscita", downloadKey)
                 }
             }.onFailure { error ->
                 if (error is CancellationException) {
-                    _state.update { it.copy(downloadingTrackIds = it.downloadingTrackIds - track.id) }
+                    activeDownloadKeys.remove(downloadKey)
+                    _state.update {
+                        it.copy(
+                            downloadingTrackIds = it.downloadingTrackIds - downloadKey,
+                            downloadProgressByTrackId = it.downloadProgressByTrackId - downloadKey
+                        )
+                    }
                     throw error
                 }
                 Timber.e(error, "Offline export work failed")
-                handleOfflineExportFailure(error.message, track.id)
+                handleOfflineExportFailure(cleanUserError(error), downloadKey)
             }
         }
     }
@@ -644,6 +667,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun handleOfflineExportSuccess(workInfo: WorkInfo, trackId: String) {
+        activeDownloadKeys.remove(trackId)
         val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
         val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
         val tagStatus = if (embedded) "con cover e metadata Levyra" else "con metadata Android"
@@ -652,20 +676,49 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
                 offlineExportMessage = "Salvato in Music/Levyra: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
-                downloadingTrackIds = it.downloadingTrackIds - trackId
+                downloadingTrackIds = it.downloadingTrackIds - trackId,
+                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId
             )
         }
     }
 
     private fun handleOfflineExportFailure(message: String?, trackId: String) {
+        activeDownloadKeys.remove(trackId)
         _state.update {
             it.copy(
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
-                offlineExportMessage = message ?: "Esportazione non riuscita",
+                offlineExportMessage = cleanUserError(message),
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
-                downloadingTrackIds = it.downloadingTrackIds - trackId
+                downloadingTrackIds = it.downloadingTrackIds - trackId,
+                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId
             )
         }
+    }
+
+
+    private fun cleanUserError(error: Throwable): String {
+        if (error is TimeoutCancellationException) return "YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo"
+        return cleanUserError(error.message)
+    }
+
+    private fun cleanUserError(message: String?): String {
+        val raw = message?.trim().orEmpty()
+        if (raw.isBlank()) return "Operazione non riuscita"
+        if (raw.contains("Timed out waiting", ignoreCase = true)) return "YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo"
+        if (raw.contains("timeout", ignoreCase = true)) return "Connessione lenta: riprova tra qualche secondo"
+        return raw
+    }
+
+    private fun updateDownloadProgress(trackId: String, progress: Int) {
+        val safeProgress = progress.coerceIn(1, 99)
+        _state.update {
+            if (trackId !in it.downloadingTrackIds) it else it.copy(downloadProgressByTrackId = it.downloadProgressByTrackId + (trackId to safeProgress))
+        }
+    }
+
+    private fun downloadKeyFor(track: Track): String {
+        val raw = track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}:${track.title}" } }
+        return raw.ifBlank { "unknown-${track.hashCode()}" }
     }
 
     fun clearOfflineExportMessage() {
@@ -822,12 +875,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun play(track: Track) {
         addToRecentSearches(track)
+        loopCurrentQueueOnCompletion = false
         queueIndex = currentQueue().indexOfFirst { it.id == track.id }
         startResolve(track)
     }
 
-    fun playFrom(list: List<Track>, track: Track) {
+    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
         addToRecentSearches(track)
+        loopCurrentQueueOnCompletion = loopOnCompletion
         _state.update { it.copy(queue = list) }
         queueIndex = list.indexOfFirst { it.id == track.id }
         startResolve(track)
@@ -875,7 +930,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         positionMs = 0L,
                         durationMs = track.durationMs,
                         currentTrack = track.copy(streamUrl = ""),
-                        playerError = error.message ?: "Stream non disponibile per questo brano"
+                        playerError = cleanUserError(error)
                     )
                 }
             }
@@ -1064,6 +1119,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun closePlayer() {
+        loopCurrentQueueOnCompletion = false
         player.stop()
         _state.update {
             it.copy(
@@ -1079,6 +1135,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun next() {
         val queue = _state.value.queue.ifEmpty { currentQueue() }
         if (queue.isEmpty()) return
+        if (queue.size == 1) {
+            queueIndex = 0
+            val current = _state.value.currentTrack
+            if (current?.streamUrl?.isNotBlank() == true) {
+                player.seekTo(0L)
+                player.play(current)
+                _state.update { it.copy(isPlaying = true, positionMs = 0L) }
+            } else {
+                startResolve(queue[0])
+            }
+            return
+        }
         if (_state.value.shuffleEnabled && queue.size > 1) {
             queueIndex = (queue.indices - queueIndex).ifEmpty { queue.indices.toList() }.random()
             startResolve(queue[queueIndex])

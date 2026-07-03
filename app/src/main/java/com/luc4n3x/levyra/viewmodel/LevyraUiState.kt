@@ -77,6 +77,7 @@ data class LevyraUiState(
     val downloads: List<DownloadedTrack> = emptyList(),
     val downloadingTrackIds: Set<String> = emptySet(),
     val downloadedTrackIds: Set<String> = emptySet(),
+    val downloadProgressByTrackId: Map<String, Int> = emptyMap(),
     val showArtist: Boolean = false,
     val artistLoading: Boolean = false,
     val artistError: String? = null,

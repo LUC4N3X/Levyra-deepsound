@@ -450,6 +450,7 @@ private fun ArtistOverlay(
                                 onFavorite = { onFavorite(track) },
                                 isDownloading = track.id in state.downloadingTrackIds,
                                 isDownloaded = track.id in state.downloadedTrackIds,
+                                downloadProgress = state.downloadProgressByTrackId[track.id],
                                 onDownload = { onDownload(track) }
                             )
                         }
@@ -1041,6 +1042,9 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     tracks = quickTracks,
                     currentId = state.currentTrack?.id,
                     favoriteIds = state.favoriteIds,
+                    downloadingIds = state.downloadingTrackIds,
+                    downloadedIds = state.downloadedTrackIds,
+                    downloadProgressByTrackId = state.downloadProgressByTrackId,
                     isPlaying = state.isPlaying,
                     isResolving = state.isResolving,
                     onPlay = { track -> viewModel.playFrom(quickTracks, track) },
@@ -1773,6 +1777,9 @@ private fun isChartDrivenSource(source: String): Boolean {
 private fun HomeDiscoveryHero(
     update: HomeHeroUpdate,
     isFavorite: Boolean,
+    isDownloading: Boolean,
+    isDownloaded: Boolean,
+    downloadProgress: Int?,
     onPlay: () -> Unit,
     onSave: () -> Unit
 ) {
@@ -2191,6 +2198,9 @@ private fun QuickSongList(
     tracks: List<Track>,
     currentId: String?,
     favoriteIds: Set<String>,
+    downloadingIds: Set<String>,
+    downloadedIds: Set<String>,
+    downloadProgressByTrackId: Map<String, Int>,
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: (Track) -> Unit,
@@ -2208,6 +2218,9 @@ private fun QuickSongList(
                 isPlaying = isPlaying && track.id == currentId,
                 isResolving = isResolving && track.id == currentId,
                 isFavorite = track.id in favoriteIds,
+                isDownloading = track.id in downloadingIds,
+                isDownloaded = track.id in downloadedIds,
+                downloadProgress = downloadProgressByTrackId[track.id],
                 onPlay = { onPlay(track) },
                 onFavorite = { onFavorite(track) },
                 onAddToQueue = { onAddToQueue(track) },
@@ -2226,6 +2239,9 @@ private fun QuickSongRow(
     isPlaying: Boolean,
     isResolving: Boolean,
     isFavorite: Boolean,
+    isDownloading: Boolean,
+    isDownloaded: Boolean,
+    downloadProgress: Int?,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onAddToQueue: () -> Unit,
@@ -2306,6 +2322,7 @@ private fun QuickSongRow(
                 modifier = Modifier.clickable { onArtist() }
             )
         }
+        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onOffline)
         IconButton(onClick = onFavorite, modifier = Modifier.size(38.dp)) {
             Icon(
                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -2624,6 +2641,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                         isFavorite = track.id in state.favoriteIds,
                                         isDownloading = track.id in state.downloadingTrackIds,
                                         isDownloaded = track.id in state.downloadedTrackIds,
+                                        downloadProgress = state.downloadProgressByTrackId[track.id],
                                         onClick = {
                                             focusManager.clearFocus()
                                             keyboardController?.hide()
@@ -3049,6 +3067,7 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     onFavorite = { viewModel.toggleFavorite(track) },
                     isDownloading = track.id in state.downloadingTrackIds,
                     isDownloaded = track.id in state.downloadedTrackIds,
+                    downloadProgress = state.downloadProgressByTrackId[track.id],
                     onDownload = { viewModel.exportTrack(track) },
                     onArtist = { viewModel.openArtist(track) },
                     onAddToPlaylist = { addTarget = track }
@@ -3067,6 +3086,7 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 onFavorite = { viewModel.toggleFavorite(track) },
                 isDownloading = track.id in state.downloadingTrackIds,
                 isDownloaded = track.id in state.downloadedTrackIds,
+                downloadProgress = state.downloadProgressByTrackId[track.id],
                 onDownload = { viewModel.exportTrack(track) },
                 onArtist = { viewModel.openArtist(track) },
                 onAddToPlaylist = { addTarget = track }
@@ -3332,6 +3352,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                         onFavorite = { viewModel.toggleFavorite(track) },
                         isDownloading = track.id in state.downloadingTrackIds,
                         isDownloaded = track.id in state.downloadedTrackIds,
+                        downloadProgress = state.downloadProgressByTrackId[track.id],
                         onDownload = { viewModel.exportTrack(track) },
                         onArtist = { viewModel.openArtist(track) },
                         onRemove = { viewModel.removeFromPlaylist(playlist.id, track.id) }
@@ -5669,6 +5690,7 @@ private fun SearchTrackCard(
     isFavorite: Boolean,
     isDownloading: Boolean,
     isDownloaded: Boolean,
+    downloadProgress: Int?,
     onClick: () -> Unit,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
@@ -5705,7 +5727,7 @@ private fun SearchTrackCard(
                 modifier = Modifier.clickable { onArtist() }
             )
         }
-        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, onDownload = onDownload)
+        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
         IconButton(onClick = onFavorite) {
             Icon(
                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -5801,6 +5823,7 @@ private fun TrackRow(
     onFavorite: () -> Unit,
     isDownloading: Boolean = false,
     isDownloaded: Boolean = false,
+    downloadProgress: Int? = null,
     onDownload: (() -> Unit)? = null,
     onArtist: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
@@ -5840,7 +5863,7 @@ private fun TrackRow(
             }
         }
         if (onDownload != null) {
-            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, onDownload = onDownload)
+            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
         }
         IconButton(onClick = onFavorite) {
             Icon(
@@ -5881,10 +5904,16 @@ private fun TrackRow(
 }
 
 @Composable
-private fun DownloadButton(isDownloading: Boolean, isDownloaded: Boolean, onDownload: () -> Unit) {
+private fun DownloadButton(isDownloading: Boolean, isDownloaded: Boolean, progress: Int? = null, onDownload: () -> Unit) {
     IconButton(onClick = { if (!isDownloading && !isDownloaded) onDownload() }) {
         when {
-            isDownloading -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
+            isDownloading -> {
+                val label = progress?.coerceIn(1, 99)?.let { "$it%" } ?: "..."
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(34.dp)) {
+                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                    Text(label, color = LevyraCyan, fontSize = 8.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                }
+            }
             isDownloaded -> Icon(Icons.Rounded.DownloadDone, contentDescription = "Scaricato", tint = LevyraCyan, modifier = Modifier.size(23.dp))
             else -> Icon(Icons.Rounded.Download, contentDescription = "Scarica", tint = LevyraMuted, modifier = Modifier.size(23.dp))
         }
