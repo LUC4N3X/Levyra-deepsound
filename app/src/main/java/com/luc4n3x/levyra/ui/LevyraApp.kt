@@ -2382,6 +2382,7 @@ private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
 
 @Composable
 private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+    val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
