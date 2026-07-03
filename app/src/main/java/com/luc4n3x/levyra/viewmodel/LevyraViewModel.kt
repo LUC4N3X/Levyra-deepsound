@@ -102,6 +102,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val favorites = favoritesStore.load()
         val settings = preferences.snapshot()
         resolver.setAudioQuality(settings.audioQuality)
+        resolver.warmNetwork()
         _state.update {
             it.copy(
                 favorites = favorites,
@@ -377,7 +378,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = null
                 )
             }
-            prefetchTop(sections.first().tracks, 24)
+            prefetchTop(flat, 18)
         }
     }
 
@@ -776,7 +777,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = if (data.isEmpty) "Nessun risultato trovato per $clean" else null
                 )
             }
-            prefetchTop(tracks, 24)
+            prefetchTop(tracks, 18)
         }.onFailure { error ->
             _state.update {
                 it.copy(
@@ -825,6 +826,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun startResolve(track: Track) {
         val requestId = ++playRequestId
         playJob?.cancel()
+        cancelBackgroundWarmups(cancelList = false)
+        resolver.warmNetwork()
 
         val playableTrack = youtubePlayableTrack(track) ?: track
         val instant = resolver.cached(playableTrack, _state.value.isVideoMode)
@@ -958,7 +961,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun prefetchAround(playable: Track) {
         prefetchJob?.cancel()
-        prefetchJob = viewModelScope.launch {
+        prefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(350L)
             val queue = _state.value.queue.ifEmpty { currentQueue() }
             if (queue.isEmpty()) return@launch
             val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { it.id == playable.id }
@@ -968,29 +972,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .map { offset -> queue[(base + offset + queue.size) % queue.size] }
                 .filterNot { it.id == playable.id }
                 .distinctBy { it.id }
-            warmTracks(candidates, concurrency = 3, delayStepMs = 20L)
+            warmTracks(candidates.take(4), concurrency = 3, delayStepMs = 25L, prime = true)
         }
     }
 
-    private fun prefetchTop(tracks: List<Track>, count: Int = 16) {
-        if (tracks.isEmpty()) return
+    private fun prefetchTop(tracks: List<Track>, count: Int = 18) {
+        val candidates = tracks
+            .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() }
+            .distinctBy { youtubePlayableTrack(it)?.id ?: it.id }
+            .take(count)
+        if (candidates.isEmpty()) return
         listPrefetchJob?.cancel()
-        listPrefetchJob = viewModelScope.launch {
-            warmTracks(tracks.take(count), concurrency = 4, delayStepMs = 25L)
+        listPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            resolver.warmNetwork()
+            val hot = candidates.take(8)
+            val warmOnly = candidates.drop(8)
+            warmTracks(hot, concurrency = 4, delayStepMs = 0L, prime = true)
+            warmTracks(warmOnly, concurrency = 4, delayStepMs = 25L, prime = false)
         }
     }
 
-    private suspend fun warmTracks(tracks: List<Track>, concurrency: Int, delayStepMs: Long) = coroutineScope {
+    private fun cancelBackgroundWarmups(cancelList: Boolean = true) {
+        prefetchJob?.cancel()
+        prefetchJob = null
+        if (cancelList) {
+            listPrefetchJob?.cancel()
+            listPrefetchJob = null
+        }
+    }
+
+    private suspend fun warmTracks(tracks: List<Track>, concurrency: Int, delayStepMs: Long, prime: Boolean) = coroutineScope {
         val semaphore = Semaphore(concurrency.coerceAtLeast(1))
         tracks.distinctBy { youtubePlayableTrack(it)?.id ?: it.id }.forEachIndexed { index, track ->
             launch {
-                if (index > 0) delay(index * delayStepMs)
-                semaphore.withPermit { warmTrack(track) }
+                if (index > 0 && delayStepMs > 0L) delay(index * delayStepMs)
+                semaphore.withPermit { warmTrack(track, prime) }
             }
         }
     }
 
-    private suspend fun warmTrack(track: Track) {
+    private suspend fun warmTrack(track: Track, prime: Boolean) {
         val videoMode = _state.value.isVideoMode
         val youtube = youtubePlayableTrack(track)
         val resolved = if (youtube != null) {
@@ -999,7 +1020,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val match = runCatching { repository.searchOne("${track.title} ${track.artist}") }.getOrNull() ?: return
             resolver.prefetch(match, videoMode)
         }
-        if (resolved != null) {
+        if (resolved != null && prime) {
             if (videoMode) {
                 runCatching { playbackWarmup.primeVideo(resolved) }
             } else {
@@ -1092,7 +1113,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         searchError = if (tracks.isEmpty()) "Home remota vuota: prova una ricerca" else null
                     )
                 }
-                prefetchTop(tracks, 24)
+                prefetchTop(tracks, 18)
             }.onFailure { error ->
                 _state.update {
                     it.copy(
@@ -1192,12 +1213,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     override fun onCleared() {
         _state.value.currentTrack?.let { preferences.saveLastPlayback(it, player.positionMs) }
         playJob?.cancel()
-        prefetchJob?.cancel()
+        cancelBackgroundWarmups()
         chartEnrichJob?.cancel()
         sleepJob?.cancel()
         lyricsJob?.cancel()
         sponsorJob?.cancel()
-        listPrefetchJob?.cancel()
         artistJob?.cancel()
         player.release()
         searchJob?.cancel()
