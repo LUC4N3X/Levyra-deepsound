@@ -9,6 +9,9 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.luc4n3x.levyra.BuildConfig
@@ -2650,6 +2653,21 @@ private fun SearchHeader(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
+
+    val speechRecognizerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = result.data
+            val matches = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            if (!matches.isNullOrEmpty()) {
+                val spokenText = matches[0]
+                onQuery(spokenText)
+                onSearch(spokenText)
+            }
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -2718,7 +2736,17 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = {  },
+            onClick = { 
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Ascoltando...")
+                }
+                try {
+                    speechRecognizerLauncher.launch(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Ricerca vocale non supportata", Toast.LENGTH_SHORT).show()
+                }
+            },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
@@ -2732,7 +2760,7 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = {  },
+            onClick = { Toast.makeText(context, "Filtri musicali in arrivo!", Toast.LENGTH_SHORT).show() },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
