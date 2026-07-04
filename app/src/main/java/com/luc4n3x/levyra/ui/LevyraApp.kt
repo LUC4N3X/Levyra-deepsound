@@ -71,6 +71,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Equalizer
@@ -113,6 +114,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -161,6 +163,8 @@ import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
@@ -256,6 +260,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     when (tab) {
                         LevyraTab.Home -> HomeScreen(viewModel, state)
                         LevyraTab.Search -> SearchScreen(viewModel, state)
+                        LevyraTab.Explore -> ExploreScreen(viewModel, state)
                         LevyraTab.Library -> LibraryScreen(viewModel, state)
                         LevyraTab.Player -> PlayerScreen(viewModel, state)
                     }
@@ -573,142 +578,108 @@ private fun UpdateAvailableOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f))
+            .background(Color.Black.copy(alpha = 0.85f))
             .clickable(interactionSource = blocker, indication = null) {},
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            color = Color.Transparent,
+            color = Color(0xFF0B1020),
             shape = RoundedCornerShape(28.dp),
-            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f)),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 22.dp)
+                .padding(horizontal = 20.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = 0.22f),
-                                Color(0xFF0B1020),
-                                LevyraViolet.copy(alpha = 0.20f)
+            Column {
+                // Hero Section
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(LevyraCyan.copy(alpha = 0.6f), LevyraViolet.copy(alpha = 0.6f))
                             )
-                        )
-                    )
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Surface(
-                        color = LevyraCyan.copy(alpha = 0.15f),
-                        shape = CircleShape,
-                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.25f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(7.dp)
-                        ) {
-                            Icon(Icons.Rounded.Bolt, null, tint = LevyraCyan, modifier = Modifier.size(17.dp))
-                            Text("AGGIORNAMENTO", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("LEVYRA", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                        Surface(color = Color.Black.copy(alpha = 0.3f), shape = RoundedCornerShape(8.dp)) {
+                            Text("NUOVO AGGIORNAMENTO", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), letterSpacing = 1.sp)
                         }
                     }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = LevyraText,
-                        background = Color.White.copy(alpha = 0.08f),
-                        onClick = onLater
-                    )
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text(
-                        text = "LEVYRA ${update.latestVersionName} è pronta",
-                        color = LevyraText,
-                        fontSize = 27.sp,
-                        lineHeight = 30.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        text = "Puoi scaricare la nuova versione e installarla quando vuoi.",
-                        color = LevyraMuted,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                Surface(
-                    color = Color.White.copy(alpha = 0.055f),
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Text(update.releaseTitle.ifBlank { "Nuova versione" }, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = compactReleaseNotes(update.releaseNotes),
+                            text = "Versione ${update.latestVersionName}",
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = update.releaseTitle.ifBlank { "Miglioramenti generali e risoluzione di bug." },
                             color = LevyraMuted,
-                            fontSize = 12.sp,
-                            lineHeight = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
-                }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        color = Color.Transparent,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .pressable(onClick = onDownload)
-                    ) {
-                        Box(
-                            modifier = Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(19.dp))
-                                Text("Scarica", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                    // Changelog
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Novità", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        val notes = update.releaseNotes.split("\n").filter { it.isNotBlank() }
+                        if (notes.isEmpty()) {
+                            Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                Text("Miglioramenti alle prestazioni e stabilità dell'app.", color = LevyraMuted, fontSize = 13.sp, modifier = Modifier.padding(12.dp))
+                            }
+                        } else {
+                            notes.take(4).forEach { note ->
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.05f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Box(modifier = Modifier.size(6.dp).background(LevyraCyan, CircleShape))
+                                        Text(note.removePrefix("- ").removePrefix("* ").trim(), color = LevyraMuted, fontSize = 13.sp, lineHeight = 18.sp)
+                                    }
+                                }
                             }
                         }
                     }
-                    Surface(
-                        color = Color.White.copy(alpha = 0.06f),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
-                        modifier = Modifier
-                            .weight(0.72f)
-                            .height(48.dp)
-                            .pressable(onClick = onLater)
+
+                    // Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text("Più tardi", color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                        Surface(
+                            color = Color.Transparent,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                            modifier = Modifier.weight(1f).height(52.dp).pressable(onClick = onLater)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("Più tardi", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Surface(
+                            color = LevyraCyan,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.weight(1f).height(52.dp).pressable(onClick = onDownload)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("Aggiorna", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            }
                         }
                     }
                 }
-
-                Text(
-                    text = "Installata: ${update.currentVersionName} · Ultima: ${update.latestVersionName}",
-                    color = LevyraMuted.copy(alpha = 0.78f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
             }
         }
     }
@@ -2461,6 +2432,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    var addTarget by remember { mutableStateOf<Track?>(null) }
 
     Column(
         modifier = Modifier
@@ -2598,6 +2570,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                         viewModel.playFrom(data.songs, data.topTrack)
                                     },
                                     onFavorite = { viewModel.toggleFavorite(data.topTrack) },
+                                    onAddToPlaylist = { addTarget = data.topTrack },
                                     onArtist = { viewModel.openArtist(data.topTrack) }
                                 )
                             }
@@ -2648,6 +2621,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                             viewModel.playFrom(data.songs, track)
                                         },
                                         onFavorite = { viewModel.toggleFavorite(track) },
+                                        onAddToPlaylist = { addTarget = track },
                                         onDownload = { viewModel.exportTrack(track) },
                                         onArtist = { viewModel.openArtist(track) }
                                     )
@@ -2658,6 +2632,22 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
         }
+    }
+
+    addTarget?.let { track ->
+        AddToPlaylistDialog(
+            track = track,
+            playlists = state.playlists,
+            onDismiss = { addTarget = null },
+            onAddTo = { playlistId ->
+                viewModel.addToPlaylist(playlistId, track)
+                addTarget = null
+            },
+            onCreateWith = { name ->
+                viewModel.createPlaylist(name, track)
+                addTarget = null
+            }
+        )
     }
 }
 
@@ -3048,6 +3038,7 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 DownloadRow(
                     download = download,
                     isCurrent = download.trackId == state.currentTrack?.id,
+                    onPlay = { viewModel.playDownloaded(download) },
                     onDelete = { viewModel.deleteDownload(download) }
                 )
             }
@@ -3056,21 +3047,15 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         if (state.favorites.isEmpty()) {
             item { EmptyState("Tocca il cuore su un brano per salvarlo qui") }
         } else {
-            items(state.favorites, key = { "fav-${it.id}" }) { track ->
-                TrackRow(
-                    track = track,
-                    isCurrent = track.id == state.currentTrack?.id,
-                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                    isFavorite = true,
-                    onClick = { viewModel.playFrom(state.favorites, track) },
-                    onFavorite = { viewModel.toggleFavorite(track) },
-                    isDownloading = track.id in state.downloadingTrackIds,
-                    isDownloaded = track.id in state.downloadedTrackIds,
-                    downloadProgress = state.downloadProgressByTrackId[track.id],
-                    onDownload = { viewModel.exportTrack(track) },
-                    onArtist = { viewModel.openArtist(track) },
-                    onAddToPlaylist = { addTarget = track }
+            item {
+                RowCarousel(
+                    tracks = state.favorites,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    favoriteIds = state.favoriteIds,
+                    onPlay = { viewModel.playFrom(state.favorites, it) },
+                    onFavorite = { viewModel.toggleFavorite(it) }
                 )
             }
         }
@@ -3113,10 +3098,12 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 }
 
 @Composable
-private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onDelete: () -> Unit) {
+private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onPlay: () -> Unit, onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onPlay)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -5611,6 +5598,7 @@ private fun TopResultCard(
     isFavorite: Boolean,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onArtist: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -5665,6 +5653,11 @@ private fun TopResultCard(
                             Text(if (isPlaying) "In riproduzione" else "Riproduci", color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
                         }
                     }
+                    Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onAddToPlaylist() }) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.PlaylistAdd, null, tint = LevyraText, modifier = Modifier.size(22.dp))
+                        }
+                    }
                     Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onFavorite() }) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -5693,6 +5686,7 @@ private fun SearchTrackCard(
     downloadProgress: Int?,
     onClick: () -> Unit,
     onFavorite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onDownload: () -> Unit,
     onArtist: () -> Unit
 ) {
@@ -5727,13 +5721,19 @@ private fun SearchTrackCard(
                 modifier = Modifier.clickable { onArtist() }
             )
         }
-        DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
-        IconButton(onClick = onFavorite) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = "Preferito",
-                tint = if (isFavorite) LevyraPink else LevyraMuted
-            )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+            IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+            }
+            IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = "Preferito",
+                    tint = if (isFavorite) LevyraPink else LevyraMuted,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }
@@ -5862,41 +5862,26 @@ private fun TrackRow(
                 )
             }
         }
-        if (onDownload != null) {
-            DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
-        }
-        IconButton(onClick = onFavorite) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = "Preferito",
-                tint = if (isFavorite) LevyraPink else LevyraMuted
-            )
-        }
-        if (onAddToPlaylist != null || onRemove != null) {
-            var menuOpen by remember { mutableStateOf(false) }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = "Altro", tint = LevyraMuted)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            if (onDownload != null) {
+                DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
+            }
+            if (onAddToPlaylist != null) {
+                IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
                 }
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                    modifier = Modifier.background(LevyraPanel)
-                ) {
-                    if (onAddToPlaylist != null) {
-                        DropdownMenuItem(
-                            text = { Text("Aggiungi a playlist", color = LevyraText) },
-                            leadingIcon = { Icon(Icons.Rounded.Add, null, tint = LevyraCyan) },
-                            onClick = { menuOpen = false; onAddToPlaylist() }
-                        )
-                    }
-                    if (onRemove != null) {
-                        DropdownMenuItem(
-                            text = { Text("Rimuovi dalla playlist", color = LevyraText) },
-                            leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = LevyraMuted) },
-                            onClick = { menuOpen = false; onRemove() }
-                        )
-                    }
+            }
+            IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = "Preferito",
+                    tint = if (isFavorite) LevyraPink else LevyraMuted,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            if (onRemove != null) {
+                IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Rounded.Delete, contentDescription = "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -6026,6 +6011,120 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 }
 
 @Composable
+private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+    val strings = LocalLevyraStrings.current
+    LaunchedEffect(Unit) { viewModel.ensureExplore() }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 190.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(strings.exploreTitle, color = LevyraText, fontSize = 30.sp, fontWeight = FontWeight.Black)
+                Text(strings.exploreSubtitle, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+        item { SectionTitle(strings.exploreZones) }
+        items(ExploreCatalog.zones.chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                row.forEach { zone ->
+                    ZoneCard(
+                        zone = zone,
+                        selected = zone.id == state.exploreZoneId,
+                        onClick = { viewModel.selectExploreZone(zone) }
+                    )
+                }
+                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+        item { SectionTitle(strings.exploreFresh) }
+        when {
+            state.isExploreLoading -> item {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
+                }
+            }
+            state.exploreTracks.isEmpty() -> item { EmptyState(strings.exploreEmpty) }
+            else -> items(state.exploreTracks, key = { "ex-${it.id}" }) { track ->
+                TrackRow(
+                    track = track,
+                    isCurrent = track.id == state.currentTrack?.id,
+                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                    isFavorite = track.id in state.favoriteIds,
+                    onClick = { viewModel.playFrom(state.exploreTracks, track) },
+                    onFavorite = { viewModel.toggleFavorite(track) },
+                    isDownloading = track.id in state.downloadingTrackIds,
+                    isDownloaded = track.id in state.downloadedTrackIds,
+                    downloadProgress = state.downloadProgressByTrackId[track.id],
+                    onDownload = { viewModel.exportTrack(track) },
+                    onArtist = { viewModel.openArtist(track) },
+                    onAddToPlaylist = { }
+                )
+            }
+        }
+        if (state.exploreVideos.isNotEmpty()) {
+            item { SectionTitle(strings.exploreNewVideos) }
+            item {
+                RowCarousel(
+                    tracks = state.exploreVideos,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    favoriteIds = state.favoriteIds,
+                    onPlay = { viewModel.playFrom(state.exploreVideos, it) },
+                    onFavorite = { viewModel.toggleFavorite(it) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () -> Unit) {
+    val start = Color(zone.accentStart)
+    val end = Color(zone.accentEnd)
+    Row(
+        modifier = Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                if (selected) Brush.linearGradient(listOf(start.copy(alpha = 0.26f), end.copy(alpha = 0.26f)))
+                else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.05f)))
+            )
+            .border(
+                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.08f)),
+                RoundedCornerShape(16.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(30.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Brush.verticalGradient(listOf(start, end)))
+        )
+        Text(zone.emoji, fontSize = 18.sp)
+        Text(
+            zone.label,
+            color = if (selected) LevyraText else LevyraText.copy(alpha = 0.85f),
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
 private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
@@ -6044,6 +6143,7 @@ private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
         ) {
             TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
             TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
+            TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
             TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
             TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
         }
