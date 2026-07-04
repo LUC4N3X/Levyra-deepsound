@@ -253,12 +253,12 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         label = "tab-label-tint"
     )
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.1f else 1f,
+        targetValue = if (selected) 1.06f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "tab-icon-scale"
     )
     val underlineWidth by animateDpAsState(
-        targetValue = if (selected) 25.dp else 0.dp,
+        targetValue = if (selected) 20.dp else 0.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "tab-underline-width"
     )
@@ -273,13 +273,13 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         Column(
             modifier = Modifier
                 .offset(y = offsetY)
-                .padding(horizontal = 2.dp, vertical = 4.dp),
+                .padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(34.dp)
                     .graphicsLayer {
                         scaleX = iconScale
                         scaleY = iconScale
@@ -287,15 +287,15 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     .drawBehind {
                         drawCircle(
                             color = Color(0xFF54C8FF).copy(alpha = 0.13f * selectedAlpha),
-                            radius = size.minDimension * 0.50f
+                            radius = size.minDimension * 0.46f
                         )
                         drawCircle(
                             color = Color(0xFFBDEBFF).copy(alpha = 0.07f * selectedAlpha),
-                            radius = size.minDimension * 0.30f
+                            radius = size.minDimension * 0.27f
                         )
                         drawCircle(
                             color = Color(0xFFAEE9FF).copy(alpha = 0.28f * selectedAlpha),
-                            radius = size.minDimension * 0.44f,
+                            radius = size.minDimension * 0.43f,
                             style = Stroke(width = 1.dp.toPx())
                         )
                         drawCircle(
@@ -315,13 +315,14 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     imageVector = icon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(if (selected) 25.dp else 24.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Text(
                 text = label,
                 color = labelTint.copy(alpha = textAlpha),
                 fontSize = 11.sp,
+                lineHeight = 12.sp,
                 fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -329,7 +330,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
             Box(
                 modifier = Modifier
                     .width(underlineWidth)
-                    .height(2.dp)
+                    .height(1.5.dp)
                     .graphicsLayer { alpha = selectedAlpha }
                     .background(
                         brush = Brush.horizontalGradient(
