@@ -30,10 +30,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -1215,7 +1211,7 @@ private fun TrendingArtistsShelf(
                             onClick = { onArtistClick(artist.name) }
                         )
                 ) {
-                    coil.compose.AsyncImage(
+                    AsyncImage(
                         model = artist.imageUrl,
                         contentDescription = artist.name,
                         contentScale = ContentScale.Crop,
