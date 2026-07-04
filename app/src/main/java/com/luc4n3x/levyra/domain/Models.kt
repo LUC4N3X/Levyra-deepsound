@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.domain
 
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlin.math.absoluteValue
 
 data class Track(
@@ -105,20 +106,20 @@ data class ExploreZone(
 )
 
 object ExploreCatalog {
-    val zones: List<ExploreZone> = listOf(
-        ExploreZone("nuove-uscite", "Nuove uscite", "🌊", "nuove uscite musica 2026", 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
-        ExploreZone("ita-wave", "Ita Wave", "🇮🇹", "nuove canzoni italiane 2026", 0xFF00E676.toInt(), 0xFF00B0FF.toInt()),
-        ExploreZone("rap-drill", "Rap & Drill", "🐙", "nuovo rap italiano 2026", 0xFF9D4EDD.toInt(), 0xFF7C4DFF.toInt()),
-        ExploreZone("elettronica", "Elettronica", "⚡", "new electronic music 2026", 0xFF18FFFF.toInt(), 0xFF9D4EDD.toInt()),
-        ExploreZone("pop-global", "Pop Global", "🌍", "new pop songs 2026", 0xFFFF4081.toInt(), 0xFF7C4DFF.toInt()),
-        ExploreZone("rnb-soul", "R&B / Soul", "🌒", "new rnb soul songs 2026", 0xFFB388FF.toInt(), 0xFFFF4081.toInt()),
-        ExploreZone("rock-alt", "Rock & Alt", "🦑", "new rock alternative songs 2026", 0xFFFF6E40.toInt(), 0xFFFF1744.toInt()),
-        ExploreZone("latino", "Latino", "🔥", "musica latina nueva 2026", 0xFFFFC400.toInt(), 0xFFFF6E40.toInt()),
-        ExploreZone("lofi-chill", "Lo-Fi / Chill", "🫧", "lofi chill beats new", 0xFF64FFDA.toInt(), 0xFF00B0FF.toInt()),
-        ExploreZone("anime-jpop", "J-Pop / Anime", "🏮", "new jpop anime songs 2026", 0xFFFF5252.toInt(), 0xFFB388FF.toInt())
+    fun getZones(strings: LevyraStrings): List<ExploreZone> = listOf(
+        ExploreZone("nuove-uscite", strings.exploreNewReleases, "🌊", "nuove uscite musica 2026", 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
+        ExploreZone("local-wave", strings.localWaveName, strings.localWaveEmoji, strings.localWaveQuery, 0xFF00E676.toInt(), 0xFF00B0FF.toInt()),
+        ExploreZone("rap-drill", strings.exploreRapDrill, "🐙", "new rap drill 2026", 0xFF9D4EDD.toInt(), 0xFF7C4DFF.toInt()),
+        ExploreZone("elettronica", strings.exploreElectronic, "⚡", "new electronic music 2026", 0xFF18FFFF.toInt(), 0xFF9D4EDD.toInt()),
+        ExploreZone("pop-global", strings.explorePopGlobal, "🌍", "new pop songs 2026", 0xFFFF4081.toInt(), 0xFF7C4DFF.toInt()),
+        ExploreZone("rnb-soul", strings.exploreRnbSoul, "🌒", "new rnb soul songs 2026", 0xFFB388FF.toInt(), 0xFFFF4081.toInt()),
+        ExploreZone("rock-alt", strings.exploreRockAlt, "🦑", "new rock alternative songs 2026", 0xFFFF6E40.toInt(), 0xFFFF1744.toInt()),
+        ExploreZone("latino", strings.exploreLatino, "🔥", "musica latina nueva 2026", 0xFFFFC400.toInt(), 0xFFFF6E40.toInt()),
+        ExploreZone("lofi-chill", strings.exploreLofiChill, "🫧", "lofi chill beats new", 0xFF64FFDA.toInt(), 0xFF00B0FF.toInt()),
+        ExploreZone("anime-jpop", strings.exploreJpopAnime, "🏮", "new jpop anime songs 2026", 0xFFFF5252.toInt(), 0xFFB388FF.toInt())
     )
 
-    fun byId(id: String?): ExploreZone? = zones.firstOrNull { it.id == id }
+    fun byId(id: String?, strings: LevyraStrings): ExploreZone? = getZones(strings).firstOrNull { it.id == id }
 }
 
 enum class RepeatMode {
