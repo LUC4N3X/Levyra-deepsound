@@ -2,6 +2,11 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -6014,71 +6019,129 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 54.dp, bottom = 190.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    
+    val infiniteTransition = rememberInfiniteTransition(label = "bg")
+    val color1 by infiniteTransition.animateColor(
+        initialValue = Color(0xFF140D18),
+        targetValue = Color(0xFF0F0B13),
+        animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "c1"
+    )
+    val color2 by infiniteTransition.animateColor(
+        initialValue = Color(0xFF101418),
+        targetValue = Color(0xFF1A0A05),
+        animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "c2"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.linearGradient(listOf(color1, color2)))
     ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(strings.exploreTitle, color = LevyraText, fontSize = 30.sp, fontWeight = FontWeight.Black)
-                Text(strings.exploreSubtitle, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            }
-        }
-        item { SectionTitle(strings.exploreZones) }
-        items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                row.forEach { zone ->
-                    ZoneCard(
-                        zone = zone,
-                        selected = zone.id == state.exploreZoneId,
-                        onClick = { viewModel.selectExploreZone(zone) }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 70.dp, bottom = 190.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = strings.exploreTitle,
+                        color = Color.White,
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center,
+                        style = TextStyle(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Color.White, Color(0xFFFF9800))
+                            )
+                        )
+                    )
+                    Text(
+                        text = strings.exploreSubtitle,
+                        color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
                     )
                 }
-                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
-        }
-        item { SectionTitle(strings.exploreFresh) }
-        when {
-            state.isExploreLoading -> item {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
+
+            item {
+                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    SectionTitle(strings.exploreZones)
                 }
             }
-            state.exploreTracks.isEmpty() -> item { EmptyState(strings.exploreEmpty) }
-            else -> items(state.exploreTracks, key = { "ex-${it.id}" }) { track ->
-                TrackRow(
-                    track = track,
-                    isCurrent = track.id == state.currentTrack?.id,
-                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                    isFavorite = track.id in state.favoriteIds,
-                    onClick = { viewModel.playFrom(state.exploreTracks, track) },
-                    onFavorite = { viewModel.toggleFavorite(track) },
-                    isDownloading = track.id in state.downloadingTrackIds,
-                    isDownloaded = track.id in state.downloadedTrackIds,
-                    downloadProgress = state.downloadProgressByTrackId[track.id],
-                    onDownload = { viewModel.exportTrack(track) },
-                    onArtist = { viewModel.openArtist(track) },
-                    onAddToPlaylist = { }
-                )
+            items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    row.forEach { zone ->
+                        ZoneCard(
+                            zone = zone,
+                            selected = zone.id == state.exploreZoneId,
+                            onClick = { viewModel.selectExploreZone(zone) }
+                        )
+                    }
+                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
             }
-        }
-        if (state.exploreVideos.isNotEmpty()) {
-            item { SectionTitle(strings.exploreNewVideos) }
+
             item {
-                RowCarousel(
-                    tracks = state.exploreVideos,
-                    currentId = state.currentTrack?.id,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    favoriteIds = state.favoriteIds,
-                    onPlay = { viewModel.playFrom(state.exploreVideos, it) },
-                    onFavorite = { viewModel.toggleFavorite(it) }
-                )
+                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    SectionTitle(strings.exploreFresh)
+                }
+            }
+            when {
+                state.isExploreLoading -> item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFFFF9800), strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
+                    }
+                }
+                state.exploreTracks.isEmpty() -> item {
+                    Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                        EmptyState(strings.exploreEmpty)
+                    }
+                }
+                else -> item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.exploreTracks, key = { "ex-track-${it.id}" }) { track ->
+                            TrackGlassCard(
+                                track = track,
+                                isCurrent = track.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                onClick = { viewModel.playFrom(state.exploreTracks, track) }
+                            )
+                        }
+                    }
+                }
+            }
+            if (state.exploreVideos.isNotEmpty()) {
+                item {
+                    Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                        SectionTitle(strings.exploreNewVideos)
+                    }
+                }
+                item {
+                    RowCarousel(
+                        tracks = state.exploreVideos,
+                        currentId = state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        favoriteIds = state.favoriteIds,
+                        onPlay = { viewModel.playFrom(state.exploreVideos, it) },
+                        onFavorite = { viewModel.toggleFavorite(it) }
+                    )
+                }
             }
         }
     }
@@ -6091,29 +6154,105 @@ private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () 
     Row(
         modifier = Modifier
             .weight(1f)
-            .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (selected) Brush.linearGradient(listOf(start.copy(alpha = 0.15f), end.copy(alpha = 0.15f)))
-                else SolidColor(Color(0xFF1E1E20))
-            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = if (selected) 0.15f else 0.03f))
             .border(
-                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.4f) else Color(0xFF2C2C2E)),
-                RoundedCornerShape(10.dp)
+                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.05f)),
+                RoundedCornerShape(16.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(zone.emoji, fontSize = 16.sp)
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(Brush.linearGradient(listOf(start.copy(alpha = 0.2f), end.copy(alpha = 0.2f))), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(zone.emoji, fontSize = 14.sp)
+        }
         Text(
             zone.label,
             color = if (selected) Color.White else Color(0xFFEBEBF5).copy(alpha = 0.8f),
-            fontSize = 14.sp,
+            fontSize = 15.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun TrackGlassCard(
+    track: LevyraTrack,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(if (isCurrent) 1.02f else 1f, label = "scale")
+    Column(
+        modifier = Modifier
+            .width(140.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = if (isCurrent) 0.15f else 0.03f), RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(116.dp)
+                .clip(RoundedCornerShape(14.dp))
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(track.thumbnailUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            if (isCurrent) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isPlaying) {
+                        Icon(Icons.Rounded.Pause, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                    } else {
+                        Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                    }
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                track.title,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                track.artist,
+                color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
