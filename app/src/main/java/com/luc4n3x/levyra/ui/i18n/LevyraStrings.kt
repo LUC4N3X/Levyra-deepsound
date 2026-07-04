@@ -33,13 +33,6 @@ data class LevyraStrings(
     val languageSubtitle: String,
     val home: String,
     val search: String,
-    val explore: String,
-    val exploreTitle: String,
-    val exploreSubtitle: String,
-    val exploreZones: String,
-    val exploreFresh: String,
-    val exploreNewVideos: String,
-    val exploreEmpty: String,
     val library: String,
     val player: String,
     val queue: String,
@@ -77,7 +70,14 @@ data class LevyraStrings(
     val clear: String,
     val voice: String,
     val createPlaylistHint: String,
-    val selectLanguagePrompt: String
+    val selectLanguagePrompt: String,
+    val explore: String = "Explore",
+    val exploreTitle: String = "The Abyss",
+    val exploreSubtitle: String = "Dive by zone: fresh drops, new sounds, new videos",
+    val exploreZones: String = "Depth zones",
+    val exploreFresh: String = "Fresh currents",
+    val exploreNewVideos: String = "New music videos",
+    val exploreEmpty: String = "No signal from this zone right now, try another one"
 ) {
     companion object {
         fun forCode(code: String): LevyraStrings = values[LevyraLanguageCatalog.normalize(code)] ?: values.getValue("en")
