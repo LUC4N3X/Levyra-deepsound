@@ -2,11 +2,6 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.animateColor
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -190,6 +185,37 @@ import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.valentinilk.shimmer.shimmer
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
+private val CinematicPlum = Color(0xFF2A1738)
+private val CinematicGold = Color(0xFFFFC46B)
+private val CinematicGlass = Color(0xFF151321)
+private val CinematicGlassDeep = Color(0xFF0B0A14)
+private val CinematicHairline = Color.White.copy(alpha = 0.105f)
+
+private fun cinematicGlassBrush(
+    accentStart: Color = LevyraCyan,
+    accentEnd: Color = LevyraViolet,
+    intensity: Float = 1f
+): Brush {
+    return Brush.linearGradient(
+        listOf(
+            accentStart.copy(alpha = 0.13f * intensity),
+            CinematicGlass.copy(alpha = 0.96f),
+            CinematicGlassDeep.copy(alpha = 0.98f),
+            accentEnd.copy(alpha = 0.10f * intensity)
+        )
+    )
+}
+
+private fun cinematicTextBrush(): Brush {
+    return Brush.linearGradient(
+        listOf(
+            Color.White,
+            LevyraCyan.copy(alpha = 0.92f),
+            LevyraViolet.copy(alpha = 0.86f),
+            CinematicGold.copy(alpha = 0.82f)
+        )
+    )
+}
 
 @Composable
 fun LevyraApp(viewModel: LevyraViewModel) {
@@ -596,7 +622,6 @@ private fun UpdateAvailableOverlay(
                 .padding(horizontal = 20.dp)
         ) {
             Column {
-                // Hero Section
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -635,7 +660,6 @@ private fun UpdateAvailableOverlay(
                         )
                     }
 
-                    // Changelog
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Novità", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         val notes = update.releaseNotes.split("\n").filter { it.isNotBlank() }
@@ -659,7 +683,6 @@ private fun UpdateAvailableOverlay(
                         }
                     }
 
-                    // Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -875,7 +898,7 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     val startColor = accentStart?.let { Color(it) } ?: LevyraCyan
     val endColor = accentEnd?.let { Color(it) } ?: LevyraViolet
-    
+
     val animStart by androidx.compose.animation.animateColorAsState(
         targetValue = startColor,
         animationSpec = tween(1500, easing = LinearOutSlowInEasing)
@@ -885,13 +908,20 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
         animationSpec = tween(1500, easing = LinearOutSlowInEasing)
     )
 
-    // Breathing animation for the aura's glow intensity
     val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition()
     val breathAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.08f,
-        targetValue = 0.22f,
+        initialValue = 0.12f,
+        targetValue = 0.30f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = tween(4000, easing = androidx.compose.animation.core.EaseInOutSine),
+            animation = tween(5200, easing = androidx.compose.animation.core.EaseInOutSine),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        )
+    )
+    val sideGlowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.08f,
+        targetValue = 0.18f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = tween(6400, easing = androidx.compose.animation.core.EaseInOutSine),
             repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
         )
     )
@@ -899,41 +929,83 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LevyraBlack) // The pure OLED black foundation
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF070511),
+                        LevyraBlack,
+                        Color(0xFF020106)
+                    )
+                )
+            )
     ) {
-        // 1. THE AURA: A vertically stretched, pulsing glowing pillar in the center
         Box(
             modifier = Modifier
-                .align(Alignment.Center)
-                .size(350.dp) // Base circle
+                .align(Alignment.TopCenter)
+                .size(420.dp)
                 .graphicsLayer {
-                    scaleX = 0.7f
-                    scaleY = 3.0f // GPU stretch makes it a tall pillar
-                    alpha = breathAlpha
+                    scaleX = 1.25f
+                    scaleY = 0.82f
+                    alpha = breathAlpha * 0.72f
                 }
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            animStart, 
-                            animEnd.copy(alpha = 0.4f), 
+                            animStart.copy(alpha = 0.92f),
+                            animEnd.copy(alpha = 0.42f),
                             Color.Transparent
                         )
                     )
                 )
         )
-
-        // 2. THE GLASS SLASH: A very subtle, sharp diagonal light reflection 
-        // to give a physical "dark frosted glass" texture to the void.
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(360.dp)
+                .graphicsLayer {
+                    scaleX = 0.74f
+                    scaleY = 2.7f
+                    alpha = sideGlowAlpha
+                }
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            LevyraPink.copy(alpha = 0.55f),
+                            animEnd.copy(alpha = 0.28f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .size(320.dp)
+                .graphicsLayer {
+                    scaleX = 1.45f
+                    scaleY = 0.86f
+                    alpha = sideGlowAlpha * 0.85f
+                }
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            CinematicGold.copy(alpha = 0.28f),
+                            animStart.copy(alpha = 0.18f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.linearGradient(
                         0.0f to Color.Transparent,
-                        0.45f to Color.Transparent,
-                        0.48f to Color.White.copy(alpha = 0.008f), // Soft leading edge
-                        0.50f to Color.White.copy(alpha = 0.025f),  // Sharp peak
-                        0.501f to Color.Transparent,               // Immediate drop-off
+                        0.42f to Color.Transparent,
+                        0.49f to Color.White.copy(alpha = 0.010f),
+                        0.50f to Color.White.copy(alpha = 0.032f),
+                        0.505f to Color.Transparent,
                         1.0f to Color.Transparent
                     )
                 )
@@ -2705,9 +2777,10 @@ private fun SearchHeader(
         }
 
         Surface(
-            color = Color.White.copy(alpha = 0.05f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+            color = CinematicGlass.copy(alpha = 0.78f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
             shape = CircleShape,
+            shadowElevation = 10.dp,
             modifier = Modifier.weight(1f)
         ) {
             Row(
@@ -3107,9 +3180,15 @@ private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onPlay: (
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(cinematicGlassBrush(intensity = if (isCurrent) 0.82f else 0.48f))
+            .border(
+                1.dp,
+                if (isCurrent) LevyraCyan.copy(alpha = 0.34f) else Color.White.copy(alpha = 0.07f),
+                RoundedCornerShape(18.dp)
+            )
             .clickable(onClick = onPlay)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -3150,9 +3229,11 @@ private fun PlaylistRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(cinematicGlassBrush(intensity = 0.50f))
+            .border(1.dp, Color.White.copy(alpha = 0.075f), RoundedCornerShape(18.dp))
             .clickable { onOpen() }
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -3223,7 +3304,6 @@ private fun PlaylistCreateDialog(onDismiss: () -> Unit, onConfirm: (String) -> U
     )
 }
 
-/** Dialog per aggiungere un brano a una playlist esistente o crearne una nuova al volo. */
 @Composable
 private fun AddToPlaylistDialog(
     track: Track,
@@ -3297,7 +3377,6 @@ private fun AddToPlaylistDialog(
     )
 }
 
-/** Overlay a schermo intero con il contenuto di una playlist. */
 @Composable
 private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiState) {
     val playlist = state.openPlaylist ?: return
@@ -3360,6 +3439,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
     val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
+    val bgEnd = track?.let { Color(it.accentEnd) } ?: LevyraViolet
 
     Box(
         modifier = Modifier
@@ -3367,14 +3447,36 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        bgStart.copy(alpha = 0.22f),
-                        LevyraBlack,
+                        bgStart.copy(alpha = 0.28f),
+                        bgEnd.copy(alpha = 0.12f),
                         LevyraBlack,
                         Color.Black
                     )
                 )
             )
     ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .size(420.dp)
+                .graphicsLayer {
+                    scaleX = 1.15f
+                    scaleY = 0.82f
+                    alpha = 0.72f
+                }
+                .background(Brush.radialGradient(listOf(bgStart.copy(alpha = 0.34f), Color.Transparent)))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .size(360.dp)
+                .graphicsLayer {
+                    scaleX = 0.78f
+                    scaleY = 2.2f
+                    alpha = 0.32f
+                }
+                .background(Brush.radialGradient(listOf(bgEnd.copy(alpha = 0.34f), Color.Transparent)))
+        )
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -3414,7 +3516,8 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             .align(Alignment.CenterEnd)
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.08f))
+                            .background(Color.White.copy(alpha = 0.10f))
+                            .border(1.dp, Color.White.copy(alpha = 0.10f), CircleShape)
                     ) {
                         Icon(Icons.Rounded.Close, contentDescription = strings.clear, tint = LevyraText, modifier = Modifier.size(22.dp))
                     }
@@ -3598,13 +3701,19 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 
 @Composable
 private fun PlayerTimeline(positionMs: Long, durationMs: Long, onSeek: (Float) -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(CinematicGlass.copy(alpha = 0.42f), RoundedCornerShape(22.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
         Slider(
             value = progressOf(positionMs, durationMs),
             onValueChange = onSeek,
             colors = SliderDefaults.colors(
                 thumbColor = Color.White,
-                activeTrackColor = Color.White,
+                activeTrackColor = LevyraCyan,
                 inactiveTrackColor = Color.White.copy(alpha = 0.18f)
             ),
             modifier = Modifier.fillMaxWidth()
@@ -3619,8 +3728,8 @@ private fun PlayerTimeline(positionMs: Long, durationMs: Long, onSeek: (Float) -
 @Composable
 private fun PlayerActionButton(icon: ImageVector, text: String, modifier: Modifier, onClick: () -> Unit) {
     Surface(
-        color = Color.White.copy(alpha = 0.08f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+        color = CinematicGlass.copy(alpha = 0.58f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.105f)),
         shape = RoundedCornerShape(22.dp),
         modifier = modifier
             .height(54.dp)
@@ -3982,9 +4091,9 @@ private fun PlayerOptionsRow(
 private fun OptionChip(icon: ImageVector, label: String, active: Boolean, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     val alpha by animateFloatAsState(targetValue = if (enabled) 1f else 0.5f, animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f))
     val scale by animateFloatAsState(targetValue = if (active) 1.03f else 1f, animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f))
-    val bgColor = if (active) LevyraCyan.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.05f)
-    val borderColor = if (active) LevyraCyan.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.08f)
-    
+    val bgColor = if (active) LevyraCyan.copy(alpha = 0.18f) else CinematicGlass.copy(alpha = 0.52f)
+    val borderColor = if (active) LevyraCyan.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.08f)
+
     Surface(
         color = bgColor,
         border = BorderStroke(1.dp, borderColor),
@@ -5698,8 +5807,21 @@ private fun SearchTrackCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                if (isCurrent) {
+                    cinematicGlassBrush(Color(track.accentStart), Color(track.accentEnd), 0.82f)
+                } else {
+                    SolidColor(Color.Transparent)
+                }
+            )
+            .border(
+                1.dp,
+                if (isCurrent) LevyraCyan.copy(alpha = 0.30f) else Color.Transparent,
+                RoundedCornerShape(18.dp)
+            )
             .pressable(onClick = onClick)
-            .padding(vertical = 7.dp),
+            .padding(horizontal = if (isCurrent) 9.dp else 0.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp)
     ) {
@@ -5837,8 +5959,21 @@ private fun TrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                if (isCurrent) {
+                    cinematicGlassBrush(Color(track.accentStart), Color(track.accentEnd), 0.82f)
+                } else {
+                    SolidColor(Color.Transparent)
+                }
+            )
+            .border(
+                1.dp,
+                if (isCurrent) LevyraCyan.copy(alpha = 0.30f) else Color.Transparent,
+                RoundedCornerShape(18.dp)
+            )
             .pressable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = if (isCurrent) 9.dp else 0.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -5912,10 +6047,13 @@ private fun DownloadButton(isDownloading: Boolean, isDownloaded: Boolean, progre
 
 @Composable
 private fun MiniPlayer(track: Track, isPlaying: Boolean, isResolving: Boolean, progress: Float, onOpen: () -> Unit, onToggle: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
+    val accentStart = Color(track.accentStart)
+    val accentEnd = Color(track.accentEnd)
     Surface(
-        color = Color(0xFF202124).copy(alpha = 0.98f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
+        color = CinematicGlassDeep.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        shadowElevation = 18.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Box {
@@ -5925,42 +6063,58 @@ private fun MiniPlayer(track: Track, isPlaying: Boolean, isResolving: Boolean, p
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                Color(track.accentStart).copy(alpha = 0.12f),
-                                Color.Transparent,
-                                Color(track.accentEnd).copy(alpha = 0.12f)
+                                accentStart.copy(alpha = 0.26f),
+                                LevyraBlack.copy(alpha = 0.08f),
+                                accentEnd.copy(alpha = 0.22f)
                             )
                         )
                     )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(150.dp)
+                    .graphicsLayer {
+                        scaleX = 1.4f
+                        alpha = 0.36f
+                    }
+                    .background(Brush.radialGradient(listOf(accentEnd.copy(alpha = 0.42f), Color.Transparent)))
             )
             Column {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(progress.coerceIn(0.02f, 1f))
-                        .height(2.dp)
-                        .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+                        .height(3.dp)
+                        .background(Brush.horizontalGradient(listOf(accentStart, LevyraCyan, accentEnd)))
                 )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(66.dp)
+                        .height(70.dp)
                         .pressable(onClick = onOpen)
-                        .padding(start = 12.dp, end = 6.dp),
+                        .padding(start = 13.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     CoverImage(
                         track,
                         Modifier
-                            .size(46.dp)
-                            .clip(RoundedCornerShape(9.dp))
+                            .size(50.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(14.dp))
                     )
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(track.title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(track.artist, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    IconButton(onClick = onToggle, modifier = Modifier.size(42.dp)) {
+                    IconButton(
+                        onClick = onToggle,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(Color.White.copy(alpha = 0.10f), CircleShape)
+                    ) {
                         if (isResolving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                        else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(30.dp))
+                        else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = "Play", tint = LevyraText, modifier = Modifier.size(29.dp))
                     }
                     IconButton(onClick = onNext, modifier = Modifier.size(38.dp)) {
                         Icon(Icons.Rounded.SkipNext, contentDescription = "Successivo", tint = Color.White.copy(alpha = 0.92f), modifier = Modifier.size(27.dp))
@@ -6019,57 +6173,75 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "bg")
-    val color1 by infiniteTransition.animateColor(
-        initialValue = Color(0xFF140D18),
-        targetValue = Color(0xFF0F0B13),
-        animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Reverse),
-        label = "c1"
-    )
-    val color2 by infiniteTransition.animateColor(
-        initialValue = Color(0xFF101418),
-        targetValue = Color(0xFF1A0A05),
-        animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing), RepeatMode.Reverse),
-        label = "c2"
-    )
-
     val context = LocalContext.current
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.linearGradient(listOf(color1, color2)))
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Transparent,
+                        CinematicPlum.copy(alpha = 0.18f),
+                        LevyraBlack.copy(alpha = 0.64f)
+                    )
+                )
+            )
     ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(320.dp)
+                .background(Brush.radialGradient(listOf(LevyraViolet.copy(alpha = 0.22f), Color.Transparent)))
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .size(260.dp)
+                .background(Brush.radialGradient(listOf(CinematicGold.copy(alpha = 0.16f), Color.Transparent)))
+        )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 70.dp, bottom = 190.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            contentPadding = PaddingValues(top = 62.dp, bottom = 190.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.07f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                        shape = RoundedCornerShape(999.dp)
+                    ) {
+                        Text(
+                            text = strings.exploreZones.uppercase(),
+                            color = LevyraCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.4.sp,
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp)
+                        )
+                    }
                     Text(
                         text = strings.exploreTitle,
                         color = Color.White,
-                        fontSize = 42.sp,
+                        fontSize = 43.sp,
+                        lineHeight = 45.sp,
                         fontWeight = FontWeight.Black,
                         textAlign = TextAlign.Center,
-                        style = TextStyle(
-                            brush = Brush.linearGradient(
-                                colors = listOf(Color.White, Color(0xFFFF9800))
-                            )
-                        )
+                        style = TextStyle(brush = cinematicTextBrush())
                     )
                     Text(
                         text = strings.exploreSubtitle,
-                        color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                        color = LevyraMuted.copy(alpha = 0.82f),
                         fontSize = 15.sp,
+                        lineHeight = 20.sp,
                         fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(0.86f)
                     )
                 }
             }
@@ -6103,7 +6275,7 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             when {
                 state.isExploreLoading -> item {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFFFF9800), strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
+                        CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
                     }
                 }
                 state.exploreTracks.isEmpty() -> item {
@@ -6132,9 +6304,7 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                     }
                                     context.startActivity(Intent.createChooser(intent, "Condividi via"))
                                 },
-                                onAddToPlaylist = {
-                                    // Placeholder for future playlist functionality
-                                }
+                                onAddToPlaylist = {}
                             )
                         }
                     }
@@ -6173,30 +6343,31 @@ private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () 
     Row(
         modifier = Modifier
             .weight(1f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = if (selected) 0.15f else 0.03f))
+            .clip(RoundedCornerShape(20.dp))
+            .background(cinematicGlassBrush(start, end, if (selected) 1.15f else 0.58f))
             .border(
-                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.05f)),
-                RoundedCornerShape(16.dp)
+                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.08f)),
+                RoundedCornerShape(20.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 15.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
-                .background(Brush.linearGradient(listOf(start.copy(alpha = 0.2f), end.copy(alpha = 0.2f))), CircleShape),
+                .size(34.dp)
+                .background(Brush.linearGradient(listOf(start.copy(alpha = 0.34f), end.copy(alpha = 0.24f))), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(zone.emoji, fontSize = 14.sp)
         }
         Text(
             zone.label,
-            color = if (selected) Color.White else Color(0xFFEBEBF5).copy(alpha = 0.8f),
+            color = if (selected) Color.White else LevyraMuted.copy(alpha = 0.94f),
             fontSize = 15.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -6223,9 +6394,13 @@ private fun TrackGlassCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(1.dp, Color.White.copy(alpha = if (isCurrent) 0.15f else 0.03f), RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(22.dp))
+            .background(cinematicGlassBrush(Color(track.accentStart), Color(track.accentEnd), if (isCurrent) 1.0f else 0.58f))
+            .border(
+                1.dp,
+                if (isCurrent) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.075f),
+                RoundedCornerShape(22.dp)
+            )
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -6233,7 +6408,8 @@ private fun TrackGlassCard(
         Box(
             modifier = Modifier
                 .size(116.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(16.dp))
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -6259,7 +6435,6 @@ private fun TrackGlassCard(
                 }
             }
             
-            // 3-dots Menu
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -6276,7 +6451,7 @@ private fun TrackGlassCard(
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
-                    modifier = Modifier.background(Color(0xFF1E1E20))
+                    modifier = Modifier.background(CinematicGlass)
                 ) {
                     DropdownMenuItem(
                         text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi a preferiti", color = Color.White) },
@@ -6307,15 +6482,15 @@ private fun TrackGlassCard(
                 track.title,
                 color = Color.White,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 track.artist,
-                color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                color = LevyraMuted.copy(alpha = 0.76f),
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -6338,9 +6513,13 @@ private fun VideoGlassCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(1.dp, Color.White.copy(alpha = if (isCurrent) 0.15f else 0.03f), RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .background(cinematicGlassBrush(Color(track.accentStart), Color(track.accentEnd), if (isCurrent) 1.0f else 0.6f))
+            .border(
+                1.dp,
+                if (isCurrent) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.075f),
+                RoundedCornerShape(24.dp)
+            )
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -6349,7 +6528,8 @@ private fun VideoGlassCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(17.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(17.dp))
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -6384,9 +6564,9 @@ private fun VideoGlassCard(
             )
             Text(
                 track.artist,
-                color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                color = LevyraMuted.copy(alpha = 0.76f),
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -6398,24 +6578,37 @@ private fun VideoGlassCard(
 private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = Color(0xFF101012).copy(alpha = 0.98f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
-        shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp),
+        color = CinematicGlassDeep.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, CinematicHairline),
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        shadowElevation = 18.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(78.dp)
-                .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Box(
+            modifier = Modifier.background(
+                Brush.horizontalGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = 0.08f),
+                        Color.Transparent,
+                        LevyraViolet.copy(alpha = 0.08f)
+                    )
+                )
+            )
         ) {
-            TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
-            TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
-            TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
-            TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
-            TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
+                TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
+                TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
+                TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
+                TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
+            }
         }
     }
 }
@@ -6445,10 +6638,26 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         ) {
             Box(
                 modifier = Modifier
-                    .height(32.dp)
-                    .width(if (selected) 58.dp else 46.dp)
+                    .height(34.dp)
+                    .width(if (selected) 62.dp else 46.dp)
                     .clip(RoundedCornerShape(999.dp))
-                    .background(if (selected) LevyraCyan.copy(alpha = 0.14f) else Color.Transparent),
+                    .background(
+                        if (selected) {
+                            Brush.horizontalGradient(
+                                listOf(
+                                    LevyraCyan.copy(alpha = 0.25f),
+                                    LevyraViolet.copy(alpha = 0.18f)
+                                )
+                            )
+                        } else {
+                            SolidColor(Color.Transparent)
+                        }
+                    )
+                    .border(
+                        1.dp,
+                        if (selected) LevyraCyan.copy(alpha = 0.26f) else Color.Transparent,
+                        RoundedCornerShape(999.dp)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -6472,15 +6681,41 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
 
 @Composable
 private fun PageHeader(title: String, subtitle: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(title, color = LevyraText, fontSize = 34.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
-        Text(subtitle, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(cinematicGlassBrush(intensity = 0.62f), RoundedCornerShape(28.dp))
+            .border(1.dp, CinematicHairline, RoundedCornerShape(28.dp))
+            .padding(horizontal = 18.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Text(
+            title,
+            color = LevyraText,
+            fontSize = 34.sp,
+            lineHeight = 37.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-1).sp,
+            style = TextStyle(brush = cinematicTextBrush())
+        )
+        Text(subtitle, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, lineHeight = 19.sp)
     }
 }
 
 @Composable
 private fun SectionTitle(title: String) {
-    Text(title, color = LevyraText, fontSize = 19.sp, fontWeight = FontWeight.Black)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(22.dp)
+                .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
+        )
+        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
 }
 
 @Composable
@@ -6492,8 +6727,8 @@ private fun QuickChips(onClick: (String) -> Unit) {
     ) {
         chips.forEach { chip ->
             Surface(
-                color = Color.White.copy(alpha = 0.07f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                color = CinematicGlass.copy(alpha = 0.72f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                 shape = CircleShape,
                 modifier = Modifier.pressable(onClick = { onClick(chip) })
             ) {
@@ -6590,19 +6825,19 @@ private fun LoadingLine(height: androidx.compose.ui.unit.Dp, radius: androidx.co
             .fillMaxWidth()
             .height(height)
             .clip(RoundedCornerShape(radius))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(cinematicGlassBrush(intensity = 0.54f))
     )
 }
 
 @Composable
 private fun GlassMessage(text: String, color: Color) {
     Surface(
-        color = color.copy(alpha = 0.11f),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.28f)),
-        shape = RoundedCornerShape(16.dp),
+        color = CinematicGlass.copy(alpha = 0.70f),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.30f)),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(14.dp))
+        Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(15.dp))
     }
 }
 
@@ -6648,13 +6883,13 @@ private fun EmptyCover(modifier: Modifier) {
 @Composable
 private fun EmptyState(text: String) {
     Surface(
-        color = Color.White.copy(alpha = 0.05f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(20.dp),
+        color = CinematicGlass.copy(alpha = 0.66f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+        shape = RoundedCornerShape(24.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(22.dp),
+            modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
