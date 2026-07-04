@@ -328,7 +328,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     enter = miniEnter,
                     exit = miniExit
                 ) {
-                    BottomTabs(selected = state.selectedTab, onSelect = viewModel::selectTab)
+                    BottomTabs(selected = state.selectedTab, flatTop = state.currentTrack != null, onSelect = viewModel::selectTab)
                 }
             }
 
@@ -6278,10 +6278,25 @@ private fun MiniPlayer(
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     Surface(
-        color = Color(0xFF0A0A0F),
+        color = CinematicGlassDeep.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                accentStart.copy(alpha = 0.26f),
+                                LevyraBlack.copy(alpha = 0.08f),
+                                accentEnd.copy(alpha = 0.22f)
+                            )
+                        )
+                    )
+            )
             Column {
                 Box(
                     modifier = Modifier
@@ -6798,57 +6813,104 @@ private fun VideoGlassCard(
 }
 
 @Composable
-private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
+private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
+    val shape = if (flatTop) RoundedCornerShape(0.dp) else RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
     Surface(
-        color = Color(0xFF06060A),
-        border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.04f)),
-        shape = RoundedCornerShape(0.dp),
+        color = CinematicGlassDeep.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, CinematicHairline),
+        shape = shape,
+        shadowElevation = 18.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(72.dp)
-                .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+        Box(
+            modifier = Modifier.background(
+                Brush.horizontalGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = 0.08f),
+                        Color.Transparent,
+                        LevyraViolet.copy(alpha = 0.08f)
+                    )
+                )
+            )
         ) {
-            TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
-            TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
-            TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
-            TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
-            TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+                    .padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
+                TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
+                TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
+                TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
+                TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
+            }
         }
     }
 }
 
 @Composable
 private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    val contentColor = if (selected) Color.White else Color.White.copy(alpha = 0.55f)
+    val selectedScale by animateFloatAsState(
+        targetValue = if (selected && LocalAnimationsEnabled.current) 1.04f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        label = "tab-selection-scale"
+    )
     Box(
         modifier = Modifier
             .weight(1f)
             .fillMaxSize()
-            .pressable(onClick = onClick),
+            .pressable(onClick = onClick)
+            .graphicsLayer {
+                scaleX = selectedScale
+                scaleY = selectedScale
+                alpha = if (selected) 1f else 0.72f
+            },
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.height(5.dp))
+            Box(
+                modifier = Modifier
+                    .height(34.dp)
+                    .width(if (selected) 62.dp else 46.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(
+                        if (selected) {
+                            Brush.horizontalGradient(
+                                listOf(
+                                    LevyraCyan.copy(alpha = 0.25f),
+                                    LevyraViolet.copy(alpha = 0.18f)
+                                )
+                            )
+                        } else {
+                            SolidColor(Color.Transparent)
+                        }
+                    )
+                    .border(
+                        1.dp,
+                        if (selected) LevyraCyan.copy(alpha = 0.26f) else Color.Transparent,
+                        RoundedCornerShape(999.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.72f),
+                    modifier = Modifier.size(if (selected) 25.dp else 23.dp)
+                )
+            }
             Text(
                 text = label,
-                color = contentColor,
+                color = if (selected) LevyraCyan else Color.White.copy(alpha = 0.72f),
                 fontSize = 11.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
