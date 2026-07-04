@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             window.attributes = params
         }
+        requestHighRefreshRate()
         setContent {
             LevyraTheme {
                 val viewModel: LevyraViewModel = viewModel()
@@ -88,6 +89,16 @@ class MainActivity : ComponentActivity() {
                 .networkCachePolicy(CachePolicy.ENABLED)
                 .crossfade(false)
                 .build()
+        }
+    }
+
+    private fun requestHighRefreshRate() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            window.windowManager.defaultDisplay.supportedModes.maxByOrNull { it.refreshRate }?.let { mode ->
+                val params = window.attributes
+                params.preferredDisplayModeId = mode.modeId
+                window.attributes = params
+            }
         }
     }
 }
