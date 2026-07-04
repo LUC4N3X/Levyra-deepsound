@@ -6013,7 +6013,7 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 @Composable
 private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
-    LaunchedEffect(Unit) { viewModel.ensureExplore() }
+    LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 190.dp),
@@ -6026,7 +6026,7 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
         item { SectionTitle(strings.exploreZones) }
-        items(ExploreCatalog.zones.chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
+        items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -6091,33 +6091,26 @@ private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () 
     Row(
         modifier = Modifier
             .weight(1f)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
-                if (selected) Brush.linearGradient(listOf(start.copy(alpha = 0.26f), end.copy(alpha = 0.26f)))
-                else Brush.linearGradient(listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.05f)))
+                if (selected) Brush.linearGradient(listOf(start.copy(alpha = 0.15f), end.copy(alpha = 0.15f)))
+                else Color(0xFF1E1E20)
             )
             .border(
-                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.08f)),
-                RoundedCornerShape(16.dp)
+                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.4f) else Color(0xFF2C2C2E)),
+                RoundedCornerShape(10.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(30.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(Brush.verticalGradient(listOf(start, end)))
-        )
-        Text(zone.emoji, fontSize = 18.sp)
+        Text(zone.emoji, fontSize = 16.sp)
         Text(
             zone.label,
-            color = if (selected) LevyraText else LevyraText.copy(alpha = 0.85f),
+            color = if (selected) Color.White else Color(0xFFEBEBF5).copy(alpha = 0.8f),
             fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
