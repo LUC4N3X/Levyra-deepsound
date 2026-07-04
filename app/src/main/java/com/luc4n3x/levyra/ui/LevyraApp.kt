@@ -147,6 +147,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -232,7 +233,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         label = "tab-offset-y"
     )
     val textAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.34f,
+        targetValue = if (selected) 1f else 0.38f,
         animationSpec = tween(260),
         label = "tab-text-alpha"
     )
@@ -242,21 +243,26 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         label = "tab-selected-alpha"
     )
     val iconTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFF8FD7FF) else Color(0xFF737373),
+        targetValue = if (selected) Color(0xFF93DCFF) else Color(0xFF737373),
         animationSpec = tween(260),
         label = "tab-icon-tint"
     )
     val labelTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFFD6EEFF) else Color.White,
+        targetValue = if (selected) Color(0xFFE0F4FF) else Color.White,
         animationSpec = tween(260),
         label = "tab-label-tint"
     )
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1.05f else 1f,
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1.1f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-        label = "tab-scale"
+        label = "tab-icon-scale"
     )
-    val selectedShape = RoundedCornerShape(22.dp)
+    val underlineWidth by animateDpAsState(
+        targetValue = if (selected) 25.dp else 0.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "tab-underline-width"
+    )
+
     Box(
         modifier = Modifier
             .weight(1f)
@@ -264,33 +270,46 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
             .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .padding(horizontal = 2.dp)
-                .fillMaxWidth()
-                .height(62.dp)
                 .offset(y = offsetY)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .shadow(10.dp * selectedAlpha, selectedShape, clip = false, ambientColor = Color(0xFF5ABEFF).copy(alpha = 0.16f * selectedAlpha), spotColor = Color(0xFF6BC8FF).copy(alpha = 0.24f * selectedAlpha))
-                .clip(selectedShape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF152A3F).copy(alpha = 0.78f * selectedAlpha),
-                            Color(0xFF08121F).copy(alpha = 0.48f * selectedAlpha)
-                        )
-                    )
-                )
-                .border(BorderStroke(1.dp, Color(0xFF79CFFF).copy(alpha = 0.24f * selectedAlpha)), selectedShape)
-                .padding(horizontal = 4.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center
+                .padding(horizontal = 2.dp, vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
+                    .drawBehind {
+                        drawCircle(
+                            color = Color(0xFF54C8FF).copy(alpha = 0.13f * selectedAlpha),
+                            radius = size.minDimension * 0.50f
+                        )
+                        drawCircle(
+                            color = Color(0xFFBDEBFF).copy(alpha = 0.07f * selectedAlpha),
+                            radius = size.minDimension * 0.30f
+                        )
+                        drawCircle(
+                            color = Color(0xFFAEE9FF).copy(alpha = 0.28f * selectedAlpha),
+                            radius = size.minDimension * 0.44f,
+                            style = Stroke(width = 1.dp.toPx())
+                        )
+                        drawCircle(
+                            color = Color(0xFFB9F1FF).copy(alpha = 0.55f * selectedAlpha),
+                            radius = 1.35.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(size.width * 0.78f, size.height * 0.24f)
+                        )
+                        drawCircle(
+                            color = LevyraViolet.copy(alpha = 0.42f * selectedAlpha),
+                            radius = 1.1.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height * 0.78f)
+                        )
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
@@ -298,15 +317,32 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     tint = iconTint,
                     modifier = Modifier.size(if (selected) 25.dp else 24.dp)
                 )
-                Text(
-                    text = label,
-                    color = labelTint.copy(alpha = textAlpha),
-                    fontSize = 11.sp,
-                    fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
+            Text(
+                text = label,
+                color = labelTint.copy(alpha = textAlpha),
+                fontSize = 11.sp,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Box(
+                modifier = Modifier
+                    .width(underlineWidth)
+                    .height(2.dp)
+                    .graphicsLayer { alpha = selectedAlpha }
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                Color(0xFF5BD6FF).copy(alpha = 0f),
+                                Color(0xFF6FDFFF).copy(alpha = 0.86f),
+                                LevyraViolet.copy(alpha = 0.55f),
+                                Color(0xFF5BD6FF).copy(alpha = 0f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(99.dp)
+                    )
+            )
         }
     }
 }
