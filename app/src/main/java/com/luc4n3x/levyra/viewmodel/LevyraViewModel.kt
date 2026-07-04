@@ -22,6 +22,9 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -968,6 +971,40 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             durationMs = if (track.durationMs > 0L) track.durationMs else entity.durationMs,
             source = "Offline"
         )
+    }
+
+    private val exploreCache = ConcurrentHashMap<String, List<Track>>()
+    private var exploreVideosLoaded = false
+    private var exploreJob: Job? = null
+
+    fun ensureExplore(strings: LevyraStrings) {
+        if (_state.value.exploreZoneId == null) {
+            selectExploreZone(ExploreCatalog.getZones(strings).first())
+        }
+        if (!exploreVideosLoaded) {
+            exploreVideosLoaded = true
+            viewModelScope.launch {
+                val videos = runCatching { repository.search("${strings.exploreNewVideos} 2026", 12) }.getOrDefault(emptyList())
+                if (videos.isEmpty()) exploreVideosLoaded = false
+                _state.update { it.copy(exploreVideos = videos) }
+            }
+        }
+    }
+
+    fun selectExploreZone(zone: ExploreZone) {
+        _state.update { it.copy(exploreZoneId = zone.id) }
+        exploreCache[zone.id]?.let { cached ->
+            _state.update { it.copy(exploreTracks = cached, isExploreLoading = false) }
+            return
+        }
+        exploreJob?.cancel()
+        _state.update { it.copy(exploreTracks = emptyList(), isExploreLoading = true) }
+        exploreJob = viewModelScope.launch {
+            val results = runCatching { repository.search(zone.query, 24) }.getOrDefault(emptyList())
+            if (results.isNotEmpty()) exploreCache[zone.id] = results
+            if (_state.value.exploreZoneId != zone.id) return@launch
+            _state.update { it.copy(exploreTracks = results, isExploreLoading = false) }
+        }
     }
 
     fun playDownloaded(download: DownloadedTrack) {
