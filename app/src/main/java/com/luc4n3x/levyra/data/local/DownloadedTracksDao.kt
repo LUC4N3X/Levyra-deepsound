@@ -17,6 +17,9 @@ interface DownloadedTracksDao {
     @Query("SELECT * FROM downloaded_tracks ORDER BY savedAt DESC LIMIT :limit")
     suspend fun recent(limit: Int = 80): List<DownloadEntity>
 
+    @Query("SELECT * FROM downloaded_tracks WHERE trackId = :trackId ORDER BY savedAt DESC LIMIT 1")
+    suspend fun byTrackId(trackId: String): DownloadEntity?
+
     @Query("DELETE FROM downloaded_tracks WHERE id = :id")
     suspend fun deleteById(id: Long)
 }

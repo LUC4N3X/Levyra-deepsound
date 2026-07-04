@@ -1,195 +1,262 @@
 <div align="center">
 
-<img src="https://i.ibb.co/7tMpTVX6/levyra-saas-logo-Photoroom.png" alt="Levyra" width="450" />
+<img src="https://i.ibb.co/7tMpTVX6/levyra-saas-logo-Photoroom.png" alt="Levyra Logo" width="410" />
 
-<br>
+# Levyra
+
+**A high-performance, native Android music client designed for pristine playback and complete audio control.**
+
+*Fast discovery · Immersive visualizer · Resilient background downloading · Offline-first tag manager.*
 
 ---
 
-<h3>Modern Android music player built for fast discovery, rich artwork and immersive playback.</h3>
-
 <p>
-  <strong>Deep Music. Real Experience.</strong>
+  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3.20-%237F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
+  <img alt="Jetpack Compose" src="https://img.shields.io/badge/Compose-Material%203-%234285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
+  <img alt="Media3" src="https://img.shields.io/badge/Media3-ExoPlayer-%233DDC84?style=for-the-badge&logo=android&logoColor=white">
+  <img alt="WorkManager" src="https://img.shields.io/badge/WorkManager-Pipeline-%23005C97?style=for-the-badge&logo=google-cloud&logoColor=white">
+  <img alt="Room Database" src="https://img.shields.io/badge/SQLite-Room-%23003B57?style=for-the-badge&logo=sqlite&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
 </p>
 
-<p>
-  <a href="https://kotlinlang.org/">
-    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
-  </a>
-  <a href="https://developer.android.com/jetpack/compose">
-    <img alt="Jetpack Compose" src="https://img.shields.io/badge/Jetpack%20Compose-UI-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
-  </a>
-  <a href="https://developer.android.com/media/media3">
-    <img alt="Media3" src="https://img.shields.io/badge/Media3-Playback-3DDC84?style=for-the-badge&logo=android&logoColor=white">
-  </a>
-  <a href="LICENSE">
-    <img alt="License" src="https://img.shields.io/badge/License-MIT-111111?style=for-the-badge">
-  </a>
-</p>
+[✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
 
-<p>
-  <a href="#-key-features"><strong>Features</strong></a>
-  ·
-  <a href="#-architecture"><strong>Architecture</strong></a>
-  ·
-  <a href="#-getting-started"><strong>Getting Started</strong></a>
-  ·
-  <a href="#-credits"><strong>Credits</strong></a>
-  ·
-  <a href="#-legal-disclaimer"><strong>Disclaimer</strong></a>
-</p>
 <br>
 
-<p align="center">
-  <img src="https://i.ibb.co/5hJ6y4ck/luca.png" alt="Levyra app preview" width="85%" />
-</p>
-
-<br>
+<img src="https://i.ibb.co/5hJ6y4ck/luca.png" alt="Levyra UI Preview" width="88%" style="border-radius: 12px; box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.4);" />
 
 </div>
 
----
+<br>
 
-**Levyra** is a modern Android music player focused on speed, clean design, rich artwork, and immersive playback.  
-It combines a polished dark interface with smart discovery, background audio, synced lyrics, and a production-ready Android architecture.
+## ✦ What is Levyra?
+
+Unlike typical wrapper or web-reskin apps, **Levyra** is a native, ground-up Android audio application. It queries, resolves, and streams music dynamically using YouTube Music's InnerTube API (with a robust NewPipe Extractor fallback), routes audio via an optimized **AndroidX Media3/ExoPlayer** background service, and outputs full tracks straight into your local storage. 
+
+Every track you download is fully parsed, tagged, and structured as a clean M4A file in your system `Music/Levyra` directory, complete with embedded metadata, titles, artists, and album artwork. 
+
+```text
+📦 Application Specifications
+├── Package Name      com.luc4n3x.levyra
+├── Target SDK        35 (Android 15)
+├── Min SDK           26 (Android 8.0)
+├── Primary Language  100% Kotlin
+├── UI Framework      Jetpack Compose + Material 3 (M3)
+└── Audio Foundation  AndroidX Media3 / ExoPlayer Engine
+```
 
 <br>
 
 ## ✦ Key Features
 
-### 1. Premium Android Interface
-- **Clean dark UI:** deep black surfaces, soft contrast, glass-style cards, and readable typography.
-- **Artwork-first experience:** album covers, gradients, and ambient visuals are treated as part of the player.
-- **Metro-inspired discovery deck:** KMP-style hero card, album shelves, trend rail and floating mini-player rewritten for Levyra.
-- **Smooth navigation:** fast search, compact sections, and a layout designed to feel native on Android.
+<table width="100%">
+  <tr>
+    <th width="50%" align="left">🎨 Dynamic & Modern Interface</th>
+    <th width="50%" align="left">⚡ Robust Playback Engine</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <ul>
+        <li><strong>Dark-First Polish:</strong> Clean, high-contrast dark theme optimized for OLED screens.</li>
+        <li><strong>Fluid Transitions:</strong> Bottom navigation layout connecting Home, Search, Library, and Player with custom micro-animations.</li>
+        <li><strong>Dual-State Player:</strong> Swap seamlessly between an unobtrusive mini-player and an immersive fullscreen interface.</li>
+        <li><strong>Dynamic Material 3:</strong> Optional system-wide dynamic color adaptation and visual animation toggle.</li>
+      </ul>
+    </td>
+    <td valign="top">
+      <ul>
+        <li><strong>Foreground Media Service:</strong> Powered by Media3 and MediaSession controls to handle playback even when the screen is off.</li>
+        <li><strong>Smart Playback Controls:</strong> Loop (all/single), track shuffle, playback speed tuner, and custom sleep timers (15/30/60m).</li>
+        <li><strong>Audio Tuning:</strong> In-app audio normalization, silence skipping, and custom quality selectors (Auto/High/Low).</li>
+        <li><strong>SponsorBlock Integration:</strong> Automatically skips non-music or sponsored segments in real time.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <th width="50%" align="left">📥 Offline Export Pipeline</th>
+    <th width="50%" align="left">🔍 Stream Resolving & Search</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <ul>
+        <li><strong>No Cache Blobs:</strong> Exports actual media files directly to the public <code>Music/Levyra</code> directory.</li>
+        <li><strong>Pure-Kotlin Tagging:</strong> Embeds high-res album covers, song titles, album names, and artist metadata on completion.</li>
+        <li><strong>WorkManager Daemon:</strong> Background tasks persist through system reboots, handling network changes with smart retries.</li>
+        <li><strong>Truncation Shield:</strong> Rigid Content-Length checks discard corrupted or incomplete files and schedule auto-retries.</li>
+      </ul>
+    </td>
+    <td valign="top">
+      <ul>
+        <li><strong>InnerTube + NewPipe Resolver:</strong> Dual-channel media resolution ensures high stream availability and resilience.</li>
+        <li><strong>Intelligent Caching:</strong> TTL-based playback stream cache prevents duplicate server requests and speeds up loading.</li>
+        <li><strong>Smart Search:</strong> Predictive search suggestions, categorized filters, and instant top-result matching.</li>
+        <li><strong>Prefetching Engine:</strong> Ahead-of-time loading for top charts and queued songs to guarantee zero-gap playback.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <th colspan="2" align="left">🎵 Synced & Offline Lyrics</th>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <ul>
+        <li><strong>LRCLIB Integration:</strong> Instant lookup of synced and static lyrics based on track metadata.</li>
+        <li><strong>Active Tracker:</strong> Smooth, time-synced scrolling highlights lines in sync with the ExoPlayer track position.</li>
+        <li><strong>Graceful Degradation:</strong> Automated fallback to static text views when timestamped lyrics are unavailable.</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
-### 2. Smart Music Discovery
-- **Instant search:** quick suggestions and responsive query handling.
-- **Recent listening shelf:** clean horizontal cards for recently played tracks.
-- **Voice-ready flow:** search and playback flows built to support fast interaction.
-
-### 3. Immersive Playback
-- **Media3 / ExoPlayer:** reliable foreground playback service with background audio support.
-- **Queue-aware playback:** preloading and queue handling for smoother track transitions.
-- **Synced lyrics:** lyric rendering designed around playback position and smooth scrolling.
-- **Playback tools:** skip-silence logic and optional non-music segment skipping where supported.
-- **Offline export pipeline:** save resolved tracks into `Music/Levyra` through WorkManager, Android MediaStore metadata, Room download history, and Levyra-owned M4A cover-art embedding.
-
----
+<br>
 
 ## ✦ Architecture
 
-Levyra is built with modern Android patterns, separating UI, domain logic, playback control, and data access into clear layers.
-
-<div align="center">
+Levyra strictly follows unidirectional data flow (UDF) guidelines. Jetpack Compose handles rendering, while state lives in a centralized ViewModel. Downstream repositories and services act as decoupled boundaries, preventing network or database operations from blocking the main thread.
 
 ```mermaid
 graph TD
-    UI[Compose UI] -->|StateFlow| VM[LevyraViewModel]
-    VM -->|Playback Intent| Player[Media3 / ExoPlayer]
-    VM -->|Track Data| Resolver[Music Resolver]
-    VM -->|Lyrics| Lyrics[LRCLIB Repository]
-    VM -->|Cache| Storage[Room + DataStore]
-    VM -->|Offline Export| Worker[WorkManager Export Worker]
-    Worker --> Exporter[MediaStore + Levyra M4A Tagger]
+    %% Custom Styling Theme
+    classDef ui fill:#4285F4,stroke:#1A73E8,stroke-width:2px,color:#fff;
+    classDef vm fill:#7F52FF,stroke:#6200EE,stroke-width:2px,color:#fff;
+    classDef core fill:#202124,stroke:#3C4043,stroke-width:2px,color:#fff;
+    classDef engine fill:#3DDC84,stroke:#1DDB60,stroke-width:2px,color:#000;
+    classDef ext fill:#F9AB00,stroke:#EA8600,stroke-width:2px,color:#000;
+
+    UI["📱 Jetpack Compose UI"]:::ui --> VM["⚙️ Central LevyraViewModel"]:::vm
+    
+    VM --> Player["🔊 LevyraPlayer Controller"]:::core
+    VM --> Resolver["🔗 PlaybackResolver Link"]:::core
+    VM --> Repos["📂 Data Repositories (Music/Lyrics/Charts)"]:::core
+    VM --> Store["💾 Storage System (Room / DataStore)"]:::core
+    VM --> Work["🔄 WorkManager Download Worker"]:::core
+    
+    Player --> Media3["🎵 AndroidX Media3 / ExoPlayer Service"]:::engine
+    
+    Resolver --> InnerTube["☁️ YT Music InnerTube API"]:::ext
+    Resolver --> NewPipe["🔌 NewPipe Extractor Engine"]:::ext
+    
+    Work --> Exporter["📦 OfflineAudioExporter"]:::core
+    Exporter --> MediaStore["💿 Android MediaStore API"]:::engine
+    Exporter --> Tagger["🏷️ Pure-Kotlin M4A Tag Writer"]:::core
 ```
 
-</div>
+### Component Layout
 
-| Layer | Description | Stack |
-| :--- | :--- | :--- |
-| **Presentation** | Declarative screens driven by a unified UI state. | `Jetpack Compose` |
-| **Domain** | Playback commands, media models, queue logic, and app use-cases. | `Kotlin Coroutines`, `StateFlow` |
-| **Data** | Remote resolving, artwork loading, favorites, download history, and settings. | `OkHttp`, `Coil`, `Room`, `DataStore`, `kotlinx.serialization` |
-| **Playback** | Audio session, notification controls, queue handling, and background service. | `Media3`, `ExoPlayer` |
-| **Offline Export** | Public music export, background retry, MediaStore tagging, Room history, and embedded M4A metadata/cover writing through Levyra clean-room code. | `WorkManager`, `OkHttp`, `MediaStore`, pure Kotlin MP4 atom writer |
+| Layer | Responsibility | Project Directory |
+|:---|:---|:---|
+| **UI Presentation** | Composable screens, mini-player layouts, layout triggers, theme engines | [`ui/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/ui) |
+| **State Management** | Centralized ViewModel orchestrating single-source UI state | [`viewmodel/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/viewmodel) |
+| **Domain Logic** | Abstract domain entities, data models, validation boundaries | [`domain/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/domain) |
+| **Data & Network** | Web endpoints, charts API client, lyrics parser, preferences config | [`data/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/data) |
+| **Audio Pipeline** | Media3 foreground service, HLS, prefetching queue control | [`player/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/player) |
+| **Background Exports** | WorkManager pipeline, metadata tagging, MediaStore registrations | [`player/offline/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/player/offline) |
+| **Local Cache** | SQLite database, Room entities, and key-value preference stores | [`data/local/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/data/local) |
 
----
+<br>
+
+## ✦ Technical Stack
+
+*   **Language:** Kotlin 2.3.20
+*   **User Interface:** Jetpack Compose, Material 3 Design Components, Compose BOM
+*   **Media Playback:** AndroidX Media3, ExoPlayer, HLS Playback, MediaSession
+*   **Network Transport:** OkHttp 5, Brotli compression module
+*   **Image Caching:** Coil 3 (Compose-optimized asynchronous image loading)
+*   **Data Persistence:** Room Database, DataStore Preferences
+*   **Background Jobs:** Android WorkManager Daemon
+*   **Serialization:** kotlinx.serialization (JSON)
+*   **Build Pipeline:** Gradle Kotlin DSL (`.gradle.kts`), Version Catalogs (`libs.versions.toml`), KSP (Kotlin Symbol Processing)
+
+<br>
 
 ## ✦ Getting Started
 
-### Requirements
+### Prerequisites
+*   Android Studio Jellyfish (or newer)
+*   Java Development Kit (JDK) 17
+*   Android SDK Platform 35 / 36
+*   Gradle 8.14.4 (wrapper pre-configured)
 
-- Android Studio Jellyfish or newer
-- Android SDK 34+
-- JDK 17
-
-### Build
+### Building the Project
+Clone the repository and compile the debug configuration directly to a connected Android device or emulator:
 
 ```bash
-git clone https://github.com/LUC4N3X/LevyraPlayer.git
-cd LevyraPlayer
+# Clone the repository
+git clone https://github.com/LUC4N3X/Levyra-deepsound.git
+cd Levyra-deepsound
+
+# Build and install the debug app on your connected device
 ./gradlew installDebug
-```
 
-### Release build
-
-```bash
+# Compile a clean, optimized release build
 ./gradlew clean assembleRelease
 ```
 
+The resulting signed/unsigned release APK will be located in:
+`app/build/outputs/apk/release/app-release.apk`
 
-### Dependency Guardrails
+### Version Control & CI overrides
+The application's version numbering is centralized inside `gradle.properties`:
+```properties
+levyraVersionName=2.2.0
+levyraVersionCode=2020000
+```
+*Version code logic is calculated sequentially to prevent duplicate deployment IDs:*
+`versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`
 
-Levyra now includes a strict dependency gate with CashApp Licensee. The build allows permissive licenses such as Apache-2.0, MIT, BSD and ISC, while `NewPipeExtractor` stays as an explicit project exception because it is intentionally kept in the app. Any new dependency with GPL/LGPL-style licensing must be reviewed instead of silently entering the APK.
+Our automated GitHub Action workflow parses this schema, checks target versions using `aapt`, verifies structural integrity, compiles the binary, names the artifact `LEVYRA-<version>.apk`, and ships it directly to **GitHub Releases**.
 
-Core Android infrastructure added in this version:
+<br>
+
+## ✦ Permissions and Privacy
+
+Levyra is built from the ground up to respect user privacy. The application is completely free of analytic frameworks, tracking SDKs, or third-party telemetry.
 
 ```text
-Room persistence for favorites and download history
-DataStore preferences with SharedPreferences migration
-WorkManager export worker with network constraint and retry
-kotlinx.serialization payload codec for background workers
-Timber logging
-Chucker network inspector in debug builds only
-LeakCanary in debug builds only
-Licensee dependency license gate
+🛡️ DECLAREDS MANIFEST PERMISSIONS
+├── INTERNET & ACCESS_NETWORK_STATE       Streams music data and queries metadata
+├── FOREGROUND_SERVICE_MEDIA_PLAYBACK     Ensures audio playback survives app backgrounding
+├── POST_NOTIFICATIONS                     Displays the Media3 media controller notification
+├── WAKE_LOCK                              Prevents playback stutters when the CPU goes to sleep
+└── WRITE_EXTERNAL_STORAGE (≤ SDK 28)     Legacy permission for offline file export
 ```
 
-### Levyra M4A Tagger
+<br>
 
-Levyra includes its own pure Kotlin M4A metadata writer. It does not vendor Bento4, `metrolist-coverart-lib`, JNI code, NDK binaries, CMake files, or GPL native libraries. For compatible M4A/MP4 audio files, the exporter writes iTunes-style `moov/udta/meta/ilst` atoms for title, artist, album, album artist, year and cover art. If the file is malformed or not an M4A/MP4 container, Levyra falls back to Android MediaStore metadata and still saves the track.
+## ✦ Contributing to the Fork
 
-Supported embedded artwork formats:
+If you intend to distribute custom builds of Levyra:
+1. **Signing Keys:** Generate and rotate your own Android keystores before publishing public packages.
+2. **Build Name:** Follow the standard release schema: `LEVYRA-<version>.apk` rather than default gradle outputs.
+3. **Execution Offloading:** All database, disk write, and network resolutions must run on background dispatchers (`Dispatchers.IO`). Keep UI threads clear.
+4. **Resiliency:** Ensure API queries route via the fallback channel if they timeout.
 
-```text
-JPEG
-PNG
-```
-
----
+<br>
 
 ## ✦ Credits
 
 <table>
   <tr>
-    <td align="center" valign="middle" width="120">
+    <td width="100" align="center">
       <a href="https://github.com/LUC4N3X">
-        <img src="https://github.com/LUC4N3X.png" width="90" height="90" style="border-radius: 50%;" alt="LUC4N3X" />
+        <img src="https://github.com/LUC4N3X.png" width="80" style="border-radius: 50%; border: 2px solid #7F52FF;" alt="LUC4N3X Avatar" />
       </a>
     </td>
-    <td valign="middle">
-      <h3>LUC4N3X</h3>
-      <p><strong>Creator & Lead Engineer</strong></p>
-      <p>UI architecture, playback engine, background services, cache pipeline, and Android integration.</p>
+    <td>
+      <strong>LUC4N3X</strong> — <em>Creator & Lead Architect</em>
+      <p>System architecture, ExoPlayer orchestration, background WorkManager export queue, automated releases pipeline, design lead.</p>
     </td>
   </tr>
 </table>
 
-**Inspiration:**  
-Special thanks to [Metrolist](https://github.com/MetrolistGroup/Metrolist) for its open-source work around music client architecture and catalog navigation.
-
-UI research also reviewed [MusicApp-KMP](https://github.com/SEAbdulbasit/MusicApp-KMP) as a Compose Multiplatform music-player reference. Levyra does not vendor or copy its source files; the discovery deck, shelves and player polish are clean Levyra implementations inspired by common Compose music-app patterns.
+*UI and modular styling conventions draw structural inspiration from the open-source projects [Metrolist](https://github.com/MetrolistGroup/Metrolist) and [MusicApp-KMP](https://github.com/SEAbdulbasit/MusicApp-KMP).*
 
 ---
 
-## ✦ Legal Disclaimer
+## ✦ Disclaimers & License
 
-> [!WARNING]
-> **Educational and research purposes only.**
->
-> Levyra is an open-source media client. It does not host, store, or distribute copyrighted media.
->
-> Audio streams, metadata, lyrics, and artwork may be resolved through third-party services or public endpoints. Use the app responsibly and comply with the laws and platform terms that apply in your region.
->
-> The developer assumes no liability for misuse, account issues, copyright infringement, or third-party service limitations.
+> [!WARNING]  
+> **Educational and Research Purposes Only**  
+> Levyra is an open-source client and does not host, upload, or index copyrighted files. The app interacts solely with public, third-party content endpoints. The user takes full responsibility for any usage that may violate local laws or third-party terms of service. The developers assume no liability for service changes, system blocks, or client misuse.
+
+Licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
