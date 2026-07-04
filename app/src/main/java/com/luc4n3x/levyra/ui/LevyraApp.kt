@@ -6094,7 +6094,7 @@ private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () 
             .clip(RoundedCornerShape(10.dp))
             .background(
                 if (selected) Brush.linearGradient(listOf(start.copy(alpha = 0.15f), end.copy(alpha = 0.15f)))
-                else Color(0xFF1E1E20)
+                else SolidColor(Color(0xFF1E1E20))
             )
             .border(
                 BorderStroke(1.dp, if (selected) start.copy(alpha = 0.4f) else Color(0xFF2C2C2E)),
