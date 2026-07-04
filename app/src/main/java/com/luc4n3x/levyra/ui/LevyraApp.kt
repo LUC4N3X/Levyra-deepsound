@@ -6186,7 +6186,7 @@ private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () 
 
 @Composable
 private fun TrackGlassCard(
-    track: LevyraTrack,
+    track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
     onClick: () -> Unit
