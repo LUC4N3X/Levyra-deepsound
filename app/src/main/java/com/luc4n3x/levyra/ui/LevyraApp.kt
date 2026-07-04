@@ -1512,9 +1512,7 @@ private fun PersonalListeningShelf(
     onPlay: (Track) -> Unit,
     onPlayAll: () -> Unit
 ) {
-    val visibleTracks = tracks.take(4)
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1522,19 +1520,13 @@ private fun PersonalListeningShelf(
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Text(
-                    text = "Mix personale",
-                    color = LevyraCyan,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black
-                )
                 Text(
                     text = "La tua orbita",
                     color = LevyraText,
-                    fontSize = 27.sp,
-                    lineHeight = 30.sp,
+                    fontSize = 29.sp,
+                    lineHeight = 31.sp,
                     fontWeight = FontWeight.Black
                 )
                 Text(
@@ -1560,23 +1552,32 @@ private fun PersonalListeningShelf(
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            visibleTracks.forEachIndexed { index, track ->
-                PersonalOrbitRow(
-                    track = track,
-                    rank = index + 1,
-                    active = track.id == currentId,
-                    playing = isPlaying && track.id == currentId,
-                    resolving = isResolving && track.id == currentId,
-                    onClick = { onPlay(track) }
-                )
+        val chunkedTracks = tracks.chunked(2)
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            itemsIndexed(chunkedTracks) { colIndex, colTracks ->
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    colTracks.forEachIndexed { rowIndex, track ->
+                        PersonalListeningCard(
+                            track = track,
+                            rank = colIndex * 2 + rowIndex + 1,
+                            active = track.id == currentId,
+                            playing = isPlaying && track.id == currentId,
+                            resolving = isResolving && track.id == currentId,
+                            onClick = { onPlay(track) }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PersonalOrbitRow(
+private fun PersonalListeningCard(
     track: Track,
     rank: Int,
     active: Boolean,
@@ -1587,89 +1588,101 @@ private fun PersonalOrbitRow(
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     Surface(
-        color = if (active) Color.White.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.045f),
-        border = BorderStroke(1.dp, if (active) LevyraCyan.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.075f)),
-        shape = RoundedCornerShape(18.dp),
+        color = Color.White.copy(alpha = if (active) 0.085f else 0.045f),
+        border = BorderStroke(1.dp, if (active) LevyraCyan.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 28.dp),
         modifier = Modifier
-            .fillMaxWidth()
-            .height(74.dp)
+            .size(154.dp)
             .pressable(onClick = onClick)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            accentStart.copy(alpha = if (active) 0.18f else 0.08f),
-                            accentEnd.copy(alpha = if (active) 0.10f else 0.04f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CoverImage(
+                track = track,
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (active) 0.92f else 0.84f },
+                highRes = false
+            )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.18f), Color.Transparent)))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Black.copy(alpha = 0.04f),
+                                Color.Black.copy(alpha = 0.34f),
+                                Color.Black.copy(alpha = 0.94f)
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(72.dp)
+                    .graphicsLayer {
+                        alpha = if (active) 0.9f else 0.48f
+                    }
+                    .background(Brush.radialGradient(listOf(accentEnd.copy(alpha = 0.34f), Color.Transparent)))
             )
 
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 12.dp, end = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = rank.toString(),
-                    color = if (active) LevyraCyan else LevyraMuted.copy(alpha = 0.88f),
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Black,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.width(24.dp)
-                )
-                CoverImage(
-                    track = track,
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                    highRes = false
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.46f),
+                        shape = RoundedCornerShape(999.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                    ) {
+                        Text(
+                            text = "#${rank.toString().padStart(2, '0')}",
+                            color = LevyraText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    if (playing || resolving) {
+                        Surface(
+                            color = LevyraCyan,
+                            shape = CircleShape,
+                            modifier = Modifier.size(27.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (resolving) {
+                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = LevyraBlack)
+                                } else {
+                                    Icon(Icons.Rounded.GraphicEq, null, tint = LevyraBlack, modifier = Modifier.size(14.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = track.title,
                         color = LevyraText,
-                        fontSize = 16.sp,
-                        lineHeight = 18.sp,
+                        fontSize = 15.sp,
+                        lineHeight = 17.sp,
                         fontWeight = FontWeight.Black,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = track.artist,
-                        color = LevyraMuted,
-                        fontSize = 13.sp,
+                        color = LevyraMuted.copy(alpha = 0.94f),
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                }
-                Surface(
-                    color = if (playing || resolving) LevyraCyan else Color.White.copy(alpha = 0.08f),
-                    shape = CircleShape,
-                    modifier = Modifier.size(34.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        when {
-                            resolving -> CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = LevyraBlack)
-                            playing -> Icon(Icons.Rounded.GraphicEq, null, tint = LevyraBlack, modifier = Modifier.size(17.dp))
-                            else -> Icon(Icons.Rounded.PlayArrow, null, tint = LevyraText, modifier = Modifier.size(20.dp))
-                        }
-                    }
                 }
             }
         }
