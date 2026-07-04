@@ -339,7 +339,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     BottomTabs(
                         selected = state.selectedTab,
                         flatTop = state.currentTrack != null,
-                        accentColor = state.currentTrack?.color1?.let { Color(it) },
+                        accentColor = accent?.accentStart?.let { Color(it) },
                         onSelect = viewModel::selectTab
                     )
                 }
