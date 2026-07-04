@@ -1,28 +1,40 @@
 <div align="center">
 
-<img src="https://i.ibb.co/7tMpTVX6/levyra-saas-logo-Photoroom.png" alt="Levyra" width="430" />
+<img src="https://i.ibb.co/7tMpTVX6/levyra-saas-logo-Photoroom.png" alt="Levyra" width="540" />
 
 <br>
+<br>
 
-<h3>Modern Android music player with fast discovery, immersive playback, offline exports and a polished Spotify-style experience.</h3>
+<h2>Premium Android APK music player</h2>
 
 <p>
-  <strong>Deep Music. Real Experience.</strong>
+  <strong>Fast discovery · Immersive playback · Playlist autoplay · Offline export · Real mobile polish</strong>
 </p>
 
 <p>
-  <a href="https://kotlinlang.org/">
-    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3.20-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
+    <img alt="Download APK" src="https://img.shields.io/badge/Download%20APK-LEVYRA%202.2.0-00E5FF?style=for-the-badge&logo=android&logoColor=white">
   </a>
-  <a href="https://developer.android.com/jetpack/compose">
-    <img alt="Jetpack Compose" src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
-  </a>
-  <a href="https://developer.android.com/media/media3">
-    <img alt="Media3" src="https://img.shields.io/badge/Media3-ExoPlayer-3DDC84?style=for-the-badge&logo=android&logoColor=white">
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases">
+    <img alt="GitHub Releases" src="https://img.shields.io/badge/Releases-GitHub-8B5CF6?style=for-the-badge&logo=github&logoColor=white">
   </a>
   <a href="LICENSE">
     <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-111111?style=for-the-badge">
   </a>
+</p>
+
+<p>
+  <a href="https://kotlinlang.org/">
+    <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3.20-7F52FF?style=flat-square&logo=kotlin&logoColor=white">
+  </a>
+  <a href="https://developer.android.com/jetpack/compose">
+    <img alt="Jetpack Compose" src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white">
+  </a>
+  <a href="https://developer.android.com/media/media3">
+    <img alt="Media3" src="https://img.shields.io/badge/Media3-ExoPlayer-3DDC84?style=flat-square&logo=android&logoColor=white">
+  </a>
+  <img alt="Android" src="https://img.shields.io/badge/Android-8%2B-00C853?style=flat-square&logo=android&logoColor=white">
+  <img alt="APK" src="https://img.shields.io/badge/APK-versioned%20release-00B8D4?style=flat-square">
 </p>
 
 <p>
@@ -41,10 +53,52 @@
 
 <br>
 
-<img src="https://i.ibb.co/5hJ6y4ck/luca.png" alt="Levyra app preview" width="88%" />
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <h3>🎧 Music-first UI</h3>
+      <p>Dark premium interface, polished player, mini-player, playlists, lyrics and clean mobile navigation.</p>
+    </td>
+    <td align="center" width="33%">
+      <h3>⚡ Fast playback</h3>
+      <p>Media3 engine, stream cache, request deduplication, warmup and queue prefetching for smoother starts.</p>
+    </td>
+    <td align="center" width="33%">
+      <h3>📥 Offline export</h3>
+      <p>Background downloads, progress tracking, MediaStore saving and M4A metadata with embedded artwork.</p>
+    </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td><strong>Current APK</strong></td>
+    <td><code>LEVYRA-2.2.0.apk</code></td>
+  </tr>
+  <tr>
+    <td><strong>Package</strong></td>
+    <td><code>com.luc4n3x.levyra</code></td>
+  </tr>
+  <tr>
+    <td><strong>Minimum Android</strong></td>
+    <td><code>Android 8.0 Oreo · API 26</code></td>
+  </tr>
+  <tr>
+    <td><strong>Release source</strong></td>
+    <td><a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">Latest GitHub Release</a></td>
+  </tr>
+</table>
+
+<br>
+
+<img src="https://i.ibb.co/5hJ6y4ck/luca.png" alt="Levyra Android app preview" width="92%" />
 
 <br>
 <br>
+
+<p>
+  <strong>Built for Android. Designed like a real music app. Released as a versioned APK.</strong>
+</p>
 
 </div>
 
