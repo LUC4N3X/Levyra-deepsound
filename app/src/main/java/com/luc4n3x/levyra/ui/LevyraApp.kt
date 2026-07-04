@@ -6016,7 +6016,7 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 190.dp),
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 54.dp, bottom = 190.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
