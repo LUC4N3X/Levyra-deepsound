@@ -98,19 +98,23 @@ class OfflineAudioExporter(
 
     private suspend fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
         reportProgress(12)
+        val expectedLength = probeContentLength(track.streamUrl)
+        val downloadUrl = withGoogleVideoRange(track.streamUrl, expectedLength)
+        val rangeParamApplied = downloadUrl != track.streamUrl
         val request = Request.Builder()
-            .url(track.streamUrl)
+            .url(downloadUrl)
             .header("User-Agent", USER_AGENT)
             .header("Accept", "audio/*,*/*;q=0.8")
             .header("Accept-Encoding", "identity")
             .header("Connection", "keep-alive")
-            .apply { if (useRange) header("Range", "bytes=0-") }
+            .apply { if (useRange && !rangeParamApplied) header("Range", "bytes=0-") }
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
             val body = response.body ?: throw IOException("Risposta audio vuota")
             val declaredLength = body.contentLength()
-            if (declaredLength > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
+            val targetLength = if (expectedLength > 0L) expectedLength else declaredLength
+            if (targetLength > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
             val contentType = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.US)
             val container = detectContainer(contentType, track.streamUrl)
             val temp = File(workspace, "raw-${System.nanoTime()}.${container.extension}")
@@ -126,13 +130,16 @@ class OfflineAudioExporter(
                             total += read.toLong()
                             if (total > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
                             output.write(buffer, 0, read)
-                            val nextProgress = downloadProgress(total, declaredLength)
+                            val nextProgress = downloadProgress(total, targetLength)
                             if (nextProgress > lastProgress) {
                                 lastProgress = nextProgress
                                 reportProgress(nextProgress)
                             }
                         }
                         output.flush()
+                        if (targetLength > 0L && total < targetLength) {
+                            throw IOException("Download troncato: $total/$targetLength byte")
+                        }
                     }
                 }
                 if (temp.length() <= 0L) throw IOException("File audio esportato vuoto")
@@ -143,6 +150,29 @@ class OfflineAudioExporter(
                 throw error
             }
         }
+    }
+
+    private fun probeContentLength(url: String): Long {
+        val request = Request.Builder()
+            .url(url)
+            .head()
+            .header("User-Agent", USER_AGENT)
+            .build()
+        return runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) -1L
+                else response.header("Content-Length")?.toLongOrNull() ?: -1L
+            }
+        }.getOrDefault(-1L)
+    }
+
+    private fun withGoogleVideoRange(url: String, contentLength: Long): String {
+        if (contentLength <= 0L) return url
+        val host = url.substringAfter("://").substringBefore('/').substringBefore(':').lowercase(Locale.US)
+        if (!host.endsWith("googlevideo.com")) return url
+        if (url.contains("&range=") || url.contains("?range=")) return url
+        val separator = if (url.contains('?')) '&' else '?'
+        return "$url${separator}range=0-$contentLength"
     }
 
     private fun maybeEmbedMetadata(
