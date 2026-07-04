@@ -3034,6 +3034,7 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 DownloadRow(
                     download = download,
                     isCurrent = download.trackId == state.currentTrack?.id,
+                    onPlay = { viewModel.playDownloaded(download) },
                     onDelete = { viewModel.deleteDownload(download) }
                 )
             }
@@ -3093,10 +3094,12 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 }
 
 @Composable
-private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onDelete: () -> Unit) {
+private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onPlay: () -> Unit, onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onPlay)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
