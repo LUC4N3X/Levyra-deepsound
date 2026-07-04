@@ -2,6 +2,11 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -71,6 +76,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Equalizer
@@ -162,6 +168,8 @@ import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
@@ -257,6 +265,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     when (tab) {
                         LevyraTab.Home -> HomeScreen(viewModel, state)
                         LevyraTab.Search -> SearchScreen(viewModel, state)
+                        LevyraTab.Explore -> ExploreScreen(viewModel, state)
                         LevyraTab.Library -> LibraryScreen(viewModel, state)
                         LevyraTab.Player -> PlayerScreen(viewModel, state)
                     }
@@ -6007,6 +6016,385 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 }
 
 @Composable
+private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+    val strings = LocalLevyraStrings.current
+    LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
+    
+    val infiniteTransition = rememberInfiniteTransition(label = "bg")
+    val color1 by infiniteTransition.animateColor(
+        initialValue = Color(0xFF140D18),
+        targetValue = Color(0xFF0F0B13),
+        animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "c1"
+    )
+    val color2 by infiniteTransition.animateColor(
+        initialValue = Color(0xFF101418),
+        targetValue = Color(0xFF1A0A05),
+        animationSpec = infiniteRepeatable(tween(5000, easing = LinearEasing), RepeatMode.Reverse),
+        label = "c2"
+    )
+
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.linearGradient(listOf(color1, color2)))
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 70.dp, bottom = 190.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = strings.exploreTitle,
+                        color = Color.White,
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center,
+                        style = TextStyle(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Color.White, Color(0xFFFF9800))
+                            )
+                        )
+                    )
+                    Text(
+                        text = strings.exploreSubtitle,
+                        color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            item {
+                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    SectionTitle(strings.exploreZones)
+                }
+            }
+            items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    row.forEach { zone ->
+                        ZoneCard(
+                            zone = zone,
+                            selected = zone.id == state.exploreZoneId,
+                            onClick = { viewModel.selectExploreZone(zone) }
+                        )
+                    }
+                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+
+            item {
+                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    SectionTitle(strings.exploreFresh)
+                }
+            }
+            when {
+                state.isExploreLoading -> item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Color(0xFFFF9800), strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
+                    }
+                }
+                state.exploreTracks.isEmpty() -> item {
+                    Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                        EmptyState(strings.exploreEmpty)
+                    }
+                }
+                else -> item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.exploreTracks, key = { "ex-track-${it.id}" }) { track ->
+                            TrackGlassCard(
+                                track = track,
+                                isCurrent = track.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                isFavorite = track.id in state.favoriteIds,
+                                onClick = { viewModel.playFrom(state.exploreTracks, track) },
+                                onFavorite = { viewModel.toggleFavorite(track) },
+                                onShare = {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, track.title)
+                                        putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Condividi via"))
+                                },
+                                onAddToPlaylist = {
+                                    // Placeholder for future playlist functionality
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            if (state.exploreVideos.isNotEmpty()) {
+                item {
+                    Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                        SectionTitle(strings.exploreNewVideos)
+                    }
+                }
+                item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.exploreVideos, key = { "ex-video-${it.id}" }) { track ->
+                            VideoGlassCard(
+                                track = track,
+                                isCurrent = track.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                onClick = { viewModel.playFrom(state.exploreVideos, track) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () -> Unit) {
+    val start = Color(zone.accentStart)
+    val end = Color(zone.accentEnd)
+    Row(
+        modifier = Modifier
+            .weight(1f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = if (selected) 0.15f else 0.03f))
+            .border(
+                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.05f)),
+                RoundedCornerShape(16.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(Brush.linearGradient(listOf(start.copy(alpha = 0.2f), end.copy(alpha = 0.2f))), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(zone.emoji, fontSize = 14.sp)
+        }
+        Text(
+            zone.label,
+            color = if (selected) Color.White else Color(0xFFEBEBF5).copy(alpha = 0.8f),
+            fontSize = 15.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun TrackGlassCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+    onShare: () -> Unit,
+    onAddToPlaylist: () -> Unit
+) {
+    val scale by animateFloatAsState(if (isCurrent) 1.02f else 1f, label = "scale")
+    var menuExpanded by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .width(140.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = if (isCurrent) 0.15f else 0.03f), RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(116.dp)
+                .clip(RoundedCornerShape(14.dp))
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(track.thumbnailUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            if (isCurrent) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isPlaying) {
+                        Icon(Icons.Rounded.Pause, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                    } else {
+                        Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                    }
+                }
+            }
+            
+            // 3-dots Menu
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+            ) {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.background(Color(0xFF1E1E20))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi a preferiti", color = Color.White) },
+                        onClick = {
+                            onFavorite()
+                            menuExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Condividi", color = Color.White) },
+                        onClick = {
+                            onShare()
+                            menuExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Aggiungi a playlist", color = Color.White) },
+                        onClick = {
+                            onAddToPlaylist()
+                            menuExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                track.title,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                track.artist,
+                color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun VideoGlassCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(if (isCurrent) 1.02f else 1f, label = "scale")
+    Column(
+        modifier = Modifier
+            .width(280.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = if (isCurrent) 0.15f else 0.03f), RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(14.dp))
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(track.largeThumbnailUrl.ifEmpty { track.thumbnailUrl })
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = if (isCurrent) 0.4f else 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isCurrent && isPlaying) {
+                    Icon(Icons.Rounded.Pause, null, tint = Color.White, modifier = Modifier.size(42.dp))
+                } else {
+                    Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(42.dp))
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                track.title,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                track.artist,
+                color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
 private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
@@ -6025,6 +6413,7 @@ private fun BottomTabs(selected: LevyraTab, onSelect: (LevyraTab) -> Unit) {
         ) {
             TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
             TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
+            TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
             TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
             TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
         }
