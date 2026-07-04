@@ -4291,55 +4291,57 @@ private fun PlayerOptionsRow(
     onExport: () -> Unit,
     onNormalization: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
             .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Spacer(modifier = Modifier.width(4.dp))
-        OptionChip(
-            icon = Icons.Rounded.GraphicEq,
-            label = "Norm",
-            active = audioNormalization,
-            modifier = Modifier.width(110.dp),
-            onClick = onNormalization
-        )
-        OptionChip(
-            icon = Icons.Rounded.Speed,
-            label = "${trimSpeed(speed)}x",
-            active = speed != 1f,
-            modifier = Modifier.width(100.dp),
-            onClick = onSpeed
-        )
-        OptionChip(
-            icon = Icons.Rounded.Bedtime,
-            label = if (sleepMinutes > 0) "${sleepMinutes}m" else "Timer",
-            active = sleepMinutes > 0,
-            modifier = Modifier.width(114.dp),
-            onClick = onSleep
-        )
-        OptionChip(
-            icon = Icons.Rounded.Equalizer,
-            label = audioQuality,
-            active = audioQuality != "Auto",
-            modifier = Modifier.width(106.dp),
-            onClick = onQuality
-        )
-        OptionChip(
-            icon = Icons.Rounded.Album,
-            label = when {
-                exporting -> "Salvo…"
-                metadataWriterReady -> "M4A+"
-                else -> "Salva"
-            },
-            active = exporting || metadataWriterReady,
-            enabled = !exporting,
-            modifier = Modifier.width(110.dp),
-            onClick = onExport
-        )
-        Spacer(modifier = Modifier.width(4.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OptionChip(
+                icon = Icons.Rounded.GraphicEq,
+                label = "Norm",
+                active = audioNormalization,
+                modifier = Modifier.weight(1f),
+                onClick = onNormalization
+            )
+            OptionChip(
+                icon = Icons.Rounded.Speed,
+                label = "${trimSpeed(speed)}x",
+                active = speed != 1f,
+                modifier = Modifier.weight(1f),
+                onClick = onSpeed
+            )
+            OptionChip(
+                icon = Icons.Rounded.Bedtime,
+                label = if (sleepMinutes > 0) "${sleepMinutes}m" else "Timer",
+                active = sleepMinutes > 0,
+                modifier = Modifier.weight(1f),
+                onClick = onSleep
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OptionChip(
+                icon = Icons.Rounded.Equalizer,
+                label = audioQuality,
+                active = audioQuality != "Auto",
+                modifier = Modifier.weight(1f),
+                onClick = onQuality
+            )
+            OptionChip(
+                icon = Icons.Rounded.Album,
+                label = when {
+                    exporting -> "Salvo…"
+                    metadataWriterReady -> "M4A+"
+                    else -> "Salva"
+                },
+                active = exporting || metadataWriterReady,
+                enabled = !exporting,
+                modifier = Modifier.weight(1f),
+                onClick = onExport
+            )
+            Spacer(modifier = Modifier.weight(1f))
+        }
     }
 }
 
@@ -4355,9 +4357,9 @@ private fun OptionChip(icon: ImageVector, label: String, active: Boolean, modifi
         border = BorderStroke(1.dp, borderColor),
         shape = RoundedCornerShape(22.dp),
         modifier = modifier
-            .height(56.dp)
-            .graphicsLayer { 
-                this.alpha = alpha 
+            .height(54.dp)
+            .graphicsLayer {
+                this.alpha = alpha
                 this.scaleX = scale
                 this.scaleY = scale
             }
@@ -4366,12 +4368,12 @@ private fun OptionChip(icon: ImageVector, label: String, active: Boolean, modifi
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 10.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, tint = if (active) LevyraCyan else LevyraText.copy(alpha = 0.9f), modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
+            Icon(icon, null, tint = if (active) LevyraCyan else LevyraText.copy(alpha = 0.9f), modifier = Modifier.size(19.dp))
+            Spacer(modifier = Modifier.width(7.dp))
             Text(label, color = if (active) LevyraCyan else LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -6307,9 +6309,8 @@ private fun MiniPlayer(track: Track, isPlaying: Boolean, isResolving: Boolean, p
     val accentEnd = Color(track.accentEnd)
     Surface(
         color = CinematicGlassDeep.copy(alpha = 0.94f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        shadowElevation = 18.dp,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Box {
@@ -6326,38 +6327,27 @@ private fun MiniPlayer(track: Track, isPlaying: Boolean, isResolving: Boolean, p
                         )
                     )
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(150.dp)
-                    .graphicsLayer {
-                        scaleX = 1.4f
-                        alpha = 0.36f
-                    }
-                    .background(Brush.radialGradient(listOf(accentEnd.copy(alpha = 0.42f), Color.Transparent)))
-            )
             Column {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(progress.coerceIn(0.02f, 1f))
-                        .height(3.dp)
+                        .height(2.dp)
                         .background(Brush.horizontalGradient(listOf(accentStart, LevyraCyan, accentEnd)))
                 )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(70.dp)
+                        .height(66.dp)
                         .pressable(onClick = onOpen)
-                        .padding(start = 13.dp, end = 6.dp),
+                        .padding(start = 12.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     CoverImage(
                         track,
                         Modifier
-                            .size(50.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(14.dp))
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(9.dp))
                     )
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(track.title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -6365,12 +6355,10 @@ private fun MiniPlayer(track: Track, isPlaying: Boolean, isResolving: Boolean, p
                     }
                     IconButton(
                         onClick = onToggle,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(Color.White.copy(alpha = 0.10f), CircleShape)
+                        modifier = Modifier.size(42.dp)
                     ) {
                         if (isResolving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                        else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = "Play", tint = LevyraText, modifier = Modifier.size(29.dp))
+                        else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(30.dp))
                     }
                     IconButton(onClick = onNext, modifier = Modifier.size(38.dp)) {
                         Icon(Icons.Rounded.SkipNext, contentDescription = "Successivo", tint = Color.White.copy(alpha = 0.92f), modifier = Modifier.size(27.dp))
