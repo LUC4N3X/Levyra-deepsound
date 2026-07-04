@@ -30,6 +30,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -928,7 +932,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF07070C)) // Deep dark base
+            .background(Color(0xFF020202)) // Absolute dark base
     ) {
         // Atmospheric Mesh Clouds using Radial Gradients
         Box(
@@ -947,7 +951,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                animStart.copy(alpha = 0.22f),
+                                animStart.copy(alpha = 0.05f),
                                 Color.Transparent
                             ),
                             radius = 1200f
@@ -963,7 +967,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                animEnd.copy(alpha = 0.16f),
+                                animEnd.copy(alpha = 0.03f),
                                 Color.Transparent
                             ),
                             radius = 1400f
@@ -981,8 +985,8 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         pickHeroUpdate(state)
     }
     val heroTrack = heroUpdate?.track
-    val quickTracks = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
-        buildQuickPickTracks(state, heroTrack)
+    val trendingArtists = remember(state.tracks, state.homeSections, state.charts, state.favorites) {
+        buildTrendingArtists(state)
     }
     val personalTracks = remember(state.currentTrack, state.recentSearches, state.favorites, state.tracks, state.homeSections, state.charts) {
         buildPersonalListeningTracks(state)
@@ -1042,29 +1046,11 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (quickTracks.isNotEmpty()) {
+        if (trendingArtists.isNotEmpty()) {
             item {
-                QuickSectionHeader(strings.quickPicks, strings.play, onAction = { viewModel.playAll(quickTracks) })
-            }
-            item {
-                QuickSongList(
-                    tracks = quickTracks,
-                    currentId = state.currentTrack?.id,
-                    favoriteIds = state.favoriteIds,
-                    downloadingIds = state.downloadingTrackIds,
-                    downloadedIds = state.downloadedTrackIds,
-                    downloadProgressByTrackId = state.downloadProgressByTrackId,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    onPlay = { track -> viewModel.playFrom(quickTracks, track) },
-                    onFavorite = viewModel::toggleFavorite,
-                    onAddToQueue = viewModel::addToQueue,
-                    onOpenPlayer = { track ->
-                        viewModel.playFrom(quickTracks, track)
-                        viewModel.selectTab(LevyraTab.Player)
-                    },
-                    onOffline = viewModel::exportTrack,
-                    onArtist = viewModel::openArtist
+                TrendingArtistsShelf(
+                    artists = trendingArtists,
+                    onArtistClick = viewModel::openArtistByName
                 )
             }
         }
@@ -1185,19 +1171,73 @@ private fun pickHeroUpdate(state: LevyraUiState): HomeHeroUpdate? {
         ?: state.currentTrack?.let { HomeHeroUpdate(it, it.source.ifBlank { "YouTube Music" }, false) }
 }
 
-private fun buildQuickPickTracks(state: LevyraUiState, heroTrack: Track?): List<Track> {
-    val excluded = setOfNotNull(heroTrack?.id)
-    return buildList {
-        if (state.currentTrack != null) add(state.currentTrack)
-        addAll(state.tracks)
-        addAll(state.homeSections.flatMap { it.tracks })
+private data class TrendingArtist(val name: String, val imageUrl: String)
+
+private fun buildTrendingArtists(state: LevyraUiState): List<TrendingArtist> {
+    val allTracks = buildList {
         addAll(state.charts)
+        addAll(state.homeSections.flatMap { it.tracks })
+        addAll(state.tracks)
         addAll(state.favorites)
     }
-        .filter { it.id.length == 11 && isReliableMusicUpdateCandidate(it) }
-        .distinctBy { it.id }
-        .filterNot { it.id in excluded }
-        .take(4)
+    return allTracks
+        .filter { it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() && !it.artist.contains("Unknown", ignoreCase = true) }
+        .distinctBy { it.artist }
+        .take(10)
+        .map { TrendingArtist(name = it.artist, imageUrl = it.thumbnailUrl) }
+}
+
+@Composable
+private fun TrendingArtistsShelf(
+    artists: List<TrendingArtist>,
+    onArtistClick: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Trending Artists",
+            color = LevyraText,
+            fontSize = 23.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            items(artists) { artist ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .width(100.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onArtistClick(artist.name) }
+                        )
+                ) {
+                    coil.compose.AsyncImage(
+                        model = artist.imageUrl,
+                        contentDescription = artist.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF1A1A1A))
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = artist.name,
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
 }
 
 private fun buildPersonalListeningTracks(state: LevyraUiState): List<Track> {
