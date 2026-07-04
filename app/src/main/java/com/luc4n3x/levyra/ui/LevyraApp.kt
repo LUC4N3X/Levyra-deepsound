@@ -6034,6 +6034,8 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         label = "c2"
     )
 
+    val context = LocalContext.current
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -6119,7 +6121,20 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                 track = track,
                                 isCurrent = track.id == state.currentTrack?.id,
                                 isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                onClick = { viewModel.playFrom(state.exploreTracks, track) }
+                                isFavorite = track.id in state.favoriteIds,
+                                onClick = { viewModel.playFrom(state.exploreTracks, track) },
+                                onFavorite = { viewModel.toggleFavorite(track) },
+                                onShare = {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, track.title)
+                                        putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Condividi via"))
+                                },
+                                onAddToPlaylist = {
+                                    // Placeholder for future playlist functionality
+                                }
                             )
                         }
                     }
@@ -6132,15 +6147,19 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     }
                 }
                 item {
-                    RowCarousel(
-                        tracks = state.exploreVideos,
-                        currentId = state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        favoriteIds = state.favoriteIds,
-                        onPlay = { viewModel.playFrom(state.exploreVideos, it) },
-                        onFavorite = { viewModel.toggleFavorite(it) }
-                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(state.exploreVideos, key = { "ex-video-${it.id}" }) { track ->
+                            VideoGlassCard(
+                                track = track,
+                                isCurrent = track.id == state.currentTrack?.id,
+                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                onClick = { viewModel.playFrom(state.exploreVideos, track) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -6189,9 +6208,14 @@ private fun TrackGlassCard(
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
-    onClick: () -> Unit
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+    onShare: () -> Unit,
+    onAddToPlaylist: () -> Unit
 ) {
     val scale by animateFloatAsState(if (isCurrent) 1.02f else 1f, label = "scale")
+    var menuExpanded by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .width(140.dp)
@@ -6234,6 +6258,49 @@ private fun TrackGlassCard(
                     }
                 }
             }
+            
+            // 3-dots Menu
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+            ) {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.background(Color(0xFF1E1E20))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi a preferiti", color = Color.White) },
+                        onClick = {
+                            onFavorite()
+                            menuExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Condividi", color = Color.White) },
+                        onClick = {
+                            onShare()
+                            menuExpanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Aggiungi a playlist", color = Color.White) },
+                        onClick = {
+                            onAddToPlaylist()
+                            menuExpanded = false
+                        }
+                    )
+                }
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -6248,6 +6315,77 @@ private fun TrackGlassCard(
                 track.artist,
                 color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
                 fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun VideoGlassCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(if (isCurrent) 1.02f else 1f, label = "scale")
+    Column(
+        modifier = Modifier
+            .width(280.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = if (isCurrent) 0.15f else 0.03f), RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(14.dp))
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(track.largeThumbnailUrl.ifEmpty { track.thumbnailUrl })
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = if (isCurrent) 0.4f else 0.2f)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isCurrent && isPlaying) {
+                    Icon(Icons.Rounded.Pause, null, tint = Color.White, modifier = Modifier.size(42.dp))
+                } else {
+                    Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(42.dp))
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                track.title,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                track.artist,
+                color = Color(0xFFEBEBF5).copy(alpha = 0.6f),
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
