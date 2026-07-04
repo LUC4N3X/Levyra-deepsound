@@ -19,6 +19,10 @@ import com.luc4n3x.levyra.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -6884,10 +6888,19 @@ private fun VideoGlassCard(
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = Color(0xFF07070C),
+        color = Color(0xFF020202),
         shape = RoundedCornerShape(0.dp),
-        shadowElevation = 18.dp,
-        modifier = Modifier.fillMaxWidth()
+        shadowElevation = 0.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawLine(
+                    color = Color(0xFF1A1A1A),
+                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -6911,38 +6924,53 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
 
 @Composable
 private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    val selectedScale by animateFloatAsState(
-        targetValue = if (selected && LocalAnimationsEnabled.current) 1.04f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
-        label = "tab-selection-scale"
+    val offsetY by animateDpAsState(
+        targetValue = if (selected && LocalAnimationsEnabled.current) (-6).dp else 0.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "tab-offset-y"
+    )
+    val textAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.3f,
+        animationSpec = tween(300),
+        label = "tab-text-alpha"
     )
     Box(
         modifier = Modifier
             .weight(1f)
             .fillMaxSize()
-            .pressable(onClick = onClick)
-            .graphicsLayer {
-                scaleX = selectedScale
-                scaleY = selectedScale
-                alpha = if (selected) 1f else 0.72f
-            },
+            .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.offset(y = offsetY)
         ) {
+            AnimatedVisibility(
+                visible = selected,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(bottom = 2.dp)
+                        .width(20.dp)
+                        .height(3.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                )
+            }
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (selected) Color.White else Color(0xFFB3B3B3),
-                modifier = Modifier.size(if (selected) 25.dp else 23.dp)
+                tint = if (selected) Color.White else Color(0xFF737373),
+                modifier = Modifier.size(24.dp)
             )
             Text(
                 text = label,
-                color = if (selected) Color.White else Color(0xFFB3B3B3),
+                color = Color.White.copy(alpha = textAlpha),
                 fontSize = 11.sp,
-                fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
