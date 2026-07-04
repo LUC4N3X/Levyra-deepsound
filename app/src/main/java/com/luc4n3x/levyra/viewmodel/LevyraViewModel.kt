@@ -23,6 +23,7 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SponsorSegment
@@ -976,14 +977,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var exploreVideosLoaded = false
     private var exploreJob: Job? = null
 
-    fun ensureExplore() {
+    fun ensureExplore(strings: LevyraStrings) {
         if (_state.value.exploreZoneId == null) {
-            selectExploreZone(ExploreCatalog.zones.first())
+            selectExploreZone(ExploreCatalog.getZones(strings).first())
         }
         if (!exploreVideosLoaded) {
             exploreVideosLoaded = true
             viewModelScope.launch {
-                val videos = runCatching { repository.search("nuovi video musicali ufficiali 2026", 12) }.getOrDefault(emptyList())
+                val videos = runCatching { repository.search("${strings.exploreNewVideos} 2026", 12) }.getOrDefault(emptyList())
                 if (videos.isEmpty()) exploreVideosLoaded = false
                 _state.update { it.copy(exploreVideos = videos) }
             }
