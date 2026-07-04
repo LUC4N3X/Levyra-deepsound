@@ -22,6 +22,8 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.ExploreCatalog
+import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -895,25 +897,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         resolver.warmNetwork()
 
         val playableTrack = youtubePlayableTrack(track) ?: track
-        val instant = resolver.cached(playableTrack, _state.value.isVideoMode)
-        if (instant != null) {
-            startPlayback(instant)
-            prefetchAround(instant)
-            return
-        }
-
-        _state.update {
-            it.copy(
-                isResolving = true,
-                playerError = null,
-                currentTrack = track.copy(streamUrl = ""),
-                isPlaying = false,
-                positionMs = 0L,
-                durationMs = track.durationMs
-            )
-        }
-        player.stop()
         playJob = viewModelScope.launch {
+            val local = localDownloadedTrack(track)
+            if (local != null) {
+                if (!isActive || requestId != playRequestId) return@launch
+                startPlayback(local)
+                prefetchAround(local)
+                return@launch
+            }
+            val instant = resolver.cached(playableTrack, _state.value.isVideoMode)
+            if (instant != null) {
+                if (!isActive || requestId != playRequestId) return@launch
+                startPlayback(instant)
+                prefetchAround(instant)
+                return@launch
+            }
+
+            _state.update {
+                it.copy(
+                    isResolving = true,
+                    playerError = null,
+                    currentTrack = track.copy(streamUrl = ""),
+                    isPlaying = false,
+                    positionMs = 0L,
+                    durationMs = track.durationMs
+                )
+            }
+            player.stop()
             try {
                 val playable = resolveForPlayback(track)
                 if (!isActive || requestId != playRequestId) return@launch
@@ -935,6 +945,91 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         }
+    }
+
+    private suspend fun localDownloadedTrack(track: Track): Track? {
+        if (track.id.isBlank() || _state.value.isVideoMode) return null
+        val entity = withContext(Dispatchers.IO) {
+            runCatching { downloadedTracksDao.byTrackId(track.id) }.getOrNull()
+        } ?: return null
+        if (entity.uri.isBlank()) return null
+        val uri = android.net.Uri.parse(entity.uri)
+        val readable = withContext(Dispatchers.IO) {
+            runCatching {
+                when (uri.scheme?.lowercase()) {
+                    "content" -> getApplication<Application>().contentResolver.openFileDescriptor(uri, "r")?.use { true } ?: false
+                    "file" -> java.io.File(uri.path.orEmpty()).let { it.exists() && it.length() > 0L }
+                    else -> false
+                }
+            }.getOrDefault(false)
+        }
+        if (!readable) return null
+        return track.copy(
+            streamUrl = entity.uri,
+            videoStreamUrl = "",
+            durationMs = if (track.durationMs > 0L) track.durationMs else entity.durationMs,
+            source = "Offline"
+        )
+    }
+
+    private val exploreCache = ConcurrentHashMap<String, List<Track>>()
+    private var exploreVideosLoaded = false
+    private var exploreJob: Job? = null
+
+    fun ensureExplore() {
+        if (_state.value.exploreZoneId == null) {
+            selectExploreZone(ExploreCatalog.zones.first())
+        }
+        if (!exploreVideosLoaded) {
+            exploreVideosLoaded = true
+            viewModelScope.launch {
+                val videos = runCatching { repository.search("nuovi video musicali ufficiali 2026", 12) }.getOrDefault(emptyList())
+                if (videos.isEmpty()) exploreVideosLoaded = false
+                _state.update { it.copy(exploreVideos = videos) }
+            }
+        }
+    }
+
+    fun selectExploreZone(zone: ExploreZone) {
+        _state.update { it.copy(exploreZoneId = zone.id) }
+        exploreCache[zone.id]?.let { cached ->
+            _state.update { it.copy(exploreTracks = cached, isExploreLoading = false) }
+            return
+        }
+        exploreJob?.cancel()
+        _state.update { it.copy(exploreTracks = emptyList(), isExploreLoading = true) }
+        exploreJob = viewModelScope.launch {
+            val results = runCatching { repository.search(zone.query, 24) }.getOrDefault(emptyList())
+            if (results.isNotEmpty()) exploreCache[zone.id] = results
+            if (_state.value.exploreZoneId != zone.id) return@launch
+            _state.update { it.copy(exploreTracks = results, isExploreLoading = false) }
+        }
+    }
+
+    fun playDownloaded(download: DownloadedTrack) {
+        val track = Track(
+            id = download.trackId,
+            title = download.title,
+            artist = download.artist,
+            album = download.album,
+            durationMs = download.durationMs,
+            streamUrl = "",
+            videoUrl = "",
+            thumbnailUrl = "",
+            largeThumbnailUrl = "",
+            source = "Offline",
+            moodTags = emptySet(),
+            energy = 0,
+            vocal = 0,
+            replayScore = 0,
+            cacheScore = 0,
+            accentStart = 0,
+            accentEnd = 0
+        )
+        loopCurrentQueueOnCompletion = false
+        _state.update { it.copy(queue = emptyList()) }
+        queueIndex = -1
+        startResolve(track)
     }
 
     private fun startPlayback(playable: Track) {
