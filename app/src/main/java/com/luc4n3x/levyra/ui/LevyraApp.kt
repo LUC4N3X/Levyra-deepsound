@@ -225,6 +225,174 @@ private fun cinematicTextBrush(): Brush {
 }
 
 @Composable
+private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    val offsetY by animateDpAsState(
+        targetValue = if (selected && LocalAnimationsEnabled.current) (-6).dp else 0.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "tab-offset-y"
+    )
+    val textAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.34f,
+        animationSpec = tween(260),
+        label = "tab-text-alpha"
+    )
+    val selectedAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = tween(260, easing = FastOutSlowInEasing),
+        label = "tab-selected-alpha"
+    )
+    val iconTint by animateColorAsState(
+        targetValue = if (selected) Color(0xFF8FD7FF) else Color(0xFF737373),
+        animationSpec = tween(260),
+        label = "tab-icon-tint"
+    )
+    val labelTint by animateColorAsState(
+        targetValue = if (selected) Color(0xFFD6EEFF) else Color.White,
+        animationSpec = tween(260),
+        label = "tab-label-tint"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.05f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "tab-scale"
+    )
+    val selectedShape = RoundedCornerShape(22.dp)
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxSize()
+            .pressable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 2.dp)
+                .fillMaxWidth()
+                .height(62.dp)
+                .offset(y = offsetY)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .shadow(10.dp * selectedAlpha, selectedShape, clip = false, ambientColor = Color(0xFF5ABEFF).copy(alpha = 0.16f * selectedAlpha), spotColor = Color(0xFF6BC8FF).copy(alpha = 0.24f * selectedAlpha))
+                .clip(selectedShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF152A3F).copy(alpha = 0.78f * selectedAlpha),
+                            Color(0xFF08121F).copy(alpha = 0.48f * selectedAlpha)
+                        )
+                    )
+                )
+                .border(BorderStroke(1.dp, Color(0xFF79CFFF).copy(alpha = 0.24f * selectedAlpha)), selectedShape)
+                .padding(horizontal = 4.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(if (selected) 25.dp else 24.dp)
+                )
+                Text(
+                    text = label,
+                    color = labelTint.copy(alpha = textAlpha),
+                    fontSize = 11.sp,
+                    fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+@Composable
+private fun SectionTitle(title: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(22.dp)
+                .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
+        )
+        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+@Composable
+private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false) {
+    val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
+    if (raw.isBlank()) {
+        EmptyCover(modifier)
+    } else {
+
+        val model = if (highRes) raw else smallThumb(raw)
+        val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 200 else 0
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(model)
+                .crossfade(crossfadeMs)
+                .build(),
+            contentDescription = track.title,
+            contentScale = ContentScale.Crop,
+            modifier = modifier.background(Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd))))
+        )
+    }
+}
+private fun smallThumb(url: String): String {
+    var u = url
+    u = u.replace(Regex("=w\\d+-h\\d+[^=]*$"), "=w160-h160-l90-rj")
+    u = u.replace(Regex("=s\\d+[^=]*$"), "=s160")
+    u = u.replace(Regex("\\d+x\\d+bb"), "160x160bb")
+    return u
+}
+@Composable
+private fun EmptyCover(modifier: Modifier) {
+    Box(
+        modifier = modifier.background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.72f), LevyraViolet.copy(alpha = 0.72f)))),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Rounded.MusicNote, null, tint = LevyraBlack, modifier = Modifier.size(30.dp))
+    }
+}
+@Composable
+private fun EmptyState(text: String) {
+    Surface(
+        color = CinematicGlass.copy(alpha = 0.66f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("🎵", fontSize = 28.sp)
+            Text(text, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        }
+    }
+}
+@Composable
+private fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
+    if (!LocalAnimationsEnabled.current) {
+        return this.clickable(enabled = enabled, onClick = onClick)
+    }
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "press")
+    return this
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
+}
+
+@Composable
 fun LevyraApp(viewModel: LevyraViewModel) {
     val state by viewModel.state.collectAsState()
     val toastContext = LocalContext.current
@@ -6924,92 +7092,6 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
     }
 }
 
-@Composable
-private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    val offsetY by animateDpAsState(
-        targetValue = if (selected && LocalAnimationsEnabled.current) (-6).dp else 0.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "tab-offset-y"
-    )
-    val textAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.34f,
-        animationSpec = tween(260),
-        label = "tab-text-alpha"
-    )
-    val selectedAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        animationSpec = tween(260, easing = FastOutSlowInEasing),
-        label = "tab-selected-alpha"
-    )
-    val iconTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFF8FD7FF) else Color(0xFF737373),
-        animationSpec = tween(260),
-        label = "tab-icon-tint"
-    )
-    val labelTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFFD6EEFF) else Color.White,
-        animationSpec = tween(260),
-        label = "tab-label-tint"
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1.05f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-        label = "tab-scale"
-    )
-    val selectedShape = RoundedCornerShape(22.dp)
-    Box(
-        modifier = Modifier
-            .weight(1f)
-            .fillMaxSize()
-            .pressable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .padding(horizontal = 2.dp)
-                .fillMaxWidth()
-                .height(62.dp)
-                .offset(y = offsetY)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-                .shadow(10.dp * selectedAlpha, selectedShape, clip = false, ambientColor = Color(0xFF5ABEFF).copy(alpha = 0.16f * selectedAlpha), spotColor = Color(0xFF6BC8FF).copy(alpha = 0.24f * selectedAlpha))
-                .clip(selectedShape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF152A3F).copy(alpha = 0.78f * selectedAlpha),
-                            Color(0xFF08121F).copy(alpha = 0.48f * selectedAlpha)
-                        )
-                    )
-                )
-                .border(BorderStroke(1.dp, Color(0xFF79CFFF).copy(alpha = 0.24f * selectedAlpha)), selectedShape)
-                .padding(horizontal = 4.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(if (selected) 25.dp else 24.dp)
-                )
-                Text(
-                    text = label,
-                    color = labelTint.copy(alpha = textAlpha),
-                    fontSize = 11.sp,
-                    fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun PageHeader(title: String, subtitle: String) {
@@ -7034,21 +7116,6 @@ private fun PageHeader(title: String, subtitle: String) {
     }
 }
 
-@Composable
-private fun SectionTitle(title: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(22.dp)
-                .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
-        )
-        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
 
 @Composable
 private fun QuickChips(onClick: (String) -> Unit) {
@@ -7173,76 +7240,10 @@ private fun GlassMessage(text: String, color: Color) {
     }
 }
 
-@Composable
-private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false) {
-    val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
-    if (raw.isBlank()) {
-        EmptyCover(modifier)
-    } else {
 
-        val model = if (highRes) raw else smallThumb(raw)
-        val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 200 else 0
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(model)
-                .crossfade(crossfadeMs)
-                .build(),
-            contentDescription = track.title,
-            contentScale = ContentScale.Crop,
-            modifier = modifier.background(Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd))))
-        )
-    }
-}
 
-private fun smallThumb(url: String): String {
-    var u = url
-    u = u.replace(Regex("=w\\d+-h\\d+[^=]*$"), "=w160-h160-l90-rj")
-    u = u.replace(Regex("=s\\d+[^=]*$"), "=s160")
-    u = u.replace(Regex("\\d+x\\d+bb"), "160x160bb")
-    return u
-}
 
-@Composable
-private fun EmptyCover(modifier: Modifier) {
-    Box(
-        modifier = modifier.background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.72f), LevyraViolet.copy(alpha = 0.72f)))),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(Icons.Rounded.MusicNote, null, tint = LevyraBlack, modifier = Modifier.size(30.dp))
-    }
-}
 
-@Composable
-private fun EmptyState(text: String) {
-    Surface(
-        color = CinematicGlass.copy(alpha = 0.66f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text("🎵", fontSize = 28.sp)
-            Text(text, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        }
-    }
-}
-
-@Composable
-private fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
-    if (!LocalAnimationsEnabled.current) {
-        return this.clickable(enabled = enabled, onClick = onClick)
-    }
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "press")
-    return this
-        .graphicsLayer { scaleX = scale; scaleY = scale }
-        .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
-}
 
 private fun greeting(userName: String): String {
     val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
