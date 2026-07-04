@@ -5,6 +5,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -84,7 +85,9 @@ class PlaybackService : MediaLibraryService() {
 
         val defaultFactory = DefaultMediaSourceFactory(cacheDataSourceFactory)
 
-        val mergingFactory = LevyraMediaSourceFactory(defaultFactory, cacheDataSourceFactory)
+        val localDataSourceFactory = DefaultDataSource.Factory(this)
+
+        val mergingFactory = LevyraMediaSourceFactory(defaultFactory, cacheDataSourceFactory, localDataSourceFactory)
 
         val renderersFactory = object : DefaultRenderersFactory(this) {
             override fun buildAudioSink(
@@ -170,7 +173,8 @@ class PlaybackService : MediaLibraryService() {
 @UnstableApi
 private class LevyraMediaSourceFactory(
     private val delegate: DefaultMediaSourceFactory,
-    private val dataSourceFactory: DataSource.Factory
+    private val dataSourceFactory: DataSource.Factory,
+    private val localDataSourceFactory: DataSource.Factory
 ) : MediaSource.Factory {
 
     override fun getSupportedTypes(): IntArray = delegate.supportedTypes
@@ -211,7 +215,13 @@ private class LevyraMediaSourceFactory(
     }
 
     private fun mediaSourceFor(mediaItem: MediaItem): MediaSource {
-        val uri = mediaItem.localConfiguration?.uri?.toString().orEmpty()
+        val localUri = mediaItem.localConfiguration?.uri
+        val scheme = localUri?.scheme.orEmpty().lowercase()
+        if (scheme == "content" || scheme == "file") {
+            val localItem = mediaItem.buildUpon().setCustomCacheKey(null).build()
+            return ProgressiveMediaSource.Factory(localDataSourceFactory).createMediaSource(localItem)
+        }
+        val uri = localUri?.toString().orEmpty()
         return if (uri.contains(".m3u8", true) || uri.contains("hls", true)) {
             HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         } else {
