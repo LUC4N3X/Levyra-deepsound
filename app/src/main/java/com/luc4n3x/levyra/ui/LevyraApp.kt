@@ -3061,118 +3061,374 @@ private fun SuggestionsList(
 private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    var showCreate by remember { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        item { PageHeader(strings.libraryTitle, strings.librarySubtitle) }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 194.dp else 108.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            item {
+                LibraryHeader(
+                    title = strings.libraryTitle,
+                    subtitle = strings.librarySubtitle,
+                    playlistCount = state.playlists.size,
+                    downloadCount = state.downloads.size,
+                    favoriteCount = state.favorites.size
+                )
+            }
 
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                SectionTitle(strings.playlists)
-                var showCreate by remember { mutableStateOf(false) }
-                TextButton(onClick = { showCreate = true }) {
-                    Icon(Icons.Rounded.Add, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(strings.newItem, color = LevyraCyan, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            item {
+                LibrarySectionHeader(
+                    title = cleanLibraryLabel(strings.playlists),
+                    detail = "Playlist personali",
+                    count = state.playlists.size,
+                    icon = Icons.Rounded.QueueMusic,
+                    accent = LevyraViolet,
+                    actionLabel = strings.newItem,
+                    onAction = { showCreate = true }
+                )
+            }
+            if (state.playlists.isEmpty()) {
+                item {
+                    LibraryEmptyState(
+                        icon = Icons.Rounded.QueueMusic,
+                        title = "Crea la tua prima playlist",
+                        detail = "Raccogli i brani che vuoi ritrovare subito.",
+                        accent = LevyraViolet,
+                        actionLabel = strings.newItem,
+                        onAction = { showCreate = true }
+                    )
                 }
-                if (showCreate) {
-                    PlaylistCreateDialog(
-                        onDismiss = { showCreate = false },
-                        onConfirm = { name ->
-                            viewModel.createPlaylist(name)
-                            showCreate = false
-                        }
+            } else {
+                items(state.playlists, key = { "pl-${it.id}" }) { playlist ->
+                    PlaylistRow(
+                        playlist = playlist,
+                        onOpen = { viewModel.openPlaylist(playlist.id) },
+                        onPlay = { viewModel.playPlaylist(playlist.id) },
+                        onDelete = { viewModel.deletePlaylist(playlist.id) }
+                    )
+                }
+            }
+
+            item {
+                LibrarySectionHeader(
+                    title = cleanLibraryLabel(strings.downloads),
+                    detail = "Disponibili senza rete",
+                    count = state.downloads.size,
+                    icon = Icons.Rounded.DownloadDone,
+                    accent = LevyraCyan
+                )
+            }
+            if (state.downloads.isEmpty()) {
+                item {
+                    LibraryEmptyState(
+                        icon = Icons.Rounded.Download,
+                        title = "Nessun download offline",
+                        detail = "Tocca download su un brano per salvarlo in Music/Levyra.",
+                        accent = LevyraCyan
+                    )
+                }
+            } else {
+                items(state.downloads, key = { "dl-${it.id}" }) { download ->
+                    DownloadRow(
+                        download = download,
+                        isCurrent = download.trackId == state.currentTrack?.id,
+                        onPlay = { viewModel.playDownloaded(download) },
+                        onDelete = { viewModel.deleteDownload(download) }
+                    )
+                }
+            }
+
+            item {
+                LibrarySectionHeader(
+                    title = cleanLibraryLabel(strings.favorites),
+                    detail = "Brani salvati",
+                    count = state.favorites.size,
+                    icon = Icons.Rounded.Favorite,
+                    accent = LevyraPink
+                )
+            }
+            if (state.favorites.isEmpty()) {
+                item {
+                    LibraryEmptyState(
+                        icon = Icons.Rounded.FavoriteBorder,
+                        title = "Preferiti ancora vuoti",
+                        detail = "Tocca il cuore su un brano per metterlo qui.",
+                        accent = LevyraPink
+                    )
+                }
+            } else {
+                item {
+                    RowCarousel(
+                        tracks = state.favorites,
+                        currentId = state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        favoriteIds = state.favoriteIds,
+                        onPlay = { viewModel.playFrom(state.favorites, it) },
+                        onFavorite = { viewModel.toggleFavorite(it) }
+                    )
+                }
+            }
+
+            item {
+                LibrarySectionHeader(
+                    title = cleanLibraryLabel(strings.recent),
+                    detail = "Cronologia di ascolto",
+                    count = state.tracks.size,
+                    icon = Icons.Rounded.LibraryMusic,
+                    accent = CinematicGold
+                )
+            }
+            if (state.tracks.isEmpty()) {
+                item {
+                    LibraryEmptyState(
+                        icon = Icons.Rounded.Search,
+                        title = "Nessun brano recente",
+                        detail = "Cerca o riproduci qualcosa per costruire la tua cronologia.",
+                        accent = CinematicGold
+                    )
+                }
+            } else {
+                items(state.tracks, key = { it.id }) { track ->
+                    TrackRow(
+                        track = track,
+                        isCurrent = track.id == state.currentTrack?.id,
+                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                        isFavorite = track.id in state.favoriteIds,
+                        onClick = { viewModel.playFrom(state.tracks, track) },
+                        onFavorite = { viewModel.toggleFavorite(track) },
+                        isDownloading = track.id in state.downloadingTrackIds,
+                        isDownloaded = track.id in state.downloadedTrackIds,
+                        downloadProgress = state.downloadProgressByTrackId[track.id],
+                        onDownload = { viewModel.exportTrack(track) },
+                        onArtist = { viewModel.openArtist(track) },
+                        onAddToPlaylist = { addTarget = track }
                     )
                 }
             }
         }
-        if (state.playlists.isEmpty()) {
-            item { EmptyState(strings.createPlaylistHint) }
-        } else {
-            items(state.playlists, key = { "pl-${it.id}" }) { playlist ->
-                PlaylistRow(
-                    playlist = playlist,
-                    onOpen = { viewModel.openPlaylist(playlist.id) },
-                    onPlay = { viewModel.playPlaylist(playlist.id) },
-                    onDelete = { viewModel.deletePlaylist(playlist.id) }
-                )
-            }
+
+        if (showCreate) {
+            PlaylistCreateDialog(
+                onDismiss = { showCreate = false },
+                onConfirm = { name ->
+                    viewModel.createPlaylist(name)
+                    showCreate = false
+                }
+            )
         }
 
-        item { SectionTitle(strings.downloads) }
-        if (state.downloads.isEmpty()) {
-            item { EmptyState("Tocca l'icona di download su un brano per salvarlo in Music/Levyra") }
-        } else {
-            items(state.downloads, key = { "dl-${it.id}" }) { download ->
-                DownloadRow(
-                    download = download,
-                    isCurrent = download.trackId == state.currentTrack?.id,
-                    onPlay = { viewModel.playDownloaded(download) },
-                    onDelete = { viewModel.deleteDownload(download) }
-                )
-            }
-        }
-        item { SectionTitle(strings.favorites) }
-        if (state.favorites.isEmpty()) {
-            item { EmptyState("Tocca il cuore su un brano per salvarlo qui") }
-        } else {
-            item {
-                RowCarousel(
-                    tracks = state.favorites,
-                    currentId = state.currentTrack?.id,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    favoriteIds = state.favoriteIds,
-                    onPlay = { viewModel.playFrom(state.favorites, it) },
-                    onFavorite = { viewModel.toggleFavorite(it) }
-                )
-            }
-        }
-        item { SectionTitle(strings.recent) }
-        items(state.tracks, key = { it.id }) { track ->
-            TrackRow(
+        addTarget?.let { track ->
+            AddToPlaylistDialog(
                 track = track,
-                isCurrent = track.id == state.currentTrack?.id,
-                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                isFavorite = track.id in state.favoriteIds,
-                onClick = { viewModel.playFrom(state.tracks, track) },
-                onFavorite = { viewModel.toggleFavorite(track) },
-                isDownloading = track.id in state.downloadingTrackIds,
-                isDownloaded = track.id in state.downloadedTrackIds,
-                downloadProgress = state.downloadProgressByTrackId[track.id],
-                onDownload = { viewModel.exportTrack(track) },
-                onArtist = { viewModel.openArtist(track) },
-                onAddToPlaylist = { addTarget = track }
+                playlists = state.playlists,
+                onDismiss = { addTarget = null },
+                onAddTo = { playlistId ->
+                    viewModel.addToPlaylist(playlistId, track)
+                    addTarget = null
+                },
+                onCreateWith = { name ->
+                    viewModel.createPlaylist(name, track)
+                    addTarget = null
+                }
             )
         }
     }
+}
 
-    addTarget?.let { track ->
-        AddToPlaylistDialog(
-            track = track,
-            playlists = state.playlists,
-            onDismiss = { addTarget = null },
-            onAddTo = { playlistId ->
-                viewModel.addToPlaylist(playlistId, track)
-                addTarget = null
-            },
-            onCreateWith = { name ->
-                viewModel.createPlaylist(name, track)
-                addTarget = null
+@Composable
+private fun LibraryHeader(
+    title: String,
+    subtitle: String,
+    playlistCount: Int,
+    downloadCount: Int,
+    favoriteCount: Int
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    color = LevyraText,
+                    fontSize = 35.sp,
+                    lineHeight = 38.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.7).sp
+                )
+                Text(
+                    text = subtitle,
+                    color = LevyraMuted.copy(alpha = 0.84f),
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-        )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.24f), LevyraViolet.copy(alpha = 0.20f))))
+                    .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.LibraryMusic, null, tint = LevyraCyan, modifier = Modifier.size(25.dp))
+            }
+        }
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            LibraryStatPill(Icons.Rounded.QueueMusic, playlistCount.toString(), "playlist", LevyraViolet)
+            LibraryStatPill(Icons.Rounded.DownloadDone, downloadCount.toString(), "offline", LevyraCyan)
+            LibraryStatPill(Icons.Rounded.Favorite, favoriteCount.toString(), "preferiti", LevyraPink)
+        }
     }
+}
+
+@Composable
+private fun LibraryStatPill(icon: ImageVector, value: String, label: String, accent: Color) {
+    Surface(
+        color = CinematicGlass.copy(alpha = 0.54f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.085f)),
+        shape = RoundedCornerShape(999.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
+            Text(value, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text(label, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
     }
+}
+
+@Composable
+private fun LibrarySectionHeader(
+    title: String,
+    detail: String,
+    count: Int,
+    icon: ImageVector,
+    accent: Color,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(accent.copy(alpha = 0.16f))
+                .border(1.dp, accent.copy(alpha = 0.22f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Surface(color = Color.White.copy(alpha = 0.07f), shape = RoundedCornerShape(999.dp)) {
+                    Text(count.toString(), color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp))
+                }
+            }
+            Text(detail, color = LevyraMuted.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (actionLabel != null && onAction != null) {
+            Surface(
+                color = accent.copy(alpha = 0.13f),
+                border = BorderStroke(1.dp, accent.copy(alpha = 0.28f)),
+                shape = RoundedCornerShape(999.dp),
+                modifier = Modifier.pressable(onClick = onAction)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(16.dp))
+                    Text(cleanLibraryLabel(actionLabel), color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryEmptyState(
+    icon: ImageVector,
+    title: String,
+    detail: String,
+    accent: Color,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
+    Surface(
+        color = CinematicGlass.copy(alpha = 0.50f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accent.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = accent, modifier = Modifier.size(24.dp))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(detail, color = LevyraMuted.copy(alpha = 0.76f), fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            if (actionLabel != null && onAction != null) {
+                Surface(
+                    color = accent.copy(alpha = 0.14f),
+                    shape = CircleShape,
+                    border = BorderStroke(1.dp, accent.copy(alpha = 0.24f)),
+                    modifier = Modifier
+                        .size(42.dp)
+                        .pressable(onClick = onAction)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(22.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun cleanLibraryLabel(value: String): String {
+    return value.dropWhile { !it.isLetterOrDigit() }.trim()
 }
 
 @Composable
