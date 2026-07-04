@@ -336,7 +336,12 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     enter = miniEnter,
                     exit = miniExit
                 ) {
-                    BottomTabs(selected = state.selectedTab, flatTop = state.currentTrack != null, onSelect = viewModel::selectTab)
+                    BottomTabs(
+                        selected = state.selectedTab,
+                        flatTop = state.currentTrack != null,
+                        accentColor = state.currentTrack?.color1?.let { Color(it) },
+                        onSelect = viewModel::selectTab
+                    )
                 }
             }
 
@@ -951,7 +956,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                animStart.copy(alpha = 0.05f),
+                                animStart.copy(alpha = 0.12f),
                                 Color.Transparent
                             ),
                             radius = 1200f
@@ -967,7 +972,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                animEnd.copy(alpha = 0.03f),
+                                animEnd.copy(alpha = 0.08f),
                                 Color.Transparent
                             ),
                             radius = 1400f
@@ -6885,7 +6890,7 @@ private fun VideoGlassCard(
 }
 
 @Composable
-private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
+private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, accentColor: Color?, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
         color = Color(0xFF020202),
@@ -6911,11 +6916,11 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
-                TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
-                TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
-                TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
-                TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
+                TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home, accentColor) { onSelect(LevyraTab.Home) }
+                TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search, accentColor) { onSelect(LevyraTab.Search) }
+                TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore, accentColor) { onSelect(LevyraTab.Explore) }
+                TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library, accentColor) { onSelect(LevyraTab.Library) }
+                TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player, accentColor) { onSelect(LevyraTab.Player) }
             }
             Spacer(modifier = Modifier.navigationBarsPadding())
         }
@@ -6923,7 +6928,7 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
 }
 
 @Composable
-private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, accentColor: Color?, onClick: () -> Unit) {
     val offsetY by animateDpAsState(
         targetValue = if (selected && LocalAnimationsEnabled.current) (-6).dp else 0.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
@@ -6933,6 +6938,12 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         targetValue = if (selected) 1f else 0.3f,
         animationSpec = tween(300),
         label = "tab-text-alpha"
+    )
+    val targetGlowColor = accentColor ?: Color.White
+    val animatedGlowColor by animateColorAsState(
+        targetValue = targetGlowColor,
+        animationSpec = tween(500),
+        label = "tab-glow-color"
     )
     Box(
         modifier = Modifier
@@ -6957,7 +6968,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                         .width(20.dp)
                         .height(3.dp)
                         .clip(CircleShape)
-                        .background(Color.White)
+                        .background(animatedGlowColor)
                 )
             }
             Icon(
