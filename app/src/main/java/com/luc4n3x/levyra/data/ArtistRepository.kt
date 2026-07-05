@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.data
 
+import android.content.Context
+import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.Track
@@ -15,8 +18,8 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import kotlin.math.absoluteValue
 
-class ArtistRepository(private val music: YoutubeMusicRepository) {
-    private val apiKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
+class ArtistRepository(private val music: YoutubeMusicRepository, private val context: Context? = null) {
+    private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val clientVersion = "1.20260423.01.00"
     private val memory = LinkedHashMap<String, ArtistProfile>()
 
@@ -298,6 +301,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository) {
             setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
             setRequestProperty("X-Youtube-Client-Name", "67")
             setRequestProperty("X-Youtube-Client-Version", clientVersion)
+            GoogleApiKeyHeaders.applyTo(this, context)
             setRequestProperty("Content-Length", bytes.size.toString())
         }
         connection.outputStream.use { it.write(bytes) }

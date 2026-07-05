@@ -7,6 +7,52 @@ plugins {
     alias(libs.plugins.licensee)
 }
 
+val localProperties = java.util.Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.isFile) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+fun envOrProperty(name: String, propertyName: String = name): String {
+    return ((findProperty(propertyName) as? String)
+        ?: localProperties.getProperty(propertyName)
+        ?: System.getenv(name)
+        ?: "").trim()
+}
+
+fun buildConfigString(value: String): String {
+    val escaped = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    return "\"$escaped\""
+}
+
+fun isReleaseTaskRequested(): Boolean {
+    return gradle.startParameter.taskNames.any { task ->
+        task.contains("Release", ignoreCase = true) ||
+            task == "bundle" ||
+            task == "assemble"
+    }
+}
+
+val youtubeInnertubeApiKey = envOrProperty("YOUTUBE_INNERTUBE_API_KEY", "youtubeInnertubeApiKey")
+val releaseStoreFilePath = envOrProperty("LEVYRA_KEYSTORE_FILE", "levyraStoreFile").ifBlank { "app/levyra-release.jks" }
+val releaseStorePassword = envOrProperty("LEVYRA_KEYSTORE_PASSWORD", "levyraStorePassword")
+val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias")
+val releaseKeyPassword = envOrProperty("LEVYRA_KEY_PASSWORD", "levyraKeyPassword")
+val releaseStoreFile = rootProject.file(releaseStoreFilePath)
+
+if (isReleaseTaskRequested() && youtubeInnertubeApiKey.isBlank()) {
+    throw GradleException("Missing YOUTUBE_INNERTUBE_API_KEY. Set it as a GitHub Actions secret or in local.properties as youtubeInnertubeApiKey.")
+}
+
+if (isReleaseTaskRequested() && (!releaseStoreFile.isFile || releaseStorePassword.isBlank() || releaseKeyAlias.isBlank() || releaseKeyPassword.isBlank())) {
+    throw GradleException("Missing release signing config. Set LEVYRA_KEYSTORE_BASE64, LEVYRA_KEYSTORE_PASSWORD, LEVYRA_KEY_ALIAS and LEVYRA_KEY_PASSWORD in GitHub Actions secrets.")
+}
+
 fun normalizedVersionName(value: String): String {
     val clean = value.trim().removePrefix("v").removePrefix("V")
     val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
@@ -63,15 +109,16 @@ android {
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "UPDATE_REPOSITORY", "\"LUC4N3X/Levyra-deepsound\"")
         buildConfigField("String", "UPDATE_LATEST_URL", "\"https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases/latest\"")
+        buildConfigField("String", "YOUTUBE_INNERTUBE_API_KEY", buildConfigString(youtubeInnertubeApiKey))
     }
 
     signingConfigs {
         getByName("debug")
         create("release") {
-            storeFile = rootProject.file("app/levyra-release.jks")
-            storePassword = "levyra2026"
-            keyAlias = "levyra"
-            keyPassword = "levyra2026"
+            storeFile = releaseStoreFile
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
         }
     }
 

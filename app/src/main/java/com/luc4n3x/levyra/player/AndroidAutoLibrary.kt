@@ -32,7 +32,7 @@ class AndroidAutoLibrary(context: Context) {
     private val preferences = LevyraPreferences(appContext)
     private val database = LevyraDatabase.get(appContext)
     private val chartsRepository = ChartsRepository()
-    private val musicRepository = YoutubeMusicRepository()
+    private val musicRepository = YoutubeMusicRepository(appContext)
     private val resolver = PlaybackResolver.getInstance(appContext)
     private val catalog = ConcurrentHashMap<String, Track>()
     private val folders = ConcurrentHashMap<String, MediaItem>()
