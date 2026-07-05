@@ -374,20 +374,27 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private fun searchYoutubeExtractor(query: String, limit: Int): List<Track> {
         NewPipeRuntime.ensure()
         val service = org.schabi.newpipe.extractor.ServiceList.YouTube
-        val handler = service.searchQHFactory.fromQuery(
-            query,
-            listOf(org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS),
-            ""
+        val factory = service.searchQHFactory
+        val musicSongsFilter = findExtractorFilterItem(
+            factory.getAvailableContentFilter(),
+            org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS
         )
+        val handler = if (musicSongsFilter != null) {
+            factory.fromQuery(
+                query,
+                mutableListOf(musicSongsFilter),
+                mutableListOf<org.schabi.newpipe.extractor.search.filter.FilterItem>()
+            )
+        } else {
+            factory.fromQuery(query)
+        }
         val info = org.schabi.newpipe.extractor.search.SearchInfo.getInfo(service, handler)
         return info.relatedItems
             .filterIsInstance<org.schabi.newpipe.extractor.stream.StreamInfoItem>()
             .mapNotNull { item ->
                 val id = extractVideoId(item.url).ifBlank { stableId(item.url) }
                 if (id.isBlank()) return@mapNotNull null
-                val thumbnail = item.thumbnails.maxByOrNull { image ->
-                    image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
-                }?.url.orEmpty()
+                val thumbnail = item.thumbnailUrl.orEmpty()
                 buildTrack(
                     id = id,
                     title = item.name,
@@ -403,6 +410,16 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             }
             .distinctBy { it.id }
             .take(limit)
+    }
+
+    private fun findExtractorFilterItem(
+        filter: org.schabi.newpipe.extractor.search.filter.Filter,
+        name: String
+    ): org.schabi.newpipe.extractor.search.filter.FilterItem? {
+        return filter.filterGroups
+            .asSequence()
+            .flatMap { group -> group.filterItems.asSequence() }
+            .firstOrNull { item -> item.name.equals(name, ignoreCase = true) }
     }
 
     private val typeLabels = setOf(
