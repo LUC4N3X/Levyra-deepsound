@@ -157,6 +157,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1188,6 +1189,157 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
 }
 
 @Composable
+private fun HomeHeroBanner(
+    heroUpdate: HomeHeroUpdate?,
+    userName: String,
+    onSettings: () -> Unit,
+    moods: List<Mood>,
+    selectedMoodId: String?,
+    onSelectMood: (Mood) -> Unit,
+    onPlay: (Track) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(420.dp)
+            .background(LevyraBlack)
+    ) {
+        if (heroUpdate != null) {
+            val bgStart = Color(heroUpdate.track.accentStart)
+            AsyncImage(
+                model = heroUpdate.track.largeThumbnailUrl.ifBlank { heroUpdate.track.thumbnailUrl },
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = 0.65f }
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                bgStart.copy(alpha = 0.3f),
+                                LevyraBlack.copy(alpha = 0.8f),
+                                LevyraBlack
+                            )
+                        )
+                    )
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                LevyraCyan.copy(alpha = 0.2f),
+                                LevyraBlack
+                            )
+                        )
+                    )
+            )
+        }
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(top = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Buongiorno, $userName",
+                    color = Color.White,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.5).sp
+                )
+                CircleIconButton(
+                    icon = Icons.Rounded.Settings,
+                    tint = Color.White,
+                    background = Color.White.copy(alpha = 0.15f),
+                    onClick = onSettings
+                )
+            }
+            
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                if (heroUpdate != null) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            color = LevyraCyan.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(4.dp),
+                        ) {
+                            Text(
+                                text = heroUpdate.sourceTitle.uppercase(),
+                                color = LevyraCyan,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.2.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        Text(
+                            text = heroUpdate.track.title,
+                            color = Color.White,
+                            fontSize = 38.sp,
+                            lineHeight = 40.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-1).sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = heroUpdate.track.artist,
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Surface(
+                                color = LevyraCyan,
+                                shape = RoundedCornerShape(50),
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .pressable(onClick = { onPlay(heroUpdate.track) })
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 20.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(20.dp))
+                                    Text("Ascolta", color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                MoodRow(moods = moods, selectedId = selectedMoodId, onSelect = onSelectMood)
+            }
+        }
+    }
+}
+
+@Composable
 private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val heroUpdate = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
@@ -1222,7 +1374,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 moods = state.moods,
                 selectedMoodId = state.selectedMood?.id,
                 onSelectMood = viewModel::selectMood,
-                onPlay = { track -> viewModel.playFrom(listOf(track), track) }
+                onPlay = { track: com.luc4n3x.levyra.domain.Track -> viewModel.playFrom(listOf(track), track) }
             )
         }
         if (personalTracks.isNotEmpty()) {
