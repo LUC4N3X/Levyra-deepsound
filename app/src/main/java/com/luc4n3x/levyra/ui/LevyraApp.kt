@@ -110,6 +110,8 @@ import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Verified
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -6937,6 +6939,219 @@ private fun GlassMessage(text: String, color: Color) {
 
 
 
+
+@Composable
+private fun AudioQualityPanel(
+    selected: String,
+    volumePercent: Int,
+    onSelect: (String) -> Unit,
+    onClose: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val blocker = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.58f))
+            .clickable(interactionSource = blocker, indication = null) { onClose() },
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Surface(
+            color = Color(0xFF11131C),
+            shape = RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .clickable(interactionSource = blocker, indication = null) {}
+        ) {
+            Column(
+                modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .width(56.dp)
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.White.copy(alpha = 0.38f))
+                )
+                Surface(
+                    color = Color.Transparent,
+                    shape = RoundedCornerShape(28.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier.background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color(0xFF667AA9).copy(alpha = 0.95f),
+                                    Color(0xFF536890).copy(alpha = 0.98f)
+                                )
+                            )
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 18.dp, vertical = 18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color.White.copy(alpha = 0.10f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.Headphones, null, tint = LevyraText.copy(alpha = 0.86f), modifier = Modifier.size(28.dp))
+                            }
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(strings.phoneSpeaker, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                                Surface(color = Color.White.copy(alpha = 0.10f), shape = RoundedCornerShape(999.dp)) {
+                                    Text(
+                                        text = strings.connected,
+                                        color = LevyraText,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Black,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                                    )
+                                }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Icon(Icons.Rounded.GraphicEq, null, tint = LevyraText, modifier = Modifier.size(17.dp))
+                                Text("$volumePercent%", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            }
+                        }
+                    }
+                }
+                Surface(
+                    color = Color(0xFF191C26),
+                    shape = RoundedCornerShape(28.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(78.dp)
+                ) {
+                    Box {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.33f)
+                                .height(78.dp)
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(Color(0xFF566A96))
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 22.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Icon(Icons.Rounded.GraphicEq, null, tint = LevyraText, modifier = Modifier.size(28.dp))
+                                Text(strings.volume, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.28f))
+                            )
+                        }
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(strings.audioQuality, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        listOf("Auto" to "Auto", "Alta" to "High", "Bassa" to "Low").forEach { (label, quality) ->
+                            AudioQualityChoice(
+                                label = label,
+                                selected = selected.equals(quality, ignoreCase = true),
+                                modifier = Modifier.weight(1f),
+                                onClick = { onSelect(quality) }
+                            )
+                        }
+                    }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Surface(
+                        color = Color(0xFFB8C8F4),
+                        shape = RoundedCornerShape(22.dp),
+                        modifier = Modifier
+                            .width(132.dp)
+                            .height(58.dp)
+                            .pressable(onClick = onClose)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(strings.done, color = Color(0xFF263049), fontSize = 16.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioQualityChoice(label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Surface(
+        color = if (selected) Color(0xFFB8C8F4) else Color.White.copy(alpha = 0.035f),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, if (selected) Color.Transparent else Color.White.copy(alpha = 0.05f)),
+        modifier = modifier
+            .height(64.dp)
+            .pressable(onClick = onClick)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = label,
+                color = if (selected) Color(0xFF263049) else LevyraMuted,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    }
+}
+
+@Composable
+private fun LyricsButton(loading: Boolean, available: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(LevyraViolet.copy(alpha = 0.55f), LevyraCyan.copy(alpha = 0.45f), LevyraPink.copy(alpha = 0.5f))
+                )
+            )
+            .pressable(enabled = !loading, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+            } else {
+                Icon(Icons.Rounded.MusicNote, null, tint = Color.White, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                text = when {
+                    loading -> "Cerco il testo…"
+                    available -> "Mostra il testo"
+                    else -> "Testo non disponibile"
+                },
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+    }
+}
 
 private fun greeting(userName: String): String {
     val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
