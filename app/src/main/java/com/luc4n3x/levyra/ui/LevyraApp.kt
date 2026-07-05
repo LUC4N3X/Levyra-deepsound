@@ -4925,16 +4925,16 @@ private fun SettingsMiniButton(
 }
 
 @Composable
-private fun LevyraLogoMark(size: Dp = 46.dp) {
-    val corner = RoundedCornerShape(15.dp)
+private fun LevyraLogoMark(size: Dp = 54.dp) {
+    val corner = RoundedCornerShape(18.dp)
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
-                .size(size + 14.dp)
-                .blur(20.dp)
+                .size(size + 22.dp)
+                .blur(26.dp)
                 .background(
                     Brush.radialGradient(
-                        listOf(LevyraCyan.copy(alpha = 0.34f), LevyraViolet.copy(alpha = 0.20f), Color.Transparent)
+                        listOf(LevyraCyan.copy(alpha = 0.42f), LevyraViolet.copy(alpha = 0.26f), Color.Transparent)
                     ),
                     CircleShape
                 )
@@ -4945,23 +4945,36 @@ private fun LevyraLogoMark(size: Dp = 46.dp) {
                 .clip(corner)
                 .background(
                     Brush.linearGradient(
-                        listOf(Color(0xFF171326), Color(0xFF0C0A18))
+                        listOf(LevyraCyan.copy(alpha = 0.85f), LevyraViolet.copy(alpha = 0.75f))
                     )
                 )
-                .border(
-                    1.dp,
-                    Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.55f), LevyraViolet.copy(alpha = 0.45f))),
-                    corner
+                .padding(1.5.dp)
+                .clip(RoundedCornerShape(16.5.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFF181328), Color(0xFF09070F))
+                    )
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.levyra_logo),
-                contentDescription = "Logo Levyra",
+            Box(
                 modifier = Modifier
-                    .size(31.dp)
-                    .clip(CircleShape)
-            )
+                    .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(LevyraCyan.copy(alpha = 0.16f), Color.Transparent, LevyraViolet.copy(alpha = 0.14f))
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.levyra_logo),
+                    contentDescription = "Logo Levyra",
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                )
+            }
         }
     }
 }
@@ -4999,16 +5012,16 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            LevyraLogoMark(size = 46.dp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            LevyraLogoMark(size = 54.dp)
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                LevyraWordmark(fontSize = 27.sp)
+                LevyraWordmark(fontSize = 28.sp)
                 Text(
                     text = greeting(userName),
-                    color = LevyraMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.2.sp,
+                    color = LevyraMuted.copy(alpha = 0.85f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.1.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -5439,20 +5452,32 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
     ) {
         moods.forEach { mood ->
             val selected = mood.id == selectedId
-            Surface(
-                color = if (selected) Color(mood.accentStart).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.06f),
-                border = BorderStroke(1.dp, if (selected) Color(mood.accentStart).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.09f)),
-                shape = CircleShape,
-                modifier = Modifier.pressable(onClick = { onSelect(mood) })
+            val shape = CircleShape
+            val base = Modifier.pressable(onClick = { onSelect(mood) })
+            val styled = if (selected) {
+                base
+                    .clip(shape)
+                    .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)))
+                    .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
+            } else {
+                base
+                    .clip(shape)
+                    .background(Color.White.copy(alpha = 0.055f))
+                    .border(1.dp, Color.White.copy(alpha = 0.09f), shape)
+            }
+            Row(
+                modifier = styled.padding(horizontal = 16.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    Text(mood.icon, fontSize = 16.sp)
-                    Text(mood.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                }
+                Text(mood.icon, fontSize = 15.sp)
+                Text(
+                    mood.title,
+                    color = if (selected) Color(0xFF0A0714) else LevyraText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.2).sp
+                )
             }
         }
     }
