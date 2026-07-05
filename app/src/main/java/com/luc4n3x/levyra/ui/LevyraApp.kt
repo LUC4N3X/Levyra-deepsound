@@ -1315,15 +1315,14 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
                     Text(
                         text = line.text,
                         color = when {
-                            isActive -> LevyraText
-                            state.lyricsSynced -> LevyraMuted.copy(alpha = 0.5f)
-                            else -> LevyraText.copy(alpha = 0.85f)
+                            isActive -> Color.White
+                            state.lyricsSynced -> Color.White.copy(alpha = 0.5f)
+                            else -> Color.White.copy(alpha = 0.85f)
                         },
                         fontSize = if (isActive) 28.sp else 22.sp,
                         lineHeight = if (isActive) 34.sp else 28.sp,
                         fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
                         modifier = Modifier.graphicsLayer {
-                            alpha = if (isActive) 1f else 0.6f
                             scaleX = if (isActive) 1f else 0.95f
                             scaleY = if (isActive) 1f else 0.95f
                             transformOrigin = TransformOrigin(0f, 0.5f)
@@ -4395,17 +4394,15 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { viewModel.openQueue() }) {
-                            Icon(Icons.Rounded.QueueMusic, "Code", tint = LevyraMuted, modifier = Modifier.size(28.dp))
+                            Icon(Icons.Rounded.QueueMusic, "Coda", tint = LevyraMuted, modifier = Modifier.size(28.dp))
                         }
-                        Spacer(Modifier.weight(1f))
                         IconButton(onClick = { viewModel.openLyrics() }) {
                             Icon(Icons.Rounded.Subject, "Testo", tint = LevyraMuted, modifier = Modifier.size(28.dp))
                         }
-                        Spacer(Modifier.width(24.dp))
                         IconButton(onClick = { viewModel.exportCurrentTrack() }) {
                             Icon(Icons.Rounded.Download, "Download", tint = if (state.isOfflineExporting) LevyraCyan else LevyraMuted, modifier = Modifier.size(28.dp))
                         }
