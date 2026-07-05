@@ -112,6 +112,8 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -5039,26 +5041,51 @@ private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
 @Composable
 private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp, top = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            LevyraLogoMark(size = 46.dp)
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                LevyraWordmark(fontSize = 27.sp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(76.dp)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(LevyraCyan.copy(alpha = 0.35f), LevyraViolet.copy(alpha = 0.15f), Color.Transparent)
+                            ),
+                            shape = CircleShape
+                        )
+                )
+                LevyraLogoMark(size = 52.dp)
+            }
+            
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f)) {
                 Text(
                     text = greeting(userName),
-                    color = LevyraMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.2.sp,
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    style = TextStyle(
+                        shadow = Shadow(
+                            color = Color.Black.copy(alpha = 0.5f),
+                            blurRadius = 6f
+                        )
+                    )
                 )
+                LevyraWordmark(fontSize = 18.sp, dotSize = 4.dp)
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (isResolving) {
                 Box(
                     modifier = Modifier
@@ -5070,6 +5097,19 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                 ) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = LevyraCyan)
                 }
+            } else {
+                CircleIconButton(
+                    icon = Icons.Rounded.Notifications,
+                    tint = LevyraText,
+                    background = Color.White.copy(alpha = 0.07f),
+                    onClick = {}
+                )
+                CircleIconButton(
+                    icon = Icons.Rounded.History,
+                    tint = LevyraText,
+                    background = Color.White.copy(alpha = 0.07f),
+                    onClick = {}
+                )
             }
             CircleIconButton(
                 icon = Icons.Rounded.Settings,
