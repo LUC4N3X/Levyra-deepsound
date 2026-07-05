@@ -232,37 +232,65 @@ private fun cinematicTextBrush(): Brush {
 
 @Composable
 private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.8f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow),
+        label = "tab-press-scale"
+    )
+    val pressGlow by animateFloatAsState(
+        targetValue = if (pressed) 1f else 0f,
+        animationSpec = tween(if (pressed) 100 else 300),
+        label = "tab-press-glow"
+    )
+
     val offsetY by animateDpAsState(
-        targetValue = if (selected && LocalAnimationsEnabled.current) (-5).dp else 0.dp,
+        targetValue = if (selected && LocalAnimationsEnabled.current) (-6).dp else 0.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "tab-offset-y"
     )
+    val textAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else if (pressed) 0.7f else 0.38f,
+        animationSpec = tween(260),
+        label = "tab-text-alpha"
+    )
     val selectedAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
-        animationSpec = tween(280, easing = FastOutSlowInEasing),
+        animationSpec = tween(260, easing = FastOutSlowInEasing),
         label = "tab-selected-alpha"
     )
-    val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.05f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-        label = "tab-icon-scale"
+    val iconTint by animateColorAsState(
+        targetValue = if (selected) Color(0xFF93DCFF) else if (pressed) Color(0xFFBDEBFF) else Color(0xFF737373),
+        animationSpec = tween(260),
+        label = "tab-icon-tint"
     )
     val labelTint by animateColorAsState(
-        targetValue = if (selected) LevyraText else Color(0xFF6E6E7A),
+        targetValue = if (selected) Color(0xFFE0F4FF) else Color.White,
         animationSpec = tween(260),
         label = "tab-label-tint"
     )
-    val iconTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFF08060F) else Color(0xFF7A7A87),
-        animationSpec = tween(260),
-        label = "tab-icon-tint"
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1.06f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "tab-icon-scale"
+    )
+    val underlineWidth by animateDpAsState(
+        targetValue = if (selected) 20.dp else 0.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        label = "tab-underline-width"
     )
 
     Box(
         modifier = Modifier
             .weight(1f)
             .fillMaxSize()
-            .pressable(onClick = onClick),
+            .pressable(
+                interactionSource = interactionSource,
+                pressedScale = 0.94f,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -270,31 +298,55 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                 .offset(y = offsetY)
                 .padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(5.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(width = 46.dp, height = 34.dp)
+                    .size(34.dp)
                     .graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
+                        scaleX = iconScale * pressScale
+                        scaleY = iconScale * pressScale
                     }
                     .drawBehind {
-                        val glowRadius = size.minDimension * 0.9f
+                        if (pressGlow > 0f) {
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        Color(0xFF5BD6FF).copy(alpha = 0.35f * pressGlow),
+                                        LevyraViolet.copy(alpha = 0.15f * pressGlow),
+                                        Color.Transparent
+                                    )
+                                ),
+                                radius = size.minDimension * 1.5f * pressGlow
+                            )
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.15f * pressGlow),
+                                radius = size.minDimension * 0.45f * pressGlow
+                            )
+                        }
+
                         drawCircle(
-                            color = LevyraCyan.copy(alpha = 0.22f * selectedAlpha),
-                            radius = glowRadius,
-                            center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
+                            color = Color(0xFF54C8FF).copy(alpha = 0.13f * selectedAlpha),
+                            radius = size.minDimension * 0.46f
                         )
-                    }
-                    .clip(RoundedCornerShape(50))
-                    .drawBehind {
-                        drawRoundRect(
-                            brush = Brush.linearGradient(
-                                listOf(LevyraCyan, LevyraViolet)
-                            ),
-                            alpha = selectedAlpha,
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f, size.height / 2f)
+                        drawCircle(
+                            color = Color(0xFFBDEBFF).copy(alpha = 0.07f * selectedAlpha),
+                            radius = size.minDimension * 0.27f
+                        )
+                        drawCircle(
+                            color = Color(0xFFAEE9FF).copy(alpha = 0.28f * selectedAlpha),
+                            radius = size.minDimension * 0.43f,
+                            style = Stroke(width = 1.dp.toPx())
+                        )
+                        drawCircle(
+                            color = Color(0xFFB9F1FF).copy(alpha = 0.55f * selectedAlpha),
+                            radius = 1.35.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(size.width * 0.78f, size.height * 0.24f)
+                        )
+                        drawCircle(
+                            color = LevyraViolet.copy(alpha = 0.42f * selectedAlpha),
+                            radius = 1.1.dp.toPx(),
+                            center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height * 0.78f)
                         )
                     },
                 contentAlignment = Alignment.Center
@@ -303,18 +355,34 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     imageVector = icon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(23.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Text(
                 text = label,
-                color = labelTint,
+                color = labelTint.copy(alpha = textAlpha),
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
                 fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
-                letterSpacing = (-0.1).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+            Box(
+                modifier = Modifier
+                    .width(underlineWidth)
+                    .height(1.5.dp)
+                    .graphicsLayer { alpha = selectedAlpha }
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                Color(0xFF5BD6FF).copy(alpha = 0f),
+                                Color(0xFF6FDFFF).copy(alpha = 0.86f),
+                                LevyraViolet.copy(alpha = 0.55f),
+                                Color(0xFF5BD6FF).copy(alpha = 0f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(99.dp)
+                    )
             )
         }
     }
@@ -389,13 +457,22 @@ private fun EmptyState(text: String) {
     }
 }
 @Composable
-private fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
+private fun Modifier.pressable(
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource? = null,
+    pressedScale: Float = 0.96f,
+    onClick: () -> Unit
+): Modifier {
     if (!LocalAnimationsEnabled.current) {
         return this.clickable(enabled = enabled, onClick = onClick)
     }
-    val interaction = remember { MutableInteractionSource() }
+    val interaction = interactionSource ?: remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "press")
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) pressedScale else 1f, 
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+        label = "press"
+    )
     return this
         .graphicsLayer { scaleX = scale; scaleY = scale }
         .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
@@ -4892,16 +4969,16 @@ private fun SettingsMiniButton(
 }
 
 @Composable
-private fun LevyraLogoMark(size: Dp = 54.dp) {
-    val corner = RoundedCornerShape(18.dp)
+private fun LevyraLogoMark(size: Dp = 46.dp) {
+    val corner = RoundedCornerShape(15.dp)
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
-                .size(size + 22.dp)
-                .blur(26.dp)
+                .size(size + 14.dp)
+                .blur(20.dp)
                 .background(
                     Brush.radialGradient(
-                        listOf(LevyraCyan.copy(alpha = 0.42f), LevyraViolet.copy(alpha = 0.26f), Color.Transparent)
+                        listOf(LevyraCyan.copy(alpha = 0.34f), LevyraViolet.copy(alpha = 0.20f), Color.Transparent)
                     ),
                     CircleShape
                 )
@@ -4912,36 +4989,23 @@ private fun LevyraLogoMark(size: Dp = 54.dp) {
                 .clip(corner)
                 .background(
                     Brush.linearGradient(
-                        listOf(LevyraCyan.copy(alpha = 0.85f), LevyraViolet.copy(alpha = 0.75f))
+                        listOf(Color(0xFF171326), Color(0xFF0C0A18))
                     )
                 )
-                .padding(1.5.dp)
-                .clip(RoundedCornerShape(16.5.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(Color(0xFF181328), Color(0xFF09070F))
-                    )
+                .border(
+                    1.dp,
+                    Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.55f), LevyraViolet.copy(alpha = 0.45f))),
+                    corner
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.levyra_logo),
+                contentDescription = "Logo Levyra",
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            listOf(LevyraCyan.copy(alpha = 0.16f), Color.Transparent, LevyraViolet.copy(alpha = 0.14f))
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.levyra_logo),
-                    contentDescription = "Logo Levyra",
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                )
-            }
+                    .size(31.dp)
+                    .clip(CircleShape)
+            )
         }
     }
 }
@@ -4979,16 +5043,16 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            LevyraLogoMark(size = 54.dp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            LevyraLogoMark(size = 46.dp)
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                LevyraWordmark(fontSize = 28.sp)
+                LevyraWordmark(fontSize = 27.sp)
                 Text(
                     text = greeting(userName),
-                    color = LevyraMuted.copy(alpha = 0.85f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.1.sp,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.2.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -5419,32 +5483,20 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
     ) {
         moods.forEach { mood ->
             val selected = mood.id == selectedId
-            val shape = CircleShape
-            val base = Modifier.pressable(onClick = { onSelect(mood) })
-            val styled = if (selected) {
-                base
-                    .clip(shape)
-                    .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)))
-                    .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
-            } else {
-                base
-                    .clip(shape)
-                    .background(Color.White.copy(alpha = 0.055f))
-                    .border(1.dp, Color.White.copy(alpha = 0.09f), shape)
-            }
-            Row(
-                modifier = styled.padding(horizontal = 16.dp, vertical = 11.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            Surface(
+                color = if (selected) Color(mood.accentStart).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.06f),
+                border = BorderStroke(1.dp, if (selected) Color(mood.accentStart).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.09f)),
+                shape = CircleShape,
+                modifier = Modifier.pressable(onClick = { onSelect(mood) })
             ) {
-                Text(mood.icon, fontSize = 15.sp)
-                Text(
-                    mood.title,
-                    color = if (selected) Color(0xFF0A0714) else LevyraText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.2).sp
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Text(mood.icon, fontSize = 16.sp)
+                    Text(mood.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                }
             }
         }
     }
