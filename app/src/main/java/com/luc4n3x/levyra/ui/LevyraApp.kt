@@ -4985,19 +4985,28 @@ private fun LevyraLogoMark(size: Dp = 58.dp) {
                     CircleShape
                 )
         )
-        // The raw logo
-        Image(
-            painter = painterResource(id = R.drawable.levyra_logo),
-            contentDescription = "Logo Levyra",
+        // Container to protect the logo from being cut
+        Box(
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
+                .background(LevyraBlack) // Blocks the halo from bleeding through the transparent logo
                 .border(
-                    1.5.dp,
-                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.35f), Color.Transparent)),
+                    1.dp,
+                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.25f), Color.Transparent)),
                     CircleShape
-                )
-        )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // The raw logo with some padding
+            Image(
+                painter = painterResource(id = R.drawable.levyra_logo),
+                contentDescription = "Logo Levyra",
+                modifier = Modifier
+                    .size(size * 0.78f) // Reduced size so the outer grooves don't touch the border
+                    .clip(CircleShape)
+            )
+        }
     }
 }
 
