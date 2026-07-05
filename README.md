@@ -2,6 +2,7 @@
 
 <img src="https://i.ibb.co/n880DQRH/Levyra-Logo-Music-Glass.png" alt="Levyra Logo" width="410" />
 
+
 # Levyra
 
 **A high-performance, native Android music client designed for pristine playback and complete audio control.**
