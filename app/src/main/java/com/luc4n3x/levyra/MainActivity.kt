@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra
 
 import android.Manifest
+import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -19,25 +21,32 @@ import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.CachePolicy
 import coil3.request.crossfade
+import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
+import com.luc4n3x.levyra.ui.theme.LevyraThemeController
+import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import okio.Path.Companion.toOkioPath
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyOrientationPolicy()
         configureFastImageLoader()
         requestNotificationPermission()
         requestLegacyStoragePermission()
+        val startPalette = LevyraThemes.byId(LevyraPreferences(this).themePreset())
+        LevyraThemeController.apply(startPalette.id)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
-        window.setBackgroundDrawable(ColorDrawable(Color.BLACK))
+        window.setBackgroundDrawable(ColorDrawable(if (startPalette.isLight) Color.WHITE else Color.BLACK))
         WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
+            isAppearanceLightStatusBars = startPalette.isLight
+            isAppearanceLightNavigationBars = startPalette.isLight
         }
+        LevyraLaunchActions.consumeFrom(intent)
         if (Build.VERSION.SDK_INT >= 29) {
             window.isStatusBarContrastEnforced = false
             window.isNavigationBarContrastEnforced = false
@@ -53,6 +62,20 @@ class MainActivity : ComponentActivity() {
                 val viewModel: LevyraViewModel = viewModel()
                 LevyraApp(viewModel = viewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        LevyraLaunchActions.consumeFrom(intent)
+    }
+
+    private fun applyOrientationPolicy() {
+        requestedOrientation = if (resources.configuration.smallestScreenWidthDp >= 600) {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 
