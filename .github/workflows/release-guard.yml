@@ -1,0 +1,102 @@
+name: Release Guard
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - gradle.properties
+      - app/build.gradle.kts
+      - README.md
+      - .github/workflows/release-apk.yml
+      - .github/workflows/release-guard.yml
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to validate"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Validate Release Version Wiring
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate Version Consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          read_property() {
+            local name="$1"
+            grep -E "^${name}=" gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs
+          }
+
+          VERSION="$(read_property levyraVersionName)"
+          VERSION_CODE="$(read_property levyraVersionCode)"
+
+          if ! printf "%s" "${VERSION}" | grep -Eq '^[0-9]+(\.[0-9]+){0,3}([-+][0-9A-Za-z.-]+)?$'; then
+            echo "Invalid levyraVersionName: ${VERSION}" >&2
+            exit 1
+          fi
+
+          BASE_VERSION="${VERSION%%[-+]*}"
+          IFS='.' read -r MAJOR MINOR PATCH BUILD <<< "${BASE_VERSION}"
+          MAJOR="${MAJOR:-0}"
+          MINOR="${MINOR:-0}"
+          PATCH="${PATCH:-0}"
+          BUILD="${BUILD:-0}"
+          EXPECTED_CODE=$((10#${MAJOR} * 1000000 + 10#${MINOR} * 10000 + 10#${PATCH} * 100 + 10#${BUILD}))
+
+          if [ "${VERSION_CODE}" != "${EXPECTED_CODE}" ]; then
+            echo "Invalid levyraVersionCode: ${VERSION_CODE}. Expected: ${EXPECTED_CODE}" >&2
+            exit 1
+          fi
+
+          EXPECTED_TAG=""
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            EXPECTED_TAG="${GITHUB_REF_NAME}"
+          fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            EXPECTED_TAG="${{ inputs.tag }}"
+          fi
+
+          if [ -n "${EXPECTED_TAG}" ]; then
+            TAG_VERSION="${EXPECTED_TAG#v}"
+            TAG_VERSION="${TAG_VERSION#V}"
+            if [ "${TAG_VERSION}" != "${VERSION}" ]; then
+              echo "Tag version ${TAG_VERSION} does not match gradle.properties ${VERSION}" >&2
+              exit 1
+            fi
+          fi
+
+          grep -F "\"${VERSION}\"" app/build.gradle.kts >/dev/null
+          grep -F "levyraVersionName=${VERSION}" README.md >/dev/null
+          grep -F "levyraVersionCode=${VERSION_CODE}" README.md >/dev/null
+          grep -F "default: \"v${VERSION}\"" .github/workflows/release-apk.yml >/dev/null
+
+          {
+            echo "Release guard passed"
+            echo "version=${VERSION}"
+            echo "versionCode=${VERSION_CODE}"
+            echo "tag=v${VERSION}"
+          } | tee release-guard-result.txt
+
+      - name: Upload Guard Result
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-guard-result-${{ github.run_number }}
+          path: release-guard-result.txt
+          if-no-files-found: error
