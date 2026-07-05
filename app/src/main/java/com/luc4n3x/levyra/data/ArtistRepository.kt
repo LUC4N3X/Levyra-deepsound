@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.Track
@@ -90,6 +91,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val songs = extractTopSongs(root)
         val albums = extractReleases(root, "Album")
         val singles = extractReleases(root, "Singol")
+        val related = extractRelatedArtists(root, name)
         val seed = stableSeed(browseId + name)
         val accent = palette(seed)
         if (name.isBlank() && songs.isEmpty()) return null
@@ -105,8 +107,41 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             albums = albums,
             singles = singles,
             accentStart = accent.first,
-            accentEnd = accent.second
+            accentEnd = accent.second,
+            relatedArtists = related
         )
+    }
+
+    private fun extractRelatedArtists(root: JSONObject, selfName: String): List<ArtistHit> {
+        val cards = mutableListOf<JSONObject>()
+        collectByKey(root, "musicTwoRowItemRenderer", cards)
+        val out = LinkedHashMap<String, ArtistHit>()
+        cards.forEach { card ->
+            val endpoint = card.optJSONObject("navigationEndpoint")?.optJSONObject("browseEndpoint") ?: return@forEach
+            val browseId = endpoint.optString("browseId")
+            val pageType = endpoint.optJSONObject("browseEndpointContextSupportedConfigs")
+                ?.optJSONObject("browseEndpointContextMusicConfig")
+                ?.optString("pageType")
+                .orEmpty()
+            if (!pageType.contains("ARTIST", ignoreCase = true)) return@forEach
+            val name = card.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+            if (name.isBlank() || name.equals(selfName, ignoreCase = true)) return@forEach
+            val subtitle = card.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+            val thumb = bestThumbnail(thumbnailsOf(card))
+            val seed = stableSeed(browseId + name)
+            val accent = palette(seed)
+            val key = name.lowercase()
+            if (!out.containsKey(key)) {
+                out[key] = ArtistHit(
+                    name = name,
+                    subscribers = subtitle,
+                    thumbnailUrl = upgradeThumbnail(thumb),
+                    accentStart = accent.first,
+                    accentEnd = accent.second
+                )
+            }
+        }
+        return out.values.take(12).toList()
     }
 
     private suspend fun fallbackProfile(name: String): ArtistProfile {

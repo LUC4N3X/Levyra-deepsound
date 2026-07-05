@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">LEVYRA</string>
+    <string name="widget_description">Mini player, preferiti rapidi, Flow del giorno, offline e testi</string>
+    <string name="widget_idle_title">LEVYRA</string>
+    <string name="widget_idle_subtitle">Tocca per ascoltare</string>
+    <string name="widget_toggle">Play/Pausa</string>
+    <string name="widget_next">Successivo</string>
+    <string name="widget_previous">Precedente</string>
+    <string name="widget_favorites">Preferiti</string>
+    <string name="widget_flow">Flow del giorno</string>
+    <string name="widget_offline">Mix offline</string>
+    <string name="widget_lyrics">Testi</string>
 </resources>
