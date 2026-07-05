@@ -1232,6 +1232,7 @@ private fun HomeTopBar(
 
 @Composable
 private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+    val context = LocalContext.current
     val strings = LocalLevyraStrings.current
     val heroUpdate = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
         pickHeroUpdate(state)
@@ -1287,7 +1288,18 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         track = heroTrack,
                         isCurrent = state.currentTrack?.id == heroTrack.id,
                         isPlaying = state.isPlaying && state.currentTrack?.id == heroTrack.id,
-                        onClick = { viewModel.playFrom(listOf(heroTrack), heroTrack) }
+                        isFavorite = heroTrack.id in state.favoriteIds,
+                        onClick = { viewModel.playFrom(listOf(heroTrack), heroTrack) },
+                        onFavorite = { viewModel.toggleFavorite(heroTrack) },
+                        onShare = {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_SUBJECT, heroTrack.title)
+                                putExtra(android.content.Intent.EXTRA_TEXT, "${heroTrack.title} - ${heroTrack.artist}\n${heroTrack.streamUrl}")
+                            }
+                            context.startActivity(android.content.Intent.createChooser(intent, "Condividi via"))
+                        },
+                        onAddToPlaylist = {}
                     )
                 }
             }
