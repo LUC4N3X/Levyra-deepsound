@@ -1,0 +1,117 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Lint, Test and Release Compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.14.4"
+
+      - name: Validate Build Inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f gradle/libs.versions.toml
+          if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "Gradle Wrapper detected"
+          else
+            echo "No Gradle Wrapper detected, using setup-gradle managed Gradle"
+          fi
+
+      - name: Prepare CI Release Signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: Gradle Version
+        run: gradle --no-daemon --version
+
+      - name: Android Lint
+        run: gradle --no-daemon :app:lintRelease
+
+      - name: Unit Tests
+        run: gradle --no-daemon testReleaseUnitTest
+
+      - name: Release Compile
+        run: gradle --no-daemon assembleRelease
+
+      - name: Collect Reports
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/reports
+          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/reports-index.txt || true
+          if [ -d app/build/reports ]; then
+            cp -R app/build/reports artifacts/reports/app-build-reports
+          fi
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: pr-check-reports-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: ignore

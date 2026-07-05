@@ -1,0 +1,104 @@
+name: Nightly Extractor Check
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-extractor-check
+  cancel-in-progress: false
+
+jobs:
+  extractor:
+    name: Resolve Extractor Dependency and Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.14.4"
+
+      - name: Prepare CI Release Signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: Resolve MetrolistExtractor Snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          gradle --no-daemon --refresh-dependencies :app:dependencyInsight \
+            --configuration releaseRuntimeClasspath \
+            --dependency MetrolistExtractor \
+            | tee artifacts/metrolist-extractor-dependency.txt
+
+      - name: Nightly Release Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --refresh-dependencies clean assembleRelease \
+            | tee artifacts/nightly-release-build.log
+
+      - name: Capture APK Metadata
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          APK="$(find app/build/outputs/apk/release -name '*.apk' -print -quit 2>/dev/null || true)"
+          if [ -n "${APK}" ] && [ -f "${APK}" ]; then
+            sha256sum "${APK}" | tee artifacts/nightly-apk.sha256
+            "${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}" > artifacts/nightly-apk-badging.txt
+          fi
+          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/nightly-reports-index.txt || true
+
+      - name: Upload Nightly Diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightly-extractor-diagnostics-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: ignore
