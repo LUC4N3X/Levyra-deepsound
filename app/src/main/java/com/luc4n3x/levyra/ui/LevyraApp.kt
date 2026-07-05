@@ -5074,8 +5074,8 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = TextStyle(
-                        shadow = Shadow(
+                    style = androidx.compose.ui.text.TextStyle(
+                        shadow = androidx.compose.ui.graphics.Shadow(
                             color = Color.Black.copy(alpha = 0.5f),
                             blurRadius = 6f
                         )
