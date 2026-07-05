@@ -1,19 +1,23 @@
 package com.luc4n3x.levyra.viewmodel
 
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.CacheReport
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ChartRegion
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
+import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.theme.LevyraThemes
 
 data class LevyraUiState(
     val selectedTab: LevyraTab = LevyraTab.Home,
@@ -87,5 +91,10 @@ data class LevyraUiState(
     val artistError: String? = null,
     val artistProfile: ArtistProfile? = null,
     val searchData: SearchResults = SearchResults(),
-    val searchFilter: SearchFilter = SearchFilter.All
+    val searchFilter: SearchFilter = SearchFilter.All,
+    val themePreset: String = LevyraThemes.COSMIC,
+    val followedArtists: List<FollowedArtist> = emptyList(),
+    val followedArtistKeys: Set<String> = emptySet(),
+    val releaseRadar: List<ReleaseRadarEntry> = emptyList(),
+    val similarArtists: List<ArtistHit> = emptyList()
 )
