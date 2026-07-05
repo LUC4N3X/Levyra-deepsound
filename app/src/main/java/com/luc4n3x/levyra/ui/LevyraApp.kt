@@ -1204,15 +1204,12 @@ private fun HomeTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Surface(
-                color = LevyraCyan,
-                shape = CircleShape,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("L", color = LevyraBlack, fontWeight = FontWeight.Black, fontSize = 20.sp)
-                }
-            }
+            Image(
+                painter = painterResource(id = R.drawable.levyra_logo),
+                contentDescription = "Levyra",
+                modifier = Modifier.size(36.dp).clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
             Text(
                 text = "Buongiorno, $userName",
                 color = Color.White,
@@ -1284,22 +1281,11 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.2.sp
                     )
-                    TrackGlassCard(
+                    HeroTrackCard(
                         track = heroTrack,
                         isCurrent = state.currentTrack?.id == heroTrack.id,
                         isPlaying = state.isPlaying && state.currentTrack?.id == heroTrack.id,
-                        isFavorite = heroTrack.id in state.favoriteIds,
-                        onClick = { viewModel.playFrom(listOf(heroTrack), heroTrack) },
-                        onFavorite = { viewModel.toggleFavorite(heroTrack) },
-                        onShare = {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(android.content.Intent.EXTRA_SUBJECT, heroTrack.title)
-                                putExtra(android.content.Intent.EXTRA_TEXT, "${heroTrack.title} - ${heroTrack.artist}\n${heroTrack.streamUrl}")
-                            }
-                            context.startActivity(android.content.Intent.createChooser(intent, "Condividi via"))
-                        },
-                        onAddToPlaylist = {}
+                        onClick = { viewModel.playFrom(listOf(heroTrack), heroTrack) }
                     )
                 }
             }
@@ -6648,6 +6634,94 @@ private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () 
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun HeroTrackCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+    val scale by animateFloatAsState(if (isCurrent) 0.98f else 1f, label = "scale")
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(300.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(RoundedCornerShape(24.dp))
+            .clickable { onClick() }
+    ) {
+        AsyncImage(
+            model = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.2f),
+                            Color.Black.copy(alpha = 0.95f)
+                        )
+                    )
+                )
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Text(
+                text = track.title,
+                color = Color.White,
+                fontSize = 32.sp,
+                lineHeight = 34.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = track.artist,
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Surface(
+                    color = LevyraCyan,
+                    shape = CircleShape,
+                    modifier = Modifier.size(54.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            contentDescription = null,
+                            tint = LevyraBlack,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
