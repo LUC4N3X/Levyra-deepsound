@@ -118,6 +118,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Subject
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -1260,13 +1261,11 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(accentStart.copy(alpha = 0.28f), Color(0xFF070A12), LevyraBlack)
-                )
-            )
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
+        LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f))) // Dark overlay for readability
+        
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -1285,30 +1284,30 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
                         Text(
                             text = track?.title ?: strings.lyrics,
                             color = LevyraText,
-                            fontSize = 22.sp,
+                            fontSize = 24.sp,
                             fontWeight = FontWeight.Black,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(track?.artist ?: "", color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(track?.artist ?: "", color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     CircleIconButton(
                         icon = Icons.Rounded.Close,
                         tint = LevyraText,
-                        background = Color.White.copy(alpha = 0.1f),
+                        background = Color.White.copy(alpha = 0.15f),
                         onClick = onClose
                     )
                 }
             }
             if (state.lyricsSynced) {
                 item {
-                    Surface(color = LevyraCyan.copy(alpha = 0.14f), shape = CircleShape) {
-                        Text(strings.synced, color = LevyraCyan, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+                    Surface(color = LevyraCyan.copy(alpha = 0.2f), shape = CircleShape) {
+                        Text(strings.synced, color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
                     }
                 }
             }
             if (state.lyrics.isEmpty()) {
-                item { Text(strings.lyricsUnavailable, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+                item { Text(strings.lyricsUnavailable, color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
             } else {
                 itemsIndexed(state.lyrics) { index, line ->
                     val isActive = state.lyricsSynced && index == activeIndex
@@ -1319,9 +1318,15 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
                             state.lyricsSynced -> LevyraMuted.copy(alpha = 0.5f)
                             else -> LevyraText.copy(alpha = 0.85f)
                         },
-                        fontSize = if (isActive) 22.sp else 18.sp,
-                        lineHeight = if (isActive) 26.sp else 23.sp,
-                        fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold
+                        fontSize = if (isActive) 28.sp else 22.sp,
+                        lineHeight = if (isActive) 34.sp else 28.sp,
+                        fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = if (isActive) 1f else 0.6f
+                            scaleX = if (isActive) 1f else 0.95f
+                            scaleY = if (isActive) 1f else 0.95f
+                            transformOrigin = TransformOrigin(0f, 0.5f)
+                        }
                     )
                 }
             }
@@ -4192,23 +4197,10 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LevyraBlack) // Deepest background surface
+            .background(LevyraBlack)
     ) {
-        // Dynamic radial gradient from the top based on album art color
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.6f)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            bgStart.copy(alpha = 0.28f),
-                            LevyraBlack.copy(alpha = 0.7f),
-                            LevyraBlack
-                        )
-                    )
-                )
-        )
+        LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f))) // Subtle darkening
 
         LazyColumn(
             modifier = Modifier
@@ -4238,10 +4230,32 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     ) {
                         Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = strings.back, tint = LevyraText, modifier = Modifier.size(36.dp))
                     }
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("RIPRODUZIONE DA ${track?.source ?: "LEVYRA"}", color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (track != null && track.videoUrl.isNotBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(500.dp))
+                                .padding(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier
+                                .background(if (!state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent, RoundedCornerShape(500.dp))
+                                .clickable { if (state.isVideoMode) viewModel.toggleVideoMode() }
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                            ) {
+                                Text(strings.song, color = if (!state.isVideoMode) LevyraText else LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Box(modifier = Modifier
+                                .background(if (state.isVideoMode) Color.White.copy(alpha = 0.15f) else Color.Transparent, RoundedCornerShape(500.dp))
+                                .clickable { if (!state.isVideoMode) viewModel.toggleVideoMode() }
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                            ) {
+                                Text(strings.video, color = if (state.isVideoMode) LevyraText else LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("RIPRODUZIONE DA ${track?.source ?: "LEVYRA"}", color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                     IconButton(onClick = { viewModel.openAudioQualityPanel() }) {
                         Icon(Icons.Rounded.MoreVert, contentDescription = "Opzioni", tint = LevyraText)
@@ -4384,26 +4398,15 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { viewModel.openQueue() }) {
-                            Icon(Icons.Rounded.QueueMusic, "Code", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Rounded.QueueMusic, "Code", tint = LevyraMuted, modifier = Modifier.size(28.dp))
                         }
-                        if (track.videoUrl.isNotBlank()) {
-                            Surface(
-                                color = Color.White.copy(alpha = 0.08f),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                                shape = RoundedCornerShape(500.dp),
-                                modifier = Modifier.clickable { viewModel.toggleVideoMode() }
-                            ) {
-                                Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(if (state.isVideoMode) Icons.Rounded.MusicNote else Icons.Rounded.Videocam, null, tint = LevyraText, modifier = Modifier.size(16.dp))
-                                    Text(if (state.isVideoMode) strings.song else strings.video, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        } else {
-                            // Spacer for alignment if no video button
-                            Spacer(Modifier.width(16.dp))
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { viewModel.openLyrics() }) {
+                            Icon(Icons.Rounded.Subject, "Testo", tint = LevyraMuted, modifier = Modifier.size(28.dp))
                         }
+                        Spacer(Modifier.width(24.dp))
                         IconButton(onClick = { viewModel.exportCurrentTrack() }) {
-                            Icon(Icons.Rounded.Download, "Download", tint = if (state.isOfflineExporting) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Rounded.Download, "Download", tint = if (state.isOfflineExporting) LevyraCyan else LevyraMuted, modifier = Modifier.size(28.dp))
                         }
                     }
                 }
