@@ -4971,44 +4971,33 @@ private fun SettingsMiniButton(
 }
 
 @Composable
-private fun LevyraLogoMark(size: Dp = 46.dp) {
-    val corner = RoundedCornerShape(15.dp)
+private fun LevyraLogoMark(size: Dp = 58.dp) {
     Box(contentAlignment = Alignment.Center) {
+        // Glowing halo behind the logo
         Box(
             modifier = Modifier
-                .size(size + 14.dp)
-                .blur(20.dp)
+                .size(size * 1.4f)
+                .blur(16.dp)
                 .background(
                     Brush.radialGradient(
-                        listOf(LevyraCyan.copy(alpha = 0.34f), LevyraViolet.copy(alpha = 0.20f), Color.Transparent)
+                        listOf(LevyraCyan.copy(alpha = 0.5f), LevyraViolet.copy(alpha = 0.25f), Color.Transparent)
                     ),
                     CircleShape
                 )
         )
-        Box(
+        // The raw logo
+        Image(
+            painter = painterResource(id = R.drawable.levyra_logo),
+            contentDescription = "Logo Levyra",
             modifier = Modifier
                 .size(size)
-                .clip(corner)
-                .background(
-                    Brush.linearGradient(
-                        listOf(Color(0xFF171326), Color(0xFF0C0A18))
-                    )
-                )
+                .clip(CircleShape)
                 .border(
-                    1.dp,
-                    Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.55f), LevyraViolet.copy(alpha = 0.45f))),
-                    corner
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.levyra_logo),
-                contentDescription = "Logo Levyra",
-                modifier = Modifier
-                    .size(31.dp)
-                    .clip(CircleShape)
-            )
-        }
+                    1.5.dp,
+                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.35f), Color.Transparent)),
+                    CircleShape
+                )
+        )
     }
 }
 
@@ -5049,43 +5038,26 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.weight(1f)
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Box(
-                    modifier = Modifier
-                        .size(76.dp)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(LevyraCyan.copy(alpha = 0.35f), LevyraViolet.copy(alpha = 0.15f), Color.Transparent)
-                            ),
-                            shape = CircleShape
-                        )
-                )
-                LevyraLogoMark(size = 52.dp)
-            }
+            LevyraLogoMark(size = 62.dp)
             
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp), modifier = Modifier.weight(1f)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                LevyraWordmark(fontSize = 28.sp, dotSize = 5.dp)
                 Text(
                     text = greeting(userName),
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    color = LevyraMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.2.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = androidx.compose.ui.text.TextStyle(
-                        shadow = androidx.compose.ui.graphics.Shadow(
-                            color = Color.Black.copy(alpha = 0.5f),
-                            blurRadius = 6f
-                        )
-                    )
+                    overflow = TextOverflow.Ellipsis
                 )
-                LevyraWordmark(fontSize = 18.sp, dotSize = 4.dp)
             }
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (isResolving) {
                 Box(
                     modifier = Modifier
@@ -5097,19 +5069,6 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                 ) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = LevyraCyan)
                 }
-            } else {
-                CircleIconButton(
-                    icon = Icons.Rounded.Notifications,
-                    tint = LevyraText,
-                    background = Color.White.copy(alpha = 0.07f),
-                    onClick = {}
-                )
-                CircleIconButton(
-                    icon = Icons.Rounded.History,
-                    tint = LevyraText,
-                    background = Color.White.copy(alpha = 0.07f),
-                    onClick = {}
-                )
             }
             CircleIconButton(
                 icon = Icons.Rounded.Settings,
