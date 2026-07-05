@@ -31,6 +31,8 @@ import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraAudioPresets
+import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
@@ -90,7 +92,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             selectedMood = moodEngine.moods.firstOrNull(),
             isSearching = true,
             embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
-            audioNormalization = preferences.snapshot().audioNormalization
+            audioNormalization = preferences.snapshot().audioNormalization,
+            audioSettings = preferences.snapshot().audioSettings
         )
     )
     private var searchJob: Job? = null
@@ -98,6 +101,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var prefetchJob: Job? = null
     private var chartEnrichJob: Job? = null
     private var sleepJob: Job? = null
+    private var crossfadeJob: Job? = null
+    private var crossfadeInProgress = false
     private var lyricsJob: Job? = null
     private var sponsorJob: Job? = null
     private var listPrefetchJob: Job? = null
@@ -133,6 +138,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 skipSilence = settings.skipSilence,
                 audioQuality = settings.audioQuality,
                 audioNormalization = settings.audioNormalization,
+                audioSettings = settings.audioSettings,
+                playbackSpeed = settings.audioSettings.playbackSpeed,
                 themePreset = settings.themePreset,
                 showOnboarding = !settings.onboarded,
                 currentTrack = null,
@@ -142,6 +149,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         player.setSkipSilence(settings.skipSilence)
+        player.setPremiumAudioSettings(settings.audioSettings)
+        player.setPlayback(settings.audioSettings.playbackSpeed, settings.audioSettings.pitch)
         player.onCompletion = { onTrackCompleted() }
         player.onError = { errorMsg ->
             _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
@@ -360,13 +369,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun onTrackCompleted() {
         val snapshot = _state.value
         val current = snapshot.currentTrack ?: return
+        if (crossfadeInProgress) return
         if (snapshot.isResolving || playJob?.isActive == true || current.streamUrl.isBlank()) return
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
         val queue = snapshot.queue.ifEmpty { currentQueue() }
         when {
             _state.value.shuffleEnabled && queue.size > 1 -> {
-                queueIndex = (queue.indices - queueIndex).ifEmpty { queue.indices.toList() }.random()
+                queueIndex = queue.indices.filter { it != queueIndex }.ifEmpty { queue.indices.toList() }.random()
                 startResolve(queue[queueIndex])
             }
             _state.value.repeatMode == RepeatMode.All -> next()
@@ -416,10 +426,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleAudioNormalization() {
-        val next = !_state.value.audioNormalization
-        preferences.setAudioNormalization(next)
-        _state.update { it.copy(audioNormalization = next) }
-        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = next
+        setReplayGainEnabled(!_state.value.audioNormalization)
     }
 
     fun toggleShuffle() {
@@ -428,10 +435,68 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun cycleSpeed() {
         val steps = listOf(1f, 1.25f, 1.5f, 2f, 0.75f)
-        val current = _state.value.playbackSpeed
+        val current = _state.value.audioSettings.playbackSpeed
         val next = steps[(steps.indexOf(current).coerceAtLeast(0) + 1) % steps.size]
-        player.setSpeed(next)
-        _state.update { it.copy(playbackSpeed = next) }
+        updateAudioSettings(_state.value.audioSettings.copy(playbackSpeed = next))
+    }
+
+    fun setEqualizerEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(equalizerEnabled = value))
+    }
+
+    fun setEqualizerPreset(presetId: String) {
+        val preset = LevyraAudioPresets.preset(presetId)
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = true,
+                presetId = preset.id,
+                bandLevels = preset.levels,
+                bassBoost = preset.bassBoost,
+                virtualizer = preset.virtualizer
+            )
+        )
+    }
+
+    fun setBassBoost(value: Int) {
+        updateAudioSettings(_state.value.audioSettings.copy(equalizerEnabled = true, bassBoost = value))
+    }
+
+    fun setVirtualizer(value: Int) {
+        updateAudioSettings(_state.value.audioSettings.copy(equalizerEnabled = true, virtualizer = value))
+    }
+
+    fun setCrossfadeSeconds(seconds: Int) {
+        updateAudioSettings(_state.value.audioSettings.copy(crossfadeSeconds = seconds))
+    }
+
+    fun setDjSoftMode(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(djSoftMode = value, crossfadeSeconds = if (value && _state.value.audioSettings.crossfadeSeconds == 0) 6 else _state.value.audioSettings.crossfadeSeconds))
+    }
+
+    fun setReplayGainEnabled(value: Boolean) {
+        preferences.setAudioNormalization(value)
+        updateAudioSettings(_state.value.audioSettings.copy(replayGainEnabled = value), audioNormalization = value)
+    }
+
+    fun setPlaybackSpeed(value: Float) {
+        updateAudioSettings(_state.value.audioSettings.copy(playbackSpeed = value))
+    }
+
+    fun setPitch(value: Float) {
+        updateAudioSettings(_state.value.audioSettings.copy(pitch = value))
+    }
+
+    fun setGaplessEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(gaplessEnabled = value))
+    }
+
+    private fun updateAudioSettings(next: LevyraAudioSettings, audioNormalization: Boolean = _state.value.audioNormalization) {
+        val normalized = next.normalized()
+        preferences.setAudioSettings(normalized)
+        player.setPremiumAudioSettings(normalized)
+        player.setPlayback(normalized.playbackSpeed, normalized.pitch)
+        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = audioNormalization || normalized.replayGainEnabled
+        _state.update { it.copy(audioSettings = normalized, playbackSpeed = normalized.playbackSpeed, audioNormalization = audioNormalization) }
     }
 
 
@@ -451,7 +516,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         preferences.setAudioQuality(normalized)
         resolver.setAudioQuality(normalized)
-        _state.update { it.copy(audioQuality = normalized, showAudioQualityPanel = false) }
+        _state.update { it.copy(audioQuality = normalized) }
     }
 
     fun cycleSleepTimer() {
@@ -1002,7 +1067,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(track)
     }
 
-    private fun startResolve(track: Track) {
+    private fun startResolve(track: Track, preserveCrossfade: Boolean = false) {
+        if (!preserveCrossfade) {
+            crossfadeJob?.cancel()
+            crossfadeInProgress = false
+            player.setVolume(1f)
+        }
         val requestId = ++playRequestId
         playJob?.cancel()
         cancelBackgroundWarmups(cancelList = false)
@@ -1358,7 +1428,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         if (_state.value.shuffleEnabled && queue.size > 1) {
-            queueIndex = (queue.indices - queueIndex).ifEmpty { queue.indices.toList() }.random()
+            queueIndex = queue.indices.filter { it != queueIndex }.ifEmpty { queue.indices.toList() }.random()
             startResolve(queue[queueIndex])
             return
         }
@@ -1432,6 +1502,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     val segment = sponsorSegments.firstOrNull { pos >= it.startMs && pos < it.endMs - 250 }
                     if (segment != null) player.seekTo(segment.endMs)
                 }
+                maybeStartCrossfade(snapshot, current, player.positionMs, duration)
  
                 val position = if (!player.isPlaying && player.positionMs == 0L && pendingSeekMs > 0L) {
                     pendingSeekMs
@@ -1457,6 +1528,67 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 ticks++
                 delay(500L)
             }
+        }
+    }
+
+
+    private fun maybeStartCrossfade(snapshot: LevyraUiState, current: Track?, position: Long, duration: Long) {
+        val settings = snapshot.audioSettings
+        if (!settings.gaplessEnabled || settings.crossfadeSeconds <= 0 || current == null || crossfadeInProgress || !player.isPlaying) return
+        if (duration <= 30_000L) return
+        val windowMs = settings.crossfadeSeconds * 1000L
+        if (position < duration - windowMs) return
+        val nextTrack = nextTrackForCrossfade(snapshot) ?: return
+        crossfadeInProgress = true
+        crossfadeJob?.cancel()
+        crossfadeJob = viewModelScope.launch {
+            val fadeOutMs = if (settings.djSoftMode) maxOf(windowMs, 3_500L) else windowMs
+            fadeVolume(from = 1f, to = 0.08f, durationMs = fadeOutMs.coerceAtLeast(800L))
+            startResolve(nextTrack, preserveCrossfade = true)
+            val targetId = youtubePlayableTrack(nextTrack)?.id ?: nextTrack.id
+            var waited = 0L
+            while (isActive && waited < 8_000L) {
+                val active = _state.value.currentTrack
+                val activeId = active?.id.orEmpty()
+                if ((activeId == targetId || activeId == nextTrack.id) && active?.streamUrl?.isNotBlank() == true && player.isPlaying) break
+                delay(120L)
+                waited += 120L
+            }
+            fadeVolume(from = 0.08f, to = 1f, durationMs = if (settings.djSoftMode) 1_800L else 900L)
+            player.setVolume(1f)
+            crossfadeInProgress = false
+        }
+    }
+
+    private fun nextTrackForCrossfade(snapshot: LevyraUiState): Track? {
+        if (snapshot.repeatMode == RepeatMode.One) return null
+        val queue = snapshot.queue.ifEmpty { currentQueue() }
+        if (queue.isEmpty()) return null
+        if (snapshot.shuffleEnabled && queue.size > 1) {
+            val nextIndex = queue.indices.filter { it != queueIndex }.ifEmpty { queue.indices.toList() }.random()
+            queueIndex = nextIndex
+            return queue[nextIndex]
+        }
+        val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { it.id == snapshot.currentTrack?.id }
+        if (base < 0) return queue.firstOrNull()
+        if (base < queue.lastIndex) {
+            queueIndex = base + 1
+            return queue[queueIndex]
+        }
+        if (snapshot.repeatMode == RepeatMode.All || loopCurrentQueueOnCompletion) {
+            queueIndex = 0
+            return queue.firstOrNull()
+        }
+        return null
+    }
+
+    private suspend fun fadeVolume(from: Float, to: Float, durationMs: Long) {
+        val steps = 12
+        val safeDuration = durationMs.coerceAtLeast(120L)
+        repeat(steps + 1) { step ->
+            val t = step.toFloat() / steps.toFloat()
+            player.setVolume(from + ((to - from) * t))
+            delay(safeDuration / steps)
         }
     }
 
@@ -1512,6 +1644,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         sponsorJob?.cancel()
         artistJob?.cancel()
         radarJob?.cancel()
+        crossfadeJob?.cancel()
         player.release()
         searchJob?.cancel()
         super.onCleared()
