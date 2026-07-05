@@ -59,8 +59,8 @@ import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository = YoutubeMusicRepository()
-    private val artistRepository = ArtistRepository(repository)
+    private val repository = YoutubeMusicRepository(application.applicationContext)
+    private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository()
     private val downloadedTracksDao = LevyraDatabase.get(application.applicationContext).downloadedTracksDao()
     private val appUpdateRepository = AppUpdateRepository(application.applicationContext)
