@@ -19,7 +19,7 @@ serialization = "1.7.3"
 ksp = "2.3.9"
 licensee = "1.14.1"
 timber = "5.0.1"
-shimmer = "1.3.3"
+shimmer = "1.4.0"
 chucker = "4.1.0"
 leakcanary = "2.14"
 
