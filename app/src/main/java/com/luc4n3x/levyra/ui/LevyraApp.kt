@@ -3924,13 +3924,13 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
 private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
-    val bgStart = track?.let { Color(it.accentStart) } ?: Color(0xFF1ED760) // Spotify green fallback
+    val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
     val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF121212)) // Deepest background surface
+            .background(LevyraBlack) // Deepest background surface
     ) {
         // Dynamic radial gradient from the top based on album art color
         Box(
@@ -3940,9 +3940,9 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            bgStart.copy(alpha = 0.3f),
-                            Color(0xFF121212).copy(alpha = 0.8f),
-                            Color(0xFF121212)
+                            bgStart.copy(alpha = 0.28f),
+                            LevyraBlack.copy(alpha = 0.7f),
+                            LevyraBlack
                         )
                     )
                 )
@@ -4084,7 +4084,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             Icon(
                                 imageVector = if (track.id in state.favoriteIds) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                                 contentDescription = "Preferiti",
-                                tint = if (track.id in state.favoriteIds) Color(0xFF1ED760) else Color(0xFFB3B3B3),
+                                tint = if (track.id in state.favoriteIds) LevyraPink else Color(0xFFB3B3B3),
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -4123,7 +4123,8 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         }
                         if (track.videoUrl.isNotBlank()) {
                             Surface(
-                                color = Color(0xFF1F1F1F),
+                                color = Color.White.copy(alpha = 0.08f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
                                 shape = RoundedCornerShape(500.dp),
                                 modifier = Modifier.clickable { viewModel.toggleVideoMode() }
                             ) {
@@ -4137,7 +4138,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             Spacer(Modifier.width(16.dp))
                         }
                         IconButton(onClick = { viewModel.exportCurrentTrack() }) {
-                            Icon(Icons.Rounded.Download, "Download", tint = if (state.isOfflineExporting) Color(0xFF1ED760) else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
+                            Icon(Icons.Rounded.Download, "Download", tint = if (state.isOfflineExporting) LevyraCyan else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -4169,8 +4170,8 @@ private fun PlayerTimeline(positionMs: Long, durationMs: Long, onSeek: (Float) -
             onValueChange = onSeek,
             colors = SliderDefaults.colors(
                 thumbColor = Color.White,
-                activeTrackColor = Color.White,
-                inactiveTrackColor = Color(0xFF4D4D4D)
+                activeTrackColor = LevyraCyan,
+                inactiveTrackColor = Color.White.copy(alpha = 0.20f)
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -4203,27 +4204,27 @@ private fun MainPlayerControls(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         IconButton(onClick = onShuffle) {
-            Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffleOn) Color(0xFF1ED760) else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
+            Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffleOn) LevyraCyan else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
         }
         IconButton(onClick = onPrevious) {
             Icon(Icons.Rounded.SkipPrevious, "Precedente", tint = Color.White, modifier = Modifier.size(40.dp))
         }
         Box(
             modifier = Modifier
-                .size(64.dp)
-                .background(Color.White, CircleShape)
+                .size(68.dp)
+                .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.92f), Color(0xFF6D7CFF))), CircleShape)
                 .pressable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {
-            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = Color.Black)
-            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(36.dp))
+            if (isResolving) CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = LevyraBlack)
+            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(36.dp))
         }
         IconButton(onClick = onNext) {
             Icon(Icons.Rounded.SkipNext, "Successivo", tint = Color.White, modifier = Modifier.size(40.dp))
         }
         val repeatIcon = if (repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
         IconButton(onClick = onRepeat) {
-            Icon(repeatIcon, "Repeat", tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) Color(0xFF1ED760) else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
+            Icon(repeatIcon, "Repeat", tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -4270,11 +4271,13 @@ private fun PlayerOptionsRow(
 @Composable
 private fun OptionChip(icon: ImageVector, label: String, active: Boolean, modifier: Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     val alpha by animateFloatAsState(targetValue = if (enabled) 1f else 0.5f, animationSpec = spring(dampingRatio = 0.8f, stiffness = 400f))
-    val bgColor = if (active) Color(0xFF1ED760).copy(alpha = 0.15f) else Color(0xFF1F1F1F)
-    val textColor = if (active) Color(0xFF1ED760) else Color(0xFFB3B3B3)
+    val bgColor = if (active) LevyraCyan.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.06f)
+    val textColor = if (active) LevyraCyan else LevyraText
+    val borderColor = if (active) LevyraCyan.copy(alpha = 0.40f) else Color.White.copy(alpha = 0.08f)
 
     Surface(
         color = bgColor,
+        border = BorderStroke(1.dp, borderColor),
         shape = RoundedCornerShape(500.dp),
         modifier = modifier
             .height(40.dp)
