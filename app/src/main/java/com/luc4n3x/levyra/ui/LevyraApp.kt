@@ -1211,14 +1211,19 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+        contentPadding = PaddingValues(top = 0.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
-                MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
-            }
+            HomeHeroBanner(
+                heroUpdate = heroUpdate,
+                userName = state.userName,
+                onSettings = viewModel::openSettings,
+                moods = state.moods,
+                selectedMoodId = state.selectedMood?.id,
+                onSelectMood = viewModel::selectMood,
+                onPlay = { track -> viewModel.playFrom(listOf(track), track) }
+            )
         }
         if (personalTracks.isNotEmpty()) {
             item {
@@ -1246,13 +1251,15 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (state.currentTrack != null) {
             item {
-                ContinueListeningCard(
-                    track = state.currentTrack,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    progress = progressOf(state.positionMs, state.durationMs),
-                    onResume = viewModel::togglePlay
-                )
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    ContinueListeningCard(
+                        track = state.currentTrack,
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        progress = progressOf(state.positionMs, state.durationMs),
+                        onResume = viewModel::togglePlay
+                    )
+                }
             }
         }
         if (trendingArtists.isNotEmpty()) {
@@ -1301,16 +1308,22 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (state.charts.isEmpty()) {
             item {
-                if (state.isLoadingCharts) {
-                    ChartLoadingSkeleton()
-                } else {
-                    GlassMessage(strings.top50Unavailable, LevyraOrange)
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    if (state.isLoadingCharts) {
+                        ChartLoadingSkeleton()
+                    } else {
+                        GlassMessage(strings.top50Unavailable, LevyraOrange)
+                    }
                 }
             }
         }
         if (state.charts.isNotEmpty()) {
             item {
-                LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
+                ) {
                     val chunks = state.charts.chunked(4)
                     itemsIndexed(chunks) { chunkIndex, chunk ->
                         Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1332,7 +1345,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
         }
-        item { StatusBlock(state) }
+        item { Box(modifier = Modifier.padding(horizontal = 16.dp)) { StatusBlock(state) } }
     }
 }
 
@@ -1494,7 +1507,7 @@ private fun ResonanceShelf(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1513,8 +1526,9 @@ private fun ResonanceShelf(
                     Text(
                         text = "Voci che risuonano",
                         color = LevyraText,
-                        fontSize = 28.sp,
-                        lineHeight = 30.sp,
+                        fontSize = 32.sp,
+                        lineHeight = 34.sp,
+                        letterSpacing = (-0.5).sp,
                         fontWeight = FontWeight.Black
                     )
                 }
@@ -1543,7 +1557,7 @@ private fun ResonanceShelf(
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(end = 6.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
             itemsIndexed(tracks) { index, track ->
                 ResonanceCard(
@@ -1643,7 +1657,7 @@ private fun ResonanceCard(
                     }
                 }
                 Surface(
-                    color = Color.Black.copy(alpha = 0.24f),
+                    color = Color.Black.copy(alpha = 0.4f),
                     shape = RoundedCornerShape(24.dp),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
                     modifier = Modifier.fillMaxWidth()
@@ -1658,7 +1672,7 @@ private fun ResonanceCard(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Commenti totali", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Text(formatCompactNumber(comments), color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                            Text(formatCompactNumber(comments), color = LevyraText, fontSize = 18.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black)
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1724,7 +1738,7 @@ private fun PersonalListeningShelf(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1735,8 +1749,9 @@ private fun PersonalListeningShelf(
                 Text(
                     text = "La tua orbita",
                     color = LevyraText,
-                    fontSize = 29.sp,
-                    lineHeight = 31.sp,
+                    fontSize = 32.sp,
+                    lineHeight = 34.sp,
+                    letterSpacing = (-0.5).sp,
                     fontWeight = FontWeight.Black
                 )
                 Text(
@@ -1766,7 +1781,7 @@ private fun PersonalListeningShelf(
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(end = 4.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
             itemsIndexed(chunkedTracks) { colIndex, colTracks ->
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1817,9 +1832,9 @@ private fun PersonalListeningCard(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.Black.copy(alpha = 0.04f),
-                                Color.Black.copy(alpha = 0.34f),
-                                Color.Black.copy(alpha = 0.94f)
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.5f),
+                                Color.Black.copy(alpha = 0.95f)
                             )
                         )
                     )
@@ -2705,15 +2720,18 @@ private fun TrackOverflowMenu(
 
 @Composable
 private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>, selectedId: String, loading: Boolean, onSelect: (String) -> Unit) {
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
         if (loading) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+            item {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+            }
         }
-        regions.forEach { region ->
+        items(regions) { region ->
             val selected = region.id == selectedId
             Surface(
                 color = if (selected) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.07f),
@@ -5344,11 +5362,12 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 
 @Composable
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        moods.forEach { mood ->
+        items(moods) { mood ->
             val selected = mood.id == selectedId
             Surface(
                 color = if (selected) Color(mood.accentStart).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.06f),
@@ -5372,7 +5391,7 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
 @Composable
 private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -5408,7 +5427,8 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
 private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
         itemsIndexed(tracks, key = { index, track -> "album-card-$index-${track.id}" }) { index, track ->
             val isCurrent = track.id == currentId
@@ -6233,12 +6253,18 @@ private fun MiniPlayer(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    Surface(
-        color = Color(0xFF181818), // Dark docked background
-        shape = RoundedCornerShape(0.dp),
-        modifier = Modifier.fillMaxWidth()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Column {
+        Surface(
+            color = Color.Black.copy(alpha = 0.65f),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -6304,6 +6330,7 @@ private fun MiniPlayer(
             )
         }
     }
+}
 }
 
 @Composable
@@ -6755,27 +6782,23 @@ private fun VideoGlassCard(
 @Composable
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
-    Surface(
-        color = Color(0xFF020202),
-        shape = RoundedCornerShape(0.dp),
-        shadowElevation = 0.dp,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .drawBehind {
-                drawLine(
-                    color = if (flatTop) Color(0xFF20222B) else Color(0xFF181A22),
-                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                    end = androidx.compose.ui.geometry.Offset(size.width, 0f),
-                    strokeWidth = 1.dp.toPx()
-                )
-            }
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        contentAlignment = Alignment.BottomCenter
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            color = Color.Black.copy(alpha = 0.65f),
+            shape = RoundedCornerShape(999.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp)
-                    .padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 8.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -6785,7 +6808,6 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
                 TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
                 TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
             }
-            Spacer(modifier = Modifier.navigationBarsPadding())
         }
     }
 }
