@@ -1257,6 +1257,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         contentPadding = PaddingValues(top = 0.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
+        item {
             HomeTopBar(
                 userName = state.userName,
                 onSettings = viewModel::openSettings
@@ -1290,6 +1291,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     )
                 }
             }
+        }
         if (personalTracks.isNotEmpty()) {
             item {
                 PersonalListeningShelf(
