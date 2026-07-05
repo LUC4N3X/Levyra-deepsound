@@ -142,7 +142,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Origin", "https://music.youtube.com")
             setRequestProperty("Referer", "https://music.youtube.com/search?q=${query.replace(" ", "+")}")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
             setRequestProperty("X-Youtube-Client-Name", "67")
             setRequestProperty("X-Youtube-Client-Version", clientVersion)
             GoogleApiKeyHeaders.applyTo(this, context)
@@ -199,7 +199,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Origin", "https://music.youtube.com")
             setRequestProperty("Referer", "https://music.youtube.com/")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
             setRequestProperty("X-Youtube-Client-Name", "67")
             setRequestProperty("X-Youtube-Client-Version", clientVersion)
             GoogleApiKeyHeaders.applyTo(this, context)
@@ -341,7 +341,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Origin", "https://music.youtube.com")
             setRequestProperty("Referer", "https://music.youtube.com/search?q=${query.replace(" ", "+")}")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
             setRequestProperty("X-Youtube-Client-Name", "67")
             setRequestProperty("X-Youtube-Client-Version", clientVersion)
             GoogleApiKeyHeaders.applyTo(this, context)
@@ -374,20 +374,27 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private fun searchYoutubeExtractor(query: String, limit: Int): List<Track> {
         NewPipeRuntime.ensure()
         val service = org.schabi.newpipe.extractor.ServiceList.YouTube
-        val handler = service.searchQHFactory.fromQuery(
-            query,
-            listOf(org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS),
-            ""
+        val factory = service.searchQHFactory
+        val musicSongsFilter = findExtractorFilterItem(
+            factory.getAvailableContentFilter(),
+            org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS
         )
+        val handler = if (musicSongsFilter != null) {
+            factory.fromQuery(
+                query,
+                mutableListOf(musicSongsFilter),
+                mutableListOf<org.schabi.newpipe.extractor.search.filter.FilterItem>()
+            )
+        } else {
+            factory.fromQuery(query)
+        }
         val info = org.schabi.newpipe.extractor.search.SearchInfo.getInfo(service, handler)
         return info.relatedItems
             .filterIsInstance<org.schabi.newpipe.extractor.stream.StreamInfoItem>()
             .mapNotNull { item ->
                 val id = extractVideoId(item.url).ifBlank { stableId(item.url) }
                 if (id.isBlank()) return@mapNotNull null
-                val thumbnail = item.thumbnails.maxByOrNull { image ->
-                    image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
-                }?.url.orEmpty()
+                val thumbnail = item.thumbnailUrl.orEmpty()
                 buildTrack(
                     id = id,
                     title = item.name,
@@ -398,11 +405,21 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                     largeThumbnailUrl = upgradeThumbnail(thumbnail),
                     videoUrl = item.url,
                     query = query,
-                    source = "NewPipe YouTube Music"
+                    source = "MetrolistExtractor Search"
                 )
             }
             .distinctBy { it.id }
             .take(limit)
+    }
+
+    private fun findExtractorFilterItem(
+        filter: org.schabi.newpipe.extractor.search.filter.Filter,
+        name: String
+    ): org.schabi.newpipe.extractor.search.filter.FilterItem? {
+        return filter.filterGroups
+            .asSequence()
+            .flatMap { group -> group.filterItems.asSequence() }
+            .firstOrNull { item -> item.name.equals(name, ignoreCase = true) }
     }
 
     private val typeLabels = setOf(

@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
@@ -67,6 +68,7 @@ data class LevyraUiState(
     val audioQuality: String = "Auto",
     val showAudioQualityPanel: Boolean = false,
     val audioNormalization: Boolean = false,
+    val audioSettings: LevyraAudioSettings = LevyraAudioSettings(),
     val sleepTimerMinutes: Int = 0,
     val sponsorBlockEnabled: Boolean = true,
     val skipSilence: Boolean = false,
