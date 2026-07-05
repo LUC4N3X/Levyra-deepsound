@@ -143,6 +143,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -157,9 +158,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -1189,69 +1191,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
 }
 
 @Composable
-private fun HomeTopBar(
-    userName: String,
-    onSettings: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(LevyraCyan.copy(alpha = 0.4f), Color.Transparent),
-                            radius = 60f
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.levyra_logo),
-                    contentDescription = "Levyra",
-                    modifier = Modifier.size(38.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            Column {
-                Text(
-                    text = "Bentornato,",
-                    color = LevyraCyan,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(bottom = 2.dp)
-                )
-                Text(
-                    text = userName,
-                    color = Color.White,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.5).sp
-                )
-            }
-        }
-        CircleIconButton(
-            icon = Icons.Rounded.Settings,
-            tint = Color.White,
-            background = Color.White.copy(alpha = 0.08f),
-            onClick = onSettings
-        )
-    }
-}
-
-@Composable
 private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
-    val context = LocalContext.current
     val strings = LocalLevyraStrings.current
     val heroUpdate = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
         pickHeroUpdate(state)
@@ -1274,35 +1214,13 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(top = 0.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
         item {
-            HomeTopBar(
-                userName = state.userName,
-                onSettings = viewModel::openSettings
-            )
-        }
-        item {
-            MoodRow(
-                moods = state.moods,
-                selectedId = state.selectedMood?.id,
-                onSelect = viewModel::selectMood
-            )
-        }
-        if (heroTrack != null && heroUpdate != null) {
-            item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                ) {
-                    HeroTrackCard(
-                        track = heroTrack,
-                        isCurrent = state.currentTrack?.id == heroTrack.id,
-                        isPlaying = state.isPlaying && state.currentTrack?.id == heroTrack.id,
-                        badgeText = "IN EVIDENZA",
-                        onClick = { viewModel.playFrom(listOf(heroTrack), heroTrack) }
-                    )
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
+                MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
             }
         }
         if (personalTracks.isNotEmpty()) {
@@ -1331,15 +1249,13 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (state.currentTrack != null) {
             item {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    ContinueListeningCard(
-                        track = state.currentTrack,
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        progress = progressOf(state.positionMs, state.durationMs),
-                        onResume = viewModel::togglePlay
-                    )
-                }
+                ContinueListeningCard(
+                    track = state.currentTrack,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    progress = progressOf(state.positionMs, state.durationMs),
+                    onResume = viewModel::togglePlay
+                )
             }
         }
         if (trendingArtists.isNotEmpty()) {
@@ -1388,22 +1304,16 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (state.charts.isEmpty()) {
             item {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    if (state.isLoadingCharts) {
-                        ChartLoadingSkeleton()
-                    } else {
-                        GlassMessage(strings.top50Unavailable, LevyraOrange)
-                    }
+                if (state.isLoadingCharts) {
+                    ChartLoadingSkeleton()
+                } else {
+                    GlassMessage(strings.top50Unavailable, LevyraOrange)
                 }
             }
         }
         if (state.charts.isNotEmpty()) {
             item {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp)
-                ) {
+                LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     val chunks = state.charts.chunked(4)
                     itemsIndexed(chunks) { chunkIndex, chunk ->
                         Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1425,7 +1335,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
         }
-        item { Box(modifier = Modifier.padding(horizontal = 16.dp)) { StatusBlock(state) } }
+        item { StatusBlock(state) }
     }
 }
 
@@ -1495,15 +1405,26 @@ private fun TrendingArtistsShelf(
     onArtistClick: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Trending Artists",
-            color = LevyraText,
-            fontSize = 23.sp,
-            fontWeight = FontWeight.Black,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .height(23.dp)
+                    .width(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
+            )
+            Text(
+                text = "Trending Artists",
+                color = LevyraText,
+                fontSize = 23.sp,
+                letterSpacing = (-0.7).sp,
+                fontWeight = FontWeight.Black
+            )
+        }
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             items(artists) { artist ->
@@ -1517,15 +1438,28 @@ private fun TrendingArtistsShelf(
                             onClick = { onArtistClick(artist.name) }
                         )
                 ) {
-                    AsyncImage(
-                        model = artist.imageUrl,
-                        contentDescription = artist.name,
-                        contentScale = ContentScale.Crop,
+                    Box(
                         modifier = Modifier
                             .size(100.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF1A1A1A))
-                    )
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(LevyraCyan.copy(alpha = 0.55f), LevyraViolet.copy(alpha = 0.45f))
+                                )
+                            )
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = artist.imageUrl,
+                            contentDescription = artist.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .background(Color(0xFF1A1A1A))
+                        )
+                    }
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = artist.name,
@@ -1587,7 +1521,7 @@ private fun ResonanceShelf(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1606,9 +1540,8 @@ private fun ResonanceShelf(
                     Text(
                         text = "Voci che risuonano",
                         color = LevyraText,
-                        fontSize = 32.sp,
-                        lineHeight = 34.sp,
-                        letterSpacing = (-0.5).sp,
+                        fontSize = 28.sp,
+                        lineHeight = 30.sp,
                         fontWeight = FontWeight.Black
                     )
                 }
@@ -1637,7 +1570,7 @@ private fun ResonanceShelf(
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
+            contentPadding = PaddingValues(end = 6.dp)
         ) {
             itemsIndexed(tracks) { index, track ->
                 ResonanceCard(
@@ -1737,7 +1670,7 @@ private fun ResonanceCard(
                     }
                 }
                 Surface(
-                    color = Color.Black.copy(alpha = 0.4f),
+                    color = Color.Black.copy(alpha = 0.24f),
                     shape = RoundedCornerShape(24.dp),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
                     modifier = Modifier.fillMaxWidth()
@@ -1752,7 +1685,7 @@ private fun ResonanceCard(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Commenti totali", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Text(formatCompactNumber(comments), color = LevyraText, fontSize = 18.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Black)
+                            Text(formatCompactNumber(comments), color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black)
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1818,7 +1751,7 @@ private fun PersonalListeningShelf(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1829,9 +1762,8 @@ private fun PersonalListeningShelf(
                 Text(
                     text = "La tua orbita",
                     color = LevyraText,
-                    fontSize = 32.sp,
-                    lineHeight = 34.sp,
-                    letterSpacing = (-0.5).sp,
+                    fontSize = 29.sp,
+                    lineHeight = 31.sp,
                     fontWeight = FontWeight.Black
                 )
                 Text(
@@ -1861,7 +1793,7 @@ private fun PersonalListeningShelf(
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp)
+            contentPadding = PaddingValues(end = 4.dp)
         ) {
             itemsIndexed(chunkedTracks) { colIndex, colTracks ->
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1912,9 +1844,9 @@ private fun PersonalListeningCard(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.5f),
-                                Color.Black.copy(alpha = 0.95f)
+                                Color.Black.copy(alpha = 0.04f),
+                                Color.Black.copy(alpha = 0.34f),
+                                Color.Black.copy(alpha = 0.94f)
                             )
                         )
                     )
@@ -2800,18 +2732,15 @@ private fun TrackOverflowMenu(
 
 @Composable
 private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>, selectedId: String, loading: Boolean, onSelect: (String) -> Unit) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (loading) {
-            item {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
-            }
+            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
         }
-        items(regions) { region ->
+        regions.forEach { region ->
             val selected = region.id == selectedId
             Surface(
                 color = if (selected) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.07f),
@@ -4996,50 +4925,113 @@ private fun SettingsMiniButton(
 }
 
 @Composable
+@Composable
+private fun LevyraLogoMark(size: Dp = 46.dp) {
+    val corner = RoundedCornerShape(15.dp)
+    Box(contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier
+                .size(size + 14.dp)
+                .blur(20.dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(LevyraCyan.copy(alpha = 0.34f), LevyraViolet.copy(alpha = 0.20f), Color.Transparent)
+                    ),
+                    CircleShape
+                )
+        )
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(corner)
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFF171326), Color(0xFF0C0A18))
+                    )
+                )
+                .border(
+                    1.dp,
+                    Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.55f), LevyraViolet.copy(alpha = 0.45f))),
+                    corner
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.levyra_logo),
+                contentDescription = "Logo Levyra",
+                modifier = Modifier
+                    .size(31.dp)
+                    .clip(CircleShape)
+            )
+        }
+    }
+}
+
+@Composable
+private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(
+            text = "LEVYRA",
+            style = TextStyle(
+                brush = Brush.linearGradient(
+                    listOf(Color.White, Color(0xFFE7E1FF), LevyraCyan.copy(alpha = 0.92f))
+                ),
+                fontSize = fontSize,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.5).sp
+            )
+        )
+        Box(
+            modifier = Modifier
+                .padding(start = 3.dp, bottom = 4.dp)
+                .size(dotSize)
+                .background(
+                    Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)),
+                    CircleShape
+                )
+        )
+    }
+}
+
+@Composable
 private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Image(
-                painter = painterResource(id = R.drawable.levyra_logo),
-                contentDescription = "Logo Levyra",
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.04f))
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
-                    .padding(6.dp)
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            LevyraLogoMark(size = 46.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                LevyraWordmark(fontSize = 27.sp)
                 Text(
-                    text = greeting(userName).uppercase(),
+                    text = greeting(userName),
                     color = LevyraMuted,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.5.sp
-                )
-                Text(
-                    text = "LEVYRA",
-                    style = TextStyle(
-                        brush = Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)),
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.5.sp
-                    )
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.2.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (isResolving) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(LevyraCyan.copy(alpha = 0.10f))
+                        .border(1.dp, LevyraCyan.copy(alpha = 0.25f), CircleShape)
+                        .padding(9.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = LevyraCyan)
+                }
             }
             CircleIconButton(
                 icon = Icons.Rounded.Settings,
                 tint = LevyraText,
-                background = Color.White.copy(alpha = 0.08f),
+                background = Color.White.copy(alpha = 0.07f),
                 onClick = onSettings
             )
         }
@@ -5442,12 +5434,11 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 
 @Composable
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp)
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(moods) { mood ->
+        moods.forEach { mood ->
             val selected = mood.id == selectedId
             Surface(
                 color = if (selected) Color(mood.accentStart).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.06f),
@@ -5471,20 +5462,32 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
 @Composable
 private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = title,
-            color = LevyraText,
-            fontSize = 26.sp,
-            letterSpacing = (-0.5).sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).padding(start = 2.dp)
-        )
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .height(23.dp)
+                    .width(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
+            )
+            Text(
+                text = title,
+                color = LevyraText,
+                fontSize = 23.sp,
+                letterSpacing = (-0.7).sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         Surface(
             color = Color.White.copy(alpha = 0.05f),
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
@@ -5492,12 +5495,12 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
             modifier = Modifier.pressable(onClick = onPlayAll)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.padding(start = 11.dp, end = 13.dp, top = 7.dp, bottom = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(16.dp))
-                Text("Play All", color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(15.dp))
+                Text("Play All", color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.2.sp)
             }
         }
     }
@@ -5507,8 +5510,7 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
 private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         itemsIndexed(tracks, key = { index, track -> "album-card-$index-${track.id}" }) { index, track ->
             val isCurrent = track.id == currentId
@@ -6334,7 +6336,7 @@ private fun MiniPlayer(
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     Surface(
-        color = Color(0xFF181818),
+        color = Color(0xFF181818), // Dark docked background
         shape = RoundedCornerShape(0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -6653,114 +6655,6 @@ private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () 
 }
 
 @Composable
-private fun HeroTrackCard(
-    track: Track,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    badgeText: String,
-    onClick: () -> Unit
-) {
-    val scale by animateFloatAsState(if (isCurrent) 0.98f else 1f, label = "scale")
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(300.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(RoundedCornerShape(24.dp))
-            .clickable { onClick() }
-    ) {
-        AsyncImage(
-            model = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.2f),
-                            Color.Black.copy(alpha = 0.95f)
-                        )
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .padding(20.dp)
-                .align(Alignment.TopStart)
-                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
-                Text(
-                    text = badgeText,
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
-                )
-            }
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Bottom
-        ) {
-            Text(
-                text = track.title,
-                color = Color.White,
-                fontSize = 32.sp,
-                lineHeight = 34.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-1).sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = track.artist,
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Surface(
-                    color = LevyraCyan,
-                    shape = CircleShape,
-                    modifier = Modifier.size(54.dp)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(
-                            if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = null,
-                            tint = LevyraBlack,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun TrackGlassCard(
     track: Track,
     isCurrent: Boolean,
@@ -6964,7 +6858,7 @@ private fun VideoGlassCard(
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = Color(0xFF020202).copy(alpha = 0.9f),
+        color = Color(0xFF020202),
         shape = RoundedCornerShape(0.dp),
         shadowElevation = 0.dp,
         modifier = Modifier
@@ -6982,8 +6876,8 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(72.dp)
-                    .padding(horizontal = 16.dp),
+                    .height(80.dp)
+                    .padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -6997,6 +6891,7 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
         }
     }
 }
+
 
 @Composable
 private fun PageHeader(title: String, subtitle: String) {
