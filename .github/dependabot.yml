@@ -1,0 +1,57 @@
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Rome"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:30"
+      timezone: "Europe/Rome"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "gradle"
+    groups:
+      android-core:
+        patterns:
+          - "androidx.*"
+          - "com.android.*"
+          - "org.jetbrains.kotlin.*"
+      media-stack:
+        patterns:
+          - "androidx.media3*"
+          - "com.google.android.exoplayer*"
+      networking:
+        patterns:
+          - "com.squareup.okhttp3*"
+          - "io.ktor*"
+      image-loading:
+        patterns:
+          - "io.coil-kt*"
+      extractor-stack:
+        patterns:
+          - "com.github.MetrolistGroup*"
+          - "org.schabi*"
