@@ -31,6 +31,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
@@ -69,8 +72,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L),
         ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L),
         ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 8L),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36", false, 18L)
+        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 8L),
+        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 18L)
     )
 
     init {
@@ -203,10 +206,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (isVideoMode) {
             val resolved = coroutineScope {
                 val winner = CompletableDeferred<Track?>()
-                val npJob = launch {
-                    val r = runCatching { resolveVideoWithNewPipe(track) }
+                val extractorJob = launch {
+                    val r = runCatching { resolveVideoWithMetrolistExtractor(track) }
                     r.onSuccess { winner.complete(it) }
-                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "NewPipe video: $m" } }
+                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "MetrolistExtractor video: $m" } }
                 }
                 val itJob = launch {
                     val stream = runCatching { raceInnerTube(track, errors, true, preferMp4Audio = false) }.getOrNull()
@@ -224,7 +227,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     }
                 }
                 launch {
-                    npJob.join(); itJob.join()
+                    extractorJob.join(); itJob.join()
                     winner.complete(null)
                 }
                 val result = winner.await()
@@ -259,15 +262,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             val stream = runCatching { raceInnerTube(track, errors, false, preferMp4Audio) }.getOrNull()
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
-        val newPipeJob = launch {
-            if (!preferMp4Audio) delay(60L)
-            val resolved = runCatching { resolveWithNewPipe(track) }
+        val extractorJob = launch {
+            if (!preferMp4Audio) delay(35L)
+            val resolved = runCatching { resolveWithMetrolistExtractor(track, preferMp4Audio) }
             resolved.onSuccess { winner.complete(it) }
-                .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "NewPipe: $message" } }
+                .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "MetrolistExtractor: $message" } }
         }
         launch {
             innerTubeJob.join()
-            newPipeJob.join()
+            extractorJob.join()
             winner.complete(null)
         }
         val result = winner.await()
@@ -295,7 +298,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val workers = profiles.map { profile ->
             launch {
                 if (profile.delayMs > 0L) delay(profile.delayMs)
-                val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode) }
+                val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio) }
                 attempt.onSuccess { stream ->
                     if (stream.url.isBlank()) return@onSuccess
                     if (!isVideoMode && preferMp4Audio && !isMp4AudioUrl(stream.url)) {
@@ -368,7 +371,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun isLegacyWebmAudioUrl(url: String): Boolean {
         val clean = url.lowercase()
-        return clean.contains("mime=audio%2fwebm") || clean.substringBefore('?').endsWith(".webm")
+        return clean.contains("mime=audio%2fwebm") && clean.contains("expire=0")
     }
 
     private fun isMp4AudioUrl(url: String): Boolean {
@@ -399,7 +402,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         return if (isVideoMode) "${base}_video_$quality" else "${base}_audio_$quality"
     }
 
-    private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false): DirectStream {
+    private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false, preferMp4Audio: Boolean = false): DirectStream {
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
         val body = buildPlayerBody(track.id, profile).toString()
         val requestBuilder = Request.Builder()
@@ -430,41 +433,21 @@ class PlaybackResolver private constructor(private val context: Context) {
             val muxedFormats = streamingData.optJSONArray("formats") ?: JSONArray()
 
             var bestAudioUrl = ""
-            var bestAudioScore = -1
+            var bestAudioScore = Int.MIN_VALUE
+            var bestAudioLabel = ""
             for (i in 0 until adaptiveFormats.length()) {
                 val format = adaptiveFormats.optJSONObject(i) ?: continue
                 val mime = format.optString("mimeType")
-                val url = format.optString("url")
+                val url = format.directFormatUrl()
                 if (!mime.startsWith("audio/", true) || url.isBlank()) continue
+                val itag = format.optInt("itag", 0)
                 val bitrate = format.optInt("bitrate", 0)
                 val audioQuality = format.optString("audioQuality")
-                val mimeBoost = when {
-                    mime.contains("mp4", true) -> 2_000_000
-                    mime.contains("m4a", true) -> 2_000_000
-                    mime.contains("webm", true) -> 40_000
-                    else -> 0
-                }
-                val qualityBias = when (selectedAudioQuality.lowercase()) {
-                    "high" -> bitrate + when {
-                        audioQuality.contains("HIGH", true) -> 900_000
-                        audioQuality.contains("MEDIUM", true) -> 500_000
-                        else -> 0
-                    }
-                    "low" -> -bitrate + when {
-                        audioQuality.contains("LOW", true) -> 900_000
-                        audioQuality.contains("MEDIUM", true) -> 300_000
-                        else -> 0
-                    }
-                    else -> bitrate + when {
-                        audioQuality.contains("HIGH", true) -> 900_000
-                        audioQuality.contains("MEDIUM", true) -> 500_000
-                        else -> 0
-                    }
-                }
-                val score = qualityBias + mimeBoost
+                val score = scoreAudioFormat(mime, itag, bitrate, audioQuality, preferMp4Audio)
                 if (score > bestAudioScore) {
                     bestAudioScore = score
                     bestAudioUrl = url
+                    bestAudioLabel = formatLabel(mime, itag, bitrate, audioQuality)
                 }
             }
 
@@ -474,7 +457,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 for (i in 0 until adaptiveFormats.length()) {
                     val format = adaptiveFormats.optJSONObject(i) ?: continue
                     val mime = format.optString("mimeType")
-                    val url = format.optString("url")
+                    val url = format.directFormatUrl()
                     if (!mime.startsWith("video/", true) || url.isBlank()) continue
                     val height = format.optInt("height", 0)
                     val penalty = if (height > 1080) -1 else 0
@@ -491,7 +474,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 for (i in 0 until muxedFormats.length()) {
                     val format = muxedFormats.optJSONObject(i) ?: continue
                     val mime = format.optString("mimeType")
-                    val url = format.optString("url")
+                    val url = format.directFormatUrl()
                     if (!mime.startsWith("video/", true) || url.isBlank()) continue
                     val height = format.optInt("height", 0)
                     if (height > muxedScore) {
@@ -551,18 +534,22 @@ class PlaybackResolver private constructor(private val context: Context) {
                 videoUrl = "",
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
-                source = "YouTube Music ${profile.label}"
+                source = "YouTube ${profile.label}${bestAudioLabel.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
             )
         }
     }
 
-    private fun selectAudioStream(streams: List<AudioStream>): AudioStream? {
-        val preferred = streams.filter { isMp4AudioStream(it) }.ifEmpty { streams }
-        val comparator = compareBy<AudioStream> { it.averageBitrate }.thenBy { it.formatId }
-        return when (selectedAudioQuality.lowercase()) {
-            "low" -> preferred.minWithOrNull(comparator)
-            else -> preferred.maxWithOrNull(comparator)
-        }
+    private fun selectAudioStream(streams: List<AudioStream>, preferMp4Audio: Boolean): AudioStream? {
+        val playable = streams.filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
+            .ifEmpty { streams.filter { it.isUrl && it.content.isNotBlank() } }
+        return playable.maxByOrNull { scoreExtractorAudio(it, preferMp4Audio) }
+    }
+
+    private fun scoreExtractorAudio(stream: AudioStream, preferMp4Audio: Boolean): Int {
+        val formatName = stream.getFormat()?.name.orEmpty()
+        val content = stream.content
+        val mime = "$formatName $content"
+        return scoreAudioFormat(mime, stream.formatId, stream.averageBitrate, "", preferMp4Audio)
     }
 
     private fun isMp4AudioStream(stream: AudioStream): Boolean {
@@ -571,16 +558,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         return formatName.contains("MPEG", ignoreCase = true) ||
             formatName.contains("M4A", ignoreCase = true) ||
             content.contains("mime=audio%2fmp4") ||
+            content.contains("mime=audio/mp4") ||
             content.substringBefore('?').endsWith(".m4a") ||
             content.substringBefore('?').endsWith(".mp4")
     }
 
-    private fun resolveWithNewPipe(track: Track): Track {
+    private fun resolveWithMetrolistExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
-        val audio = info.audioStreams
-            .filter { it.isUrl && it.content.isNotBlank() }
-            .let { selectAudioStream(it) }
+        val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
         val url = audio?.content
             ?: info.hlsUrl.takeIf { it.isNotBlank() }
             ?: info.videoStreams.firstOrNull { it.isUrl && it.content.isNotBlank() }?.content
@@ -588,16 +574,17 @@ class PlaybackResolver private constructor(private val context: Context) {
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
         }?.url.orEmpty()
+        val label = audio?.let { streamLabel(it) }.orEmpty()
         return track.copy(
             streamUrl = url,
             durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs,
             thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
             largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-            source = "NewPipe YouTube"
+            source = "MetrolistExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
         )
     }
 
-    private fun resolveVideoWithNewPipe(track: Track): Track {
+    private fun resolveVideoWithMetrolistExtractor(track: Track): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
 
@@ -606,14 +593,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         }?.url.orEmpty()
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
 
-        val bestAudio = info.audioStreams
-            .filter { it.isUrl && it.content.isNotBlank() }
-            .let { selectAudioStream(it) }
-            ?.content
+        val bestAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false)?.content
 
         val muxed = info.videoStreams
-            .filter { it.isUrl && it.content.isNotBlank() }
+            .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
             .maxByOrNull { heightOf(it.getResolution()) }
+            ?: info.videoStreams
+                .filter { it.isUrl && it.content.isNotBlank() }
+                .maxByOrNull { heightOf(it.getResolution()) }
 
         if (muxed != null && heightOf(muxed.getResolution()) >= 480) {
             return track.copy(
@@ -622,12 +609,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "NewPipe Fast Muxed"
+                source = "MetrolistExtractor Fast Muxed"
             )
         }
 
         val bestVideoOnly = info.videoOnlyStreams
-            .filter { it.isUrl && it.content.isNotBlank() }
+            .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
+            .ifEmpty { info.videoOnlyStreams.filter { it.isUrl && it.content.isNotBlank() } }
             .filter { heightOf(it.getResolution()) in 1..1080 }
             .maxWithOrNull(
                 compareBy<VideoStream> { heightOf(it.getResolution()) }
@@ -642,7 +630,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "NewPipe Video"
+                source = "MetrolistExtractor Video"
             )
         }
 
@@ -653,7 +641,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "NewPipe Muxed"
+                source = "MetrolistExtractor Muxed"
             )
         }
 
@@ -665,11 +653,18 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "NewPipe HLS"
+                source = "MetrolistExtractor HLS"
             )
         }
 
         throw IllegalStateException("Nessuno stream video disponibile per ${track.title}")
+    }
+
+    private fun streamLabel(stream: AudioStream): String {
+        val format = stream.getFormat()?.name.orEmpty().ifBlank { "audio" }
+        val bitrate = stream.averageBitrate.takeIf { it > 0 }?.let { "${it / 1000}kbps" }.orEmpty()
+        val itag = stream.formatId.takeIf { it > 0 }?.let { "itag $it" }.orEmpty()
+        return listOf(format, bitrate, itag).filter { it.isNotBlank() }.joinToString(" · ")
     }
 
     private fun heightOf(resolution: String?): Int {
@@ -708,6 +703,102 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("playbackContext", JSONObject().put("contentPlaybackContext", JSONObject().put("html5Preference", "HTML5_PREF_WANTS")))
             .put("params", "CgIQBg")
             .put("watchEndpointMusicSupportedConfigs", JSONObject().put("watchEndpointMusicConfig", JSONObject().put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")))
+    }
+
+    private fun scoreAudioFormat(mime: String, itag: Int, bitrate: Int, audioQuality: String, preferMp4Audio: Boolean): Int {
+        val clean = mime.lowercase()
+        val isMp4 = clean.contains("mp4") || clean.contains("m4a") || clean.contains("mpeg")
+        val isOpus = clean.contains("opus") || clean.contains("webm")
+        val formatBias = when {
+            preferMp4Audio && isMp4 -> 3_000_000
+            preferMp4Audio && isOpus -> -300_000
+            isOpus -> 620_000
+            isMp4 -> 420_000
+            else -> 0
+        }
+        val itagBias = if (selectedAudioQuality.equals("low", true)) {
+            when (itag) {
+                139 -> 420_000
+                249 -> 380_000
+                140 -> 260_000
+                250 -> 180_000
+                251 -> 80_000
+                141 -> 40_000
+                else -> 0
+            }
+        } else {
+            when (itag) {
+                251 -> 760_000
+                141 -> 700_000
+                140 -> 560_000
+                250 -> 480_000
+                249 -> 280_000
+                139 -> 120_000
+                else -> 0
+            }
+        }
+        val qualityBias = when {
+            audioQuality.contains("HIGH", true) -> 620_000
+            audioQuality.contains("MEDIUM", true) -> 420_000
+            audioQuality.contains("LOW", true) -> 120_000
+            else -> 0
+        }
+        val bitrateBias = when (selectedAudioQuality.lowercase()) {
+            "low" -> -bitrate
+            "high" -> bitrate
+            else -> bitrate / 2
+        }
+        return formatBias + itagBias + qualityBias + bitrateBias
+    }
+
+    private fun formatLabel(mime: String, itag: Int, bitrate: Int, audioQuality: String): String {
+        val codec = when {
+            mime.contains("opus", true) -> "Opus"
+            mime.contains("webm", true) -> "WebM"
+            mime.contains("mp4", true) || mime.contains("m4a", true) -> "M4A"
+            else -> "Audio"
+        }
+        val br = bitrate.takeIf { it > 0 }?.let { "${it / 1000}kbps" }.orEmpty()
+        val tag = itag.takeIf { it > 0 }?.let { "itag $it" }.orEmpty()
+        val quality = audioQuality.removePrefix("AUDIO_QUALITY_").lowercase().replaceFirstChar { it.uppercase() }
+        return listOf(codec, br, tag, quality).filter { it.isNotBlank() }.joinToString(" · ")
+    }
+
+    private fun JSONObject.directFormatUrl(): String {
+        optString("url").takeIf { it.isNotBlank() }?.let { return it }
+        val cipher = optString("signatureCipher").ifBlank { optString("cipher") }
+        if (cipher.isBlank()) return ""
+        val values = cipher.formValues()
+        val base = values["url"].orEmpty()
+        if (base.isBlank()) return ""
+        val signature = values["sig"] ?: values["signature"]
+        if (signature.isNullOrBlank()) return ""
+        val signatureParameter = values["sp"].takeUnless { it.isNullOrBlank() } ?: "signature"
+        return base.withQueryParameter(signatureParameter, signature)
+    }
+
+    private fun String.formValues(): Map<String, String> {
+        val output = LinkedHashMap<String, String>()
+        split('&').forEach { part ->
+            val key = part.substringBefore('=', "")
+            if (key.isBlank()) return@forEach
+            val value = part.substringAfter('=', "")
+            output[key.urlDecode()] = value.urlDecode()
+        }
+        return output
+    }
+
+    private fun String.withQueryParameter(key: String, value: String): String {
+        val separator = if (contains('?')) "&" else "?"
+        return "$this$separator${key.urlEncode()}=${value.urlEncode()}"
+    }
+
+    private fun String.urlDecode(): String {
+        return runCatching { URLDecoder.decode(this, StandardCharsets.UTF_8.name()) }.getOrElse { this }
+    }
+
+    private fun String.urlEncode(): String {
+        return URLEncoder.encode(this, StandardCharsets.UTF_8.name())
     }
 
     private fun JSONArray.bestThumbnail(): String {
