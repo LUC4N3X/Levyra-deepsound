@@ -112,6 +112,8 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -232,13 +234,27 @@ private fun cinematicTextBrush(): Brush {
 
 @Composable
 private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.8f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow),
+        label = "tab-press-scale"
+    )
+    val pressGlow by animateFloatAsState(
+        targetValue = if (pressed) 1f else 0f,
+        animationSpec = tween(if (pressed) 100 else 300),
+        label = "tab-press-glow"
+    )
+
     val offsetY by animateDpAsState(
         targetValue = if (selected && LocalAnimationsEnabled.current) (-6).dp else 0.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "tab-offset-y"
     )
     val textAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.38f,
+        targetValue = if (selected) 1f else if (pressed) 0.7f else 0.38f,
         animationSpec = tween(260),
         label = "tab-text-alpha"
     )
@@ -248,7 +264,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         label = "tab-selected-alpha"
     )
     val iconTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFF93DCFF) else Color(0xFF737373),
+        targetValue = if (selected) Color(0xFF93DCFF) else if (pressed) Color(0xFFBDEBFF) else Color(0xFF737373),
         animationSpec = tween(260),
         label = "tab-icon-tint"
     )
@@ -272,7 +288,11 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         modifier = Modifier
             .weight(1f)
             .fillMaxSize()
-            .pressable(onClick = onClick),
+            .pressable(
+                interactionSource = interactionSource,
+                pressedScale = 0.94f,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -286,10 +306,27 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                 modifier = Modifier
                     .size(34.dp)
                     .graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
+                        scaleX = iconScale * pressScale
+                        scaleY = iconScale * pressScale
                     }
                     .drawBehind {
+                        if (pressGlow > 0f) {
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        Color(0xFF5BD6FF).copy(alpha = 0.35f * pressGlow),
+                                        LevyraViolet.copy(alpha = 0.15f * pressGlow),
+                                        Color.Transparent
+                                    )
+                                ),
+                                radius = size.minDimension * 1.5f * pressGlow
+                            )
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.15f * pressGlow),
+                                radius = size.minDimension * 0.45f * pressGlow
+                            )
+                        }
+
                         drawCircle(
                             color = Color(0xFF54C8FF).copy(alpha = 0.13f * selectedAlpha),
                             radius = size.minDimension * 0.46f
@@ -422,13 +459,22 @@ private fun EmptyState(text: String) {
     }
 }
 @Composable
-private fun Modifier.pressable(enabled: Boolean = true, onClick: () -> Unit): Modifier {
+private fun Modifier.pressable(
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource? = null,
+    pressedScale: Float = 0.96f,
+    onClick: () -> Unit
+): Modifier {
     if (!LocalAnimationsEnabled.current) {
         return this.clickable(enabled = enabled, onClick = onClick)
     }
-    val interaction = remember { MutableInteractionSource() }
+    val interaction = interactionSource ?: remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.96f else 1f, label = "press")
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) pressedScale else 1f, 
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+        label = "press"
+    )
     return this
         .graphicsLayer { scaleX = scale; scaleY = scale }
         .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
@@ -4925,41 +4971,39 @@ private fun SettingsMiniButton(
 }
 
 @Composable
-private fun LevyraLogoMark(size: Dp = 46.dp) {
-    val corner = RoundedCornerShape(15.dp)
+private fun LevyraLogoMark(size: Dp = 58.dp) {
     Box(contentAlignment = Alignment.Center) {
+        // Glowing halo behind the logo
         Box(
             modifier = Modifier
-                .size(size + 14.dp)
-                .blur(20.dp)
+                .size(size * 1.4f)
+                .blur(16.dp)
                 .background(
                     Brush.radialGradient(
-                        listOf(LevyraCyan.copy(alpha = 0.34f), LevyraViolet.copy(alpha = 0.20f), Color.Transparent)
+                        listOf(LevyraCyan.copy(alpha = 0.5f), LevyraViolet.copy(alpha = 0.25f), Color.Transparent)
                     ),
                     CircleShape
                 )
         )
+        // Container to protect the logo from being cut
         Box(
             modifier = Modifier
                 .size(size)
-                .clip(corner)
-                .background(
-                    Brush.linearGradient(
-                        listOf(Color(0xFF171326), Color(0xFF0C0A18))
-                    )
-                )
+                .clip(CircleShape)
+                .background(LevyraBlack) // Blocks the halo from bleeding through the transparent logo
                 .border(
                     1.dp,
-                    Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.55f), LevyraViolet.copy(alpha = 0.45f))),
-                    corner
+                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.25f), Color.Transparent)),
+                    CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
+            // The raw logo with some padding
             Image(
                 painter = painterResource(id = R.drawable.levyra_logo),
                 contentDescription = "Logo Levyra",
                 modifier = Modifier
-                    .size(31.dp)
+                    .size(size * 0.78f) // Reduced size so the outer grooves don't touch the border
                     .clip(CircleShape)
             )
         }
@@ -4995,18 +5039,25 @@ private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
 @Composable
 private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp, top = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            LevyraLogoMark(size = 46.dp)
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                LevyraWordmark(fontSize = 27.sp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.weight(1f)
+        ) {
+            LevyraLogoMark(size = 62.dp)
+            
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                LevyraWordmark(fontSize = 28.sp, dotSize = 5.dp)
                 Text(
                     text = greeting(userName),
                     color = LevyraMuted,
-                    fontSize = 11.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.2.sp,
                     maxLines = 1,
@@ -5014,6 +5065,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                 )
             }
         }
+
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (isResolving) {
                 Box(
