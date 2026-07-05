@@ -142,7 +142,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Origin", "https://music.youtube.com")
             setRequestProperty("Referer", "https://music.youtube.com/search?q=${query.replace(" ", "+")}")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
             setRequestProperty("X-Youtube-Client-Name", "67")
             setRequestProperty("X-Youtube-Client-Version", clientVersion)
             GoogleApiKeyHeaders.applyTo(this, context)
@@ -199,7 +199,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Origin", "https://music.youtube.com")
             setRequestProperty("Referer", "https://music.youtube.com/")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
             setRequestProperty("X-Youtube-Client-Name", "67")
             setRequestProperty("X-Youtube-Client-Version", clientVersion)
             GoogleApiKeyHeaders.applyTo(this, context)
@@ -341,7 +341,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Origin", "https://music.youtube.com")
             setRequestProperty("Referer", "https://music.youtube.com/search?q=${query.replace(" ", "+")}")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
             setRequestProperty("X-Youtube-Client-Name", "67")
             setRequestProperty("X-Youtube-Client-Version", clientVersion)
             GoogleApiKeyHeaders.applyTo(this, context)
@@ -398,7 +398,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                     largeThumbnailUrl = upgradeThumbnail(thumbnail),
                     videoUrl = item.url,
                     query = query,
-                    source = "NewPipe YouTube Music"
+                    source = "MetrolistExtractor Search"
                 )
             }
             .distinctBy { it.id }

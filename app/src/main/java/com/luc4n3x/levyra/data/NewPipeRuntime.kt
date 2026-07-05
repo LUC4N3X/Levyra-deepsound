@@ -39,8 +39,10 @@ private class OkHttpNewPipeDownloader : Downloader() {
             .url(request.url())
             .method(request.httpMethod(), if (request.httpMethod().equals("GET", true) || request.httpMethod().equals("HEAD", true)) null else body)
             .headers(request.headers().flattenHeaders().toHeaders())
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7")
+            .header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
+            .header("Connection", "keep-alive")
         client.newCall(builder.build()).execute().use { response ->
             val responseBody = response.body?.string().orEmpty()
             if (response.code == 429) throw IOException("YouTube ha limitato temporaneamente le richieste")

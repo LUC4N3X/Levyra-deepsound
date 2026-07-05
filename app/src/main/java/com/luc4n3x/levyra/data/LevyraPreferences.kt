@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -11,6 +13,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraAudioPresets
+import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -44,7 +48,8 @@ data class LevyraPreferencesSnapshot(
     val lastPositionMs: Long,
     val recentSearches: List<Track>,
     val audioNormalization: Boolean,
-    val themePreset: String
+    val themePreset: String,
+    val audioSettings: LevyraAudioSettings
 )
 
 class LevyraPreferences(context: Context) {
@@ -113,6 +118,25 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_AUDIO_NORMALIZATION] = value }
     }
 
+    fun audioSettings(): LevyraAudioSettings = read(LevyraAudioSettings()) { audioSettingsFrom(it) }
+
+    fun setAudioSettings(value: LevyraAudioSettings) {
+        val normalized = value.normalized()
+        write {
+            it[KEY_AUDIO_EQ_ENABLED] = normalized.equalizerEnabled
+            it[KEY_AUDIO_EQ_PRESET] = normalized.presetId
+            it[KEY_AUDIO_EQ_BANDS] = normalized.bandLevels.joinToString(",")
+            it[KEY_AUDIO_BASS_BOOST] = normalized.bassBoost
+            it[KEY_AUDIO_VIRTUALIZER] = normalized.virtualizer
+            it[KEY_AUDIO_CROSSFADE] = normalized.crossfadeSeconds
+            it[KEY_AUDIO_DJ_SOFT] = normalized.djSoftMode
+            it[KEY_AUDIO_REPLAY_GAIN] = normalized.replayGainEnabled
+            it[KEY_AUDIO_SPEED] = normalized.playbackSpeed
+            it[KEY_AUDIO_PITCH] = normalized.pitch
+            it[KEY_AUDIO_GAPLESS] = normalized.gaplessEnabled
+        }
+    }
+
     fun audioQuality(): String = read("Auto") { normalizeAudioQuality(it[KEY_AUDIO_QUALITY].orEmpty()) }
 
     fun setAudioQuality(value: String) {
@@ -165,7 +189,8 @@ class LevyraPreferences(context: Context) {
             lastPositionMs = preferences[KEY_LAST_POSITION] ?: 0L,
             recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty()),
             audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false,
-            themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty())
+            themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty()),
+            audioSettings = audioSettingsFrom(preferences)
         )
     }
 
@@ -184,7 +209,8 @@ class LevyraPreferences(context: Context) {
         lastPositionMs = 0L,
         recentSearches = emptyList(),
         audioNormalization = false,
-        themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC
+        themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC,
+        audioSettings = LevyraAudioSettings()
     )
 
     private fun parseTrack(raw: String, warning: String): Track? {
@@ -206,6 +232,30 @@ class LevyraPreferences(context: Context) {
         "high" -> "High"
         "low" -> "Low"
         else -> "Auto"
+    }
+
+    private fun audioSettingsFrom(preferences: Preferences): LevyraAudioSettings {
+        val presetId = LevyraAudioPresets.normalizePreset(preferences[KEY_AUDIO_EQ_PRESET].orEmpty())
+        val fallbackLevels = LevyraAudioPresets.levelsFor(presetId)
+        val levels = parseBandLevels(preferences[KEY_AUDIO_EQ_BANDS].orEmpty()).takeIf { it.size == LevyraAudioPresets.bandCount } ?: fallbackLevels
+        return LevyraAudioSettings(
+            equalizerEnabled = preferences[KEY_AUDIO_EQ_ENABLED] ?: false,
+            presetId = presetId,
+            bandLevels = levels,
+            bassBoost = preferences[KEY_AUDIO_BASS_BOOST] ?: LevyraAudioPresets.preset(presetId).bassBoost,
+            virtualizer = preferences[KEY_AUDIO_VIRTUALIZER] ?: LevyraAudioPresets.preset(presetId).virtualizer,
+            crossfadeSeconds = preferences[KEY_AUDIO_CROSSFADE] ?: 0,
+            djSoftMode = preferences[KEY_AUDIO_DJ_SOFT] ?: false,
+            replayGainEnabled = preferences[KEY_AUDIO_REPLAY_GAIN] ?: (preferences[KEY_AUDIO_NORMALIZATION] ?: false),
+            playbackSpeed = preferences[KEY_AUDIO_SPEED] ?: 1f,
+            pitch = preferences[KEY_AUDIO_PITCH] ?: 1f,
+            gaplessEnabled = preferences[KEY_AUDIO_GAPLESS] ?: true
+        ).normalized()
+    }
+
+    private fun parseBandLevels(raw: String): List<Int> {
+        if (raw.isBlank()) return emptyList()
+        return raw.split(',').mapNotNull { it.trim().toIntOrNull() }
     }
 
     private fun <T> read(default: T, selector: (Preferences) -> T): T = runBlocking(Dispatchers.IO) {
@@ -244,5 +294,16 @@ class LevyraPreferences(context: Context) {
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
+        val KEY_AUDIO_EQ_ENABLED = booleanPreferencesKey("audio_equalizer_enabled")
+        val KEY_AUDIO_EQ_PRESET = stringPreferencesKey("audio_equalizer_preset")
+        val KEY_AUDIO_EQ_BANDS = stringPreferencesKey("audio_equalizer_bands")
+        val KEY_AUDIO_BASS_BOOST = intPreferencesKey("audio_bass_boost")
+        val KEY_AUDIO_VIRTUALIZER = intPreferencesKey("audio_virtualizer")
+        val KEY_AUDIO_CROSSFADE = intPreferencesKey("audio_crossfade_seconds")
+        val KEY_AUDIO_DJ_SOFT = booleanPreferencesKey("audio_dj_soft")
+        val KEY_AUDIO_REPLAY_GAIN = booleanPreferencesKey("audio_replay_gain")
+        val KEY_AUDIO_SPEED = floatPreferencesKey("audio_speed")
+        val KEY_AUDIO_PITCH = floatPreferencesKey("audio_pitch")
+        val KEY_AUDIO_GAPLESS = booleanPreferencesKey("audio_gapless")
     }
 }
