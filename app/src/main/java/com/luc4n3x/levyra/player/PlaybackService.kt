@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.player
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -33,6 +34,7 @@ import com.google.common.util.concurrent.SettableFuture
 import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,6 +57,11 @@ class PlaybackService : MediaLibraryService() {
 
         val normalizationProcessor = NormalizationAudioProcessor()
         val visualizerProcessor = VisualizerAudioProcessor()
+        val premiumAudioEffects = PremiumAudioEffects()
+
+        fun applyPremiumAudioSettings(settings: LevyraAudioSettings) {
+            premiumAudioEffects.apply(settings)
+        }
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -119,10 +126,27 @@ class PlaybackService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
+        val audioSessionId = runCatching {
+            val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            manager.generateAudioSessionId().takeIf { it > 0 } ?: 0
+        }.getOrDefault(0)
+        val attachedAudioSessionId = if (audioSessionId > 0) {
+            runCatching {
+                player.javaClass.getMethod("setAudioSessionId", Int::class.javaPrimitiveType).invoke(player, audioSessionId)
+                audioSessionId
+            }.getOrDefault(0)
+        } else {
+            0
+        }
         val prefs = LevyraPreferences(this)
         val snapshot = prefs.snapshot()
         player.skipSilenceEnabled = snapshot.skipSilence
-        normalizationProcessor.enabled = snapshot.audioNormalization
+        normalizationProcessor.enabled = snapshot.audioNormalization || snapshot.audioSettings.replayGainEnabled
+        val resolvedAudioSessionId = attachedAudioSessionId.takeIf { it > 0 } ?: runCatching {
+            player.javaClass.getMethod("getAudioSessionId").invoke(player) as? Int ?: 0
+        }.getOrDefault(0)
+        premiumAudioEffects.bind(resolvedAudioSessionId)
+        applyPremiumAudioSettings(snapshot.audioSettings)
 
         activePlayer = player
 
@@ -218,6 +242,7 @@ class PlaybackService : MediaLibraryService() {
         }
         activePlayer = null
         mediaSession = null
+        premiumAudioEffects.release()
         LevyraMediaCache.release()
         super.onDestroy()
     }

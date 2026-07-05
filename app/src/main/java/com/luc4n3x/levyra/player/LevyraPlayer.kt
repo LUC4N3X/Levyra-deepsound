@@ -9,9 +9,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import androidx.media3.common.util.UnstableApi
 
 @OptIn(UnstableApi::class)
@@ -29,6 +31,7 @@ class LevyraPlayer(context: Context) {
     private var loadedStreamUrl: String? = null
     private var pendingPlay: Track? = null
     private var ignoreEndedFromManualStop = false
+    private var audioSettings = LevyraAudioSettings()
 
     init {
         controllerFuture.addListener({
@@ -79,6 +82,7 @@ class LevyraPlayer(context: Context) {
         }
         ignoreEndedFromManualStop = false
         active.playWhenReady = true
+        applyPlaybackParameters(active)
         if (loadedTrackId != track.id || loadedStreamUrl != track.streamUrl) {
             loadedTrackId = track.id
             loadedStreamUrl = track.streamUrl
@@ -130,10 +134,44 @@ class LevyraPlayer(context: Context) {
     }
 
     fun setSpeed(speed: Float) {
-        controller?.setPlaybackSpeed(speed.coerceIn(0.25f, 3f))
+        setPlayback(speed, audioSettings.pitch)
+    }
+
+    fun setPlayback(speed: Float, pitch: Float) {
+        audioSettings = audioSettings.copy(playbackSpeed = speed.coerceIn(0.5f, 2f), pitch = pitch.coerceIn(0.5f, 2f)).normalized()
+        controller?.let { applyPlaybackParameters(it) }
+    }
+
+    fun setPremiumAudioSettings(settings: LevyraAudioSettings) {
+        audioSettings = settings.normalized()
+        controller?.let { applyPlaybackParameters(it) }
+        PlaybackService.applyPremiumAudioSettings(audioSettings)
+    }
+
+    fun setVolume(volume: Float) {
+        val safeVolume = volume.coerceIn(0f, 1f)
+        controller?.let { active ->
+            runCatching {
+                active.javaClass.getMethod("setVolume", Float::class.javaPrimitiveType).invoke(active, safeVolume)
+            }
+        }
+        PlaybackService.activePlayer?.let { active ->
+            runCatching {
+                active.javaClass.getMethod("setVolume", Float::class.javaPrimitiveType).invoke(active, safeVolume)
+            }
+        }
     }
 
     fun setSkipSilence(enabled: Boolean) {
+        PlaybackService.activePlayer?.let { active ->
+            runCatching {
+                active.javaClass.getMethod("setSkipSilenceEnabled", Boolean::class.javaPrimitiveType).invoke(active, enabled)
+            }
+        }
+    }
+
+    private fun applyPlaybackParameters(active: Player) {
+        active.setPlaybackParameters(PlaybackParameters(audioSettings.playbackSpeed, audioSettings.pitch))
     }
 
     fun setRepeatOne(one: Boolean) {
