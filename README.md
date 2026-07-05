@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/JWZdgJ40/Levyra-Logo-Music-Glass-1.png" alt="Levyra Logo" width="380" />
+<img src="https://i.ibb.co/BVBBX11f/le.png" alt="Levyra Logo" width="380" />
 
 
 # 🎶
