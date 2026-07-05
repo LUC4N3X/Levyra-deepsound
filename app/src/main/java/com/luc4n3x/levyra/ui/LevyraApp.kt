@@ -1196,32 +1196,54 @@ private fun HomeTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 24.dp),
+            .padding(horizontal = 16.dp, top = 8.dp, bottom = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.levyra_logo),
-                contentDescription = "Levyra",
-                modifier = Modifier.size(36.dp).clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-            Text(
-                text = "Buongiorno, $userName",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp
-            )
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(LevyraCyan.copy(alpha = 0.4f), Color.Transparent),
+                            radius = 60f
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.levyra_logo),
+                    contentDescription = "Levyra",
+                    modifier = Modifier.size(38.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Column {
+                Text(
+                    text = "Bentornato,",
+                    color = LevyraCyan,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(bottom = 2.dp)
+                )
+                Text(
+                    text = userName,
+                    color = Color.White,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.5).sp
+                )
+            }
         }
         CircleIconButton(
             icon = Icons.Rounded.Settings,
             tint = Color.White,
-            background = Color.White.copy(alpha = 0.1f),
+            background = Color.White.copy(alpha = 0.08f),
             onClick = onSettings
         )
     }
@@ -1270,21 +1292,14 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (heroTrack != null && heroUpdate != null) {
             item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 ) {
-                    Text(
-                        text = heroUpdate.sourceTitle.uppercase(),
-                        color = LevyraCyan,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
-                    )
                     HeroTrackCard(
                         track = heroTrack,
                         isCurrent = state.currentTrack?.id == heroTrack.id,
                         isPlaying = state.isPlaying && state.currentTrack?.id == heroTrack.id,
+                        badgeText = "IN EVIDENZA",
                         onClick = { viewModel.playFrom(listOf(heroTrack), heroTrack) }
                     )
                 }
@@ -6642,6 +6657,7 @@ private fun HeroTrackCard(
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
+    badgeText: String,
     onClick: () -> Unit
 ) {
     val scale by animateFloatAsState(if (isCurrent) 0.98f else 1f, label = "scale")
@@ -6675,6 +6691,25 @@ private fun HeroTrackCard(
                     )
                 )
         )
+        Box(
+            modifier = Modifier
+                .padding(20.dp)
+                .align(Alignment.TopStart)
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
+                Text(
+                    text = badgeText,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
