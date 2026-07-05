@@ -1196,7 +1196,7 @@ private fun HomeTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, top = 8.dp, bottom = 16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -6700,7 +6700,7 @@ private fun HeroTrackCard(
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Rounded.Star, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
+                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
                 Text(
                     text = badgeText,
                     color = Color.White,
