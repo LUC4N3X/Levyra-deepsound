@@ -233,39 +233,29 @@ private fun cinematicTextBrush(): Brush {
 @Composable
 private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
     val offsetY by animateDpAsState(
-        targetValue = if (selected && LocalAnimationsEnabled.current) (-6).dp else 0.dp,
+        targetValue = if (selected && LocalAnimationsEnabled.current) (-5).dp else 0.dp,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
         label = "tab-offset-y"
     )
-    val textAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.38f,
-        animationSpec = tween(260),
-        label = "tab-text-alpha"
-    )
     val selectedAlpha by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
-        animationSpec = tween(260, easing = FastOutSlowInEasing),
+        animationSpec = tween(280, easing = FastOutSlowInEasing),
         label = "tab-selected-alpha"
     )
-    val iconTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFF93DCFF) else Color(0xFF737373),
-        animationSpec = tween(260),
-        label = "tab-icon-tint"
-    )
-    val labelTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFFE0F4FF) else Color.White,
-        animationSpec = tween(260),
-        label = "tab-label-tint"
-    )
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.06f else 1f,
+        targetValue = if (selected) 1.05f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
         label = "tab-icon-scale"
     )
-    val underlineWidth by animateDpAsState(
-        targetValue = if (selected) 20.dp else 0.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-        label = "tab-underline-width"
+    val labelTint by animateColorAsState(
+        targetValue = if (selected) LevyraText else Color(0xFF6E6E7A),
+        animationSpec = tween(260),
+        label = "tab-label-tint"
+    )
+    val iconTint by animateColorAsState(
+        targetValue = if (selected) Color(0xFF08060F) else Color(0xFF7A7A87),
+        animationSpec = tween(260),
+        label = "tab-icon-tint"
     )
 
     Box(
@@ -280,38 +270,31 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                 .offset(y = offsetY)
                 .padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(width = 46.dp, height = 34.dp)
                     .graphicsLayer {
                         scaleX = iconScale
                         scaleY = iconScale
                     }
                     .drawBehind {
+                        val glowRadius = size.minDimension * 0.9f
                         drawCircle(
-                            color = Color(0xFF54C8FF).copy(alpha = 0.13f * selectedAlpha),
-                            radius = size.minDimension * 0.46f
+                            color = LevyraCyan.copy(alpha = 0.22f * selectedAlpha),
+                            radius = glowRadius,
+                            center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f)
                         )
-                        drawCircle(
-                            color = Color(0xFFBDEBFF).copy(alpha = 0.07f * selectedAlpha),
-                            radius = size.minDimension * 0.27f
-                        )
-                        drawCircle(
-                            color = Color(0xFFAEE9FF).copy(alpha = 0.28f * selectedAlpha),
-                            radius = size.minDimension * 0.43f,
-                            style = Stroke(width = 1.dp.toPx())
-                        )
-                        drawCircle(
-                            color = Color(0xFFB9F1FF).copy(alpha = 0.55f * selectedAlpha),
-                            radius = 1.35.dp.toPx(),
-                            center = androidx.compose.ui.geometry.Offset(size.width * 0.78f, size.height * 0.24f)
-                        )
-                        drawCircle(
-                            color = LevyraViolet.copy(alpha = 0.42f * selectedAlpha),
-                            radius = 1.1.dp.toPx(),
-                            center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height * 0.78f)
+                    }
+                    .clip(RoundedCornerShape(50))
+                    .drawBehind {
+                        drawRoundRect(
+                            brush = Brush.linearGradient(
+                                listOf(LevyraCyan, LevyraViolet)
+                            ),
+                            alpha = selectedAlpha,
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f, size.height / 2f)
                         )
                     },
                 contentAlignment = Alignment.Center
@@ -320,34 +303,18 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     imageVector = icon,
                     contentDescription = null,
                     tint = iconTint,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(23.dp)
                 )
             }
             Text(
                 text = label,
-                color = labelTint.copy(alpha = textAlpha),
+                color = labelTint,
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
                 fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
+                letterSpacing = (-0.1).sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
-            )
-            Box(
-                modifier = Modifier
-                    .width(underlineWidth)
-                    .height(1.5.dp)
-                    .graphicsLayer { alpha = selectedAlpha }
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                Color(0xFF5BD6FF).copy(alpha = 0f),
-                                Color(0xFF6FDFFF).copy(alpha = 0.86f),
-                                LevyraViolet.copy(alpha = 0.55f),
-                                Color(0xFF5BD6FF).copy(alpha = 0f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(99.dp)
-                    )
             )
         }
     }
