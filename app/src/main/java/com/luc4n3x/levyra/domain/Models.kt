@@ -167,11 +167,29 @@ data class ArtistProfile(
     val albums: List<ArtistRelease>,
     val singles: List<ArtistRelease>,
     val accentStart: Int,
-    val accentEnd: Int
+    val accentEnd: Int,
+    val relatedArtists: List<ArtistHit> = emptyList()
 ) {
     val hasBio: Boolean
         get() = bio.isNotBlank()
 }
+
+data class FollowedArtist(
+    val browseId: String,
+    val name: String,
+    val thumbnailUrl: String,
+    val followedAt: Long
+) {
+    val key: String
+        get() = browseId.ifBlank { name.trim().lowercase() }
+}
+
+data class ReleaseRadarEntry(
+    val artistName: String,
+    val artistBrowseId: String,
+    val release: ArtistRelease,
+    val isFresh: Boolean
+)
 
 data class ArtistRelease(
     val browseId: String,

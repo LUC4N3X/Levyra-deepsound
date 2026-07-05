@@ -43,7 +43,8 @@ data class LevyraPreferencesSnapshot(
     val lastTrack: Track?,
     val lastPositionMs: Long,
     val recentSearches: List<Track>,
-    val audioNormalization: Boolean
+    val audioNormalization: Boolean,
+    val themePreset: String
 )
 
 class LevyraPreferences(context: Context) {
@@ -78,6 +79,14 @@ class LevyraPreferences(context: Context) {
 
     fun setAnimationsEnabled(value: Boolean) {
         write { it[KEY_ANIMATIONS] = value }
+    }
+
+    fun themePreset(): String = read(com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC) {
+        com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(it[KEY_THEME_PRESET].orEmpty())
+    }
+
+    fun setThemePreset(value: String) {
+        write { it[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(value) }
     }
 
     fun dynamicColor(): Boolean = read(true) { it[KEY_DYNAMIC_COLOR] ?: true }
@@ -155,7 +164,8 @@ class LevyraPreferences(context: Context) {
             lastTrack = parseTrack(preferences[KEY_LAST_TRACK].orEmpty(), "Last track restore failed"),
             lastPositionMs = preferences[KEY_LAST_POSITION] ?: 0L,
             recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty()),
-            audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false
+            audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false,
+            themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty())
         )
     }
 
@@ -173,7 +183,8 @@ class LevyraPreferences(context: Context) {
         lastTrack = null,
         lastPositionMs = 0L,
         recentSearches = emptyList(),
-        audioNormalization = false
+        audioNormalization = false,
+        themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC
     )
 
     private fun parseTrack(raw: String, warning: String): Track? {
@@ -232,5 +243,6 @@ class LevyraPreferences(context: Context) {
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
+        val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
     }
 }
