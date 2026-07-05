@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -7,7 +9,7 @@ plugins {
     alias(libs.plugins.licensee)
 }
 
-val localProperties = java.util.Properties().apply {
+val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.isFile) {
         file.inputStream().use { load(it) }
@@ -15,10 +17,14 @@ val localProperties = java.util.Properties().apply {
 }
 
 fun envOrProperty(name: String, propertyName: String = name): String {
-    return ((findProperty(propertyName) as? String)
-        ?: localProperties.getProperty(propertyName)
-        ?: System.getenv(name)
-        ?: "").trim()
+    val gradleProperty = findProperty(propertyName) as? String
+    val localProperty = if (localProperties.containsKey(propertyName)) {
+        localProperties.getProperty(propertyName)
+    } else {
+        null
+    }
+    val environmentValue = System.getenv(name)
+    return (gradleProperty ?: localProperty ?: environmentValue ?: "").trim()
 }
 
 fun buildConfigString(value: String): String {
