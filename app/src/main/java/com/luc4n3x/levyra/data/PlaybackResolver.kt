@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CompletableDeferred
@@ -45,7 +47,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private val apiKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
+    private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val prefs = context.getSharedPreferences("levyra_stream_cache", Context.MODE_PRIVATE)
     private val userPreferences = LevyraPreferences(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
@@ -400,7 +402,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false): DirectStream {
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
         val body = buildPlayerBody(track.id, profile).toString()
-        val request = Request.Builder()
+        val requestBuilder = Request.Builder()
             .url(endpoint)
             .post(body.toRequestBody(jsonMediaType))
             .header("Content-Type", "application/json")
@@ -410,7 +412,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("User-Agent", profile.userAgent)
             .header("X-Youtube-Client-Name", profile.clientHeaderName)
             .header("X-Youtube-Client-Version", profile.clientVersion)
-            .build()
+        val request = GoogleApiKeyHeaders.applyTo(requestBuilder, context).build()
 
         youtubeHttpClient.newCall(request).execute().use { response ->
             val responseText = response.body.string()
