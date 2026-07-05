@@ -56,9 +56,16 @@ class FollowedArtistsStore(context: Context) {
         prefs.edit().remove(KEY_KNOWN_PREFIX + artistKey).apply()
     }
 
+    fun radarOffset(): Int = prefs.getInt(KEY_RADAR_OFFSET, 0).coerceAtLeast(0)
+
+    fun saveRadarOffset(offset: Int) {
+        prefs.edit().putInt(KEY_RADAR_OFFSET, offset.coerceAtLeast(0)).apply()
+    }
+
     private companion object {
         const val PREFS_NAME = "levyra_followed_artists"
         const val KEY_ARTISTS = "artists"
         const val KEY_KNOWN_PREFIX = "known_releases_"
+        const val KEY_RADAR_OFFSET = "radar_offset"
     }
 }
