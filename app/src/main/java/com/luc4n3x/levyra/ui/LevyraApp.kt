@@ -66,6 +66,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -109,6 +110,9 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Videocam
@@ -158,6 +162,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -181,8 +187,10 @@ import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Mood
+import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.LevyraLaunchActions
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
@@ -193,6 +201,9 @@ import com.luc4n3x.levyra.ui.theme.LevyraPink
 import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
+import com.luc4n3x.levyra.ui.theme.LevyraPalette
+import com.luc4n3x.levyra.ui.theme.LevyraThemeController
+import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -498,6 +509,46 @@ fun LevyraApp(viewModel: LevyraViewModel) {
     } else {
         ExitTransition.None
     }
+    val accentTrack = state.currentTrack ?: state.tracks.firstOrNull()
+    LaunchedEffect(state.themePreset, accentTrack?.accentStart, accentTrack?.accentEnd, state.selectedMood?.id) {
+        LevyraThemeController.apply(
+            state.themePreset,
+            accentTrack?.accentStart,
+            accentTrack?.accentEnd,
+            state.selectedMood?.accentStart,
+            state.selectedMood?.accentEnd
+        )
+    }
+    val rootView = LocalView.current
+    LaunchedEffect(state.themePreset) {
+        val palette = LevyraThemes.byId(state.themePreset)
+        (rootView.context as? Activity)?.window?.let { window ->
+            WindowCompat.getInsetsController(window, rootView).apply {
+                isAppearanceLightStatusBars = palette.isLight
+                isAppearanceLightNavigationBars = palette.isLight
+            }
+        }
+    }
+    val pendingShortcut by LevyraLaunchActions.pendingShortcut
+    LaunchedEffect(pendingShortcut) {
+        when (pendingShortcut) {
+            LevyraLaunchActions.SHORTCUT_FAVORITES -> viewModel.selectTab(LevyraTab.Library)
+            LevyraLaunchActions.SHORTCUT_OFFLINE -> viewModel.selectTab(LevyraTab.Library)
+            LevyraLaunchActions.SHORTCUT_FLOW -> viewModel.playDailyFlow()
+            LevyraLaunchActions.SHORTCUT_LYRICS -> {
+                viewModel.selectTab(LevyraTab.Player)
+                viewModel.openLyrics()
+            }
+        }
+        if (pendingShortcut != null) LevyraLaunchActions.pendingShortcut.value = null
+    }
+    val pendingArtist by LevyraLaunchActions.pendingArtist
+    LaunchedEffect(pendingArtist) {
+        pendingArtist?.let { artistName ->
+            viewModel.openArtistByName(artistName)
+            LevyraLaunchActions.pendingArtist.value = null
+        }
+    }
     LaunchedEffect(state.offlineExportMessage) {
         state.offlineExportMessage?.let { message ->
             Toast.makeText(toastContext, message, Toast.LENGTH_LONG).show()
@@ -613,6 +664,8 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     updateInfo = state.updateInfo,
                     isCheckingUpdates = state.isCheckingUpdates,
                     currentLanguageCode = state.languageCode,
+                    themePreset = state.themePreset,
+                    onThemePreset = viewModel::setThemePreset,
                     onAnimations = viewModel::setAnimationsEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
                     onSponsorBlock = viewModel::setSponsorBlock,
@@ -665,6 +718,8 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onPlay = viewModel::playArtistSong,
                     onFavorite = viewModel::toggleFavorite,
                     onDownload = viewModel::exportTrack,
+                    onToggleFollow = viewModel::toggleFollowArtist,
+                    onOpenArtist = viewModel::openArtistFromHit,
                     onClose = viewModel::closeArtist
                 )
             }
@@ -682,10 +737,16 @@ private fun ArtistOverlay(
     onPlay: (Track) -> Unit,
     onFavorite: (Track) -> Unit,
     onDownload: (Track) -> Unit,
+    onToggleFollow: () -> Unit,
+    onOpenArtist: (ArtistHit) -> Unit,
     onClose: () -> Unit
 ) {
     val blocker = remember { MutableInteractionSource() }
     val profile = state.artistProfile
+    val isFollowed = profile != null && (
+        (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) ||
+            profile.name.trim().lowercase() in state.followedArtistKeys
+        )
     val accentStart = profile?.let { Color(it.accentStart) } ?: LevyraCyan
     val accentEnd = profile?.let { Color(it.accentEnd) } ?: LevyraViolet
     Box(
@@ -736,6 +797,7 @@ private fun ArtistOverlay(
                 }
                 else -> {
                     item { ArtistHeader(profile, accentStart, accentEnd) }
+                    item { ArtistFollowButton(isFollowed = isFollowed, accentStart = accentStart, accentEnd = accentEnd, onClick = onToggleFollow) }
                     if (profile.hasBio) {
                         item { ArtistBio(profile.bio) }
                     }
@@ -765,8 +827,47 @@ private fun ArtistOverlay(
                         item { SectionTitle("🎵 Singoli ed EP") }
                         item { ArtistReleaseRow(profile.singles) }
                     }
+                    if (profile.relatedArtists.isNotEmpty()) {
+                        item { SectionTitle("✨ ${LocalLevyraStrings.current.similarArtists}") }
+                        item { ArtistHitRow(profile.relatedArtists, onClick = onOpenArtist) }
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ArtistFollowButton(isFollowed: Boolean, accentStart: Color, accentEnd: Color, onClick: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = Color.Transparent,
+        shape = RoundedCornerShape(50.dp),
+        border = if (isFollowed) BorderStroke(1.dp, LevyraText.copy(alpha = 0.35f)) else null,
+        modifier = Modifier.pressable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .then(
+                    if (isFollowed) Modifier
+                    else Modifier.background(Brush.linearGradient(listOf(accentStart, accentEnd)), RoundedCornerShape(50.dp))
+                )
+                .padding(horizontal = 22.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = if (isFollowed) Icons.Rounded.Check else Icons.Rounded.PersonAdd,
+                contentDescription = null,
+                tint = if (isFollowed) LevyraText else Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = if (isFollowed) strings.followingArtist else strings.followArtist,
+                color = if (isFollowed) LevyraText else Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
+            )
         }
     }
 }
@@ -860,6 +961,74 @@ private fun ArtistReleaseRow(releases: List<ArtistRelease>) {
                 }
                 Text(release.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(release.year.ifBlank { release.subtitle }, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReleaseRadarRow(
+    entries: List<ReleaseRadarEntry>,
+    onOpen: (ReleaseRadarEntry) -> Unit,
+    onArtist: (String) -> Unit
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(entries, key = { "radar-${it.artistName}-${it.release.browseId.ifBlank { it.release.title }}" }) { entry ->
+            Column(
+                modifier = Modifier.width(148.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(148.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(LevyraPanelSoft)
+                        .pressable { onOpen(entry) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (entry.release.thumbnailUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(entry.release.thumbnailUrl).crossfade(true).build(),
+                            contentDescription = entry.release.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    } else {
+                        Icon(Icons.Rounded.Album, null, tint = LevyraMuted, modifier = Modifier.size(42.dp))
+                    }
+                    if (entry.isFresh) {
+                        Text(
+                            "NEW",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(8.dp)
+                                .background(LevyraPink.copy(alpha = 0.92f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                Text(entry.release.title, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    entry.artistName,
+                    color = LevyraCyan,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clickable { onArtist(entry.artistName) }
+                )
+                Text(
+                    entry.release.year.ifBlank { entry.release.subtitle },
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -1010,7 +1179,7 @@ private fun QueueOverlay(state: LevyraUiState, onPlay: (Track) -> Unit, onClose:
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B0F1C), LevyraBlack)))
+            .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
@@ -1310,6 +1479,26 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     artists = trendingArtists,
                     onArtistClick = viewModel::openArtistByName
                 )
+            }
+        }
+        if (state.releaseRadar.isNotEmpty()) {
+            item(key = "sec-release-radar-header") {
+                SectionTitle("📡 ${strings.releaseRadar}")
+            }
+            item(key = "sec-release-radar-row") {
+                ReleaseRadarRow(
+                    entries = state.releaseRadar,
+                    onOpen = { entry -> viewModel.searchNow("${entry.release.title} ${entry.artistName}") },
+                    onArtist = viewModel::openArtistByName
+                )
+            }
+        }
+        if (state.similarArtists.isNotEmpty()) {
+            item(key = "sec-similar-artists-header") {
+                SectionTitle("✨ ${strings.similarToFollowed}")
+            }
+            item(key = "sec-similar-artists-row") {
+                ArtistHitRow(state.similarArtists, onClick = viewModel::openArtistFromHit)
             }
         }
         if (newReleases != null && newReleases.tracks.isNotEmpty()) {
@@ -4023,7 +4212,10 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
+                .widthIn(max = 540.dp)
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .navigationBarsPadding(),
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 32.dp),
@@ -4044,15 +4236,15 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             if (!viewModel.navigateBack()) viewModel.selectTab(LevyraTab.Home)
                         }
                     ) {
-                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = strings.back, tint = Color.White, modifier = Modifier.size(36.dp))
+                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = strings.back, tint = LevyraText, modifier = Modifier.size(36.dp))
                     }
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("RIPRODUZIONE DA ${track?.source ?: "LEVYRA"}", color = Color(0xFFB3B3B3), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("RIPRODUZIONE DA ${track?.source ?: "LEVYRA"}", color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     IconButton(onClick = { viewModel.openAudioQualityPanel() }) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = "Opzioni", tint = Color.White)
+                        Icon(Icons.Rounded.MoreVert, contentDescription = "Opzioni", tint = LevyraText)
                     }
                 }
             }
@@ -4136,7 +4328,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = track.title,
-                                color = Color.White,
+                                color = LevyraText,
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
@@ -4145,7 +4337,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = track.artist,
-                                color = Color(0xFFB3B3B3),
+                                color = LevyraMuted,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Normal,
                                 maxLines = 1,
@@ -4157,7 +4349,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             Icon(
                                 imageVector = if (track.id in state.favoriteIds) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                                 contentDescription = "Preferiti",
-                                tint = if (track.id in state.favoriteIds) LevyraPink else Color(0xFFB3B3B3),
+                                tint = if (track.id in state.favoriteIds) LevyraPink else LevyraMuted,
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -4192,7 +4384,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { viewModel.openQueue() }) {
-                            Icon(Icons.Rounded.QueueMusic, "Code", tint = Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
+                            Icon(Icons.Rounded.QueueMusic, "Code", tint = LevyraMuted, modifier = Modifier.size(24.dp))
                         }
                         if (track.videoUrl.isNotBlank()) {
                             Surface(
@@ -4202,8 +4394,8 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                 modifier = Modifier.clickable { viewModel.toggleVideoMode() }
                             ) {
                                 Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Icon(if (state.isVideoMode) Icons.Rounded.MusicNote else Icons.Rounded.Videocam, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                    Text(if (state.isVideoMode) strings.song else strings.video, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Icon(if (state.isVideoMode) Icons.Rounded.MusicNote else Icons.Rounded.Videocam, null, tint = LevyraText, modifier = Modifier.size(16.dp))
+                                    Text(if (state.isVideoMode) strings.song else strings.video, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         } else {
@@ -4211,7 +4403,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             Spacer(Modifier.width(16.dp))
                         }
                         IconButton(onClick = { viewModel.exportCurrentTrack() }) {
-                            Icon(Icons.Rounded.Download, "Download", tint = if (state.isOfflineExporting) LevyraCyan else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
+                            Icon(Icons.Rounded.Download, "Download", tint = if (state.isOfflineExporting) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -4242,7 +4434,7 @@ private fun PlayerTimeline(positionMs: Long, durationMs: Long, onSeek: (Float) -
             value = progressOf(positionMs, durationMs),
             onValueChange = onSeek,
             colors = SliderDefaults.colors(
-                thumbColor = Color.White,
+                thumbColor = LevyraText,
                 activeTrackColor = LevyraCyan,
                 inactiveTrackColor = Color.White.copy(alpha = 0.20f)
             ),
@@ -4251,8 +4443,8 @@ private fun PlayerTimeline(positionMs: Long, durationMs: Long, onSeek: (Float) -
                 .height(24.dp)
         )
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(positionMs), color = Color(0xFFB3B3B3), fontSize = 12.sp, fontWeight = FontWeight.Normal)
-            Text(formatDuration(durationMs), color = Color(0xFFB3B3B3), fontSize = 12.sp, fontWeight = FontWeight.Normal)
+            Text(formatDuration(positionMs), color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Normal)
+            Text(formatDuration(durationMs), color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Normal)
         }
     }
 }
@@ -4277,10 +4469,10 @@ private fun MainPlayerControls(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         IconButton(onClick = onShuffle) {
-            Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffleOn) LevyraCyan else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
+            Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffleOn) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
         }
         IconButton(onClick = onPrevious) {
-            Icon(Icons.Rounded.SkipPrevious, "Precedente", tint = Color.White, modifier = Modifier.size(40.dp))
+            Icon(Icons.Rounded.SkipPrevious, "Precedente", tint = LevyraText, modifier = Modifier.size(40.dp))
         }
         Box(
             modifier = Modifier
@@ -4293,11 +4485,11 @@ private fun MainPlayerControls(
             else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(36.dp))
         }
         IconButton(onClick = onNext) {
-            Icon(Icons.Rounded.SkipNext, "Successivo", tint = Color.White, modifier = Modifier.size(40.dp))
+            Icon(Icons.Rounded.SkipNext, "Successivo", tint = LevyraText, modifier = Modifier.size(40.dp))
         }
         val repeatIcon = if (repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
         IconButton(onClick = onRepeat) {
-            Icon(repeatIcon, "Repeat", tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan else Color(0xFFB3B3B3), modifier = Modifier.size(24.dp))
+            Icon(repeatIcon, "Repeat", tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
         }
     }
 }
@@ -4594,6 +4786,8 @@ private fun SettingsOverlay(
     updateInfo: AppUpdateInfo?,
     isCheckingUpdates: Boolean,
     currentLanguageCode: String,
+    themePreset: String,
+    onThemePreset: (String) -> Unit,
     onAnimations: (Boolean) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onSponsorBlock: (Boolean) -> Unit,
@@ -4610,7 +4804,7 @@ private fun SettingsOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B0F1C), LevyraBlack)))
+            .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
@@ -4640,6 +4834,18 @@ private fun SettingsOverlay(
                 }
             }
             item { SettingsSectionLabel(strings.design) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(Icons.Rounded.Palette, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                        Column {
+                            Text(strings.theme, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            Text(strings.themeSubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    ThemeSelector(selectedId = themePreset, onSelect = onThemePreset)
+                }
+            }
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Bolt,
@@ -4754,6 +4960,51 @@ private fun SettingsOverlay(
 @Composable
 private fun SettingsSectionLabel(text: String) {
     Text(text, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 8.dp))
+}
+
+@Composable
+private fun ThemeSelector(selectedId: String, onSelect: (String) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(LevyraThemes.presets, key = { "theme-${it.id}" }) { preset ->
+            ThemePresetCard(
+                preset = preset,
+                selected = preset.id == selectedId,
+                onClick = { onSelect(preset.id) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemePresetCard(preset: LevyraPalette, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        color = preset.black,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) LevyraCyan else Color.White.copy(alpha = 0.14f)),
+        modifier = Modifier.pressable(onClick = onClick)
+    ) {
+        Column(
+            modifier = Modifier
+                .width(112.dp)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(preset.emoji, fontSize = 20.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Box(modifier = Modifier.size(14.dp).clip(CircleShape).background(preset.cyan))
+                Box(modifier = Modifier.size(14.dp).clip(CircleShape).background(preset.violet))
+                Box(modifier = Modifier.size(14.dp).clip(CircleShape).background(preset.pink))
+            }
+            Text(
+                preset.label,
+                color = preset.text,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
 }
 
 @Composable

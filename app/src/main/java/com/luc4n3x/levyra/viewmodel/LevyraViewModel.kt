@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
+import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
@@ -25,6 +26,8 @@ import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.domain.ExploreZone
+import com.luc4n3x.levyra.domain.FollowedArtist
+import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -34,6 +37,9 @@ import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import com.luc4n3x.levyra.widget.LevyraWidgetBridge
+import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import com.luc4n3x.levyra.player.LevyraPlayer
 import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
@@ -73,6 +79,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val playbackWarmup = PlaybackWarmup(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
+    private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
     private val _state = MutableStateFlow(
@@ -96,6 +103,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
     private var artistJob: Job? = null
+    private var radarJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val tabBackStack = ArrayDeque<LevyraTab>()
     private var playRequestId: Long = 0L
@@ -125,6 +133,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 skipSilence = settings.skipSilence,
                 audioQuality = settings.audioQuality,
                 audioNormalization = settings.audioNormalization,
+                themePreset = settings.themePreset,
                 showOnboarding = !settings.onboarded,
                 currentTrack = null,
                 positionMs = 0L,
@@ -137,12 +146,114 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.onError = { errorMsg ->
             _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
         }
+        applyFollowedArtists(followedArtistsStore.load())
         loadHomeFeed()
         loadCharts()
         startTicker()
         observeDownloads()
         loadPlaylists()
         checkForUpdates(silent = true)
+        loadReleaseRadar()
+        LevyraWidgetBridge.onToggle = { togglePlay() }
+        LevyraWidgetBridge.onNext = { next() }
+        LevyraWidgetBridge.onPrevious = { previous() }
+        updateWidget()
+    }
+
+    private fun applyFollowedArtists(artists: List<FollowedArtist>) {
+        val keys = buildSet {
+            artists.forEach { artist ->
+                if (artist.browseId.isNotBlank()) add(artist.browseId)
+                add(artist.name.trim().lowercase())
+            }
+        }
+        _state.update { it.copy(followedArtists = artists, followedArtistKeys = keys) }
+    }
+
+    fun toggleFollowArtist() {
+        val profile = _state.value.artistProfile ?: return
+        val name = profile.name.trim()
+        if (name.isBlank()) return
+        val current = _state.value.followedArtists
+        val exists = current.any { sameArtist(it, profile.browseId, name) }
+        val updated = if (exists) {
+            current.filterNot { sameArtist(it, profile.browseId, name) }
+        } else {
+            listOf(FollowedArtist(profile.browseId, name, profile.thumbnailUrl, System.currentTimeMillis())) + current
+        }
+        followedArtistsStore.save(updated)
+        applyFollowedArtists(updated)
+        loadReleaseRadar()
+    }
+
+    private fun sameArtist(artist: FollowedArtist, browseId: String, name: String): Boolean =
+        (browseId.isNotBlank() && artist.browseId == browseId) || artist.name.equals(name, ignoreCase = true)
+
+    private fun loadReleaseRadar() {
+        radarJob?.cancel()
+        val followed = _state.value.followedArtists
+        if (followed.isEmpty()) {
+            _state.update { it.copy(releaseRadar = emptyList(), similarArtists = emptyList()) }
+            return
+        }
+        radarJob = viewModelScope.launch {
+            val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            val entries = mutableListOf<ReleaseRadarEntry>()
+            val similar = LinkedHashMap<String, com.luc4n3x.levyra.domain.ArtistHit>()
+            followed.take(8).forEach { artist ->
+                val profile = runCatching { artistRepository.profile(artist.browseId, artist.name) }.getOrNull() ?: return@forEach
+                if (!isActive) return@launch
+                (profile.albums + profile.singles).take(8).forEach { release ->
+                    val year = release.year.toIntOrNull()
+                    entries += ReleaseRadarEntry(
+                        artistName = profile.name,
+                        artistBrowseId = profile.browseId,
+                        release = release,
+                        isFresh = year != null && year >= currentYear - 1
+                    )
+                }
+                profile.relatedArtists.forEach { hit ->
+                    val key = hit.name.trim().lowercase()
+                    if (key !in _state.value.followedArtistKeys && !similar.containsKey(key)) {
+                        similar[key] = hit
+                    }
+                }
+                val sorted = entries
+                    .distinctBy { it.release.browseId.ifBlank { "${it.artistName}|${it.release.title}" } }
+                    .sortedByDescending { it.release.year.toIntOrNull() ?: 0 }
+                    .take(20)
+                _state.update { it.copy(releaseRadar = sorted, similarArtists = similar.values.take(12).toList()) }
+            }
+        }
+    }
+
+    fun playDailyFlow() {
+        val snapshot = _state.value
+        val pool = (snapshot.favorites + snapshot.recentSearches + snapshot.tracks)
+            .filter { it.id.isNotBlank() }
+            .distinctBy { it.id }
+        if (pool.isEmpty()) return
+        val seed = System.currentTimeMillis() / 86_400_000L
+        val flow = pool.shuffled(kotlin.random.Random(seed)).take(30)
+        playFrom(flow, flow.first(), loopOnCompletion = true)
+    }
+
+    fun setThemePreset(value: String) {
+        val normalized = LevyraThemes.normalize(value)
+        preferences.setThemePreset(normalized)
+        _state.update { it.copy(themePreset = normalized) }
+    }
+
+    private fun updateWidget() {
+        val snapshot = _state.value
+        val track = snapshot.currentTrack
+        LevyraWidgetCenter.update(
+            getApplication<Application>().applicationContext,
+            track?.title,
+            track?.artist,
+            track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl },
+            snapshot.isPlaying
+        )
     }
 
 
@@ -1057,6 +1168,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         fetchLyrics(playable)
         fetchSponsorSegments(playable)
+        updateWidget()
     }
 
     private fun fetchSponsorSegments(track: Track) {
@@ -1212,6 +1324,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             player.play(current)
             _state.update { it.copy(isPlaying = true) }
         }
+        updateWidget()
     }
 
     fun closePlayer() {
@@ -1226,6 +1339,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         preferences.saveLastPlayback(null, 0L)
+        updateWidget()
     }
 
     fun next() {
@@ -1337,6 +1451,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (current != null && player.isPlaying && ticks % 4 == 0) {
                     preferences.saveLastPlayback(current, position)
                 }
+                if (snapshot.isPlaying != player.isPlaying) {
+                    updateWidget()
+                }
                 ticks++
                 delay(500L)
             }
@@ -1385,6 +1502,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
+        LevyraWidgetBridge.clear()
         _state.value.currentTrack?.let { preferences.saveLastPlayback(it, player.positionMs) }
         playJob?.cancel()
         cancelBackgroundWarmups()
@@ -1393,6 +1511,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         lyricsJob?.cancel()
         sponsorJob?.cancel()
         artistJob?.cancel()
+        radarJob?.cancel()
         player.release()
         searchJob?.cancel()
         super.onCleared()

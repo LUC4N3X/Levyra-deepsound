@@ -89,7 +89,14 @@ data class LevyraStrings(
     val exploreRockAlt: String = "Rock & Alt",
     val exploreLatino: String = "Latino",
     val exploreLofiChill: String = "Lo-Fi / Chill",
-    val exploreJpopAnime: String = "J-Pop / Anime"
+    val exploreJpopAnime: String = "J-Pop / Anime",
+    val followArtist: String = "Follow",
+    val followingArtist: String = "Following",
+    val releaseRadar: String = "Release Radar",
+    val similarArtists: String = "Similar artists",
+    val similarToFollowed: String = "Similar to artists you follow",
+    val theme: String = "Theme",
+    val themeSubtitle: String = "Choose your LEVYRA look"
 ) {
     companion object {
         fun forCode(code: String): LevyraStrings = values[LevyraLanguageCatalog.normalize(code)] ?: values.getValue("en")
@@ -269,7 +276,14 @@ data class LevyraStrings(
                 clear = "Cancella",
                 voice = "Voce",
                 createPlaylistHint = "Crea una playlist e aggiungi i tuoi brani preferiti",
-                selectLanguagePrompt = "Seleziona una lingua"
+                selectLanguagePrompt = "Seleziona una lingua",
+                followArtist = "Segui",
+                followingArtist = "Seguito",
+                releaseRadar = "Release Radar",
+                similarArtists = "Artisti simili",
+                similarToFollowed = "Simili agli artisti che segui",
+                theme = "Tema",
+                themeSubtitle = "Scegli il look di LEVYRA"
             ),
             "es" to LevyraStrings(
                 code = "es",
