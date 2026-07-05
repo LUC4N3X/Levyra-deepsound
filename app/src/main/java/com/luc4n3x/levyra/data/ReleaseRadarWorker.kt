@@ -34,7 +34,7 @@ class ReleaseRadarWorker(
         if (followed.isEmpty()) return Result.success()
         val artistRepository = ArtistRepository(YoutubeMusicRepository(applicationContext), applicationContext)
         var notified = 0
-        followed.take(MAX_ARTISTS_PER_RUN).forEach { artist ->
+        rotatedWindow(store, followed).forEach { artist ->
             val profile = runCatching { artistRepository.profile(artist.browseId, artist.name) }
                 .onFailure { Timber.w(it, "Release radar fetch failed for ${artist.name}") }
                 .getOrNull() ?: return@forEach
@@ -47,15 +47,24 @@ class ReleaseRadarWorker(
             }
             val known = store.knownReleases(artist.key)
             val fresh = releases.filter { releaseKey(it) !in known }
+            val notifiedKeys = mutableSetOf<String>()
             fresh.take(MAX_NOTIFICATIONS_PER_ARTIST).forEach { release ->
                 if (notified < MAX_NOTIFICATIONS_PER_RUN) {
                     notifyRelease(artist, release)
                     notified++
+                    notifiedKeys += releaseKey(release)
                 }
             }
-            store.saveKnownReleases(artist.key, known + keys)
+            store.saveKnownReleases(artist.key, known + notifiedKeys)
         }
         return Result.success()
+    }
+
+    private fun rotatedWindow(store: FollowedArtistsStore, followed: List<FollowedArtist>): List<FollowedArtist> {
+        if (followed.size <= MAX_ARTISTS_PER_RUN) return followed
+        val offset = store.radarOffset() % followed.size
+        store.saveRadarOffset((offset + MAX_ARTISTS_PER_RUN) % followed.size)
+        return (followed + followed).subList(offset, offset + MAX_ARTISTS_PER_RUN)
     }
 
     private fun notifyRelease(artist: FollowedArtist, release: ArtistRelease) {
@@ -75,7 +84,7 @@ class ReleaseRadarWorker(
         )
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_levyra_radar)
-            .setContentTitle("Nuova uscita di ${artist.name}")
+            .setContentTitle(applicationContext.getString(R.string.radar_new_release_title, artist.name))
             .setContentText(release.title)
             .setStyle(NotificationCompat.BigTextStyle().bigText("${release.title}\n${release.subtitle}".trim()))
             .setContentIntent(pendingIntent)
@@ -91,10 +100,10 @@ class ReleaseRadarWorker(
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Release Radar",
+            applicationContext.getString(R.string.radar_channel_name),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Nuove uscite dagli artisti che segui"
+            description = applicationContext.getString(R.string.radar_channel_description)
         }
         manager.createNotificationChannel(channel)
     }

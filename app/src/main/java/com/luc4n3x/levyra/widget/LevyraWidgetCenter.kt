@@ -116,8 +116,9 @@ object LevyraWidgetCenter {
     private fun fetchArtwork(context: Context, url: String) {
         if (!fetching.compareAndSet(false, true)) return
         Thread {
+            var connection: HttpURLConnection? = null
             try {
-                val connection = URL(url).openConnection() as HttpURLConnection
+                connection = URL(url).openConnection() as HttpURLConnection
                 connection.connectTimeout = 8000
                 connection.readTimeout = 8000
                 val bytes = connection.inputStream.use { it.readBytes() }
@@ -137,6 +138,7 @@ object LevyraWidgetCenter {
             } catch (error: Exception) {
                 Timber.w(error, "Widget artwork fetch failed")
             } finally {
+                connection?.disconnect()
                 fetching.set(false)
             }
         }.start()

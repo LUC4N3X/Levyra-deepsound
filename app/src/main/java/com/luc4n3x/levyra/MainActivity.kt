@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
@@ -71,9 +72,14 @@ class MainActivity : ComponentActivity() {
         LevyraLaunchActions.consumeFrom(intent)
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyOrientationPolicy()
+    }
+
     private fun applyOrientationPolicy() {
         requestedOrientation = if (resources.configuration.smallestScreenWidthDp >= 600) {
-            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         } else {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
