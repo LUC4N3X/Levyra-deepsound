@@ -4925,7 +4925,6 @@ private fun SettingsMiniButton(
 }
 
 @Composable
-@Composable
 private fun LevyraLogoMark(size: Dp = 46.dp) {
     val corner = RoundedCornerShape(15.dp)
     Box(contentAlignment = Alignment.Center) {
