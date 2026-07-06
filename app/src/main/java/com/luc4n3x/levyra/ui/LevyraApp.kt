@@ -40,6 +40,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -217,6 +221,10 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.valentinilk.shimmer.shimmer
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
+val LocalAnimatedVisibilityScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
 private val CinematicPlum = Color(0xFF2A1738)
@@ -423,15 +431,28 @@ private fun SectionTitle(title: String) {
         Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false) {
+    val sharedTransitionScope = LocalSharedTransitionScope.current
+    val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
+    
+    val baseModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null && LocalAnimationsEnabled.current) {
+        with(sharedTransitionScope) {
+            modifier.sharedElement(
+                state = rememberSharedContentState(key = "cover_${track.id}"),
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
+        }
+    } else modifier
+
     val context = LocalContext.current
     val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
     val model = remember(context, track.id, track.title, track.artist, raw, highRes) {
         LevyraArtworkCache.model(context, track, highRes)
     }
     val background = Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
-    Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
+    Box(modifier = baseModifier.background(background), contentAlignment = Alignment.Center) {
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
         if (model != null) {
             val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 120 else 0
@@ -618,12 +639,17 @@ fun LevyraApp(viewModel: LevyraViewModel) {
         LocalAnimationsEnabled provides state.animationsEnabled,
         LocalLevyraStrings provides LevyraStrings.forCode(state.languageCode)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(LevyraBlack)
-        ) {
-            LevyraBackground(accent?.accentStart, accent?.accentEnd)
+        @OptIn(ExperimentalSharedTransitionApi::class)
+        SharedTransitionLayout {
+            CompositionLocalProvider(
+                LocalSharedTransitionScope provides this@SharedTransitionLayout
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(LevyraBlack)
+                ) {
+                    LevyraBackground(accent?.accentStart, accent?.accentEnd)
 
             AnimatedContent(
                 targetState = state.selectedTab,
@@ -645,13 +671,17 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 },
                 label = "levyra-page-transition"
             ) { tab ->
-                Box(modifier = Modifier.fillMaxSize()) {
-                    when (tab) {
-                        LevyraTab.Home -> HomeScreen(viewModel, state)
-                        LevyraTab.Search -> SearchScreen(viewModel, state)
-                        LevyraTab.Explore -> ExploreScreen(viewModel, state)
-                        LevyraTab.Library -> LibraryScreen(viewModel, state)
-                        LevyraTab.Player -> PlayerScreen(viewModel, state)
+                CompositionLocalProvider(
+                    LocalAnimatedVisibilityScope provides this@AnimatedContent
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        when (tab) {
+                            LevyraTab.Home -> HomeScreen(viewModel, state)
+                            LevyraTab.Search -> SearchScreen(viewModel, state)
+                            LevyraTab.Explore -> ExploreScreen(viewModel, state)
+                            LevyraTab.Library -> LibraryScreen(viewModel, state)
+                            LevyraTab.Player -> PlayerScreen(viewModel, state)
+                        }
                     }
                 }
             }
@@ -667,17 +697,21 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     enter = miniEnter,
                     exit = miniExit
                 ) {
-                    state.currentTrack?.let { track ->
-                        MiniPlayer(
-                            track = track,
-                            isPlaying = state.isPlaying,
-                            isResolving = state.isResolving,
-                            progress = progressOf(state.positionMs, state.durationMs),
-                            onOpen = { viewModel.selectTab(LevyraTab.Player) },
-                            onToggle = viewModel::togglePlay,
-                            onNext = viewModel::next,
-                            onClose = viewModel::closePlayer
-                        )
+                    CompositionLocalProvider(
+                        LocalAnimatedVisibilityScope provides this@AnimatedVisibility
+                    ) {
+                        state.currentTrack?.let { track ->
+                            MiniPlayer(
+                                track = track,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                progress = progressOf(state.positionMs, state.durationMs),
+                                onOpen = { viewModel.selectTab(LevyraTab.Player) },
+                                onToggle = viewModel::togglePlay,
+                                onNext = viewModel::next,
+                                onClose = viewModel::closePlayer
+                            )
+                        }
                     }
                 }
                 AnimatedVisibility(
@@ -797,6 +831,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     },
                     onLater = { showLanguageRestartDialog = false }
                 )
+            }
             }
         }
     }
@@ -4326,8 +4361,29 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             .fillMaxSize()
             .background(LevyraBlack)
     ) {
-        LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f))) // Subtle darkening
+        if (track != null) {
+            val context = LocalContext.current
+            val model = remember(context, track.id, artworkUrl) {
+                LevyraArtworkCache.model(context, track, highRes = true)
+            }
+            if (model != null) {
+                AsyncImage(
+                    model = model,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(100.dp, edgeTreatment = androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded)
+                        .graphicsLayer { scaleX = 1.2f; scaleY = 1.2f }
+                )
+            } else {
+                LevyraBackground(accentStart = track.accentStart, accentEnd = track.accentEnd)
+            }
+        } else {
+            LevyraBackground(accentStart = null, accentEnd = null)
+        }
+        
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) // Deep glass overlay
 
         LazyColumn(
             modifier = Modifier
@@ -4486,7 +4542,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                 modifier = Modifier.clickable { viewModel.openArtist(track) }
                             )
                         }
-                        IconButton(onClick = { viewModel.toggleFavorite(track) }) {
+                        Box(modifier = Modifier.padding(12.dp).pressable(onClick = { viewModel.toggleFavorite(track) })) {
                             Icon(
                                 imageVector = if (track.id in state.favoriteIds) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                                 contentDescription = "Preferiti",
@@ -4596,10 +4652,10 @@ private fun MainPlayerControls(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        IconButton(onClick = onShuffle) {
+        Box(modifier = Modifier.padding(12.dp).pressable(onClick = onShuffle)) {
             Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffleOn) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
         }
-        IconButton(onClick = onPrevious) {
+        Box(modifier = Modifier.padding(12.dp).pressable(onClick = onPrevious)) {
             Icon(Icons.Rounded.SkipPrevious, "Precedente", tint = LevyraText, modifier = Modifier.size(40.dp))
         }
         Box(
@@ -4612,11 +4668,11 @@ private fun MainPlayerControls(
             if (isResolving) CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = LevyraBlack)
             else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(36.dp))
         }
-        IconButton(onClick = onNext) {
+        Box(modifier = Modifier.padding(12.dp).pressable(onClick = onNext)) {
             Icon(Icons.Rounded.SkipNext, "Successivo", tint = LevyraText, modifier = Modifier.size(40.dp))
         }
         val repeatIcon = if (repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
-        IconButton(onClick = onRepeat) {
+        Box(modifier = Modifier.padding(12.dp).pressable(onClick = onRepeat)) {
             Icon(repeatIcon, "Repeat", tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
         }
     }
