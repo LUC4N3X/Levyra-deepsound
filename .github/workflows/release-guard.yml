@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Validate Version Consistency
         shell: bash
@@ -95,7 +95,7 @@ jobs:
           } | tee release-guard-result.txt
 
       - name: Upload Guard Result
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-guard-result-${{ github.run_number }}
           path: release-guard-result.txt
