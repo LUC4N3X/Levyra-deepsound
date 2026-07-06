@@ -14,6 +14,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
@@ -201,7 +202,7 @@ class LevyraPreferences(context: Context) {
 
     fun savePersonalOrbitTracks(tracks: List<Track>) {
         val array = JSONArray()
-        tracks.take(16).forEach { track -> array.put(TrackJson.toJson(track)) }
+        tracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT).forEach { track -> array.put(TrackJson.toJson(track)) }
         write { it[KEY_PERSONAL_ORBIT_TRACKS] = array.toString() }
     }
 
