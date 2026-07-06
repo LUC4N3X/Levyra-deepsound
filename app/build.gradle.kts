@@ -61,7 +61,7 @@ if (isReleaseTaskRequested() && (!releaseStoreFile.isFile || releaseStorePasswor
 fun normalizedVersionName(value: String): String {
     val clean = value.trim().removePrefix("v").removePrefix("V")
     val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
-    return match ?: clean.ifBlank { "2.3.1" }
+    return match ?: clean.ifBlank { "2.3.2" }
 }
 
 fun generatedVersionCode(versionName: String): Int {
@@ -92,7 +92,7 @@ val levyraVersionName = normalizedVersionName(
     (findProperty("levyraVersionName") as? String)
         ?: System.getenv("LEVYRA_VERSION_NAME")
         ?: githubTagVersionName()
-        ?: "2.3.1"
+        ?: "2.3.2"
 )
 
 val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
