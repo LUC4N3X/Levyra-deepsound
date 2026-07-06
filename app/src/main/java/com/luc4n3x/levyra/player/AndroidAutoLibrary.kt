@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
@@ -174,7 +175,7 @@ class AndroidAutoLibrary(context: Context) {
         if (streamUrl.isNotBlank() && !streamUrl.isLocalUri()) return this
         if (videoUrl.isNotBlank() && !id.startsWith("chart-", true) && !id.startsWith("auto-", true)) return this
         val query = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ").cleanQuery()
-        val match = musicRepository.searchOne(query) ?: return this
+        val match = musicRepository.searchOne(query, contentLanguage()) ?: return this
         return match.copy(
             title = title.ifBlank { match.title },
             artist = artist.ifBlank { match.artist },
@@ -238,8 +239,11 @@ class AndroidAutoLibrary(context: Context) {
         playlistStore.load(playlistId)?.tracks.orEmpty().distinctTracks().take(MAX_FOLDER_TRACKS)
     }
 
-    private suspend fun topItaly(): List<Track> = withContext(Dispatchers.IO) {
-        runCatching { chartsRepository.topSongs("it", 40) }.getOrDefault(emptyList()).distinctTracks().take(40)
+    private fun contentLanguage(): String = preferences.languageCode()
+
+    private suspend fun topLocal(): List<Track> = withContext(Dispatchers.IO) {
+        val locale = LevyraContentLocales.forLanguage(contentLanguage())
+        runCatching { chartsRepository.topSongs(locale.chartCountry, 40) }.getOrDefault(emptyList()).distinctTracks().take(40)
     }
 
     private suspend fun drivingMix(): List<Track> = withContext(Dispatchers.IO) {
@@ -247,7 +251,7 @@ class AndroidAutoLibrary(context: Context) {
             addAll(favorites().filter { it.energy >= 55 }.take(18))
             addAll(recents().filter { it.energy >= 50 }.take(18))
             addAll(downloads().take(12))
-            addAll(topItaly().take(16))
+            addAll(topLocal().take(16))
         }
         mixed.distinctTracks().take(MAX_FOLDER_TRACKS)
     }
@@ -259,7 +263,9 @@ class AndroidAutoLibrary(context: Context) {
             addAll(downloads())
         }.distinctTracks()
         if (local.size >= 16) return@withContext local.sortedByDescending { it.replayScore + it.cacheScore + it.energy }.take(MAX_FOLDER_TRACKS)
-        val fallback = runCatching { musicRepository.search("musica nuova italiana internazionale", 36) }.getOrDefault(emptyList())
+        val languageCode = contentLanguage()
+        val query = LevyraContentLocales.forLanguage(languageCode).homeQueries.joinToString(" ")
+        val fallback = runCatching { musicRepository.search(query, 36, languageCode) }.getOrDefault(emptyList())
         (local + fallback).distinctTracks().take(MAX_FOLDER_TRACKS)
     }
 
@@ -267,7 +273,8 @@ class AndroidAutoLibrary(context: Context) {
         val now = System.currentTimeMillis()
         searchCache[query]?.takeIf { now - it.createdAt < SEARCH_TTL_MS }?.tracks?.let { return@withContext it }
         val local = searchLocal(query)
-        val remote = runCatching { musicRepository.search(query, 30) }.getOrDefault(emptyList())
+        val languageCode = contentLanguage()
+        val remote = runCatching { musicRepository.search(query, 30, languageCode) }.getOrDefault(emptyList())
         val result = (local + remote).distinctTracks().take(MAX_FOLDER_TRACKS)
         searchCache[query] = TimedTracks(result, now)
         result
