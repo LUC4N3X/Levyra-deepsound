@@ -2249,28 +2249,28 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val visibleTracks = remember(tracks) { tracks.take(6) }
+    val shelfTracks = remember(tracks) { tracks.distinctBy { it.id } }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = strings.personalOrbitTitle,
                     color = LevyraText,
-                    fontSize = 27.sp,
-                    lineHeight = 29.sp,
+                    fontSize = 28.sp,
+                    lineHeight = 30.sp,
                     fontWeight = FontWeight.Black
                 )
                 Text(
                     text = strings.personalOrbitSubtitle,
                     color = LevyraMuted,
-                    fontSize = 12.sp,
+                    fontSize = 12.5.sp,
                     lineHeight = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
@@ -2279,7 +2279,7 @@ private fun PersonalListeningShelf(
             }
             Surface(
                 color = Color.White.copy(alpha = 0.055f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.24f)),
                 shape = RoundedCornerShape(999.dp),
                 modifier = Modifier.pressable(onClick = onPlayAll)
             ) {
@@ -2293,27 +2293,26 @@ private fun PersonalListeningShelf(
                 }
             }
         }
-
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            visibleTracks.chunked(3).forEach { rowTracks ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    rowTracks.forEach { track ->
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(end = 4.dp)
+        ) {
+            val columns = shelfTracks.chunked(2)
+            itemsIndexed(
+                items = columns,
+                key = { colIndex, colTracks -> "personal-column-$colIndex-${colTracks.joinToString("-") { it.id }}" },
+                contentType = { _, _ -> "personal-column" }
+            ) { _, colTracks ->
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    colTracks.forEach { track ->
                         PersonalListeningCard(
                             track = track,
                             active = track.id == currentId,
                             playing = isPlaying && track.id == currentId,
                             resolving = isResolving && track.id == currentId,
-                            onClick = { onPlay(track) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
+                            onClick = { onPlay(track) }
                         )
-                    }
-                    repeat(3 - rowTracks.size) {
-                        Spacer(modifier = Modifier.weight(1f).aspectRatio(1f))
                     }
                 }
             }
@@ -2327,17 +2326,18 @@ private fun PersonalListeningCard(
     active: Boolean,
     playing: Boolean,
     resolving: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onClick: () -> Unit
 ) {
     Surface(
         color = CinematicGlassDeep,
         border = BorderStroke(
-            width = if (active) 1.3.dp else 0.7.dp,
-            color = if (active) LevyraCyan.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.055f)
+            width = if (active) 1.4.dp else 0.8.dp,
+            color = if (active) LevyraCyan.copy(alpha = 0.68f) else Color.White.copy(alpha = 0.07f)
         ),
-        shape = RoundedCornerShape(15.dp),
-        modifier = modifier.pressable(onClick = onClick)
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .size(152.dp)
+            .pressable(onClick = onClick)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             CoverImage(
@@ -2350,10 +2350,10 @@ private fun PersonalListeningCard(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Black.copy(alpha = 0.02f),
-                            0.52f to Color.Black.copy(alpha = 0.10f),
-                            0.78f to Color.Black.copy(alpha = 0.58f),
-                            1.0f to Color.Black.copy(alpha = 0.90f)
+                            0.0f to Color.Black.copy(alpha = 0.01f),
+                            0.56f to Color.Black.copy(alpha = 0.03f),
+                            0.78f to Color.Black.copy(alpha = 0.48f),
+                            1.0f to Color.Black.copy(alpha = 0.88f)
                         )
                     )
             )
@@ -2361,20 +2361,20 @@ private fun PersonalListeningCard(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(8.dp)
+                        .padding(9.dp)
                         .clip(RoundedCornerShape(999.dp))
                         .background(LevyraCyan.copy(alpha = 0.92f))
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     if (resolving) {
-                        CircularProgressIndicator(modifier = Modifier.size(11.dp), strokeWidth = 1.7.dp, color = LevyraBlack)
+                        CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.8.dp, color = LevyraBlack)
                     } else {
                         Icon(
                             imageVector = if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
                             contentDescription = null,
                             tint = LevyraBlack,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                     }
                 }
@@ -2383,23 +2383,23 @@ private fun PersonalListeningCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .padding(horizontal = 9.dp, vertical = 9.dp),
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
                     text = track.title,
                     color = LevyraText,
-                    fontSize = 12.8.sp,
-                    lineHeight = 14.5.sp,
+                    fontSize = 13.4.sp,
+                    lineHeight = 15.2.sp,
                     fontWeight = FontWeight.Black,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = track.artist,
-                    color = LevyraText.copy(alpha = 0.72f),
-                    fontSize = 10.5.sp,
-                    lineHeight = 12.sp,
+                    color = LevyraText.copy(alpha = 0.76f),
+                    fontSize = 11.2.sp,
+                    lineHeight = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
