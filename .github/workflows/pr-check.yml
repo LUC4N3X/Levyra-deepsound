@@ -97,13 +97,15 @@ jobs:
         run: |
           set -uo pipefail
           REPORT="$(find app/build -name 'lint-results-release.txt' 2>/dev/null | head -n 1)"
-          echo "===LINT FINDINGS BEGIN==="
-          if [ -n "${REPORT}" ]; then
-            grep -nE ': (Error|Warning):' "${REPORT}" || echo "(no matching lines)"
-          else
-            echo "(no lint text report found)"
-          fi
-          echo "===LINT FINDINGS END==="
+          if [ -z "${REPORT}" ]; then echo "(no lint text report found)"; exit 0; fi
+          echo "=== WARNING HISTOGRAM ==="
+          grep -E ': Warning:' "${REPORT}" | grep -oE '\[[A-Za-z0-9_]+\]$' | sort | uniq -c | sort -rn || true
+          echo "=== ALL ERRORS (path-short) ==="
+          grep -E ': Error:' "${REPORT}" | sed -E 's#^[0-9]+:##; s#^.*/##' || true
+          echo "=== ERROR HISTOGRAM (LAST) ==="
+          grep -E ': Error:' "${REPORT}" | grep -oE '\[[A-Za-z0-9_]+\]$' | sort | uniq -c | sort -rn || true
+          echo "=== TOTAL ==="
+          echo "errors=$(grep -cE ': Error:' "${REPORT}")  warnings=$(grep -cE ': Warning:' "${REPORT}")"
 
       - name: Unit Tests
         run: gradle --no-daemon testReleaseUnitTest
