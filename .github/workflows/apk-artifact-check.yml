@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -107,7 +107,7 @@ jobs:
           fi
 
       - name: Upload Verified APK Bundle
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v6
         with:
           name: levyra-verified-apk-${{ github.run_number }}
           path: artifacts
