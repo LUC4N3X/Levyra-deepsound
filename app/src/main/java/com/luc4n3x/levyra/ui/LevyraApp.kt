@@ -215,6 +215,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.valentinilk.shimmer.shimmer
+import kotlinx.coroutines.delay
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
 private val CinematicPlum = Color(0xFF2A1738)
@@ -424,23 +425,57 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false) {
     val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
-    if (raw.isBlank()) {
-        EmptyCover(modifier)
-    } else {
+    val background = Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
+    Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
+        InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+        if (raw.isNotBlank()) {
+            val model = if (highRes) LevyraArtworkCache.large(raw) else LevyraArtworkCache.small(raw)
+            val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 120 else 0
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(model)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .networkCachePolicy(CachePolicy.ENABLED)
+                    .crossfade(crossfadeMs)
+                    .build(),
+                contentDescription = track.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
 
-        val model = if (highRes) raw else LevyraArtworkCache.small(raw)
-        val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 200 else 0
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(model)
-                .memoryCachePolicy(CachePolicy.ENABLED)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .networkCachePolicy(CachePolicy.ENABLED)
-                .crossfade(crossfadeMs)
-                .build(),
-            contentDescription = track.title,
-            contentScale = ContentScale.Crop,
-            modifier = modifier.background(Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd))))
+@Composable
+private fun InstantArtworkPlaceholder(track: Track, modifier: Modifier) {
+    val initials = remember(track.title, track.artist) {
+        listOf(track.title, track.artist)
+            .mapNotNull { value -> value.trim().firstOrNull()?.uppercaseChar()?.toString() }
+            .take(2)
+            .joinToString("")
+            .ifBlank { "♪" }
+    }
+    Box(
+        modifier = modifier
+            .background(
+                Brush.radialGradient(
+                    listOf(
+                        Color.White.copy(alpha = 0.22f),
+                        Color(track.accentStart).copy(alpha = 0.46f),
+                        Color(track.accentEnd).copy(alpha = 0.64f)
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = initials,
+            color = LevyraText.copy(alpha = 0.88f),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Clip
         )
     }
 }
@@ -1488,8 +1523,9 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         resonanceTracks + (newReleases?.tracks ?: emptyList())
     }
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
-        LevyraArtworkCache.preloadPriority(context, personalTracks, 12)
-        LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 24)
+        delay(650L)
+        LevyraArtworkCache.preloadPriority(context, personalTracks, 8)
+        LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 18)
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
