@@ -216,7 +216,6 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.valentinilk.shimmer.shimmer
-import kotlinx.coroutines.delay
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
 private val CinematicPlum = Color(0xFF2A1738)
@@ -1512,7 +1511,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         buildTrendingArtists(state)
     }
     val personalTracks = remember(state.currentTrack, state.recentSearches, state.personalOrbitTracks, state.favorites, state.tracks, state.homeSections, state.charts) {
-        buildPersonalListeningTracks(state)
+        buildPersonalListeningTracks(state).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
     val resonanceTracks = remember(state.currentTrack, state.recentSearches, state.favorites, state.tracks, state.homeSections, state.charts) {
         buildResonanceTracks(state)
@@ -1527,9 +1526,11 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         resonanceTracks + (newReleases?.tracks ?: emptyList())
     }
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
-        delay(650L)
-        LevyraArtworkCache.cachePersistent(context, personalTracks, 8)
-        LevyraArtworkCache.preloadPriority(context, personalTracks, 8)
+        if (personalTracks.isNotEmpty()) {
+            LevyraArtworkCache.preloadPriority(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
+            LevyraArtworkCache.cachePersistent(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
+            LevyraArtworkCache.preloadPriority(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
+        }
         LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 18)
     }
     LazyColumn(
@@ -1825,7 +1826,7 @@ private fun buildPersonalListeningTracks(state: LevyraUiState): List<Track> {
         homeSections = state.homeSections,
         charts = state.charts,
         cachedOrbit = state.personalOrbitTracks,
-        limit = 12
+        limit = LevyraPersonalOrbit.DISPLAY_LIMIT
     )
 }
 
