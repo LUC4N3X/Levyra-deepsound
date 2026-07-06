@@ -12,6 +12,7 @@ okhttp = "5.4.0"
 newpipe = "main-SNAPSHOT"
 desugar = "2.1.4"
 junit = "4.13.2"
+json = "20250107"
 room = "2.8.4"
 datastore = "1.2.1"
 work = "2.11.2"
@@ -50,6 +51,7 @@ okhttp-brotli = { group = "com.squareup.okhttp3", name = "okhttp-brotli", versio
 newpipe-extractor = { group = "com.github.MetrolistGroup", name = "MetrolistExtractor", version.ref = "newpipe" }
 desugar-jdk-libs-nio = { group = "com.android.tools", name = "desugar_jdk_libs_nio", version.ref = "desugar" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+json = { group = "org.json", name = "json", version.ref = "json" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }

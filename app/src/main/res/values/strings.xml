@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">LEVYRA</string>
+    <string name="app_name" translatable="false">LEVYRA</string>
     <string name="widget_description">Mini player, quick favorites, daily flow, offline and lyrics</string>
-    <string name="widget_idle_title">LEVYRA</string>
+    <string name="widget_idle_title" translatable="false">LEVYRA</string>
     <string name="widget_idle_subtitle">Tap to listen</string>
     <string name="widget_toggle">Play/Pause</string>
     <string name="widget_next">Next</string>
