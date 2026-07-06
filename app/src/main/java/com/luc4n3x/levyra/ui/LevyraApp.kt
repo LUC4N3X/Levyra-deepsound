@@ -1781,6 +1781,7 @@ private fun buildPersonalListeningTracks(state: LevyraUiState): List<Track> {
         .asSequence()
         .filter { it.id.length == 11 && isReliableMusicUpdateCandidate(it) }
         .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+        .filter { hasSquareAlbumArtwork(it) }
         .distinctBy { it.id }
         .take(12)
         .toList()
@@ -2117,12 +2118,14 @@ private fun PersonalListeningCard(
     resolving: Boolean,
     onClick: () -> Unit
 ) {
-    val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     Surface(
-        color = Color.White.copy(alpha = if (active) 0.085f else 0.045f),
-        border = BorderStroke(1.dp, if (active) LevyraCyan.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 28.dp),
+        color = CinematicGlassDeep,
+        border = BorderStroke(
+            width = if (active) 1.5.dp else 1.dp,
+            color = if (active) LevyraCyan.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.07f)
+        ),
+        shape = RoundedCornerShape(22.dp),
         modifier = Modifier
             .size(154.dp)
             .pressable(onClick = onClick)
@@ -2130,36 +2133,27 @@ private fun PersonalListeningCard(
         Box(modifier = Modifier.fillMaxSize()) {
             CoverImage(
                 track = track,
-                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = if (active) 0.92f else 0.84f },
+                modifier = Modifier.fillMaxSize(),
                 highRes = false
             )
+            // Clean bottom-anchored scrim so titles stay legible over any cover.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            listOf(
-                                Color.Black.copy(alpha = 0.04f),
-                                Color.Black.copy(alpha = 0.34f),
-                                Color.Black.copy(alpha = 0.94f)
-                            )
+                            0.0f to Color.Transparent,
+                            0.45f to Color.Black.copy(alpha = 0.12f),
+                            0.78f to Color.Black.copy(alpha = 0.62f),
+                            1.0f to Color.Black.copy(alpha = 0.92f)
                         )
                     )
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(72.dp)
-                    .graphicsLayer {
-                        alpha = if (active) 0.9f else 0.48f
-                    }
-                    .background(Brush.radialGradient(listOf(accentEnd.copy(alpha = 0.34f), Color.Transparent)))
             )
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp),
+                    .padding(11.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
@@ -2168,15 +2162,16 @@ private fun PersonalListeningCard(
                     verticalAlignment = Alignment.Top
                 ) {
                     Surface(
-                        color = Color.Black.copy(alpha = 0.46f),
-                        shape = RoundedCornerShape(999.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                        color = Color.Black.copy(alpha = 0.42f),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
                     ) {
                         Text(
-                            text = "#${rank.toString().padStart(2, '0')}",
+                            text = rank.toString().padStart(2, '0'),
                             color = LevyraText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
+                            letterSpacing = 0.5.sp,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -2184,7 +2179,7 @@ private fun PersonalListeningCard(
                         Surface(
                             color = LevyraCyan,
                             shape = CircleShape,
-                            modifier = Modifier.size(27.dp)
+                            modifier = Modifier.size(26.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 if (resolving) {
@@ -2197,7 +2192,15 @@ private fun PersonalListeningCard(
                     }
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    // Slim accent underline ties the card back to the track's palette.
+                    Box(
+                        modifier = Modifier
+                            .width(24.dp)
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (active) LevyraCyan else accentEnd.copy(alpha = 0.9f))
+                    )
                     Text(
                         text = track.title,
                         color = LevyraText,
@@ -2209,7 +2212,7 @@ private fun PersonalListeningCard(
                     )
                     Text(
                         text = track.artist,
-                        color = LevyraMuted.copy(alpha = 0.94f),
+                        color = LevyraText.copy(alpha = 0.72f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -2256,6 +2259,36 @@ private fun releaseKindFromSource(title: String, track: Track): String {
             !album.equals(track.title, ignoreCase = true) -> "album"
         else -> "uscita"
     }
+}
+
+/**
+ * True only when the track carries a genuine square album cover.
+ *
+ * YouTube Music serves album/song art from Google's image CDN as square,
+ * resizable URLs (`=w544-h544...` or `=s...`). "Songs" that are really music
+ * videos instead come back with a 16:9 video frame from `i.ytimg.com/vi/...`
+ * (hqdefault/mqdefault/…). Those framegrabs look wrong in a cover grid, so the
+ * personal orbit shelf keeps only tracks backed by real artwork.
+ */
+private fun hasSquareAlbumArtwork(track: Track): Boolean {
+    val url = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.trim()
+    if (url.isBlank()) return false
+    val lower = url.lowercase()
+    val looksLikeVideoFrame = lower.contains("/vi/") ||
+        lower.contains("/vi_webp/") ||
+        lower.contains("ytimg.com/an_webp") ||
+        lower.contains("hqdefault") ||
+        lower.contains("mqdefault") ||
+        lower.contains("sddefault") ||
+        lower.contains("maxresdefault") ||
+        lower.contains("hq720") ||
+        lower.endsWith("default.jpg") ||
+        lower.endsWith("default.webp")
+    if (looksLikeVideoFrame) return false
+    return lower.contains("googleusercontent.com") ||
+        lower.contains("ggpht.com") ||
+        Regex("=w\\d+-h\\d+").containsMatchIn(url) ||
+        Regex("=s\\d+").containsMatchIn(url)
 }
 
 private fun isReliableMusicUpdateCandidate(track: Track): Boolean {
