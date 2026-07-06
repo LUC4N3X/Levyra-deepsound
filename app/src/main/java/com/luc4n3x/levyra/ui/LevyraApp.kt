@@ -5351,39 +5351,69 @@ private fun SettingsMiniButton(
 
 @Composable
 private fun LevyraLogoMark(size: Dp = 58.dp) {
+    val infiniteTransition = rememberInfiniteTransition(label = "haloTransition")
+    val haloScale by infiniteTransition.animateFloat(
+        initialValue = 1.15f,
+        targetValue = 1.45f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "haloScale"
+    )
+    val haloAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "haloAlpha"
+    )
+
     Box(contentAlignment = Alignment.Center) {
-        // Glowing halo behind the logo
+        // Animated breathing neon halo behind the logo
         Box(
             modifier = Modifier
-                .size(size * 1.4f)
-                .blur(16.dp)
+                .size(size * haloScale)
+                .blur(20.dp)
                 .background(
                     Brush.radialGradient(
-                        listOf(LevyraCyan.copy(alpha = 0.5f), LevyraViolet.copy(alpha = 0.25f), Color.Transparent)
+                        colors = listOf(
+                            LevyraCyan.copy(alpha = haloAlpha),
+                            LevyraViolet.copy(alpha = haloAlpha * 0.6f),
+                            Color.Transparent
+                        )
                     ),
                     CircleShape
                 )
         )
-        // Container to protect the logo from being cut
+        // Premium glass-like container
         Box(
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(LevyraBlack) // Blocks the halo from bleeding through the transparent logo
+                .background(Color(0xFF1A1B22)) // Dark sleek background 
                 .border(
-                    1.dp,
-                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.25f), Color.Transparent)),
-                    CircleShape
+                    width = 1.5.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            LevyraCyan.copy(alpha = 0.9f),
+                            LevyraViolet.copy(alpha = 0.5f),
+                            Color.Transparent,
+                            Color.Transparent
+                        )
+                    ),
+                    shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // The raw logo with some padding
+            // The logo filling the entire circle
             Image(
                 painter = painterResource(id = R.drawable.levyra_logo),
                 contentDescription = "Logo Levyra",
-                modifier = Modifier
-                    .size(size * 0.78f) // Reduced size so the outer grooves don't touch the border
-                    .clip(CircleShape)
+                contentScale = ContentScale.Crop, // Crucial to make it fill the circle and look native
+                modifier = Modifier.fillMaxSize()
             )
         }
     }
