@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -112,13 +113,16 @@ internal fun LevyraLaunchExperience(
             )
             repeat(42) { index ->
                 val angle = ((index * 8.571f) + spin) * (PI.toFloat() / 180f)
-                val energy = ((sin(wave * PI.toFloat() * 2f + index * 0.46f) + 1f) / 2f).coerceIn(0f, 1f)
+                val phase = (wave * PI.toFloat() * 2f + index * 0.46f).toDouble()
+                val energy = (((sin(phase).toFloat() + 1f) / 2f).coerceIn(0f, 1f))
                 val inner = radius * (0.76f + energy * 0.03f)
                 val outer = radius * (0.88f + energy * 0.16f)
-                val x1 = center.x + cos(angle) * inner
-                val y1 = center.y + sin(angle) * inner
-                val x2 = center.x + cos(angle) * outer
-                val y2 = center.y + sin(angle) * outer
+                val angleCos = cos(angle.toDouble()).toFloat()
+                val angleSin = sin(angle.toDouble()).toFloat()
+                val x1 = center.x + angleCos * inner
+                val y1 = center.y + angleSin * inner
+                val x2 = center.x + angleCos * outer
+                val y2 = center.y + angleSin * outer
                 drawLine(
                     color = if (index % 2 == 0) accentStart.copy(alpha = 0.30f) else accentEnd.copy(alpha = 0.28f),
                     start = Offset(x1, y1),
@@ -207,7 +211,8 @@ private fun LevyraLaunchBars(wave: Float, accentStart: Color, accentEnd: Color) 
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(7) { index ->
-            val energy = ((sin(wave * PI.toFloat() * 2f + index * 0.72f) + 1f) / 2f).coerceIn(0f, 1f)
+            val phase = (wave * PI.toFloat() * 2f + index * 0.72f).toDouble()
+            val energy = (((sin(phase).toFloat() + 1f) / 2f).coerceIn(0f, 1f))
             Box(
                 modifier = Modifier
                     .width(4.dp)
