@@ -7,6 +7,8 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.CacheReport
 import com.luc4n3x.levyra.domain.HomeSection
+import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
@@ -26,10 +28,10 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private val clientVersion = "1.20260423.01.00"
     private val memory = LinkedHashMap<String, Track>()
 
-    suspend fun search(query: String, limit: Int = 36): List<Track> = withContext(Dispatchers.IO) {
+    suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext emptyList()
-        val remote = runCatching { searchInnerTube(cleanQuery, limit) }.getOrDefault(emptyList())
+        val remote = runCatching { searchInnerTube(cleanQuery, limit, languageCode) }.getOrDefault(emptyList())
         if (remote.isNotEmpty()) {
             remote.forEach { memory[it.id] = it }
             return@withContext remote
@@ -40,12 +42,12 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     /** First YouTube Music match for a query, used to make chart entries playable. */
-    suspend fun searchOne(query: String): Track? = search(query, 1).firstOrNull()
+    suspend fun searchOne(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): Track? = search(query, 1, languageCode).firstOrNull()
 
-    suspend fun searchEverything(query: String): SearchResults = withContext(Dispatchers.IO) {
+    suspend fun searchEverything(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): SearchResults = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return@withContext SearchResults()
-        val root = runCatching { searchInnerTubeRaw(cleanQuery) }.getOrNull() ?: return@withContext fallbackResults(cleanQuery)
+        val root = runCatching { searchInnerTubeRaw(cleanQuery, languageCode) }.getOrNull() ?: return@withContext fallbackResults(cleanQuery, languageCode)
         val renderers = mutableListOf<JSONObject>()
         collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
         val songs = LinkedHashMap<String, Track>()
@@ -58,7 +60,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             val kind = subtitleTokens.firstOrNull()?.lowercase().orEmpty()
             val thumb = findBestThumbnail(renderer)
             when {
-                kind.startsWith("artist") || kind.startsWith("artista") -> {
+                kind.startsWith("artist") || kind.startsWith("artista") || kind.startsWith("artiste") || kind.startsWith("künstler") || kind.startsWith("kunstler") || kind.startsWith("artiest") || kind.startsWith("artysta") -> {
                     if (!artists.containsKey(title.lowercase())) {
                         val subs = subtitleTokens.firstOrNull { it.contains("scritt", ignoreCase = true) || it.contains("subscriber", ignoreCase = true) || it.contains("iscritt", ignoreCase = true) }.orEmpty()
                         val seed = stableSeed(title)
@@ -71,7 +73,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                         )
                     }
                 }
-                kind.startsWith("album") || kind.startsWith("single") || kind.startsWith("singol") || kind.startsWith("ep") -> {
+                kind.startsWith("album") || kind.startsWith("álbum") || kind.startsWith("single") || kind.startsWith("singol") || kind.startsWith("ep") -> {
                     val albumArtist = subtitleTokens.getOrNull(1).orEmpty()
                     val year = subtitleTokens.firstNotNullOfOrNull { Regex("\\b(19|20)\\d{2}\\b").find(it)?.value }.orEmpty()
                     val key = "${title.lowercase()}|${albumArtist.lowercase()}"
@@ -107,28 +109,30 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             artists = artists.values.take(8).toList(),
             albums = albums.values.take(10).toList()
         )
-        if (results.isEmpty) fallbackResults(cleanQuery) else results
+        if (results.isEmpty) fallbackResults(cleanQuery, languageCode) else results
     }
 
-    private suspend fun fallbackResults(query: String): SearchResults {
-        val songs = search(query, 20)
+    private suspend fun fallbackResults(query: String, languageCode: String): SearchResults {
+        val songs = search(query, 20, languageCode)
         return SearchResults(topTrack = songs.firstOrNull(), songs = songs)
     }
 
-    private fun searchInnerTubeRaw(query: String): JSONObject? {
+    private fun clientPayload(languageCode: String): JSONObject {
+        val locale = LevyraContentLocales.forLanguage(languageCode)
+        return JSONObject()
+            .put("clientName", "WEB_REMIX")
+            .put("clientVersion", clientVersion)
+            .put("hl", locale.hl)
+            .put("gl", locale.gl)
+            .put("platform", "DESKTOP")
+    }
+
+    private fun searchInnerTubeRaw(query: String, languageCode: String): JSONObject? {
         val endpoint = "https://music.youtube.com/youtubei/v1/search?key=$apiKey&prettyPrint=false"
         val body = JSONObject()
             .put(
                 "context",
-                JSONObject().put(
-                    "client",
-                    JSONObject()
-                        .put("clientName", "WEB_REMIX")
-                        .put("clientVersion", clientVersion)
-                        .put("hl", "it")
-                        .put("gl", "IT")
-                        .put("platform", "DESKTOP")
-                )
+                JSONObject().put("client", clientPayload(languageCode))
             )
             .put("query", query)
             .toString()
@@ -157,35 +161,28 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     suspend fun home(
-        queries: List<String> = listOf("top hits italia 2026", "global top hits 2026", "rap italiano 2026", "pop hits 2026")
+        queries: List<String> = LevyraContentLocales.forLanguage(LevyraLanguageCatalog.deviceDefault()).homeQueries,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): List<Track> = withContext(Dispatchers.IO) {
         val results = queries.flatMap { query ->
-            runCatching { search(query, 10) }.getOrDefault(emptyList())
+            runCatching { search(query, 10, languageCode) }.getOrDefault(emptyList())
         }
         results.distinctBy { it.id }.take(40).also { items -> items.forEach { memory[it.id] = it } }
     }
 
     /** Real YouTube Music home feed parsed into titled sections, like the official app. */
-    suspend fun homeFeed(): List<HomeSection> = withContext(Dispatchers.IO) {
-        val sections = runCatching { homeFeedInnerTube() }.getOrDefault(emptyList())
+    suspend fun homeFeed(languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<HomeSection> = withContext(Dispatchers.IO) {
+        val sections = runCatching { homeFeedInnerTube(languageCode) }.getOrDefault(emptyList())
         sections.forEach { section -> section.tracks.forEach { memory[it.id] = it } }
         sections
     }
 
-    private fun homeFeedInnerTube(): List<HomeSection> {
+    private fun homeFeedInnerTube(languageCode: String): List<HomeSection> {
         val endpoint = "https://music.youtube.com/youtubei/v1/browse?key=$apiKey&prettyPrint=false"
         val body = JSONObject()
             .put(
                 "context",
-                JSONObject().put(
-                    "client",
-                    JSONObject()
-                        .put("clientName", "WEB_REMIX")
-                        .put("clientVersion", clientVersion)
-                        .put("hl", "it")
-                        .put("gl", "IT")
-                        .put("platform", "DESKTOP")
-                )
+                JSONObject().put("client", clientPayload(languageCode))
             )
             .put("browseId", "FEmusic_home")
             .toString()
@@ -238,11 +235,16 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .trim()
     }
 
-    private val excludedTypes = setOf("album", "playlist", "artist", "ep", "podcast", "episode", "artista", "canale", "channel", "profilo", "profile", "mix")
+    private val excludedTypes = setOf(
+        "album", "playlist", "artist", "ep", "podcast", "episode", "channel", "profile", "mix",
+        "artista", "canale", "profilo", "canción", "cancion", "artiste", "künstler", "kunstler",
+        "álbum", "albumo", "artiest", "artysta", "artis", "canal", "chaîne", "kanal"
+    )
 
-    fun searchSuggestions(query: String): List<String> {
+    fun searchSuggestions(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<String> {
         if (query.isBlank()) return emptyList()
-        val url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${java.net.URLEncoder.encode(query, "UTF-8")}"
+        val locale = LevyraContentLocales.forLanguage(languageCode)
+        val url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&hl=${locale.hl}&gl=${locale.gl}&q=${java.net.URLEncoder.encode(query, "UTF-8")}"
         return runCatching {
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
@@ -314,20 +316,12 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun searchInnerTube(query: String, limit: Int): List<Track> {
+    private fun searchInnerTube(query: String, limit: Int, languageCode: String): List<Track> {
         val endpoint = "https://music.youtube.com/youtubei/v1/search?key=$apiKey&prettyPrint=false"
         val body = JSONObject()
             .put(
                 "context",
-                JSONObject().put(
-                    "client",
-                    JSONObject()
-                        .put("clientName", "WEB_REMIX")
-                        .put("clientVersion", clientVersion)
-                        .put("hl", "it")
-                        .put("gl", "IT")
-                        .put("platform", "DESKTOP")
-                )
+                JSONObject().put("client", clientPayload(languageCode))
             )
             .put("query", query)
             .toString()
@@ -424,7 +418,9 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     private val typeLabels = setOf(
         "song", "video", "album", "playlist", "artist", "single", "ep", "episode", "podcast",
-        "brano", "canzone", "video musicale", "video ufficiale", "artista", "singolo", "episodio"
+        "brano", "canzone", "video musicale", "video ufficiale", "artista", "singolo", "episodio",
+        "canción", "cancion", "artiste", "chanson", "titre", "künstler", "kunstler", "lied", "nummer",
+        "utwór", "piosenka", "melodie", "τραγούδι", "låt", "sang", "píseň", "skladba", "пісня"
     )
 
     private fun isTypeLabel(token: String): Boolean = token.trim().lowercase() in typeLabels
