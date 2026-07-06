@@ -89,12 +89,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
     private val startupSettings = preferences.snapshot()
+    private val startupMoods = moodEngine.moodsForLanguage(startupSettings.languageCode)
     private val _state = MutableStateFlow(
         LevyraUiState(
-            moods = moodEngine.moods,
-            tastes = moodEngine.tastes,
+            moods = startupMoods,
+            tastes = moodEngine.tastesForLanguage(startupSettings.languageCode),
             chartRegions = ChartsCatalog.regions,
-            selectedMood = moodEngine.moods.firstOrNull(),
+            selectedChartId = ChartsCatalog.defaultRegionForLanguage(startupSettings.languageCode).id,
+            selectedMood = startupMoods.firstOrNull(),
             isSearching = false,
             embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
             audioNormalization = startupSettings.audioNormalization,
@@ -128,12 +130,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         val favorites = favoritesStore.load()
         val settings = startupSettings
-        val cachedHomeSections = preferences.loadHomeSections()
-        val startupHomeSections = cachedHomeSections.ifEmpty { LevyraStartupCatalog.homeSections() }
+        val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(settings.languageCode)
+        val cachedHomeSections = preferences.loadHomeSections(settings.languageCode)
+        val startupHomeSections = cachedHomeSections.ifEmpty { LevyraStartupCatalog.homeSections(settings.languageCode) }
         val startupHomeTracks = startupHomeSections.flatMap { it.tracks }.distinctBy { it.id }
-        val cachedCharts = preferences.loadChartTracks()
-        val startupCharts = cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks() }
-        val rawCachedOrbitTracks = settings.personalOrbitTracks.ifEmpty { preferences.loadPersonalOrbitTracks() }
+        val cachedCharts = preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
+        val startupCharts = cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) }
+        val rawCachedOrbitTracks = settings.personalOrbitTracks.ifEmpty { preferences.loadPersonalOrbitTracks(settings.languageCode) }
         val startupOrbitSeed = mergeTracks(rawCachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
         val cachedOrbitTracks = LevyraPersonalOrbit.build(
             currentTrack = null,
@@ -146,7 +149,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             limit = LevyraPersonalOrbit.DISPLAY_LIMIT
         )
         val initialTracks = mergeTracks(cachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
-        val initialQueue = moodEngine.buildQueue(moodEngine.moods.firstOrNull(), initialTracks)
+        val initialQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), initialTracks)
         resolver.setAudioQuality(settings.audioQuality)
         _state.update {
             it.copy(
@@ -159,6 +162,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 queue = initialQueue,
                 searchResults = initialTracks.take(12),
                 charts = startupCharts,
+                selectedChartId = defaultChartRegion.id,
                 isSearching = false,
                 isLoadingCharts = false,
                 cacheReport = repository.cacheReport(),
@@ -274,9 +278,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (limited.isEmpty()) return
         val appContext = getApplication<Application>().applicationContext
         viewModelScope.launch(Dispatchers.IO) {
-            if (persist) preferences.savePersonalOrbitTracks(limited)
+            val languageCode = _state.value.languageCode
+            if (persist) preferences.savePersonalOrbitTracks(limited, languageCode)
             LevyraArtworkCache.cachePersistent(appContext, limited, limit)
-            if (persist) PersonalOrbitArtworkWorker.enqueue(appContext)
+            if (persist) PersonalOrbitArtworkWorker.enqueue(appContext, languageCode)
         }
     }
 
@@ -624,8 +629,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         preferences.setLanguageCode(normalizedLanguage)
         preferences.setUserName(name.trim())
         preferences.setOnboarded(tasteIds)
-        _state.update { it.copy(showOnboarding = false, userName = name.trim(), languageCode = normalizedLanguage) }
-        loadHomeFeed()
+        _state.update { it.copy(showOnboarding = false, userName = name.trim()) }
+        applyLanguageContent(normalizedLanguage, refreshRemote = true)
     }
 
     /** Loads the real YouTube Music home feed (sections), falling back to taste-based search. */
@@ -633,7 +638,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val hasVisibleHome = _state.value.homeSections.isNotEmpty() || _state.value.tracks.isNotEmpty()
             _state.update { it.copy(isSearching = !hasVisibleHome, searchError = null) }
-            val sections = runCatching { repository.homeFeed() }.getOrDefault(emptyList())
+            val languageCode = _state.value.languageCode
+            val sections = runCatching { repository.homeFeed(languageCode) }.getOrDefault(emptyList())
+            if (_state.value.languageCode != languageCode) return@launch
             if (sections.isEmpty()) {
                 loadHome(preserveCurrent = hasVisibleHome)
                 return@launch
@@ -644,7 +651,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
             val queue = moodEngine.buildQueue(_state.value.selectedMood, flat)
-            preferences.saveHomeSections(sections)
+            preferences.saveHomeSections(sections, languageCode)
             _state.update {
                 it.copy(
                     homeSections = sections,
@@ -728,8 +735,62 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setLanguage(code: String) {
         val normalizedLanguage = LevyraLanguageCatalog.normalize(code)
+        if (normalizedLanguage == _state.value.languageCode) return
         preferences.setLanguageCode(normalizedLanguage)
-        _state.update { it.copy(languageCode = normalizedLanguage) }
+        applyLanguageContent(normalizedLanguage, refreshRemote = true)
+    }
+
+    private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
+        val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(languageCode)
+        val localizedMoods = moodEngine.moodsForLanguage(languageCode)
+        val selectedMood = localizedMoods.firstOrNull { it.id == _state.value.selectedMood?.id } ?: localizedMoods.firstOrNull()
+        val homeSections = preferences.loadHomeSections(languageCode).ifEmpty { LevyraStartupCatalog.homeSections(languageCode) }
+        val homeTracks = homeSections.flatMap { it.tracks }.distinctBy { it.id }
+        val chartTracks = preferences.loadChartTracks(languageCode, defaultChartRegion.id).ifEmpty { LevyraStartupCatalog.chartTracks(languageCode) }
+        val cachedOrbit = preferences.loadPersonalOrbitTracks(languageCode)
+        val seed = mergeTracks(cachedOrbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
+        val orbit = LevyraPersonalOrbit.build(
+            currentTrack = _state.value.currentTrack,
+            recentSearches = _state.value.recentSearches,
+            favorites = _state.value.favorites,
+            tracks = seed,
+            homeSections = homeSections,
+            charts = chartTracks,
+            cachedOrbit = cachedOrbit,
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT
+        )
+        val allTracks = mergeTracks(orbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
+        val queue = moodEngine.buildQueue(selectedMood, allTracks)
+        exploreCache.clear()
+        exploreVideosLoaded = false
+        _state.update {
+            it.copy(
+                languageCode = languageCode,
+                moods = localizedMoods,
+                tastes = moodEngine.tastesForLanguage(languageCode),
+                selectedMood = selectedMood,
+                selectedChartId = defaultChartRegion.id,
+                homeSections = homeSections,
+                charts = chartTracks,
+                personalOrbitTracks = orbit,
+                tracks = allTracks,
+                queue = queue,
+                searchResults = allTracks.take(12),
+                searchSuggestions = emptyList(),
+                searchData = SearchResults(),
+                searchError = null,
+                isSearching = false,
+                isLoadingCharts = false,
+                exploreZoneId = null,
+                exploreTracks = emptyList(),
+                exploreVideos = emptyList()
+            )
+        }
+        warmPersistentOrbit(orbit, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
+        if (refreshRemote) {
+            loadHomeFeed()
+            loadCharts(defaultChartRegion.id)
+        }
     }
 
     fun restartOnboarding() {
@@ -765,13 +826,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val hasVisibleCharts = _state.value.charts.isNotEmpty()
             _state.update { it.copy(isLoadingCharts = !hasVisibleCharts) }
+            val languageCode = _state.value.languageCode
             val region = ChartsCatalog.region(regionId)
             val result = runCatching { chartsRepository.topSongs(region.country) }.getOrDefault(emptyList())
+            if (_state.value.languageCode != languageCode) return@launch
             if (result.isEmpty()) {
                 _state.update { if (it.selectedChartId == regionId) it.copy(isLoadingCharts = false) else it }
                 return@launch
             }
-            preferences.saveChartTracks(result)
+            preferences.saveChartTracks(result, languageCode, regionId)
             _state.update {
                 if (it.selectedChartId != regionId) return@update it
                 it.copy(charts = result, isLoadingCharts = false)
@@ -788,7 +851,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             charts.take(40).forEach { entry ->
                 if (!isActive || _state.value.selectedChartId != regionId) return@launch
                 if (entry.videoUrl.isNotBlank()) return@forEach
-                val match = runCatching { repository.searchOne("${entry.title} ${entry.artist}") }.getOrNull()
+                val match = runCatching { repository.searchOne("${entry.title} ${entry.artist}", _state.value.languageCode) }.getOrNull()
                 if (match != null) {
                     _state.update { st ->
                         if (st.selectedChartId != regionId) return@update st
@@ -1082,7 +1145,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         searchJob = viewModelScope.launch {
             delay(180L)
             val suggestions = withContext(Dispatchers.IO) {
-                runCatching { repository.searchSuggestions(clean) }.getOrDefault(emptyList()).take(6)
+                runCatching { repository.searchSuggestions(clean, _state.value.languageCode) }.getOrDefault(emptyList()).take(6)
             }
             if (_state.value.query.trim() != clean) return@launch
             _state.update { it.copy(searchSuggestions = suggestions) }
@@ -1105,7 +1168,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun runSearch(clean: String) {
         moveToTab(LevyraTab.Search, rememberCurrent = true)
         _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList(), searchFilter = SearchFilter.All) }
-        val result = runCatching { repository.searchEverything(clean) }
+        val result = runCatching { repository.searchEverything(clean, _state.value.languageCode) }
         result.onSuccess { data ->
             val tracks = data.songs
             val mood = _state.value.selectedMood
@@ -1272,7 +1335,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!exploreVideosLoaded) {
             exploreVideosLoaded = true
             viewModelScope.launch {
-                val videos = runCatching { repository.search("${strings.exploreNewVideos} 2026", 12) }.getOrDefault(emptyList())
+                val videos = runCatching { repository.search("${strings.exploreNewVideos} 2026", 12, _state.value.languageCode) }.getOrDefault(emptyList())
                 if (videos.isEmpty()) exploreVideosLoaded = false
                 _state.update { it.copy(exploreVideos = videos) }
             }
@@ -1288,7 +1351,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exploreJob?.cancel()
         _state.update { it.copy(exploreTracks = emptyList(), isExploreLoading = true) }
         exploreJob = viewModelScope.launch {
-            val results = runCatching { repository.search(zone.query, 24) }.getOrDefault(emptyList())
+            val results = runCatching { repository.search(zone.query, 24, _state.value.languageCode) }.getOrDefault(emptyList())
             if (results.isNotEmpty()) exploreCache[zone.id] = results
             if (_state.value.exploreZoneId != zone.id) return@launch
             _state.update { it.copy(exploreTracks = results, isExploreLoading = false) }
@@ -1468,7 +1531,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val resolved = if (youtube != null) {
             resolver.prefetch(youtube, videoMode)
         } else {
-            val match = runCatching { repository.searchOne("${track.title} ${track.artist}") }.getOrNull() ?: return
+            val match = runCatching { repository.searchOne("${track.title} ${track.artist}", _state.value.languageCode) }.getOrNull() ?: return
             resolver.prefetch(match, videoMode)
         }
         if (resolved != null && prime) {
@@ -1563,9 +1626,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun loadHome(preserveCurrent: Boolean = false) {
         viewModelScope.launch {
             _state.update { it.copy(isSearching = !preserveCurrent, searchError = null) }
-            val queries = moodEngine.queriesForTastes(preferences.tastes())
-            val result = runCatching { repository.home(queries) }
+            val languageCode = _state.value.languageCode
+            val queries = moodEngine.queriesForTastes(preferences.tastes(), languageCode)
+            val result = runCatching { repository.home(queries, languageCode) }
             result.onSuccess { tracks ->
+                if (_state.value.languageCode != languageCode) return@onSuccess
                 if (tracks.isEmpty()) {
                     _state.update {
                         it.copy(
@@ -1603,7 +1668,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun searchMood(mood: Mood) {
-        val query = moodEngine.tagQueryFor(mood)
+        val query = moodEngine.tagQueryFor(mood, _state.value.languageCode)
         _state.update { it.copy(query = query) }
         searchNow(query)
     }
@@ -1714,7 +1779,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun resolveForPlayback(track: Track): Track {
         youtubePlayableTrack(track)?.let { return resolvePlayableTrack(it) }
-        val match = repository.searchOne("${track.title} ${track.artist}")
+        val match = repository.searchOne("${track.title} ${track.artist}", _state.value.languageCode)
             ?: throw IllegalStateException("Nessun risultato YouTube per ${track.title}")
         val carried = match.copy(
             thumbnailUrl = match.thumbnailUrl.ifBlank { track.thumbnailUrl },

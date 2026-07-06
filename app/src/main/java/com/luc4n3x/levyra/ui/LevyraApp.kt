@@ -186,6 +186,7 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.SearchFilter
+import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
@@ -3199,19 +3200,9 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
 
                 item {
-                    val fallbackSuggestions = listOf(
-                        "samurai jay",
-                        "shiva",
-                        "sfera ebbasta",
-                        "guè",
-                        "tiziano ferro",
-                        "pinguini tattici nucleari",
-                        "irama",
-                        "marracash",
-                        "fedez"
-                    )
+                    val fallbackSuggestions = LevyraContentLocales.artistSuggestions(state.languageCode)
                     SuggestionsList(
-                        title = "Esplora artisti",
+                        title = LevyraContentLocales.artistSuggestionsTitle(state.languageCode),
                         suggestions = fallbackSuggestions,
                         onSuggestionClick = { query ->
                             focusManager.clearFocus()
@@ -3224,7 +3215,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             } else if (state.searchSuggestions.isNotEmpty() && !state.isSearching && state.searchResults.isEmpty() && state.searchError == null) {
                 item {
                     SuggestionsList(
-                        title = "Suggerimenti",
+                        title = LevyraContentLocales.searchSuggestionsTitle(state.languageCode),
                         suggestions = state.searchSuggestions,
                         onSuggestionClick = { suggestion ->
                             focusManager.clearFocus()
@@ -3237,6 +3228,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             } else if (state.searchResults.isEmpty() && !state.isSearching && state.searchError == null) {
                 item {
                     QuickChips(
+                        languageCode = state.languageCode,
                         onClick = { query ->
                             focusManager.clearFocus()
                             keyboardController?.hide()
@@ -7355,8 +7347,8 @@ private fun PageHeader(title: String, subtitle: String) {
 
 
 @Composable
-private fun QuickChips(onClick: (String) -> Unit) {
-    val chips = listOf("Sfera Ebbasta", "Lazza", "Geolier", "The Weeknd", "Drake", "top hits italia", "night drive", "gym bass")
+private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
+    val chips = LevyraContentLocales.quickSearches(languageCode)
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
