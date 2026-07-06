@@ -833,6 +833,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 )
             }
             }
+            }
         }
     }
 }
