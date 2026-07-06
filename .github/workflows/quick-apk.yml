@@ -41,11 +41,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
-      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
-      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
-      LEVYRA_KEY_ALIAS: levyra_ci
-      LEVYRA_KEY_PASSWORD: levyra_ci_password
+      YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+      LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+      LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+      LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -62,31 +62,28 @@ jobs:
         run: |
           set -euo pipefail
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.4.1"
 
-      - name: Prepare CI release signing
+      - name: Prepare Release Signing
+        if: ${{ inputs.build_type == 'release' }}
         shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
         run: |
           set -euo pipefail
+          test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
           rm -f "${LEVYRA_KEYSTORE_FILE}"
-          keytool -genkeypair \
-            -keystore "${LEVYRA_KEYSTORE_FILE}" \
-            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
-            -alias "${LEVYRA_KEY_ALIAS}" \
-            -keypass "${LEVYRA_KEY_PASSWORD}" \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
-            >/dev/null
+          printf "%s" "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list -keystore "${LEVYRA_KEYSTORE_FILE}" -storepass "${LEVYRA_KEYSTORE_PASSWORD}" -alias "${LEVYRA_KEY_ALIAS}" >/dev/null
 
       - name: Build APK
         shell: bash
@@ -117,13 +114,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
-          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '' | xargs)"
           APK="$(find "${OUTPUT_DIR}" -name '*.apk' -print -quit)"
           test -f "${APK}"
           cp "${APK}" "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk"
           sha256sum "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk" > "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk.sha256"
           "${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}" > artifacts/apk-badging.txt
+          if [ "${BUILD_TYPE}" = "release" ]; then
+            "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --print-certs "${APK}" > artifacts/apk-signing-certs.txt
+          fi
           {
             echo "LEVYRA quick APK"
             echo "version=${VERSION}"

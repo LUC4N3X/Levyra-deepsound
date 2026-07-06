@@ -46,7 +46,7 @@ jobs:
             "build-tools;36.0.0"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.4.1"
 
@@ -96,7 +96,8 @@ jobs:
           test -n "${LEVYRA_KEYSTORE_PASSWORD}"
           test -n "${LEVYRA_KEY_ALIAS}"
           test -n "${LEVYRA_KEY_PASSWORD}"
-          printf "%s" "${LEVYRA_KEYSTORE_BASE64}" | base64 -d > app/levyra-release.jks
+          printf "%s" "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > app/levyra-release.jks
+          keytool -list -keystore app/levyra-release.jks -storepass "${LEVYRA_KEYSTORE_PASSWORD}" -alias "${LEVYRA_KEY_ALIAS}" >/dev/null
 
       - name: Build Release APK
         shell: bash
@@ -113,6 +114,7 @@ jobs:
           printf "%s\n" "${BADGING}"
           printf "%s\n" "${BADGING}" | grep -F "versionName='${VERSION}'"
           printf "%s\n" "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --print-certs "${APK}" > apk-signing-certs.txt
 
       - name: Prepare Release
         shell: bash
@@ -121,6 +123,7 @@ jobs:
 
           mkdir -p artifacts
           cp app/build/outputs/apk/release/app-release.apk "artifacts/LEVYRA-${VERSION}.apk"
+          cp apk-signing-certs.txt artifacts/apk-signing-certs.txt
 
           {
             echo "LEVYRA ${VERSION}"
