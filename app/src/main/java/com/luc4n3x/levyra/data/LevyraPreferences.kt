@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
@@ -173,6 +174,20 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_RECENT_SEARCHES] = array.toString() }
     }
 
+    fun loadHomeSections(): List<HomeSection> = read(emptyList()) { parseHomeSections(it[KEY_HOME_SECTIONS].orEmpty()) }
+
+    fun saveHomeSections(sections: List<HomeSection>) {
+        val array = JSONArray()
+        sections.take(10).forEach { section ->
+            val tracks = JSONArray()
+            section.tracks.take(20).forEach { track -> tracks.put(TrackJson.toJson(track)) }
+            if (tracks.length() > 0) {
+                array.put(JSONObject().put("title", section.title).put("tracks", tracks))
+            }
+        }
+        write { it[KEY_HOME_SECTIONS] = array.toString() }
+    }
+
     private fun snapshotFrom(preferences: Preferences): LevyraPreferencesSnapshot {
         return LevyraPreferencesSnapshot(
             onboarded = preferences[KEY_ONBOARDED] ?: false,
@@ -226,6 +241,19 @@ class LevyraPreferences(context: Context) {
             val array = JSONArray(raw)
             (0 until array.length()).mapNotNull { index -> array.optJSONObject(index)?.let(TrackJson::fromJson) }
         }.onFailure { Timber.w(it, "Recent searches restore failed") }.getOrDefault(emptyList())
+    }
+
+    private fun parseHomeSections(raw: String): List<HomeSection> {
+        if (raw.isBlank()) return emptyList()
+        return runCatching {
+            val array = JSONArray(raw)
+            (0 until array.length()).mapNotNull { index ->
+                val section = array.optJSONObject(index) ?: return@mapNotNull null
+                val title = section.optString("title").ifBlank { "Per te" }
+                val tracks = parseTrackList(section.optJSONArray("tracks")?.toString().orEmpty())
+                HomeSection(title, tracks).takeIf { it.tracks.isNotEmpty() }
+            }
+        }.onFailure { Timber.w(it, "Home sections restore failed") }.getOrDefault(emptyList())
     }
 
     private fun normalizeAudioQuality(value: String): String = when (value.lowercase()) {
@@ -291,6 +319,7 @@ class LevyraPreferences(context: Context) {
         val KEY_USER_NAME = stringPreferencesKey("user_name")
         val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
+        val KEY_HOME_SECTIONS = stringPreferencesKey("home_sections")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
