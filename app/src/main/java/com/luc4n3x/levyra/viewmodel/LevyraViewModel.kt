@@ -13,6 +13,7 @@ import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
+import com.luc4n3x.levyra.data.PersonalOrbitArtworkWorker
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.SponsorBlockRepository
@@ -132,8 +133,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val startupHomeTracks = startupHomeSections.flatMap { it.tracks }.distinctBy { it.id }
         val cachedCharts = preferences.loadChartTracks()
         val startupCharts = cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks() }
-        val cachedOrbitTracks = settings.personalOrbitTracks.ifEmpty { preferences.loadPersonalOrbitTracks() }
-        val initialTracks = mergeTracks(cachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks)
+        val rawCachedOrbitTracks = settings.personalOrbitTracks.ifEmpty { preferences.loadPersonalOrbitTracks() }
+        val startupOrbitSeed = mergeTracks(rawCachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
+        val cachedOrbitTracks = LevyraPersonalOrbit.build(
+            currentTrack = null,
+            recentSearches = settings.recentSearches,
+            favorites = favorites,
+            tracks = startupOrbitSeed,
+            homeSections = startupHomeSections,
+            charts = startupCharts,
+            cachedOrbit = rawCachedOrbitTracks,
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT
+        )
+        val initialTracks = mergeTracks(cachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
         val initialQueue = moodEngine.buildQueue(moodEngine.moods.firstOrNull(), initialTracks)
         resolver.setAudioQuality(settings.audioQuality)
         _state.update {
@@ -216,10 +228,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         (browseId.isNotBlank() && artist.browseId == browseId) || artist.name.equals(name, ignoreCase = true)
 
     private fun scheduleColdStartRefresh(initialTracks: List<Track>) {
-        viewModelScope.launch {
-            delay(220L)
-            LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, initialTracks, 10)
-            warmPersistentOrbit(_state.value.personalOrbitTracks.ifEmpty { initialTracks }, 12)
+        val appContext = getApplication<Application>().applicationContext
+        val orbitSeed = _state.value.personalOrbitTracks.ifEmpty { initialTracks }.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        if (orbitSeed.isNotEmpty()) {
+            LevyraArtworkCache.preloadPriority(appContext, orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT)
+            warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
         }
         viewModelScope.launch {
             delay(450L)
@@ -248,18 +261,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeSections = snapshot.homeSections,
             charts = snapshot.charts,
             cachedOrbit = snapshot.personalOrbitTracks,
-            limit = 12
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT
         )
         if (orbit.isEmpty()) return
-        _state.update { it.copy(personalOrbitTracks = orbit) }
-        warmPersistentOrbit(orbit, 12, persist = true)
+        val limited = orbit.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        _state.update { it.copy(personalOrbitTracks = limited) }
+        warmPersistentOrbit(limited, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
     }
 
     private fun warmPersistentOrbit(tracks: List<Track>, limit: Int, persist: Boolean = false) {
-        if (tracks.isEmpty()) return
+        val limited = tracks.take(limit.coerceAtLeast(1))
+        if (limited.isEmpty()) return
+        val appContext = getApplication<Application>().applicationContext
         viewModelScope.launch(Dispatchers.IO) {
-            if (persist) preferences.savePersonalOrbitTracks(tracks)
-            LevyraArtworkCache.cachePersistent(getApplication<Application>().applicationContext, tracks, limit)
+            if (persist) preferences.savePersonalOrbitTracks(limited)
+            LevyraArtworkCache.cachePersistent(appContext, limited, limit)
+            if (persist) PersonalOrbitArtworkWorker.enqueue(appContext)
         }
     }
 
