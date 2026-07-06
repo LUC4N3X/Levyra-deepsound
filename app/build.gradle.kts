@@ -156,6 +156,15 @@ android {
         buildConfig = true
     }
 
+    lint {
+        // The whole player layer is built on media3, whose APIs are annotated
+        // @UnstableApi; we opt in module-wide (see kotlin { compilerOptions.optIn }).
+        // UnsafeOptInUsageError targets library authors who expose unstable APIs
+        // to consumers and is redundant for an app that deliberately depends on
+        // media3, so disable just this check while keeping every other lint rule.
+        disable += "UnsafeOptInUsageError"
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
