@@ -62,16 +62,28 @@ object ChartsCatalog {
         ChartRegion("it", "Italia", "🇮🇹", "it"),
         ChartRegion("us", "USA", "🇺🇸", "us"),
         ChartRegion("gb", "UK", "🇬🇧", "gb"),
-        ChartRegion("es", "Spagna", "🇪🇸", "es"),
-        ChartRegion("fr", "Francia", "🇫🇷", "fr"),
-        ChartRegion("de", "Germania", "🇩🇪", "de"),
-        ChartRegion("br", "Brasile", "🇧🇷", "br"),
-        ChartRegion("mx", "Messico", "🇲🇽", "mx"),
-        ChartRegion("nl", "Olanda", "🇳🇱", "nl"),
-        ChartRegion("jp", "Giappone", "🇯🇵", "jp")
+        ChartRegion("es", "España", "🇪🇸", "es"),
+        ChartRegion("fr", "France", "🇫🇷", "fr"),
+        ChartRegion("de", "Deutschland", "🇩🇪", "de"),
+        ChartRegion("br", "Brasil", "🇧🇷", "br"),
+        ChartRegion("mx", "México", "🇲🇽", "mx"),
+        ChartRegion("nl", "Nederland", "🇳🇱", "nl"),
+        ChartRegion("pl", "Polska", "🇵🇱", "pl"),
+        ChartRegion("ro", "România", "🇷🇴", "ro"),
+        ChartRegion("gr", "Ελλάδα", "🇬🇷", "gr"),
+        ChartRegion("se", "Sverige", "🇸🇪", "se"),
+        ChartRegion("dk", "Danmark", "🇩🇰", "dk"),
+        ChartRegion("cz", "Česko", "🇨🇿", "cz"),
+        ChartRegion("ua", "Україна", "🇺🇦", "ua"),
+        ChartRegion("jp", "日本", "🇯🇵", "jp")
     )
 
     fun region(id: String): ChartRegion = regions.firstOrNull { it.id == id } ?: regions.first()
+
+    fun defaultRegionForLanguage(languageCode: String): ChartRegion {
+        val locale = LevyraContentLocales.forLanguage(languageCode)
+        return region(locale.chartRegionId)
+    }
 }
 
 data class LyricLine(
@@ -106,18 +118,35 @@ data class ExploreZone(
 )
 
 object ExploreCatalog {
-    fun getZones(strings: LevyraStrings): List<ExploreZone> = listOf(
-        ExploreZone("nuove-uscite", strings.exploreNewReleases, "🌊", "nuove uscite musica 2026", 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
-        ExploreZone("local-wave", strings.localWaveName, strings.localWaveEmoji, strings.localWaveQuery, 0xFF00E676.toInt(), 0xFF00B0FF.toInt()),
-        ExploreZone("rap-drill", strings.exploreRapDrill, "🐙", "new rap drill 2026", 0xFF9D4EDD.toInt(), 0xFF7C4DFF.toInt()),
-        ExploreZone("elettronica", strings.exploreElectronic, "⚡", "new electronic music 2026", 0xFF18FFFF.toInt(), 0xFF9D4EDD.toInt()),
-        ExploreZone("pop-global", strings.explorePopGlobal, "🌍", "new pop songs 2026", 0xFFFF4081.toInt(), 0xFF7C4DFF.toInt()),
-        ExploreZone("rnb-soul", strings.exploreRnbSoul, "🌒", "new rnb soul songs 2026", 0xFFB388FF.toInt(), 0xFFFF4081.toInt()),
-        ExploreZone("rock-alt", strings.exploreRockAlt, "🦑", "new rock alternative songs 2026", 0xFFFF6E40.toInt(), 0xFFFF1744.toInt()),
-        ExploreZone("latino", strings.exploreLatino, "🔥", "musica latina nueva 2026", 0xFFFFC400.toInt(), 0xFFFF6E40.toInt()),
-        ExploreZone("lofi-chill", strings.exploreLofiChill, "🫧", "lofi chill beats new", 0xFF64FFDA.toInt(), 0xFF00B0FF.toInt()),
-        ExploreZone("anime-jpop", strings.exploreJpopAnime, "🏮", "new jpop anime songs 2026", 0xFFFF5252.toInt(), 0xFFB388FF.toInt())
-    )
+    fun getZones(strings: LevyraStrings): List<ExploreZone> {
+        val locale = LevyraContentLocales.forLanguage(strings.code)
+        val localQuery = strings.localWaveQuery.ifBlank { locale.homeQueries.firstOrNull().orEmpty() }
+        val newReleaseQuery = "${locale.homeQueries.firstOrNull().orEmpty()} new releases 2026".trim()
+        val rapQuery = locale.queryForTaste("rap")
+        val popQuery = locale.queryForTaste("pop")
+        val partyQuery = locale.queryForTaste("party")
+        val electroQuery = locale.queryForTaste("electro")
+        val rnbQuery = locale.queryForTaste("rnb")
+        val rockQuery = locale.queryForTaste("rock")
+        val chillQuery = locale.queryForTaste("chill")
+        val latinoQuery = when (locale.languageCode) {
+            "es" -> "reggaeton latino música latina nueva 2026"
+            "pt" -> "funk brasileiro latino hits 2026"
+            else -> "latin music new hits 2026"
+        }
+        return listOf(
+            ExploreZone("nuove-uscite", strings.exploreNewReleases, "🌊", newReleaseQuery, 0xFF00E5FF.toInt(), 0xFF2979FF.toInt()),
+            ExploreZone("local-wave", strings.localWaveName, strings.localWaveEmoji, localQuery, 0xFF00E676.toInt(), 0xFF00B0FF.toInt()),
+            ExploreZone("rap-drill", strings.exploreRapDrill, "🐙", rapQuery, 0xFF9D4EDD.toInt(), 0xFF7C4DFF.toInt()),
+            ExploreZone("elettronica", strings.exploreElectronic, "⚡", electroQuery, 0xFF18FFFF.toInt(), 0xFF9D4EDD.toInt()),
+            ExploreZone("pop-global", strings.explorePopGlobal, "🌍", popQuery, 0xFFFF4081.toInt(), 0xFF7C4DFF.toInt()),
+            ExploreZone("rnb-soul", strings.exploreRnbSoul, "🌒", rnbQuery, 0xFFB388FF.toInt(), 0xFFFF4081.toInt()),
+            ExploreZone("rock-alt", strings.exploreRockAlt, "🦑", rockQuery, 0xFFFF6E40.toInt(), 0xFFFF1744.toInt()),
+            ExploreZone("latino", strings.exploreLatino, "🔥", latinoQuery, 0xFFFFC400.toInt(), 0xFFFF6E40.toInt()),
+            ExploreZone("lofi-chill", strings.exploreLofiChill, "🫧", chillQuery, 0xFF64FFDA.toInt(), 0xFF00B0FF.toInt()),
+            ExploreZone("anime-jpop", strings.exploreJpopAnime, "🏮", partyQuery, 0xFFFF5252.toInt(), 0xFFB388FF.toInt())
+        )
+    }
 
     fun byId(id: String?, strings: LevyraStrings): ExploreZone? = getZones(strings).firstOrNull { it.id == id }
 }

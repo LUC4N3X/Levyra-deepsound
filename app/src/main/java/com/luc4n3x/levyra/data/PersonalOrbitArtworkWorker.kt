@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
@@ -21,7 +22,8 @@ class PersonalOrbitArtworkWorker(
     override suspend fun doWork(): Result {
         return runCatching {
             val preferences = LevyraPreferences(applicationContext)
-            val tracks = preferences.loadPersonalOrbitTracks().take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+            val languageCode = inputData.getString(KEY_LANGUAGE_CODE).orEmpty().ifBlank { preferences.languageCode() }
+            val tracks = preferences.loadPersonalOrbitTracks(languageCode).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
             if (tracks.isNotEmpty()) {
                 LevyraArtworkCache.configure(applicationContext)
                 LevyraArtworkCache.cachePersistent(applicationContext, tracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -36,17 +38,20 @@ class PersonalOrbitArtworkWorker(
 
     companion object {
         private const val WORK_NAME = "levyra_personal_orbit_artwork"
+        private const val KEY_LANGUAGE_CODE = "language_code"
 
-        fun enqueue(context: Context) {
+        fun enqueue(context: Context, languageCode: String = "") {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
             val request = OneTimeWorkRequestBuilder<PersonalOrbitArtworkWorker>()
                 .setConstraints(constraints)
+                .setInputData(Data.Builder().putString(KEY_LANGUAGE_CODE, languageCode).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .build()
+            val workName = if (languageCode.isBlank()) WORK_NAME else "${WORK_NAME}_${languageCode}"
             WorkManager.getInstance(context.applicationContext).enqueueUniqueWork(
-                WORK_NAME,
+                workName,
                 ExistingWorkPolicy.REPLACE,
                 request
             )

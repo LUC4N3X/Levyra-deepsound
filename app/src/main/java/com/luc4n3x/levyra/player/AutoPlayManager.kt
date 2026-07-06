@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +22,7 @@ class AutoPlayManager(
     private val scope: CoroutineScope
 ) {
     private val repository = YoutubeMusicRepository(context.applicationContext)
+    private val preferences = LevyraPreferences(context.applicationContext)
     private var fetchJob: Job? = null
     
     init {
@@ -53,7 +55,7 @@ class AutoPlayManager(
                     
                     // Simple logic: search for related tracks based on the query
                     // In a real scenario you would use the "Next" endpoint of YouTube Music
-                    val results = repository.search(query, limit = 10)
+                    val results = repository.search(query, limit = 10, languageCode = preferences.languageCode())
                     
                     // Filter out what's already in the queue to avoid duplicates
                     val existingIds = (0 until player.mediaItemCount).mapNotNull {
