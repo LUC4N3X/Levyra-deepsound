@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -230,6 +231,7 @@ class OfflineAudioExporter(
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) saveScoped(input, track, container) else saveLegacy(input, track, container)
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveScoped(input: File, track: Track, container: AudioContainer): SavedAudioDestination {
         return runCatching {
             SavedAudioDestination(
@@ -250,6 +252,7 @@ class OfflineAudioExporter(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveScopedAudio(input: File, track: Track, container: AudioContainer): Uri {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
@@ -278,6 +281,7 @@ class OfflineAudioExporter(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveScopedDownloadFile(input: File, track: Track, container: AudioContainer): Uri {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
