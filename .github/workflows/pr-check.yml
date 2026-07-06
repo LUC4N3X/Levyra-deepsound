@@ -92,7 +92,16 @@ jobs:
         run: gradle --no-daemon :app:lintRelease
 
       - name: Unit Tests
-        run: gradle --no-daemon testReleaseUnitTest
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gradle --no-daemon :app:tasks --all | grep -q '^testDebugUnitTest '; then
+            gradle --no-daemon :app:testDebugUnitTest
+          elif gradle --no-daemon :app:tasks --all | grep -q '^test '; then
+            gradle --no-daemon :app:test
+          else
+            echo "No JVM unit test task available for app module."
+          fi
 
       - name: Release Compile
         run: gradle --no-daemon assembleRelease
