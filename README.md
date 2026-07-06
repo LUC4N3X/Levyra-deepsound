@@ -24,7 +24,7 @@
 
 <br>
 
-<img src="https://i.ibb.co/5hJ6y4ck/luca.png" alt="Levyra UI Preview" width="88%" style="border-radius: 12px; box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.4);" />
+<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI Preview" width="88%" style="border-radius: 12px; box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.4);" />
 
 </div>
 
