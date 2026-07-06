@@ -1827,7 +1827,8 @@ private fun buildPersonalListeningTracks(state: LevyraUiState): List<Track> {
         homeSections = state.homeSections,
         charts = state.charts,
         cachedOrbit = state.personalOrbitTracks,
-        limit = LevyraPersonalOrbit.DISPLAY_LIMIT
+        limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+        languageCode = state.languageCode
     )
 }
 
