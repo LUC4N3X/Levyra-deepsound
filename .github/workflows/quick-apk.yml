@@ -114,8 +114,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '' | xargs)"
-          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '' | xargs)"
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
           APK="$(find "${OUTPUT_DIR}" -name '*.apk' -print -quit)"
           test -f "${APK}"
           cp "${APK}" "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk"
