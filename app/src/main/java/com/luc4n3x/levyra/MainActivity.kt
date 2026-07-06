@@ -16,19 +16,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.ImageLoader
-import coil3.SingletonImageLoader
-import coil3.disk.DiskCache
-import coil3.memory.MemoryCache
-import coil3.request.CachePolicy
-import coil3.request.crossfade
+import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
-import okio.Path.Companion.toOkioPath
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,25 +94,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun configureFastImageLoader() {
-        SingletonImageLoader.setSafe { context ->
-            ImageLoader.Builder(context)
-                .memoryCache {
-                    MemoryCache.Builder()
-                        .maxSizePercent(context, 0.30)
-                        .build()
-                }
-                .diskCache {
-                    DiskCache.Builder()
-                        .directory(context.cacheDir.resolve("levyra_images").toOkioPath())
-                        .maxSizeBytes(256L * 1024 * 1024)
-                        .build()
-                }
-                .memoryCachePolicy(CachePolicy.ENABLED)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .networkCachePolicy(CachePolicy.ENABLED)
-                .crossfade(false)
-                .build()
-        }
+        LevyraArtworkCache.configure(this)
     }
 
     private fun requestHighRefreshRate() {
