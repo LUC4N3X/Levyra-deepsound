@@ -2270,6 +2270,9 @@ private fun releaseKindFromSource(title: String, track: Track): String {
  * (hqdefault/mqdefault/…). Those framegrabs look wrong in a cover grid, so the
  * personal orbit shelf keeps only tracks backed by real artwork.
  */
+private val SQUARE_ART_WIDTH_HEIGHT_PATTERN = Regex("=w\\d+-h\\d+")
+private val SQUARE_ART_SIZE_PATTERN = Regex("=s\\d+")
+
 private fun hasSquareAlbumArtwork(track: Track): Boolean {
     val url = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.trim()
     if (url.isBlank()) return false
@@ -2287,8 +2290,8 @@ private fun hasSquareAlbumArtwork(track: Track): Boolean {
     if (looksLikeVideoFrame) return false
     return lower.contains("googleusercontent.com") ||
         lower.contains("ggpht.com") ||
-        Regex("=w\\d+-h\\d+").containsMatchIn(url) ||
-        Regex("=s\\d+").containsMatchIn(url)
+        SQUARE_ART_WIDTH_HEIGHT_PATTERN.containsMatchIn(url) ||
+        SQUARE_ART_SIZE_PATTERN.containsMatchIn(url)
 }
 
 private fun isReliableMusicUpdateCandidate(track: Track): Boolean {
