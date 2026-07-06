@@ -1,0 +1,142 @@
+name: Quick APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "APK build type"
+        required: true
+        default: "release"
+        type: choice
+        options:
+          - "release"
+          - "debug"
+      clean:
+        description: "Run clean before build"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      refresh_dependencies:
+        description: "Refresh Gradle dependencies"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quick-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick-apk:
+    name: Build quick APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.14.4"
+
+      - name: Prepare CI release signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_TYPE="${{ inputs.build_type }}"
+          TASK="assembleRelease"
+          OUTPUT_DIR="app/build/outputs/apk/release"
+          if [ "${BUILD_TYPE}" = "debug" ]; then
+            TASK="assembleDebug"
+            OUTPUT_DIR="app/build/outputs/apk/debug"
+          fi
+          ARGS=()
+          if [ "${{ inputs.clean }}" = "true" ]; then
+            ARGS+=(clean)
+          fi
+          ARGS+=("${TASK}")
+          if [ "${{ inputs.refresh_dependencies }}" = "true" ]; then
+            gradle --no-daemon --refresh-dependencies "${ARGS[@]}"
+          else
+            gradle --no-daemon "${ARGS[@]}"
+          fi
+          echo "OUTPUT_DIR=${OUTPUT_DIR}" >> "${GITHUB_ENV}"
+          echo "BUILD_TYPE=${BUILD_TYPE}" >> "${GITHUB_ENV}"
+
+      - name: Package quick artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          APK="$(find "${OUTPUT_DIR}" -name '*.apk' -print -quit)"
+          test -f "${APK}"
+          cp "${APK}" "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk"
+          sha256sum "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk" > "artifacts/LEVYRA-${VERSION}-${BUILD_TYPE}-quick.apk.sha256"
+          "${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}" > artifacts/apk-badging.txt
+          {
+            echo "LEVYRA quick APK"
+            echo "version=${VERSION}"
+            echo "versionCode=${VERSION_CODE}"
+            echo "buildType=${BUILD_TYPE}"
+            echo "commit=${GITHUB_SHA}"
+            echo "branch=${GITHUB_REF_NAME}"
+            echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > artifacts/build-info.txt
+
+      - name: Upload quick APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: levyra-${{ env.BUILD_TYPE }}-quick-apk-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: error

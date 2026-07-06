@@ -1,0 +1,101 @@
+name: Sync Player Configs
+
+on:
+  schedule:
+    - cron: "0 0,12 * * *"
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: "Base branch"
+        required: true
+        default: "main"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-player-configs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Sync YouTube player configs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.base_branch || 'main' }}
+          fetch-depth: 0
+
+      - name: Ensure JSON tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+
+      - name: Fetch upstream player configs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/levyra-player-configs
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+            "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json" \
+            -o /tmp/levyra-player-configs/player_configs.json
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
+            "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/player_dates.json" \
+            -o /tmp/levyra-player-configs/player_dates.json
+          jq -e empty /tmp/levyra-player-configs/player_configs.json
+          jq -e empty /tmp/levyra-player-configs/player_dates.json
+
+      - name: Update local assets
+        id: sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/main/assets
+          CHANGED="false"
+          if [ ! -f app/src/main/assets/player_configs.json ] || ! cmp -s app/src/main/assets/player_configs.json /tmp/levyra-player-configs/player_configs.json; then
+            cp /tmp/levyra-player-configs/player_configs.json app/src/main/assets/player_configs.json
+            CHANGED="true"
+          fi
+          if [ ! -f app/src/main/assets/player_dates.json ] || ! cmp -s app/src/main/assets/player_dates.json /tmp/levyra-player-configs/player_dates.json; then
+            cp /tmp/levyra-player-configs/player_dates.json app/src/main/assets/player_dates.json
+            CHANGED="true"
+          fi
+          echo "changed=${CHANGED}" >> "${GITHUB_OUTPUT}"
+          if [ "${CHANGED}" = "true" ]; then
+            git diff -- app/src/main/assets/player_configs.json app/src/main/assets/player_dates.json
+          fi
+
+      - name: Create pull request
+        if: steps.sync.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          base: ${{ github.event.inputs.base_branch || 'main' }}
+          branch: chore/sync-player-configs
+          delete-branch: true
+          commit-message: "chore(extractor): sync player configs"
+          title: "chore(extractor): sync player configs"
+          body: |
+            Updates Levyra player config assets from the upstream cipher config source.
+
+            Files updated:
+            - app/src/main/assets/player_configs.json
+            - app/src/main/assets/player_dates.json
+          labels: |
+            dependencies
+            extractor
+
+      - name: No changes
+        if: steps.sync.outputs.changed == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Player configs already up to date."
