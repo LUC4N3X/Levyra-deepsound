@@ -220,8 +220,7 @@ class LevyraPreferences(context: Context) {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         return read(emptyList()) { preferences ->
             val localized = preferences[personalOrbitTracksKey(normalized)].orEmpty()
-            val legacy = if (normalized == "it") preferences[KEY_PERSONAL_ORBIT_TRACKS].orEmpty() else ""
-            parseTrackList(localized.ifBlank { legacy })
+            parseTrackList(localized)
         }
     }
 
@@ -235,7 +234,6 @@ class LevyraPreferences(context: Context) {
     private fun snapshotFrom(preferences: Preferences): LevyraPreferencesSnapshot {
         val normalizedLanguage = LevyraLanguageCatalog.normalize(preferences[KEY_LANGUAGE_CODE].orEmpty().ifBlank { LevyraLanguageCatalog.deviceDefault() })
         val localizedOrbit = preferences[personalOrbitTracksKey(normalizedLanguage)].orEmpty()
-        val legacyOrbit = if (normalizedLanguage == "it") preferences[KEY_PERSONAL_ORBIT_TRACKS].orEmpty() else ""
         return LevyraPreferencesSnapshot(
             onboarded = preferences[KEY_ONBOARDED] ?: false,
             tastes = preferences[KEY_TASTES].orEmpty(),
@@ -250,7 +248,7 @@ class LevyraPreferences(context: Context) {
             lastTrack = parseTrack(preferences[KEY_LAST_TRACK].orEmpty(), "Last track restore failed"),
             lastPositionMs = preferences[KEY_LAST_POSITION] ?: 0L,
             recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty()),
-            personalOrbitTracks = parseTrackList(localizedOrbit.ifBlank { legacyOrbit }),
+            personalOrbitTracks = parseTrackList(localizedOrbit),
             audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false,
             themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty()),
             audioSettings = audioSettingsFrom(preferences)
