@@ -158,10 +158,10 @@ android {
 
     lint {
         // The whole player layer is built on media3, whose APIs are annotated
-        // @UnstableApi; we opt in module-wide (see kotlin { compilerOptions.optIn }).
-        // UnsafeOptInUsageError targets library authors who expose unstable APIs
-        // to consumers and is redundant for an app that deliberately depends on
-        // media3, so disable just this check while keeping every other lint rule.
+        // @UnstableApi. UnsafeOptInUsageError targets library authors who expose
+        // unstable APIs to consumers and is redundant for an app that
+        // deliberately depends on media3, so disable just this check while
+        // keeping every other lint rule enforced.
         disable += "UnsafeOptInUsageError"
     }
 
@@ -178,11 +178,6 @@ android {
 
 kotlin {
     jvmToolchain(17)
-    compilerOptions {
-        // The whole player layer builds on media3, whose APIs are annotated
-        // @UnstableApi. Opt in module-wide instead of annotating every usage.
-        optIn.add("androidx.media3.common.util.UnstableApi")
-    }
 }
 
 dependencies {
@@ -221,4 +216,5 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     testImplementation(libs.junit)
+    testImplementation(libs.json)
 }
