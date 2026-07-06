@@ -101,7 +101,10 @@ object LevyraArtworkCache {
             val appContext = context.applicationContext
             val targets = tracks
                 .asSequence()
-                .flatMap { track -> sequenceOfNotNull(target(appContext, track, false), target(appContext, track, true)) }
+                .flatMap { track ->
+                    sequenceOf(target(appContext, track, false), target(appContext, track, true))
+                        .filterNotNull()
+                }
                 .distinctBy { it.file.name }
                 .take((limit.coerceAtLeast(1)) * 2)
                 .toList()
