@@ -36,6 +36,7 @@ data class LevyraUiState(
     val queue: List<Track> = emptyList(),
     val searchResults: List<Track> = emptyList(),
     val recentSearches: List<Track> = emptyList(),
+    val personalOrbitTracks: List<Track> = emptyList(),
     val searchSuggestions: List<String> = emptyList(),
     val charts: List<Track> = emptyList(),
     val chartRegions: List<ChartRegion> = emptyList(),
