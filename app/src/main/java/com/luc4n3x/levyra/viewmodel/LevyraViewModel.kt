@@ -32,6 +32,7 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.SearchFilter
+import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
