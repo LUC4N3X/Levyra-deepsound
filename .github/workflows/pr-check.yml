@@ -91,6 +91,20 @@ jobs:
       - name: Android Lint
         run: gradle --no-daemon :app:lintRelease
 
+      - name: Dump lint findings
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          REPORT="$(find app/build -name 'lint-results-release.txt' 2>/dev/null | head -n 1)"
+          echo "===LINT FINDINGS BEGIN==="
+          if [ -n "${REPORT}" ]; then
+            grep -nE ': (Error|Warning):' "${REPORT}" || echo "(no matching lines)"
+          else
+            echo "(no lint text report found)"
+          fi
+          echo "===LINT FINDINGS END==="
+
       - name: Unit Tests
         run: gradle --no-daemon testReleaseUnitTest
 
