@@ -33,8 +33,14 @@ jobs:
               "pr-check.yml",
               "nightly-extractor-check.yml",
               "apk-artifact-check.yml",
-              "release-apk.yml"
+              "release-apk.yml",
+              "quick-apk.yml"
           }
+
+          # This guard's own source mentions markers like "assembleRelease" and
+          # "gh release" to detect them in other files, so it must not scan
+          # itself or it would flag itself as a builder/publisher.
+          self_workflow = "workflow-duplicates-guard.yml"
 
           if not workflows_dir.exists():
               print("No .github/workflows directory found.")
@@ -42,7 +48,9 @@ jobs:
 
           files = sorted([
               path for path in workflows_dir.iterdir()
-              if path.is_file() and path.suffix.lower() in {".yml", ".yaml"}
+              if path.is_file()
+              and path.suffix.lower() in {".yml", ".yaml"}
+              and path.name != self_workflow
           ])
 
           name_map = {}
