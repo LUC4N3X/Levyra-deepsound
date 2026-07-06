@@ -39,7 +39,8 @@ class OfflineExportWorker(
                     KEY_FILE_NAME to result.fileName,
                     KEY_EMBEDDED_METADATA to result.fileMetadataEmbedded,
                     KEY_MIME_TYPE to result.mimeType,
-                    KEY_URI to result.uri.toString()
+                    KEY_URI to result.uri.toString(),
+                    KEY_DESTINATION_LABEL to result.destinationLabel
                 )
             )
         } catch (error: Throwable) {
@@ -61,6 +62,7 @@ class OfflineExportWorker(
         const val KEY_EMBEDDED_METADATA = "embedded_metadata"
         const val KEY_MIME_TYPE = "mime_type"
         const val KEY_URI = "uri"
+        const val KEY_DESTINATION_LABEL = "destination_label"
         const val KEY_ERROR = "error"
         const val KEY_PROGRESS = "progress"
 
