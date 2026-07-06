@@ -48,6 +48,7 @@ data class LevyraPreferencesSnapshot(
     val lastTrack: Track?,
     val lastPositionMs: Long,
     val recentSearches: List<Track>,
+    val personalOrbitTracks: List<Track>,
     val audioNormalization: Boolean,
     val themePreset: String,
     val audioSettings: LevyraAudioSettings
@@ -196,6 +197,14 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_CHART_TRACKS] = array.toString() }
     }
 
+    fun loadPersonalOrbitTracks(): List<Track> = read(emptyList()) { parseTrackList(it[KEY_PERSONAL_ORBIT_TRACKS].orEmpty()) }
+
+    fun savePersonalOrbitTracks(tracks: List<Track>) {
+        val array = JSONArray()
+        tracks.take(16).forEach { track -> array.put(TrackJson.toJson(track)) }
+        write { it[KEY_PERSONAL_ORBIT_TRACKS] = array.toString() }
+    }
+
     private fun snapshotFrom(preferences: Preferences): LevyraPreferencesSnapshot {
         return LevyraPreferencesSnapshot(
             onboarded = preferences[KEY_ONBOARDED] ?: false,
@@ -211,6 +220,7 @@ class LevyraPreferences(context: Context) {
             lastTrack = parseTrack(preferences[KEY_LAST_TRACK].orEmpty(), "Last track restore failed"),
             lastPositionMs = preferences[KEY_LAST_POSITION] ?: 0L,
             recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty()),
+            personalOrbitTracks = parseTrackList(preferences[KEY_PERSONAL_ORBIT_TRACKS].orEmpty()),
             audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false,
             themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty()),
             audioSettings = audioSettingsFrom(preferences)
@@ -231,6 +241,7 @@ class LevyraPreferences(context: Context) {
         lastTrack = null,
         lastPositionMs = 0L,
         recentSearches = emptyList(),
+        personalOrbitTracks = emptyList(),
         audioNormalization = false,
         themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC,
         audioSettings = LevyraAudioSettings()
@@ -329,6 +340,7 @@ class LevyraPreferences(context: Context) {
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         val KEY_HOME_SECTIONS = stringPreferencesKey("home_sections")
         val KEY_CHART_TRACKS = stringPreferencesKey("chart_tracks")
+        val KEY_PERSONAL_ORBIT_TRACKS = stringPreferencesKey("personal_orbit_tracks")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
