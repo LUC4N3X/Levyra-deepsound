@@ -16,7 +16,6 @@
 ## What changed
 
 -
-
 ## Testing
 
 - [ ] `gradle --no-daemon :app:lintRelease`
