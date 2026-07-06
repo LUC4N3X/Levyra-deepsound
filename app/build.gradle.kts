@@ -169,6 +169,11 @@ android {
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        // The whole player layer builds on media3, whose APIs are annotated
+        // @UnstableApi. Opt in module-wide instead of annotating every usage.
+        optIn.add("androidx.media3.common.util.UnstableApi")
+    }
 }
 
 dependencies {
