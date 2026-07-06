@@ -188,6 +188,14 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_HOME_SECTIONS] = array.toString() }
     }
 
+    fun loadChartTracks(): List<Track> = read(emptyList()) { parseTrackList(it[KEY_CHART_TRACKS].orEmpty()) }
+
+    fun saveChartTracks(tracks: List<Track>) {
+        val array = JSONArray()
+        tracks.take(50).forEach { track -> array.put(TrackJson.toJson(track)) }
+        write { it[KEY_CHART_TRACKS] = array.toString() }
+    }
+
     private fun snapshotFrom(preferences: Preferences): LevyraPreferencesSnapshot {
         return LevyraPreferencesSnapshot(
             onboarded = preferences[KEY_ONBOARDED] ?: false,
@@ -320,6 +328,7 @@ class LevyraPreferences(context: Context) {
         val KEY_LANGUAGE_CODE = stringPreferencesKey("language_code")
         val KEY_RECENT_SEARCHES = stringPreferencesKey("recent_searches")
         val KEY_HOME_SECTIONS = stringPreferencesKey("home_sections")
+        val KEY_CHART_TRACKS = stringPreferencesKey("chart_tracks")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
