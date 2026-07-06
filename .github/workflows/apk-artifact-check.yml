@@ -1,6 +1,10 @@
-name: APK Artifact Check
+name: APK Artifact
 
 on:
+  pull_request:
+    branches:
+      - main
+      - master
   push:
     branches:
       - main
@@ -11,12 +15,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: apk-artifact-check-${{ github.ref }}
+  group: apk-artifact-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   apk:
-    name: Build and Verify APK Artifact
+    name: APK Artifact
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -74,15 +78,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-
           VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '' | xargs)"
           VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '' | xargs)"
           APK="$(find app/build/outputs/apk/release -name '*.apk' -print -quit)"
-
           test -f "${APK}"
           SIZE_BYTES="$(stat -c%s "${APK}")"
           test "${SIZE_BYTES}" -gt 1048576
-
           BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}")"
           printf "%s
 " "${BADGING}" > artifacts/apk-badging.txt
@@ -90,11 +91,9 @@ jobs:
 " "${BADGING}" | grep -F "versionName='${VERSION}'"
           printf "%s
 " "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
-
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --print-certs "${APK}" > artifacts/apk-signing-certs.txt
           cp "${APK}" "artifacts/LEVYRA-${VERSION}-signed.apk"
           sha256sum "artifacts/LEVYRA-${VERSION}-signed.apk" > "artifacts/LEVYRA-${VERSION}-signed.apk.sha256"
-
           {
             echo "LEVYRA APK Artifact"
             echo "version=${VERSION}"
@@ -104,7 +103,6 @@ jobs:
             echo "sizeBytes=${SIZE_BYTES}"
             echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } > artifacts/build-info.txt
-
           if [ -f app/build/outputs/mapping/release/mapping.txt ]; then
             cp app/build/outputs/mapping/release/mapping.txt artifacts/mapping.txt
           fi
