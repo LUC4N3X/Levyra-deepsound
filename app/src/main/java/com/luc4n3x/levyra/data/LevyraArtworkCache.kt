@@ -99,25 +99,29 @@ object LevyraArtworkCache {
         if (tracks.isEmpty()) return
         withContext(Dispatchers.IO) {
             val appContext = context.applicationContext
-            val targets = tracks
-                .asSequence()
-                .flatMap { track ->
-                    sequenceOf(target(appContext, track, false), target(appContext, track, true))
-                        .filterNotNull()
-                }
+            val limitedTracks = tracks.take(limit.coerceAtLeast(1))
+            val smallTargets = limitedTracks
+                .mapNotNull { track -> target(appContext, track, false) }
                 .distinctBy { it.file.name }
-                .take((limit.coerceAtLeast(1)) * 2)
-                .toList()
-            if (targets.isEmpty()) return@withContext
-            val semaphore = Semaphore(4)
-            coroutineScope {
-                targets.map { target ->
-                    async {
-                        semaphore.withPermit { ensurePersistent(target) }
-                    }
-                }.awaitAll()
-            }
+            val largeTargets = limitedTracks
+                .mapNotNull { track -> target(appContext, track, true) }
+                .distinctBy { it.file.name }
+            if (smallTargets.isEmpty() && largeTargets.isEmpty()) return@withContext
+            cacheTargets(smallTargets, 6)
+            cacheTargets(largeTargets, 3)
             trimPersistentDirectory(appContext)
+        }
+    }
+
+    private suspend fun cacheTargets(targets: List<ArtworkTarget>, parallelism: Int) {
+        if (targets.isEmpty()) return
+        val semaphore = Semaphore(parallelism.coerceAtLeast(1))
+        coroutineScope {
+            targets.map { target ->
+                async {
+                    semaphore.withPermit { ensurePersistent(target) }
+                }
+            }.awaitAll()
         }
     }
 
@@ -158,31 +162,35 @@ object LevyraArtworkCache {
             file.setLastModified(System.currentTimeMillis())
             return
         }
-        runCatching {
-            file.parentFile?.mkdirs()
-            val request = Request.Builder()
-                .url(target.url)
-                .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
-                .header("User-Agent", "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Mobile Safari/537.36")
-                .build()
-            LevyraHttpClientFactory.media().newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use
-                val body = response.body ?: return@use
-                val length = body.contentLength()
-                if (length > MAX_FILE_BYTES) return@use
-                val bytes = body.bytes()
-                if (bytes.size < 512 || bytes.size.toLong() > MAX_FILE_BYTES) return@use
-                val temp = File(file.parentFile, "${file.name}.tmp")
-                temp.writeBytes(bytes)
-                if (file.exists()) file.delete()
-                if (!temp.renameTo(file)) {
-                    temp.copyTo(file, overwrite = true)
-                    temp.delete()
+        repeat(2) { attempt ->
+            val saved = runCatching {
+                file.parentFile?.mkdirs()
+                val request = Request.Builder()
+                    .url(target.url)
+                    .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Mobile Safari/537.36")
+                    .build()
+                LevyraHttpClientFactory.media().newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@use false
+                    val body = response.body ?: return@use false
+                    val length = body.contentLength()
+                    if (length > MAX_FILE_BYTES) return@use false
+                    val bytes = body.bytes()
+                    if (bytes.size < 512 || bytes.size.toLong() > MAX_FILE_BYTES) return@use false
+                    val temp = File(file.parentFile, "${file.name}.tmp")
+                    temp.writeBytes(bytes)
+                    if (file.exists()) file.delete()
+                    if (!temp.renameTo(file)) {
+                        temp.copyTo(file, overwrite = true)
+                        temp.delete()
+                    }
+                    file.setLastModified(System.currentTimeMillis())
+                    true
                 }
-                file.setLastModified(System.currentTimeMillis())
-            }
-        }.onFailure { error ->
-            Timber.d(error, "Artwork persistent cache miss")
+            }.onFailure { error ->
+                if (attempt == 1) Timber.d(error, "Artwork persistent cache miss")
+            }.getOrDefault(false)
+            if (saved || file.isFile && file.length() > 512L) return
         }
     }
 
