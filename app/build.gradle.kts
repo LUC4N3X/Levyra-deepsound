@@ -156,6 +156,13 @@ android {
         buildConfig = true
     }
 
+    lint {
+        // Emit the full lint report to the build log so the complete list of
+        // findings is visible in CI (report artifacts aren't retrievable here).
+        textReport = true
+        textOutput = file("stdout")
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
