@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.FollowedArtistsStore
+import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
@@ -123,6 +124,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         val favorites = favoritesStore.load()
         val settings = preferences.snapshot()
+        val cachedHomeSections = preferences.loadHomeSections()
+        val cachedHomeTracks = cachedHomeSections.flatMap { it.tracks }.distinctBy { it.id }
+        val initialTracks = mergeTracks(settings.recentSearches + favorites, cachedHomeTracks)
+        val initialQueue = moodEngine.buildQueue(moodEngine.moods.firstOrNull(), initialTracks)
         resolver.setAudioQuality(settings.audioQuality)
         resolver.warmNetwork()
         _state.update {
@@ -130,6 +135,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 favorites = favorites,
                 favoriteIds = favorites.map { fav -> fav.id }.toSet(),
                 recentSearches = settings.recentSearches,
+                homeSections = cachedHomeSections,
+                tracks = initialTracks,
+                queue = initialQueue,
+                searchResults = initialTracks.take(12),
+                isSearching = cachedHomeSections.isEmpty() && initialTracks.isEmpty(),
+                cacheReport = repository.cacheReport(),
                 userName = settings.userName,
                 languageCode = settings.languageCode,
                 animationsEnabled = settings.animationsEnabled,
@@ -148,6 +159,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 lyrics = emptyList()
             )
         }
+        LevyraArtworkCache.preloadPriority(application.applicationContext, initialTracks, 14)
         player.setSkipSilence(settings.skipSilence)
         player.setPremiumAudioSettings(settings.audioSettings)
         player.setPlayback(settings.audioSettings.playbackSpeed, settings.audioSettings.pitch)
@@ -557,6 +569,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             val flat = sections.flatMap { it.tracks }.distinctBy { it.id }
             val queue = moodEngine.buildQueue(_state.value.selectedMood, flat)
+            preferences.saveHomeSections(sections)
+            LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, flat, 18)
             _state.update {
                 it.copy(
                     homeSections = sections,
@@ -568,6 +582,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = null
                 )
             }
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, flat, 42)
             prefetchTop(flat, 18)
         }
     }
@@ -679,6 +694,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (it.selectedChartId != regionId) return@update it
                 it.copy(charts = result, isLoadingCharts = false)
             }
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, result, 24)
             if (result.isNotEmpty()) enrichCharts(regionId, result)
         }
     }
@@ -718,6 +734,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val exists = current.any { it.id == track.id }
         val updated = if (exists) current.filterNot { it.id == track.id } else listOf(track) + current
         favoritesStore.save(updated)
+        LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, updated, 12)
         _state.update { it.copy(favorites = updated, favoriteIds = updated.map { fav -> fav.id }.toSet()) }
     }
 
@@ -1021,6 +1038,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = if (data.isEmpty) "Nessun risultato trovato per $clean" else null
                 )
             }
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 36)
             prefetchTop(tracks, 18)
         }.onFailure { error ->
             _state.update {
@@ -1051,6 +1069,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val updated = listOf(track) + current.filterNot { it.id == track.id }
         val limited = updated.take(8)
         preferences.saveRecentSearches(limited)
+        LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, limited, 8)
         _state.update { it.copy(recentSearches = limited) }
     }
 
@@ -1473,6 +1492,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         searchError = if (tracks.isEmpty()) "Home remota vuota: prova una ricerca" else null
                     )
                 }
+                LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 36)
                 prefetchTop(tracks, 18)
             }.onFailure { error ->
                 _state.update {
