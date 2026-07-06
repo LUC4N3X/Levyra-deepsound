@@ -175,8 +175,10 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -426,11 +428,14 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
         EmptyCover(modifier)
     } else {
 
-        val model = if (highRes) raw else smallThumb(raw)
+        val model = if (highRes) raw else LevyraArtworkCache.small(raw)
         val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 200 else 0
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(model)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .networkCachePolicy(CachePolicy.ENABLED)
                 .crossfade(crossfadeMs)
                 .build(),
             contentDescription = track.title,
@@ -438,13 +443,6 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
             modifier = modifier.background(Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd))))
         )
     }
-}
-private fun smallThumb(url: String): String {
-    var u = url
-    u = u.replace(Regex("=w\\d+-h\\d+[^=]*$"), "=w160-h160-l90-rj")
-    u = u.replace(Regex("=s\\d+[^=]*$"), "=s160")
-    u = u.replace(Regex("\\d+x\\d+bb"), "160x160bb")
-    return u
 }
 @Composable
 private fun EmptyCover(modifier: Modifier) {
@@ -1466,6 +1464,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
 @Composable
 private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
     val heroUpdate = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
         pickHeroUpdate(state)
     }
@@ -1484,6 +1483,13 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     }
     val otherSections = remember(state.homeSections) {
         state.homeSections.filter { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
+    }
+    val secondaryPreloadTracks = remember(resonanceTracks, newReleases) {
+        resonanceTracks + (newReleases?.tracks ?: emptyList())
+    }
+    LaunchedEffect(personalTracks, secondaryPreloadTracks) {
+        LevyraArtworkCache.preloadPriority(context, personalTracks, 12)
+        LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 24)
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
