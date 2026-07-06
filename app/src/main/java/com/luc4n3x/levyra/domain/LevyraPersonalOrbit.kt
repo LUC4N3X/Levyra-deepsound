@@ -14,42 +14,73 @@ object LevyraPersonalOrbit {
         homeSections: List<HomeSection>,
         charts: List<Track>,
         cachedOrbit: List<Track> = emptyList(),
-        limit: Int = DISPLAY_LIMIT
+        limit: Int = DISPLAY_LIMIT,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): List<Track> {
         val max = limit.coerceAtLeast(1)
-        val candidates = buildList {
-            addAll(cachedOrbit)
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
+        val playedTracks = buildList {
             currentTrack?.let { add(it) }
             addAll(recentSearches)
             addAll(favorites)
+        }
+            .asSequence()
+            .filter { isReliableMusicCandidate(it) }
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            .distinctBy { stableKey(it) }
+            .toList()
+        val playedKeys = playedTracks.mapTo(mutableSetOf()) { stableKey(it) }
+        val feedTracks = buildList {
             addAll(tracks)
             addAll(homeSections.flatMap { it.tracks })
             addAll(charts)
+            addAll(cachedOrbit)
         }
             .asSequence()
             .filter { isReliableMusicCandidate(it) }
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
             .toList()
-
-        val squareArtwork = candidates
+        val localeTracks = feedTracks.filter { isLanguagePreferred(it, normalizedLanguage) }
+        val neutralTracks = feedTracks.filter { !isLanguagePreferred(it, normalizedLanguage) && !isClearlyForeignForLanguage(it, normalizedLanguage) }
+        val foreignFallbackTracks = feedTracks.filter { isClearlyForeignForLanguage(it, normalizedLanguage) }
+        val ordered = buildList {
+            addAll(playedTracks)
+            addAll(localeTracks)
+            addAll(neutralTracks)
+            addAll(foreignFallbackTracks)
+        }
             .asSequence()
-            .filter { hasSquareAlbumArtwork(it) }
+            .filter { isReliableMusicCandidate(it) }
             .distinctBy { stableKey(it) }
-            .take(max)
             .toList()
+        if (ordered.isEmpty()) return emptyList()
+        val selected = ArrayList<Track>(max)
+        val used = HashSet<String>()
 
-        if (squareArtwork.size >= max) return squareArtwork
+        fun addMatching(predicate: (Track) -> Boolean) {
+            if (selected.size >= max) return
+            ordered.forEach { track ->
+                if (selected.size >= max) return
+                val key = stableKey(track)
+                if (key !in used && predicate(track)) {
+                    selected += track
+                    used += key
+                }
+            }
+        }
 
-        val usedKeys = squareArtwork.mapTo(mutableSetOf()) { stableKey(it) }
-        val fallbackArtwork = candidates
-            .asSequence()
-            .filter { stableKey(it) !in usedKeys }
-            .filter { hasAnyArtwork(it) }
-            .distinctBy { stableKey(it) }
-            .take(max - squareArtwork.size)
-            .toList()
-
-        return squareArtwork + fallbackArtwork
+        addMatching { track -> stableKey(track) in playedKeys && hasSquareAlbumArtwork(track) }
+        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
+        addMatching { track -> stableKey(track) in playedKeys && hasAnyArtwork(track) }
+        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) && hasAnyArtwork(track) }
+        addMatching { track -> stableKey(track) in playedKeys }
+        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) }
+        addMatching { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
+        addMatching { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasAnyArtwork(track) }
+        addMatching { track -> hasSquareAlbumArtwork(track) }
+        addMatching { track -> hasAnyArtwork(track) }
+        addMatching { true }
+        return selected.take(max)
     }
 
     fun stableKey(track: Track): String {
@@ -80,6 +111,100 @@ object LevyraPersonalOrbit {
             squareArtWidthHeightPattern.containsMatchIn(url) ||
             squareArtSizePattern.containsMatchIn(url)
     }
+
+    fun isLanguagePreferred(track: Track, languageCode: String): Boolean {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        if (normalized == "en") return true
+        if (track.moodTags.any { it.equals("local", ignoreCase = true) }) return true
+        val lookup = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+        val artistMatches = LevyraContentLocales.artistSuggestions(normalized).any { artist ->
+            val key = artist.lowercase()
+            key.isNotBlank() && lookup.contains(key)
+        }
+        if (artistMatches) return true
+        return languageMarkers(normalized).any { marker -> lookup.contains(marker) }
+    }
+
+    fun isClearlyForeignForLanguage(track: Track, languageCode: String): Boolean {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        if (normalized == "en" || isLanguagePreferred(track, normalized)) return false
+        val lookup = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+        return globalEnglishMarkers.any { marker -> lookup.contains(marker) }
+    }
+
+    private fun languageMarkers(languageCode: String): List<String> {
+        return when (LevyraLanguageCatalog.normalize(languageCode)) {
+            "it" -> listOf(
+                "italia",
+                "italian",
+                "sfera ebbasta",
+                "lazza",
+                "geolier",
+                "marracash",
+                "ultimo",
+                "annalisa",
+                "tedua",
+                "ghali",
+                "madame",
+                "capo plaza",
+                "mahmood",
+                "fred de palma",
+                "ernia",
+                "pinguini tattici nucleari",
+                "gue",
+                "guè",
+                "salmo",
+                "elodie",
+                "irama",
+                "thasup",
+                "massimo pericolo",
+                "fabri fibra",
+                "shiva",
+                "tony effe",
+                "rose villain",
+                "angelina mango"
+            )
+            "es" -> listOf("españa", "espanol", "español", "latino", "reggaeton", "bad bunny", "rosalía", "karol g", "rauw alejandro")
+            "fr" -> listOf("france", "français", "francaise", "française", "gazo", "aya nakamura", "ninho", "stromae", "sch")
+            "de" -> listOf("deutsch", "deutschland", "apache 207", "raf camora", "luciano", "ufo361", "bonez mc")
+            "pt" -> listOf("brasil", "brasileiro", "brasileira", "funk", "sertanejo", "anitta", "matuê", "luísa sonza")
+            "nl" -> listOf("nederland", "nederlands", "frenna", "antoon", "boef", "ronnie flex")
+            "pl" -> listOf("polsk", "sanah", "taco hemingway", "dawid podsiadło", "quebonafide")
+            "ro" -> listOf("românia", "romania", "românesc", "inna", "the motans", "delia", "carla's dreams")
+            "el" -> listOf("ελλην", "greek", "snik", "eleni foureira", "helena paparizou", "sakis rouvas")
+            "sv" -> listOf("svensk", "sverige", "zara larsson", "veronica maggio", "hov1", "avicii")
+            "da" -> listOf("dansk", "danmark", "gilli", "tobias rahim", "mø", "medina")
+            "cs" -> listOf("česk", "cesk", "calin", "ewa farna", "ben cristovao", "viktor sheen")
+            "uk" -> listOf("україн", "ukrain", "alyona alyona", "kalush", "jerry heil", "okean elzy")
+            else -> emptyList()
+        }
+    }
+
+    private val globalEnglishMarkers = listOf(
+        "queen",
+        "the weeknd",
+        "dua lipa",
+        "nirvana",
+        "eminem",
+        "michael jackson",
+        "linkin park",
+        "coldplay",
+        "imagine dragons",
+        "billie eilish",
+        "taylor swift",
+        "drake",
+        "travis scott",
+        "post malone",
+        "ariana grande",
+        "kendrick lamar",
+        "bruno mars",
+        "harry styles",
+        "miley cyrus",
+        "glass animals",
+        "daft punk",
+        "m83",
+        "a-ha"
+    )
 
     fun isReliableMusicCandidate(track: Track): Boolean {
         val title = track.title.trim()

@@ -147,7 +147,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeSections = startupHomeSections,
             charts = startupCharts,
             cachedOrbit = rawCachedOrbitTracks,
-            limit = LevyraPersonalOrbit.DISPLAY_LIMIT
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+            languageCode = settings.languageCode
         )
         val initialTracks = mergeTracks(cachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
         val initialQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), initialTracks)
@@ -266,7 +267,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeSections = snapshot.homeSections,
             charts = snapshot.charts,
             cachedOrbit = snapshot.personalOrbitTracks,
-            limit = LevyraPersonalOrbit.DISPLAY_LIMIT
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+            languageCode = snapshot.languageCode
         )
         if (orbit.isEmpty()) return
         val limited = orbit.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -758,7 +760,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeSections = homeSections,
             charts = chartTracks,
             cachedOrbit = cachedOrbit,
-            limit = LevyraPersonalOrbit.DISPLAY_LIMIT
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+            languageCode = languageCode
         )
         val allTracks = mergeTracks(orbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
         val queue = moodEngine.buildQueue(selectedMood, allTracks)
@@ -1407,10 +1410,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 playerError = null
             )
         }
+        addToRecentSearches(playable)
         fetchLyrics(playable)
         fetchSponsorSegments(playable)
         updateWidget()
-        persistPersonalOrbit(listOf(playable))
     }
 
     private fun fetchSponsorSegments(track: Track) {
