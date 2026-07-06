@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.ServiceList
@@ -62,6 +63,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val maxTtlMs = 5L * 60L * 60L * 1000L
     private val playbackResolveTimeoutMs = 18_000L
     private val offlineResolveTimeoutMs = 60_000L
+    private val hedgeBudgetMs = 220L
+    private val extractorBudgetMs = 650L
 
     @Volatile
     private var selectedAudioQuality = userPreferences.audioQuality()
@@ -70,11 +73,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     private var lastNetworkWarmAt = 0L
 
     private val profiles = listOf(
-        ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L),
-        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L),
-        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 8L),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 18L)
+        ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L, 0),
+        ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 1),
+        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L, 1),
+        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 8L, 2),
+        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 18L, 3)
     )
 
     init {
@@ -207,13 +210,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (isVideoMode) {
             val resolved = coroutineScope {
                 val winner = CompletableDeferred<Track?>()
-                val extractorJob = launch {
-                    val r = runCatching { resolveVideoWithMetrolistExtractor(track) }
-                    r.onSuccess { winner.complete(it) }
-                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "MetrolistExtractor video: $m" } }
-                }
                 val itJob = launch {
-                    val stream = runCatching { raceInnerTube(track, errors, true, preferMp4Audio = false) }.getOrNull()
+                    val stream = runCatching { hedgedInnerTube(track, errors, true) }.getOrNull()
                     if (stream != null) {
                         winner.complete(
                             track.copy(
@@ -227,8 +225,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                         )
                     }
                 }
+                val extractorJob = launch {
+                    val settled = withTimeoutOrNull(extractorBudgetMs) { winner.await() } != null || winner.isCompleted
+                    if (settled) return@launch
+                    val r = runCatching { resolveVideoWithMetrolistExtractor(track) }
+                    r.onSuccess { winner.complete(it) }
+                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "MetrolistExtractor video: $m" } }
+                }
                 launch {
-                    extractorJob.join(); itJob.join()
+                    itJob.join(); extractorJob.join()
                     winner.complete(null)
                 }
                 val result = winner.await()
@@ -257,15 +262,40 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw PlaybackBlockedException(reason)
     }
 
-    private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? = coroutineScope {
+    private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
+        if (preferMp4Audio) return resolveAudioResilient(track, errors)
+        return coroutineScope {
+            val winner = CompletableDeferred<Track?>()
+            val innerTubeJob = launch {
+                val stream = runCatching { hedgedInnerTube(track, errors, false) }.getOrNull()
+                if (stream != null) winner.complete(track.withDirectStream(stream))
+            }
+            val extractorJob = launch {
+                val settled = withTimeoutOrNull(extractorBudgetMs) { winner.await() } != null || winner.isCompleted
+                if (settled) return@launch
+                val resolved = runCatching { resolveWithMetrolistExtractor(track, false) }
+                resolved.onSuccess { winner.complete(it) }
+                    .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "MetrolistExtractor: $message" } }
+            }
+            launch {
+                innerTubeJob.join()
+                extractorJob.join()
+                winner.complete(null)
+            }
+            val result = winner.await()
+            coroutineContext.cancelChildren()
+            result
+        }
+    }
+
+    private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? = coroutineScope {
         val winner = CompletableDeferred<Track?>()
         val innerTubeJob = launch {
-            val stream = runCatching { raceInnerTube(track, errors, false, preferMp4Audio) }.getOrNull()
+            val stream = runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         val extractorJob = launch {
-            if (!preferMp4Audio) delay(35L)
-            val resolved = runCatching { resolveWithMetrolistExtractor(track, preferMp4Audio) }
+            val resolved = runCatching { resolveWithMetrolistExtractor(track, true) }
             resolved.onSuccess { winner.complete(it) }
                 .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "MetrolistExtractor: $message" } }
         }
@@ -277,6 +307,25 @@ class PlaybackResolver private constructor(private val context: Context) {
         val result = winner.await()
         coroutineContext.cancelChildren()
         result
+    }
+
+    private suspend fun hedgedInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean): DirectStream? {
+        val ladder = profiles
+            .groupBy { it.tier }
+            .toSortedMap()
+            .map { (_, group) ->
+                group.map { profile ->
+                    suspend {
+                        runCatching { resolveWithInnerTube(track, profile, isVideoMode, false) }
+                            .onFailure { error ->
+                                error.message?.takeIf { it.isNotBlank() }?.let { errors += "${profile.label}: $it" }
+                            }
+                            .getOrNull()
+                            ?.takeIf { it.url.isNotBlank() }
+                    }
+                }
+            }
+        return hedgedFirst(ladder, hedgeBudgetMs)
     }
 
     private fun Track.withDirectStream(stream: DirectStream): Track = copy(
@@ -827,7 +876,8 @@ private data class ClientProfile(
     val label: String,
     val userAgent: String,
     val android: Boolean,
-    val delayMs: Long
+    val delayMs: Long,
+    val tier: Int
 ) {
     val clientHeaderName: String
         get() = when (clientName) {
