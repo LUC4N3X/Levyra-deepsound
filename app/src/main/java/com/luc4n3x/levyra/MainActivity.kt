@@ -17,7 +17,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
-import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
@@ -31,7 +30,7 @@ class MainActivity : ComponentActivity() {
         configureFastImageLoader()
         requestNotificationPermission()
         requestLegacyStoragePermission()
-        val startPalette = LevyraThemes.byId(LevyraPreferences(this).themePreset())
+        val startPalette = LevyraThemes.byId(LevyraThemes.COSMIC)
         LevyraThemeController.apply(startPalette.id)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.TRANSPARENT
