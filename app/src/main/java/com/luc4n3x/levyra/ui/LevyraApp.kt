@@ -1,226 +1,4 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
-
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.detectTapGestures
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
-import android.speech.RecognizerIntent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
-import com.luc4n3x.levyra.BuildConfig
-import com.luc4n3x.levyra.R
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Explore
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.Headphones
-import androidx.compose.material.icons.rounded.Equalizer
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Bedtime
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Repeat
-import androidx.compose.material.icons.rounded.RepeatOne
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PersonAdd
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Palette
-import androidx.compose.material.icons.rounded.Verified
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Videocam
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Subject
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.PlaylistPlay
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.request.CachePolicy
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import com.luc4n3x.levyra.data.LevyraArtworkCache
-import com.luc4n3x.levyra.domain.AppUpdateInfo
-import com.luc4n3x.levyra.domain.ArtistProfile
-import com.luc4n3x.levyra.domain.AlbumHit
-import com.luc4n3x.levyra.domain.ArtistHit
-import com.luc4n3x.levyra.domain.ArtistRelease
-import com.luc4n3x.levyra.domain.DownloadedTrack
-import com.luc4n3x.levyra.domain.SearchFilter
-import com.luc4n3x.levyra.domain.LevyraContentLocales
-import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
-import com.luc4n3x.levyra.domain.LevyraAudioPresets
-import com.luc4n3x.levyra.domain.LevyraAudioSettings
-import com.luc4n3x.levyra.domain.LevyraTab
-import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
-import com.luc4n3x.levyra.domain.ExploreCatalog
-import com.luc4n3x.levyra.domain.ExploreZone
-import com.luc4n3x.levyra.domain.Mood
-import com.luc4n3x.levyra.domain.ReleaseRadarEntry
-import com.luc4n3x.levyra.domain.Taste
-import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.LevyraLaunchActions
-import com.luc4n3x.levyra.ui.theme.LevyraBlack
-import com.luc4n3x.levyra.ui.theme.LevyraInk
-import com.luc4n3x.levyra.ui.theme.LevyraPanel
-import com.luc4n3x.levyra.ui.theme.LevyraCyan
-import com.luc4n3x.levyra.ui.theme.LevyraMuted
-import com.luc4n3x.levyra.ui.theme.LevyraOrange
-import com.luc4n3x.levyra.ui.theme.LevyraPink
-import com.luc4n3x.levyra.ui.theme.LevyraText
-import com.luc4n3x.levyra.ui.theme.LevyraViolet
-import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
-import com.luc4n3x.levyra.ui.theme.LevyraPalette
-import com.luc4n3x.levyra.ui.theme.LevyraThemeController
-import com.luc4n3x.levyra.ui.theme.LevyraThemes
-import com.luc4n3x.levyra.ui.i18n.LevyraStrings
-import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
-import com.luc4n3x.levyra.viewmodel.LevyraUiState
-import com.luc4n3x.levyra.viewmodel.LevyraViewModel
-import com.valentinilk.shimmer.shimmer
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 val LocalSharedTransitionScope = compositionLocalOf<SharedTransitionScope?> { null }
@@ -416,6 +194,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         }
     }
 }
+
 @Composable
 private fun SectionTitle(title: String) {
     Row(
@@ -431,16 +210,17 @@ private fun SectionTitle(title: String) {
         Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false) {
     val sharedTransitionScope = LocalSharedTransitionScope.current
     val animatedVisibilityScope = LocalAnimatedVisibilityScope.current
-    
+
     val baseModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null && LocalAnimationsEnabled.current) {
         with(sharedTransitionScope) {
             modifier.sharedElement(
-                state = rememberSharedContentState(key = "cover_${track.id}"),
+                sharedContentState = rememberSharedContentState(key = "cover_${track.id}"),
                 animatedVisibilityScope = animatedVisibilityScope,
             )
         }
@@ -504,6 +284,7 @@ private fun InstantArtworkPlaceholder(track: Track, modifier: Modifier) {
         )
     }
 }
+
 @Composable
 private fun EmptyCover(modifier: Modifier) {
     Box(
@@ -513,6 +294,7 @@ private fun EmptyCover(modifier: Modifier) {
         Icon(Icons.Rounded.MusicNote, null, tint = LevyraBlack, modifier = Modifier.size(30.dp))
     }
 }
+
 @Composable
 private fun EmptyState(text: String) {
     Surface(
@@ -531,6 +313,7 @@ private fun EmptyState(text: String) {
         }
     }
 }
+
 @Composable
 private fun Modifier.pressable(
     enabled: Boolean = true,
@@ -544,7 +327,7 @@ private fun Modifier.pressable(
     val interaction = interactionSource ?: remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) pressedScale else 1f, 
+        targetValue = if (pressed) pressedScale else 1f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
         label = "press"
     )
@@ -1392,7 +1175,7 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
     ) {
         LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f))) // Dark overlay for readability
-        
+
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -3482,7 +3265,7 @@ private fun SearchHeader(
         }
 
         IconButton(
-            onClick = { 
+            onClick = {
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_PROMPT, "Ascoltando...")
@@ -4383,7 +4166,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         } else {
             LevyraBackground(accentStart = null, accentEnd = null)
         }
-        
+
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) // Deep glass overlay
 
         LazyColumn(
@@ -5487,7 +5270,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
             modifier = Modifier.weight(1f)
         ) {
             LevyraLogoMark(size = 62.dp)
-            
+
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 LevyraWordmark(fontSize = 28.sp, dotSize = 5.dp)
                 Text(
@@ -7201,7 +6984,7 @@ private fun TrackGlassCard(
                     }
                 }
             }
-            
+
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -7526,10 +7309,6 @@ private fun GlassMessage(text: String, color: Color) {
         Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(15.dp))
     }
 }
-
-
-
-
 
 
 @Composable
@@ -7900,4 +7679,3 @@ private fun LevyraViewModel.exportTrack(track: Track) {
 private fun LevyraViewModel.exportCurrentTrack() {
     selectTab(LevyraTab.Player)
 }
-
