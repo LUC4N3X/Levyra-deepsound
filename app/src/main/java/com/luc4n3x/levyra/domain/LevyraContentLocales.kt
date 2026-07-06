@@ -39,9 +39,22 @@ object LevyraContentLocales {
     }
 
     fun artistSuggestions(code: String): List<String> {
-        return quickSearches(code)
-            .filterNot { it.contains("hits", ignoreCase = true) || it.contains("rap", ignoreCase = true) || it.contains("drive", ignoreCase = true) || it.contains("gym", ignoreCase = true) || it.contains("bass", ignoreCase = true) }
-            .take(8)
+        return when (forLanguage(code).languageCode) {
+            "it" -> listOf("Sfera Ebbasta", "Lazza", "Geolier", "Marracash", "Ultimo", "Annalisa", "Tedua", "Ghali", "Madame", "Capo Plaza")
+            "es" -> listOf("Bad Bunny", "Rosalía", "Quevedo", "Aitana", "Feid", "Karol G", "Rauw Alejandro", "Myke Towers", "Mora", "Bizarrap")
+            "fr" -> listOf("Gazo", "Aya Nakamura", "Damso", "Ninho", "Tiakola", "SDM", "Zola", "Dadju", "SCH", "Jul")
+            "de" -> listOf("Apache 207", "RAF Camora", "Luciano", "Ayliva", "Ufo361", "Shirin David", "Kontra K", "Nina Chuba", "Ski Aggu", "Bonez MC")
+            "pt" -> listOf("Anitta", "Matuê", "Luísa Sonza", "Veigh", "Luan Santana", "Henrique & Juliano", "MC Ryan SP", "WIU", "Marília Mendonça", "Jorge & Mateus")
+            "nl" -> listOf("Frenna", "Suzan & Freek", "Antoon", "Boef", "Roxy Dekker", "Maan", "Ronnie Flex", "Broederliefde", "S10", "Snelle")
+            "pl" -> listOf("sanah", "Taco Hemingway", "Dawid Podsiadło", "Quebonafide", "PRO8L3M", "Mata", "Daria Zawiałow", "Kizo", "Oki", "Bambi")
+            "ro" -> listOf("Inna", "The Motans", "Delia", "Carla's Dreams", "Irina Rimes", "Smiley", "Andra", "M.G.L.", "Theo Rose", "Ian")
+            "el" -> listOf("Konstantinos Argiros", "Eleni Foureira", "Snik", "Helena Paparizou", "Sakis Rouvas", "Josephine", "Light", "Mad Clip", "Rack", "Melisses")
+            "sv" -> listOf("Veronica Maggio", "Zara Larsson", "Hov1", "Miriam Bryant", "Einár", "Victor Leksell", "Benjamin Ingrosso", "Molly Sandén", "Miss Li", "Darin")
+            "da" -> listOf("Gilli", "Tobias Rahim", "MØ", "Medina", "KESI", "Lamin", "Andreas Odbjerg", "Christopher", "Artigeardit", "Burhan G")
+            "cs" -> listOf("Calin", "Ewa Farna", "Ben Cristovao", "Viktor Sheen", "Yzomandias", "Mirai", "Kryštof", "Pam Rabbit", "Separ", "Rytmus")
+            "uk" -> listOf("alyona alyona", "KALUSH", "Jerry Heil", "The Hardkiss", "Monatik", "Dorofeeva", "Okean Elzy", "Wellboy", "Artem Pivovarov", "Kazka")
+            else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "SZA", "Travis Scott", "Dua Lipa", "Post Malone", "Ariana Grande", "Kendrick Lamar")
+        }
     }
 
     fun artistSuggestionsTitle(code: String): String {
