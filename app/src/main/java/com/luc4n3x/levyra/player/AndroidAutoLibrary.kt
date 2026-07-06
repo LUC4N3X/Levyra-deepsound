@@ -46,7 +46,7 @@ class AndroidAutoLibrary(context: Context) {
             ID_ROOT -> rootChildren()
             ID_HOME -> homeChildren()
             ID_HOME_DRIVER -> drivingMix().map { trackItem(it) }
-            ID_HOME_TOP_IT -> topItaly().map { trackItem(it) }
+            ID_HOME_TOP_IT -> topLocal().map { trackItem(it) }
             ID_HOME_OFFLINE -> downloads().map { trackItem(it) }
             ID_FLOW -> flowTracks().map { trackItem(it) }
             ID_FAVORITES -> favorites().map { trackItem(it) }
@@ -105,7 +105,7 @@ class AndroidAutoLibrary(context: Context) {
     private fun homeChildren(): List<MediaItem> = listOf(
         folder(ID_HOME_DRIVER, "Per la guida", "Preferiti, recenti e brani ad alta energia"),
         folder(ID_HOME_OFFLINE, "Offline pronto", "Download riproducibili senza rete"),
-        folder(ID_HOME_TOP_IT, "Top Italia", "Classifica musicale aggiornata"),
+        folder(ID_HOME_TOP_IT, "Top locali", "Classifica musicale aggiornata per la lingua scelta"),
         folder(ID_FLOW, "Flow Levyra", "Mix personale continuo")
     )
 
