@@ -78,19 +78,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '' | xargs)"
-          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '' | xargs)"
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
           APK="$(find app/build/outputs/apk/release -name '*.apk' -print -quit)"
           test -f "${APK}"
           SIZE_BYTES="$(stat -c%s "${APK}")"
           test "${SIZE_BYTES}" -gt 1048576
           BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}")"
-          printf "%s
-" "${BADGING}" > artifacts/apk-badging.txt
-          printf "%s
-" "${BADGING}" | grep -F "versionName='${VERSION}'"
-          printf "%s
-" "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
+          printf "%s\n" "${BADGING}" > artifacts/apk-badging.txt
+          printf "%s\n" "${BADGING}" | grep -F "versionName='${VERSION}'"
+          printf "%s\n" "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --print-certs "${APK}" > artifacts/apk-signing-certs.txt
           cp "${APK}" "artifacts/LEVYRA-${VERSION}-signed.apk"
           sha256sum "artifacts/LEVYRA-${VERSION}-signed.apk" > "artifacts/LEVYRA-${VERSION}-signed.apk.sha256"
