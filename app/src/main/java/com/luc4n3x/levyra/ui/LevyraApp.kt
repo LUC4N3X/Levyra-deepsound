@@ -1133,104 +1133,151 @@ private fun UpdateAvailableOverlay(
     onLater: () -> Unit
 ) {
     val blocker = remember { MutableInteractionSource() }
+    val notes = remember(update.releaseNotes, update.latestVersionName) {
+        cleanedUpdateNotes(update.releaseNotes, update.latestVersionName)
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.85f))
-            .clickable(interactionSource = blocker, indication = null) {},
+            .background(Color.Black.copy(alpha = 0.86f))
+            .clickable(interactionSource = blocker, indication = null) {}
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
-            color = Color(0xFF0B1020),
-            shape = RoundedCornerShape(28.dp),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+            color = Color(0xFF0A1020),
+            shape = RoundedCornerShape(30.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .fillMaxHeight(0.88f)
+                .shadow(28.dp, RoundedCornerShape(30.dp), clip = false)
         ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(LevyraCyan.copy(alpha = 0.6f), LevyraViolet.copy(alpha = 0.6f))
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("LEVYRA", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                        Surface(color = Color.Black.copy(alpha = 0.3f), shape = RoundedCornerShape(8.dp)) {
-                            Text("NUOVO AGGIORNAMENTO", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), letterSpacing = 1.sp)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(116.dp)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        LevyraCyan.copy(alpha = 0.72f),
+                                        Color(0xFF6B7CFF).copy(alpha = 0.62f),
+                                        LevyraViolet.copy(alpha = 0.72f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(170.dp)
+                                .offset(x = (-72).dp, y = (-48).dp)
+                                .blur(42.dp)
+                                .background(Color.White.copy(alpha = 0.16f), CircleShape)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(150.dp)
+                                .offset(x = 96.dp, y = 44.dp)
+                                .blur(48.dp)
+                                .background(LevyraCyan.copy(alpha = 0.22f), CircleShape)
+                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("LEVYRA", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
+                            Surface(color = Color.Black.copy(alpha = 0.28f), shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))) {
+                                Text("NUOVO AGGIORNAMENTO", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), letterSpacing = 1.4.sp)
+                            }
                         }
                     }
                 }
 
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "Versione ${update.latestVersionName}",
-                            color = Color.White,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text = update.releaseTitle.ifBlank { "Miglioramenti generali e risoluzione di bug." },
-                            color = LevyraMuted,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Novità", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        val notes = update.releaseNotes.split("\n").filter { it.isNotBlank() }
-                        if (notes.isEmpty()) {
-                            Surface(color = Color.White.copy(alpha = 0.05f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                                Text("Miglioramenti alle prestazioni e stabilità dell'app.", color = LevyraMuted, fontSize = 13.sp, modifier = Modifier.padding(12.dp))
+                item {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(
+                                    text = "Versione ${update.latestVersionName}",
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Surface(color = LevyraCyan.copy(alpha = 0.16f), shape = RoundedCornerShape(999.dp), border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.42f))) {
+                                    Text("APK", color = LevyraCyan, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), letterSpacing = 0.8.sp)
+                                }
                             }
-                        } else {
-                            notes.take(4).forEach { note ->
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.05f),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        Box(modifier = Modifier.size(6.dp).background(LevyraCyan, CircleShape))
-                                        Text(note.removePrefix("- ").removePrefix("* ").trim(), color = LevyraMuted, fontSize = 13.sp, lineHeight = 18.sp)
-                                    }
+                            Text(
+                                text = update.releaseTitle.ifBlank { "Miglioramenti generali e risoluzione di bug." },
+                                color = LevyraMuted,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                lineHeight = 17.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Surface(
+                            color = Color.White.copy(alpha = 0.045f),
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Box(modifier = Modifier.size(8.dp).background(LevyraCyan, CircleShape))
+                                Text("Schermata più compatta, changelog leggibile e contenuto scrollabile su tutti gli schermi.", color = LevyraText.copy(alpha = 0.86f), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Novità", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            if (notes.isEmpty()) {
+                                UpdateNoteCard("Miglioramenti alle prestazioni e stabilità dell'app.")
+                            } else {
+                                notes.forEach { note ->
+                                    UpdateNoteCard(note)
                                 }
                             }
                         }
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-                            modifier = Modifier.weight(1f).height(52.dp).pressable(onClick = onLater)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("Più tardi", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Surface(
+                                color = Color.White.copy(alpha = 0.04f),
+                                shape = RoundedCornerShape(17.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.13f)),
+                                modifier = Modifier.weight(1f).height(48.dp).pressable(onClick = onLater)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("Più tardi", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
-                        }
-                        Surface(
-                            color = LevyraCyan,
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.weight(1f).height(52.dp).pressable(onClick = onDownload)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("Aggiorna", color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            Surface(
+                                color = LevyraCyan,
+                                shape = RoundedCornerShape(17.dp),
+                                modifier = Modifier.weight(1f).height(48.dp).pressable(onClick = onDownload)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text("Aggiorna", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                                }
                             }
                         }
                     }
@@ -1238,6 +1285,55 @@ private fun UpdateAvailableOverlay(
             }
         }
     }
+}
+
+@Composable
+private fun UpdateNoteCard(note: String) {
+    Surface(
+        color = Color.White.copy(alpha = 0.055f),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.055f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(modifier = Modifier.size(6.dp).background(LevyraCyan, CircleShape))
+            Text(note, color = LevyraMuted, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+private fun cleanedUpdateNotes(notes: String, version: String): List<String> {
+    val versionKey = version.trim().lowercase()
+    return notes
+        .lineSequence()
+        .map { it.trim() }
+        .map { raw ->
+            raw
+                .replace(Regex("^#{1,6}\\s*"), "")
+                .replace(Regex("^[-*•]+\\s*"), "")
+                .replace(Regex("\\*\\*([^*]+)\\*\\*")) { match -> match.groupValues[1] }
+                .replace(Regex("`([^`]+)`")) { match -> match.groupValues[1] }
+                .replace(Regex("\\[([^\\]]+)]\\(([^)]+)\\)")) { match -> match.groupValues[1] }
+                .replace("__", "")
+                .replace("**", "")
+                .trim()
+        }
+        .filter { line -> line.isNotBlank() && line != "---" && line.any { it.isLetterOrDigit() } }
+        .filterNot { line ->
+            val lower = line.lowercase()
+            lower == "novità" ||
+                lower == "changelog" ||
+                lower.startsWith("levyra v$versionKey") ||
+                lower.startsWith("levyra $versionKey") ||
+                lower.startsWith("versione $versionKey")
+        }
+        .distinct()
+        .take(12)
+        .toList()
 }
 
 private fun compactReleaseNotes(notes: String): String {
