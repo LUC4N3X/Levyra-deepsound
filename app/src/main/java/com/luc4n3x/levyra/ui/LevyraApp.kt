@@ -190,6 +190,7 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Mood
@@ -424,15 +425,18 @@ private fun SectionTitle(title: String) {
 }
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false) {
+    val context = LocalContext.current
     val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
+    val model = remember(context, track.id, track.title, track.artist, raw, highRes) {
+        LevyraArtworkCache.model(context, track, highRes)
+    }
     val background = Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
     Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
-        if (raw.isNotBlank()) {
-            val model = if (highRes) LevyraArtworkCache.large(raw) else LevyraArtworkCache.small(raw)
+        if (model != null) {
             val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 120 else 0
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+                model = ImageRequest.Builder(context)
                     .data(model)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
@@ -1507,7 +1511,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val trendingArtists = remember(state.tracks, state.homeSections, state.charts, state.favorites) {
         buildTrendingArtists(state)
     }
-    val personalTracks = remember(state.currentTrack, state.recentSearches, state.favorites, state.tracks, state.homeSections, state.charts) {
+    val personalTracks = remember(state.currentTrack, state.recentSearches, state.personalOrbitTracks, state.favorites, state.tracks, state.homeSections, state.charts) {
         buildPersonalListeningTracks(state)
     }
     val resonanceTracks = remember(state.currentTrack, state.recentSearches, state.favorites, state.tracks, state.homeSections, state.charts) {
@@ -1524,6 +1528,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     }
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
         delay(650L)
+        LevyraArtworkCache.cachePersistent(context, personalTracks, 8)
         LevyraArtworkCache.preloadPriority(context, personalTracks, 8)
         LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 18)
     }
@@ -1812,21 +1817,16 @@ private fun TrendingArtistsShelf(
 }
 
 private fun buildPersonalListeningTracks(state: LevyraUiState): List<Track> {
-    return buildList {
-        state.currentTrack?.let { add(it) }
-        addAll(state.recentSearches)
-        addAll(state.favorites)
-        addAll(state.tracks)
-        addAll(state.homeSections.flatMap { it.tracks })
-        addAll(state.charts)
-    }
-        .asSequence()
-        .filter { it.id.length == 11 && isReliableMusicUpdateCandidate(it) }
-        .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-        .filter { hasSquareAlbumArtwork(it) }
-        .distinctBy { it.id }
-        .take(12)
-        .toList()
+    return LevyraPersonalOrbit.build(
+        currentTrack = state.currentTrack,
+        recentSearches = state.recentSearches,
+        favorites = state.favorites,
+        tracks = state.tracks,
+        homeSections = state.homeSections,
+        charts = state.charts,
+        cachedOrbit = state.personalOrbitTracks,
+        limit = 12
+    )
 }
 
 private fun buildResonanceTracks(state: LevyraUiState): List<Track> {
