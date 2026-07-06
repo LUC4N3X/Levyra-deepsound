@@ -156,6 +156,15 @@ android {
         buildConfig = true
     }
 
+    lint {
+        // The whole player layer is built on media3, whose APIs are annotated
+        // @UnstableApi. UnsafeOptInUsageError targets library authors who expose
+        // unstable APIs to consumers and is redundant for an app that
+        // deliberately depends on media3, so disable just this check while
+        // keeping every other lint rule enforced.
+        disable += "UnsafeOptInUsageError"
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -206,4 +215,6 @@ dependencies {
     releaseImplementation(libs.chucker.no.op)
     ksp(libs.androidx.room.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
+    testImplementation(libs.junit)
+    testImplementation(libs.json)
 }

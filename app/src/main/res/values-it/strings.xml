@@ -9,6 +9,7 @@
     <string name="widget_flow">Flow del giorno</string>
     <string name="widget_offline">Mix offline</string>
     <string name="widget_lyrics">Testi</string>
+    <string name="radar_channel_name">Release Radar</string>
     <string name="radar_channel_description">Nuove uscite dagli artisti che segui</string>
     <string name="radar_new_release_title">Nuova uscita di %1$s</string>
 </resources>
