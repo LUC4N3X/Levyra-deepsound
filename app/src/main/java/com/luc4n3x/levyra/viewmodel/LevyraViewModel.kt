@@ -848,12 +848,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun handleOfflineExportSuccess(workInfo: WorkInfo, trackId: String) {
         activeDownloadKeys.remove(trackId)
         val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
+        val destinationLabel = workInfo.outputData.getString(OfflineExportWorker.KEY_DESTINATION_LABEL).orEmpty().ifBlank { "Music/Levyra" }
         val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
         val tagStatus = if (embedded) "con cover e metadata Levyra" else "con metadata Android"
         _state.update {
             it.copy(
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
-                offlineExportMessage = "Salvato in Music/Levyra: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
+                offlineExportMessage = "Salvato in $destinationLabel: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
                 downloadProgressByTrackId = it.downloadProgressByTrackId - trackId
@@ -885,6 +886,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (raw.isBlank()) return "Operazione non riuscita"
         if (raw.contains("Timed out waiting", ignoreCase = true)) return "YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo"
         if (raw.contains("timeout", ignoreCase = true)) return "Connessione lenta: riprova tra qualche secondo"
+        if (raw.contains("Primary directory Music not allowed", ignoreCase = true) || raw.contains("content://media/external_primary/file", ignoreCase = true)) return "Questo telefono blocca il salvataggio generico in Music: aggiorna l'app e riprova, Levyra userà MediaStore Audio o Downloads/Levyra"
         return raw
     }
 
