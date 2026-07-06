@@ -6,6 +6,8 @@ import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
+import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,6 +24,7 @@ import kotlin.math.absoluteValue
 class ArtistRepository(private val music: YoutubeMusicRepository, private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val clientVersion = "1.20260423.01.00"
+    private val preferences = context?.applicationContext?.let { LevyraPreferences(it) }
     private val memory = LinkedHashMap<String, ArtistProfile>()
 
     suspend fun profileFor(artistName: String): ArtistProfile? = withContext(Dispatchers.IO) {
@@ -145,8 +148,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
     private suspend fun fallbackProfile(name: String): ArtistProfile {
-        val songs = music.search(name, 18).filter { it.artist.contains(name, ignoreCase = true) }.ifEmpty {
-            music.search(name, 12)
+        val languageCode = contentLanguage()
+        val songs = music.search(name, 18, languageCode).filter { it.artist.contains(name, ignoreCase = true) }.ifEmpty {
+            music.search(name, 12, languageCode)
         }
         val seed = stableSeed(name)
         val accent = palette(seed)
@@ -312,15 +316,20 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return post(endpoint, body, "https://music.youtube.com/")
     }
 
-    private fun clientContext(): JSONObject = JSONObject().put(
-        "client",
-        JSONObject()
-            .put("clientName", "WEB_REMIX")
-            .put("clientVersion", clientVersion)
-            .put("hl", "it")
-            .put("gl", "IT")
-            .put("platform", "DESKTOP")
-    )
+    private fun contentLanguage(): String = preferences?.languageCode() ?: LevyraLanguageCatalog.deviceDefault()
+
+    private fun clientContext(): JSONObject {
+        val locale = LevyraContentLocales.forLanguage(contentLanguage())
+        return JSONObject().put(
+            "client",
+            JSONObject()
+                .put("clientName", "WEB_REMIX")
+                .put("clientVersion", clientVersion)
+                .put("hl", locale.hl)
+                .put("gl", locale.gl)
+                .put("platform", "DESKTOP")
+        )
+    }
 
     private fun post(endpoint: String, body: String, referer: String): JSONObject {
         val bytes = body.toByteArray(StandardCharsets.UTF_8)

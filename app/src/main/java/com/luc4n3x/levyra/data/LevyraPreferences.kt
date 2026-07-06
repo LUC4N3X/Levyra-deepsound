@@ -176,9 +176,16 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_RECENT_SEARCHES] = array.toString() }
     }
 
-    fun loadHomeSections(): List<HomeSection> = read(emptyList()) { parseHomeSections(it[KEY_HOME_SECTIONS].orEmpty()) }
+    fun loadHomeSections(languageCode: String = languageCode()): List<HomeSection> {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        return read(emptyList()) { preferences ->
+            val localized = preferences[homeSectionsKey(normalized)].orEmpty()
+            val legacy = if (normalized == "it") preferences[KEY_HOME_SECTIONS].orEmpty() else ""
+            parseHomeSections(localized.ifBlank { legacy })
+        }
+    }
 
-    fun saveHomeSections(sections: List<HomeSection>) {
+    fun saveHomeSections(sections: List<HomeSection>, languageCode: String = languageCode()) {
         val array = JSONArray()
         sections.take(10).forEach { section ->
             val tracks = JSONArray()
@@ -187,31 +194,53 @@ class LevyraPreferences(context: Context) {
                 array.put(JSONObject().put("title", section.title).put("tracks", tracks))
             }
         }
-        write { it[KEY_HOME_SECTIONS] = array.toString() }
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        write { it[homeSectionsKey(normalized)] = array.toString() }
     }
 
-    fun loadChartTracks(): List<Track> = read(emptyList()) { parseTrackList(it[KEY_CHART_TRACKS].orEmpty()) }
+    fun loadChartTracks(languageCode: String = languageCode(), regionId: String = ""): List<Track> {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        val chartRegion = regionId.ifBlank { com.luc4n3x.levyra.domain.ChartsCatalog.defaultRegionForLanguage(normalized).id }
+        return read(emptyList()) { preferences ->
+            val localized = preferences[chartTracksKey(normalized, chartRegion)].orEmpty()
+            val legacy = if (normalized == "it" && chartRegion == "it") preferences[KEY_CHART_TRACKS].orEmpty() else ""
+            parseTrackList(localized.ifBlank { legacy })
+        }
+    }
 
-    fun saveChartTracks(tracks: List<Track>) {
+    fun saveChartTracks(tracks: List<Track>, languageCode: String = languageCode(), regionId: String = "") {
         val array = JSONArray()
         tracks.take(50).forEach { track -> array.put(TrackJson.toJson(track)) }
-        write { it[KEY_CHART_TRACKS] = array.toString() }
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        val chartRegion = regionId.ifBlank { com.luc4n3x.levyra.domain.ChartsCatalog.defaultRegionForLanguage(normalized).id }
+        write { it[chartTracksKey(normalized, chartRegion)] = array.toString() }
     }
 
-    fun loadPersonalOrbitTracks(): List<Track> = read(emptyList()) { parseTrackList(it[KEY_PERSONAL_ORBIT_TRACKS].orEmpty()) }
+    fun loadPersonalOrbitTracks(languageCode: String = languageCode()): List<Track> {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        return read(emptyList()) { preferences ->
+            val localized = preferences[personalOrbitTracksKey(normalized)].orEmpty()
+            val legacy = if (normalized == "it") preferences[KEY_PERSONAL_ORBIT_TRACKS].orEmpty() else ""
+            parseTrackList(localized.ifBlank { legacy })
+        }
+    }
 
-    fun savePersonalOrbitTracks(tracks: List<Track>) {
+    fun savePersonalOrbitTracks(tracks: List<Track>, languageCode: String = languageCode()) {
         val array = JSONArray()
         tracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT).forEach { track -> array.put(TrackJson.toJson(track)) }
-        write { it[KEY_PERSONAL_ORBIT_TRACKS] = array.toString() }
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        write { it[personalOrbitTracksKey(normalized)] = array.toString() }
     }
 
     private fun snapshotFrom(preferences: Preferences): LevyraPreferencesSnapshot {
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(preferences[KEY_LANGUAGE_CODE].orEmpty().ifBlank { LevyraLanguageCatalog.deviceDefault() })
+        val localizedOrbit = preferences[personalOrbitTracksKey(normalizedLanguage)].orEmpty()
+        val legacyOrbit = if (normalizedLanguage == "it") preferences[KEY_PERSONAL_ORBIT_TRACKS].orEmpty() else ""
         return LevyraPreferencesSnapshot(
             onboarded = preferences[KEY_ONBOARDED] ?: false,
             tastes = preferences[KEY_TASTES].orEmpty(),
             userName = preferences[KEY_USER_NAME].orEmpty(),
-            languageCode = LevyraLanguageCatalog.normalize(preferences[KEY_LANGUAGE_CODE].orEmpty().ifBlank { LevyraLanguageCatalog.deviceDefault() }),
+            languageCode = normalizedLanguage,
             animationsEnabled = preferences[KEY_ANIMATIONS] ?: true,
             dynamicColor = preferences[KEY_DYNAMIC_COLOR] ?: true,
             sponsorBlock = preferences[KEY_SPONSORBLOCK] ?: true,
@@ -221,7 +250,7 @@ class LevyraPreferences(context: Context) {
             lastTrack = parseTrack(preferences[KEY_LAST_TRACK].orEmpty(), "Last track restore failed"),
             lastPositionMs = preferences[KEY_LAST_POSITION] ?: 0L,
             recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty()),
-            personalOrbitTracks = parseTrackList(preferences[KEY_PERSONAL_ORBIT_TRACKS].orEmpty()),
+            personalOrbitTracks = parseTrackList(localizedOrbit.ifBlank { legacyOrbit }),
             audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false,
             themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty()),
             audioSettings = audioSettingsFrom(preferences)
@@ -247,6 +276,13 @@ class LevyraPreferences(context: Context) {
         themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC,
         audioSettings = LevyraAudioSettings()
     )
+
+
+    private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_${LevyraLanguageCatalog.normalize(languageCode)}")
+
+    private fun chartTracksKey(languageCode: String, regionId: String): Preferences.Key<String> = stringPreferencesKey("chart_tracks_${LevyraLanguageCatalog.normalize(languageCode)}_${regionId.lowercase()}")
+
+    private fun personalOrbitTracksKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("personal_orbit_tracks_${LevyraLanguageCatalog.normalize(languageCode)}")
 
     private fun parseTrack(raw: String, warning: String): Track? {
         if (raw.isBlank()) return null

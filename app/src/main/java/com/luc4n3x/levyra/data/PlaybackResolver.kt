@@ -4,6 +4,7 @@ import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
@@ -673,11 +674,12 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun buildPlayerBody(videoId: String, profile: ClientProfile): JSONObject {
+        val locale = LevyraContentLocales.forLanguage(userPreferences.languageCode())
         val client = JSONObject()
             .put("clientName", profile.clientName)
             .put("clientVersion", profile.clientVersion)
-            .put("hl", "it")
-            .put("gl", "IT")
+            .put("hl", locale.hl)
+            .put("gl", locale.gl)
         if (profile.android) {
             client.put("androidSdkVersion", 35)
                 .put("osName", "Android")
