@@ -100,6 +100,34 @@ data class CacheReport(
     val totalTracks: Int
 )
 
+data class SmartMusicTasteSeed(
+    val label: String,
+    val query: String,
+    val weight: Int
+)
+
+data class SmartMusicProfile(
+    val plays: Int = 0,
+    val completedPlays: Int = 0,
+    val favoriteSignals: Int = 0,
+    val downloadSignals: Int = 0,
+    val albumOpenSignals: Int = 0,
+    val topArtists: List<SmartMusicTasteSeed> = emptyList(),
+    val topAlbums: List<SmartMusicTasteSeed> = emptyList(),
+    val topMoods: List<SmartMusicTasteSeed> = emptyList(),
+    val lastUpdated: Long = 0L
+) {
+    val isWarm: Boolean
+        get() = plays + completedPlays + favoriteSignals + downloadSignals + albumOpenSignals >= 4
+
+    val albumQueries: List<String>
+        get() = topAlbums.map { it.query }
+
+    val artistQueries: List<String>
+        get() = topArtists.map { it.query }
+}
+
+
 enum class LevyraTab {
     Home,
     Search,
