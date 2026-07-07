@@ -216,6 +216,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraText
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.ui.theme.LevyraPanelSoft
 import com.luc4n3x.levyra.ui.theme.LevyraPalette
+import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
@@ -231,30 +232,64 @@ private val CinematicGlass = Color(0xFF151321)
 private val CinematicGlassDeep = Color(0xFF0B0A14)
 private val CinematicHairline = Color.White.copy(alpha = 0.105f)
 
+private val LevyraIsLight: Boolean get() = LevyraActivePalette.isLight
+private val LevyraReadableOnArtwork: Color get() = Color.White
+private val LevyraReadableMutedOnArtwork: Color get() = Color.White.copy(alpha = 0.78f)
+private val LevyraAdaptiveHairline: Color get() = if (LevyraIsLight) Color(0x26101322) else Color.White.copy(alpha = 0.105f)
+private val LevyraAdaptiveSoftHairline: Color get() = if (LevyraIsLight) Color(0x16101322) else Color.White.copy(alpha = 0.08f)
+private val LevyraAdaptiveCard: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else CinematicGlass.copy(alpha = 0.66f)
+private val LevyraAdaptiveCardDeep: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.86f) else CinematicGlassDeep.copy(alpha = 0.74f)
+private val LevyraAdaptiveChip: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.06f)
+private val LevyraAdaptiveChipSelected: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.12f)
+private val LevyraAdaptiveTrack: Color get() = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.08f)
+
 private fun cinematicGlassBrush(
     accentStart: Color = LevyraCyan,
     accentEnd: Color = LevyraViolet,
     intensity: Float = 1f
 ): Brush {
-    return Brush.linearGradient(
-        listOf(
-            accentStart.copy(alpha = 0.13f * intensity),
-            CinematicGlass.copy(alpha = 0.96f),
-            CinematicGlassDeep.copy(alpha = 0.98f),
-            accentEnd.copy(alpha = 0.10f * intensity)
+    return if (LevyraIsLight) {
+        Brush.linearGradient(
+            listOf(
+                Color.White.copy(alpha = 0.96f),
+                Color(0xFFF7F9FF).copy(alpha = 0.94f),
+                accentStart.copy(alpha = 0.08f * intensity),
+                accentEnd.copy(alpha = 0.06f * intensity),
+                Color(0xFFF2F5FF).copy(alpha = 0.92f)
+            )
         )
-    )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                accentStart.copy(alpha = 0.13f * intensity),
+                CinematicGlass.copy(alpha = 0.96f),
+                CinematicGlassDeep.copy(alpha = 0.98f),
+                accentEnd.copy(alpha = 0.10f * intensity)
+            )
+        )
+    }
 }
 
 private fun cinematicTextBrush(): Brush {
-    return Brush.linearGradient(
-        listOf(
-            Color.White,
-            LevyraCyan.copy(alpha = 0.92f),
-            LevyraViolet.copy(alpha = 0.86f),
-            CinematicGold.copy(alpha = 0.82f)
+    return if (LevyraIsLight) {
+        Brush.linearGradient(
+            listOf(
+                LevyraText,
+                LevyraCyan.copy(alpha = 0.95f),
+                LevyraViolet.copy(alpha = 0.90f),
+                Color(0xFF283044)
+            )
         )
-    )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                Color.White,
+                LevyraCyan.copy(alpha = 0.92f),
+                LevyraViolet.copy(alpha = 0.86f),
+                CinematicGold.copy(alpha = 0.82f)
+            )
+        )
+    }
 }
 
 @Composable
@@ -288,13 +323,16 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         animationSpec = tween(260, easing = FastOutSlowInEasing),
         label = "tab-selected-alpha"
     )
+    val tabActiveTint = if (LevyraIsLight) LevyraCyan else Color(0xFF93DCFF)
+    val tabPressedTint = if (LevyraIsLight) LevyraText else Color(0xFFBDEBFF)
+    val tabInactiveTint = if (LevyraIsLight) LevyraMuted else Color(0xFF737373)
     val iconTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFF93DCFF) else if (pressed) Color(0xFFBDEBFF) else Color(0xFF737373),
+        targetValue = if (selected) tabActiveTint else if (pressed) tabPressedTint else tabInactiveTint,
         animationSpec = tween(260),
         label = "tab-icon-tint"
     )
     val labelTint by animateColorAsState(
-        targetValue = if (selected) Color(0xFFE0F4FF) else Color.White,
+        targetValue = if (selected) if (LevyraIsLight) LevyraText else Color(0xFFE0F4FF) else if (LevyraIsLight) LevyraMuted else Color.White,
         animationSpec = tween(260),
         label = "tab-label-tint"
     )
@@ -353,20 +391,20 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                         }
 
                         drawCircle(
-                            color = Color(0xFF54C8FF).copy(alpha = 0.13f * selectedAlpha),
+                            color = LevyraCyan.copy(alpha = if (LevyraIsLight) 0.18f * selectedAlpha else 0.13f * selectedAlpha),
                             radius = size.minDimension * 0.46f
                         )
                         drawCircle(
-                            color = Color(0xFFBDEBFF).copy(alpha = 0.07f * selectedAlpha),
+                            color = LevyraCyan.copy(alpha = if (LevyraIsLight) 0.08f * selectedAlpha else 0.07f * selectedAlpha),
                             radius = size.minDimension * 0.27f
                         )
                         drawCircle(
-                            color = Color(0xFFAEE9FF).copy(alpha = 0.28f * selectedAlpha),
+                            color = LevyraCyan.copy(alpha = if (LevyraIsLight) 0.32f * selectedAlpha else 0.28f * selectedAlpha),
                             radius = size.minDimension * 0.43f,
                             style = Stroke(width = 1.dp.toPx())
                         )
                         drawCircle(
-                            color = Color(0xFFB9F1FF).copy(alpha = 0.55f * selectedAlpha),
+                            color = LevyraCyan.copy(alpha = if (LevyraIsLight) 0.62f * selectedAlpha else 0.55f * selectedAlpha),
                             radius = 1.35.dp.toPx(),
                             center = androidx.compose.ui.geometry.Offset(size.width * 0.78f, size.height * 0.24f)
                         )
@@ -402,10 +440,10 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     .background(
                         brush = Brush.horizontalGradient(
                             listOf(
-                                Color(0xFF5BD6FF).copy(alpha = 0f),
-                                Color(0xFF6FDFFF).copy(alpha = 0.86f),
-                                LevyraViolet.copy(alpha = 0.55f),
-                                Color(0xFF5BD6FF).copy(alpha = 0f)
+                                LevyraCyan.copy(alpha = 0f),
+                                LevyraCyan.copy(alpha = if (LevyraIsLight) 0.90f else 0.86f),
+                                LevyraViolet.copy(alpha = if (LevyraIsLight) 0.48f else 0.55f),
+                                LevyraCyan.copy(alpha = 0f)
                             )
                         ),
                         shape = RoundedCornerShape(99.dp)
@@ -657,6 +695,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
     LaunchedEffect(state.themePreset) {
         val palette = LevyraThemes.byId(state.themePreset)
         (rootView.context as? Activity)?.window?.let { window ->
+            window.decorView.setBackgroundColor(palette.black.toArgb())
             WindowCompat.getInsetsController(window, rootView).apply {
                 isAppearanceLightStatusBars = palette.isLight
                 isAppearanceLightNavigationBars = palette.isLight
@@ -2476,28 +2515,31 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     val deepViolet = Color(0xFF4B2A8C)
     val softMagenta = Color(0xFFB7477A)
 
+    val sourceStart = accentStart?.let { Color(it) }
+    val sourceEnd = accentEnd?.let { Color(it) }
+
     val warmAccent by animateColorAsState(
-        targetValue = emberOrange,
+        targetValue = if (LevyraIsLight) LevyraOrange else emberOrange,
         animationSpec = tween(1800, easing = LinearOutSlowInEasing),
         label = "levyra-warm-background-accent"
     )
     val coolAccent by animateColorAsState(
-        targetValue = accentStart?.let { Color(it) }?.let { source ->
+        targetValue = sourceStart?.let { source ->
             val red = source.red
             val green = source.green
             val blue = source.blue
             if (green > red * 1.08f && green > blue * 0.90f) auroraBlue else source
-        } ?: auroraBlue,
+        } ?: if (LevyraIsLight) LevyraCyan else auroraBlue,
         animationSpec = tween(1800, easing = LinearOutSlowInEasing),
         label = "levyra-cool-background-accent"
     )
     val secondAccent by animateColorAsState(
-        targetValue = accentEnd?.let { Color(it) }?.let { source ->
+        targetValue = sourceEnd?.let { source ->
             val red = source.red
             val green = source.green
             val blue = source.blue
             if (green > red * 1.08f && green > blue * 0.90f) deepViolet else source
-        } ?: deepViolet,
+        } ?: if (LevyraIsLight) LevyraViolet else deepViolet,
         animationSpec = tween(1800, easing = LinearOutSlowInEasing),
         label = "levyra-secondary-background-accent"
     )
@@ -2522,95 +2564,187 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
         label = "levyra-background-drift-x"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF030508),
-                        Color(0xFF05070E),
-                        Color(0xFF06030A),
-                        Color(0xFF010103)
-                    )
-                )
-            )
-    ) {
+    if (LevyraIsLight) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(620.dp)
-                .align(Alignment.TopCenter)
-                .graphicsLayer {
-                    translationX = driftX
-                    translationY = driftY
-                }
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            coolAccent.copy(alpha = 0.20f),
-                            electricCyan.copy(alpha = 0.08f),
-                            Color.Transparent
-                        ),
-                        radius = 1120f
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .size(560.dp)
-                .align(Alignment.TopStart)
-                .offset(x = (-190).dp, y = 72.dp)
-                .graphicsLayer {
-                    translationX = driftX * -0.55f
-                    translationY = driftY * 0.35f
-                }
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            secondAccent.copy(alpha = 0.16f),
-                            softMagenta.copy(alpha = 0.07f),
-                            Color.Transparent
-                        ),
-                        radius = 720f
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .size(620.dp)
-                .align(Alignment.CenterEnd)
-                .offset(x = 240.dp, y = 20.dp)
-                .graphicsLayer {
-                    translationX = driftX * 0.65f
-                    translationY = driftY * -0.45f
-                }
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            warmAccent.copy(alpha = 0.18f),
-                            Color(0xFFFF9A3D).copy(alpha = 0.055f),
-                            Color.Transparent
-                        ),
-                        radius = 820f
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(320.dp)
-                .align(Alignment.BottomCenter)
+                .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            Color.Transparent,
-                            Color(0xFF020103).copy(alpha = 0.86f),
-                            Color.Black
+                            Color(0xFFFFFFFF),
+                            Color(0xFFF8FAFF),
+                            LevyraBlack,
+                            Color(0xFFEFF3FB)
                         )
                     )
                 )
-        )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(560.dp)
+                    .align(Alignment.TopCenter)
+                    .graphicsLayer {
+                        translationX = driftX
+                        translationY = driftY
+                    }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                coolAccent.copy(alpha = 0.13f),
+                                LevyraCyan.copy(alpha = 0.075f),
+                                Color.Transparent
+                            ),
+                            radius = 1050f
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .size(540.dp)
+                    .align(Alignment.TopStart)
+                    .offset(x = (-210).dp, y = 90.dp)
+                    .graphicsLayer {
+                        translationX = driftX * -0.55f
+                        translationY = driftY * 0.35f
+                    }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                secondAccent.copy(alpha = 0.10f),
+                                LevyraViolet.copy(alpha = 0.055f),
+                                Color.Transparent
+                            ),
+                            radius = 760f
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .size(610.dp)
+                    .align(Alignment.CenterEnd)
+                    .offset(x = 245.dp, y = 18.dp)
+                    .graphicsLayer {
+                        translationX = driftX * 0.65f
+                        translationY = driftY * -0.45f
+                    }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                warmAccent.copy(alpha = 0.075f),
+                                Color.Transparent
+                            ),
+                            radius = 860f
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.64f),
+                                LevyraBlack.copy(alpha = 0.96f)
+                            )
+                        )
+                    )
+            )
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color(0xFF030508),
+                            Color(0xFF05070E),
+                            Color(0xFF06030A),
+                            Color(0xFF010103)
+                        )
+                    )
+                )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(620.dp)
+                    .align(Alignment.TopCenter)
+                    .graphicsLayer {
+                        translationX = driftX
+                        translationY = driftY
+                    }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                coolAccent.copy(alpha = 0.20f),
+                                electricCyan.copy(alpha = 0.08f),
+                                Color.Transparent
+                            ),
+                            radius = 1120f
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .size(560.dp)
+                    .align(Alignment.TopStart)
+                    .offset(x = (-190).dp, y = 72.dp)
+                    .graphicsLayer {
+                        translationX = driftX * -0.55f
+                        translationY = driftY * 0.35f
+                    }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                secondAccent.copy(alpha = 0.16f),
+                                softMagenta.copy(alpha = 0.07f),
+                                Color.Transparent
+                            ),
+                            radius = 720f
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .size(620.dp)
+                    .align(Alignment.CenterEnd)
+                    .offset(x = 240.dp, y = 20.dp)
+                    .graphicsLayer {
+                        translationX = driftX * 0.65f
+                        translationY = driftY * -0.45f
+                    }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                warmAccent.copy(alpha = 0.18f),
+                                Color(0xFFFF9A3D).copy(alpha = 0.055f),
+                                Color.Transparent
+                            ),
+                            radius = 820f
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(320.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color(0xFF020103).copy(alpha = 0.86f),
+                                Color.Black
+                            )
+                        )
+                    )
+            )
+        }
     }
 }
 
@@ -3056,8 +3190,8 @@ private fun ResonanceShelf(
                 )
             }
             Surface(
-                color = CinematicGlassDeep.copy(alpha = 0.6f),
-                border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
+                color = LevyraAdaptiveChip,
+                border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
                 shape = CircleShape,
                 modifier = Modifier.pressable(onClick = onPlayAll)
             ) {
@@ -3292,8 +3426,8 @@ private fun PersonalListeningShelf(
                 )
             }
             Surface(
-                color = CinematicGlassDeep.copy(alpha = 0.6f),
-                border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
+                color = LevyraAdaptiveChip,
+                border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
                 shape = CircleShape,
                 modifier = Modifier.pressable(onClick = onPlayAll)
             ) {
@@ -3402,7 +3536,7 @@ private fun PersonalListeningCard(
             ) {
                 Text(
                     text = track.title,
-                    color = LevyraText,
+                    color = LevyraReadableOnArtwork,
                     fontSize = 12.8.sp,
                     lineHeight = 14.3.sp,
                     fontWeight = FontWeight.Black,
@@ -3411,7 +3545,7 @@ private fun PersonalListeningCard(
                 )
                 Text(
                     text = track.artist,
-                    color = LevyraText.copy(alpha = 0.76f),
+                    color = LevyraReadableMutedOnArtwork,
                     fontSize = 10.8.sp,
                     lineHeight = 12.3.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -6483,7 +6617,7 @@ private fun ThemePresetCard(preset: LevyraPalette, selected: Boolean, onClick: (
     Surface(
         color = preset.black,
         shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) LevyraCyan else Color.White.copy(alpha = 0.14f)),
+        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) LevyraCyan else if (preset.isLight) Color(0x2211131F) else Color.White.copy(alpha = 0.14f)),
         modifier = Modifier.pressable(onClick = onClick)
     ) {
         Column(
@@ -6513,8 +6647,8 @@ private fun ThemePresetCard(preset: LevyraPalette, selected: Boolean, onClick: (
 @Composable
 private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Surface(
-        color = Color.White.copy(alpha = 0.06f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+        color = LevyraAdaptiveCard,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -6542,7 +6676,7 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
                     checkedThumbColor = LevyraBlack,
                     checkedTrackColor = LevyraCyan,
                     uncheckedThumbColor = LevyraMuted,
-                    uncheckedTrackColor = Color.White.copy(alpha = 0.1f)
+                    uncheckedTrackColor = LevyraAdaptiveTrack
                 )
             )
         }
@@ -6552,8 +6686,8 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
 @Composable
 private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
     Surface(
-        color = Color.White.copy(alpha = 0.06f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+        color = LevyraAdaptiveCard,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -7253,8 +7387,8 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
         moods.forEach { mood ->
             val selected = mood.id == selectedId
             Surface(
-                color = if (selected) Color(mood.accentStart).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.06f),
-                border = BorderStroke(1.dp, if (selected) Color(mood.accentStart).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.09f)),
+                color = if (selected) Color(mood.accentStart).copy(alpha = if (LevyraIsLight) 0.16f else 0.2f) else LevyraAdaptiveChip,
+                border = BorderStroke(1.dp, if (selected) Color(mood.accentStart).copy(alpha = 0.5f) else LevyraAdaptiveHairline),
                 shape = CircleShape,
                 modifier = Modifier.pressable(onClick = { onSelect(mood) })
             ) {
@@ -8520,10 +8654,13 @@ private fun GradientButton(text: String, onClick: () -> Unit) {
 
 @Composable
 private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, onClick: () -> Unit) {
+    val resolvedBackground = if (LevyraIsLight && background.alpha < 0.2f) LevyraAdaptiveChip else background
+    val resolvedBorder = if (LevyraIsLight && background.alpha < 0.2f) LevyraAdaptiveHairline else Color.Transparent
     Box(
         modifier = Modifier
             .size(46.dp)
-            .background(background, CircleShape)
+            .background(resolvedBackground, CircleShape)
+            .border(Dp.Hairline, resolvedBorder, CircleShape)
             .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -8939,21 +9076,24 @@ private fun VideoGlassCard(
 @Composable
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
+    val surfaceColor = if (LevyraIsLight) Color.White.copy(alpha = 0.94f) else Color(0xF208080B)
+    val linePrimary = if (LevyraIsLight) Color(0x1F11131F) else Color.White.copy(alpha = 0.08f)
+    val lineSecondary = if (LevyraIsLight) Color.White.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.03f)
     Surface(
-        color = Color(0xF208080B),
+        color = surfaceColor,
         shape = RoundedCornerShape(0.dp),
-        shadowElevation = 12.dp,
+        shadowElevation = if (LevyraIsLight) 8.dp else 12.dp,
         modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
                 drawLine(
-                    color = Color.White.copy(alpha = 0.08f),
+                    color = linePrimary,
                     start = androidx.compose.ui.geometry.Offset(0f, 0f),
                     end = androidx.compose.ui.geometry.Offset(size.width, 0f),
                     strokeWidth = 1.dp.toPx()
                 )
                 drawLine(
-                    color = Color.White.copy(alpha = 0.03f),
+                    color = lineSecondary,
                     start = androidx.compose.ui.geometry.Offset(0f, 1.dp.toPx()),
                     end = androidx.compose.ui.geometry.Offset(size.width, 1.dp.toPx()),
                     strokeWidth = 1.dp.toPx()
@@ -8987,7 +9127,7 @@ private fun PageHeader(title: String, subtitle: String) {
         modifier = Modifier
             .fillMaxWidth()
             .background(cinematicGlassBrush(intensity = 0.62f), RoundedCornerShape(28.dp))
-            .border(1.dp, CinematicHairline, RoundedCornerShape(28.dp))
+            .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(28.dp))
             .padding(horizontal = 18.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
