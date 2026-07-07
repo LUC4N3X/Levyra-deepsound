@@ -24,6 +24,7 @@ import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
@@ -120,6 +121,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
     private var artistJob: Job? = null
+    private var albumJob: Job? = null
     private var radarJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val tabBackStack = ArrayDeque<LevyraTab>()
@@ -705,10 +707,38 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun loadHomeAlbums(languageCode: String) {
         viewModelScope.launch {
-            val albums = runCatching { repository.homeAlbums(languageCode) }.getOrDefault(emptyList())
+            val seedQueries = albumRecommendationSeeds(_state.value)
+            val albums = runCatching { repository.homeAlbums(languageCode, seedQueries = seedQueries) }.getOrDefault(emptyList())
             if (_state.value.languageCode != languageCode || albums.isEmpty()) return@launch
             _state.update { it.copy(homeAlbums = albums) }
         }
+    }
+
+    private fun albumRecommendationSeeds(state: LevyraUiState): List<String> {
+        val seedTracks = mergeTracks(
+            listOfNotNull(state.currentTrack) + state.recentSearches + state.favorites + state.personalOrbitTracks,
+            state.tracks + state.charts + state.homeSections.flatMap { it.tracks }
+        )
+        val artistSeeds = seedTracks
+            .asSequence()
+            .map { it.artist.trim() }
+            .filter { it.length >= 2 }
+            .filterNot { it.equals("YouTube", ignoreCase = true) || it.equals("YouTube Music", ignoreCase = true) }
+            .distinctBy { it.lowercase() }
+            .take(8)
+            .map { "$it album" }
+            .toList()
+        val albumSeeds = seedTracks
+            .asSequence()
+            .map { it.album.trim() }
+            .filter { it.length >= 2 }
+            .filterNot { it.equals("YouTube", ignoreCase = true) || it.equals("YouTube Music", ignoreCase = true) }
+            .distinctBy { it.lowercase() }
+            .take(4)
+            .map { "$it album" }
+            .toList()
+        val moodSeeds = state.selectedMood?.let { mood -> listOf("${mood.title} album") }.orEmpty()
+        return (artistSeeds + albumSeeds + moodSeeds).distinctBy { it.lowercase() }.take(12)
     }
 
     fun openSettings() {
@@ -979,6 +1009,64 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(showArtist = false, artistLoading = false, artistError = null) }
     }
 
+    fun openAlbum(album: AlbumHit) {
+        albumJob?.cancel()
+        val current = _state.value.albumDetail
+        val sameAlbum = current != null && current.album.title.equals(album.title, ignoreCase = true) && current.album.artist.equals(album.artist, ignoreCase = true)
+        _state.update {
+            it.copy(
+                showAlbum = true,
+                albumLoading = true,
+                albumError = null,
+                albumDetail = if (sameAlbum) current else AlbumDetail(album, "", emptyList())
+            )
+        }
+        albumJob = viewModelScope.launch {
+            val languageCode = _state.value.languageCode
+            val detail = runCatching { repository.albumDetail(album, languageCode) }.getOrNull()
+            if (!isActive) return@launch
+            if (detail == null || detail.tracks.isEmpty()) {
+                _state.update {
+                    it.copy(
+                        albumLoading = false,
+                        albumError = "Album non disponibile",
+                        albumDetail = detail ?: AlbumDetail(album, "", emptyList())
+                    )
+                }
+                return@launch
+            }
+            _state.update {
+                it.copy(
+                    albumLoading = false,
+                    albumError = null,
+                    albumDetail = detail,
+                    tracks = mergeTracks(detail.tracks, it.tracks),
+                    searchResults = detail.tracks.take(12),
+                    cacheReport = repository.cacheReport()
+                )
+            }
+            persistPersonalOrbit(detail.tracks)
+            LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 16)
+            prefetchTop(detail.tracks, 10)
+        }
+    }
+
+    fun closeAlbum() {
+        albumJob?.cancel()
+        _state.update { it.copy(showAlbum = false, albumLoading = false, albumError = null) }
+    }
+
+    fun playAlbumSong(track: Track) {
+        val detail = _state.value.albumDetail ?: return
+        playFrom(detail.tracks, track, loopOnCompletion = true)
+    }
+
+    fun playCurrentAlbum() {
+        val detail = _state.value.albumDetail ?: return
+        if (detail.tracks.isEmpty()) return
+        playFrom(detail.tracks, detail.tracks.first(), loopOnCompletion = true)
+    }
+
     fun playArtistSong(track: Track) {
         val profile = _state.value.artistProfile ?: return
         closeArtist()
@@ -1140,6 +1228,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 dismissUpdatePrompt()
                 true
             }
+            snapshot.showAlbum -> {
+                closeAlbum()
+                true
+            }
             snapshot.showArtist -> {
                 closeArtist()
                 true
@@ -1262,8 +1354,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun searchAlbum(album: AlbumHit) {
-        _state.update { it.copy(query = album.query) }
-        searchNow(album.query)
+        openAlbum(album)
     }
 
     fun playAlbumRecommendations(albums: List<AlbumHit>) {
