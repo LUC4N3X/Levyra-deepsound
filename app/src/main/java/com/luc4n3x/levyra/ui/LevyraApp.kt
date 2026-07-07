@@ -135,6 +135,8 @@ import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.PlaylistPlay
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.draw.scale
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -1768,6 +1770,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
 private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
+    var addTarget by remember { mutableStateOf<Track?>(null) }
     val heroUpdate = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
         pickHeroUpdate(state)
     }
@@ -1939,8 +1942,8 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                     isFavorite = track.id in state.favoriteIds,
                                     onClick = { viewModel.playFrom(state.charts, track) },
                                     onFavorite = { viewModel.toggleFavorite(track) },
-                                    onAddToPlaylist = { viewModel.openAddToPlaylist(track) },
-                                    onAddToQueue = { viewModel.queueNext(track) }
+                                    onAddToPlaylist = { addTarget = track },
+                                    onAddToQueue = { viewModel.addToQueue(track) }
                                 )
                             }
                         }
@@ -1949,6 +1952,22 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
         item(key = "home-status", contentType = "home-card") { StatusBlock(state) }
+    }
+
+    addTarget?.let { track ->
+        AddToPlaylistDialog(
+            track = track,
+            playlists = state.playlists,
+            onDismiss = { addTarget = null },
+            onAddTo = { playlistId ->
+                viewModel.addToPlaylist(playlistId, track)
+                addTarget = null
+            },
+            onCreateWith = { name ->
+                viewModel.createPlaylist(name, track)
+                addTarget = null
+            }
+        )
     }
 }
 
