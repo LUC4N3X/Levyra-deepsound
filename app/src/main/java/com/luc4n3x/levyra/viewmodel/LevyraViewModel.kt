@@ -12,6 +12,7 @@ import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.PersonalOrbitArtworkWorker
 import com.luc4n3x.levyra.data.LyricsRepository
@@ -35,10 +36,12 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
+import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
@@ -89,6 +92,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
+    private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
     private val startupSettings = preferences.snapshot()
     private val startupMoods = moodEngine.moodsForLanguage(startupSettings.languageCode)
     private val _state = MutableStateFlow(
@@ -124,6 +128,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+    private val activeDownloadTitles = ConcurrentHashMap<String, String>()
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
     val playerController get() = player.controller
@@ -132,12 +137,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val favorites = favoritesStore.load()
         val settings = startupSettings
         val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(settings.languageCode)
-        val cachedHomeSections = preferences.loadHomeSections(settings.languageCode)
+        val instantSnapshot = homeSnapshotCache.load(settings.languageCode)
+        val cachedHomeSections = instantSnapshot?.homeSections?.takeIf { it.isNotEmpty() } ?: preferences.loadHomeSections(settings.languageCode)
         val startupHomeSections = cachedHomeSections.ifEmpty { LevyraStartupCatalog.homeSections(settings.languageCode) }
         val startupHomeTracks = startupHomeSections.flatMap { it.tracks }.distinctBy { it.id }
-        val cachedCharts = preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
+        val cachedCharts = instantSnapshot?.charts?.takeIf { it.isNotEmpty() } ?: preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
         val startupCharts = cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) }
-        val rawCachedOrbitTracks = settings.personalOrbitTracks.ifEmpty { preferences.loadPersonalOrbitTracks(settings.languageCode) }
+        val rawCachedOrbitTracks = settings.personalOrbitTracks
+            .ifEmpty { instantSnapshot?.personalOrbit.orEmpty() }
+            .ifEmpty { preferences.loadPersonalOrbitTracks(settings.languageCode) }
         val startupOrbitSeed = mergeTracks(rawCachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
         val cachedOrbitTracks = LevyraPersonalOrbit.build(
             currentTrack = null,
@@ -152,6 +160,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
         val initialTracks = mergeTracks(cachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
         val initialQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), initialTracks)
+        val restoredTrack = settings.lastTrack?.copy(streamUrl = "", videoStreamUrl = "")
+        pendingSeekMs = settings.lastPositionMs.coerceAtLeast(0L)
         resolver.setAudioQuality(settings.audioQuality)
         _state.update {
             it.copy(
@@ -180,9 +190,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 playbackSpeed = settings.audioSettings.playbackSpeed,
                 themePreset = settings.themePreset,
                 showOnboarding = !settings.onboarded,
-                currentTrack = null,
-                positionMs = 0L,
-                durationMs = 0L,
+                currentTrack = restoredTrack,
+                positionMs = pendingSeekMs,
+                durationMs = restoredTrack?.durationMs ?: 0L,
                 lyrics = emptyList()
             )
         }
@@ -285,7 +295,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (persist) preferences.savePersonalOrbitTracks(limited, languageCode)
             LevyraArtworkCache.cachePersistent(appContext, limited, limit)
             if (persist) PersonalOrbitArtworkWorker.enqueue(appContext, languageCode)
+            if (persist) persistHomeSnapshotSync(languageCode)
         }
+    }
+
+    private fun persistHomeSnapshot() {
+        val languageCode = _state.value.languageCode
+        viewModelScope.launch(Dispatchers.IO) { persistHomeSnapshotSync(languageCode) }
+    }
+
+    private fun persistHomeSnapshotSync(languageCode: String) {
+        val snapshot = _state.value
+        homeSnapshotCache.save(
+            languageCode = languageCode,
+            homeSections = snapshot.homeSections,
+            charts = snapshot.charts,
+            personalOrbit = snapshot.personalOrbitTracks
+        )
     }
 
     private fun loadReleaseRadar() {
@@ -667,6 +693,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
             persistPersonalOrbit(flat)
+            persistHomeSnapshot()
             LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, flat, 16)
             LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, flat, 36)
             prefetchTop(flat, 14)
@@ -791,6 +818,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         warmPersistentOrbit(orbit, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
+        persistHomeSnapshot()
         if (refreshRemote) {
             loadHomeFeed()
             loadCharts(defaultChartRegion.id)
@@ -844,6 +872,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 it.copy(charts = result, isLoadingCharts = false)
             }
             persistPersonalOrbit(result)
+            persistHomeSnapshot()
             LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, result, 22)
             enrichCharts(regionId, result)
         }
@@ -955,10 +984,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(offlineExportMessage = "Già scaricato: ${track.title}") }
             return
         }
+        activeDownloadTitles[downloadKey] = track.title.ifBlank { "brano" }
         _state.update {
             it.copy(
                 isOfflineExporting = true,
-                offlineExportMessage = null,
+                offlineExportMessage = "Download 1% · ${activeDownloadTitles[downloadKey]}",
                 downloadingTrackIds = it.downloadingTrackIds + downloadKey,
                 downloadProgressByTrackId = it.downloadProgressByTrackId + (downloadKey to 1)
             )
@@ -992,6 +1022,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }.onFailure { error ->
                 if (error is CancellationException) {
                     activeDownloadKeys.remove(downloadKey)
+                    activeDownloadTitles.remove(downloadKey)
                     _state.update {
                         it.copy(
                             downloadingTrackIds = it.downloadingTrackIds - downloadKey,
@@ -1015,6 +1046,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun handleOfflineExportSuccess(workInfo: WorkInfo, trackId: String) {
         activeDownloadKeys.remove(trackId)
+        activeDownloadTitles.remove(trackId)
         val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
         val destinationLabel = workInfo.outputData.getString(OfflineExportWorker.KEY_DESTINATION_LABEL).orEmpty().ifBlank { "Music/Levyra" }
         val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
@@ -1032,6 +1064,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun handleOfflineExportFailure(message: String?, trackId: String) {
         activeDownloadKeys.remove(trackId)
+        activeDownloadTitles.remove(trackId)
         _state.update {
             it.copy(
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
@@ -1061,7 +1094,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun updateDownloadProgress(trackId: String, progress: Int) {
         val safeProgress = progress.coerceIn(1, 99)
         _state.update {
-            if (trackId !in it.downloadingTrackIds) it else it.copy(downloadProgressByTrackId = it.downloadProgressByTrackId + (trackId to safeProgress))
+            if (trackId !in it.downloadingTrackIds) {
+                it
+            } else {
+                val title = activeDownloadTitles[trackId].orEmpty()
+                val previous = it.downloadProgressByTrackId[trackId] ?: 0
+                val message = if (title.isBlank() || safeProgress < previous || safeProgress - previous < 3) it.offlineExportMessage else "Download $safeProgress% · $title"
+                it.copy(
+                    downloadProgressByTrackId = it.downloadProgressByTrackId + (trackId to safeProgress),
+                    offlineExportMessage = message
+                )
+            }
         }
     }
 
@@ -1228,8 +1271,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun play(track: Track) {
         addToRecentSearches(track)
-        loopCurrentQueueOnCompletion = false
-        queueIndex = currentQueue().indexOfFirst { it.id == track.id }
+        val contextualQueue = queueForTrack(track)
+        loopCurrentQueueOnCompletion = contextualQueue.size > 1
+        _state.update { it.copy(queue = contextualQueue) }
+        queueIndex = contextualQueue.indexOfFirst { samePlayableTrack(it, track) }
         startResolve(track)
     }
 
@@ -1237,7 +1282,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         addToRecentSearches(track)
         loopCurrentQueueOnCompletion = loopOnCompletion
         _state.update { it.copy(queue = list) }
-        queueIndex = list.indexOfFirst { it.id == track.id }
+        queueIndex = list.indexOfFirst { samePlayableTrack(it, track) }
         startResolve(track)
     }
 
@@ -1483,13 +1528,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             delay(350L)
             val queue = _state.value.queue.ifEmpty { currentQueue() }
             if (queue.isEmpty()) return@launch
-            val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { it.id == playable.id }
+            val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { samePlayableTrack(it, playable) }
             if (base < 0) return@launch
             val offsets = if (_state.value.isVideoMode) listOf(1) else listOf(1, 2, 3, -1)
             val candidates = offsets
                 .map { offset -> queue[(base + offset + queue.size) % queue.size] }
-                .filterNot { it.id == playable.id }
-                .distinctBy { it.id }
+                .filterNot { samePlayableTrack(it, playable) }
+                .distinctBy { playbackIdentity(it) }
             warmTracks(candidates.take(4), concurrency = 3, delayStepMs = 25L, prime = true)
         }
     }
@@ -1552,6 +1597,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return snapshot.queue.ifEmpty { snapshot.searchResults }.ifEmpty { snapshot.tracks }
     }
 
+    private fun queueForTrack(track: Track): List<Track> {
+        val snapshot = _state.value
+        val sections = snapshot.homeSections.firstOrNull { section -> section.tracks.any { samePlayableTrack(it, track) } }?.tracks.orEmpty()
+        val candidates = listOf(
+            snapshot.openPlaylist?.tracks.orEmpty(),
+            sections,
+            snapshot.searchResults,
+            snapshot.charts,
+            snapshot.personalOrbitTracks,
+            snapshot.tracks,
+            snapshot.queue
+        )
+        val selected = candidates.firstOrNull { list -> list.any { samePlayableTrack(it, track) } && list.size > 1 }
+            ?: candidates.firstOrNull { list -> list.any { samePlayableTrack(it, track) } }
+            ?: listOf(track)
+        return selected.distinctBy { playbackIdentity(it) }
+    }
+
+    private fun samePlayableTrack(left: Track, right: Track): Boolean = playbackIdentity(left) == playbackIdentity(right)
+
+    private fun playbackIdentity(track: Track): String = youtubePlayableTrack(track)?.id?.takeIf { it.isNotBlank() }
+        ?: track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}|${track.title}" } }.trim().lowercase()
+
     fun play() = _state.value.currentTrack?.let { player.play(it) }
     fun pause() = player.pause()
 
@@ -1607,7 +1675,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             startResolve(queue[queueIndex])
             return
         }
-        val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { it.id == _state.value.currentTrack?.id }
+        val base = if (queueIndex in queue.indices) queueIndex else _state.value.currentTrack?.let { current -> queue.indexOfFirst { samePlayableTrack(it, current) } } ?: -1
         val nextIndex = if (base < 0) 0 else (base + 1) % queue.size
         queueIndex = nextIndex
         startResolve(queue[nextIndex])
@@ -1616,7 +1684,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun previous() {
         val queue = _state.value.queue.ifEmpty { currentQueue() }
         if (queue.isEmpty()) return
-        val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { it.id == _state.value.currentTrack?.id }
+        val base = if (queueIndex in queue.indices) queueIndex else _state.value.currentTrack?.let { current -> queue.indexOfFirst { samePlayableTrack(it, current) } } ?: -1
         val previousIndex = if (base <= 0) queue.lastIndex else base - 1
         queueIndex = previousIndex
         startResolve(queue[previousIndex])
@@ -1631,7 +1699,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _state.update { it.copy(isSearching = !preserveCurrent, searchError = null) }
             val languageCode = _state.value.languageCode
-            val queries = moodEngine.queriesForTastes(preferences.tastes(), languageCode)
+            val tasteIds = preferences.tastes()
+            val queries = (LevyraLocalizedDiscovery.homeBoostQueries(languageCode, tasteIds) + moodEngine.queriesForTastes(tasteIds, languageCode)).distinct().take(12)
             val result = runCatching { repository.home(queries, languageCode) }
             result.onSuccess { tracks ->
                 if (_state.value.languageCode != languageCode) return@onSuccess
@@ -1657,7 +1726,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         searchError = null
                     )
                 }
+                val fallbackSection = com.luc4n3x.levyra.domain.HomeSection(LevyraContentLocales.forLanguage(languageCode).quickSectionTitle, tracks.take(20))
+                preferences.saveHomeSections(listOf(fallbackSection), languageCode)
+                _state.update { current -> if (current.homeSections.isEmpty()) current.copy(homeSections = listOf(fallbackSection)) else current }
                 persistPersonalOrbit(tracks)
+                persistHomeSnapshot()
                 LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 32)
                 prefetchTop(tracks, 14)
             }.onFailure { error ->
@@ -1757,7 +1830,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             queueIndex = nextIndex
             return queue[nextIndex]
         }
-        val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { it.id == snapshot.currentTrack?.id }
+        val base = if (queueIndex in queue.indices) queueIndex else snapshot.currentTrack?.let { current -> queue.indexOfFirst { samePlayableTrack(it, current) } } ?: -1
         if (base < 0) return queue.firstOrNull()
         if (base < queue.lastIndex) {
             queueIndex = base + 1
