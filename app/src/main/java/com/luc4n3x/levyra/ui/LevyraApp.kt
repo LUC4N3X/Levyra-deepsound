@@ -115,6 +115,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.History
@@ -3989,7 +3990,7 @@ private fun DownloadsFolderCard(count: Int, onClick: () -> Unit) {
                 )
             }
             Icon(
-                imageVector = androidx.compose.material.icons.Icons.Rounded.KeyboardArrowRight,
+                imageVector = Icons.Rounded.KeyboardArrowRight,
                 contentDescription = null,
                 tint = LevyraMuted,
                 modifier = Modifier.size(24.dp)
