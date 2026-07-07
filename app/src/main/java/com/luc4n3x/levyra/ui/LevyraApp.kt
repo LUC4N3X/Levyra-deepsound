@@ -409,6 +409,88 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
     }
 }
 @Composable
+private fun ActiveTrackEqualizer(
+    modifier: Modifier = Modifier,
+    color: Color = LevyraCyan,
+    isPlaying: Boolean = true,
+    width: Dp = 18.dp,
+    height: Dp = 14.dp
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "equalizer-bars")
+    
+    val height1 by if (isPlaying) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.2f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 550, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "eq-bar-1"
+        )
+    } else {
+        remember { mutableStateOf(0.4f) }
+    }
+
+    val height2 by if (isPlaying) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.3f,
+            targetValue = 0.9f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 380, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "eq-bar-2"
+        )
+    } else {
+        remember { mutableStateOf(0.6f) }
+    }
+
+    val height3 by if (isPlaying) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.15f,
+            targetValue = 0.95f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 460, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "eq-bar-3"
+        )
+    } else {
+        remember { mutableStateOf(0.3f) }
+    }
+
+    val height4 by if (isPlaying) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.25f,
+            targetValue = 0.85f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 620, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "eq-bar-4"
+        )
+    } else {
+        remember { mutableStateOf(0.5f) }
+    }
+
+    Row(
+        modifier = modifier.size(width = width, height = height),
+        horizontalArrangement = Arrangement.spacedBy(1.5.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        val bars = listOf(height1, height2, height3, height4)
+        bars.forEach { barHeight ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(barHeight)
+                    .background(color, RoundedCornerShape(topStart = 1.dp, topEnd = 1.dp))
+            )
+        }
+    }
+}
+@Composable
 private fun SectionTitle(title: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -2186,12 +2268,16 @@ private fun ResonanceCard(
                             if (resolving) {
                                 CircularProgressIndicator(modifier = Modifier.size(17.dp), strokeWidth = 2.dp, color = LevyraViolet)
                             } else {
-                                Icon(
-                                    imageVector = if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
-                                    contentDescription = null,
-                                    tint = if (playing) LevyraViolet else LevyraText,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                if (active) {
+                                    ActiveTrackEqualizer(color = LevyraViolet, isPlaying = playing)
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Rounded.PlayArrow,
+                                        contentDescription = null,
+                                        tint = LevyraText,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -2398,11 +2484,11 @@ private fun PersonalListeningCard(
                     if (resolving) {
                         CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.8.dp, color = LevyraBlack)
                     } else {
-                        Icon(
-                            imageVector = if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
-                            contentDescription = null,
-                            tint = LevyraBlack,
-                            modifier = Modifier.size(13.dp)
+                        ActiveTrackEqualizer(
+                            color = LevyraBlack,
+                            isPlaying = playing,
+                            width = 13.dp,
+                            height = 10.dp
                         )
                     }
                 }
@@ -2920,11 +3006,11 @@ private fun ContinueListeningCard(
                                 strokeWidth = 2.dp,
                                 color = LevyraCyan
                             )
-                            isPlaying -> Icon(
-                                imageVector = Icons.Rounded.Equalizer,
-                                contentDescription = null,
-                                tint = LevyraCyan,
-                                modifier = Modifier.size(19.dp)
+                            isPlaying -> ActiveTrackEqualizer(
+                                color = LevyraCyan,
+                                isPlaying = true,
+                                width = 15.dp,
+                                height = 11.dp
                             )
                             else -> Icon(
                                 imageVector = Icons.Rounded.PlayArrow,
@@ -4489,6 +4575,22 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
     val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
 
+    val artScale by animateFloatAsState(
+        targetValue = if (state.isPlaying) 1.02f else 0.95f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "artwork-scale"
+    )
+    val artCorner by animateDpAsState(
+        targetValue = if (state.isPlaying) 24.dp else 12.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "artwork-corner"
+    )
+    val artShadow by animateFloatAsState(
+        targetValue = if (state.isPlaying) 28f else 10f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "artwork-shadow"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -4610,9 +4712,12 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                     .fillMaxWidth()
                                     .aspectRatio(1f)
                                     .padding(vertical = 16.dp)
-                                    .clip(RoundedCornerShape(8.dp))
                                     .graphicsLayer {
-                                        shadowElevation = 24f
+                                        scaleX = artScale
+                                        scaleY = artScale
+                                        shadowElevation = artShadow
+                                        shape = RoundedCornerShape(artCorner)
+                                        clip = true
                                     }
                             )
                         } else {
@@ -4621,7 +4726,13 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                     .fillMaxWidth()
                                     .aspectRatio(1f)
                                     .padding(vertical = 16.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .graphicsLayer {
+                                        scaleX = artScale
+                                        scaleY = artScale
+                                        shadowElevation = artShadow
+                                        shape = RoundedCornerShape(artCorner)
+                                        clip = true
+                                    }
                                     .background(Color.Black),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -4636,8 +4747,10 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                 .aspectRatio(1f)
                                 .padding(vertical = 16.dp)
                                 .graphicsLayer {
-                                    shadowElevation = 24f
-                                    shape = RoundedCornerShape(8.dp)
+                                    scaleX = artScale
+                                    scaleY = artScale
+                                    shadowElevation = artShadow
+                                    shape = RoundedCornerShape(artCorner)
                                     clip = true
                                 }
                         ) {
@@ -4649,6 +4762,21 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
+                            )
+                            // Elegant glossy shine overlay
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(
+                                                Color.White.copy(alpha = 0.09f),
+                                                Color.White.copy(alpha = 0.04f),
+                                                Color.Transparent,
+                                                Color.Black.copy(alpha = 0.16f)
+                                            )
+                                        )
+                                    )
                             )
                         }
                     }
@@ -4689,6 +4817,15 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             )
                         }
                     }
+                }
+                item {
+                    WaveformVisualizer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(vertical = 4.dp),
+                        color = bgStart
+                    )
                 }
                 item {
                     PlayerTimeline(
@@ -4756,17 +4893,17 @@ private fun PlayerTimeline(positionMs: Long, durationMs: Long, onSeek: (Float) -
             value = progressOf(positionMs, durationMs),
             onValueChange = onSeek,
             colors = SliderDefaults.colors(
-                thumbColor = LevyraText,
+                thumbColor = Color.White,
                 activeTrackColor = LevyraCyan,
-                inactiveTrackColor = Color.White.copy(alpha = 0.20f)
+                inactiveTrackColor = Color.White.copy(alpha = 0.15f)
             ),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(24.dp)
         )
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(positionMs), color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Normal)
-            Text(formatDuration(durationMs), color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Normal)
+            Text(formatDuration(positionMs), color = LevyraMuted, fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Medium)
+            Text(formatDuration(durationMs), color = LevyraMuted, fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -7597,16 +7734,22 @@ private fun VideoGlassCard(
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = Color(0xFF020202),
+        color = Color(0xF208080B),
         shape = RoundedCornerShape(0.dp),
-        shadowElevation = 0.dp,
+        shadowElevation = 12.dp,
         modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
                 drawLine(
-                    color = if (flatTop) Color(0xFF20222B) else Color(0xFF181A22),
+                    color = Color.White.copy(alpha = 0.08f),
                     start = androidx.compose.ui.geometry.Offset(0f, 0f),
                     end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+                    strokeWidth = 1.dp.toPx()
+                )
+                drawLine(
+                    color = Color.White.copy(alpha = 0.03f),
+                    start = androidx.compose.ui.geometry.Offset(0f, 1.dp.toPx()),
+                    end = androidx.compose.ui.geometry.Offset(size.width, 1.dp.toPx()),
                     strokeWidth = 1.dp.toPx()
                 )
             }
