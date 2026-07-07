@@ -1382,14 +1382,10 @@ private fun AlbumHeroCard(
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(28.dp)),
             contentAlignment = Alignment.Center
         ) {
-            if (cover.isNotBlank()) {
+            val coverRequest = remember(context, cover) { LevyraArtworkCache.request(context, cover, highRes = true, crossfadeMs = 120) }
+            if (coverRequest != null) {
                 AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(LevyraArtworkCache.large(cover))
-                        .crossfade(180)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
+                    model = coverRequest,
                     contentDescription = album.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -1676,9 +1672,10 @@ private fun AlbumTrackItem(
             }
             Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(LevyraPanelSoft), contentAlignment = Alignment.Center) {
                 val thumb = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
-                if (thumb.isNotBlank()) {
+                val thumbRequest = remember(context, thumb) { LevyraArtworkCache.request(context, thumb, highRes = false, crossfadeMs = 120) }
+                if (thumbRequest != null) {
                     AsyncImage(
-                        model = ImageRequest.Builder(context).data(LevyraArtworkCache.small(thumb)).crossfade(120).diskCachePolicy(CachePolicy.ENABLED).memoryCachePolicy(CachePolicy.ENABLED).build(),
+                        model = thumbRequest,
                         contentDescription = track.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()
@@ -7539,14 +7536,11 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                             .fillMaxWidth()
                             .aspectRatio(1f)
                     ) {
-                        if (album.thumbnailUrl.isNotBlank()) {
+                        val context = LocalContext.current
+                        val albumRequest = remember(context, album.thumbnailUrl) { LevyraArtworkCache.request(context, album.thumbnailUrl, highRes = true, crossfadeMs = 120) }
+                        if (albumRequest != null) {
                             AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(album.thumbnailUrl)
-                                    .crossfade(true)
-                                    .diskCachePolicy(CachePolicy.ENABLED)
-                                    .memoryCachePolicy(CachePolicy.ENABLED)
-                                    .build(),
+                                model = albumRequest,
                                 contentDescription = album.title,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -8328,9 +8322,11 @@ private fun AlbumHitRow(albums: List<AlbumHit>, onClick: (AlbumHit) -> Unit) {
                         .background(LevyraPanelSoft),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (album.thumbnailUrl.isNotBlank()) {
+                    val context = LocalContext.current
+                    val albumRequest = remember(context, album.thumbnailUrl) { LevyraArtworkCache.request(context, album.thumbnailUrl, highRes = false, crossfadeMs = 120) }
+                    if (albumRequest != null) {
                         AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(album.thumbnailUrl).crossfade(true).build(),
+                            model = albumRequest,
                             contentDescription = album.title,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.matchParentSize()
