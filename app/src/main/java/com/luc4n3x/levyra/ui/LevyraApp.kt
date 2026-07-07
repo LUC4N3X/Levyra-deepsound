@@ -7251,9 +7251,9 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        Spacer(modifier = Modifier.width(6.dp))
         moods.forEach { mood ->
             val selected = mood.id == selectedId
             Surface(
@@ -7272,6 +7272,7 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
                 }
             }
         }
+        Spacer(modifier = Modifier.width(6.dp))
     }
 }
 
@@ -9071,7 +9072,7 @@ private fun SearchLoadingSkeleton() {
 }
 
 @Composable
-private fun androidx.compose.foundation.layout.Box(modifier = androidx.compose.ui.Modifier.padding(horizontal = 16.dp)) { ChartLoadingSkeleton() } {
+private fun ChartLoadingSkeleton() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
