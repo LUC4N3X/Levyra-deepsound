@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.domain
 
 object LevyraPersonalOrbit {
-    const val DISPLAY_LIMIT = 8
+    const val DISPLAY_LIMIT = 12
 
     private val squareArtWidthHeightPattern = Regex("=w\\d+-h\\d+")
     private val squareArtSizePattern = Regex("=s\\d+")
