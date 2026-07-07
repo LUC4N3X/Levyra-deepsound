@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -12,7 +11,6 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
-import androidx.datastore.preferences.core.toMutablePreferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HomeSection
@@ -21,15 +19,11 @@ import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -398,65 +392,27 @@ class LevyraPreferences(context: Context) {
         return raw.split(',').mapNotNull { it.trim().toIntOrNull() }
     }
 
-    private fun <T> read(default: T, selector: (Preferences) -> T): T {
-        cachedPreferences()?.let { preferences ->
-            return runCatching { selector(preferences) }
-                .onFailure { Timber.w(it, "DataStore cached read failed") }
-                .getOrDefault(default)
-        }
-        return runBlocking(Dispatchers.IO) {
-            val preferences = runCatching {
-                dataStore.data
-                    .catch { error ->
-                        if (error is IOException) {
-                            Timber.w(error, "DataStore read failed")
-                            emit(emptyPreferences())
-                        } else {
-                            throw error
-                        }
-                    }
-                    .first()
-            }.onFailure { Timber.w(it, "DataStore read failed") }.getOrElse { emptyPreferences() }
-            updateCachedPreferences(preferences)
-            runCatching { selector(preferences) }
-                .onFailure { Timber.w(it, "DataStore selector failed") }
-                .getOrDefault(default)
-        }
-    }
-
-    private fun write(block: (MutablePreferences) -> Unit) {
-        mutateCachedPreferences(block)
-        writeScope.launch {
-            writeMutex.withLock {
-                runCatching { dataStore.edit(block) }
-                    .onSuccess { updateCachedPreferences(it) }
-                    .onFailure { Timber.w(it, "DataStore write failed") }
+    private fun <T> read(default: T, selector: (Preferences) -> T): T = runBlocking(Dispatchers.IO) {
+        dataStore.data
+            .catch { error ->
+                if (error is IOException) {
+                    Timber.w(error, "DataStore read failed")
+                    emit(emptyPreferences())
+                } else {
+                    throw error
+                }
             }
-        }
+            .map(selector)
+            .first() ?: default
     }
 
-    private fun cachedPreferences(): Preferences? = synchronized(cacheLock) { preferencesCache }
-
-    private fun updateCachedPreferences(preferences: Preferences) {
-        synchronized(cacheLock) { preferencesCache = preferences }
-    }
-
-    private fun mutateCachedPreferences(block: (MutablePreferences) -> Unit) {
-        synchronized(cacheLock) {
-            val current = preferencesCache ?: return
-            val mutable = current.toMutablePreferences()
-            block(mutable)
-            preferencesCache = mutable
+    private fun write(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
+        runBlocking(Dispatchers.IO) {
+            runCatching { dataStore.edit(block) }.onFailure { Timber.w(it, "DataStore write failed") }
         }
     }
 
     private companion object {
-        @Volatile
-        private var preferencesCache: Preferences? = null
-        private val cacheLock = Any()
-        private val writeMutex = Mutex()
-        private val writeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
         val KEY_ONBOARDED = booleanPreferencesKey("onboarded")
         val KEY_TASTES = stringSetPreferencesKey("tastes")
         val KEY_LAST_TRACK = stringPreferencesKey("last_track")
