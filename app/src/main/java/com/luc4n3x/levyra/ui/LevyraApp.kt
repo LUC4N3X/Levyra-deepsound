@@ -623,6 +623,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
     val toastContext = LocalContext.current
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
+    var showDownloadsFolder by remember { mutableStateOf(false) }
     val accent = if (state.dynamicColor) state.currentTrack ?: state.tracks.firstOrNull() else null
     val overlayEnter = if (state.animationsEnabled) fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) else EnterTransition.None
     val overlayExit = if (state.animationsEnabled) fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing)) else ExitTransition.None
@@ -688,9 +689,11 @@ fun LevyraApp(viewModel: LevyraViewModel) {
             viewModel.clearUpdateMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || state.openPlaylist != null || state.showUpdatePrompt || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    BackHandler(enabled = showLanguageRestartDialog || showDownloadsFolder || state.openPlaylist != null || state.showUpdatePrompt || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
+        } else if (showDownloadsFolder) {
+            showDownloadsFolder = false
         } else if (state.showAudioQualityPanel) {
             viewModel.closeAudioQualityPanel()
         } else if (state.openPlaylist != null) {
@@ -735,7 +738,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                         LevyraTab.Home -> HomeScreen(viewModel, state)
                         LevyraTab.Search -> SearchScreen(viewModel, state)
                         LevyraTab.Explore -> ExploreScreen(viewModel, state)
-                        LevyraTab.Library -> LibraryScreen(viewModel, state)
+                        LevyraTab.Library -> LibraryScreen(viewModel, state, onOpenDownloads = { showDownloadsFolder = true })
                         LevyraTab.Player -> PlayerScreen(viewModel, state)
                     }
                 }
@@ -872,6 +875,10 @@ fun LevyraApp(viewModel: LevyraViewModel) {
 
             AnimatedVisibility(visible = state.openPlaylist != null, enter = overlayEnter, exit = overlayExit) {
                 PlaylistDetailOverlay(viewModel = viewModel, state = state)
+            }
+
+            AnimatedVisibility(visible = showDownloadsFolder, enter = overlayEnter, exit = overlayExit) {
+                DownloadsFolderOverlay(state = state, viewModel = viewModel, onClose = { showDownloadsFolder = false })
             }
 
             if (showLanguageRestartDialog) {
@@ -2210,30 +2217,31 @@ private fun ResonanceCard(
     val comments = 520 + (score * 31) % 4200
     val pulseWidth = ((score % 72) + 24) / 100f
     Surface(
-        color = Color.White.copy(alpha = if (active) 0.075f else 0.045f),
-        border = BorderStroke(1.dp, if (active) LevyraViolet.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(30.dp),
+        color = Color(0xF20B0B0E),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (active) LevyraViolet.copy(alpha = 0.68f) else Color.White.copy(alpha = 0.08f)
+        ),
+        shape = RoundedCornerShape(16.dp),
         modifier = Modifier
             .width(316.dp)
             .height(206.dp)
             .pressable(onClick = onClick)
     ) {
         Box(
-            modifier = Modifier.background(
-                Brush.linearGradient(
-                    listOf(
-                        accentStart.copy(alpha = 0.24f),
-                        Color(0xFF0D1019).copy(alpha = 0.98f),
-                        accentEnd.copy(alpha = 0.18f)
-                    )
-                )
-            )
+            modifier = Modifier.fillMaxSize()
         ) {
             Box(
                 modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .size(140.dp)
+                    .background(Brush.radialGradient(listOf(accentStart.copy(alpha = 0.09f), Color.Transparent)))
+            )
+            Box(
+                modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .size(190.dp)
-                    .background(Brush.radialGradient(listOf(accentEnd.copy(alpha = 0.30f), Color.Transparent)))
+                    .size(160.dp)
+                    .background(Brush.radialGradient(listOf(accentEnd.copy(alpha = 0.09f), Color.Transparent)))
             )
             Column(
                 modifier = Modifier
@@ -2250,8 +2258,8 @@ private fun ResonanceCard(
                         track = track,
                         modifier = Modifier
                             .size(66.dp)
-                            .clip(RoundedCornerShape(21.dp))
-                            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(21.dp)),
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(12.dp)),
                         highRes = true
                     )
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -2283,9 +2291,9 @@ private fun ResonanceCard(
                     }
                 }
                 Surface(
-                    color = Color.Black.copy(alpha = 0.24f),
-                    shape = RoundedCornerShape(24.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
+                    color = Color.White.copy(alpha = 0.02f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -2298,25 +2306,25 @@ private fun ResonanceCard(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(LocalLevyraStrings.current.totalComments, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Text(formatCompactNumber(comments), color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                            Text(formatCompactNumber(comments), color = LevyraText, fontSize = 16.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Bold)
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text(LocalLevyraStrings.current.engagement, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                Text("${minOf(99, score % 100)}%", color = LevyraViolet, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                                Text("${minOf(99, score % 100)}%", color = LevyraViolet, fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Bold)
                             }
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(999.dp))
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(99.dp))
                                     .background(Color.White.copy(alpha = 0.05f))
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth(pulseWidth.coerceIn(0.1f, 1f))
-                                        .height(5.dp)
-                                        .clip(RoundedCornerShape(999.dp))
+                                        .height(4.dp)
+                                        .clip(RoundedCornerShape(99.dp))
                                         .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
                                 )
                             }
@@ -2324,15 +2332,15 @@ private fun ResonanceCard(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(5.dp)
-                                .clip(RoundedCornerShape(999.dp))
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(99.dp))
                                 .background(Color.White.copy(alpha = 0.08f))
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth(pulseWidth)
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(999.dp))
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(99.dp))
                                     .background(Brush.horizontalGradient(listOf(LevyraViolet, LevyraCyan)))
                             )
                         }
@@ -2445,10 +2453,10 @@ private fun PersonalListeningCard(
     Surface(
         color = CinematicGlassDeep,
         border = BorderStroke(
-            width = if (active) 1.4.dp else 0.8.dp,
-            color = if (active) LevyraCyan.copy(alpha = 0.68f) else Color.White.copy(alpha = 0.07f)
+            width = 1.dp,
+            color = if (active) LevyraCyan.copy(alpha = 0.68f) else Color.White.copy(alpha = 0.08f)
         ),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier
             .size(140.dp)
             .pressable(onClick = onClick)
@@ -2930,9 +2938,9 @@ private fun ContinueListeningCard(
     onResume: () -> Unit
 ) {
     Surface(
-        color = Color.White.copy(alpha = 0.045f),
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.075f)),
+        color = Color.White.copy(alpha = 0.035f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
         modifier = Modifier
             .fillMaxWidth()
             .height(82.dp)
@@ -2950,7 +2958,7 @@ private fun ContinueListeningCard(
                     track = track,
                     modifier = Modifier
                         .size(50.dp)
-                        .clip(RoundedCornerShape(13.dp))
+                        .clip(RoundedCornerShape(10.dp))
                 )
                 Column(
                     modifier = Modifier.weight(1f),
@@ -3936,7 +3944,126 @@ private fun SuggestionsList(
 }
 
 @Composable
-private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+private fun DownloadsFolderCard(count: Int, onClick: () -> Unit) {
+    Surface(
+        color = Color.White.copy(alpha = 0.045f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.DownloadDone,
+                    contentDescription = null,
+                    tint = LevyraCyan,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Cartella download",
+                    color = LevyraText,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (count == 1) "1 brano scaricato" else "$count brani scaricati",
+                    color = LevyraMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal
+                )
+            }
+            Icon(
+                imageVector = androidx.compose.material.icons.Icons.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                tint = LevyraMuted,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DownloadsFolderOverlay(
+    state: LevyraUiState,
+    viewModel: LevyraViewModel,
+    onClose: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LevyraInk)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (state.currentTrack != null) 194.dp else 108.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Rounded.ArrowBack, contentDescription = "Indietro", tint = LevyraText)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Download offline",
+                            color = LevyraText,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = if (state.downloads.size == 1) "1 brano salvato" else "${state.downloads.size} brani salvati",
+                            color = LevyraMuted,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+            if (state.downloads.isEmpty()) {
+                item {
+                    EmptyState("Nessun download salvato offline.")
+                }
+            } else {
+                items(state.downloads, key = { "dlfolder-${it.id}" }) { download ->
+                    DownloadRow(
+                        download = download,
+                        isCurrent = download.trackId == state.currentTrack?.id,
+                        onPlay = { viewModel.playDownloaded(download) },
+                        onDelete = { viewModel.deleteDownload(download) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryScreen(
+    viewModel: LevyraViewModel,
+    state: LevyraUiState,
+    onOpenDownloads: () -> Unit
+) {
     val strings = LocalLevyraStrings.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
     var showCreate by remember { mutableStateOf(false) }
@@ -4010,12 +4137,10 @@ private fun LibraryScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     )
                 }
             } else {
-                items(state.downloads, key = { "dl-${it.id}" }) { download ->
-                    DownloadRow(
-                        download = download,
-                        isCurrent = download.trackId == state.currentTrack?.id,
-                        onPlay = { viewModel.playDownloaded(download) },
-                        onDelete = { viewModel.deleteDownload(download) }
+                item {
+                    DownloadsFolderCard(
+                        count = state.downloads.size,
+                        onClick = onOpenDownloads
                     )
                 }
             }
