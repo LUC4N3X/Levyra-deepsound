@@ -110,17 +110,17 @@ object LevyraThemes {
         label = "Minimal White",
         emoji = "🤍",
         isLight = true,
-        black = Color(0xFFF5F6FB),
-        ink = Color(0xFFEDEFF7),
-        panel = Color(0xFFE3E6F2),
-        panelSoft = Color(0xFFD8DCEC),
+        black = Color(0xFFFFFFFF),
+        ink = Color(0xFFF8FAFF),
+        panel = Color(0xFFEFF3FA),
+        panelSoft = Color(0xFFE4EAF5),
         cyan = Color(0xFF0084A8),
         blue = Color(0xFF2E5BFF),
         violet = Color(0xFF6D3FE0),
         pink = Color(0xFFD91A6D),
         orange = Color(0xFFC66A00),
         text = Color(0xFF11131F),
-        muted = Color(0xFF565D74),
+        muted = Color(0xFF5F667C),
         outline = Color(0x330084A8)
     )
 
