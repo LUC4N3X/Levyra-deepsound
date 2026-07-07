@@ -785,6 +785,20 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 }
             }
 
+            AnimatedVisibility(
+                visible = state.downloadingTrackIds.isNotEmpty(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .zIndex(18f)
+                    .padding(horizontal = 22.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = downloadHudBottomPadding(state)),
+                enter = miniEnter,
+                exit = miniExit
+            ) {
+                DownloadProgressHud(state = state)
+            }
+
             AnimatedVisibility(visible = state.showOnboarding, enter = overlayEnter, exit = overlayExit) {
                 if (state.showOnboarding) {
                     OnboardingOverlay(tastes = state.tastes, selectedLanguageCode = state.languageCode, onDone = viewModel::completeOnboarding)
@@ -907,6 +921,120 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 )
             }
 
+        }
+    }
+}
+
+private data class DownloadHudItem(
+    val progress: Int,
+    val title: String,
+    val count: Int
+)
+
+private fun LevyraUiState.activeDownloadHudItem(): DownloadHudItem? {
+    val ids = downloadingTrackIds.toList()
+    if (ids.isEmpty()) return null
+    val primaryId = ids.maxByOrNull { downloadProgressByTrackId[it] ?: 1 } ?: return null
+    val progress = (downloadProgressByTrackId[primaryId] ?: 1).coerceIn(1, 99)
+    val rawTitle = downloadTitleByTrackId[primaryId].orEmpty().ifBlank { "brano" }
+    val title = if (ids.size > 1) "$rawTitle +${ids.size - 1}" else rawTitle
+    return DownloadHudItem(progress = progress, title = title, count = ids.size)
+}
+
+private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
+    return when {
+        state.selectedTab == LevyraTab.Player -> 24.dp
+        state.currentTrack != null -> 154.dp
+        else -> 96.dp
+    }
+}
+
+@Composable
+private fun DownloadProgressHud(state: LevyraUiState) {
+    val item = state.activeDownloadHudItem() ?: return
+    val progressFraction = item.progress / 100f
+    Surface(
+        color = Color.Transparent,
+        shape = RoundedCornerShape(999.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(24.dp, RoundedCornerShape(999.dp), clip = false)
+    ) {
+        Row(
+            modifier = Modifier
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            LevyraPanelSoft.copy(alpha = 0.98f),
+                            LevyraInk.copy(alpha = 0.96f),
+                            LevyraPanel.copy(alpha = 0.94f)
+                        )
+                    )
+                )
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            listOf(
+                                LevyraCyan.copy(alpha = 0.24f),
+                                LevyraViolet.copy(alpha = 0.16f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+                    .drawBehind {
+                        val strokeWidth = 3.dp.toPx()
+                        val radius = (size.minDimension - strokeWidth) / 2f
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.16f),
+                            radius = radius,
+                            style = Stroke(width = strokeWidth)
+                        )
+                        drawArc(
+                            color = LevyraCyan,
+                            startAngle = -90f,
+                            sweepAngle = 360f * progressFraction.coerceIn(0f, 1f),
+                            useCenter = false,
+                            style = Stroke(width = strokeWidth)
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${item.progress}%",
+                    color = LevyraCyan,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (item.count > 1) "Download multipli in corso" else "Download in corso",
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = item.title,
+                    color = LevyraText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(Icons.Rounded.Download, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
         }
     }
 }
