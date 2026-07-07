@@ -1530,77 +1530,147 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
 
 @Composable
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
-    val startColor = accentStart?.let { Color(it) } ?: LevyraCyan
-    val endColor = accentEnd?.let { Color(it) } ?: LevyraViolet
+    val auroraBlue = Color(0xFF0B5F86)
+    val electricCyan = Color(0xFF52D9FF)
+    val emberOrange = Color(0xFFFF6A1A)
+    val deepViolet = Color(0xFF4B2A8C)
+    val softMagenta = Color(0xFFB7477A)
 
-    val animStart by animateColorAsState(
-        targetValue = startColor,
-        animationSpec = tween(2000, easing = LinearOutSlowInEasing),
-        label = "bg-color-start-transition"
+    val warmAccent by animateColorAsState(
+        targetValue = emberOrange,
+        animationSpec = tween(1800, easing = LinearOutSlowInEasing),
+        label = "levyra-warm-background-accent"
     )
-    val animEnd by animateColorAsState(
-        targetValue = endColor,
-        animationSpec = tween(2000, easing = LinearOutSlowInEasing),
-        label = "bg-color-end-transition"
+    val coolAccent by animateColorAsState(
+        targetValue = accentStart?.let { Color(it) }?.let { source ->
+            val red = source.red
+            val green = source.green
+            val blue = source.blue
+            if (green > red * 1.08f && green > blue * 0.90f) auroraBlue else source
+        } ?: auroraBlue,
+        animationSpec = tween(1800, easing = LinearOutSlowInEasing),
+        label = "levyra-cool-background-accent"
+    )
+    val secondAccent by animateColorAsState(
+        targetValue = accentEnd?.let { Color(it) }?.let { source ->
+            val red = source.red
+            val green = source.green
+            val blue = source.blue
+            if (green > red * 1.08f && green > blue * 0.90f) deepViolet else source
+        } ?: deepViolet,
+        animationSpec = tween(1800, easing = LinearOutSlowInEasing),
+        label = "levyra-secondary-background-accent"
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "bg-movement")
-    val offsetY by infiniteTransition.animateFloat(
-        initialValue = -60f,
-        targetValue = 60f,
+    val infiniteTransition = rememberInfiniteTransition(label = "levyra-background-breath")
+    val driftY by infiniteTransition.animateFloat(
+        initialValue = -18f,
+        targetValue = 18f,
         animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing),
+            animation = tween(18000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "bg-offset"
+        label = "levyra-background-drift-y"
+    )
+    val driftX by infiniteTransition.animateFloat(
+        initialValue = -10f,
+        targetValue = 10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(22000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "levyra-background-drift-x"
     )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF020202)) // Absolute dark base
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF030508),
+                        Color(0xFF05070E),
+                        Color(0xFF06030A),
+                        Color(0xFF010103)
+                    )
+                )
+            )
     ) {
-        // Atmospheric Mesh Clouds using Radial Gradients
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .height(620.dp)
+                .align(Alignment.TopCenter)
                 .graphicsLayer {
-                    translationY = offsetY
+                    translationX = driftX
+                    translationY = driftY
                 }
-        ) {
-            // Top soft cloud
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(600.dp)
-                    .align(Alignment.TopCenter)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                animStart.copy(alpha = 0.12f),
-                                Color.Transparent
-                            ),
-                            radius = 1200f
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            coolAccent.copy(alpha = 0.20f),
+                            electricCyan.copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        radius = 1120f
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .size(560.dp)
+                .align(Alignment.TopStart)
+                .offset(x = (-190).dp, y = 72.dp)
+                .graphicsLayer {
+                    translationX = driftX * -0.55f
+                    translationY = driftY * 0.35f
+                }
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            secondAccent.copy(alpha = 0.16f),
+                            softMagenta.copy(alpha = 0.07f),
+                            Color.Transparent
+                        ),
+                        radius = 720f
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .size(620.dp)
+                .align(Alignment.CenterEnd)
+                .offset(x = 240.dp, y = 20.dp)
+                .graphicsLayer {
+                    translationX = driftX * 0.65f
+                    translationY = driftY * -0.45f
+                }
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            warmAccent.copy(alpha = 0.18f),
+                            Color(0xFFFF9A3D).copy(alpha = 0.055f),
+                            Color.Transparent
+                        ),
+                        radius = 820f
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(320.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Transparent,
+                            Color(0xFF020103).copy(alpha = 0.86f),
+                            Color.Black
                         )
                     )
-            )
-            // Bottom soft cloud
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(800.dp)
-                    .align(Alignment.BottomEnd)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                animEnd.copy(alpha = 0.08f),
-                                Color.Transparent
-                            ),
-                            radius = 1400f
-                        )
-                    )
-            )
-        }
+                )
+        )
     }
 }
 
