@@ -51,8 +51,8 @@ jobs:
           curl -fsSL --retry 5 --retry-all-errors --retry-delay 2 \
             "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/player_dates.json" \
             -o /tmp/levyra-player-configs/player_dates.json
-          jq -e empty /tmp/levyra-player-configs/player_configs.json
-          jq -e empty /tmp/levyra-player-configs/player_dates.json
+          jq empty /tmp/levyra-player-configs/player_configs.json >/dev/null
+          jq empty /tmp/levyra-player-configs/player_dates.json >/dev/null
 
       - name: Update local assets
         id: sync
