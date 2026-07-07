@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.CacheReport
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ChartRegion
