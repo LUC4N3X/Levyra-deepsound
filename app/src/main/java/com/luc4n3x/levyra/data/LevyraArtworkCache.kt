@@ -67,18 +67,6 @@ object LevyraArtworkCache {
         return if (highRes) large(raw) else small(raw)
     }
 
-    fun request(context: Context, url: String, highRes: Boolean = false, crossfadeMs: Int = 120): ImageRequest? {
-        val optimized = if (highRes) large(url) else small(url)
-        if (optimized.isBlank()) return null
-        return ImageRequest.Builder(context)
-            .data(optimized)
-            .crossfade(crossfadeMs.coerceAtLeast(0))
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .networkCachePolicy(CachePolicy.ENABLED)
-            .build()
-    }
-
     fun localFile(context: Context, track: Track, highRes: Boolean = false): File? {
         val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
         if (raw.isBlank()) return null
