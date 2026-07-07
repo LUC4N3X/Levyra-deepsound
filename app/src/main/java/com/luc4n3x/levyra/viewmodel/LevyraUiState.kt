@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -61,6 +62,10 @@ data class LevyraUiState(
     val showLyrics: Boolean = false,
     val lyricsLoading: Boolean = false,
     val lyricsSynced: Boolean = false,
+    val lyricsProvider: String = "",
+    val lyricsConfidence: Int = 0,
+    val lyricsCached: Boolean = false,
+    val smartProfile: SmartMusicProfile = SmartMusicProfile(),
     val cacheReport: CacheReport = CacheReport(0, 0, 0, 0),
     val query: String = "",
     val isPlaying: Boolean = false,
@@ -98,6 +103,7 @@ data class LevyraUiState(
     val downloadedTrackIds: Set<String> = emptySet(),
     val downloadProgressByTrackId: Map<String, Int> = emptyMap(),
     val downloadTitleByTrackId: Map<String, String> = emptyMap(),
+    val offlineQueueSize: Int = 0,
     val showArtist: Boolean = false,
     val artistLoading: Boolean = false,
     val artistError: String? = null,
