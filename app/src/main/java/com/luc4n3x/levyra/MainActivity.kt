@@ -97,12 +97,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestHighRefreshRate() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            window.windowManager.defaultDisplay.supportedModes.maxByOrNull { it.refreshRate }?.let { mode ->
-                val params = window.attributes
-                params.preferredDisplayModeId = mode.modeId
-                window.attributes = params
-            }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val targetDisplay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            display
+        } else {
+            @Suppress("DEPRECATION")
+            window.windowManager.defaultDisplay
+        } ?: return
+        val best = targetDisplay.supportedModes.maxByOrNull { it.refreshRate } ?: return
+        val params = window.attributes
+        if (params.preferredDisplayModeId != best.modeId) {
+            params.preferredDisplayModeId = best.modeId
+            window.attributes = params
         }
     }
 }
