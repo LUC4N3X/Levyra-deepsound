@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
@@ -198,6 +199,30 @@ class LevyraPreferences(context: Context) {
         write { it[homeSectionsKey(normalized)] = array.toString() }
     }
 
+    fun loadHomeAlbums(languageCode: String = languageCode()): List<AlbumHit> {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        return read(emptyList()) { preferences ->
+            parseAlbumHits(preferences[homeAlbumsKey(normalized)].orEmpty())
+        }
+    }
+
+    fun saveHomeAlbums(albums: List<AlbumHit>, languageCode: String = languageCode()) {
+        val array = JSONArray()
+        albums.take(14).forEach { album ->
+            array.put(
+                JSONObject()
+                    .put("title", album.title)
+                    .put("artist", album.artist)
+                    .put("year", album.year)
+                    .put("thumbnailUrl", album.thumbnailUrl)
+                    .put("query", album.query)
+                    .put("browseId", album.browseId)
+            )
+        }
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        write { it[homeAlbumsKey(normalized)] = array.toString() }
+    }
+
     fun loadChartTracks(languageCode: String = languageCode(), regionId: String = ""): List<Track> {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         val chartRegion = regionId.ifBlank { com.luc4n3x.levyra.domain.ChartsCatalog.defaultRegionForLanguage(normalized).id }
@@ -278,6 +303,8 @@ class LevyraPreferences(context: Context) {
 
     private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_${LevyraLanguageCatalog.normalize(languageCode)}")
 
+    private fun homeAlbumsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_albums_${LevyraLanguageCatalog.normalize(languageCode)}")
+
     private fun chartTracksKey(languageCode: String, regionId: String): Preferences.Key<String> = stringPreferencesKey("chart_tracks_${LevyraLanguageCatalog.normalize(languageCode)}_${regionId.lowercase()}")
 
     private fun personalOrbitTracksKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("personal_orbit_tracks_${LevyraLanguageCatalog.normalize(languageCode)}")
@@ -308,6 +335,31 @@ class LevyraPreferences(context: Context) {
                 HomeSection(title, tracks).takeIf { it.tracks.isNotEmpty() }
             }
         }.onFailure { Timber.w(it, "Home sections restore failed") }.getOrDefault(emptyList())
+    }
+
+    private fun parseAlbumHits(raw: String): List<AlbumHit> {
+        if (raw.isBlank()) return emptyList()
+        return runCatching {
+            val array = JSONArray(raw)
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val title = item.optString("title").trim()
+                val artist = item.optString("artist").trim()
+                val thumbnailUrl = item.optString("thumbnailUrl").trim()
+                if (title.isBlank() || artist.isBlank() || thumbnailUrl.isBlank()) {
+                    null
+                } else {
+                    AlbumHit(
+                        title = title,
+                        artist = artist,
+                        year = item.optString("year").trim(),
+                        thumbnailUrl = thumbnailUrl,
+                        query = item.optString("query").trim().ifBlank { "$title $artist album" },
+                        browseId = item.optString("browseId").trim()
+                    )
+                }
+            }
+        }.onFailure { Timber.w(it, "Home albums restore failed") }.getOrDefault(emptyList())
     }
 
     private fun normalizeAudioQuality(value: String): String = when (value.lowercase()) {
