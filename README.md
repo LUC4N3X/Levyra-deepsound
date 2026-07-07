@@ -200,8 +200,8 @@ The resulting signed/unsigned release APK will be located in:
 ### Version Control & CI overrides
 The application's version numbering is centralized inside `gradle.properties`:
 ```properties
-levyraVersionName=2.2.0
-levyraVersionCode=2020000
+levyraVersionName=2.3.3
+levyraVersionCode=2030300
 ```
 *Version code logic is calculated sequentially to prevent duplicate deployment IDs:*
 `versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`
