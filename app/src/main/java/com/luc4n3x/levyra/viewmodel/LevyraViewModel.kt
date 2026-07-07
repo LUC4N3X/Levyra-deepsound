@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
+import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
 import com.luc4n3x.levyra.data.PersonalOrbitArtworkWorker
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
@@ -23,6 +24,7 @@ import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -35,6 +37,7 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.SponsorSegment
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraContentLocales
@@ -81,7 +84,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val chartsRepository = ChartsRepository()
     private val downloadedTracksDao = LevyraDatabase.get(application.applicationContext).downloadedTracksDao()
     private val appUpdateRepository = AppUpdateRepository(application.applicationContext)
-    private val lyricsRepository = LyricsRepository()
+    private val lyricsRepository = LyricsRepository(application.applicationContext)
     private val sponsorBlockRepository = SponsorBlockRepository()
     private val resolver = PlaybackResolver.getInstance(application.applicationContext)
     private val moodEngine = MoodEngine()
@@ -94,6 +97,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
     private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
+    private val smartMusicProfileStore = LevyraSmartMusicProfileStore(application.applicationContext)
+    private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
     private val startupMoods = moodEngine.moodsForLanguage(startupSettings.languageCode)
     private val _state = MutableStateFlow(
@@ -105,6 +110,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             selectedMood = startupMoods.firstOrNull(),
             isSearching = false,
             embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
+            smartProfile = startupSmartProfile,
             audioNormalization = startupSettings.audioNormalization,
             audioSettings = startupSettings.audioSettings
         )
@@ -131,6 +137,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var loopCurrentQueueOnCompletion: Boolean = false
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val activeDownloadTitles = ConcurrentHashMap<String, String>()
+    private val activeDownloadTracks = ConcurrentHashMap<String, Track>()
 
     val state: StateFlow<LevyraUiState> = _state.asStateFlow()
     val playerController get() = player.controller
@@ -496,6 +503,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (snapshot.isResolving || playJob?.isActive == true || current.streamUrl.isBlank()) return
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
+        recordSmartCompletion(current)
         val queue = snapshot.queue.ifEmpty { currentQueue() }
         when {
             _state.value.shuffleEnabled && queue.size > 1 -> {
@@ -759,8 +767,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .take(4)
             .map { "$it album" }
             .toList()
+        val profileSeeds = (state.smartProfile.albumQueries + state.smartProfile.artistQueries).take(10)
         val moodSeeds = state.selectedMood?.let { mood -> listOf("${mood.title} album") }.orEmpty()
-        return (artistSeeds + albumSeeds + moodSeeds).distinctBy { it.lowercase() }.take(12)
+        return (profileSeeds + artistSeeds + albumSeeds + moodSeeds).distinctBy { it.lowercase() }.take(16)
     }
 
     fun openSettings() {
@@ -983,6 +992,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         favoritesStore.save(updated)
         LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, updated, 12)
         _state.update { it.copy(favorites = updated, favoriteIds = updated.map { fav -> fav.id }.toSet()) }
+        recordSmartFavorite(track, !exists)
         persistPersonalOrbit(updated)
     }
 
@@ -994,6 +1004,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openArtist(track: Track) {
         openArtistByName(track.artist)
     }
+    fun openArtistRelease(release: ArtistRelease, artistName: String) {
+        openAlbum(
+            AlbumHit(
+                title = release.title,
+                artist = artistName.ifBlank { release.subtitle },
+                year = release.year,
+                thumbnailUrl = release.thumbnailUrl,
+                query = listOf(release.title, artistName.ifBlank { release.subtitle }, "album").filter { it.isNotBlank() }.joinToString(" "),
+                browseId = release.browseId
+            )
+        )
+    }
+
 
     fun openArtistByName(name: String) {
         val clean = name.trim()
@@ -1071,6 +1094,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     cacheReport = repository.cacheReport()
                 )
             }
+            recordSmartAlbumOpen(detail.album)
             persistPersonalOrbit(detail.tracks)
             LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 16)
             prefetchTop(detail.tracks, 10)
@@ -1093,6 +1117,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playFrom(detail.tracks, detail.tracks.first(), loopOnCompletion = true)
     }
 
+    fun exportCurrentAlbum() {
+        val detail = _state.value.albumDetail ?: return
+        exportTracksSequential(detail.tracks, "Album offline")
+    }
+
+    fun exportOpenPlaylist() {
+        val playlist = _state.value.openPlaylist ?: return
+        exportTracksSequential(playlist.tracks, "Playlist offline")
+    }
+
+    private fun exportTracksSequential(tracks: List<Track>, label: String) {
+        val pending = tracks
+            .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
+            .distinctBy { downloadKeyFor(it) }
+            .filterNot { track -> track.id.isNotBlank() && track.id in _state.value.downloadedTrackIds }
+        if (pending.isEmpty()) {
+            _state.update { it.copy(offlineExportMessage = "Già tutto offline") }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(offlineQueueSize = it.offlineQueueSize + pending.size, offlineExportMessage = "$label in coda: ${pending.size} brani") }
+            pending.forEachIndexed { index, track ->
+                if (index > 0) delay(220L)
+                exportTrack(track)
+            }
+            _state.update { it.copy(offlineQueueSize = (it.offlineQueueSize - pending.size).coerceAtLeast(0)) }
+        }
+    }
+
     fun playArtistSong(track: Track) {
         val profile = _state.value.artistProfile ?: return
         closeArtist()
@@ -1112,6 +1165,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         val downloadTitle = track.title.ifBlank { "brano" }
         activeDownloadTitles[downloadKey] = downloadTitle
+        activeDownloadTracks[downloadKey] = track
         _state.update {
             it.copy(
                 isOfflineExporting = true,
@@ -1150,6 +1204,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }.onFailure { error ->
                 if (error is CancellationException) {
                     activeDownloadKeys.remove(downloadKey)
+                    activeDownloadTracks.remove(downloadKey)
                     activeDownloadTitles.remove(downloadKey)
                     _state.update {
                         it.copy(
@@ -1175,11 +1230,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun handleOfflineExportSuccess(workInfo: WorkInfo, trackId: String) {
         activeDownloadKeys.remove(trackId)
+        val completedTrack = activeDownloadTracks.remove(trackId)
         activeDownloadTitles.remove(trackId)
         val fileName = workInfo.outputData.getString(OfflineExportWorker.KEY_FILE_NAME).orEmpty()
         val destinationLabel = workInfo.outputData.getString(OfflineExportWorker.KEY_DESTINATION_LABEL).orEmpty().ifBlank { "Music/Levyra" }
         val embedded = workInfo.outputData.getBoolean(OfflineExportWorker.KEY_EMBEDDED_METADATA, false)
         val tagStatus = if (embedded) "con cover e metadata Levyra" else "con metadata Android"
+        completedTrack?.let { recordSmartDownload(it) }
         _state.update {
             it.copy(
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
@@ -1194,6 +1251,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun handleOfflineExportFailure(message: String?, trackId: String) {
         activeDownloadKeys.remove(trackId)
+        activeDownloadTracks.remove(trackId)
         activeDownloadTitles.remove(trackId)
         _state.update {
             it.copy(
@@ -1612,6 +1670,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         addToRecentSearches(playable)
+        recordSmartPlayback(playable)
         fetchLyrics(playable)
         fetchSponsorSegments(playable)
         updateWidget()
@@ -1662,7 +1721,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun fetchLyrics(track: Track) {
         lyricsJob?.cancel()
-        _state.update { it.copy(lyrics = emptyList(), lyricsSynced = false, lyricsLoading = true) }
+        _state.update { it.copy(lyrics = emptyList(), lyricsSynced = false, lyricsProvider = "", lyricsConfidence = 0, lyricsCached = false, lyricsLoading = true) }
         lyricsJob = viewModelScope.launch {
             val result = runCatching {
                 lyricsRepository.fetch(track.title, track.artist, track.durationMs / 1000L)
@@ -1672,6 +1731,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 it.copy(
                     lyrics = result?.lines.orEmpty(),
                     lyricsSynced = result?.synced ?: false,
+                    lyricsProvider = result?.provider.orEmpty(),
+                    lyricsConfidence = result?.confidence ?: 0,
+                    lyricsCached = result?.cached ?: false,
                     lyricsLoading = false
                 )
             }
@@ -2052,9 +2114,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun instantAlbumRecommendationsFromTracks(primary: List<Track>, secondary: List<Track>, limit: Int): List<AlbumHit> {
+        val profile = _state.value.smartProfile
         return mergeTracks(primary, secondary)
             .asSequence()
             .filter { isInstantAlbumCandidate(it) }
+            .sortedWith(compareByDescending<Track> { smartAlbumScore(it.album, it.artist, profile) }.thenByDescending { it.replayScore + it.cacheScore })
             .distinctBy { "${it.album.trim().lowercase()}|${it.artist.trim().lowercase()}" }
             .map { track ->
                 val albumTitle = track.album.trim()
@@ -2107,6 +2171,53 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         return map.values.toList()
+    }
+
+
+    private fun recordSmartPlayback(track: Track) {
+        recordSmartProfile { smartMusicProfileStore.recordPlayback(track.copy(streamUrl = "", videoStreamUrl = "")) }
+    }
+
+    private fun recordSmartCompletion(track: Track) {
+        recordSmartProfile { smartMusicProfileStore.recordCompletion(track.copy(streamUrl = "", videoStreamUrl = "")) }
+    }
+
+    private fun recordSmartFavorite(track: Track, added: Boolean) {
+        recordSmartProfile { smartMusicProfileStore.recordFavorite(track.copy(streamUrl = "", videoStreamUrl = ""), added) }
+    }
+
+    private fun recordSmartDownload(track: Track) {
+        recordSmartProfile { smartMusicProfileStore.recordDownload(track.copy(streamUrl = "", videoStreamUrl = "")) }
+    }
+
+    private fun recordSmartAlbumOpen(album: AlbumHit) {
+        recordSmartProfile { smartMusicProfileStore.recordAlbumOpen(album) }
+    }
+
+    private fun recordSmartProfile(block: () -> SmartMusicProfile) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val profile = runCatching { block() }.getOrNull() ?: return@launch
+            _state.update { current ->
+                val boostedAlbums = boostHomeAlbumsWithSmartProfile(current.homeAlbums, profile)
+                current.copy(
+                    smartProfile = profile,
+                    homeAlbums = if (boostedAlbums.isNotEmpty()) boostedAlbums else current.homeAlbums
+                )
+            }
+        }
+    }
+
+    private fun boostHomeAlbumsWithSmartProfile(albums: List<AlbumHit>, profile: SmartMusicProfile): List<AlbumHit> {
+        if (albums.isEmpty()) return albums
+        return albums.sortedByDescending { album -> smartAlbumScore(album.title, album.artist, profile) }.take(12)
+    }
+
+    private fun smartAlbumScore(albumTitle: String, artistName: String, profile: SmartMusicProfile): Int {
+        val album = albumTitle.trim().lowercase()
+        val artist = artistName.trim().lowercase()
+        val albumScore = profile.topAlbums.firstOrNull { seed -> seed.label.lowercase().contains(album) && (artist.isBlank() || seed.label.lowercase().contains(artist)) }?.weight ?: 0
+        val artistScore = profile.topArtists.firstOrNull { seed -> seed.label.lowercase() == artist }?.weight ?: 0
+        return albumScore * 3 + artistScore * 2
     }
 
     private fun mergeTracks(old: List<Track>, incoming: List<Track>): List<Track> {
