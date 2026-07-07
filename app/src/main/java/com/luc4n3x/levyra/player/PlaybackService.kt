@@ -356,10 +356,21 @@ private class LevyraMediaSourceFactory(
             return ProgressiveMediaSource.Factory(localDataSourceFactory).createMediaSource(localItem)
         }
         val uri = localUri?.toString().orEmpty()
-        return if (uri.contains(".m3u8", true) || uri.contains("hls", true)) {
+        return if (isHlsManifestUri(uri)) {
             HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         } else {
             ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         }
+    }
+
+    private fun isHlsManifestUri(uri: String): Boolean {
+        val clean = uri.substringBefore('#').lowercase()
+        val path = clean.substringBefore('?')
+        return path.endsWith(".m3u8") ||
+            path.contains("/hls_playlist") ||
+            path.contains("/manifest/hls") ||
+            clean.contains("mime=application%2fx-mpegurl") ||
+            clean.contains("mime=application/vnd.apple.mpegurl") ||
+            clean.contains("type=application%2fx-mpegurl")
     }
 }
