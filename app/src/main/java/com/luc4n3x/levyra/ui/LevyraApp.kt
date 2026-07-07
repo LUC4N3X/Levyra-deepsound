@@ -2631,14 +2631,6 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
 
-        if (state.smartProfile.topArtists.isNotEmpty() || state.smartProfile.topAlbums.isNotEmpty()) {
-            item(key = "home-smart-profile", contentType = "home-card") {
-                SmartMusicProfileCard(
-                    profile = state.smartProfile,
-                    onPlayFlow = viewModel::playDailyFlow
-                )
-            }
-        }
         if (trendingArtists.isNotEmpty()) {
             item(key = "home-trending-artists", contentType = "home-shelf") {
                 TrendingArtistsShelf(
