@@ -671,6 +671,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val sections = runCatching { repository.homeFeed(languageCode) }.getOrDefault(emptyList())
             if (_state.value.languageCode != languageCode) return@launch
             if (sections.isEmpty()) {
+                loadHomeAlbums(languageCode)
                 loadHome(preserveCurrent = hasVisibleHome)
                 return@launch
             }
@@ -684,6 +685,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update {
                 it.copy(
                     homeSections = sections,
+                    homeAlbums = emptyList(),
                     tracks = flat,
                     queue = queue,
                     searchResults = flat.take(12),
@@ -697,6 +699,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, flat, 16)
             LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, flat, 36)
             prefetchTop(flat, 14)
+            loadHomeAlbums(languageCode)
+        }
+    }
+
+    private fun loadHomeAlbums(languageCode: String) {
+        viewModelScope.launch {
+            val albums = runCatching { repository.homeAlbums(languageCode) }.getOrDefault(emptyList())
+            if (_state.value.languageCode != languageCode || albums.isEmpty()) return@launch
+            _state.update { it.copy(homeAlbums = albums) }
         }
     }
 
@@ -802,6 +813,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 selectedMood = selectedMood,
                 selectedChartId = defaultChartRegion.id,
                 homeSections = homeSections,
+                homeAlbums = emptyList(),
                 charts = chartTracks,
                 personalOrbitTracks = orbit,
                 tracks = allTracks,
@@ -1252,6 +1264,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun searchAlbum(album: AlbumHit) {
         _state.update { it.copy(query = album.query) }
         searchNow(album.query)
+    }
+
+    fun playAlbumRecommendations(albums: List<AlbumHit>) {
+        val snapshot = albums.filter { it.query.isNotBlank() }.take(10)
+        if (snapshot.isEmpty()) return
+        viewModelScope.launch {
+            val languageCode = _state.value.languageCode
+            val playable = withContext(Dispatchers.IO) {
+                snapshot.mapNotNull { album -> repository.searchOne(album.query, languageCode) }
+                    .distinctBy { youtubePlayableTrack(it)?.id ?: it.id }
+            }
+            if (playable.isEmpty()) return@launch
+            val mergedTracks = mergeTracks(playable, _state.value.tracks)
+            _state.update {
+                it.copy(
+                    tracks = mergedTracks,
+                    queue = playable,
+                    searchResults = playable.take(12),
+                    cacheReport = repository.cacheReport(),
+                    searchError = null
+                )
+            }
+            persistPersonalOrbit(playable)
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, playable, 10)
+            playFrom(playable, playable.first(), loopOnCompletion = true)
+        }
     }
 
     fun openArtistFromHit(hit: ArtistHit) {
