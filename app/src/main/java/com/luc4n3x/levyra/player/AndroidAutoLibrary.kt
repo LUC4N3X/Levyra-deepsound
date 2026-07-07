@@ -9,6 +9,7 @@ import androidx.media3.common.MediaMetadata
 import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
+import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.PlaylistStore
 import com.luc4n3x.levyra.data.TrackPayloadCodec
@@ -17,6 +18,7 @@ import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.Playlist
+import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,12 +33,15 @@ class AndroidAutoLibrary(context: Context) {
     private val favoritesStore = FavoritesStore(appContext)
     private val playlistStore = PlaylistStore(appContext)
     private val preferences = LevyraPreferences(appContext)
+    private val smartProfileStore = LevyraSmartMusicProfileStore(appContext)
     private val database = LevyraDatabase.get(appContext)
     private val chartsRepository = ChartsRepository()
     private val musicRepository = YoutubeMusicRepository(appContext)
     private val resolver = PlaybackResolver.getInstance(appContext)
     private val catalog = ConcurrentHashMap<String, Track>()
     private val folders = ConcurrentHashMap<String, MediaItem>()
+    private val albumFolders = ConcurrentHashMap<String, Pair<String, String>>()
+    private val artistFolders = ConcurrentHashMap<String, String>()
     private val searchCache = ConcurrentHashMap<String, TimedTracks>()
 
     fun root(): MediaItem = folder(ID_ROOT, "Levyra", "Musica ottimizzata per Android Auto")
@@ -45,6 +50,9 @@ class AndroidAutoLibrary(context: Context) {
         when (parentId) {
             ID_ROOT -> rootChildren()
             ID_HOME -> homeChildren()
+            ID_RECOMMENDED -> smartRecommended().map { trackItem(it) }
+            ID_ALBUMS -> albumChildren()
+            ID_ARTISTS -> artistChildren()
             ID_HOME_DRIVER -> drivingMix().map { trackItem(it) }
             ID_HOME_TOP_IT -> topLocal().map { trackItem(it) }
             ID_HOME_OFFLINE -> downloads().map { trackItem(it) }
@@ -55,6 +63,8 @@ class AndroidAutoLibrary(context: Context) {
             ID_PLAYLISTS -> playlists().map { playlist -> playlistFolder(playlist) }
             else -> when {
                 parentId.startsWith(ID_PLAYLIST_PREFIX) -> playlistTracks(parentId.removePrefix(ID_PLAYLIST_PREFIX)).map { trackItem(it) }
+                parentId.startsWith(ID_ALBUM_PREFIX) -> albumTracks(parentId).map { trackItem(it) }
+                parentId.startsWith(ID_ARTIST_PREFIX) -> artistTracks(parentId).map { trackItem(it) }
                 else -> emptyList()
             }
         }
@@ -64,6 +74,9 @@ class AndroidAutoLibrary(context: Context) {
         folders[mediaId] ?: catalog[mediaId]?.let { trackItem(it, mediaId) } ?: when {
             mediaId == ID_ROOT -> root()
             mediaId == ID_HOME -> folder(ID_HOME, "Home", "Mix veloci, offline e classifiche")
+            mediaId == ID_RECOMMENDED -> folder(ID_RECOMMENDED, "Consigliati", "Profilo musicale, preferiti e ascolti recenti")
+            mediaId == ID_ALBUMS -> folder(ID_ALBUMS, "Album", "Album locali e suggeriti")
+            mediaId == ID_ARTISTS -> folder(ID_ARTISTS, "Artisti", "Artisti più ascoltati e seguiti")
             mediaId == ID_FLOW -> folder(ID_FLOW, "Flow", "Radio personale Levyra")
             mediaId == ID_FAVORITES -> folder(ID_FAVORITES, "Preferiti", "Brani salvati")
             mediaId == ID_DOWNLOADS -> folder(ID_DOWNLOADS, "Download", "Musica disponibile offline")
@@ -71,6 +84,10 @@ class AndroidAutoLibrary(context: Context) {
             mediaId == ID_RECENTS -> folder(ID_RECENTS, "Ultimi ascolti", "Brani trovati di recente")
             mediaId.startsWith(ID_PLAYLIST_PREFIX) -> playlistStore.load(mediaId.removePrefix(ID_PLAYLIST_PREFIX))?.let { playlistFolder(it) }
                 ?: folder(mediaId, "Playlist", "Playlist non disponibile")
+            mediaId.startsWith(ID_ALBUM_PREFIX) -> albumFolders[mediaId]?.let { pair -> folder(mediaId, pair.first, pair.second) }
+                ?: folder(mediaId, "Album", "Album non disponibile")
+            mediaId.startsWith(ID_ARTIST_PREFIX) -> artistFolders[mediaId]?.let { artist -> folder(mediaId, artist, "Brani e album dell'artista") }
+                ?: folder(mediaId, "Artista", "Artista non disponibile")
             else -> folder(mediaId, "Levyra", "Elemento non disponibile")
         }
     }
@@ -95,6 +112,9 @@ class AndroidAutoLibrary(context: Context) {
 
     private fun rootChildren(): List<MediaItem> = listOf(
         folder(ID_HOME, "Home", "Mix veloci, offline e classifiche"),
+        folder(ID_RECOMMENDED, "Consigliati", "Profilo musicale intelligente"),
+        folder(ID_ALBUMS, "Album", "Album veri, playlist offline e raccolte locali"),
+        folder(ID_ARTISTS, "Artisti", "Artisti più ascoltati e seguiti"),
         folder(ID_FLOW, "Flow", "Radio personale Levyra"),
         folder(ID_FAVORITES, "Preferiti", "Brani salvati"),
         folder(ID_DOWNLOADS, "Download", "Musica disponibile offline"),
@@ -103,6 +123,7 @@ class AndroidAutoLibrary(context: Context) {
     )
 
     private fun homeChildren(): List<MediaItem> = listOf(
+        folder(ID_RECOMMENDED, "Per te", "Consigli dal profilo musicale"),
         folder(ID_HOME_DRIVER, "Per la guida", "Preferiti, recenti e brani ad alta energia"),
         folder(ID_HOME_OFFLINE, "Offline pronto", "Download riproducibili senza rete"),
         folder(ID_HOME_TOP_IT, "Top locali", "Classifica musicale aggiornata per la lingua scelta"),
@@ -294,6 +315,100 @@ class AndroidAutoLibrary(context: Context) {
         }.distinctTracks().take(20)
     }
 
+
+    private suspend fun smartRecommended(): List<Track> = withContext(Dispatchers.IO) {
+        val profile = smartProfileStore.load()
+        val local = buildList {
+            addAll(favorites())
+            addAll(recents())
+            addAll(downloads())
+            playlists().take(12).forEach { addAll(it.tracks) }
+        }.distinctTracks()
+        val rankedLocal = local.sortedByDescending { smartWeight(it, profile) }.take(MAX_FOLDER_TRACKS)
+        if (rankedLocal.size >= 18) return@withContext rankedLocal
+        val languageCode = contentLanguage()
+        val queries = (profile.albumQueries + profile.artistQueries).ifEmpty { LevyraContentLocales.forLanguage(languageCode).homeQueries }
+        val remote = queries.take(4).flatMap { query ->
+            runCatching { musicRepository.search(query, 12, languageCode) }.getOrDefault(emptyList())
+        }
+        (rankedLocal + remote).distinctTracks().sortedByDescending { smartWeight(it, profile) }.take(MAX_FOLDER_TRACKS)
+    }
+
+    private suspend fun albumChildren(): List<MediaItem> = withContext(Dispatchers.IO) {
+        val profile = smartProfileStore.load()
+        val local = buildList {
+            addAll(downloads())
+            addAll(favorites())
+            addAll(recents())
+            playlists().take(20).forEach { addAll(it.tracks) }
+        }.distinctTracks()
+        val grouped = local
+            .filter { it.album.isNotBlank() && !it.album.equals(it.title, ignoreCase = true) }
+            .groupBy { "${it.album.trim()}|${it.artist.trim()}" }
+            .entries
+            .sortedByDescending { entry -> entry.value.sumOf { smartWeight(it, profile) } + entry.value.size * 20 }
+            .take(36)
+        grouped.map { entry ->
+            val parts = entry.key.split("|", limit = 2)
+            val title = parts.getOrElse(0) { "Album" }
+            val artist = parts.getOrElse(1) { "" }
+            val id = ID_ALBUM_PREFIX + entry.key.sha256().take(22)
+            albumFolders[id] = title to artist
+            folder(id, title, listOf(artist, "${entry.value.size} brani").filter { it.isNotBlank() }.joinToString(" · "))
+        }
+    }
+
+    private suspend fun artistChildren(): List<MediaItem> = withContext(Dispatchers.IO) {
+        val profile = smartProfileStore.load()
+        val localArtists = buildList {
+            addAll(profile.topArtists.map { it.label })
+            addAll(favorites().map { it.artist })
+            addAll(recents().map { it.artist })
+            addAll(downloads().map { it.artist })
+        }.map { it.trim() }.filter { it.isNotBlank() && !it.equals("YouTube Music", ignoreCase = true) }.distinctBy { it.lowercase(Locale.ROOT) }.take(40)
+        localArtists.map { artist ->
+            val id = ID_ARTIST_PREFIX + artist.sha256().take(22)
+            artistFolders[id] = artist
+            folder(id, artist, "Brani, preferiti e suggerimenti")
+        }
+    }
+
+    private suspend fun albumTracks(parentId: String): List<Track> = withContext(Dispatchers.IO) {
+        val pair = albumFolders[parentId] ?: return@withContext emptyList()
+        val local = buildList {
+            addAll(downloads())
+            addAll(favorites())
+            addAll(recents())
+            playlists().take(20).forEach { addAll(it.tracks) }
+        }.filter { it.album.equals(pair.first, ignoreCase = true) && (pair.second.isBlank() || it.artist.equals(pair.second, ignoreCase = true)) }
+            .distinctTracks()
+        if (local.isNotEmpty()) return@withContext local.take(MAX_FOLDER_TRACKS)
+        val query = listOf(pair.first, pair.second, "album").filter { it.isNotBlank() }.joinToString(" ")
+        runCatching { musicRepository.search(query, 30, contentLanguage()) }.getOrDefault(emptyList()).distinctTracks().take(MAX_FOLDER_TRACKS)
+    }
+
+    private suspend fun artistTracks(parentId: String): List<Track> = withContext(Dispatchers.IO) {
+        val artist = artistFolders[parentId] ?: return@withContext emptyList()
+        val local = buildList {
+            addAll(favorites())
+            addAll(recents())
+            addAll(downloads())
+            playlists().take(20).forEach { addAll(it.tracks) }
+        }.filter { it.artist.equals(artist, ignoreCase = true) }
+            .distinctTracks()
+        if (local.size >= 8) return@withContext local.take(MAX_FOLDER_TRACKS)
+        val remote = runCatching { musicRepository.search(artist, 30, contentLanguage()) }.getOrDefault(emptyList())
+        (local + remote).distinctTracks().take(MAX_FOLDER_TRACKS)
+    }
+
+    private fun smartWeight(track: Track, profile: SmartMusicProfile): Int {
+        val artist = track.artist.trim().lowercase(Locale.ROOT)
+        val album = track.album.trim().lowercase(Locale.ROOT)
+        val artistScore = profile.topArtists.firstOrNull { it.label.lowercase(Locale.ROOT) == artist }?.weight ?: 0
+        val albumScore = profile.topAlbums.firstOrNull { seed -> seed.label.lowercase(Locale.ROOT).contains(album) && seed.label.lowercase(Locale.ROOT).contains(artist) }?.weight ?: 0
+        return track.replayScore + track.cacheScore + track.energy / 2 + artistScore * 2 + albumScore * 3
+    }
+
     private fun DownloadEntity.toAutoTrack(): Track = Track(
         id = "download-$id-${trackId.ifBlank { fileName }}".sha256().take(20),
         title = title.ifBlank { fileName },
@@ -353,12 +468,17 @@ class AndroidAutoLibrary(context: Context) {
         const val ID_HOME_DRIVER = "levyra:auto:home:driver"
         const val ID_HOME_TOP_IT = "levyra:auto:home:top-it"
         const val ID_HOME_OFFLINE = "levyra:auto:home:offline"
+        const val ID_RECOMMENDED = "levyra:auto:recommended"
+        const val ID_ALBUMS = "levyra:auto:albums"
+        const val ID_ARTISTS = "levyra:auto:artists"
         const val ID_FLOW = "levyra:auto:flow"
         const val ID_FAVORITES = "levyra:auto:favorites"
         const val ID_DOWNLOADS = "levyra:auto:downloads"
         const val ID_PLAYLISTS = "levyra:auto:playlists"
         const val ID_RECENTS = "levyra:auto:recents"
         const val ID_PLAYLIST_PREFIX = "levyra:auto:playlist:"
+        const val ID_ALBUM_PREFIX = "levyra:auto:album:"
+        const val ID_ARTIST_PREFIX = "levyra:auto:artist:"
         const val ID_TRACK_PREFIX = "levyra:auto:track:"
         const val EXTRA_TRACK_PAYLOAD = "levyra.auto.TRACK_PAYLOAD"
         const val EXTRA_SOURCE = "levyra.auto.SOURCE"
