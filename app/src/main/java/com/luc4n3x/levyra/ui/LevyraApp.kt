@@ -61,6 +61,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -165,6 +167,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -174,6 +177,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -955,6 +959,32 @@ private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
         state.selectedTab == LevyraTab.Player -> 24.dp
         state.currentTrack != null -> 154.dp
         else -> 96.dp
+    }
+}
+
+// Bottom inset for scrolling content so nothing hides behind (or bleeds through)
+// the bottom tab bar + mini player + the device navigation bar. Computed from the
+// real navigationBars insets so it adapts to gesture nav vs 3-button nav on any
+// phone, instead of guessing with a fixed dp value.
+@Composable
+private fun contentBottomPadding(hasMiniPlayer: Boolean, extra: Dp = 16.dp): Dp {
+    val navBars = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val tabBarHeight = 80.dp
+    val miniPlayerHeight = if (hasMiniPlayer) 78.dp else 0.dp
+    return tabBarHeight + miniPlayerHeight + navBars + extra
+}
+
+// Lets a horizontal shelf inside a horizontally-padded LazyColumn extend to the
+// screen edges, so its cards peek/scroll cleanly instead of being hard-clipped at
+// the content margin. Pair with contentPadding(horizontal = padding) on the LazyRow
+// to keep the first card aligned with the section header.
+private fun Modifier.bleedHorizontal(padding: Dp): Modifier = this.layout { measurable, constraints ->
+    val extra = padding.roundToPx() * 2
+    val widened = if (constraints.maxWidth == Constraints.Infinity) constraints
+    else constraints.copy(maxWidth = constraints.maxWidth + extra)
+    val placeable = measurable.measure(widened)
+    layout(placeable.width, placeable.height) {
+        placeable.place(-padding.roundToPx(), 0)
     }
 }
 
@@ -2652,7 +2682,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = contentBottomPadding(state.currentTrack != null)),
         verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
         item(key = "home-top", contentType = "home-header") {
@@ -2921,7 +2951,9 @@ private fun TrendingArtistsShelf(
             )
         }
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
+            modifier = Modifier.bleedHorizontal(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
             items(
                 items = artists,
@@ -3072,9 +3104,9 @@ private fun ResonanceShelf(
             }
         }
         LazyRow(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().bleedHorizontal(16.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(end = 6.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
             itemsIndexed(
                 items = tracks,
@@ -3308,9 +3340,9 @@ private fun PersonalListeningShelf(
             }
         }
         LazyRow(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().bleedHorizontal(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(end = 4.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
             val columns = shelfTracks.chunked(2)
             itemsIndexed(
@@ -4321,7 +4353,7 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+            contentPadding = PaddingValues(bottom = contentBottomPadding(state.currentTrack != null)),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             val queryClean = state.query.trim()
@@ -4964,7 +4996,7 @@ private fun LibraryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 194.dp else 108.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = contentBottomPadding(state.currentTrack != null)),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             item {
@@ -7249,7 +7281,10 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 @Composable
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
     Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        modifier = Modifier
+            .bleedHorizontal(16.dp)
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         moods.forEach { mood ->
@@ -7323,8 +7358,9 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
 @Composable
 private fun HomeAlbumLoadingRow() {
     LazyRow(
+        modifier = Modifier.bleedHorizontal(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(end = 4.dp)
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
         items(4, key = { "home-album-loading-$it" }) {
             Column(
@@ -7361,8 +7397,9 @@ private fun HomeAlbumLoadingRow() {
 private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, onOpen: (AlbumHit) -> Unit) {
     if (albums.isEmpty()) return
     LazyRow(
+        modifier = Modifier.bleedHorizontal(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(end = 4.dp)
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
         itemsIndexed(
             items = albums,
@@ -7470,8 +7507,9 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
 private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     LazyRow(
+        modifier = Modifier.bleedHorizontal(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(end = 4.dp)
+        contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
         itemsIndexed(
             items = tracks,
@@ -8566,7 +8604,7 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 62.dp, bottom = 190.dp),
+            contentPadding = PaddingValues(top = 62.dp, bottom = contentBottomPadding(state.currentTrack != null, extra = 24.dp)),
             verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
             item {
@@ -8942,7 +8980,7 @@ private fun VideoGlassCard(
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = Color(0xF208080B),
+        color = Color(0xFF08080B),
         shape = RoundedCornerShape(0.dp),
         shadowElevation = 12.dp,
         modifier = Modifier
