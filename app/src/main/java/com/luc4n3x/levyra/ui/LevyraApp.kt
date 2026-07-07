@@ -507,7 +507,7 @@ private fun SectionTitle(title: String) {
     }
 }
 @Composable
-private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false) {
+private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false, zoom: Float = 1f) {
     val context = LocalContext.current
     val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
     val model = remember(context, track.id, track.title, track.artist, raw, highRes) {
@@ -531,7 +531,7 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
                 model = request,
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize().scale(zoom)
             )
         }
     }
@@ -1938,7 +1938,9 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                     isResolving = state.isResolving && track.id == state.currentTrack?.id,
                                     isFavorite = track.id in state.favoriteIds,
                                     onClick = { viewModel.playFrom(state.charts, track) },
-                                    onFavorite = { viewModel.toggleFavorite(track) }
+                                    onFavorite = { viewModel.toggleFavorite(track) },
+                                    onAddToPlaylist = { viewModel.openAddToPlaylist(track) },
+                                    onAddToQueue = { viewModel.queueNext(track) }
                                 )
                             }
                         }
@@ -6610,7 +6612,9 @@ private fun ChartRow(
     isResolving: Boolean,
     isFavorite: Boolean,
     onClick: () -> Unit,
-    onFavorite: () -> Unit
+    onFavorite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onAddToQueue: () -> Unit
 ) {
     Surface(
         color = if (isCurrent) LevyraCyan.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.05f),
@@ -6634,7 +6638,7 @@ private fun ChartRow(
                 )
             }
             Box {
-                CoverImage(track, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)))
+                CoverImage(track, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)), zoom = 1.35f)
                 if (isPlaying || isResolving) {
                     Surface(color = Color.Black.copy(alpha = 0.45f), shape = RoundedCornerShape(12.dp), modifier = Modifier.matchParentSize()) {
                         Box(contentAlignment = Alignment.Center) {
@@ -6648,13 +6652,51 @@ private fun ChartRow(
                 Text(track.title, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            IconButton(onClick = onFavorite) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = "Preferito",
-                    tint = if (isFavorite) LevyraPink else LevyraMuted,
-                    modifier = Modifier.size(20.dp)
-                )
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(
+                        imageVector = Icons.Rounded.MoreVert,
+                        contentDescription = "Opzioni",
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = null,
+                                tint = if (isFavorite) LevyraPink else LocalContentColor.current
+                            )
+                        },
+                        onClick = {
+                            expanded = false
+                            onFavorite()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Aggiungi alla coda") },
+                        leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
+                        onClick = {
+                            expanded = false
+                            onAddToQueue()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Aggiungi a playlist") },
+                        leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
+                        onClick = {
+                            expanded = false
+                            onAddToPlaylist()
+                        }
+                    )
+                }
             }
         }
     }
