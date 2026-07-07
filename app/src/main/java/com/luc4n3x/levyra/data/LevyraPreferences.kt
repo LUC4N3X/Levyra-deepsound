@@ -19,10 +19,13 @@ import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.Track
+import androidx.datastore.preferences.core.MutablePreferences
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -58,6 +61,14 @@ data class LevyraPreferencesSnapshot(
 
 class LevyraPreferences(context: Context) {
     private val dataStore = context.applicationContext.levyraDataStore
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // The first DataStore access is expensive (Flow warm-up + disk IO). After it
+    // completes we keep the resolved Preferences in memory so every subsequent
+    // read is instant and never blocks the main thread. Writes update this cache
+    // synchronously and persist to disk asynchronously.
+    @Volatile
+    private var cache: Preferences? = null
 
     fun snapshot(): LevyraPreferencesSnapshot = read(defaultSnapshot()) { snapshotFrom(it) }
 
@@ -392,22 +403,36 @@ class LevyraPreferences(context: Context) {
         return raw.split(',').mapNotNull { it.trim().toIntOrNull() }
     }
 
-    private fun <T> read(default: T, selector: (Preferences) -> T): T = runBlocking(Dispatchers.IO) {
-        dataStore.data
-            .catch { error ->
-                if (error is IOException) {
-                    Timber.w(error, "DataStore read failed")
-                    emit(emptyPreferences())
-                } else {
-                    throw error
+    private fun <T> read(default: T, selector: (Preferences) -> T): T {
+        val cached = cache
+        if (cached != null) return runCatching { selector(cached) }.getOrDefault(default)
+        val resolved = runBlocking(Dispatchers.IO) {
+            dataStore.data
+                .catch { error ->
+                    if (error is IOException) {
+                        Timber.w(error, "DataStore read failed")
+                        emit(emptyPreferences())
+                    } else {
+                        throw error
+                    }
                 }
-            }
-            .map(selector)
-            .first() ?: default
+                .first()
+        }
+        cache = resolved
+        return runCatching { selector(resolved) }.getOrDefault(default)
     }
 
-    private fun write(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
-        runBlocking(Dispatchers.IO) {
+    private fun write(block: (MutablePreferences) -> Unit) {
+        // Update the in-memory cache immediately so subsequent reads on the main
+        // thread reflect the change without waiting for disk IO.
+        val base = cache ?: runCatching { runBlocking(Dispatchers.IO) { dataStore.data.first() } }
+            .getOrDefault(emptyPreferences())
+        val mutated: MutablePreferences = base.toMutablePreferences().apply {
+            runCatching { block(this) }
+        }
+        cache = mutated.toPreferences()
+        // Persist off the main thread; failures are non-fatal (cache still holds truth for the session).
+        ioScope.launch {
             runCatching { dataStore.edit(block) }.onFailure { Timber.w(it, "DataStore write failed") }
         }
     }
