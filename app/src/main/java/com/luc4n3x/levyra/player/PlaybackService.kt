@@ -117,6 +117,7 @@ class PlaybackService : MediaLibraryService() {
             .setLoadControl(loadControl)
             .setRenderersFactory(renderersFactory)
             .setMediaSourceFactory(mergingFactory)
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)

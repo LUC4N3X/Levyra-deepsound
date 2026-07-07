@@ -68,7 +68,7 @@ class OfflineAudioExporter(
             val exported = saveToMusicCollection(embeddedFile.file, playable, embeddedFile.container)
             reportProgress(98)
             val fileName = buildFileName(playable, embeddedFile.container.extension)
-            persistDownload(playable, fileName, exported.uri, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
+            persistDownload(track, playable, fileName, exported.uri, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
             Timber.i("Offline export completed: %s", fileName)
             reportProgress(100)
             OfflineExportResult(
@@ -101,7 +101,7 @@ class OfflineAudioExporter(
     private suspend fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
         reportProgress(12)
         val expectedLength = probeContentLength(track.streamUrl)
-        val downloadUrl = withGoogleVideoRange(track.streamUrl, expectedLength)
+        val downloadUrl = if (useRange) withGoogleVideoRange(track.streamUrl, expectedLength) else track.streamUrl
         val rangeParamApplied = downloadUrl != track.streamUrl
         val request = Request.Builder()
             .url(downloadUrl)
@@ -174,7 +174,7 @@ class OfflineAudioExporter(
         if (!host.endsWith("googlevideo.com")) return url
         if (url.contains("&range=") || url.contains("?range=")) return url
         val separator = if (url.contains('?')) '&' else '?'
-        return "$url${separator}range=0-$contentLength"
+        return "$url${separator}range=0-${contentLength - 1}"
     }
 
     private fun maybeEmbedMetadata(
@@ -208,15 +208,15 @@ class OfflineAudioExporter(
         }
     }
 
-    private suspend fun persistDownload(track: Track, fileName: String, uri: Uri, container: AudioContainer, embeddedMetadata: Boolean) {
+    private suspend fun persistDownload(original: Track, resolved: Track, fileName: String, uri: Uri, container: AudioContainer, embeddedMetadata: Boolean) {
         runCatching {
             LevyraDatabase.get(context).downloadedTracksDao().insert(
                 DownloadEntity(
-                    trackId = track.id,
-                    title = track.title,
-                    artist = track.artist,
-                    album = track.album.ifBlank { "Levyra" },
-                    durationMs = track.durationMs.coerceAtLeast(0L),
+                    trackId = original.id.ifBlank { resolved.id },
+                    title = original.title.ifBlank { resolved.title },
+                    artist = original.artist.ifBlank { resolved.artist },
+                    album = original.album.ifBlank { resolved.album.ifBlank { "Levyra" } },
+                    durationMs = original.durationMs.takeIf { it > 0L } ?: resolved.durationMs.coerceAtLeast(0L),
                     fileName = fileName,
                     uri = uri.toString(),
                     mimeType = container.mimeType,
