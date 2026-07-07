@@ -78,3 +78,16 @@
 
 # ---- Compose (BOM handles most; keep guard for safety) ----
 -dontwarn androidx.compose.**
+
+# ---- SLF4J (transitive, optional binder not shipped) ----
+-dontwarn org.slf4j.**
+-dontwarn org.slf4j.impl.**
+-keep class org.slf4j.** { *; }
+
+# ---- Other optional transitive dependencies referenced but not shipped ----
+-dontwarn javax.annotation.**
+-dontwarn javax.inject.**
+-dontwarn org.codehaus.mojo.animal_sniffer.**
+-dontwarn org.jetbrains.annotations.**
+-dontwarn kotlin.reflect.**
+-dontwarn com.google.errorprone.annotations.**
