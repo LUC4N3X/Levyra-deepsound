@@ -133,8 +133,8 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             isDebuggable = false
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
@@ -210,6 +210,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
     implementation(libs.shimmer)
+    implementation(libs.androidx.profileinstaller)
     debugImplementation(libs.chucker)
     releaseImplementation(libs.chucker.no.op)
     ksp(libs.androidx.room.compiler)
