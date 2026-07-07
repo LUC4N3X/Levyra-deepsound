@@ -125,13 +125,14 @@ class LevyraPlayer(context: Context) {
 
 
     private fun mimeTypeFor(url: String): String {
-        val clean = url.substringBefore('?').lowercase()
+        val clean = url.substringBefore('#').lowercase()
+        val path = clean.substringBefore('?')
         return when {
-            clean.endsWith(".m3u8") -> "application/x-mpegURL"
-            clean.endsWith(".mpd") -> "application/dash+xml"
-            clean.endsWith(".webm") -> "audio/webm"
-            clean.endsWith(".mp3") -> "audio/mpeg"
-            clean.endsWith(".m4a") || clean.endsWith(".mp4") -> "audio/mp4"
+            path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") -> "application/x-mpegURL"
+            path.endsWith(".mpd") -> "application/dash+xml"
+            path.endsWith(".webm") || clean.contains("mime=audio%2fwebm") || clean.contains("mime=audio/webm") -> "audio/webm"
+            path.endsWith(".mp3") || clean.contains("mime=audio%2fmpeg") || clean.contains("mime=audio/mpeg") -> "audio/mpeg"
+            path.endsWith(".m4a") || path.endsWith(".mp4") || clean.contains("mime=audio%2fmp4") || clean.contains("mime=audio/mp4") -> "audio/mp4"
             else -> "audio/mp4"
         }
     }
