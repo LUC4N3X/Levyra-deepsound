@@ -43,6 +43,7 @@ data class LevyraUiState(
     val selectedChartId: String = "it",
     val isLoadingCharts: Boolean = false,
     val homeSections: List<HomeSection> = emptyList(),
+    val homeAlbums: List<AlbumHit> = emptyList(),
     val favorites: List<Track> = emptyList(),
     val favoriteIds: Set<String> = emptySet(),
     val playlists: List<com.luc4n3x.levyra.domain.Playlist> = emptyList(),
