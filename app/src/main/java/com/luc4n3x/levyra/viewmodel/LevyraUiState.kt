@@ -2,6 +2,8 @@ package com.luc4n3x.levyra.viewmodel
 
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
+import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.CacheReport
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ChartRegion
@@ -43,6 +45,12 @@ data class LevyraUiState(
     val selectedChartId: String = "it",
     val isLoadingCharts: Boolean = false,
     val homeSections: List<HomeSection> = emptyList(),
+    val homeAlbums: List<AlbumHit> = emptyList(),
+    val homeAlbumsLoading: Boolean = false,
+    val showAlbum: Boolean = false,
+    val albumLoading: Boolean = false,
+    val albumError: String? = null,
+    val albumDetail: AlbumDetail? = null,
     val favorites: List<Track> = emptyList(),
     val favoriteIds: Set<String> = emptySet(),
     val playlists: List<com.luc4n3x.levyra.domain.Playlist> = emptyList(),
