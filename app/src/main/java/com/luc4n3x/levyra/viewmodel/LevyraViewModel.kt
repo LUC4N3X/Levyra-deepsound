@@ -161,6 +161,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             languageCode = settings.languageCode
         )
         val initialTracks = mergeTracks(cachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
+        val startupAlbums = preferences.loadHomeAlbums(settings.languageCode).ifEmpty {
+            instantAlbumRecommendationsFromTracks(cachedOrbitTracks + settings.recentSearches + favorites, initialTracks, 10)
+        }
         val initialQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), initialTracks)
         val restoredTrack = settings.lastTrack?.copy(streamUrl = "", videoStreamUrl = "")
         pendingSeekMs = settings.lastPositionMs.coerceAtLeast(0L)
@@ -172,6 +175,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 recentSearches = settings.recentSearches,
                 personalOrbitTracks = cachedOrbitTracks,
                 homeSections = startupHomeSections,
+                homeAlbums = startupAlbums,
+                homeAlbumsLoading = startupAlbums.isEmpty(),
                 tracks = initialTracks,
                 queue = initialQueue,
                 searchResults = initialTracks.take(12),
@@ -683,11 +688,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
             val queue = moodEngine.buildQueue(_state.value.selectedMood, flat)
+            val instantAlbums = _state.value.homeAlbums.ifEmpty {
+                instantAlbumRecommendationsFromTracks(_state.value.personalOrbitTracks + _state.value.recentSearches + _state.value.favorites, flat, 10)
+            }
             preferences.saveHomeSections(sections, languageCode)
             _state.update {
                 it.copy(
                     homeSections = sections,
-                    homeAlbums = emptyList(),
+                    homeAlbums = instantAlbums,
+                    homeAlbumsLoading = instantAlbums.isEmpty(),
                     tracks = flat,
                     queue = queue,
                     searchResults = flat.take(12),
@@ -707,10 +716,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun loadHomeAlbums(languageCode: String) {
         viewModelScope.launch {
+            val instantAlbums = instantAlbumRecommendations(_state.value)
+            _state.update { current ->
+                current.copy(
+                    homeAlbums = if (current.homeAlbums.isEmpty() && instantAlbums.isNotEmpty()) instantAlbums else current.homeAlbums,
+                    homeAlbumsLoading = true
+                )
+            }
             val seedQueries = albumRecommendationSeeds(_state.value)
             val albums = runCatching { repository.homeAlbums(languageCode, seedQueries = seedQueries) }.getOrDefault(emptyList())
-            if (_state.value.languageCode != languageCode || albums.isEmpty()) return@launch
-            _state.update { it.copy(homeAlbums = albums) }
+            if (_state.value.languageCode != languageCode) return@launch
+            if (albums.isEmpty()) {
+                _state.update { it.copy(homeAlbumsLoading = false) }
+                return@launch
+            }
+            val mergedAlbums = mergeAlbums(albums, instantAlbums).take(10)
+            preferences.saveHomeAlbums(mergedAlbums, languageCode)
+            _state.update { it.copy(homeAlbums = mergedAlbums, homeAlbumsLoading = false) }
         }
     }
 
@@ -832,6 +854,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             languageCode = languageCode
         )
         val allTracks = mergeTracks(orbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
+        val instantAlbums = preferences.loadHomeAlbums(languageCode).ifEmpty {
+            instantAlbumRecommendationsFromTracks(orbit + _state.value.recentSearches + _state.value.favorites, allTracks, 10)
+        }
         val queue = moodEngine.buildQueue(selectedMood, allTracks)
         exploreCache.clear()
         exploreVideosLoaded = false
@@ -843,7 +868,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 selectedMood = selectedMood,
                 selectedChartId = defaultChartRegion.id,
                 homeSections = homeSections,
-                homeAlbums = emptyList(),
+                homeAlbums = instantAlbums,
+                homeAlbumsLoading = instantAlbums.isEmpty() && refreshRemote,
                 charts = chartTracks,
                 personalOrbitTracks = orbit,
                 tracks = allTracks,
@@ -2014,6 +2040,72 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val replay = queue.sumOf { it.replayScore } / queue.size
         val cache = queue.sumOf { it.cacheScore } / queue.size
         return ((replay * 0.68f) + (cache * 0.32f)).toInt().coerceIn(0, 100)
+    }
+
+    private fun instantAlbumRecommendations(state: LevyraUiState, limit: Int = 10): List<AlbumHit> {
+        return instantAlbumRecommendationsFromTracks(
+            primary = listOfNotNull(state.currentTrack) + state.recentSearches + state.favorites + state.personalOrbitTracks,
+            secondary = state.tracks + state.charts + state.homeSections.flatMap { it.tracks },
+            limit = limit
+        )
+    }
+
+    private fun instantAlbumRecommendationsFromTracks(primary: List<Track>, secondary: List<Track>, limit: Int): List<AlbumHit> {
+        return mergeTracks(primary, secondary)
+            .asSequence()
+            .filter { isInstantAlbumCandidate(it) }
+            .distinctBy { "${it.album.trim().lowercase()}|${it.artist.trim().lowercase()}" }
+            .map { track ->
+                val albumTitle = track.album.trim()
+                val artistName = track.artist.trim()
+                AlbumHit(
+                    title = albumTitle,
+                    artist = artistName,
+                    year = "",
+                    thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+                    query = "$albumTitle $artistName album",
+                    browseId = ""
+                )
+            }
+            .take(limit)
+            .toList()
+    }
+
+    private fun isInstantAlbumCandidate(track: Track): Boolean {
+        val title = track.title.trim()
+        val album = track.album.trim()
+        val artist = track.artist.trim()
+        if (album.length < 2 || artist.length < 2) return false
+        if (album.equals(title, ignoreCase = true)) return false
+        if (album.equals("YouTube", ignoreCase = true) || album.equals("YouTube Music", ignoreCase = true)) return false
+        if (artist.equals("YouTube", ignoreCase = true) || artist.equals("YouTube Music", ignoreCase = true)) return false
+        val lowerAlbum = album.lowercase()
+        if (lowerAlbum.contains("single") || lowerAlbum.contains("singolo") || lowerAlbum == "ep" || lowerAlbum.endsWith(" ep") || lowerAlbum.contains(" ep ")) return false
+        val art = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.trim()
+        if (art.isBlank()) return false
+        val lowerArt = art.lowercase()
+        val looksLikeVideoFrame = lowerArt.contains("/vi/") ||
+            lowerArt.contains("/vi_webp/") ||
+            lowerArt.contains("ytimg.com/an_webp") ||
+            lowerArt.contains("hqdefault") ||
+            lowerArt.contains("mqdefault") ||
+            lowerArt.contains("sddefault") ||
+            lowerArt.contains("maxresdefault") ||
+            lowerArt.contains("hq720") ||
+            lowerArt.endsWith("default.jpg") ||
+            lowerArt.endsWith("default.webp")
+        return !looksLikeVideoFrame
+    }
+
+    private fun mergeAlbums(primary: List<AlbumHit>, secondary: List<AlbumHit>): List<AlbumHit> {
+        val map = LinkedHashMap<String, AlbumHit>()
+        (primary + secondary).forEach { album ->
+            val key = "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}"
+            if (album.title.isNotBlank() && album.artist.isNotBlank() && album.thumbnailUrl.isNotBlank() && !map.containsKey(key)) {
+                map[key] = album
+            }
+        }
+        return map.values.toList()
     }
 
     private fun mergeTracks(old: List<Track>, incoming: List<Track>): List<Track> {
