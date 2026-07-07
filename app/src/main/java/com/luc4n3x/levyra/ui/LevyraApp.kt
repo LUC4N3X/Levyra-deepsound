@@ -158,6 +158,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
@@ -190,6 +191,7 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.SearchFilter
+import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
@@ -886,6 +888,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onPlay = viewModel::playAlbumSong,
                     onFavorite = viewModel::toggleFavorite,
                     onDownload = viewModel::exportTrack,
+                    onDownloadAlbum = viewModel::exportCurrentAlbum,
                     onOpenArtist = viewModel::openArtist,
                     onClose = viewModel::closeAlbum
                 )
@@ -899,6 +902,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onDownload = viewModel::exportTrack,
                     onToggleFollow = viewModel::toggleFollowArtist,
                     onOpenArtist = viewModel::openArtistFromHit,
+                    onOpenRelease = viewModel::openArtistRelease,
                     onClose = viewModel::closeArtist
                 )
             }
@@ -1068,6 +1072,7 @@ private fun AlbumOverlay(
     onPlay: (Track) -> Unit,
     onFavorite: (Track) -> Unit,
     onDownload: (Track) -> Unit,
+    onDownloadAlbum: () -> Unit,
     onOpenArtist: (Track) -> Unit,
     onClose: () -> Unit
 ) {
@@ -1160,7 +1165,29 @@ private fun AlbumOverlay(
                             accentStart = accentStart,
                             accentEnd = accentEnd,
                             onPlayAll = onPlayAll,
-                            onDownload = { tracks.forEach(onDownload) },
+                            onDownload = onDownloadAlbum,
+                            onOpenArtist = {
+                                val artistTrack = tracks.firstOrNull()?.copy(artist = album.artist) ?: Track(
+                                    id = "album-artist-${album.artist}",
+                                    title = album.title,
+                                    artist = album.artist,
+                                    album = album.title,
+                                    durationMs = 0L,
+                                    streamUrl = "",
+                                    videoUrl = "",
+                                    thumbnailUrl = album.thumbnailUrl,
+                                    largeThumbnailUrl = album.thumbnailUrl,
+                                    source = "Album",
+                                    moodTags = emptySet(),
+                                    energy = 50,
+                                    vocal = 50,
+                                    replayScore = 50,
+                                    cacheScore = 50,
+                                    accentStart = accentStart.toArgb(),
+                                    accentEnd = accentEnd.toArgb()
+                                )
+                                onOpenArtist(artistTrack)
+                            },
                             onShare = {
                                 val shareText = buildString {
                                     append(album.title)
@@ -1260,6 +1287,7 @@ private fun AlbumHeroCard(
     accentEnd: Color,
     onPlayAll: () -> Unit,
     onDownload: () -> Unit,
+    onOpenArtist: () -> Unit,
     onShare: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1336,9 +1364,11 @@ private fun AlbumHeroCard(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     AlbumActionButton(icon = Icons.Rounded.Download, label = "Offline", enabled = trackCount > 0, onClick = onDownload)
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    AlbumActionButton(icon = Icons.Rounded.Person, label = "Artist", enabled = album.artist.isNotBlank(), onClick = onOpenArtist)
+                    Spacer(modifier = Modifier.width(12.dp))
                     AlbumPlayButton(enabled = trackCount > 0, onClick = onPlayAll)
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     AlbumActionButton(icon = Icons.Rounded.Share, label = "Share", enabled = true, onClick = onShare)
                 }
             }
@@ -1474,6 +1504,7 @@ private fun ArtistOverlay(
     onDownload: (Track) -> Unit,
     onToggleFollow: () -> Unit,
     onOpenArtist: (ArtistHit) -> Unit,
+    onOpenRelease: (ArtistRelease, String) -> Unit,
     onClose: () -> Unit
 ) {
     val blocker = remember { MutableInteractionSource() }
@@ -1556,11 +1587,11 @@ private fun ArtistOverlay(
                     }
                     if (profile.albums.isNotEmpty()) {
                         item { SectionTitle("💿 Album") }
-                        item { ArtistReleaseRow(profile.albums) }
+                        item { ArtistReleaseRow(profile.albums, profile.name, onOpenRelease) }
                     }
                     if (profile.singles.isNotEmpty()) {
                         item { SectionTitle("🎵 Singoli ed EP") }
-                        item { ArtistReleaseRow(profile.singles) }
+                        item { ArtistReleaseRow(profile.singles, profile.name, onOpenRelease) }
                     }
                     if (profile.relatedArtists.isNotEmpty()) {
                         item { SectionTitle("✨ ${LocalLevyraStrings.current.similarArtists}") }
@@ -1669,11 +1700,11 @@ private fun ArtistBio(bio: String) {
 }
 
 @Composable
-private fun ArtistReleaseRow(releases: List<ArtistRelease>) {
+private fun ArtistReleaseRow(releases: List<ArtistRelease>, artistName: String, onOpen: (ArtistRelease, String) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(releases, key = { "rel-${it.browseId.ifBlank { it.title }}" }) { release ->
             Column(
-                modifier = Modifier.width(140.dp),
+                modifier = Modifier.width(140.dp).pressable { onOpen(release, artistName) },
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Box(
@@ -2076,6 +2107,67 @@ private fun QueueOverlay(state: LevyraUiState, onPlay: (Track) -> Unit, onClose:
 }
 
 @Composable
+private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> Unit) {
+    val artists = profile.topArtists.take(3).joinToString(" • ") { it.label }
+    val albums = profile.topAlbums.take(2).joinToString(" • ") { it.label.substringBefore(" • ") }
+    Surface(
+        color = Color.White.copy(alpha = 0.055f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+        shape = RoundedCornerShape(28.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Box {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.16f), LevyraViolet.copy(alpha = 0.10f), Color.Transparent)))
+            )
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet))),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.GraphicEq, null, tint = Color.White, modifier = Modifier.size(23.dp))
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Smart Music Profile", color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            if (profile.isWarm) "Personalizzazione attiva" else "Sto imparando dai tuoi ascolti",
+                            color = LevyraMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Surface(
+                        color = LevyraCyan.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.24f)),
+                        shape = CircleShape,
+                        modifier = Modifier.pressable(onClick = onPlayFlow)
+                    ) {
+                        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
+                            Text("Flow", color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
+                if (artists.isNotBlank()) {
+                    Text("Artisti: $artists", color = LevyraText.copy(alpha = 0.88f), fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                if (albums.isNotBlank()) {
+                    Text("Album mood: $albums", color = LevyraMuted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
@@ -2133,12 +2225,14 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
                     )
                 }
             }
-            if (state.lyricsSynced) {
-                item {
-                    Surface(color = LevyraCyan.copy(alpha = 0.2f), shape = CircleShape) {
-                        Text(strings.synced, color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
-                    }
-                }
+            item {
+                LyricsProStatusRow(
+                    provider = state.lyricsProvider,
+                    synced = state.lyricsSynced,
+                    cached = state.lyricsCached,
+                    confidence = state.lyricsConfidence,
+                    syncedLabel = strings.synced
+                )
             }
             if (state.lyrics.isEmpty()) {
                 item { Text(strings.lyricsUnavailable, color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
@@ -2164,6 +2258,23 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LyricsProStatusRow(provider: String, synced: Boolean, cached: Boolean, confidence: Int, syncedLabel: String) {
+    val label = buildString {
+        append(if (synced) syncedLabel else "Lyrics Pro")
+        if (provider.isNotBlank()) append(" • ").append(provider)
+        if (cached) append(" • cache")
+        if (confidence > 0) append(" • ").append(confidence).append("%")
+    }
+    Surface(
+        color = if (synced) LevyraCyan.copy(alpha = 0.18f) else LevyraViolet.copy(alpha = 0.16f),
+        border = BorderStroke(1.dp, if (synced) LevyraCyan.copy(alpha = 0.28f) else LevyraViolet.copy(alpha = 0.26f)),
+        shape = CircleShape
+    ) {
+        Text(label, color = if (synced) LevyraCyan else LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
     }
 }
 
@@ -2392,6 +2503,15 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     isResolving = state.isResolving,
                     progress = progressOf(state.positionMs, state.durationMs),
                     onResume = viewModel::togglePlay
+                )
+            }
+        }
+
+        if (state.smartProfile.topArtists.isNotEmpty() || state.smartProfile.topAlbums.isNotEmpty()) {
+            item(key = "home-smart-profile", contentType = "home-card") {
+                SmartMusicProfileCard(
+                    profile = state.smartProfile,
+                    onPlayFlow = viewModel::playDailyFlow
                 )
             }
         }
@@ -5252,6 +5372,9 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                         Text(if (playlist.size == 1) "1 brano" else "${playlist.size} brani", color = LevyraMuted, fontSize = 14.sp)
                     }
                     if (playlist.tracks.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.exportOpenPlaylist() }) {
+                            Icon(Icons.Rounded.DownloadDone, contentDescription = "Scarica playlist", tint = LevyraViolet, modifier = Modifier.size(27.dp))
+                        }
                         IconButton(onClick = { viewModel.playPlaylist(playlist.id) }) {
                             Icon(Icons.Rounded.PlaylistPlay, contentDescription = "Riproduci tutto", tint = LevyraCyan, modifier = Modifier.size(30.dp))
                         }
