@@ -147,7 +147,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
@@ -543,7 +542,6 @@ fun LevyraApp(viewModel: LevyraViewModel) {
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     val accent = if (state.dynamicColor) state.currentTrack ?: state.tracks.firstOrNull() else null
-    var showLaunchExperience by rememberSaveable { mutableStateOf(true) }
     val overlayEnter = if (state.animationsEnabled) fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) else EnterTransition.None
     val overlayExit = if (state.animationsEnabled) fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing)) else ExitTransition.None
     val miniEnter = if (state.animationsEnabled) {
@@ -628,11 +626,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 .fillMaxSize()
                 .background(LevyraBlack)
         ) {
-            LevyraBackground(
-                accentStart = accent?.accentStart,
-                accentEnd = accent?.accentEnd,
-                subtleMotion = state.animationsEnabled && state.selectedTab != LevyraTab.Home
-            )
+            LevyraBackground(accent?.accentStart, accent?.accentEnd)
 
             AnimatedContent(
                 targetState = state.selectedTab,
@@ -808,18 +802,6 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                 )
             }
 
-            AnimatedVisibility(
-                visible = showLaunchExperience,
-                enter = EnterTransition.None,
-                exit = fadeOut(animationSpec = tween(240, easing = FastOutSlowInEasing))
-            ) {
-                LevyraLaunchExperience(
-                    accentStart = accent?.accentStart?.let { Color(it) } ?: LevyraCyan,
-                    accentEnd = accent?.accentEnd?.let { Color(it) } ?: LevyraViolet,
-                    animationsEnabled = state.animationsEnabled,
-                    onFinished = { showLaunchExperience = false }
-                )
-            }
         }
     }
 }
@@ -1476,7 +1458,7 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
             .fillMaxSize()
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
-        LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd, subtleMotion = state.animationsEnabled)
+        LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f))) // Dark overlay for readability
         
         LazyColumn(
@@ -1547,98 +1529,74 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
 }
 
 @Composable
-private fun LevyraBackground(accentStart: Int?, accentEnd: Int?, subtleMotion: Boolean) {
+private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     val startColor = accentStart?.let { Color(it) } ?: LevyraCyan
     val endColor = accentEnd?.let { Color(it) } ?: LevyraViolet
 
     val animStart by animateColorAsState(
         targetValue = startColor,
-        animationSpec = tween(1800, easing = LinearOutSlowInEasing),
+        animationSpec = tween(2000, easing = LinearOutSlowInEasing),
         label = "bg-color-start-transition"
     )
     val animEnd by animateColorAsState(
         targetValue = endColor,
-        animationSpec = tween(1800, easing = LinearOutSlowInEasing),
+        animationSpec = tween(2000, easing = LinearOutSlowInEasing),
         label = "bg-color-end-transition"
     )
 
-    val offsetY by if (subtleMotion) {
-        rememberInfiniteTransition(label = "carbon-bg-movement").animateFloat(
-            initialValue = -14f,
-            targetValue = 14f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(22000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "carbon-bg-offset"
-        )
-    } else {
-        remember { mutableStateOf(0f) }
-    }
+    val infiniteTransition = rememberInfiniteTransition(label = "bg-movement")
+    val offsetY by infiniteTransition.animateFloat(
+        initialValue = -60f,
+        targetValue = 60f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bg-offset"
+    )
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF050607),
-                        Color(0xFF080A0A),
-                        Color(0xFF020202),
-                        Color(0xFF000000)
-                    )
-                )
-            )
+            .background(Color(0xFF020202)) // Absolute dark base
     ) {
+        // Atmospheric Mesh Clouds using Radial Gradients
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { translationY = offsetY }
+                .graphicsLayer {
+                    translationY = offsetY
+                }
         ) {
+            // Top soft cloud
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(520.dp)
+                    .height(600.dp)
                     .align(Alignment.TopCenter)
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.035f),
-                                animStart.copy(alpha = 0.045f),
+                                animStart.copy(alpha = 0.12f),
                                 Color.Transparent
                             ),
-                            radius = 980f
+                            radius = 1200f
                         )
                     )
             )
+            // Bottom soft cloud
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(620.dp)
+                    .height(800.dp)
                     .align(Alignment.BottomEnd)
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                animEnd.copy(alpha = 0.035f),
-                                Color(0xFF111817).copy(alpha = 0.20f),
+                                animEnd.copy(alpha = 0.08f),
                                 Color.Transparent
                             ),
-                            radius = 1180f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .align(Alignment.Center)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.018f),
-                                Color.Transparent
-                            )
+                            radius = 1400f
                         )
                     )
             )
@@ -2336,7 +2294,7 @@ private fun PersonalListeningCard(
         ),
         shape = RoundedCornerShape(20.dp),
         modifier = Modifier
-            .size(152.dp)
+            .size(140.dp)
             .pressable(onClick = onClick)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -2352,8 +2310,8 @@ private fun PersonalListeningCard(
                         Brush.verticalGradient(
                             0.0f to Color.Black.copy(alpha = 0.01f),
                             0.56f to Color.Black.copy(alpha = 0.03f),
-                            0.78f to Color.Black.copy(alpha = 0.48f),
-                            1.0f to Color.Black.copy(alpha = 0.88f)
+                            0.78f to Color.Black.copy(alpha = 0.36f),
+                            1.0f to Color.Black.copy(alpha = 0.76f)
                         )
                     )
             )
@@ -2389,8 +2347,8 @@ private fun PersonalListeningCard(
                 Text(
                     text = track.title,
                     color = LevyraText,
-                    fontSize = 13.4.sp,
-                    lineHeight = 15.2.sp,
+                    fontSize = 12.8.sp,
+                    lineHeight = 14.3.sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -2398,8 +2356,8 @@ private fun PersonalListeningCard(
                 Text(
                     text = track.artist,
                     color = LevyraText.copy(alpha = 0.76f),
-                    fontSize = 11.2.sp,
-                    lineHeight = 13.sp,
+                    fontSize = 10.8.sp,
+                    lineHeight = 12.3.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -4466,7 +4424,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             .fillMaxSize()
             .background(LevyraBlack)
     ) {
-        LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd, subtleMotion = state.animationsEnabled)
+        LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f))) // Subtle darkening
 
         LazyColumn(
@@ -5491,49 +5449,27 @@ private fun SettingsMiniButton(
 
 @Composable
 private fun LevyraLogoMark(size: Dp = 58.dp) {
-    val infiniteTransition = rememberInfiniteTransition(label = "haloTransition")
-    val haloScale by infiniteTransition.animateFloat(
-        initialValue = 1.15f,
-        targetValue = 1.45f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "haloScale"
-    )
-    val haloAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "haloAlpha"
-    )
-
     Box(contentAlignment = Alignment.Center) {
-        // Animated breathing neon halo behind the logo
         Box(
             modifier = Modifier
-                .size(size * haloScale)
-                .blur(20.dp)
+                .size(size * 1.22f)
+                .blur(18.dp)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            LevyraCyan.copy(alpha = haloAlpha),
-                            LevyraViolet.copy(alpha = haloAlpha * 0.6f),
+                            LevyraCyan.copy(alpha = 0.24f),
+                            LevyraViolet.copy(alpha = 0.16f),
                             Color.Transparent
                         )
                     ),
                     CircleShape
                 )
         )
-        // Premium glass-like container
         Box(
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(Color(0xFF1A1B22)) // Dark sleek background 
+                .background(Color(0xFF1A1B22))
                 .border(
                     width = 1.5.dp,
                     brush = Brush.linearGradient(
@@ -5548,11 +5484,10 @@ private fun LevyraLogoMark(size: Dp = 58.dp) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // The logo filling the entire circle
             Image(
                 painter = painterResource(id = R.drawable.levyra_logo),
                 contentDescription = "Logo Levyra",
-                contentScale = ContentScale.Crop, // Crucial to make it fill the circle and look native
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
         }
