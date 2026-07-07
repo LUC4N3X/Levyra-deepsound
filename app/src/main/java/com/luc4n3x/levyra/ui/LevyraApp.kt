@@ -4447,18 +4447,20 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    IconButton(
-                        onClick = {
-                            viewModel.closePlayer()
-                            if (!viewModel.navigateBack()) viewModel.selectTab(LevyraTab.Home)
-                        }
-                    ) {
-                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = strings.back, tint = LevyraText, modifier = Modifier.size(36.dp))
-                    }
+                    PlayerRoundIconButton(
+                        icon = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = strings.back,
+                        size = 42.dp,
+                        iconSize = 28.dp,
+                        tint = LevyraText,
+                        background = Color.White.copy(alpha = 0.075f),
+                        onClick = { viewModel.selectTab(LevyraTab.Home) }
+                    )
                     if (track != null && track.videoUrl.isNotBlank()) {
                         Row(
                             modifier = Modifier
                                 .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(500.dp))
+                                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(500.dp))
                                 .padding(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -4482,8 +4484,32 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             Text("RIPRODUZIONE DA ${track?.source ?: "LEVYRA"}", color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                    IconButton(onClick = { viewModel.openAudioQualityPanel() }) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = "Opzioni", tint = LevyraText)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PlayerRoundIconButton(
+                            icon = Icons.Rounded.Close,
+                            contentDescription = "Chiudi player",
+                            size = 42.dp,
+                            iconSize = 22.dp,
+                            tint = Color.White,
+                            background = Color.White.copy(alpha = 0.075f),
+                            borderColor = LevyraCyan.copy(alpha = 0.18f),
+                            onClick = {
+                                viewModel.closePlayer()
+                                viewModel.selectTab(LevyraTab.Home)
+                            }
+                        )
+                        PlayerRoundIconButton(
+                            icon = Icons.Rounded.MoreVert,
+                            contentDescription = "Opzioni",
+                            size = 42.dp,
+                            iconSize = 24.dp,
+                            tint = LevyraText,
+                            background = Color.White.copy(alpha = 0.055f),
+                            onClick = { viewModel.openAudioQualityPanel() }
+                        )
                     }
                 }
             }
@@ -4690,33 +4716,57 @@ private fun MainPlayerControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        IconButton(onClick = onShuffle) {
-            Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffleOn) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
-        }
-        IconButton(onClick = onPrevious) {
-            Icon(Icons.Rounded.SkipPrevious, "Precedente", tint = LevyraText, modifier = Modifier.size(40.dp))
-        }
+        PlayerRoundIconButton(
+            icon = Icons.Rounded.Shuffle,
+            contentDescription = "Shuffle",
+            tint = if (shuffleOn) LevyraCyan else LevyraMuted,
+            background = Color.White.copy(alpha = if (shuffleOn) 0.12f else 0.055f),
+            borderColor = if (shuffleOn) LevyraCyan.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.08f),
+            onClick = onShuffle
+        )
+        PlayerRoundIconButton(
+            icon = Icons.Rounded.SkipPrevious,
+            contentDescription = "Precedente",
+            size = 52.dp,
+            iconSize = 32.dp,
+            tint = LevyraText,
+            background = Color.White.copy(alpha = 0.065f),
+            onClick = onPrevious
+        )
         Box(
             modifier = Modifier
-                .size(68.dp)
-                .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.92f), Color(0xFF6D7CFF))), CircleShape)
+                .size(72.dp)
+                .shadow(22.dp, CircleShape, clip = false)
+                .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.94f), LevyraViolet.copy(alpha = 0.88f))), CircleShape)
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
                 .pressable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {
             if (isResolving) CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = LevyraBlack)
-            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(36.dp))
+            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(38.dp))
         }
-        IconButton(onClick = onNext) {
-            Icon(Icons.Rounded.SkipNext, "Successivo", tint = LevyraText, modifier = Modifier.size(40.dp))
-        }
+        PlayerRoundIconButton(
+            icon = Icons.Rounded.SkipNext,
+            contentDescription = "Successivo",
+            size = 52.dp,
+            iconSize = 32.dp,
+            tint = LevyraText,
+            background = Color.White.copy(alpha = 0.065f),
+            onClick = onNext
+        )
         val repeatIcon = if (repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
-        IconButton(onClick = onRepeat) {
-            Icon(repeatIcon, "Repeat", tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
-        }
+        PlayerRoundIconButton(
+            icon = repeatIcon,
+            contentDescription = "Repeat",
+            tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan else LevyraMuted,
+            background = Color.White.copy(alpha = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) 0.12f else 0.055f),
+            borderColor = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.08f),
+            onClick = onRepeat
+        )
     }
 }
 
@@ -6876,75 +6926,154 @@ private fun MiniPlayer(
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     Surface(
-        color = Color(0xFF181818), // Dark docked background
-        shape = RoundedCornerShape(0.dp),
-        modifier = Modifier.fillMaxWidth()
+        color = Color.Transparent,
+        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.075f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(18.dp, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp), clip = false)
     ) {
-        Column {
+        Column(
+            modifier = Modifier.background(
+                Brush.linearGradient(
+                    listOf(
+                        accentStart.copy(alpha = 0.18f),
+                        Color(0xFF171717),
+                        Color(0xFF101010),
+                        accentEnd.copy(alpha = 0.12f)
+                    )
+                )
+            )
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
-                    .pressable(onClick = onOpen)
-                    .padding(horizontal = 16.dp),
+                    .height(68.dp)
+                    .padding(start = 14.dp, end = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                CoverImage(
-                    track,
-                    Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .pressable(onClick = onOpen)
+                ) {
+                    CoverImage(track, Modifier.fillMaxSize())
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(12.dp))
+                    )
+                }
                 Column(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .pressable(pressedScale = 0.985f, onClick = onOpen),
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = track.title,
                         color = Color.White,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = track.artist,
-                        color = Color(0xFFB3B3B3), // Muted silver
+                        color = LevyraMuted,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(
-                    onClick = onToggle,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    if (isResolving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = LevyraCyan
-                        )
-                    } else {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
+                MiniPlayerToggleButton(
+                    isPlaying = isPlaying,
+                    isResolving = isResolving,
+                    onToggle = onToggle
+                )
+                PlayerRoundIconButton(
+                    icon = Icons.Rounded.Close,
+                    contentDescription = "Chiudi player",
+                    size = 38.dp,
+                    iconSize = 19.dp,
+                    tint = Color.White.copy(alpha = 0.90f),
+                    background = Color.White.copy(alpha = 0.070f),
+                    borderColor = Color.White.copy(alpha = 0.085f),
+                    onClick = onClose
+                )
             }
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(1.5.dp)
-                    .background(LevyraCyan)
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(Color.White.copy(alpha = 0.055f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniPlayerToggleButton(
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onToggle: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.96f), LevyraViolet.copy(alpha = 0.74f))), CircleShape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)), CircleShape)
+            .pressable(onClick = onToggle),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isResolving) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                color = LevyraBlack
+            )
+        } else {
+            Icon(
+                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (isPlaying) "Pausa" else "Riproduci",
+                tint = LevyraBlack,
+                modifier = Modifier.size(25.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun PlayerRoundIconButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    size: Dp = 44.dp,
+    iconSize: Dp = 22.dp,
+    tint: Color = LevyraText,
+    background: Color = Color.White.copy(alpha = 0.065f),
+    borderColor: Color = Color.White.copy(alpha = 0.085f),
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .background(background, CircleShape)
+            .border(BorderStroke(1.dp, borderColor), CircleShape)
+            .pressable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(iconSize))
     }
 }
 
