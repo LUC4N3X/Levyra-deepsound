@@ -255,7 +255,14 @@ data class AlbumHit(
     val artist: String,
     val year: String,
     val thumbnailUrl: String,
-    val query: String
+    val query: String,
+    val browseId: String = ""
+)
+
+data class AlbumDetail(
+    val album: AlbumHit,
+    val description: String,
+    val tracks: List<Track>
 )
 
 data class SearchResults(
