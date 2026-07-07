@@ -292,7 +292,7 @@ data class LevyraStrings(
                 quickPicks = "Scelte rapide",
                 play = "Riproduci",
                 newReleases = "Nuove uscite",
-                albumsForYou = "Recommended Albums",
+                albumsForYou = "Album per te",
                 top50Unavailable = "Top 50 non disponibile, riprova più tardi",
                 artists = "👤 Artisti",
                 albumsAndSingles = "💿 Album e singoli",
