@@ -1110,13 +1110,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(offlineExportMessage = "Già scaricato: ${track.title}") }
             return
         }
-        activeDownloadTitles[downloadKey] = track.title.ifBlank { "brano" }
+        val downloadTitle = track.title.ifBlank { "brano" }
+        activeDownloadTitles[downloadKey] = downloadTitle
         _state.update {
             it.copy(
                 isOfflineExporting = true,
-                offlineExportMessage = "Download 1% · ${activeDownloadTitles[downloadKey]}",
+                offlineExportMessage = null,
                 downloadingTrackIds = it.downloadingTrackIds + downloadKey,
-                downloadProgressByTrackId = it.downloadProgressByTrackId + (downloadKey to 1)
+                downloadProgressByTrackId = it.downloadProgressByTrackId + (downloadKey to 1),
+                downloadTitleByTrackId = it.downloadTitleByTrackId + (downloadKey to downloadTitle)
             )
         }
         viewModelScope.launch {
@@ -1152,7 +1154,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     _state.update {
                         it.copy(
                             downloadingTrackIds = it.downloadingTrackIds - downloadKey,
-                            downloadProgressByTrackId = it.downloadProgressByTrackId - downloadKey
+                            downloadProgressByTrackId = it.downloadProgressByTrackId - downloadKey,
+                            downloadTitleByTrackId = it.downloadTitleByTrackId - downloadKey
                         )
                     }
                     throw error
@@ -1183,7 +1186,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 offlineExportMessage = "Salvato in $destinationLabel: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
-                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId
+                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,
+                downloadTitleByTrackId = it.downloadTitleByTrackId - trackId
             )
         }
     }
@@ -1197,7 +1201,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 offlineExportMessage = cleanUserError(message),
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
-                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId
+                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,
+                downloadTitleByTrackId = it.downloadTitleByTrackId - trackId
             )
         }
     }
@@ -1223,12 +1228,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (trackId !in it.downloadingTrackIds) {
                 it
             } else {
-                val title = activeDownloadTitles[trackId].orEmpty()
-                val previous = it.downloadProgressByTrackId[trackId] ?: 0
-                val message = if (title.isBlank() || safeProgress < previous || safeProgress - previous < 3) it.offlineExportMessage else "Download $safeProgress% · $title"
                 it.copy(
-                    downloadProgressByTrackId = it.downloadProgressByTrackId + (trackId to safeProgress),
-                    offlineExportMessage = message
+                    downloadProgressByTrackId = it.downloadProgressByTrackId + (trackId to safeProgress)
                 )
             }
         }
