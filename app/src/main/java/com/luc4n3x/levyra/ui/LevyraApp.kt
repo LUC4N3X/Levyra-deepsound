@@ -435,14 +435,17 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
         if (model != null) {
             val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 120 else 0
-            AsyncImage(
-                model = ImageRequest.Builder(context)
+            val request = remember(context, model, crossfadeMs) {
+                ImageRequest.Builder(context)
                     .data(model)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .networkCachePolicy(CachePolicy.ENABLED)
                     .crossfade(crossfadeMs)
-                    .build(),
+                    .build()
+            }
+            AsyncImage(
+                model = request,
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
@@ -798,6 +801,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onLater = { showLanguageRestartDialog = false }
                 )
             }
+
         }
     }
 }
@@ -1065,7 +1069,11 @@ private fun ReleaseRadarRow(
     onArtist: (String) -> Unit
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(entries, key = { "radar-${it.artistName}-${it.release.browseId.ifBlank { it.release.title }}" }) { entry ->
+        items(
+            items = entries,
+            key = { "radar-${it.artistName}-${it.release.browseId.ifBlank { it.release.title }}" },
+            contentType = { "release-radar-card" }
+        ) { entry ->
             Column(
                 modifier = Modifier.width(148.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -1080,7 +1088,7 @@ private fun ReleaseRadarRow(
                 ) {
                     if (entry.release.thumbnailUrl.isNotBlank()) {
                         AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(entry.release.thumbnailUrl).crossfade(true).build(),
+                            model = ImageRequest.Builder(LocalContext.current).data(entry.release.thumbnailUrl).crossfade(false).build(),
                             contentDescription = entry.release.title,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.matchParentSize()
@@ -1620,29 +1628,30 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         state.homeSections.filter { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
     }
     val secondaryPreloadTracks = remember(resonanceTracks, newReleases) {
-        resonanceTracks + (newReleases?.tracks ?: emptyList())
+        (resonanceTracks + (newReleases?.tracks ?: emptyList())).distinctBy { it.id }.take(18)
     }
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
         if (personalTracks.isNotEmpty()) {
             LevyraArtworkCache.preloadPriority(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
             LevyraArtworkCache.cachePersistent(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
-            LevyraArtworkCache.preloadPriority(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
         }
-        LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 18)
+        LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 14)
     }
+    val homeListState = rememberLazyListState()
     LazyColumn(
+        state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
-        verticalArrangement = Arrangement.spacedBy(32.dp)
+        verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
-        item {
+        item(key = "home-top", contentType = "home-header") {
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
                 MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
             }
         }
         if (personalTracks.isNotEmpty()) {
-            item {
+            item(key = "home-personal", contentType = "home-shelf") {
                 PersonalListeningShelf(
                     tracks = personalTracks,
                     currentId = state.currentTrack?.id,
@@ -1654,7 +1663,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
         if (resonanceTracks.isNotEmpty()) {
-            item {
+            item(key = "home-resonance", contentType = "home-shelf") {
                 ResonanceShelf(
                     tracks = resonanceTracks,
                     currentId = state.currentTrack?.id,
@@ -1666,7 +1675,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
         if (state.currentTrack != null) {
-            item {
+            item(key = "home-continue", contentType = "home-card") {
                 ContinueListeningCard(
                     track = state.currentTrack,
                     isPlaying = state.isPlaying,
@@ -1677,7 +1686,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
         if (trendingArtists.isNotEmpty()) {
-            item {
+            item(key = "home-trending-artists", contentType = "home-shelf") {
                 TrendingArtistsShelf(
                     artists = trendingArtists,
                     onArtistClick = viewModel::openArtistByName
@@ -1685,10 +1694,10 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
         if (state.releaseRadar.isNotEmpty()) {
-            item(key = "sec-release-radar-header") {
+            item(key = "sec-release-radar-header", contentType = "home-section-header") {
                 SectionTitle("📡 ${strings.releaseRadar}")
             }
-            item(key = "sec-release-radar-row") {
+            item(key = "sec-release-radar-row", contentType = "home-horizontal-row") {
                 ReleaseRadarRow(
                     entries = state.releaseRadar,
                     onOpen = { entry -> viewModel.searchNow("${entry.release.title} ${entry.artistName}") },
@@ -1697,18 +1706,18 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
         if (state.similarArtists.isNotEmpty()) {
-            item(key = "sec-similar-artists-header") {
+            item(key = "sec-similar-artists-header", contentType = "home-section-header") {
                 SectionTitle("✨ ${strings.similarToFollowed}")
             }
-            item(key = "sec-similar-artists-row") {
+            item(key = "sec-similar-artists-row", contentType = "home-horizontal-row") {
                 ArtistHitRow(state.similarArtists, onClick = viewModel::openArtistFromHit)
             }
         }
         if (newReleases != null && newReleases.tracks.isNotEmpty()) {
-            item(key = "sec-new-releases-header") {
+            item(key = "sec-new-releases-header", contentType = "home-section-header") {
                 SectionHeaderAction(strings.newReleases, onPlayAll = { viewModel.playAll(newReleases.tracks) })
             }
-            item(key = "sec-new-releases-row") {
+            item(key = "sec-new-releases-row", contentType = "home-horizontal-row") {
                 AlbumCardRow(
                     tracks = newReleases.tracks,
                     currentId = state.currentTrack?.id,
@@ -1720,10 +1729,10 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         otherSections.forEachIndexed { index, section ->
             if (section.tracks.isNotEmpty()) {
                 val title = if (index == 0) strings.albumsForYou else section.title
-                item(key = "sec-other-${index}-header") {
+                item(key = "sec-other-${index}-header", contentType = "home-section-header") {
                     SectionHeaderAction(title, onPlayAll = { viewModel.playAll(section.tracks) })
                 }
-                item(key = "sec-other-${index}-row") {
+                item(key = "sec-other-${index}-row", contentType = "home-horizontal-row") {
                     AlbumCardRow(
                         tracks = section.tracks,
                         currentId = state.currentTrack?.id,
@@ -1733,15 +1742,15 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
         }
-        item {
+        item(key = "home-chart-title", contentType = "home-section-header") {
             val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
             SectionHeaderAction("Top 50 ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
         }
-        item {
+        item(key = "home-chart-regions", contentType = "home-horizontal-row") {
             ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
         }
         if (state.charts.isEmpty()) {
-            item {
+            item(key = "home-chart-empty", contentType = "home-card") {
                 if (state.isLoadingCharts) {
                     ChartLoadingSkeleton()
                 } else {
@@ -1750,10 +1759,14 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
         }
         if (state.charts.isNotEmpty()) {
-            item {
+            item(key = "home-chart-row", contentType = "home-horizontal-row") {
                 LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     val chunks = state.charts.chunked(4)
-                    itemsIndexed(chunks) { chunkIndex, chunk ->
+                    itemsIndexed(
+                        items = chunks,
+                        key = { chunkIndex, chunk -> "chart-column-$chunkIndex-${chunk.joinToString("-") { it.id }}" },
+                        contentType = { _, _ -> "chart-column" }
+                    ) { chunkIndex, chunk ->
                         Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             chunk.forEachIndexed { itemIndex, track ->
                                 val rank = chunkIndex * 4 + itemIndex + 1
@@ -1773,7 +1786,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
         }
-        item { StatusBlock(state) }
+        item(key = "home-status", contentType = "home-card") { StatusBlock(state) }
     }
 }
 
@@ -1865,7 +1878,11 @@ private fun TrendingArtistsShelf(
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            items(artists) { artist ->
+            items(
+                items = artists,
+                key = { it.name },
+                contentType = { "trending-artist" }
+            ) { artist ->
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
@@ -2008,7 +2025,11 @@ private fun ResonanceShelf(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding = PaddingValues(end = 6.dp)
         ) {
-            itemsIndexed(tracks) { index, track ->
+            itemsIndexed(
+                items = tracks,
+                key = { _, track -> track.id },
+                contentType = { _, _ -> "resonance-card" }
+            ) { index, track ->
                 ResonanceCard(
                     track = track,
                     index = index,
@@ -2186,6 +2207,7 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val shelfTracks = remember(tracks) { tracks.distinctBy { it.id } }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2199,45 +2221,51 @@ private fun PersonalListeningShelf(
                 Text(
                     text = strings.personalOrbitTitle,
                     color = LevyraText,
-                    fontSize = 29.sp,
-                    lineHeight = 31.sp,
+                    fontSize = 28.sp,
+                    lineHeight = 30.sp,
                     fontWeight = FontWeight.Black
                 )
                 Text(
                     text = strings.personalOrbitSubtitle,
                     color = LevyraMuted,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
+                    fontSize = 12.5.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             Surface(
-                color = LevyraCyan.copy(alpha = 0.12f),
-                border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.28f)),
+                color = Color.White.copy(alpha = 0.055f),
+                border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.24f)),
                 shape = RoundedCornerShape(999.dp),
                 modifier = Modifier.pressable(onClick = onPlayAll)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(17.dp))
+                    Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(16.dp))
                     Text(strings.play, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
-        val chunkedTracks = tracks.chunked(2)
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(end = 4.dp)
         ) {
-            itemsIndexed(chunkedTracks) { colIndex, colTracks ->
+            val columns = shelfTracks.chunked(2)
+            itemsIndexed(
+                items = columns,
+                key = { colIndex, colTracks -> "personal-column-$colIndex-${colTracks.joinToString("-") { it.id }}" },
+                contentType = { _, _ -> "personal-column" }
+            ) { _, colTracks ->
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    colTracks.forEachIndexed { rowIndex, track ->
+                    colTracks.forEach { track ->
                         PersonalListeningCard(
                             track = track,
-                            rank = colIndex * 2 + rowIndex + 1,
                             active = track.id == currentId,
                             playing = isPlaying && track.id == currentId,
                             resolving = isResolving && track.id == currentId,
@@ -2253,22 +2281,20 @@ private fun PersonalListeningShelf(
 @Composable
 private fun PersonalListeningCard(
     track: Track,
-    rank: Int,
     active: Boolean,
     playing: Boolean,
     resolving: Boolean,
     onClick: () -> Unit
 ) {
-    val accentEnd = Color(track.accentEnd)
     Surface(
         color = CinematicGlassDeep,
         border = BorderStroke(
-            width = if (active) 1.5.dp else 1.dp,
-            color = if (active) LevyraCyan.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.07f)
+            width = if (active) 1.4.dp else 0.8.dp,
+            color = if (active) LevyraCyan.copy(alpha = 0.68f) else Color.White.copy(alpha = 0.07f)
         ),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier
-            .size(154.dp)
+            .size(140.dp)
             .pressable(onClick = onClick)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -2277,89 +2303,65 @@ private fun PersonalListeningCard(
                 modifier = Modifier.fillMaxSize(),
                 highRes = false
             )
-            // Clean bottom-anchored scrim so titles stay legible over any cover.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.45f to Color.Black.copy(alpha = 0.12f),
-                            0.78f to Color.Black.copy(alpha = 0.62f),
-                            1.0f to Color.Black.copy(alpha = 0.92f)
+                            0.0f to Color.Black.copy(alpha = 0.01f),
+                            0.56f to Color.Black.copy(alpha = 0.03f),
+                            0.78f to Color.Black.copy(alpha = 0.36f),
+                            1.0f to Color.Black.copy(alpha = 0.76f)
                         )
                     )
             )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(11.dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+            if (active) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(9.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(LevyraCyan.copy(alpha = 0.92f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.42f),
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
-                    ) {
-                        Text(
-                            text = rank.toString().padStart(2, '0'),
-                            color = LevyraText,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 0.5.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    if (resolving) {
+                        CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.8.dp, color = LevyraBlack)
+                    } else {
+                        Icon(
+                            imageVector = if (playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+                            contentDescription = null,
+                            tint = LevyraBlack,
+                            modifier = Modifier.size(13.dp)
                         )
                     }
-                    if (playing || resolving) {
-                        Surface(
-                            color = LevyraCyan,
-                            shape = CircleShape,
-                            modifier = Modifier.size(26.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                if (resolving) {
-                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 2.dp, color = LevyraBlack)
-                                } else {
-                                    Icon(Icons.Rounded.GraphicEq, null, tint = LevyraBlack, modifier = Modifier.size(14.dp))
-                                }
-                            }
-                        }
-                    }
                 }
-
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    // Slim accent underline ties the card back to the track's palette.
-                    Box(
-                        modifier = Modifier
-                            .width(24.dp)
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(if (active) LevyraCyan else accentEnd.copy(alpha = 0.9f))
-                    )
-                    Text(
-                        text = track.title,
-                        color = LevyraText,
-                        fontSize = 15.sp,
-                        lineHeight = 17.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = track.artist,
-                        color = LevyraText.copy(alpha = 0.72f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            }
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = track.title,
+                    color = LevyraText,
+                    fontSize = 12.8.sp,
+                    lineHeight = 14.3.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = track.artist,
+                    color = LevyraText.copy(alpha = 0.76f),
+                    fontSize = 10.8.sp,
+                    lineHeight = 12.3.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -4445,18 +4447,20 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    IconButton(
-                        onClick = {
-                            viewModel.closePlayer()
-                            if (!viewModel.navigateBack()) viewModel.selectTab(LevyraTab.Home)
-                        }
-                    ) {
-                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = strings.back, tint = LevyraText, modifier = Modifier.size(36.dp))
-                    }
+                    PlayerRoundIconButton(
+                        icon = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = strings.back,
+                        size = 42.dp,
+                        iconSize = 28.dp,
+                        tint = LevyraText,
+                        background = Color.White.copy(alpha = 0.075f),
+                        onClick = { viewModel.selectTab(LevyraTab.Home) }
+                    )
                     if (track != null && track.videoUrl.isNotBlank()) {
                         Row(
                             modifier = Modifier
                                 .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(500.dp))
+                                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(500.dp))
                                 .padding(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -4480,8 +4484,32 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             Text("RIPRODUZIONE DA ${track?.source ?: "LEVYRA"}", color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                    IconButton(onClick = { viewModel.openAudioQualityPanel() }) {
-                        Icon(Icons.Rounded.MoreVert, contentDescription = "Opzioni", tint = LevyraText)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PlayerRoundIconButton(
+                            icon = Icons.Rounded.Close,
+                            contentDescription = "Chiudi player",
+                            size = 42.dp,
+                            iconSize = 22.dp,
+                            tint = Color.White,
+                            background = Color.White.copy(alpha = 0.075f),
+                            borderColor = LevyraCyan.copy(alpha = 0.18f),
+                            onClick = {
+                                viewModel.closePlayer()
+                                viewModel.selectTab(LevyraTab.Home)
+                            }
+                        )
+                        PlayerRoundIconButton(
+                            icon = Icons.Rounded.MoreVert,
+                            contentDescription = "Opzioni",
+                            size = 42.dp,
+                            iconSize = 24.dp,
+                            tint = LevyraText,
+                            background = Color.White.copy(alpha = 0.055f),
+                            onClick = { viewModel.openAudioQualityPanel() }
+                        )
                     }
                 }
             }
@@ -4688,33 +4716,57 @@ private fun MainPlayerControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        IconButton(onClick = onShuffle) {
-            Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (shuffleOn) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
-        }
-        IconButton(onClick = onPrevious) {
-            Icon(Icons.Rounded.SkipPrevious, "Precedente", tint = LevyraText, modifier = Modifier.size(40.dp))
-        }
+        PlayerRoundIconButton(
+            icon = Icons.Rounded.Shuffle,
+            contentDescription = "Shuffle",
+            tint = if (shuffleOn) LevyraCyan else LevyraMuted,
+            background = Color.White.copy(alpha = if (shuffleOn) 0.12f else 0.055f),
+            borderColor = if (shuffleOn) LevyraCyan.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.08f),
+            onClick = onShuffle
+        )
+        PlayerRoundIconButton(
+            icon = Icons.Rounded.SkipPrevious,
+            contentDescription = "Precedente",
+            size = 52.dp,
+            iconSize = 32.dp,
+            tint = LevyraText,
+            background = Color.White.copy(alpha = 0.065f),
+            onClick = onPrevious
+        )
         Box(
             modifier = Modifier
-                .size(68.dp)
-                .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.92f), Color(0xFF6D7CFF))), CircleShape)
+                .size(72.dp)
+                .shadow(22.dp, CircleShape, clip = false)
+                .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.94f), LevyraViolet.copy(alpha = 0.88f))), CircleShape)
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
                 .pressable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {
             if (isResolving) CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = LevyraBlack)
-            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(36.dp))
+            else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(38.dp))
         }
-        IconButton(onClick = onNext) {
-            Icon(Icons.Rounded.SkipNext, "Successivo", tint = LevyraText, modifier = Modifier.size(40.dp))
-        }
+        PlayerRoundIconButton(
+            icon = Icons.Rounded.SkipNext,
+            contentDescription = "Successivo",
+            size = 52.dp,
+            iconSize = 32.dp,
+            tint = LevyraText,
+            background = Color.White.copy(alpha = 0.065f),
+            onClick = onNext
+        )
         val repeatIcon = if (repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
-        IconButton(onClick = onRepeat) {
-            Icon(repeatIcon, "Repeat", tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan else LevyraMuted, modifier = Modifier.size(24.dp))
-        }
+        PlayerRoundIconButton(
+            icon = repeatIcon,
+            contentDescription = "Repeat",
+            tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan else LevyraMuted,
+            background = Color.White.copy(alpha = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) 0.12f else 0.055f),
+            borderColor = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) LevyraCyan.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.08f),
+            onClick = onRepeat
+        )
     }
 }
 
@@ -5447,49 +5499,27 @@ private fun SettingsMiniButton(
 
 @Composable
 private fun LevyraLogoMark(size: Dp = 58.dp) {
-    val infiniteTransition = rememberInfiniteTransition(label = "haloTransition")
-    val haloScale by infiniteTransition.animateFloat(
-        initialValue = 1.15f,
-        targetValue = 1.45f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "haloScale"
-    )
-    val haloAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "haloAlpha"
-    )
-
     Box(contentAlignment = Alignment.Center) {
-        // Animated breathing neon halo behind the logo
         Box(
             modifier = Modifier
-                .size(size * haloScale)
-                .blur(20.dp)
+                .size(size * 1.22f)
+                .blur(18.dp)
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            LevyraCyan.copy(alpha = haloAlpha),
-                            LevyraViolet.copy(alpha = haloAlpha * 0.6f),
+                            LevyraCyan.copy(alpha = 0.24f),
+                            LevyraViolet.copy(alpha = 0.16f),
                             Color.Transparent
                         )
                     ),
                     CircleShape
                 )
         )
-        // Premium glass-like container
         Box(
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(Color(0xFF1A1B22)) // Dark sleek background 
+                .background(Color(0xFF1A1B22))
                 .border(
                     width = 1.5.dp,
                     brush = Brush.linearGradient(
@@ -5504,11 +5534,10 @@ private fun LevyraLogoMark(size: Dp = 58.dp) {
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // The logo filling the entire circle
             Image(
                 painter = painterResource(id = R.drawable.levyra_logo),
                 contentDescription = "Logo Levyra",
-                contentScale = ContentScale.Crop, // Crucial to make it fill the circle and look native
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -6066,9 +6095,14 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
 private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(end = 4.dp)
     ) {
-        itemsIndexed(tracks, key = { index, track -> "album-card-$index-${track.id}" }) { index, track ->
+        itemsIndexed(
+            items = tracks,
+            key = { index, track -> "album-card-$index-${track.id}" },
+            contentType = { _, _ -> "album-card" }
+        ) { index, track ->
             val isCurrent = track.id == currentId
             var isPressed by remember { mutableStateOf(false) }
             val scale by animateFloatAsState(
@@ -6101,7 +6135,7 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                     color = Color.White.copy(alpha = 0.02f),
                     border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.08f)),
                     shape = RoundedCornerShape(22.dp),
-                    shadowElevation = if (animationsEnabled) 12.dp else 0.dp
+                    shadowElevation = if (animationsEnabled) 4.dp else 0.dp
                 ) {
                     Box(
                         modifier = Modifier
@@ -6114,7 +6148,7 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(RoundedCornerShape(22.dp)),
-                            highRes = true
+                            highRes = false
                         )
                         Box(
                             modifier = Modifier
@@ -6892,75 +6926,154 @@ private fun MiniPlayer(
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     Surface(
-        color = Color(0xFF181818), // Dark docked background
-        shape = RoundedCornerShape(0.dp),
-        modifier = Modifier.fillMaxWidth()
+        color = Color.Transparent,
+        shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.075f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(18.dp, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp), clip = false)
     ) {
-        Column {
+        Column(
+            modifier = Modifier.background(
+                Brush.linearGradient(
+                    listOf(
+                        accentStart.copy(alpha = 0.18f),
+                        Color(0xFF171717),
+                        Color(0xFF101010),
+                        accentEnd.copy(alpha = 0.12f)
+                    )
+                )
+            )
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
-                    .pressable(onClick = onOpen)
-                    .padding(horizontal = 16.dp),
+                    .height(68.dp)
+                    .padding(start = 14.dp, end = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                CoverImage(
-                    track,
-                    Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                )
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .pressable(onClick = onOpen)
+                ) {
+                    CoverImage(track, Modifier.fillMaxSize())
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(12.dp))
+                    )
+                }
                 Column(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .pressable(pressedScale = 0.985f, onClick = onOpen),
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = track.title,
                         color = Color.White,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = track.artist,
-                        color = Color(0xFFB3B3B3), // Muted silver
+                        color = LevyraMuted,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(
-                    onClick = onToggle,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    if (isResolving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = LevyraCyan
-                        )
-                    } else {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
+                MiniPlayerToggleButton(
+                    isPlaying = isPlaying,
+                    isResolving = isResolving,
+                    onToggle = onToggle
+                )
+                PlayerRoundIconButton(
+                    icon = Icons.Rounded.Close,
+                    contentDescription = "Chiudi player",
+                    size = 38.dp,
+                    iconSize = 19.dp,
+                    tint = Color.White.copy(alpha = 0.90f),
+                    background = Color.White.copy(alpha = 0.070f),
+                    borderColor = Color.White.copy(alpha = 0.085f),
+                    onClick = onClose
+                )
             }
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(1.5.dp)
-                    .background(LevyraCyan)
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(Color.White.copy(alpha = 0.055f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniPlayerToggleButton(
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onToggle: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(42.dp)
+            .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.96f), LevyraViolet.copy(alpha = 0.74f))), CircleShape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)), CircleShape)
+            .pressable(onClick = onToggle),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isResolving) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                color = LevyraBlack
+            )
+        } else {
+            Icon(
+                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                contentDescription = if (isPlaying) "Pausa" else "Riproduci",
+                tint = LevyraBlack,
+                modifier = Modifier.size(25.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun PlayerRoundIconButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    size: Dp = 44.dp,
+    iconSize: Dp = 22.dp,
+    tint: Color = LevyraText,
+    background: Color = Color.White.copy(alpha = 0.065f),
+    borderColor: Color = Color.White.copy(alpha = 0.085f),
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .background(background, CircleShape)
+            .border(BorderStroke(1.dp, borderColor), CircleShape)
+            .pressable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(iconSize))
     }
 }
 

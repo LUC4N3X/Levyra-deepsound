@@ -95,6 +95,11 @@ class LevyraPlayer(context: Context) {
     private fun buildItem(track: Track): MediaItem {
         val art = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
         val extras = android.os.Bundle().apply {
+            putString("levyra.title", track.title)
+            putString("levyra.artist", track.artist)
+            putString("levyra.album", track.album)
+            putLong("levyra.durationMs", track.durationMs.coerceAtLeast(0L))
+            putString("levyra.source", track.source)
             if (track.videoStreamUrl.isNotBlank()) {
                 putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
                 putString(PlaybackService.EXTRA_VIDEO_CACHE_KEY, LevyraPlaybackCacheKey.video(track))
@@ -102,16 +107,33 @@ class LevyraPlayer(context: Context) {
         }
         val metadata = MediaMetadata.Builder()
             .setTitle(track.title)
+            .setDisplayTitle(track.title)
             .setArtist(track.artist)
+            .setSubtitle(track.artist)
+            .setAlbumTitle(track.album.ifBlank { "Levyra" })
             .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
             .setExtras(extras)
             .build()
         return MediaItem.Builder()
             .setUri(track.streamUrl)
+            .setMimeType(mimeTypeFor(track.streamUrl))
             .setCustomCacheKey(LevyraPlaybackCacheKey.stream(track))
-            .setMediaId(track.id)
+            .setMediaId(track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}-${track.title}" } })
             .setMediaMetadata(metadata)
             .build()
+    }
+
+
+    private fun mimeTypeFor(url: String): String {
+        val clean = url.substringBefore('?').lowercase()
+        return when {
+            clean.endsWith(".m3u8") -> "application/x-mpegURL"
+            clean.endsWith(".mpd") -> "application/dash+xml"
+            clean.endsWith(".webm") -> "audio/webm"
+            clean.endsWith(".mp3") -> "audio/mpeg"
+            clean.endsWith(".m4a") || clean.endsWith(".mp4") -> "audio/mp4"
+            else -> "audio/mp4"
+        }
     }
 
     fun pause() {

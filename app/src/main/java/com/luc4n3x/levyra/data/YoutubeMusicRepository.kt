@@ -9,6 +9,7 @@ import com.luc4n3x.levyra.domain.CacheReport
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
@@ -245,20 +246,21 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         if (query.isBlank()) return emptyList()
         val locale = LevyraContentLocales.forLanguage(languageCode)
         val url = "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&hl=${locale.hl}&gl=${locale.gl}&q=${java.net.URLEncoder.encode(query, "UTF-8")}"
-        return runCatching {
+        val remote = runCatching {
             val connection = URL(url).openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
             val response = connection.inputStream.bufferedReader().use { it.readText() }
             val root = JSONArray(response)
-            val suggestions = root.optJSONArray(1) ?: return emptyList()
+            val suggestions = root.optJSONArray(1) ?: return@runCatching emptyList()
             val result = mutableListOf<String>()
             for (i in 0 until suggestions.length()) {
                 result += suggestions.optString(i)
             }
             result
         }.getOrDefault(emptyList())
+        return LevyraLocalizedDiscovery.suggestions(query, locale.languageCode, remote)
     }
 
     private fun parseCarouselItem(item: JSONObject): Track? {
