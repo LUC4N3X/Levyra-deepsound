@@ -2176,13 +2176,11 @@ private fun ResonanceShelf(
                     }
                     Text(
                         text = strings.voicesTitle,
-                        style = TextStyle(
-                            brush = cinematicTextBrush(),
-                            fontSize = 24.sp,
-                            lineHeight = 26.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-0.5).sp
-                        )
+                        color = LevyraText,
+                        fontSize = 24.sp,
+                        lineHeight = 26.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-0.5).sp
                     )
                 }
                 Text(
@@ -6494,51 +6492,51 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
-                    color = Color.White.copy(alpha = 0.02f),
-                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.08f)),
-                    shape = RoundedCornerShape(22.dp),
-                    shadowElevation = if (animationsEnabled) 4.dp else 0.dp
+                    color = CinematicGlass.copy(alpha = 0.3f),
+                    border = BorderStroke(if (isCurrent) 1.dp else Dp.Hairline, if (isCurrent) LevyraCyan.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(20.dp),
+                    shadowElevation = if (animationsEnabled) 6.dp else 0.dp
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(1f)
-                            .background(Brush.linearGradient(listOf(Color(track.accentStart).copy(alpha = 0.24f), Color(track.accentEnd).copy(alpha = 0.18f))))
                     ) {
                         CoverImage(
                             track = track,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(22.dp)),
+                                .clip(RoundedCornerShape(20.dp)),
                             highRes = false
                         )
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))))
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f), Color.Black.copy(alpha = 0.75f))))
                         )
                         Surface(
-                            color = Color.Black.copy(alpha = 0.5f),
+                            color = CinematicGlassDeep.copy(alpha = 0.5f),
+                            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.15f)),
                             shape = CircleShape,
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .padding(12.dp)
+                                .padding(10.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(if (isCurrent) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(14.dp))
-                                Text(if (isCurrent) "ON" else "${index + 1}", color = LevyraText, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                                Icon(if (isCurrent) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(12.dp))
+                                Text(if (isCurrent) "ON" else "${index + 1}", color = LevyraText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, lineHeight = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, lineHeight = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val kind = if (track.album.isNotBlank() && track.album != track.title && track.album != "YouTube Music") "Album" else "Single"
-                    Text("$kind • ${track.artist}", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("$kind • ${track.artist}", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
