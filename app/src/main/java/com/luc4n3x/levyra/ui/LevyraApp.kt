@@ -1889,11 +1889,22 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             }
         }
+        if (state.homeAlbums.isNotEmpty()) {
+            item(key = "sec-home-albums-header", contentType = "home-section-header") {
+                SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(state.homeAlbums) })
+            }
+            item(key = "sec-home-albums-row", contentType = "home-horizontal-row") {
+                HomeAlbumHitRow(
+                    albums = state.homeAlbums,
+                    animationsEnabled = state.animationsEnabled,
+                    onOpen = viewModel::searchAlbum
+                )
+            }
+        }
         otherSections.forEachIndexed { index, section ->
             if (section.tracks.isNotEmpty()) {
-                val title = if (index == 0) strings.albumsForYou else section.title
                 item(key = "sec-other-${index}-header", contentType = "home-section-header") {
-                    SectionHeaderAction(title, onPlayAll = { viewModel.playAll(section.tracks) })
+                    SectionHeaderAction(section.title, onPlayAll = { viewModel.playAll(section.tracks) })
                 }
                 item(key = "sec-other-${index}-row", contentType = "home-horizontal-row") {
                     AlbumCardRow(
@@ -6452,6 +6463,115 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
 }
 
 @Composable
+private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, onOpen: (AlbumHit) -> Unit) {
+    if (albums.isEmpty()) return
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(end = 4.dp)
+    ) {
+        itemsIndexed(
+            items = albums,
+            key = { index, album -> "home-album-card-$index-${album.title}-${album.artist}" },
+            contentType = { _, _ -> "home-album-card" }
+        ) { index, album ->
+            var isPressed by remember { mutableStateOf(false) }
+            val scale by animateFloatAsState(
+                targetValue = if (isPressed && animationsEnabled) 0.95f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                label = "homeAlbumScale"
+            )
+            val modifier = if (animationsEnabled) {
+                Modifier.graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+            } else Modifier
+            Column(
+                modifier = modifier
+                    .width(164.dp)
+                    .pointerInput(album.title, album.artist) {
+                        detectTapGestures(
+                            onPress = {
+                                isPressed = true
+                                tryAwaitRelease()
+                                isPressed = false
+                            },
+                            onTap = { onOpen(album) }
+                        )
+                    },
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    color = CinematicGlass.copy(alpha = 0.3f),
+                    border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(20.dp),
+                    shadowElevation = if (animationsEnabled) 6.dp else 0.dp
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                    ) {
+                        if (album.thumbnailUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(album.thumbnailUrl)
+                                    .crossfade(true)
+                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                    .memoryCachePolicy(CachePolicy.ENABLED)
+                                    .build(),
+                                contentDescription = album.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(20.dp))
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Brush.linearGradient(listOf(LevyraPanel, LevyraInk))),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.Album, null, tint = LevyraCyan, modifier = Modifier.size(42.dp))
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.42f), Color.Black.copy(alpha = 0.76f))))
+                        )
+                        Surface(
+                            color = CinematicGlassDeep.copy(alpha = 0.52f),
+                            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.15f)),
+                            shape = CircleShape,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(Icons.Rounded.Album, null, tint = LevyraCyan, modifier = Modifier.size(12.dp))
+                                Text("${index + 1}", color = LevyraText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+                Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(album.title, color = LevyraText, fontSize = 14.sp, lineHeight = 16.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    val subtitle = listOf("Album", album.artist, album.year).filter { it.isNotBlank() }.joinToString(" • ")
+                    Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     LazyRow(
@@ -8488,4 +8608,5 @@ private fun LevyraViewModel.exportTrack(track: Track) {
 private fun LevyraViewModel.exportCurrentTrack() {
     selectTab(LevyraTab.Player)
 }
+
 
