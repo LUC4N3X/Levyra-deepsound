@@ -12,7 +12,6 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
-import androidx.datastore.preferences.core.toMutablePreferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.HomeSection
@@ -425,7 +424,6 @@ class LevyraPreferences(context: Context) {
     }
 
     private fun write(block: (MutablePreferences) -> Unit) {
-        mutateCachedPreferences(block)
         writeScope.launch {
             writeMutex.withLock {
                 runCatching { dataStore.edit(block) }
@@ -439,15 +437,6 @@ class LevyraPreferences(context: Context) {
 
     private fun updateCachedPreferences(preferences: Preferences) {
         synchronized(cacheLock) { preferencesCache = preferences }
-    }
-
-    private fun mutateCachedPreferences(block: (MutablePreferences) -> Unit) {
-        synchronized(cacheLock) {
-            val current = preferencesCache ?: return
-            val mutable = current.toMutablePreferences()
-            block(mutable)
-            preferencesCache = mutable
-        }
     }
 
     private companion object {
