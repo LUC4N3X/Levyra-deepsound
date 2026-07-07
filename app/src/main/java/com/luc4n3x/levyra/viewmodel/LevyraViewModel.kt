@@ -215,6 +215,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPlayback(settings.audioSettings.playbackSpeed, settings.audioSettings.pitch)
         player.onCompletion = { onTrackCompleted() }
         player.onError = { errorMsg ->
+            _state.value.currentTrack?.let { resolver.invalidate(it, _state.value.isVideoMode) }
             _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
         }
         applyFollowedArtists(followedArtistsStore.load())
@@ -1275,6 +1276,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val raw = message?.trim().orEmpty()
         if (raw.isBlank()) return "Operazione non riuscita"
         if (raw.contains("Timed out waiting", ignoreCase = true)) return "YouTube lento: sto aspettando lo stream più del previsto, riprova tra qualche secondo"
+        if (raw.contains("EXTM3U", ignoreCase = true) || raw.contains("contentIsMalformed", ignoreCase = true)) return "Stream non valido per questo risultato: ho scartato la fonte rotta, riprova il brano"
         if (raw.contains("timeout", ignoreCase = true)) return "Connessione lenta: riprova tra qualche secondo"
         if (raw.contains("Primary directory Music not allowed", ignoreCase = true) || raw.contains("content://media/external_primary/file", ignoreCase = true)) return "Questo telefono blocca il salvataggio generico in Music: aggiorna l'app e riprova, Levyra userà MediaStore Audio o Downloads/Levyra"
         return raw
@@ -2074,13 +2076,77 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun resolveForPlayback(track: Track): Track {
         youtubePlayableTrack(track)?.let { return resolvePlayableTrack(it) }
-        val match = repository.searchOne("${track.title} ${track.artist}", _state.value.languageCode)
-            ?: throw IllegalStateException("Nessun risultato YouTube per ${track.title}")
-        val carried = match.copy(
-            thumbnailUrl = match.thumbnailUrl.ifBlank { track.thumbnailUrl },
-            largeThumbnailUrl = match.largeThumbnailUrl.ifBlank { track.largeThumbnailUrl }
-        )
-        return resolvePlayableTrack(carried)
+        val candidates = searchPlayableCandidates(track)
+        if (candidates.isEmpty()) throw IllegalStateException("Nessun risultato YouTube per ${track.title}")
+        val errors = mutableListOf<String>()
+        for (candidate in candidates) {
+            val carried = candidate.copy(
+                thumbnailUrl = candidate.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = candidate.largeThumbnailUrl.ifBlank { track.largeThumbnailUrl }
+            )
+            val resolved = runCatching { resolvePlayableTrack(carried) }
+            resolved.onSuccess { return it }
+            resolved.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "${candidate.title} - ${candidate.artist}: $it" }
+            resolver.invalidate(carried, _state.value.isVideoMode)
+        }
+        val reason = errors.firstOrNull() ?: "YouTube non ha fornito uno stream audio riproducibile per ${track.title}"
+        throw IllegalStateException(reason)
+    }
+
+    private suspend fun searchPlayableCandidates(track: Track): List<Track> {
+        val queries = listOf(
+            "${track.title} ${track.artist}",
+            "${track.title} ${track.artist} official audio",
+            "${track.title} ${track.artist} topic"
+        ).map { it.trim() }.filter { it.length >= 2 }.distinct()
+        val candidates = LinkedHashMap<String, Track>()
+        for (query in queries) {
+            repository.search(query, 8, _state.value.languageCode).forEach { candidate ->
+                if (candidate.id.isNotBlank() && !candidates.containsKey(candidate.id)) candidates[candidate.id] = candidate
+            }
+            if (candidates.size >= 10) break
+        }
+        return candidates.values
+            .sortedByDescending { playbackCandidateScore(track, it) }
+            .take(10)
+    }
+
+    private fun playbackCandidateScore(target: Track, candidate: Track): Int {
+        val targetTitle = playbackTextKey(target.title)
+        val targetArtist = playbackTextKey(target.artist)
+        val candidateTitle = playbackTextKey(candidate.title)
+        val candidateArtist = playbackTextKey(candidate.artist)
+        val candidateBlob = playbackTextKey("${candidate.title} ${candidate.artist} ${candidate.album}")
+        val titleTokens = targetTitle.split(' ').filter { it.length >= 2 }
+        val artistTokens = targetArtist.split(' ').filter { it.length >= 2 }
+        var score = 0
+        when {
+            candidateTitle == targetTitle -> score += 140
+            candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle) -> score += 95
+            titleTokens.isNotEmpty() && titleTokens.all { candidateBlob.contains(it) } -> score += 70
+        }
+        when {
+            targetArtist.isNotBlank() && candidateArtist == targetArtist -> score += 80
+            targetArtist.isNotBlank() && (candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist)) -> score += 55
+            artistTokens.isNotEmpty() && artistTokens.all { candidateBlob.contains(it) } -> score += 35
+        }
+        val penaltyTerms = listOf("karaoke", "cover", "reaction", "sped up", "slowed", "instrumental", "remix", "live", "nightcore")
+        if (penaltyTerms.any { candidateBlob.contains(it) } && penaltyTerms.none { targetTitle.contains(it) }) score -= 60
+        if (candidate.source.contains("YouTube Music", ignoreCase = true)) score += 18
+        if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
+        if (candidate.durationMs > 0L && target.durationMs > 0L) {
+            val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
+            if (delta <= 5_000L) score += 30 else if (delta > 35_000L) score -= 25
+        }
+        return score
+    }
+
+    private fun playbackTextKey(value: String): String {
+        return value.lowercase()
+            .replace(Regex("""\([^)]*\)|\[[^]]*]"""), " ")
+            .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
     }
 
     private suspend fun resolvePlayableTrack(track: Track): Track {
