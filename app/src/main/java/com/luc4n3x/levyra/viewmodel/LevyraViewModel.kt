@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
+import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.PersonalOrbitArtworkWorker
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
@@ -45,6 +46,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
+import com.luc4n3x.levyra.domain.ListeningPulseEngine
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
@@ -98,6 +100,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val preferences = LevyraPreferences(application.applicationContext)
     private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
     private val smartMusicProfileStore = LevyraSmartMusicProfileStore(application.applicationContext)
+    private val listeningPulseStore = ListeningPulseStore(application.applicationContext)
+    private val listeningPulseEngine = ListeningPulseEngine()
     private val startupSmartProfile = smartMusicProfileStore.load()
     private val startupSettings = preferences.snapshot()
     private val startupMoods = moodEngine.moodsForLanguage(startupSettings.languageCode)
@@ -135,6 +139,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var pendingSeekMs: Long = 0L
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
+    private var listenSessionTrack: Track? = null
+    private var listenSessionStartedAt = 0L
+    private var listenSessionAccumulatedMs = 0L
+    private var listenSessionCompleted = false
+    private var listenTickElapsedMs = 0L
+    private var listenSessionPersistedMs = 0L
+    private var listenSessionPersistJob: Job? = null
+    private var listeningPulseRefreshJob: Job? = null
+    private var lastListeningPulseRefreshMs = 0L
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val activeDownloadTitles = ConcurrentHashMap<String, String>()
     private val activeDownloadTracks = ConcurrentHashMap<String, Track>()
@@ -222,6 +235,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startTicker()
         observeDownloads()
         loadPlaylists()
+        refreshListeningPulse(force = true)
         scheduleColdStartRefresh(initialTracks)
         LevyraWidgetBridge.onToggle = { togglePlay() }
         LevyraWidgetBridge.onNext = { next() }
@@ -504,6 +518,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (snapshot.isResolving || playJob?.isActive == true || current.streamUrl.isBlank()) return
         val duration = effectiveDuration(current)
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
+        listenSessionCompleted = true
         recordSmartCompletion(current)
         val queue = snapshot.queue.ifEmpty { currentQueue() }
         when {
@@ -1672,6 +1687,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         addToRecentSearches(playable)
+        beginListenSession(playable)
         recordSmartPlayback(playable)
         fetchLyrics(playable)
         fetchSponsorSegments(playable)
@@ -1984,7 +2000,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     if (segment != null) player.seekTo(segment.endMs)
                 }
                 maybeStartCrossfade(snapshot, current, player.positionMs, duration)
- 
+
+                val nowElapsed = android.os.SystemClock.elapsedRealtime()
+                if (listenSessionTrack != null && player.isPlaying && listenTickElapsedMs > 0L) {
+                    val delta = nowElapsed - listenTickElapsedMs
+                    if (delta in 1..2_000L) listenSessionAccumulatedMs += delta
+                    maybePersistListenSession()
+                }
+                listenTickElapsedMs = nowElapsed
+
                 val position = if (!player.isPlaying && player.positionMs == 0L && pendingSeekMs > 0L) {
                     pendingSeekMs
                 } else {
@@ -2240,6 +2264,76 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
 
+    private fun beginListenSession(track: Track) {
+        flushListenSession()
+        listenSessionTrack = track.copy(streamUrl = "", videoStreamUrl = "")
+        listenSessionStartedAt = System.currentTimeMillis()
+        listenSessionAccumulatedMs = 0L
+        listenSessionCompleted = false
+        listenTickElapsedMs = android.os.SystemClock.elapsedRealtime()
+        listenSessionPersistedMs = 0L
+    }
+
+    private data class ListenSession(
+        val track: Track,
+        val startedAt: Long,
+        val listenedMs: Long,
+        val completed: Boolean
+    )
+
+    private fun takeListenSession(): ListenSession? {
+        val track = listenSessionTrack ?: return null
+        val session = ListenSession(track, listenSessionStartedAt, listenSessionAccumulatedMs, listenSessionCompleted)
+        listenSessionTrack = null
+        listenSessionAccumulatedMs = 0L
+        listenSessionCompleted = false
+        listenSessionPersistedMs = 0L
+        return session.takeIf { it.listenedMs >= ListeningPulseEngine.MIN_LISTEN_MS }
+    }
+
+    private fun flushListenSession() {
+        val session = takeListenSession() ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            listeningPulseStore.record(session.track, session.listenedMs, session.completed, session.startedAt)
+            refreshListeningPulse()
+        }
+    }
+
+    private fun flushListenSessionBlocking() {
+        val session = takeListenSession() ?: return
+        listeningPulseStore.recordSync(session.track, session.listenedMs, session.completed, session.startedAt)
+    }
+
+    private fun maybePersistListenSession() {
+        val track = listenSessionTrack ?: return
+        val listenedMs = listenSessionAccumulatedMs
+        if (listenedMs < ListeningPulseEngine.MIN_LISTEN_MS) return
+        if (listenedMs - listenSessionPersistedMs < LISTEN_SESSION_FLUSH_INTERVAL_MS) return
+        if (listenSessionPersistJob?.isActive == true) return
+        val startedAt = listenSessionStartedAt
+        listenSessionPersistJob = viewModelScope.launch(Dispatchers.IO) {
+            listeningPulseStore.record(track, listenedMs, completed = false, startedAt = startedAt)
+            if (listenSessionStartedAt == startedAt && listenSessionTrack?.id == track.id) {
+                listenSessionPersistedMs = maxOf(listenSessionPersistedMs, listenedMs)
+            }
+            refreshListeningPulse()
+        }
+    }
+
+    private fun refreshListeningPulse(force: Boolean = false) {
+        if (listeningPulseRefreshJob?.isActive == true) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        val waitMs = if (force) 0L else (PULSE_REFRESH_THROTTLE_MS - (now - lastListeningPulseRefreshMs)).coerceAtLeast(0L)
+        listeningPulseRefreshJob = viewModelScope.launch(Dispatchers.IO) {
+            if (waitMs > 0L) delay(waitMs)
+            val events = listeningPulseStore.eventsWindow()
+            val recent = listeningPulseStore.recentTracks()
+            val pulse = listeningPulseEngine.build(events)
+            lastListeningPulseRefreshMs = android.os.SystemClock.elapsedRealtime()
+            _state.update { it.copy(listeningPulse = pulse, recentListens = recent) }
+        }
+    }
+
     private fun recordSmartPlayback(track: Track) {
         recordSmartProfile { smartMusicProfileStore.recordPlayback(track.copy(streamUrl = "", videoStreamUrl = "")) }
     }
@@ -2293,9 +2387,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return map.values.toList()
     }
 
+    private companion object {
+        const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
+        const val PULSE_REFRESH_THROTTLE_MS = 5_000L
+    }
+
     override fun onCleared() {
         LevyraWidgetBridge.clear()
         _state.value.currentTrack?.let { preferences.saveLastPlayback(it, player.positionMs) }
+        flushListenSessionBlocking()
         playJob?.cancel()
         cancelBackgroundWarmups()
         chartEnrichJob?.cancel()
