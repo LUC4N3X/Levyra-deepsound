@@ -1,23 +1,23 @@
 # APK Size Report
 
-Levyra usa un workflow GitHub Actions solo per generare un report della dimensione di APK e AAB debug.
+Levyra uses a GitHub Actions workflow only to report debug APK and AAB size.
 
-Non vengono applicati limiti hard di download, install size, APK size o AAB size.
+No hard limits are enforced for downloads, install size, APK size, or AAB size.
 
-Il task diretto `:app:analyzeDebugBundle` di Spotify Ruler Ã¨ stato disattivato perchÃ© nella combinazione AGP/Gradle attuale fallisce internamente con un cast `ApplicationExtensionImpl` -> `BaseExtension`.
+The direct Spotify Ruler task `:app:analyzeDebugBundle` is intentionally disabled because the current AGP/Gradle combination fails internally with an `ApplicationExtensionImpl` to `BaseExtension` cast error.
 
-Il workflow ora esegue:
+The workflow now runs:
 
 ```text
 :app:bundleDebug
 :app:assembleDebug
 ```
 
-Poi genera:
+Then it generates:
 
 ```text
 build/size-report/apk-size-report.md
 build/size-report/apk-size-report.json
 ```
 
-Il report serve solo per visibilitÃ  tecnica. Non blocca la PR in base alla dimensione dei file generati.
+The report is visibility-only and does not block pull requests based on generated package size.
