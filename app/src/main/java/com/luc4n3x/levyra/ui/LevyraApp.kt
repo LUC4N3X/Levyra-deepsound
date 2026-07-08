@@ -194,6 +194,7 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.DownloadedTrack
+import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraContentLocales
@@ -5209,6 +5210,24 @@ private fun LibraryScreen(
                 }
             }
 
+            if (state.followedArtists.isNotEmpty()) {
+                item {
+                    LibrarySectionHeader(
+                        title = strings.followedArtistsTitle,
+                        detail = strings.followedArtistsSubtitle,
+                        count = state.followedArtists.size,
+                        icon = Icons.Rounded.Person,
+                        accent = CinematicGold
+                    )
+                }
+                item {
+                    FollowedArtistsRow(
+                        artists = state.followedArtists,
+                        onOpen = { viewModel.openArtistByName(it.name) }
+                    )
+                }
+            }
+
             item {
                 LibrarySectionDivider(label = strings.pulseSectionBand)
             }
@@ -5226,56 +5245,33 @@ private fun LibraryScreen(
                 ListeningPulseCard(pulse = state.listeningPulse, strings = strings)
             }
 
-            if (state.recentListens.isNotEmpty()) {
+            item {
+                LibrarySectionHeader(
+                    title = strings.listeningHistory,
+                    detail = strings.listeningHistorySubtitle,
+                    count = state.recentListens.size,
+                    icon = Icons.Rounded.History,
+                    accent = LevyraViolet
+                )
+            }
+            if (state.recentListens.isEmpty()) {
                 item {
-                    LibrarySectionHeader(
-                        title = strings.listeningHistory,
-                        detail = strings.listeningHistorySubtitle,
-                        count = state.recentListens.size,
+                    LibraryEmptyState(
                         icon = Icons.Rounded.History,
+                        title = strings.listeningHistoryEmptyTitle,
+                        detail = strings.listeningHistoryEmptyDetail,
                         accent = LevyraViolet
                     )
                 }
-                item {
-                    RowCarousel(
-                        tracks = state.recentListens,
-                        currentId = state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        favoriteIds = state.favoriteIds,
-                        onPlay = { viewModel.playFrom(state.recentListens, it) },
-                        onFavorite = { viewModel.toggleFavorite(it) }
-                    )
-                }
-            }
-
-            item {
-                LibrarySectionHeader(
-                    title = cleanLibraryLabel(strings.recent),
-                    detail = strings.recentExploredSubtitle,
-                    count = state.tracks.size,
-                    icon = Icons.Rounded.LibraryMusic,
-                    accent = CinematicGold
-                )
-            }
-            if (state.tracks.isEmpty()) {
-                item {
-                    LibraryEmptyState(
-                        icon = Icons.Rounded.Search,
-                        title = "Nessun brano recente",
-                        detail = "Cerca o riproduci qualcosa per costruire la tua cronologia.",
-                        accent = CinematicGold
-                    )
-                }
             } else {
-                items(state.tracks, key = { it.id }) { track ->
+                items(state.recentListens, key = { "hist-${it.id}" }) { track ->
                     TrackRow(
                         track = track,
                         isCurrent = track.id == state.currentTrack?.id,
                         isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
                         isResolving = state.isResolving && track.id == state.currentTrack?.id,
                         isFavorite = track.id in state.favoriteIds,
-                        onClick = { viewModel.playFrom(state.tracks, track) },
+                        onClick = { viewModel.playFrom(state.recentListens, track) },
                         onFavorite = { viewModel.toggleFavorite(track) },
                         isDownloading = track.id in state.downloadingTrackIds,
                         isDownloaded = track.id in state.downloadedTrackIds,
@@ -5589,6 +5585,48 @@ private fun PulseArtistsRow(artists: List<PulseArtist>, label: String) {
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FollowedArtistsRow(artists: List<FollowedArtist>, onOpen: (FollowedArtist) -> Unit) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        items(artists, key = { "followed-${it.key}" }) { artist ->
+            Column(
+                modifier = Modifier.width(96.dp).clickable { onOpen(artist) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .background(Brush.linearGradient(listOf(CinematicGold.copy(alpha = 0.3f), LevyraViolet.copy(alpha = 0.28f))))
+                        .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (artist.thumbnailUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current).data(artist.thumbnailUrl).crossfade(true).build(),
+                            contentDescription = artist.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize().clip(CircleShape)
+                        )
+                    } else {
+                        Icon(Icons.Rounded.Person, null, tint = LevyraText, modifier = Modifier.size(38.dp))
+                    }
+                }
+                Text(
+                    text = artist.name,
+                    color = LevyraText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }
