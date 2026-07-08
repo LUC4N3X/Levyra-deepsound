@@ -103,7 +103,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon clean assembleRelease -PlevyraVersionName="${VERSION}" -PlevyraVersionCode="${VERSION_CODE}"
+          gradle --no-daemon --no-configuration-cache clean assembleRelease -PlevyraVersionName="${VERSION}" -PlevyraVersionCode="${VERSION_CODE}"
 
       - name: Verify APK Version
         shell: bash
