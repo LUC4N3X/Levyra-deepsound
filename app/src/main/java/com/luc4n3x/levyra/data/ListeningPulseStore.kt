@@ -10,37 +10,54 @@ import com.luc4n3x.levyra.domain.ListeningPulseEngine
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 
 class ListeningPulseStore(context: Context) {
     private val dao = LevyraDatabase.get(context.applicationContext).listenEventsDao()
-    private val writesSincePrune = AtomicInteger(0)
+    private val preferences = LevyraPreferences(context.applicationContext)
+    private val writeLock = Mutex()
 
     suspend fun record(track: Track, listenedMs: Long, completed: Boolean, startedAt: Long) {
         if (listenedMs < ListeningPulseEngine.MIN_LISTEN_MS || track.title.isBlank()) return
         val cappedMs = if (track.durationMs > 0L) listenedMs.coerceAtMost(track.durationMs * MAX_LOOPS) else listenedMs
         withContext(Dispatchers.IO) {
-            runCatching {
-                dao.insert(
-                    track.copy(streamUrl = "", videoStreamUrl = "")
-                        .toListenEventEntity(cappedMs, completed, startedAt)
-                )
-                if (writesSincePrune.incrementAndGet() >= PRUNE_EVERY) {
-                    writesSincePrune.set(0)
-                    dao.prune(System.currentTimeMillis() - RETENTION_MS)
-                }
-            }.onFailure { Timber.w(it, "Listen event write failed") }
+            writeLock.withLock {
+                runCatching {
+                    val cleanTrack = track.copy(streamUrl = "", videoStreamUrl = "")
+                    val updated = dao.updateSession(cleanTrack.id, startedAt, cappedMs, if (completed) 1 else 0)
+                    if (updated == 0) {
+                        dao.insert(cleanTrack.toListenEventEntity(cappedMs, completed, startedAt))
+                    }
+                    pruneIfDue(System.currentTimeMillis())
+                }.onFailure { Timber.w(it, "Listen event write failed") }
+            }
+        }
+    }
+
+    private suspend fun pruneIfDue(now: Long) {
+        val lastPrune = preferences.listeningPulseLastPruneMs()
+        if (now - lastPrune >= PRUNE_INTERVAL_MS) {
+            dao.prune(now - RETENTION_MS)
+            preferences.setListeningPulseLastPruneMs(now)
         }
     }
 
     fun recordSync(track: Track, listenedMs: Long, completed: Boolean, startedAt: Long) {
-        runBlocking { record(track, listenedMs, completed, startedAt) }
+        runCatching {
+            runBlocking {
+                withTimeout(RECORD_SYNC_TIMEOUT_MS) {
+                    record(track, listenedMs, completed, startedAt)
+                }
+            }
+        }.onFailure { Timber.w(it, "Timed out while flushing listen event") }
     }
 
-    suspend fun eventsWindow(days: Int = WINDOW_DAYS): List<ListenEvent> = withContext(Dispatchers.IO) {
+    suspend fun eventsWindow(days: Int = RETENTION_DAYS): List<ListenEvent> = withContext(Dispatchers.IO) {
         val since = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong())
         runCatching { dao.since(since).map { it.toListenEvent() } }
             .onFailure { Timber.w(it, "Listen events load failed") }
@@ -64,11 +81,12 @@ class ListeningPulseStore(context: Context) {
     }
 
     private companion object {
-        const val WINDOW_DAYS = 90
+        const val RETENTION_DAYS = 365
         const val RECENT_LIMIT = 40
         const val OVERSCAN = 4
         const val MAX_LOOPS = 6L
-        const val PRUNE_EVERY = 40
-        val RETENTION_MS = TimeUnit.DAYS.toMillis(365L)
+        val RETENTION_MS = TimeUnit.DAYS.toMillis(RETENTION_DAYS.toLong())
+        val PRUNE_INTERVAL_MS = TimeUnit.HOURS.toMillis(24L)
+        val RECORD_SYNC_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(2L)
     }
 }

@@ -144,6 +144,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listenSessionAccumulatedMs = 0L
     private var listenSessionCompleted = false
     private var listenTickElapsedMs = 0L
+    private var listenSessionPersistedMs = 0L
+    private var listenSessionPersistJob: Job? = null
+    private var listeningPulseRefreshJob: Job? = null
+    private var lastListeningPulseRefreshMs = 0L
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val activeDownloadTitles = ConcurrentHashMap<String, String>()
     private val activeDownloadTracks = ConcurrentHashMap<String, Track>()
@@ -231,7 +235,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startTicker()
         observeDownloads()
         loadPlaylists()
-        refreshListeningPulse()
+        refreshListeningPulse(force = true)
         scheduleColdStartRefresh(initialTracks)
         LevyraWidgetBridge.onToggle = { togglePlay() }
         LevyraWidgetBridge.onNext = { next() }
@@ -2001,6 +2005,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (listenSessionTrack != null && player.isPlaying && listenTickElapsedMs > 0L) {
                     val delta = nowElapsed - listenTickElapsedMs
                     if (delta in 1..2_000L) listenSessionAccumulatedMs += delta
+                    maybePersistListenSession()
                 }
                 listenTickElapsedMs = nowElapsed
 
@@ -2266,6 +2271,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listenSessionAccumulatedMs = 0L
         listenSessionCompleted = false
         listenTickElapsedMs = android.os.SystemClock.elapsedRealtime()
+        listenSessionPersistedMs = 0L
     }
 
     private data class ListenSession(
@@ -2281,6 +2287,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listenSessionTrack = null
         listenSessionAccumulatedMs = 0L
         listenSessionCompleted = false
+        listenSessionPersistedMs = 0L
         return session.takeIf { it.listenedMs >= ListeningPulseEngine.MIN_LISTEN_MS }
     }
 
@@ -2297,11 +2304,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listeningPulseStore.recordSync(session.track, session.listenedMs, session.completed, session.startedAt)
     }
 
-    private fun refreshListeningPulse() {
-        viewModelScope.launch(Dispatchers.IO) {
+    private fun maybePersistListenSession() {
+        val track = listenSessionTrack ?: return
+        val listenedMs = listenSessionAccumulatedMs
+        if (listenedMs < ListeningPulseEngine.MIN_LISTEN_MS) return
+        if (listenedMs - listenSessionPersistedMs < LISTEN_SESSION_FLUSH_INTERVAL_MS) return
+        if (listenSessionPersistJob?.isActive == true) return
+        val startedAt = listenSessionStartedAt
+        listenSessionPersistJob = viewModelScope.launch(Dispatchers.IO) {
+            listeningPulseStore.record(track, listenedMs, completed = false, startedAt = startedAt)
+            if (listenSessionStartedAt == startedAt && listenSessionTrack?.id == track.id) {
+                listenSessionPersistedMs = maxOf(listenSessionPersistedMs, listenedMs)
+            }
+            refreshListeningPulse()
+        }
+    }
+
+    private fun refreshListeningPulse(force: Boolean = false) {
+        if (listeningPulseRefreshJob?.isActive == true) return
+        val now = android.os.SystemClock.elapsedRealtime()
+        val waitMs = if (force) 0L else (PULSE_REFRESH_THROTTLE_MS - (now - lastListeningPulseRefreshMs)).coerceAtLeast(0L)
+        listeningPulseRefreshJob = viewModelScope.launch(Dispatchers.IO) {
+            if (waitMs > 0L) delay(waitMs)
             val events = listeningPulseStore.eventsWindow()
             val recent = listeningPulseStore.recentTracks()
             val pulse = listeningPulseEngine.build(events)
+            lastListeningPulseRefreshMs = android.os.SystemClock.elapsedRealtime()
             _state.update { it.copy(listeningPulse = pulse, recentListens = recent) }
         }
     }
@@ -2357,6 +2385,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         old.forEach { map[it.id] = it }
         incoming.forEach { map[it.id] = it }
         return map.values.toList()
+    }
+
+    private companion object {
+        const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
+        const val PULSE_REFRESH_THROTTLE_MS = 5_000L
     }
 
     override fun onCleared() {
