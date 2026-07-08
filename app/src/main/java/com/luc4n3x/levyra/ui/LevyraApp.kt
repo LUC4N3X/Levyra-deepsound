@@ -175,9 +175,12 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -240,6 +243,8 @@ private val CinematicGold = Color(0xFFFFC46B)
 private val CinematicGlass = Color(0xFF151321)
 private val CinematicGlassDeep = Color(0xFF0B0A14)
 private val CinematicHairline = Color.White.copy(alpha = 0.105f)
+private val HomeHorizontalInset = 16.dp
+private val HomeHorizontalShelfEndPadding = 32.dp
 
 private val LevyraIsLight: Boolean get() = LevyraActivePalette.isLight
 private val LevyraReadableOnArtwork: Color get() = Color.White
@@ -251,6 +256,13 @@ private val LevyraAdaptiveCardDeep: Color get() = if (LevyraIsLight) Color.White
 private val LevyraAdaptiveChip: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.06f)
 private val LevyraAdaptiveChipSelected: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.12f)
 private val LevyraAdaptiveTrack: Color get() = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.08f)
+
+@Composable
+private fun HomeSectionInset(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.padding(horizontal = HomeHorizontalInset)) {
+        content()
+    }
+}
 
 private fun cinematicGlassBrush(
     accentStart: Color = LevyraCyan,
@@ -1976,7 +1988,10 @@ private fun ReleaseRadarRow(
     onOpen: (ReleaseRadarEntry) -> Unit,
     onArtist: (String) -> Unit
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
+    ) {
         items(
             items = entries,
             key = { "radar-${it.artistName}-${it.release.browseId.ifBlank { it.release.title }}" },
@@ -2428,7 +2443,7 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f))) // Dark overlay for readability
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.72f)))
         
         LazyColumn(
             state = listState,
@@ -2477,13 +2492,32 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
             } else {
                 itemsIndexed(state.lyrics) { index, line ->
                     val isActive = state.lyricsSynced && index == activeIndex
+                    val lineColor = when {
+                        isActive -> Color.White
+                        state.lyricsSynced -> Color.White.copy(alpha = 0.5f)
+                        else -> Color.White.copy(alpha = 0.85f)
+                    }
+                    val annotatedLine = buildAnnotatedString {
+                        if (isActive && line.words.isNotEmpty()) {
+                            line.words.forEachIndexed { wordIndex, word ->
+                                val wordActive = state.positionMs >= word.startMs && state.positionMs <= word.endMs
+                                withStyle(
+                                    SpanStyle(
+                                        color = if (wordActive) accentStart else Color.White.copy(alpha = 0.56f),
+                                        fontWeight = if (wordActive) FontWeight.Black else FontWeight.Bold
+                                    )
+                                ) {
+                                    append(word.text)
+                                }
+                                if (wordIndex < line.words.lastIndex) append(" ")
+                            }
+                        } else {
+                            append(line.text)
+                        }
+                    }
                     Text(
-                        text = line.text,
-                        color = when {
-                            isActive -> Color.White
-                            state.lyricsSynced -> Color.White.copy(alpha = 0.5f)
-                            else -> Color.White.copy(alpha = 0.85f)
-                        },
+                        text = annotatedLine,
+                        color = lineColor,
                         fontSize = if (isActive) 28.sp else 22.sp,
                         lineHeight = if (isActive) 34.sp else 28.sp,
                         fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
@@ -2795,13 +2829,15 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+        contentPadding = PaddingValues(top = 14.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
         item(key = "home-top", contentType = "home-header") {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
-                MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
+            HomeSectionInset {
+                Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
+                    MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
+                }
             }
         }
         if (personalTracks.isNotEmpty()) {
@@ -2830,13 +2866,15 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (state.currentTrack != null) {
             item(key = "home-continue", contentType = "home-card") {
-                ContinueListeningCard(
-                    track = state.currentTrack,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    progress = progressOf(state.positionMs, state.durationMs),
-                    onResume = viewModel::togglePlay
-                )
+                HomeSectionInset {
+                    ContinueListeningCard(
+                        track = state.currentTrack,
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        progress = progressOf(state.positionMs, state.durationMs),
+                        onResume = viewModel::togglePlay
+                    )
+                }
             }
         }
 
@@ -2850,7 +2888,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (state.releaseRadar.isNotEmpty()) {
             item(key = "sec-release-radar-header", contentType = "home-section-header") {
-                SectionTitle("📡 ${strings.releaseRadar}")
+                HomeSectionInset { SectionTitle("📡 ${strings.releaseRadar}") }
             }
             item(key = "sec-release-radar-row", contentType = "home-horizontal-row") {
                 ReleaseRadarRow(
@@ -2862,15 +2900,19 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (state.similarArtists.isNotEmpty()) {
             item(key = "sec-similar-artists-header", contentType = "home-section-header") {
-                SectionTitle("✨ ${strings.similarToFollowed}")
+                HomeSectionInset { SectionTitle("✨ ${strings.similarToFollowed}") }
             }
             item(key = "sec-similar-artists-row", contentType = "home-horizontal-row") {
-                ArtistHitRow(state.similarArtists, onClick = viewModel::openArtistFromHit)
+                ArtistHitRow(
+                    artists = state.similarArtists,
+                    contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding),
+                    onClick = viewModel::openArtistFromHit
+                )
             }
         }
         if (newReleases != null && newReleases.tracks.isNotEmpty()) {
             item(key = "sec-new-releases-header", contentType = "home-section-header") {
-                SectionHeaderAction(strings.newReleases, onPlayAll = { viewModel.playAll(newReleases.tracks) })
+                HomeSectionInset { SectionHeaderAction(strings.newReleases, onPlayAll = { viewModel.playAll(newReleases.tracks) }) }
             }
             item(key = "sec-new-releases-row", contentType = "home-horizontal-row") {
                 AlbumCardRow(
@@ -2883,7 +2925,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         if (state.homeAlbums.isNotEmpty() || state.homeAlbumsLoading) {
             item(key = "sec-home-albums-header", contentType = "home-section-header") {
-                SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(state.homeAlbums) })
+                HomeSectionInset { SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(state.homeAlbums) }) }
             }
             item(key = "sec-home-albums-row", contentType = "home-horizontal-row") {
                 if (state.homeAlbums.isNotEmpty()) {
@@ -2900,7 +2942,7 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         otherSections.forEachIndexed { index, section ->
             if (section.tracks.isNotEmpty()) {
                 item(key = "sec-other-${index}-header", contentType = "home-section-header") {
-                    SectionHeaderAction(section.title, onPlayAll = { viewModel.playAll(section.tracks) })
+                    HomeSectionInset { SectionHeaderAction(section.title, onPlayAll = { viewModel.playAll(section.tracks) }) }
                 }
                 item(key = "sec-other-${index}-row", contentType = "home-horizontal-row") {
                     AlbumCardRow(
@@ -2914,23 +2956,33 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         }
         item(key = "home-chart-title", contentType = "home-section-header") {
             val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-            SectionHeaderAction("Top 50 ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
+            HomeSectionInset {
+                SectionHeaderAction("Top 50 ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
+            }
         }
         item(key = "home-chart-regions", contentType = "home-horizontal-row") {
-            ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
+            HomeSectionInset {
+                ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
+            }
         }
         if (state.charts.isEmpty()) {
             item(key = "home-chart-empty", contentType = "home-card") {
-                if (state.isLoadingCharts) {
-                    ChartLoadingSkeleton()
-                } else {
-                    GlassMessage(strings.top50Unavailable, LevyraOrange)
+                HomeSectionInset {
+                    if (state.isLoadingCharts) {
+                        ChartLoadingSkeleton()
+                    } else {
+                        GlassMessage(strings.top50Unavailable, LevyraOrange)
+                    }
                 }
             }
         }
         if (state.charts.isNotEmpty()) {
             item(key = "home-chart-row", contentType = "home-horizontal-row") {
-                LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
+                ) {
                     val chunks = state.charts.chunked(4)
                     itemsIndexed(
                         items = chunks,
@@ -2958,7 +3010,9 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
             }
         }
-        item(key = "home-status", contentType = "home-card") { StatusBlock(state) }
+        item(key = "home-status", contentType = "home-card") {
+            HomeSectionInset { StatusBlock(state) }
+        }
     }
 
     addTarget?.let { track ->
@@ -3045,6 +3099,7 @@ private fun TrendingArtistsShelf(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
+            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp)
         ) {
@@ -3064,7 +3119,8 @@ private fun TrendingArtistsShelf(
             )
         }
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(20.dp)
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
             items(
                 items = artists,
@@ -3162,7 +3218,9 @@ private fun ResonanceShelf(
     val strings = LocalLevyraStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = HomeHorizontalInset),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -3217,7 +3275,7 @@ private fun ResonanceShelf(
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(end = 6.dp)
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
             itemsIndexed(
                 items = tracks,
@@ -3409,7 +3467,9 @@ private fun PersonalListeningShelf(
     val shelfTracks = remember(tracks) { tracks.distinctBy { it.id } }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = HomeHorizontalInset),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -3453,7 +3513,7 @@ private fun PersonalListeningShelf(
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(end = 4.dp)
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
             val columns = shelfTracks.chunked(2)
             itemsIndexed(
@@ -7785,7 +7845,7 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
 private fun HomeAlbumLoadingRow() {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(end = 4.dp)
+        contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         items(4, key = { "home-album-loading-$it" }) {
             Column(
@@ -7823,7 +7883,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
     if (albums.isEmpty()) return
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(end = 4.dp)
+        contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         itemsIndexed(
             items = albums,
@@ -7932,7 +7992,7 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
     if (tracks.isEmpty()) return
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(end = 4.dp)
+        contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         itemsIndexed(
             items = tracks,
@@ -8609,8 +8669,15 @@ private fun SearchTrackCard(
 }
 
 @Composable
-private fun ArtistHitRow(artists: List<ArtistHit>, onClick: (ArtistHit) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+private fun ArtistHitRow(
+    artists: List<ArtistHit>,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    onClick: (ArtistHit) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = contentPadding
+    ) {
         items(artists, key = { "artist-hit-${it.name}" }) { hit ->
             Column(
                 modifier = Modifier.width(104.dp).clickable { onClick(hit) },

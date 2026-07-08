@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.domain.LyricLine
+import com.luc4n3x.levyra.domain.LyricWord
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -16,7 +17,6 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
-import kotlin.math.absoluteValue
 
 class LyricsRepository(context: Context? = null) {
     private val cacheDir = context?.applicationContext?.cacheDir?.let { File(it, "lyrics_pro") }
@@ -30,13 +30,6 @@ class LyricsRepository(context: Context? = null) {
         val cached: Boolean
     )
 
-    private data class Candidate(
-        val result: LyricsResult,
-        val title: String,
-        val artist: String,
-        val durationSec: Long
-    )
-
     suspend fun fetch(title: String, artist: String, durationSec: Long): LyricsResult? = withContext(Dispatchers.IO) {
         val cleanTitle = cleanTitle(title)
         val cleanArtist = cleanArtist(artist)
@@ -47,7 +40,7 @@ class LyricsRepository(context: Context? = null) {
             memory[key] = cached
             return@withContext cached
         }
-        val candidates = mutableListOf<Candidate>()
+        val candidates = mutableListOf<LyricsCandidate>()
         artistVariants(cleanArtist).forEach { artistVariant ->
             runCatching { getLrcLibExact(cleanTitle, artistVariant, durationSec) }
                 .getOrNull()
@@ -61,11 +54,7 @@ class LyricsRepository(context: Context? = null) {
                 .getOrNull()
                 ?.let { candidates += it }
         }
-        val best = candidates
-            .map { candidate -> candidate.result.copy(confidence = score(candidate, cleanTitle, cleanArtist, durationSec)) }
-            .filter { it.lines.isNotEmpty() && it.confidence >= 42 }
-            .sortedWith(compareByDescending<LyricsResult> { it.synced }.thenByDescending { it.confidence }.thenByDescending { it.lines.size })
-            .firstOrNull()
+        val best = LyricsResultRanker.best(candidates, LyricsRequest(cleanTitle, cleanArtist, durationSec))
         if (best != null) {
             val stable = best.copy(cached = false)
             memory[key] = stable
@@ -74,7 +63,7 @@ class LyricsRepository(context: Context? = null) {
         best
     }
 
-    private fun getLrcLibExact(title: String, artist: String, durationSec: Long): Candidate? {
+    private fun getLrcLibExact(title: String, artist: String, durationSec: Long): LyricsCandidate? {
         val url = buildString {
             append("https://lrclib.net/api/get?track_name=")
             append(enc(title))
@@ -85,35 +74,35 @@ class LyricsRepository(context: Context? = null) {
         val body = httpGet(url, "application/json") ?: return null
         val json = JSONObject(body)
         val result = parseLrcLibEntry(json, "LRCLIB Exact") ?: return null
-        return Candidate(result, json.optString("trackName", title), json.optString("artistName", artist), json.optLong("duration", durationSec))
+        return LyricsCandidate(result, json.optString("trackName", title), json.optString("artistName", artist), json.optLong("duration", durationSec))
     }
 
-    private fun searchLrcLib(title: String, artist: String): List<Candidate> {
+    private fun searchLrcLib(title: String, artist: String): List<LyricsCandidate> {
         val url = "https://lrclib.net/api/search?track_name=${enc(title)}&artist_name=${enc(artist)}"
         val body = httpGet(url, "application/json") ?: return emptyList()
         val array = JSONArray(body)
-        val out = ArrayList<Candidate>()
+        val out = ArrayList<LyricsCandidate>()
         for (i in 0 until array.length()) {
             val json = array.optJSONObject(i) ?: continue
             val result = parseLrcLibEntry(json, "LRCLIB Search") ?: continue
-            out += Candidate(result, json.optString("trackName", title), json.optString("artistName", artist), json.optLong("duration", 0L))
+            out += LyricsCandidate(result, json.optString("trackName", title), json.optString("artistName", artist), json.optLong("duration", 0L))
         }
         return out.take(12)
     }
 
-    private fun lyricsOvh(title: String, artist: String): Candidate? {
+    private fun lyricsOvh(title: String, artist: String): LyricsCandidate? {
         val url = "https://api.lyrics.ovh/v1/${encPath(artist)}/${encPath(title)}"
         val body = httpGet(url, "application/json") ?: return null
         val lyrics = JSONObject(body).optString("lyrics").trim()
         val lines = plainLines(lyrics)
         if (lines.isEmpty()) return null
-        return Candidate(LyricsResult(false, lines, "Lyrics.ovh", 54, false), title, artist, 0L)
+        return LyricsCandidate(LyricsResult(false, lines, "Lyrics.ovh", 54, false), title, artist, 0L)
     }
 
     private fun parseLrcLibEntry(json: JSONObject, provider: String): LyricsResult? {
         val syncedText = json.optString("syncedLyrics").takeIf { it.isMeaningfulLyrics() }
         if (syncedText != null) {
-            val lines = parseLrc(syncedText)
+            val lines = LrcLyricsParser.parse(syncedText)
             if (lines.isNotEmpty()) return LyricsResult(true, lines, provider, 88, false)
         }
         val plain = json.optString("plainLyrics").takeIf { it.isMeaningfulLyrics() } ?: return null
@@ -128,60 +117,6 @@ class LyricsRepository(context: Context? = null) {
             .filter { it.isNotBlank() }
             .filterNot { it.equals("embed", ignoreCase = true) }
             .mapIndexed { index, line -> LyricLine(index * 4200L, (index + 1) * 4200L, line, "") }
-    }
-
-    private fun parseLrc(lrc: String): List<LyricLine> {
-        val regex = Regex("\\[(\\d{1,2}):(\\d{2})(?:[.:](\\d{1,3}))?]")
-        val raw = mutableListOf<Pair<Long, String>>()
-        lrc.split("\n").forEach { line ->
-            val matches = regex.findAll(line).toList()
-            if (matches.isEmpty()) return@forEach
-            val text = line.substring(matches.last().range.last + 1).trim()
-            matches.forEach { match ->
-                val min = match.groupValues[1].toLongOrNull() ?: 0L
-                val sec = match.groupValues[2].toLongOrNull() ?: 0L
-                val frac = match.groupValues[3]
-                val ms = when (frac.length) {
-                    1 -> frac.toLongOrNull()?.times(100L) ?: 0L
-                    2 -> frac.toLongOrNull()?.times(10L) ?: 0L
-                    3 -> frac.toLongOrNull() ?: 0L
-                    else -> 0L
-                }
-                raw += (min * 60_000L + sec * 1000L + ms) to text
-            }
-        }
-        val sorted = raw.filter { it.second.isNotBlank() }.sortedBy { it.first }
-        return sorted.mapIndexed { index, (start, text) ->
-            val end = sorted.getOrNull(index + 1)?.first?.minus(80L)?.coerceAtLeast(start + 800L) ?: (start + 6000L)
-            LyricLine(start, end, text, "")
-        }
-    }
-
-    private fun score(candidate: Candidate, title: String, artist: String, durationSec: Long): Int {
-        val titleScore = similarity(candidate.title.cleanComparable(), title.cleanComparable())
-        val artistScore = similarity(candidate.artist.cleanComparable(), artist.cleanComparable())
-        val durationScore = when {
-            durationSec <= 0L || candidate.durationSec <= 0L -> 12
-            (candidate.durationSec - durationSec).absoluteValue <= 3L -> 18
-            (candidate.durationSec - durationSec).absoluteValue <= 8L -> 12
-            (candidate.durationSec - durationSec).absoluteValue <= 16L -> 6
-            else -> -12
-        }
-        val syncScore = if (candidate.result.synced) 18 else 4
-        val sizeScore = candidate.result.lines.size.coerceAtMost(40) / 2
-        return (titleScore * 36 / 100 + artistScore * 26 / 100 + durationScore + syncScore + sizeScore).coerceIn(0, 100)
-    }
-
-    private fun similarity(left: String, right: String): Int {
-        if (left.isBlank() || right.isBlank()) return 0
-        if (left == right) return 100
-        if (left.contains(right) || right.contains(left)) return 84
-        val a = left.split(" ").filter { it.isNotBlank() }.toSet()
-        val b = right.split(" ").filter { it.isNotBlank() }.toSet()
-        if (a.isEmpty() || b.isEmpty()) return 0
-        val intersection = a.intersect(b).size
-        val union = a.union(b).size.coerceAtLeast(1)
-        return (intersection * 100 / union).coerceIn(0, 100)
     }
 
     private fun httpGet(url: String, accept: String): String? {
@@ -212,7 +147,23 @@ class LyricsRepository(context: Context? = null) {
             val parsed = ArrayList<LyricLine>()
             for (i in 0 until lines.length()) {
                 val item = lines.optJSONObject(i) ?: continue
-                parsed += LyricLine(item.optLong("startMs"), item.optLong("endMs"), item.optString("text"), item.optString("translated"))
+                val wordsJson = item.optJSONArray("words") ?: JSONArray()
+                val words = ArrayList<LyricWord>()
+                for (wordIndex in 0 until wordsJson.length()) {
+                    val word = wordsJson.optJSONObject(wordIndex) ?: continue
+                    words += LyricWord(
+                        startMs = word.optLong("startMs"),
+                        endMs = word.optLong("endMs"),
+                        text = word.optString("text")
+                    )
+                }
+                parsed += LyricLine(
+                    startMs = item.optLong("startMs"),
+                    endMs = item.optLong("endMs"),
+                    text = item.optString("text"),
+                    translated = item.optString("translated"),
+                    words = words
+                )
             }
             if (parsed.isEmpty()) null else LyricsResult(json.optBoolean("synced"), parsed, json.optString("provider"), json.optInt("confidence", 70), true)
         }.onFailure { Timber.w(it, "Lyrics cache restore failed") }.getOrNull()
@@ -224,7 +175,23 @@ class LyricsRepository(context: Context? = null) {
             if (!dir.isDirectory) dir.mkdirs()
             val lines = JSONArray()
             result.lines.take(500).forEach { line ->
-                lines.put(JSONObject().put("startMs", line.startMs).put("endMs", line.endMs).put("text", line.text).put("translated", line.translated))
+                val words = JSONArray()
+                line.words.take(80).forEach { word ->
+                    words.put(
+                        JSONObject()
+                            .put("startMs", word.startMs)
+                            .put("endMs", word.endMs)
+                            .put("text", word.text)
+                    )
+                }
+                lines.put(
+                    JSONObject()
+                        .put("startMs", line.startMs)
+                        .put("endMs", line.endMs)
+                        .put("text", line.text)
+                        .put("translated", line.translated)
+                        .put("words", words)
+                )
             }
             File(dir, "$key.json").writeText(
                 JSONObject()
