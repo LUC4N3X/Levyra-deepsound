@@ -86,7 +86,7 @@ class OfflineAudioExporter(
 
     private suspend fun downloadAudio(track: Track, workspace: File): DownloadedAudio {
         var lastError: IOException? = null
-        val rangeAttempts = listOf(true, false, true)
+        val rangeAttempts = listOf(false, true, false)
         for ((index, useRange) in rangeAttempts.withIndex()) {
             try {
                 return downloadAudioAttempt(track, workspace, useRange)
@@ -115,7 +115,13 @@ class OfflineAudioExporter(
             if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
             val body = response.body ?: throw IOException("Risposta audio vuota")
             val declaredLength = body.contentLength()
-            val targetLength = if (expectedLength > 0L) expectedLength else declaredLength
+            val contentRangeTotal = response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull() ?: -1L
+            val targetLength = when {
+                declaredLength > 0L -> declaredLength
+                contentRangeTotal > 0L -> contentRangeTotal
+                expectedLength > 0L -> expectedLength
+                else -> -1L
+            }
             if (targetLength > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
             val contentType = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.US)
             val container = detectContainer(contentType, track.streamUrl)
@@ -315,7 +321,7 @@ class OfflineAudioExporter(
         val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "Levyra").apply { mkdirs() }
         if (!dir.exists()) throw IOException("Cartella Music/Levyra non disponibile")
         val target = uniqueFile(dir, buildFileName(track, container.extension))
-        input.inputStream().use { source -> FileOutputStream(target).use { source.copyTo(it) } }
+        input.inputStream().use { source -> FileOutputStream(target).use { source.copyTo(it, COPY_BUFFER_BYTES) } }
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DATA, target.absolutePath)
             put(MediaStore.MediaColumns.DISPLAY_NAME, target.name)
@@ -409,9 +415,10 @@ class OfflineAudioExporter(
     }
 
     companion object {
-        private const val MAX_AUDIO_BYTES = 128L * 1024L * 1024L
+        private const val MAX_AUDIO_BYTES = Long.MAX_VALUE
         private const val MAX_ARTWORK_BYTES = 4 * 1024 * 1024
         private const val DOWNLOAD_BUFFER_BYTES = 256 * 1024
+        private const val COPY_BUFFER_BYTES = 512 * 1024
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
         private val MUSIC_DESTINATION_LABEL = "${Environment.DIRECTORY_MUSIC}/Levyra"
         private val DOWNLOADS_DESTINATION_LABEL = "${Environment.DIRECTORY_DOWNLOADS}/Levyra"

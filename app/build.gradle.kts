@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.licensee)
+    alias(libs.plugins.ruler)
 }
 
 val localProperties = Properties().apply {
