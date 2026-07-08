@@ -478,7 +478,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         shelves.forEach { shelf ->
             val text = shelf.optJSONObject("description")?.optJSONArray("runs")?.joinText().orEmpty()
                 .ifBlank { shelf.optJSONObject("description")?.optString("simpleText").orEmpty() }
-                .cleanLabel()
+                .cleanAlbumDescription()
             if (text.length >= 12) return text
         }
         return ""
@@ -1005,3 +1005,24 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return palettes[seed % palettes.size]
     }
 }
+
+internal fun String.cleanAlbumDescription(): String {
+    if (isBlank()) return ""
+    val normalized = replace("\\n", "\n").replace("\r\n", "\n").replace('\r', '\n')
+    val cutoff = ALBUM_DESCRIPTION_ATTRIBUTION_PATTERNS
+        .mapNotNull { pattern -> pattern.find(normalized)?.range?.first }
+        .minOrNull()
+    return normalized
+        .let { text -> cutoff?.let { text.take(it) } ?: text }
+        .replace(Regex("https?://\\S+"), "")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
+private val ALBUM_DESCRIPTION_ATTRIBUTION_PATTERNS = listOf(
+    Regex("\\b(?:da|dalla|from|de|von|source|fonte)\\s+wikipedia\\b", RegexOption.IGNORE_CASE),
+    Regex("\\bwikipedia\\b", RegexOption.IGNORE_CASE),
+    Regex("\\bcreative\\s+commons\\b", RegexOption.IGNORE_CASE),
+    Regex("\\bcreativecommons\\.org\\b", RegexOption.IGNORE_CASE),
+    Regex("\\bcc[- ]?by(?:[- ]?sa)?\\b", RegexOption.IGNORE_CASE)
+)
