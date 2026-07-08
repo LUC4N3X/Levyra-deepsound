@@ -65,7 +65,7 @@ class ListeningPulseStore(context: Context) {
 
     private companion object {
         const val WINDOW_DAYS = 90
-        const val RECENT_LIMIT = 20
+        const val RECENT_LIMIT = 40
         const val OVERSCAN = 4
         const val MAX_LOOPS = 6L
         const val PRUNE_EVERY = 40
