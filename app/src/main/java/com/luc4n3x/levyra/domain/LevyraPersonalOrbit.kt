@@ -182,6 +182,26 @@ object LevyraPersonalOrbit {
             .trim()
     }
 
+    fun isLanguagePreferred(track: Track, languageCode: String): Boolean {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        if (normalized == "en") return true
+        if (track.moodTags.any { it.equals("local", ignoreCase = true) }) return true
+        val lookup = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+        val artistMatches = LevyraContentLocales.artistSuggestions(normalized).any { artist ->
+            val key = artist.lowercase()
+            key.isNotBlank() && lookup.contains(key)
+        }
+        if (artistMatches) return true
+        return languageMarkers(normalized).any { marker -> lookup.contains(marker) }
+    }
+
+    fun isClearlyForeignForLanguage(track: Track, languageCode: String): Boolean {
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        if (normalized == "en" || isLanguagePreferred(track, normalized)) return false
+        val lookup = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+        return globalEnglishMarkers.any { marker -> lookup.contains(marker) }
+    }
+
     private fun languageMarkers(languageCode: String): List<String> {
         return when (LevyraLanguageCatalog.normalize(languageCode)) {
             "it" -> listOf(
