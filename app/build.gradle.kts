@@ -181,10 +181,6 @@ ruler {
     locale.set("it")
     screenDensity.set(440)
     sdkVersion.set(35)
-    verification {
-        downloadSizeThreshold = 90 * 1024 * 1024
-        installSizeThreshold = 220 * 1024 * 1024
-    }
 }
 
 kotlin {
