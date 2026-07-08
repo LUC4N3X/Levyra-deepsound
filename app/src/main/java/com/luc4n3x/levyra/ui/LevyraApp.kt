@@ -175,9 +175,12 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -2428,7 +2431,7 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f))) // Dark overlay for readability
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.72f)))
         
         LazyColumn(
             state = listState,
@@ -2477,13 +2480,32 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
             } else {
                 itemsIndexed(state.lyrics) { index, line ->
                     val isActive = state.lyricsSynced && index == activeIndex
+                    val lineColor = when {
+                        isActive -> Color.White
+                        state.lyricsSynced -> Color.White.copy(alpha = 0.5f)
+                        else -> Color.White.copy(alpha = 0.85f)
+                    }
+                    val annotatedLine = buildAnnotatedString {
+                        if (isActive && line.words.isNotEmpty()) {
+                            line.words.forEachIndexed { wordIndex, word ->
+                                val wordActive = state.positionMs >= word.startMs && state.positionMs <= word.endMs
+                                withStyle(
+                                    SpanStyle(
+                                        color = if (wordActive) accentStart else Color.White.copy(alpha = 0.56f),
+                                        fontWeight = if (wordActive) FontWeight.Black else FontWeight.Bold
+                                    )
+                                ) {
+                                    append(word.text)
+                                }
+                                if (wordIndex < line.words.lastIndex) append(" ")
+                            }
+                        } else {
+                            append(line.text)
+                        }
+                    }
                     Text(
-                        text = line.text,
-                        color = when {
-                            isActive -> Color.White
-                            state.lyricsSynced -> Color.White.copy(alpha = 0.5f)
-                            else -> Color.White.copy(alpha = 0.85f)
-                        },
+                        text = annotatedLine,
+                        color = lineColor,
                         fontSize = if (isActive) 28.sp else 22.sp,
                         lineHeight = if (isActive) 34.sp else 28.sp,
                         fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
