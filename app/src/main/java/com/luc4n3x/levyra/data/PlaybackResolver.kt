@@ -72,6 +72,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         .writeTimeout(700, TimeUnit.MILLISECONDS)
         .callTimeout(1_700, TimeUnit.MILLISECONDS)
         .build()
+    private val searchFallbackClient: OkHttpClient = youtubeHttpClient.newBuilder()
+        .connectTimeout(1_200, TimeUnit.MILLISECONDS)
+        .readTimeout(3_000, TimeUnit.MILLISECONDS)
+        .writeTimeout(700, TimeUnit.MILLISECONDS)
+        .callTimeout(3_800, TimeUnit.MILLISECONDS)
+        .build()
 
     @Volatile
     private var selectedAudioQuality = userPreferences.audioQuality()
@@ -267,7 +273,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             return@withContext resolved
         }
 
-        val reason = errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) || it.contains("login", true) }
+        val alternate = resolveAudioWithSearchFallback(track, errors, preferMp4Audio)
+        if (alternate != null) {
+            store(alternate, isVideoMode)
+            return@withContext alternate
+        }
+
+        val reason = errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) || it.contains("login", true) || it.contains("accedi", true) }
             ?: errors.firstOrNull()
             ?: "Stream non disponibile"
         throw PlaybackBlockedException(reason)
@@ -318,6 +330,151 @@ class PlaybackResolver private constructor(private val context: Context) {
         val result = winner.await()
         coroutineContext.cancelChildren()
         result
+    }
+
+    private suspend fun resolveAudioWithSearchFallback(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
+        val candidates = findAlternativeAudioCandidates(track)
+        if (candidates.isEmpty()) return null
+        for (candidate in candidates) {
+            val localErrors = Collections.synchronizedList(mutableListOf<String>())
+            val resolved = runCatching { resolveAudioFast(candidate, localErrors, preferMp4Audio) }.getOrNull()
+            if (resolved != null && resolved.streamUrl.isNotBlank() && streamStillFresh(resolved.streamUrl) && isDirectAudioUrl(resolved.streamUrl)) {
+                return track.copy(
+                    streamUrl = resolved.streamUrl,
+                    videoUrl = resolved.videoUrl.ifBlank { candidate.videoUrl },
+                    thumbnailUrl = track.thumbnailUrl.ifBlank { resolved.thumbnailUrl },
+                    largeThumbnailUrl = track.largeThumbnailUrl.ifBlank { resolved.largeThumbnailUrl },
+                    durationMs = resolved.durationMs.takeIf { it > 0L } ?: track.durationMs,
+                    videoStreamUrl = "",
+                    source = "${resolved.source} · fallback ${candidate.id}"
+                )
+            }
+            localErrors.firstOrNull()?.takeIf { it.isNotBlank() }?.let { errors += "Fallback ${candidate.id}: $it" }
+        }
+        return null
+    }
+
+    private suspend fun findAlternativeAudioCandidates(track: Track): List<Track> = withContext(Dispatchers.IO) {
+        val output = LinkedHashMap<String, Track>()
+        val queries = alternativeSearchQueries(track)
+        val repository = YoutubeMusicRepository(context)
+        for (query in queries) {
+            searchYouTubeWebCandidates(track, query)
+                .asSequence()
+                .filter { !sameVideoIdentity(track, it) }
+                .forEach { candidate -> output.putIfAbsent(candidate.id, candidate) }
+            if (output.size < 4) {
+                runCatching { repository.search(query, 6, userPreferences.languageCode()) }
+                    .getOrDefault(emptyList())
+                    .asSequence()
+                    .filter { it.id.isNotBlank() }
+                    .filter { !sameVideoIdentity(track, it) }
+                    .sortedByDescending { scoreAlternativeCandidate(track, it) }
+                    .forEach { candidate ->
+                        output.putIfAbsent(candidate.id, candidate.copy(streamUrl = "", videoStreamUrl = ""))
+                    }
+            }
+            if (output.size >= 12) break
+        }
+        output.values
+            .sortedByDescending { scoreAlternativeCandidate(track, it) }
+            .take(12)
+    }
+
+    private fun alternativeSearchQueries(track: Track): List<String> {
+        val title = track.title.cleanSearchToken()
+        val artist = track.artist.cleanSearchToken()
+        val base = listOf(artist, title).filter { it.isNotBlank() }.joinToString(" ").ifBlank { title.ifBlank { track.id } }
+        return listOf(
+            "$base official audio",
+            "$base official video",
+            "$base visual video",
+            "$base topic",
+            base
+        ).map { it.trim() }.filter { it.length >= 2 }.distinct()
+    }
+
+    private fun searchYouTubeWebCandidates(track: Track, query: String): List<Track> {
+        val encoded = query.urlEncode()
+        val request = Request.Builder()
+            .url("https://www.youtube.com/results?search_query=$encoded")
+            .get()
+            .header("Accept", "text/html,application/xhtml+xml")
+            .header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
+            .header("User-Agent", profiles.first { it.clientName == "WEB_REMIX" }.userAgent)
+            .build()
+        return runCatching {
+            searchFallbackClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use emptyList()
+                val html = response.body.string()
+                Regex("""\\?["]videoId\\?["]\s*:\s*\\?["]([A-Za-z0-9_-]{11})\\?["]""")
+                    .findAll(html)
+                    .mapNotNull { match -> match.groupValues.getOrNull(1) }
+                    .distinct()
+                    .take(8)
+                    .map { id ->
+                        track.copy(
+                            id = id,
+                            streamUrl = "",
+                            videoStreamUrl = "",
+                            videoUrl = "https://www.youtube.com/watch?v=$id",
+                            source = "YouTube Web Fallback"
+                        )
+                    }
+                    .toList()
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun sameVideoIdentity(left: Track, right: Track): Boolean {
+        val leftId = left.id.trim()
+        val rightId = right.id.trim()
+        if (leftId.isNotBlank() && rightId.isNotBlank() && leftId == rightId) return true
+        val leftVideoId = extractVideoId(left.videoUrl)
+        val rightVideoId = extractVideoId(right.videoUrl)
+        return leftVideoId.isNotBlank() && leftVideoId == rightVideoId
+    }
+
+    private fun extractVideoId(url: String): String {
+        if (url.isBlank()) return ""
+        Regex("(?:v=|/shorts/|/embed/|youtu\\.be/)([A-Za-z0-9_-]{11})").find(url)?.groupValues?.getOrNull(1)?.let { return it }
+        return url.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty()
+    }
+
+    private fun scoreAlternativeCandidate(original: Track, candidate: Track): Int {
+        val originalTitle = original.title.lowercase()
+        val originalArtist = original.artist.lowercase()
+        val title = candidate.title.lowercase()
+        val artist = candidate.artist.lowercase()
+        val source = candidate.source.lowercase()
+        var score = 0
+        if (title == originalTitle) score += 400
+        if (title.contains(originalTitle) || originalTitle.contains(title)) score += 180
+        if (artist.contains(originalArtist) || originalArtist.contains(artist)) score += 160
+        if (source.contains("youtube music")) score += 80
+        if (title.contains("official")) score += 70
+        if (title.contains("audio")) score += 60
+        if (title.contains("video")) score += 35
+        if (title.contains("lyrics") || title.contains("testo") || title.contains("karaoke") || title.contains("cover")) score -= 140
+        val originalDuration = original.durationMs.takeIf { it > 0L }
+        val candidateDuration = candidate.durationMs.takeIf { it > 0L }
+        if (originalDuration != null && candidateDuration != null) {
+            val delta = kotlin.math.abs(originalDuration - candidateDuration)
+            score += when {
+                delta <= 4_000L -> 180
+                delta <= 12_000L -> 100
+                delta <= 30_000L -> 30
+                delta > 90_000L -> -200
+                else -> -40
+            }
+        }
+        return score
+    }
+
+    private fun String.cleanSearchToken(): String {
+        return replace(Regex("\\s+"), " ")
+            .replace(Regex("[\u0000-\u001F]"), "")
+            .trim()
     }
 
     private suspend fun hedgedInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean): DirectStream? {
