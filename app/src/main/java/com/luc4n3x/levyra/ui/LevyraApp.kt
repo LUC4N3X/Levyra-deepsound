@@ -949,7 +949,9 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onTogglePlayback = viewModel::togglePlay,
                     onFavorite = viewModel::toggleFavorite,
                     onDownload = viewModel::exportTrack,
-                    onDownloadAlbum = viewModel::exportCurrentAlbum,
+                    onDownloadAlbum = viewModel::exportCurrentAlbum,
+                    onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
+                    onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
                     onOpenArtist = viewModel::openArtist,
                     onOpenPlayer = {
                         viewModel.closeAlbum()
@@ -1138,7 +1140,9 @@ private fun AlbumOverlay(
     onTogglePlayback: () -> Unit,
     onFavorite: (Track) -> Unit,
     onDownload: (Track) -> Unit,
-    onDownloadAlbum: () -> Unit,
+    onDownloadAlbum: () -> Unit,
+    onAddToPlaylist: (String, Track) -> Unit,
+    onCreatePlaylistWithTrack: (String, Track) -> Unit,
     onOpenArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
     onClose: () -> Unit
@@ -1155,6 +1159,7 @@ private fun AlbumOverlay(
     val context = LocalContext.current
     val listState = rememberLazyListState()
     val strings = LocalLevyraStrings.current
+    var addTarget by remember { mutableStateOf<Track?>(null) }
     val albumCurrentTrack = remember(tracks, state.currentTrack) {
         tracks.firstOrNull { candidate -> uiTrackMatches(state.currentTrack, candidate) }
     }
@@ -1343,10 +1348,23 @@ private fun AlbumOverlay(
                     .padding(start = 18.dp, end = 18.dp, bottom = 14.dp)
             )
         }
-    }
-}
 
-@Composable
+        addTarget?.let { track ->
+            AddToPlaylistDialog(
+                track = track,
+                playlists = state.playlists,
+                onDismiss = { addTarget = null },
+                onAddTo = { playlistId ->
+                    onAddToPlaylist(playlistId, track)
+                    addTarget = null
+                },
+                onCreateWith = { name ->
+                    onCreatePlaylistWithTrack(name, track)
+                    addTarget = null
+                }
+            )
+        }    }
+}@Composable
 private fun AlbumLoadingCard() {
     Surface(
         color = Color.White.copy(alpha = 0.055f),
@@ -5267,7 +5285,10 @@ private fun LibraryScreen(
                         isResolving = state.isResolving,
                         favoriteIds = state.favoriteIds,
                         onPlay = { viewModel.playFrom(state.favorites, it) },
-                        onFavorite = { viewModel.toggleFavorite(it) }
+                        onFavorite = { viewModel.toggleFavorite(it) },
+                        onAddToPlaylist = { addTarget = it },
+                        onAddToQueue = { viewModel.addToQueue(it) },
+                        onDownload = { viewModel.exportTrack(it) }
                     )
                 }
             }
@@ -8087,7 +8108,10 @@ private fun RowCarousel(
     isResolving: Boolean,
     favoriteIds: Set<String>,
     onPlay: (Track) -> Unit,
-    onFavorite: (Track) -> Unit
+    onFavorite: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onDownload: (Track) -> Unit
 ) {
     if (tracks.isEmpty()) return
     val perPage = 4
@@ -8107,7 +8131,10 @@ private fun RowCarousel(
                     isResolving = isResolving && track.id == currentId,
                     isFavorite = track.id in favoriteIds,
                     onClick = { onPlay(track) },
-                    onFavorite = { onFavorite(track) }
+                    onFavorite = { onFavorite(track) },
+                    onAddToPlaylist = { onAddToPlaylist(track) },
+                    onAddToQueue = { onAddToQueue(track) },
+                    onDownload = { onDownload(track) }
                 )
             }
         }
@@ -8122,8 +8149,13 @@ private fun CompactRow(
     isResolving: Boolean,
     isFavorite: Boolean,
     onClick: () -> Unit,
-    onFavorite: () -> Unit
+    onFavorite: () -> Unit,
+    onAddToPlaylist: () -> Unit,
+    onAddToQueue: () -> Unit,
+    onDownload: () -> Unit
 ) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -8153,17 +8185,70 @@ private fun CompactRow(
             )
             Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        IconButton(onClick = onFavorite) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = "Preferito",
-                tint = if (isFavorite) LevyraPink else LevyraMuted,
-                modifier = Modifier.size(20.dp)
-            )
+        Box {
+            IconButton(onClick = { expanded = true }) {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = "Opzioni brano",
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(
+                    text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti") },
+                    leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) },
+                    onClick = {
+                        expanded = false
+                        onFavorite()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Aggiungi a playlist") },
+                    leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
+                    onClick = {
+                        expanded = false
+                        onAddToPlaylist()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Aggiungi alla coda") },
+                    leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
+                    onClick = {
+                        expanded = false
+                        onAddToQueue()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Scarica") },
+                    leadingIcon = { Icon(Icons.Rounded.Download, null) },
+                    onClick = {
+                        expanded = false
+                        onDownload()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Condividi") },
+                    leadingIcon = { Icon(Icons.Rounded.Share, null) },
+                    onClick = {
+                        expanded = false
+                        val shareText = buildString {
+                            append(track.title)
+                            if (track.artist.isNotBlank()) append(" - ").append(track.artist)
+                            val link = track.videoUrl.ifBlank { track.streamUrl }
+                            if (link.isNotBlank()) append("\n").append(link)
+                        }
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Condividi brano"))
+                    }
+                )
+            }
         }
     }
 }
-
 @Composable
 private fun ChartRow(
     rank: Int,

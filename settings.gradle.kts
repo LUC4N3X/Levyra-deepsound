@@ -4,6 +4,13 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "com.spotify.ruler") {
+                useModule("com.spotify.ruler:ruler-gradle-plugin:${requested.version ?: "2.0.0-beta-3"}")
+            }
+        }
+    }
 }
 
 dependencyResolutionManagement {

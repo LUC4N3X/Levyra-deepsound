@@ -65,21 +65,21 @@ jobs:
             -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
             >/dev/null
 
-      - name: Resolve MetrolistExtractor Snapshot
+      - name: Resolve PipePipeExtractor Snapshot
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
           gradle --no-daemon --refresh-dependencies :app:dependencyInsight \
             --configuration releaseRuntimeClasspath \
-            --dependency MetrolistExtractor \
-            | tee artifacts/metrolist-extractor-dependency.txt
+            --dependency PipePipeExtractor \
+            | tee artifacts/pipepipe-extractor-dependency.txt
 
       - name: Nightly Release Build
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon --refresh-dependencies clean assembleRelease \
+          gradle --no-daemon --no-configuration-cache --refresh-dependencies clean assembleRelease \
             | tee artifacts/nightly-release-build.log
 
       - name: Capture APK Metadata
