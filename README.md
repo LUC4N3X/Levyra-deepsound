@@ -96,6 +96,18 @@ Every track you download is fully parsed, tagged, and structured as a clean M4A 
     </td>
   </tr>
   <tr>
+    <th colspan="2" align="left">📊 Listening Pulse — Private Stats</th>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <ul>
+        <li><strong>On-Device Analytics:</strong> Real listening sessions are measured second by second and stored in Room — no cloud, no telemetry, ever.</li>
+        <li><strong>Pulse Dashboard:</strong> Total minutes, plays, day streak, completion rate, peak listening hour and a 7-day rhythm chart inside the Library.</li>
+        <li><strong>Top Artists & True History:</strong> Most-listened artists ranked by real playtime plus a history of what you actually played, not just what you searched.</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
     <th colspan="2" align="left">🎵 Synced & Offline Lyrics</th>
   </tr>
   <tr>
