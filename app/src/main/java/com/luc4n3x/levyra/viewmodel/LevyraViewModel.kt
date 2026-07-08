@@ -2121,6 +2121,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val queries = listOf(
             "${track.title} ${track.artist}",
             "${track.title} ${track.artist} official audio",
+            "${track.title} ${track.artist} official video",
+            "${track.title} ${track.artist} visual video",
             "${track.title} ${track.artist} topic"
         ).map { it.trim() }.filter { it.length >= 2 }.distinct()
         val candidates = LinkedHashMap<String, Track>()
