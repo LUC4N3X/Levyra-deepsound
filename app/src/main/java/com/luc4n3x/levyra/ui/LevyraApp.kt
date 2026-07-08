@@ -231,6 +231,8 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.valentinilk.shimmer.shimmer
+import java.time.format.TextStyle as DayTextStyle
+import java.util.Locale
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
 private val CinematicPlum = Color(0xFF2A1738)
@@ -5451,9 +5453,9 @@ private fun ListeningPulseCard(pulse: ListeningPulse, strings: LevyraStrings) {
                     accent = LevyraPink
                 )
             }
-            PulseWeekChart(pulse = pulse, label = strings.pulseWeek)
+            PulseWeekChart(pulse = pulse, label = strings.pulseWeek, languageCode = strings.code)
             if (pulse.topArtists.isNotEmpty()) {
-                PulseArtistsRow(artists = pulse.topArtists, label = strings.pulseTopArtists)
+                PulseArtistsRow(artists = pulse.topArtists, label = strings.pulseTopArtists, minuteShort = strings.pulseMinuteShort)
             }
             if (pulse.peakHour >= 0) {
                 Row(
@@ -5504,8 +5506,9 @@ private fun PulseStat(
 }
 
 @Composable
-private fun PulseWeekChart(pulse: ListeningPulse, label: String) {
+private fun PulseWeekChart(pulse: ListeningPulse, label: String, languageCode: String) {
     val peak = pulse.weekPeakMs
+    val locale = remember(languageCode) { Locale.forLanguageTag(languageCode) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Row(
@@ -5538,8 +5541,12 @@ private fun PulseWeekChart(pulse: ListeningPulse, label: String) {
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             pulse.week.forEach { day ->
+                val dayLabel = day.date.dayOfWeek
+                    .getDisplayName(DayTextStyle.SHORT_STANDALONE, locale)
+                    .replace(".", "")
+                    .take(3)
                 Text(
-                    text = day.date.dayOfWeek.name.take(1),
+                    text = dayLabel,
                     color = LevyraMuted.copy(alpha = 0.8f),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -5552,7 +5559,7 @@ private fun PulseWeekChart(pulse: ListeningPulse, label: String) {
 }
 
 @Composable
-private fun PulseArtistsRow(artists: List<PulseArtist>, label: String) {
+private fun PulseArtistsRow(artists: List<PulseArtist>, label: String, minuteShort: String) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Row(
@@ -5578,7 +5585,7 @@ private fun PulseArtistsRow(artists: List<PulseArtist>, label: String) {
                             maxLines = 1
                         )
                         Text(
-                            text = "${artist.listenedMs / 60_000L} min",
+                            text = "${artist.listenedMs / 60_000L} $minuteShort",
                             color = LevyraMuted,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
