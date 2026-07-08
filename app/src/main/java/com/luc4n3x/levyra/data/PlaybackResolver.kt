@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.ServiceList
@@ -30,6 +29,7 @@ import timber.log.Timber
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
@@ -38,6 +38,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 class PlaybackResolver private constructor(private val context: Context) {
@@ -64,7 +65,13 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val playbackResolveTimeoutMs = 18_000L
     private val offlineResolveTimeoutMs = 60_000L
     private val hedgeBudgetMs = 220L
-    private val extractorBudgetMs = 650L
+    private val extractorBudgetMs = 160L
+    private val streamProbeClient: OkHttpClient = youtubeHttpClient.newBuilder()
+        .connectTimeout(700, TimeUnit.MILLISECONDS)
+        .readTimeout(1_400, TimeUnit.MILLISECONDS)
+        .writeTimeout(700, TimeUnit.MILLISECONDS)
+        .callTimeout(1_700, TimeUnit.MILLISECONDS)
+        .build()
 
     @Volatile
     private var selectedAudioQuality = userPreferences.audioQuality()
@@ -230,11 +237,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                     }
                 }
                 val extractorJob = launch {
-                    val settled = withTimeoutOrNull(extractorBudgetMs) { winner.await() } != null || winner.isCompleted
-                    if (settled) return@launch
-                    val r = runCatching { resolveVideoWithMetrolistExtractor(track) }
+                    delay(extractorBudgetMs)
+                    if (winner.isCompleted) return@launch
+                    val r = runCatching { resolveVideoWithPipePipeExtractor(track) }
                     r.onSuccess { winner.complete(it) }
-                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "MetrolistExtractor video: $m" } }
+                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "PipePipeExtractor video: $m" } }
                 }
                 launch {
                     itJob.join(); extractorJob.join()
@@ -275,11 +282,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (stream != null) winner.complete(track.withDirectStream(stream))
             }
             val extractorJob = launch {
-                val settled = withTimeoutOrNull(extractorBudgetMs) { winner.await() } != null || winner.isCompleted
-                if (settled) return@launch
-                val resolved = runCatching { resolveWithMetrolistExtractor(track, false) }
+                delay(extractorBudgetMs)
+                if (winner.isCompleted) return@launch
+                val resolved = runCatching { resolveWithPipePipeExtractor(track, false) }
                 resolved.onSuccess { winner.complete(it) }
-                    .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "MetrolistExtractor: $message" } }
+                    .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "PipePipeExtractor: $message" } }
             }
             launch {
                 innerTubeJob.join()
@@ -299,9 +306,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         val extractorJob = launch {
-            val resolved = runCatching { resolveWithMetrolistExtractor(track, true) }
+            val resolved = runCatching { resolveWithPipePipeExtractor(track, true) }
             resolved.onSuccess { winner.complete(it) }
-                .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "MetrolistExtractor: $message" } }
+                .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "PipePipeExtractor: $message" } }
         }
         launch {
             innerTubeJob.join()
@@ -325,7 +332,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                                 error.message?.takeIf { it.isNotBlank() }?.let { errors += "${profile.label}: $it" }
                             }
                             .getOrNull()
-                            ?.takeIf { it.url.isNotBlank() }
+                            ?.takeIf { stream -> acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors) }
                     }
                 }
             }
@@ -354,7 +361,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (profile.delayMs > 0L) delay(profile.delayMs)
                 val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio) }
                 attempt.onSuccess { stream ->
-                    if (stream.url.isBlank()) return@onSuccess
+                    if (!acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)) return@onSuccess
                     if (!isVideoMode && preferMp4Audio && !isMp4AudioUrl(stream.url)) {
                         fallback.compareAndSet(null, stream)
                     } else {
@@ -450,6 +457,46 @@ class PlaybackResolver private constructor(private val context: Context) {
         val clean = url.lowercase()
         val path = clean.substringBefore('?')
         return clean.contains("mime=audio%2fmp4") || clean.contains("mime=audio/mp4") || path.endsWith(".m4a") || path.endsWith(".mp4")
+    }
+
+    private fun acceptResolvedStream(stream: DirectStream, isVideoMode: Boolean, label: String, errors: MutableList<String>): Boolean {
+        if (stream.url.isBlank()) return false
+        if (!streamStillFresh(stream.url)) {
+            errors += "$label: URL scaduto"
+            return false
+        }
+        if (isVideoMode) return true
+        if (!isDirectAudioUrl(stream.url)) {
+            errors += "$label: stream non audio diretto"
+            return false
+        }
+        if (!verifyDirectAudioUrlFast(stream.url)) {
+            errors += "$label: stream diretto non confermato"
+            return false
+        }
+        return true
+    }
+
+    private fun verifyDirectAudioUrlFast(url: String): Boolean {
+        if (url.isBlank() || !streamStillFresh(url) || !isDirectAudioUrl(url)) return false
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .header("Range", "bytes=0-32767")
+            .header("Accept", "*/*")
+            .header("Accept-Encoding", "identity")
+            .header("User-Agent", profiles.first().userAgent)
+            .build()
+        return runCatching {
+            streamProbeClient.newCall(request).execute().use { response ->
+                if (response.code == 403 || response.code == 404 || response.code == 410 || response.code == 416 || response.code == 429) return@use false
+                if (response.code !in 200..299 && response.code != 206) return@use false
+                val contentType = response.header("Content-Type").orEmpty().lowercase()
+                if (contentType.contains("text/html") || contentType.contains("application/json")) return@use false
+                val sample = response.peekBody(96L).bytes()
+                sample.isNotEmpty()
+            }
+        }.getOrDefault(false)
     }
 
     private fun expiresAtFor(url: String): Long {
@@ -653,7 +700,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }.getOrDefault(false)
     }
 
-    private fun resolveWithMetrolistExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
+    private fun resolveWithPipePipeExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
@@ -668,11 +715,11 @@ class PlaybackResolver private constructor(private val context: Context) {
             durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs,
             thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
             largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-            source = "MetrolistExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
+            source = "PipePipeExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
         )
     }
 
-    private fun resolveVideoWithMetrolistExtractor(track: Track): Track {
+    private fun resolveVideoWithPipePipeExtractor(track: Track): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
 
@@ -697,7 +744,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "MetrolistExtractor Fast Muxed"
+                source = "PipePipeExtractor Fast Muxed"
             )
         }
 
@@ -718,7 +765,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "MetrolistExtractor Video"
+                source = "PipePipeExtractor Video"
             )
         }
 
@@ -729,7 +776,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "MetrolistExtractor Muxed"
+                source = "PipePipeExtractor Muxed"
             )
         }
 
@@ -741,7 +788,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 durationMs = durationMs,
                 thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
                 largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "MetrolistExtractor HLS"
+                source = "PipePipeExtractor HLS"
             )
         }
 
