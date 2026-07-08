@@ -203,6 +203,7 @@ object LevyraArtworkCache {
     }
 
     private fun persistentKey(track: Track, size: Int): String {
+        val rawArtwork = if (size >= LARGE_SIZE) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
         val stable = buildString {
             append(size)
             append('|')
@@ -211,6 +212,8 @@ object LevyraArtworkCache {
             append(track.title.trim().lowercase())
             append('|')
             append(track.artist.trim().lowercase())
+            append('|')
+            append(resize(rawArtwork, size).trim())
         }
         return MessageDigest.getInstance("SHA-256")
             .digest(stable.toByteArray(StandardCharsets.UTF_8))
