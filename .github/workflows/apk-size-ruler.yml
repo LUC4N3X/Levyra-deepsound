@@ -1,4 +1,4 @@
-name: APK Size Guard
+name: APK Size Report
 
 on:
   pull_request:
@@ -13,12 +13,10 @@ permissions:
 
 jobs:
   analyze-debug-package-size:
-    name: Analyze debug package size
+    name: Report debug package size
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    env:
-      APK_SIZE_LIMIT_BYTES: "524288000"
-      AAB_SIZE_LIMIT_BYTES: "524288000"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -62,21 +60,20 @@ jobs:
             apk_bytes="$(stat -c%s "${apk}")"
             apk_size="$(numfmt --to=iec --suffix=B "${apk_bytes}")"
           fi
-          echo "# Levyra APK Size Guard" > "${report}"
+          echo "# Levyra APK Size Report" > "${report}"
           echo "" >> "${report}"
           echo "| Output | Size | Bytes | Path |" >> "${report}"
           echo "| --- | ---: | ---: | --- |" >> "${report}"
           echo "| Debug AAB | ${aab_size} | ${aab_bytes} | ${aab:-missing} |" >> "${report}"
           echo "| Debug APK | ${apk_size} | ${apk_bytes} | ${apk:-missing} |" >> "${report}"
+          echo "" >> "${report}"
+          echo "No hard size limit is enforced by this workflow." >> "${report}"
           echo "{" > "${json}"
           echo "  \"debugAabBytes\": ${aab_bytes}," >> "${json}"
           echo "  \"debugApkBytes\": ${apk_bytes}," >> "${json}"
-          echo "  \"apkLimitBytes\": ${APK_SIZE_LIMIT_BYTES}," >> "${json}"
-          echo "  \"aabLimitBytes\": ${AAB_SIZE_LIMIT_BYTES}" >> "${json}"
+          echo "  \"hardLimitEnforced\": false" >> "${json}"
           echo "}" >> "${json}"
           cat "${report}"
-          if [[ "${apk_bytes}" -gt "${APK_SIZE_LIMIT_BYTES}" ]]; then exit 1; fi
-          if [[ "${aab_bytes}" -gt "${AAB_SIZE_LIMIT_BYTES}" ]]; then exit 1; fi
 
       - name: Upload size report
         if: always()

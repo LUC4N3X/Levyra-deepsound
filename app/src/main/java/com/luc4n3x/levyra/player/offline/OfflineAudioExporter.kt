@@ -415,7 +415,6 @@ class OfflineAudioExporter(
     }
 
     companion object {
-        private const val MAX_AUDIO_BYTES = 512L * 1024L * 1024L
         private const val MAX_ARTWORK_BYTES = 4 * 1024 * 1024
         private const val DOWNLOAD_BUFFER_BYTES = 256 * 1024
 private const val COPY_BUFFER_BYTES = 512 * 1024
