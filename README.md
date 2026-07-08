@@ -179,8 +179,6 @@ graph TD
 *   **Background Jobs:** Android WorkManager Daemon
 *   **Serialization:** kotlinx.serialization (JSON)
 *   **Build Pipeline:** Gradle Kotlin DSL (`.gradle.kts`), Version Catalogs (`libs.versions.toml`), KSP (Kotlin Symbol Processing)
-*   **APK Size Guard:** Spotify Ruler report workflow for bundle size analysis and dependency weight tracking
-*   **Player Architecture:** Mobius-sample-inspired `Model / Event / Effect / Update` foundation for safe player refactoring
 *   **Extraction Layer:** InnerTube resolver plus GPL-compatible MetrolistExtractor fallback via JitPack
 
 <br>
@@ -191,7 +189,7 @@ graph TD
 *   Android Studio Jellyfish (or newer)
 *   Java Development Kit (JDK) 17
 *   Android SDK Platform 35 / 36
-*   Gradle 9.4.1 in CI via GitHub Actions
+*   Gradle 8.14.4 (wrapper pre-configured)
 
 ### Building the Project
 Clone the repository and compile the debug configuration directly to a connected Android device or emulator:
@@ -206,20 +204,10 @@ cd Levyra-deepsound
 
 # Compile a clean, optimized release build
 ./gradlew clean assembleRelease
-
-# Analyze bundle size with Spotify Ruler
-./gradlew :app:analyzeDebugBundle
 ```
 
 The resulting signed/unsigned release APK will be located in:
 `app/build/outputs/apk/release/app-release.apk`
-
-Architecture and size-control notes:
-
-```text
-docs/APK_SIZE_RULER.md
-docs/PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md
-```
 
 ### Version Control & CI overrides
 The application's version numbering is centralized inside `gradle.properties`:
@@ -283,8 +271,15 @@ If you intend to distribute custom builds of Levyra:
 
 ## ✦ Disclaimers & License
 
-> [!WARNING]  
-> **Educational and Research Purposes Only**  
-> Levyra is an open-source client and does not host, upload, or index copyrighted files. The app interacts solely with public, third-party content endpoints. The user takes full responsibility for any usage that may violate local laws or third-party terms of service. The developers assume no liability for service changes, system blocks, or client misuse.
+> [!CAUTION]  
+> **LEGAL DISCLAIMER: Educational and Research Purposes ONLY**  
+> 
+> **1. NO LIABILITY:** This software ("Levyra") is provided "AS IS", without warranty of any kind, express or implied. The authors, contributors, and creators of this repository assume **ABSOLUTELY NO LIABILITY** for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, loss of data, legal consequences, or account termination) arising in any way out of the use of this software.
+> 
+> **2. CONTENT & COPYRIGHT:** Levyra does NOT host, upload, index, or store any copyrighted material on any server. It is merely a specialized client/tool that interacts directly with public, third-party APIs and endpoints. The developers do not condone, encourage, or promote piracy, copyright infringement, or any violation of third-party Terms of Service.
+> 
+> **3. USER RESPONSIBILITY:** By downloading, compiling, installing, or using this software, you (the user) explicitly agree that **YOU assume 100% full legal responsibility** for your actions. You are solely responsible for ensuring that your usage complies with all applicable local, state, national, and international laws, as well as the terms of service of any third-party platforms accessed. 
+> 
+> **4. INDEMNIFICATION:** You agree to indemnify and hold harmless the developers from any and all claims, liabilities, damages, or costs resulting from your use or misuse of this software. **If you do not agree with these terms, you must delete this software immediately.**
 
 Licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
