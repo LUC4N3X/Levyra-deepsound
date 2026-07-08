@@ -179,6 +179,8 @@ graph TD
 *   **Background Jobs:** Android WorkManager Daemon
 *   **Serialization:** kotlinx.serialization (JSON)
 *   **Build Pipeline:** Gradle Kotlin DSL (`.gradle.kts`), Version Catalogs (`libs.versions.toml`), KSP (Kotlin Symbol Processing)
+*   **APK Size Guard:** Spotify Ruler report workflow for bundle size analysis and dependency weight tracking
+*   **Player Architecture:** Mobius-sample-inspired `Model / Event / Effect / Update` foundation for safe player refactoring
 *   **Extraction Layer:** InnerTube resolver plus GPL-compatible MetrolistExtractor fallback via JitPack
 
 <br>
@@ -204,10 +206,20 @@ cd Levyra-deepsound
 
 # Compile a clean, optimized release build
 ./gradlew clean assembleRelease
+
+# Analyze bundle size with Spotify Ruler
+./gradlew :app:analyzeDebugBundle
 ```
 
 The resulting signed/unsigned release APK will be located in:
 `app/build/outputs/apk/release/app-release.apk`
+
+Architecture and size-control notes:
+
+```text
+docs/APK_SIZE_RULER.md
+docs/PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md
+```
 
 ### Version Control & CI overrides
 The application's version numbering is centralized inside `gradle.properties`:
