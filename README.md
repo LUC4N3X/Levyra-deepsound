@@ -271,15 +271,44 @@ If you intend to distribute custom builds of Levyra:
 
 ## ✦ Disclaimers & License
 
-> [!CAUTION]  
-> **LEGAL DISCLAIMER: Educational and Research Purposes ONLY**  
-> 
-> **1. NO LIABILITY:** This software ("Levyra") is provided "AS IS", without warranty of any kind, express or implied. The authors, contributors, and creators of this repository assume **ABSOLUTELY NO LIABILITY** for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, loss of data, legal consequences, or account termination) arising in any way out of the use of this software.
-> 
-> **2. CONTENT & COPYRIGHT:** Levyra does NOT host, upload, index, or store any copyrighted material on any server. It is merely a specialized client/tool that interacts directly with public, third-party APIs and endpoints. The developers do not condone, encourage, or promote piracy, copyright infringement, or any violation of third-party Terms of Service.
-> 
-> **3. USER RESPONSIBILITY:** By downloading, compiling, installing, or using this software, you (the user) explicitly agree that **YOU assume 100% full legal responsibility** for your actions. You are solely responsible for ensuring that your usage complies with all applicable local, state, national, and international laws, as well as the terms of service of any third-party platforms accessed. 
-> 
-> **4. INDEMNIFICATION:** You agree to indemnify and hold harmless the developers from any and all claims, liabilities, damages, or costs resulting from your use or misuse of this software. **If you do not agree with these terms, you must delete this software immediately.**
+> [!CAUTION]
+> **LEGAL DISCLAIMER: Educational and Research Purposes ONLY**
+> Levyra is an open-source client and does not host or distribute copyrighted files. The app interacts solely with public, third-party content endpoints. The developers assume no liability for client misuse.
 
-Licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
+<br>
+
+<table width="100%">
+  <tr>
+    <th width="50%" align="left">⚖️ No Liability & Warranty</th>
+    <th width="50%" align="left">🚫 Content & Copyright</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      This software ("Levyra") is provided <strong>"AS IS"</strong>, without warranty of any kind. The creators assume <strong>ABSOLUTELY NO LIABILITY</strong> for any damages (loss of data, legal consequences, account termination) arising out of the use of this software.
+    </td>
+    <td valign="top">
+      Levyra does <strong>NOT</strong> host, upload, index, or store any copyrighted material on any server. It is merely a specialized client interacting with public APIs. The developers do not condone piracy or any violation of third-party Terms of Service.
+    </td>
+  </tr>
+  <tr>
+    <th width="50%" align="left">👤 User Responsibility</th>
+    <th width="50%" align="left">🛡️ Indemnification</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      By downloading or compiling this software, you explicitly agree that <strong>YOU assume 100% full legal responsibility</strong> for your actions, and must ensure compliance with all applicable local laws and third-party terms.
+    </td>
+    <td valign="top">
+      You agree to indemnify and hold harmless the developers from any claims, liabilities, or costs resulting from your use of this software. <strong>If you do not agree with these terms, you must delete this software immediately.</strong>
+    </td>
+  </tr>
+</table>
+
+<br>
+
+<div align="center">
+  <p>
+    Licensed under the <strong>GNU General Public License v3.0</strong><br>
+    See the <a href="LICENSE">LICENSE</a> file for full details.
+  </p>
+</div>
