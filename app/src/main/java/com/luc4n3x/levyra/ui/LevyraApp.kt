@@ -5119,42 +5119,6 @@ private fun LibraryScreen(
 
             item {
                 LibrarySectionHeader(
-                    title = strings.pulseTitle,
-                    detail = strings.pulseSubtitle,
-                    count = state.listeningPulse.plays,
-                    icon = Icons.Rounded.Insights,
-                    accent = LevyraCyan
-                )
-            }
-            item {
-                ListeningPulseCard(pulse = state.listeningPulse, strings = strings)
-            }
-
-            if (state.recentListens.isNotEmpty()) {
-                item {
-                    LibrarySectionHeader(
-                        title = strings.listeningHistory,
-                        detail = strings.listeningHistorySubtitle,
-                        count = state.recentListens.size,
-                        icon = Icons.Rounded.History,
-                        accent = LevyraViolet
-                    )
-                }
-                item {
-                    RowCarousel(
-                        tracks = state.recentListens,
-                        currentId = state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        favoriteIds = state.favoriteIds,
-                        onPlay = { viewModel.playFrom(state.recentListens, it) },
-                        onFavorite = { viewModel.toggleFavorite(it) }
-                    )
-                }
-            }
-
-            item {
-                LibrarySectionHeader(
                     title = cleanLibraryLabel(strings.playlists),
                     detail = "Playlist personali",
                     count = state.playlists.size,
@@ -5246,9 +5210,49 @@ private fun LibraryScreen(
             }
 
             item {
+                LibrarySectionDivider(label = strings.pulseSectionBand)
+            }
+
+            item {
+                LibrarySectionHeader(
+                    title = strings.pulseTitle,
+                    detail = strings.pulseSubtitle,
+                    count = state.listeningPulse.plays,
+                    icon = Icons.Rounded.Insights,
+                    accent = LevyraCyan
+                )
+            }
+            item {
+                ListeningPulseCard(pulse = state.listeningPulse, strings = strings)
+            }
+
+            if (state.recentListens.isNotEmpty()) {
+                item {
+                    LibrarySectionHeader(
+                        title = strings.listeningHistory,
+                        detail = strings.listeningHistorySubtitle,
+                        count = state.recentListens.size,
+                        icon = Icons.Rounded.History,
+                        accent = LevyraViolet
+                    )
+                }
+                item {
+                    RowCarousel(
+                        tracks = state.recentListens,
+                        currentId = state.currentTrack?.id,
+                        isPlaying = state.isPlaying,
+                        isResolving = state.isResolving,
+                        favoriteIds = state.favoriteIds,
+                        onPlay = { viewModel.playFrom(state.recentListens, it) },
+                        onFavorite = { viewModel.toggleFavorite(it) }
+                    )
+                }
+            }
+
+            item {
                 LibrarySectionHeader(
                     title = cleanLibraryLabel(strings.recent),
-                    detail = "Cronologia di ascolto",
+                    detail = strings.recentExploredSubtitle,
                     count = state.tracks.size,
                     icon = Icons.Rounded.LibraryMusic,
                     accent = CinematicGold
@@ -5587,6 +5591,45 @@ private fun PulseArtistsRow(artists: List<PulseArtist>, label: String) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LibrarySectionDivider(label: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(Color.Transparent, LevyraCyan.copy(alpha = 0.35f))
+                    )
+                )
+        )
+        Text(
+            text = label.uppercase(),
+            color = LevyraMuted,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.6.sp
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(LevyraViolet.copy(alpha = 0.35f), Color.Transparent)
+                    )
+                )
+        )
     }
 }
 
