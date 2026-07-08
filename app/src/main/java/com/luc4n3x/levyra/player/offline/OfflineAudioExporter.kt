@@ -39,6 +39,110 @@ class OfflineAudioExporter(
         reportProgress(1)
         var playable = runCatching {
             reportProgress(4)
+            if (track.id.isNotBlank() || track.videoUrl.isNotBlank()) resolver.resolveForOffline(track.copy(streamUrl = "")) else track
+        }.getOrElse { error ->
+            if (track.streamUrl.isNotBlank()) track else throw error
+        }
+        if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
+        reportProgress(10)
+        val workspace = File(context.cacheDir, "levyra_offline_export").apply { mkdirs() }
+        Timber.i("Offline export started: %s", track.title)
+        cleanupWorkspace(workspace)
+        val downloaded = runCatching {
+            downloadAudio(playable, workspace)
+        }.getOrElse { firstError ->
+            val canRefresh = track.id.isNotBlank() || track.videoUrl.isNotBlank()
+            if (!canRefresh) throw firstError
+            reportProgress(7)
+            playable = resolver.resolveForOffline(track.copy(streamUrl = ""))
+            reportProgress(10)
+            downloadAudio(playable, workspace)
+        }
+        var embeddedFile: PreparedAudioFile? = null
+        try {
+            reportProgress(84)
+            val artwork = downloadArtwork(playable)
+            reportProgress(88)
+            embeddedFile = maybeEmbedMetadata(downloaded.file, playable, artwork, downloaded.container, workspace)
+            reportProgress(92)
+            val exported = saveToMusicCollection(embeddedFile.file, playable, embeddedFile.container)
+            reportProgress(98)
+            val fileName = buildFileName(playable, embeddedFile.container.extension)
+            persistDownload(track, playable, fileName, exported.uri, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
+            Timber.i("Offline export completed: %s", fileName)
+            reportProgress(100)
+            OfflineExportResult(
+                uri = exported.uri,
+                fileName = fileName,
+                fileMetadataEmbedded = embeddedFile.fileMetadataEmbedded,
+                mimeType = embeddedFile.container.mimeType,
+                destinationLabel = exported.destinationLabel
+            )
+        } finally {
+            runCatching { downloaded.file.delete() }
+            embeddedFile?.file?.takeIf { it != downloaded.file }?.let { runCatching { it.delete() } }
+        }
+    }
+
+    private suspend fun downloadAudio(track: Track, workspace: File): DownloadedAudio {
+        var lastError: IOException? = null
+        val rangeAttempts = listOf(false, true, false)
+        for ((index, useRange) in rangeAttempts.withIndex()) {
+            try {
+                return downloadAudioAttempt(track, workspace, useRange)
+            } catch (error: IOException) {
+                lastError = error
+                if (index < rangeAttempts.lastIndex) delay(350L * (index + 1))
+            }
+        }
+        throw lastError ?: IOException("Download audio non riuscito")
+    }
+
+    private suspend fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
+        reportProgress(12)
+        val expectedLength = probeContentLength(track.streamUrl)
+        val downloadUrl = if (useRange) withGoogleVideoRange(track.streamUrl, expectedLength) else track.streamUrl
+        val rangeParamApplied = downloadUrl != track.streamUrl
+        val request = Request.Builder()
+            .url(downloadUrl)
+            .header("User-Agent", USER_AGENT)
+            .header("Accept", "audio/*,*/*;q=0.8")
+            .header("Accept-Encoding", "identity")
+            .header("Connection", "keep-alive")
+            .apply { if (useRange && !rangeParamApplied) header("Range", "bytes=0-") }
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
+            val body = response.body ?: throw IOException("Risposta audio vuota")
+            val declaredLength = body.contentLength()
+            val contentRangeTotal = response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull() ?: -1L
+            val targetLength = when {
+                declaredLength > 0L -> declaredLength
+                contentRangeTotal > 0L -> contentRangeTotal
+                expectedLength > 0L -> expectedLength
+                else -> -1L
+            }
+            if (targetLength > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
+            val contentType = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.US)
+            val container = detectContainer(contentType, track.streamUrl)
+            val temp = File(workspace, "raw-${System.nanoTime()}.${container.extension}")
+            try {
+                body.byteStream().use { input ->
+                    FileOutputStream(temp).use { output ->
+                        val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
+                        var total = 0L
+                        var lastProgress = 8
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            total += read.toLong()
+                            if (total > MAX_AUDIO_BYTES) throw IOException("File troppo grande per l'esportazione")
+                            output.write(buffer, 0, read)
+                            val nextProgress = downloadProgress(total, targetLength)
+                            if (nextProgress > lastProgress) {
+                                lastProgress = nextProgress
+                                reportProgress(nextProgress)
+                            }
                         }
                         output.flush()
                         if (targetLength > 0L && total < targetLength) {
@@ -311,6 +415,7 @@ class OfflineAudioExporter(
     }
 
     companion object {
+        private const val MAX_AUDIO_BYTES = Long.MAX_VALUE
         private const val MAX_ARTWORK_BYTES = 4 * 1024 * 1024
         private const val DOWNLOAD_BUFFER_BYTES = 256 * 1024
         private const val COPY_BUFFER_BYTES = 512 * 1024
