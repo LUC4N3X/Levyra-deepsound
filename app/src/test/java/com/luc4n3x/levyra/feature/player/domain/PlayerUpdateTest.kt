@@ -51,6 +51,34 @@ class PlayerUpdateTest {
         assertTrue(result.effects.contains(PlayerEffect.ReportPlaybackError("Riproduzione non riuscita")))
     }
 
+    @Test
+    fun videoModeChangeClearsModelStreamUrlsBeforeResolving() {
+        val resolvedAudioTrack = track(id = "one", streamUrl = "https://cdn.levyra.test/audio.m4a").copy(
+            videoStreamUrl = "https://cdn.levyra.test/video.m3u8"
+        )
+        val result = PlayerUpdate.update(
+            PlayerModel(
+                currentTrack = resolvedAudioTrack,
+                isPlaying = true,
+                isResolving = false,
+                isVideoMode = false
+            ),
+            PlayerEvent.VideoModeChanged(true)
+        )
+        val unresolvedTrack = resolvedAudioTrack.copy(streamUrl = "", videoStreamUrl = "")
+
+        assertEquals(unresolvedTrack, result.model.currentTrack)
+        assertTrue(result.model.isVideoMode)
+        assertTrue(result.model.isResolving)
+        assertTrue(result.effects.contains(PlayerEffect.ResolveTrack(unresolvedTrack, true)))
+
+        val replayDuringResolution = PlayerUpdate.update(result.model, PlayerEvent.PlayClicked)
+
+        assertTrue(replayDuringResolution.model.isResolving)
+        assertFalse(replayDuringResolution.effects.any { it is PlayerEffect.StartPlayback })
+        assertFalse(replayDuringResolution.effects.any { it is PlayerEffect.ResolveTrack })
+    }
+
     private fun track(id: String, streamUrl: String): Track = Track(
         id = id,
         title = "Track $id",
