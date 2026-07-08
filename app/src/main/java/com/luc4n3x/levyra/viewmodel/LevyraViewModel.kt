@@ -983,13 +983,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         if (st.selectedChartId != regionId) return@update st
                         st.copy(
                             charts = st.charts.map { c ->
-                                if (c.id == entry.id) c.copy(
-                                    id = match.id,
-                                    thumbnailUrl = match.thumbnailUrl.ifBlank { c.thumbnailUrl },
-                                    largeThumbnailUrl = match.largeThumbnailUrl.ifBlank { c.largeThumbnailUrl },
-                                    videoUrl = match.videoUrl,
-                                    durationMs = if (match.durationMs > 0L) match.durationMs else c.durationMs
-                                ) else c
+                                if (c.id == entry.id) {
+                                    LevyraPersonalOrbit.preferAlbumArtwork(c, match).copy(
+                                        id = match.id,
+                                        videoUrl = match.videoUrl,
+                                        durationMs = if (match.durationMs > 0L) match.durationMs else c.durationMs
+                                    )
+                                } else {
+                                    c
+                                }
                             }
                         )
                     }
@@ -2104,10 +2106,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (candidates.isEmpty()) throw IllegalStateException("Nessun risultato YouTube per ${track.title}")
         val errors = mutableListOf<String>()
         for (candidate in candidates) {
-            val carried = candidate.copy(
-                thumbnailUrl = candidate.thumbnailUrl.ifBlank { track.thumbnailUrl },
-                largeThumbnailUrl = candidate.largeThumbnailUrl.ifBlank { track.largeThumbnailUrl }
-            )
+            val carried = LevyraPersonalOrbit.preferAlbumArtwork(candidate, track)
             val resolved = runCatching { resolvePlayableTrack(carried) }
             resolved.onSuccess { return it }
             resolved.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "${candidate.title} - ${candidate.artist}: $it" }
