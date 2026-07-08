@@ -53,10 +53,21 @@ object PlayerUpdate : LevyraUpdate<PlayerModel, PlayerEvent, PlayerEffect> {
 
     private fun onPlayClicked(model: PlayerModel): LevyraNext<PlayerModel, PlayerEffect> {
         val track = model.currentTrack ?: return LevyraNext.next(model)
-        return if (track.streamUrl.isBlank()) {
-            LevyraNext.dispatch(model.copy(isPlaying = true, isResolving = true, errorMessage = null), PlayerEffect.ResolveTrack(track, model.isVideoMode))
-        } else {
-            LevyraNext.dispatch(model.copy(isPlaying = true, isResolving = false, errorMessage = null), PlayerEffect.StartPlayback(track))
+        return when {
+            model.isResolving -> LevyraNext.next(model.copy(isPlaying = true, errorMessage = null))
+            track.playableUrlFor(model.isVideoMode).isBlank() -> {
+                val unresolvedTrack = track.clearResolvedStreams()
+                LevyraNext.dispatch(
+                    model.copy(
+                        currentTrack = unresolvedTrack,
+                        isPlaying = true,
+                        isResolving = true,
+                        errorMessage = null
+                    ),
+                    PlayerEffect.ResolveTrack(unresolvedTrack, model.isVideoMode)
+                )
+            }
+            else -> LevyraNext.dispatch(model.copy(isPlaying = true, isResolving = false, errorMessage = null), PlayerEffect.StartPlayback(track))
         }
     }
 
@@ -95,12 +106,28 @@ object PlayerUpdate : LevyraUpdate<PlayerModel, PlayerEvent, PlayerEffect> {
         }
 
     private fun onVideoModeChanged(model: PlayerModel, enabled: Boolean): LevyraNext<PlayerModel, PlayerEffect> {
-        val track = model.currentTrack
-        val updated = model.copy(isVideoMode = enabled, errorMessage = null)
-        return if (track != null && model.isPlaying) {
-            LevyraNext.dispatch(updated.copy(isResolving = true), PlayerEffect.ResolveTrack(track.copy(streamUrl = "", videoStreamUrl = ""), enabled))
+        if (model.isVideoMode == enabled) {
+            return LevyraNext.next(model.copy(errorMessage = null))
+        }
+
+        val unresolvedTrack = model.currentTrack?.clearResolvedStreams()
+        val updated = model.copy(
+            currentTrack = unresolvedTrack,
+            isVideoMode = enabled,
+            isResolving = unresolvedTrack != null && model.isPlaying,
+            errorMessage = null
+        )
+
+        return if (unresolvedTrack != null && model.isPlaying) {
+            LevyraNext.dispatch(updated, PlayerEffect.ResolveTrack(unresolvedTrack, enabled))
         } else {
             LevyraNext.next(updated)
         }
     }
+
+    private fun Track.clearResolvedStreams(): Track =
+        copy(streamUrl = "", videoStreamUrl = "")
+
+    private fun Track.playableUrlFor(isVideoMode: Boolean): String =
+        if (isVideoMode) videoStreamUrl else streamUrl
 }
