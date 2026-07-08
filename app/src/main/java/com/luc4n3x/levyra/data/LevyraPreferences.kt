@@ -169,6 +169,12 @@ class LevyraPreferences(context: Context) {
 
     fun lastPositionMs(): Long = read(0L) { it[KEY_LAST_POSITION] ?: 0L }
 
+    fun listeningPulseLastPruneMs(): Long = read(0L) { it[KEY_LISTENING_PULSE_LAST_PRUNE] ?: 0L }
+
+    fun setListeningPulseLastPruneMs(value: Long) {
+        write { it[KEY_LISTENING_PULSE_LAST_PRUNE] = value.coerceAtLeast(0L) }
+    }
+
     fun loadRecentSearches(): List<Track> = snapshot().recentSearches
 
     fun saveRecentSearches(tracks: List<Track>) {
@@ -442,5 +448,6 @@ class LevyraPreferences(context: Context) {
         val KEY_AUDIO_SPEED = floatPreferencesKey("audio_speed")
         val KEY_AUDIO_PITCH = floatPreferencesKey("audio_pitch")
         val KEY_AUDIO_GAPLESS = booleanPreferencesKey("audio_gapless")
+        val KEY_LISTENING_PULSE_LAST_PRUNE = longPreferencesKey("listening_pulse_last_prune")
     }
 }

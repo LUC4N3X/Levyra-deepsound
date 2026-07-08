@@ -12,6 +12,7 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
@@ -111,6 +112,8 @@ data class LevyraUiState(
     val searchData: SearchResults = SearchResults(),
     val searchFilter: SearchFilter = SearchFilter.All,
     val themePreset: String = LevyraThemes.COSMIC,
+    val listeningPulse: ListeningPulse = ListeningPulse(),
+    val recentListens: List<Track> = emptyList(),
     val followedArtists: List<FollowedArtist> = emptyList(),
     val followedArtistKeys: Set<String> = emptySet(),
     val releaseRadar: List<ReleaseRadarEntry> = emptyList(),
