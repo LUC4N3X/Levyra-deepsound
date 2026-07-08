@@ -949,7 +949,9 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onTogglePlayback = viewModel::togglePlay,
                     onFavorite = viewModel::toggleFavorite,
                     onDownload = viewModel::exportTrack,
-                    onDownloadAlbum = viewModel::exportCurrentAlbum,
+                    onDownloadAlbum = viewModel::exportCurrentAlbum,
+                    onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
+                    onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
                     onOpenArtist = viewModel::openArtist,
                     onOpenPlayer = {
                         viewModel.closeAlbum()
@@ -1138,7 +1140,9 @@ private fun AlbumOverlay(
     onTogglePlayback: () -> Unit,
     onFavorite: (Track) -> Unit,
     onDownload: (Track) -> Unit,
-    onDownloadAlbum: () -> Unit,
+    onDownloadAlbum: () -> Unit,
+    onAddToPlaylist: (String, Track) -> Unit,
+    onCreatePlaylistWithTrack: (String, Track) -> Unit,
     onOpenArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
     onClose: () -> Unit
