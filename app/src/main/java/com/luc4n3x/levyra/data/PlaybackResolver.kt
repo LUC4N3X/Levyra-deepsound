@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
@@ -496,14 +497,18 @@ class PlaybackResolver private constructor(private val context: Context) {
         return hedgedFirst(ladder, hedgeBudgetMs)
     }
 
-    private fun Track.withDirectStream(stream: DirectStream): Track = copy(
-        streamUrl = stream.url,
-        videoStreamUrl = stream.videoUrl,
-        durationMs = stream.durationMs.takeIf { it > 0L } ?: durationMs,
-        thumbnailUrl = stream.thumbnailUrl.ifBlank { thumbnailUrl },
-        largeThumbnailUrl = stream.thumbnailUrl.ifBlank { largeThumbnailUrl },
-        source = stream.source
-    )
+    private fun Track.withDirectStream(stream: DirectStream): Track {
+        val artworkSafe = LevyraPersonalOrbit.preferAlbumArtwork(
+            primary = this,
+            donor = copy(thumbnailUrl = stream.thumbnailUrl, largeThumbnailUrl = stream.thumbnailUrl)
+        )
+        return artworkSafe.copy(
+            streamUrl = stream.url,
+            videoStreamUrl = stream.videoUrl,
+            durationMs = stream.durationMs.takeIf { it > 0L } ?: durationMs,
+            source = stream.source
+        )
+    }
 
     private suspend fun raceInnerTube(
         track: Track,
@@ -867,11 +872,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
         }?.url.orEmpty()
         val label = audio?.let { streamLabel(it) }.orEmpty()
-        return track.copy(
+        val artworkSafe = LevyraPersonalOrbit.preferAlbumArtwork(
+            primary = track,
+            donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
+        )
+        return artworkSafe.copy(
             streamUrl = url,
             durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs,
-            thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
-            largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
             source = "PipePipeExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
         )
     }
