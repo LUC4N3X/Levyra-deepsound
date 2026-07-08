@@ -1,0 +1,87 @@
+name: APK Size Ruler
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - app/**
+      - gradle/**
+      - build.gradle.kts
+      - settings.gradle.kts
+      - gradle.properties
+      - .github/workflows/apk-size-ruler.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apk-size-ruler-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruler:
+    name: Analyze debug bundle size
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.4.1"
+
+      - name: Run Ruler
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:analyzeDebugBundle
+
+      - name: Collect Ruler Reports
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ruler
+          find app/build -type f \( -path '*ruler*' -o -path '*outputs/bundle*' \) | sort > artifacts/ruler/files.txt || true
+          while IFS= read -r file; do
+            if [ -f "${file}" ]; then
+              target="artifacts/ruler/${file#app/build/}"
+              mkdir -p "$(dirname "${target}")"
+              cp "${file}" "${target}"
+            fi
+          done < artifacts/ruler/files.txt
+          if [ ! -s artifacts/ruler/files.txt ]; then
+            echo "No Ruler report files were found under app/build." > artifacts/ruler/no-report.txt
+          fi
+
+      - name: Upload Ruler Report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-ruler-report-${{ github.run_number }}
+          path: artifacts/ruler
+          if-no-files-found: error

@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.licensee)
+    alias(libs.plugins.ruler)
 }
 
 val localProperties = Properties().apply {
@@ -172,6 +173,17 @@ android {
             excludes += "/META-INF/LICENSE*"
             excludes += "/META-INF/NOTICE*"
         }
+    }
+}
+
+ruler {
+    abi.set("arm64-v8a")
+    locale.set("it")
+    screenDensity.set(440)
+    sdkVersion.set(35)
+    verification {
+        downloadSizeThreshold = 90 * 1024 * 1024
+        installSizeThreshold = 220 * 1024 * 1024
     }
 }
 
