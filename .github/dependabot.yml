@@ -55,3 +55,6 @@ updates:
         patterns:
           - "com.github.MetrolistGroup*"
           - "org.schabi*"
+      build-analysis:
+        patterns:
+          - "com.spotify.ruler*"
