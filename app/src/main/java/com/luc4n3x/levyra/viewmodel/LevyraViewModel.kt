@@ -1525,7 +1525,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         val requestId = ++playRequestId
         playJob?.cancel()
-        cancelBackgroundWarmups(cancelList = false)
+        cancelBackgroundWarmups()
         resolver.warmNetwork()
 
         val playableTrack = youtubePlayableTrack(track) ?: track
@@ -1771,7 +1771,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .map { offset -> queue[(base + offset + queue.size) % queue.size] }
                 .filterNot { samePlayableTrack(it, playable) }
                 .distinctBy { playbackIdentity(it) }
-            warmTracks(candidates.take(4), concurrency = 3, delayStepMs = 25L, prime = true)
+            warmTracks(candidates.take(3), concurrency = 2, delayStepMs = 35L, prime = true)
         }
     }
 
@@ -1784,10 +1784,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listPrefetchJob?.cancel()
         listPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             resolver.warmNetwork()
-            val hot = candidates.take(8)
-            val warmOnly = candidates.drop(8)
-            warmTracks(hot, concurrency = 4, delayStepMs = 0L, prime = true)
-            warmTracks(warmOnly, concurrency = 4, delayStepMs = 25L, prime = false)
+            val hot = candidates.take(6)
+            val warmOnly = candidates.drop(6)
+            warmTracks(hot, concurrency = 3, delayStepMs = 0L, prime = true)
+            warmTracks(warmOnly, concurrency = 2, delayStepMs = 45L, prime = false)
         }
     }
 
