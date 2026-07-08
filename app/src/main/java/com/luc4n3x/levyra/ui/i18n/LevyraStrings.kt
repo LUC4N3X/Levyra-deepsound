@@ -131,6 +131,7 @@ data class LevyraStrings(
     val listeningHistoryEmptyTitle: String = "No listens yet",
     val listeningHistoryEmptyDetail: String = "Play a track and your history builds itself here.",
     val pulseMinutes: String = "Minutes",
+    val pulseMinuteShort: String = "min",
     val pulsePlays: String = "Plays",
     val pulseStreak: String = "Day streak",
     val pulseCompletion: String = "Completion",
