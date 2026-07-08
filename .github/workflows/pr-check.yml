@@ -104,7 +104,7 @@ jobs:
           fi
 
       - name: Release Compile
-        run: gradle --no-daemon assembleRelease
+        run: gradle --no-daemon --no-configuration-cache assembleRelease
 
       - name: Collect Reports
         if: always()

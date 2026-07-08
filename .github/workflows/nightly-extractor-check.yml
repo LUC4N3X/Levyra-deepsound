@@ -79,7 +79,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon --refresh-dependencies clean assembleRelease \
+          gradle --no-daemon --no-configuration-cache --refresh-dependencies clean assembleRelease \
             | tee artifacts/nightly-release-build.log
 
       - name: Capture APK Metadata
