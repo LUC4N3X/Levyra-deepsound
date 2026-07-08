@@ -23,6 +23,7 @@ timber = "5.0.1"
 shimmer = "1.4.0"
 chucker = "4.1.0"
 leakcanary = "2.14"
+ruler = "2.0.0-beta-3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -70,4 +71,5 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 licensee = { id = "app.cash.licensee", version.ref = "licensee" }
+ruler = { id = "com.spotify.ruler", version.ref = "ruler" }
 

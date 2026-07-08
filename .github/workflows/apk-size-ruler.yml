@@ -1,0 +1,86 @@
+name: APK Size Report
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-debug-package-size:
+    name: Report debug package size
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build debug package outputs
+        run: gradle --no-daemon --no-configuration-cache --rerun-tasks :app:bundleDebug :app:assembleDebug
+
+      - name: Generate size report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/size-report
+          report="build/size-report/apk-size-report.md"
+          json="build/size-report/apk-size-report.json"
+          aab="$(find app/build/outputs/bundle/debug -type f -name "*.aab" | head -n 1 || true)"
+          apk="$(find app/build/outputs/apk/debug -type f -name "*.apk" | head -n 1 || true)"
+          if [[ -z "${aab}" && -z "${apk}" ]]; then
+            echo "No APK or AAB output found"
+            exit 1
+          fi
+          aab_bytes=0
+          apk_bytes=0
+          aab_size="missing"
+          apk_size="missing"
+          if [[ -n "${aab}" ]]; then
+            aab_bytes="$(stat -c%s "${aab}")"
+            aab_size="$(numfmt --to=iec --suffix=B "${aab_bytes}")"
+          fi
+          if [[ -n "${apk}" ]]; then
+            apk_bytes="$(stat -c%s "${apk}")"
+            apk_size="$(numfmt --to=iec --suffix=B "${apk_bytes}")"
+          fi
+          echo "# Levyra APK Size Report" > "${report}"
+          echo "" >> "${report}"
+          echo "| Output | Size | Bytes | Path |" >> "${report}"
+          echo "| --- | ---: | ---: | --- |" >> "${report}"
+          echo "| Debug AAB | ${aab_size} | ${aab_bytes} | ${aab:-missing} |" >> "${report}"
+          echo "| Debug APK | ${apk_size} | ${apk_bytes} | ${apk:-missing} |" >> "${report}"
+          echo "" >> "${report}"
+          echo "No hard size limit is enforced by this workflow." >> "${report}"
+          echo "{" > "${json}"
+          echo "  \"debugAabBytes\": ${aab_bytes}," >> "${json}"
+          echo "  \"debugApkBytes\": ${apk_bytes}," >> "${json}"
+          echo "  \"hardLimitEnforced\": false" >> "${json}"
+          echo "}" >> "${json}"
+          cat "${report}"
+
+      - name: Upload size report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-apk-size-report
+          path: |
+            build/size-report/apk-size-report.md
+            build/size-report/apk-size-report.json
+          if-no-files-found: warn
