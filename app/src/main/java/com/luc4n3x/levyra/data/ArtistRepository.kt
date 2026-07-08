@@ -175,13 +175,13 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val sections = mutableListOf<JSONObject>()
         collectByKey(root, "musicDescriptionShelfRenderer", sections)
         sections.forEach { shelf ->
-            val text = shelf.optJSONObject("description")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+            val text = shelf.optJSONObject("description")?.optJSONArray("runs")?.joinText().orEmpty().cleanAlbumDescription()
             if (text.length > 24) return text
         }
         val descriptions = mutableListOf<JSONObject>()
         collectByKey(root, "description", descriptions)
         descriptions.forEach { node ->
-            val text = node.optJSONArray("runs")?.joinText().orEmpty().trim()
+            val text = node.optJSONArray("runs")?.joinText().orEmpty().cleanAlbumDescription()
             if (text.length > 80) return text
         }
         return ""
