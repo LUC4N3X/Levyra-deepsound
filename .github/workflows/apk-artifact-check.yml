@@ -71,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon clean assembleRelease
+          gradle --no-daemon --no-configuration-cache clean assembleRelease
 
       - name: Verify APK Artifact
         shell: bash
