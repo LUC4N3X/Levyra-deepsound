@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon :app:analyzeDebugBundle
+          gradle --no-daemon --no-configuration-cache --rerun-tasks :app:analyzeDebugBundle
 
       - name: Collect Ruler Reports
         if: always()

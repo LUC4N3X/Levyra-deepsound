@@ -78,7 +78,7 @@ class OfflineExportWorker(
                         .setRequiredNetworkType(NetworkType.CONNECTED)
                         .build()
                 )
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
                 .addTag("levyra_offline_export")
                 .addTag(uniqueName)
                 .build()
