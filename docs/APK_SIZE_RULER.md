@@ -1,36 +1,19 @@
-# Levyra APK Size Ruler
+# APK Size Guard
 
-Levyra usa Spotify Ruler per analizzare quanto pesano moduli e dipendenze dentro il bundle Android.
+Levyra usa un workflow stabile per controllare la dimensione di APK e AAB debug.
 
-## Task principale
+Il task Ruler diretto è stato disattivato perché nella combinazione AGP/Gradle attuale fallisce internamente su analyzeDebugBundle.
 
-```bash
-gradle --no-daemon :app:analyzeDebugBundle
-```
-
-## Report
-
-Il workflow `APK Size Ruler` pubblica l'artifact `levyra-ruler-report-<run>` con i report generati sotto `app/build`.
-
-## Soglie configurate
+Il workflow ora esegue:
 
 ```text
-downloadSizeThreshold = 90 MB
-installSizeThreshold = 220 MB
-abi = arm64-v8a
-locale = it
-screenDensity = 440
-sdkVersion = 35
+:app:bundleDebug
+:app:assembleDebug
 ```
 
-## Strategia
+Poi genera:
 
-Il controllo gira sul bundle debug per non richiedere keystore, segreti release o pubblicazione. La release normale resta separata e continua a passare dai workflow dedicati.
-
-## Uso consigliato
-
-```bash
-gradle --no-daemon :app:analyzeDebugBundle
+```text
+build/size-report/apk-size-report.md
+build/size-report/apk-size-report.json
 ```
-
-Se il report mostra una crescita anomala, controllare prima dipendenze nuove, asset duplicati, librerie di rete, Media3, extractor e immagini non ottimizzate.

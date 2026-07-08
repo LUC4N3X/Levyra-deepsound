@@ -1,87 +1,87 @@
-name: APK Size Ruler
+name: APK Size Guard
 
 on:
   pull_request:
+  push:
     branches:
       - main
       - master
-    paths:
-      - app/**
-      - gradle/**
-      - build.gradle.kts
-      - settings.gradle.kts
-      - gradle.properties
-      - .github/workflows/apk-size-ruler.yml
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: apk-size-ruler-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  ruler:
-    name: Analyze debug bundle size
+  analyze-debug-package-size:
+    name: Analyze debug package size
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 25
     env:
-      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
-
+      APK_SIZE_LIMIT_BYTES: "524288000"
+      AAB_SIZE_LIMIT_BYTES: "524288000"
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
-
-      - name: Setup Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
+          java-version: "21"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "9.4.1"
+        uses: gradle/actions/setup-gradle@v5
 
-      - name: Run Ruler
+      - name: Build debug package outputs
+        run: gradle --no-daemon --no-configuration-cache --rerun-tasks :app:bundleDebug :app:assembleDebug
+
+      - name: Generate size report
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon --no-configuration-cache --rerun-tasks :app:analyzeDebugBundle
-
-      - name: Collect Ruler Reports
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/ruler
-          find app/build -type f \( -path '*ruler*' -o -path '*outputs/bundle*' \) | sort > artifacts/ruler/files.txt || true
-          while IFS= read -r file; do
-            if [ -f "${file}" ]; then
-              target="artifacts/ruler/${file#app/build/}"
-              mkdir -p "$(dirname "${target}")"
-              cp "${file}" "${target}"
-            fi
-          done < artifacts/ruler/files.txt
-          if [ ! -s artifacts/ruler/files.txt ]; then
-            echo "No Ruler report files were found under app/build." > artifacts/ruler/no-report.txt
+          mkdir -p build/size-report
+          report="build/size-report/apk-size-report.md"
+          json="build/size-report/apk-size-report.json"
+          aab="$(find app/build/outputs/bundle/debug -type f -name "*.aab" | head -n 1 || true)"
+          apk="$(find app/build/outputs/apk/debug -type f -name "*.apk" | head -n 1 || true)"
+          if [[ -z "${aab}" && -z "${apk}" ]]; then
+            echo "No APK or AAB output found"
+            exit 1
           fi
+          aab_bytes=0
+          apk_bytes=0
+          aab_size="missing"
+          apk_size="missing"
+          if [[ -n "${aab}" ]]; then
+            aab_bytes="$(stat -c%s "${aab}")"
+            aab_size="$(numfmt --to=iec --suffix=B "${aab_bytes}")"
+          fi
+          if [[ -n "${apk}" ]]; then
+            apk_bytes="$(stat -c%s "${apk}")"
+            apk_size="$(numfmt --to=iec --suffix=B "${apk_bytes}")"
+          fi
+          echo "# Levyra APK Size Guard" > "${report}"
+          echo "" >> "${report}"
+          echo "| Output | Size | Bytes | Path |" >> "${report}"
+          echo "| --- | ---: | ---: | --- |" >> "${report}"
+          echo "| Debug AAB | ${aab_size} | ${aab_bytes} | ${aab:-missing} |" >> "${report}"
+          echo "| Debug APK | ${apk_size} | ${apk_bytes} | ${apk:-missing} |" >> "${report}"
+          echo "{" > "${json}"
+          echo "  \"debugAabBytes\": ${aab_bytes}," >> "${json}"
+          echo "  \"debugApkBytes\": ${apk_bytes}," >> "${json}"
+          echo "  \"apkLimitBytes\": ${APK_SIZE_LIMIT_BYTES}," >> "${json}"
+          echo "  \"aabLimitBytes\": ${AAB_SIZE_LIMIT_BYTES}" >> "${json}"
+          echo "}" >> "${json}"
+          cat "${report}"
+          if [[ "${apk_bytes}" -gt "${APK_SIZE_LIMIT_BYTES}" ]]; then exit 1; fi
+          if [[ "${aab_bytes}" -gt "${AAB_SIZE_LIMIT_BYTES}" ]]; then exit 1; fi
 
-      - name: Upload Ruler Report
+      - name: Upload size report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: levyra-ruler-report-${{ github.run_number }}
-          path: artifacts/ruler
-          if-no-files-found: error
+          name: levyra-apk-size-report
+          path: |
+            build/size-report/apk-size-report.md
+            build/size-report/apk-size-report.json
+          if-no-files-found: warn

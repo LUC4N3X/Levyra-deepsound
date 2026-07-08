@@ -176,13 +176,6 @@ android {
     }
 }
 
-ruler {
-    abi.set("arm64-v8a")
-    locale.set("it")
-    screenDensity.set(440)
-    sdkVersion.set(35)
-}
-
 kotlin {
     jvmToolchain(17)
 }
