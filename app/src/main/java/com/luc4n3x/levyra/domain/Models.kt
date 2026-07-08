@@ -90,7 +90,14 @@ data class LyricLine(
     val startMs: Long,
     val endMs: Long,
     val text: String,
-    val translated: String
+    val translated: String,
+    val words: List<LyricWord> = emptyList()
+)
+
+data class LyricWord(
+    val startMs: Long,
+    val endMs: Long,
+    val text: String
 )
 
 data class CacheReport(
