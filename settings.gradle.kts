@@ -24,3 +24,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "Levyra"
 include(":app")
+
+includeBuild("extern/LevyraExtractor") {
+    dependencySubstitution {
+        substitute(module("com.github.luc4n3x:levyraextractor")).using(project(":extractor"))
+    }
+}
