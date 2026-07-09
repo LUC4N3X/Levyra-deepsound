@@ -27,8 +27,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          submodules: recursive
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -50,6 +48,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.4.1"
+          cache-disabled: true
 
       - name: Prepare CI Release Signing
         shell: bash
@@ -67,15 +66,15 @@ jobs:
             -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
             >/dev/null
 
-      - name: Resolve LevyraExtractor Snapshot
+      - name: Resolve MetrolistExtractor Snapshot
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
           gradle --no-daemon --refresh-dependencies :app:dependencyInsight \
             --configuration releaseRuntimeClasspath \
-            --dependency LevyraExtractor \
-            | tee artifacts/levyra-extractor-dependency.txt
+            --dependency MetrolistExtractor \
+            | tee artifacts/metrolist-extractor-dependency.txt
 
       - name: Nightly Release Build
         shell: bash
