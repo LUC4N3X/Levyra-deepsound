@@ -170,6 +170,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import com.luc4n3x.levyra.data.LevyraPreferences
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
@@ -6930,6 +6931,7 @@ private fun SettingsOverlay(
                     onCheckedChange = onSkipSilence
                 )
             }
+            item { PoTokenSettingsCard() }
             item { SettingsSectionLabel(strings.preferences) }
             item {
                 SettingsButton(
@@ -7050,6 +7052,82 @@ private fun ThemePresetCard(preset: LevyraPalette, selected: Boolean, onClick: (
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+@Composable
+private fun PoTokenSettingsCard() {
+    val context = LocalContext.current
+    val prefs = remember { LevyraPreferences(context) }
+    var enabled by remember { mutableStateOf(prefs.poTokenEnabled()) }
+    var token by remember { mutableStateOf(prefs.poToken()) }
+    var visitor by remember { mutableStateOf(prefs.poVisitorData()) }
+    Surface(
+        color = LevyraAdaptiveCard,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(LevyraCyan.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.Bolt, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("PoToken WEB (sperimentale)", color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        "Client WEB con PoToken per stream protetti. Incolla poToken e visitorData ottenuti da browser/tool.",
+                        color = LevyraMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = {
+                        enabled = it
+                        prefs.setPoTokenEnabled(it)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = LevyraBlack,
+                        checkedTrackColor = LevyraCyan,
+                        uncheckedThumbColor = LevyraMuted,
+                        uncheckedTrackColor = LevyraAdaptiveTrack
+                    )
+                )
+            }
+            if (enabled) {
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = {
+                        token = it
+                        prefs.setPoToken(it)
+                    },
+                    label = { Text("poToken") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = visitor,
+                    onValueChange = {
+                        visitor = it
+                        prefs.setPoVisitorData(it)
+                    },
+                    label = { Text("visitorData") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

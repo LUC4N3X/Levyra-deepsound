@@ -86,6 +86,14 @@ class PlaybackResolver private constructor(private val context: Context) {
     @Volatile
     private var lastNetworkWarmAt = 0L
 
+    @Volatile
+    private var poTokenValue = ""
+
+    @Volatile
+    private var poVisitorData = ""
+
+    private val webPoTokenProfile = ClientProfile("WEB", "2.20250312.04.00", "WEB PoToken", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, -1)
+
     private val profiles = listOf(
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L, 0),
         ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 1),
@@ -104,6 +112,20 @@ class PlaybackResolver private constructor(private val context: Context) {
             "low" -> "Low"
             else -> "Auto"
         }
+    }
+
+    fun refreshPoTokenSettings() {
+        poTokenValue = if (userPreferences.poTokenEnabled()) userPreferences.poToken() else ""
+        poVisitorData = userPreferences.poVisitorData()
+    }
+
+    private fun poTokenActive(): Boolean = poTokenValue.isNotBlank()
+
+    private fun appendPoToken(url: String, profile: ClientProfile): String {
+        if (url.isBlank() || profile.clientName != "WEB" || poTokenValue.isBlank()) return url
+        if (url.contains("&pot=") || url.contains("?pot=")) return url
+        val separator = if (url.contains('?')) "&" else "?"
+        return "$url${separator}pot=${poTokenValue.urlEncode()}"
     }
 
     fun warmNetwork() {
@@ -224,6 +246,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false, preferMp4Audio: Boolean = false): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
+        refreshPoTokenSettings()
 
         if (isVideoMode) {
             val resolved = coroutineScope {
@@ -470,7 +493,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private suspend fun hedgedInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean): DirectStream? {
-        val ladder = profiles
+        val ladder = (if (poTokenActive()) listOf(webPoTokenProfile) + profiles else profiles)
             .groupBy { it.tier }
             .toSortedMap()
             .map { (_, group) ->
@@ -811,7 +834,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
             return DirectStream(
-                url = bestAudioUrl,
+                url = appendPoToken(bestAudioUrl, profile),
                 videoUrl = "",
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
@@ -991,7 +1014,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             client.put("clientScreen", "EMBED")
                 .put("thirdParty", JSONObject().put("embedUrl", "https://www.youtube.com/embed/$videoId"))
         }
-        return JSONObject()
+        if (profile.clientName == "WEB" && poVisitorData.isNotBlank()) {
+            client.put("visitorData", poVisitorData)
+        }
+        val body = JSONObject()
             .put("context", JSONObject().put("client", client))
             .put("videoId", videoId)
             .put("contentCheckOk", true)
@@ -999,6 +1025,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("playbackContext", JSONObject().put("contentPlaybackContext", JSONObject().put("html5Preference", "HTML5_PREF_WANTS")))
             .put("params", "CgIQBg")
             .put("watchEndpointMusicSupportedConfigs", JSONObject().put("watchEndpointMusicConfig", JSONObject().put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")))
+        if (profile.clientName == "WEB" && poTokenValue.isNotBlank()) {
+            body.put("serviceIntegrityDimensions", JSONObject().put("poToken", poTokenValue))
+        }
+        return body
     }
 
     private fun scoreAudioFormat(mime: String, itag: Int, bitrate: Int, audioQuality: String, preferMp4Audio: Boolean): Int {

@@ -147,6 +147,24 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_AUDIO_QUALITY] = normalizeAudioQuality(value) }
     }
 
+    fun poTokenEnabled(): Boolean = read(false) { it[KEY_POTOKEN_ENABLED] ?: false }
+
+    fun setPoTokenEnabled(value: Boolean) {
+        write { it[KEY_POTOKEN_ENABLED] = value }
+    }
+
+    fun poToken(): String = read("") { it[KEY_POTOKEN].orEmpty().trim() }
+
+    fun setPoToken(value: String) {
+        write { it[KEY_POTOKEN] = value.trim() }
+    }
+
+    fun poVisitorData(): String = read("") { it[KEY_PO_VISITOR_DATA].orEmpty().trim() }
+
+    fun setPoVisitorData(value: String) {
+        write { it[KEY_PO_VISITOR_DATA] = value.trim() }
+    }
+
     fun dismissedUpdateVersion(): String = read("") { it[KEY_DISMISSED_UPDATE_VERSION].orEmpty() }
 
     fun setDismissedUpdateVersion(version: String) {
@@ -426,6 +444,9 @@ class LevyraPreferences(context: Context) {
         val KEY_ANIMATIONS = booleanPreferencesKey("animations_enabled")
         val KEY_DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
         val KEY_SPONSORBLOCK = booleanPreferencesKey("sponsorblock_enabled")
+        val KEY_POTOKEN_ENABLED = booleanPreferencesKey("potoken_enabled")
+        val KEY_POTOKEN = stringPreferencesKey("potoken_value")
+        val KEY_PO_VISITOR_DATA = stringPreferencesKey("potoken_visitor_data")
         val KEY_SKIP_SILENCE = booleanPreferencesKey("skip_silence")
         val KEY_AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val KEY_USER_NAME = stringPreferencesKey("user_name")
