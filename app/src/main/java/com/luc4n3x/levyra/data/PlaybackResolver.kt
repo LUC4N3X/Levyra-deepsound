@@ -7,12 +7,16 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
@@ -23,6 +27,7 @@ import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
 import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.levyra.LevyraYoutubeResolver
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.VideoStream
 import org.schabi.newpipe.extractor.stream.StreamInfo
@@ -60,6 +65,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
     private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
+    private val levyraSabrResolver by lazy { LevyraYoutubeResolver() }
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
@@ -861,9 +867,18 @@ class PlaybackResolver private constructor(private val context: Context) {
         }.getOrDefault(false)
     }
 
-    private fun resolveWithLevyraExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
+    private suspend fun resolveWithLevyraExtractor(track: Track, preferMp4Audio: Boolean = false): Track = coroutineScope {
         NewPipeRuntime.ensure()
-        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
+        val (preflightJob, preflightHint) = launchLevyraSabrPreflight(
+            track = track,
+            isVideoMode = false,
+            preferMp4Audio = preferMp4Audio
+        )
+        val info = try {
+            withContext(Dispatchers.IO) { StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl) }
+        } finally {
+            preflightJob.cancel()
+        }
         val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
         val url = audio?.content
             ?: throw IllegalStateException("Nessuno stream audio diretto disponibile per ${track.title}")
@@ -875,16 +890,26 @@ class PlaybackResolver private constructor(private val context: Context) {
             primary = track,
             donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
         )
-        return artworkSafe.copy(
+        val preflightLabel = preflightHint.get()?.let { " · SABR" }.orEmpty()
+        return@coroutineScope artworkSafe.copy(
             streamUrl = url,
             durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs,
-            source = "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
+            source = "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}$preflightLabel"
         )
     }
 
-    private fun resolveVideoWithLevyraExtractor(track: Track): Track {
+    private suspend fun resolveVideoWithLevyraExtractor(track: Track): Track = coroutineScope {
         NewPipeRuntime.ensure()
-        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
+        val (preflightJob, preflightHint) = launchLevyraSabrPreflight(
+            track = track,
+            isVideoMode = true,
+            preferMp4Audio = false
+        )
+        val info = try {
+            withContext(Dispatchers.IO) { StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl) }
+        } finally {
+            preflightJob.cancel()
+        }
 
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
@@ -896,6 +921,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
 
         val bestAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false)?.content
+        val sabrLabel = preflightHint.get()?.let { " · SABR ${it.videoHeight.takeIf { h -> h > 0 }?.let { h -> "${h}p" }.orEmpty()}".trimEnd() }.orEmpty()
 
         val muxed = info.videoStreams
             .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
@@ -905,11 +931,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .maxByOrNull { heightOf(it.getResolution()) }
 
         if (muxed != null && heightOf(muxed.getResolution()) >= 480) {
-            return artworkSafe.copy(
+            return@coroutineScope artworkSafe.copy(
                 streamUrl = muxed.content,
                 videoStreamUrl = "",
                 durationMs = durationMs,
-                source = "LevyraExtractor Fast Muxed"
+                source = "LevyraExtractor Fast Muxed$sabrLabel"
             )
         }
 
@@ -924,34 +950,61 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?.content
 
         if (bestVideoOnly != null && bestAudio != null) {
-            return artworkSafe.copy(
+            return@coroutineScope artworkSafe.copy(
                 streamUrl = bestAudio,
                 videoStreamUrl = bestVideoOnly,
                 durationMs = durationMs,
-                source = "LevyraExtractor Video"
+                source = "LevyraExtractor Video$sabrLabel"
             )
         }
 
         if (muxed != null) {
-            return artworkSafe.copy(
+            return@coroutineScope artworkSafe.copy(
                 streamUrl = muxed.content,
                 videoStreamUrl = "",
                 durationMs = durationMs,
-                source = "LevyraExtractor Muxed"
+                source = "LevyraExtractor Muxed$sabrLabel"
             )
         }
 
         val hls = info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
         if (hls != null) {
-            return artworkSafe.copy(
+            return@coroutineScope artworkSafe.copy(
                 streamUrl = hls,
                 videoStreamUrl = "",
                 durationMs = durationMs,
-                source = "LevyraExtractor HLS"
+                source = "LevyraExtractor HLS$sabrLabel"
             )
         }
 
         throw IllegalStateException("Nessuno stream video disponibile per ${track.title}")
+    }
+
+    private fun CoroutineScope.launchLevyraSabrPreflight(
+        track: Track,
+        isVideoMode: Boolean,
+        preferMp4Audio: Boolean
+    ): Pair<Job, AtomicReference<LevyraExtractorPreflight?>> {
+        val result = AtomicReference<LevyraExtractorPreflight?>()
+        val job = launch(Dispatchers.IO) {
+            try {
+                val preflight = LevyraExtractorFastPath.preflight(
+                    track = track,
+                    isVideoMode = isVideoMode,
+                    preferMp4Audio = preferMp4Audio,
+                    resolver = levyraSabrResolver
+                )
+                if (preflight != null) {
+                    result.set(preflight)
+                    Timber.d("levyra sabr preflight ready id=%s source=%s", track.id, preflight.source)
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Throwable) {
+                Timber.d(error, "levyra sabr preflight skipped id=%s", track.id)
+            }
+        }
+        return job to result
     }
 
     private fun streamLabel(stream: AudioStream): String {
