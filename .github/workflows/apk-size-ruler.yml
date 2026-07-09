@@ -22,7 +22,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-          submodules: recursive
 
       - name: Setup Java
         uses: actions/setup-java@v5
