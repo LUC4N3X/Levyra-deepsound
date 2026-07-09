@@ -13,13 +13,13 @@ import java.util.concurrent.TimeUnit
 object LevyraHttpClientFactory {
     private val mediaConnectionPool = ConnectionPool(24, 5, TimeUnit.MINUTES)
     private val mediaDispatcher = Dispatcher().apply {
-        maxRequests = 32
-        maxRequestsPerHost = 12
+        maxRequests = 40
+        maxRequestsPerHost = 16
     }
     private val youtubeConnectionPool = ConnectionPool(32, 5, TimeUnit.MINUTES)
     private val youtubeDispatcher = Dispatcher().apply {
-        maxRequests = 48
-        maxRequestsPerHost = 18
+        maxRequests = 64
+        maxRequestsPerHost = 24
     }
 
     @Volatile

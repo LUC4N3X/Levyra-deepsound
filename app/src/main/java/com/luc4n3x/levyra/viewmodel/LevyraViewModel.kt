@@ -65,6 +65,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -278,6 +279,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (orbitSeed.isNotEmpty()) {
             LevyraArtworkCache.preloadPriority(appContext, orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT)
             warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            delay(180L)
+            resolver.warmNetwork()
+            val hot = (orbitSeed.take(4) + _state.value.charts.take(8) + _state.value.tracks.take(8))
+                .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
+                .distinctBy { playbackIdentity(it) }
+                .take(12)
+            warmTracks(hot, concurrency = 4, delayStepMs = 0L, prime = true)
         }
         viewModelScope.launch {
             delay(450L)
@@ -973,34 +983,55 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun enrichCharts(regionId: String, charts: List<Track>) {
         chartEnrichJob?.cancel()
-        chartEnrichJob = viewModelScope.launch {
-            charts.take(40).forEach { entry ->
-                if (!isActive || _state.value.selectedChartId != regionId) return@launch
-                if (entry.videoUrl.isNotBlank()) return@forEach
-                val match = runCatching { repository.searchOne("${entry.title} ${entry.artist}", _state.value.languageCode) }.getOrNull()
-                if (match != null) {
-                    _state.update { st ->
-                        if (st.selectedChartId != regionId) return@update st
-                        st.copy(
-                            charts = st.charts.map { c ->
-                                if (c.id == entry.id) {
-                                    LevyraPersonalOrbit.preferAlbumArtwork(c, match).copy(
-                                        id = match.id,
-                                        videoUrl = match.videoUrl,
-                                        durationMs = if (match.durationMs > 0L) match.durationMs else c.durationMs
-                                    )
-                                } else {
-                                    c
-                                }
-                            }
-                        )
+        chartEnrichJob = viewModelScope.launch(Dispatchers.IO) {
+            val hot = charts.take(12)
+            coroutineScope {
+                val semaphore = Semaphore(4)
+                hot.forEachIndexed { index, entry ->
+                    launch {
+                        semaphore.withPermit {
+                            enrichChartEntry(regionId, entry, warm = index < 8)
+                        }
                     }
-                    // Warm the stream of the very top chart entries for instant play.
-                    if (charts.indexOf(entry) < 3) resolver.prefetch(match)
                 }
-                delay(90L)
+            }
+            charts.drop(12).take(28).forEach { entry ->
+                if (!isActive || _state.value.selectedChartId != regionId) return@launch
+                enrichChartEntry(regionId, entry, warm = false)
+                delay(45L)
             }
         }
+    }
+
+    private suspend fun enrichChartEntry(regionId: String, entry: Track, warm: Boolean): Track? {
+        if (!currentCoroutineContext().isActive || _state.value.selectedChartId != regionId) return null
+        val match = if (entry.videoUrl.isNotBlank()) {
+            entry
+        } else {
+            runCatching { repository.searchOne("${entry.title} ${entry.artist}", _state.value.languageCode) }.getOrNull() ?: return null
+        }
+        if (!currentCoroutineContext().isActive || _state.value.selectedChartId != regionId) return null
+        _state.update { st ->
+            if (st.selectedChartId != regionId) return@update st
+            st.copy(
+                charts = st.charts.map { c ->
+                    if (c.id == entry.id) {
+                        LevyraPersonalOrbit.preferAlbumArtwork(c, match).copy(
+                            id = match.id,
+                            videoUrl = match.videoUrl,
+                            durationMs = if (match.durationMs > 0L) match.durationMs else c.durationMs
+                        )
+                    } else {
+                        c
+                    }
+                }
+            )
+        }
+        if (warm) {
+            val resolved = resolver.prefetch(match)
+            if (resolved != null) runCatching { playbackWarmup.prime(resolved) }
+        }
+        return match
     }
 
     fun toggleFavorite(track: Track) {
@@ -1208,7 +1239,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         finished = info
                     } else {
                         info?.let { updateDownloadProgress(downloadKey, it.progress.getInt(OfflineExportWorker.KEY_PROGRESS, 0)) }
-                        delay(350L)
+                        delay(120L)
                     }
                 }
                 finished ?: throw CancellationException("Offline export observation cancelled")
@@ -1527,7 +1558,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         val requestId = ++playRequestId
         playJob?.cancel()
-        cancelBackgroundWarmups()
+        cancelBackgroundWarmups(cancelList = false)
         resolver.warmNetwork()
 
         val playableTrack = youtubePlayableTrack(track) ?: track
@@ -1763,17 +1794,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun prefetchAround(playable: Track) {
         prefetchJob?.cancel()
         prefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(350L)
+            delay(120L)
             val queue = _state.value.queue.ifEmpty { currentQueue() }
             if (queue.isEmpty()) return@launch
             val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { samePlayableTrack(it, playable) }
             if (base < 0) return@launch
-            val offsets = if (_state.value.isVideoMode) listOf(1) else listOf(1, 2, 3, -1)
+            val offsets = if (_state.value.isVideoMode) listOf(1) else listOf(1, 2, -1)
             val candidates = offsets
                 .map { offset -> queue[(base + offset + queue.size) % queue.size] }
                 .filterNot { samePlayableTrack(it, playable) }
                 .distinctBy { playbackIdentity(it) }
-            warmTracks(candidates.take(3), concurrency = 2, delayStepMs = 35L, prime = true)
+            warmTracks(candidates.take(3), concurrency = 3, delayStepMs = 10L, prime = true)
         }
     }
 
@@ -1786,10 +1817,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         listPrefetchJob?.cancel()
         listPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
             resolver.warmNetwork()
-            val hot = candidates.take(6)
-            val warmOnly = candidates.drop(6)
-            warmTracks(hot, concurrency = 3, delayStepMs = 0L, prime = true)
-            warmTracks(warmOnly, concurrency = 2, delayStepMs = 45L, prime = false)
+            val hot = candidates.take(10)
+            val warmOnly = candidates.drop(10)
+            warmTracks(hot, concurrency = 4, delayStepMs = 0L, prime = true)
+            warmTracks(warmOnly, concurrency = 2, delayStepMs = 30L, prime = false)
         }
     }
 
