@@ -194,7 +194,13 @@ class AndroidAutoLibrary(context: Context) {
 
     private suspend fun Track.ensureYoutubeIdentity(): Track {
         if (streamUrl.isNotBlank() && !streamUrl.isLocalUri()) return this
-        if (videoUrl.isNotBlank() && !id.startsWith("chart-", true) && !id.startsWith("auto-", true)) return this
+        val videoId = youtubeVideoId(videoUrl)
+            .ifBlank { youtubeVideoId(id) }
+            .ifBlank { id.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty() }
+        if (videoId.isNotBlank()) {
+            val normalizedUrl = videoUrl.takeIf { youtubeVideoId(it) == videoId } ?: "https://www.youtube.com/watch?v=$videoId"
+            return copy(id = videoId, videoUrl = normalizedUrl)
+        }
         val query = listOf(title, artist).filter { it.isNotBlank() }.joinToString(" ").cleanQuery()
         val match = musicRepository.searchOne(query, contentLanguage()) ?: return this
         return match.copy(
@@ -441,6 +447,19 @@ class AndroidAutoLibrary(context: Context) {
             if (seen.add(key) && track.title.isNotBlank()) result += track
         }
         return result
+    }
+
+    private fun youtubeVideoId(value: String): String {
+        if (value.isBlank()) return ""
+        val patterns = listOf(
+            Regex("[?&]v=([A-Za-z0-9_-]{11})(?:[&?/]|$)"),
+            Regex("youtu\\.be/([A-Za-z0-9_-]{11})(?:[?&/]|$)"),
+            Regex("/shorts/([A-Za-z0-9_-]{11})(?:[?&/]|$)"),
+            Regex("/embed/([A-Za-z0-9_-]{11})(?:[?&/]|$)")
+        )
+        return patterns.firstNotNullOfOrNull { pattern ->
+            pattern.find(value)?.groupValues?.getOrNull(1)
+        } ?: value.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty()
     }
 
     private fun String.cleanQuery(): String = trim()
