@@ -32,7 +32,7 @@
 
 ## ✦ What is Levyra?
 
-Unlike typical wrapper or web-reskin apps, **Levyra** is a native, ground-up Android audio application. It queries, resolves, and streams music dynamically using YouTube Music's InnerTube API with a PipePipeExtractor-powered fallback, routes audio via an optimized **AndroidX Media3/ExoPlayer** background service, and outputs full tracks straight into your local storage. 
+Unlike typical wrapper or web-reskin apps, **Levyra** is a native, ground-up Android audio application. It queries, resolves, and streams music dynamically using YouTube Music's InnerTube API with a LevyraExtractor-powered fallback, routes audio via an optimized **AndroidX Media3/ExoPlayer** background service, and outputs full tracks straight into your local storage. 
 
 Every track you download is fully parsed, tagged, and structured as a clean M4A file in your system `Music/Levyra` directory, complete with embedded metadata, titles, artists, and album artwork. 
 
@@ -88,7 +88,7 @@ Every track you download is fully parsed, tagged, and structured as a clean M4A 
     </td>
     <td valign="top">
       <ul>
-        <li><strong>InnerTube + PipePipeExtractor Resolver:</strong> Dual-channel media resolution with smarter Opus/M4A selection, fresh URL caching, and stronger fallback when YouTube changes stream signatures.</li>
+        <li><strong>InnerTube + LevyraExtractor Resolver:</strong> Dual-channel media resolution with smarter Opus/M4A selection, fresh URL caching, and stronger fallback when YouTube changes stream signatures.</li>
         <li><strong>Intelligent Caching:</strong> TTL-based playback stream cache prevents duplicate server requests and speeds up loading.</li>
         <li><strong>Smart Search:</strong> Predictive search suggestions, categorized filters, and instant top-result matching.</li>
         <li><strong>Prefetching Engine:</strong> Ahead-of-time loading for top charts and queued songs to guarantee zero-gap playback.</li>
@@ -147,7 +147,7 @@ graph TD
     Player --> Media3["🎵 AndroidX Media3 / ExoPlayer Service"]:::engine
     
     Resolver --> InnerTube["☁️ YT Music InnerTube API"]:::ext
-    Resolver --> Extractor["🔌 PipePipeExtractor Engine"]:::ext
+    Resolver --> Extractor["🔌 LevyraExtractor Engine"]:::ext
     
     Work --> Exporter["📦 OfflineAudioExporter"]:::core
     Exporter --> MediaStore["💿 Android MediaStore API"]:::engine
@@ -181,7 +181,7 @@ graph TD
 *   **Build Pipeline:** Gradle Kotlin DSL (`.gradle.kts`), Version Catalogs (`libs.versions.toml`), KSP (Kotlin Symbol Processing)
 *   **APK Size Guard:** Spotify Ruler report workflow for bundle size analysis and dependency weight tracking
 *   **Player Architecture:** Mobius-sample-inspired `Model / Event / Effect / Update` foundation for safe player refactoring
-*   **Extraction Layer:** InnerTube resolver plus GPL-compatible PipePipeExtractor fallback via JitPack
+*   **Extraction Layer:** InnerTube resolver plus GPL-3.0 LevyraExtractor playback core via JitPack
 
 <br>
 
@@ -277,7 +277,7 @@ If you intend to distribute custom builds of Levyra:
 
 *UI and modular styling conventions draw structural inspiration from the open-source projects [Metrolist](https://github.com/MetrolistGroup/Metrolist) and [MusicApp-KMP](https://github.com/SEAbdulbasit/MusicApp-KMP).*
 
-*The stream extraction fallback uses [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor), a GPL-3.0 extractor fork in the NewPipe/PipePipe ecosystem.*
+*The stream extraction core uses [LevyraExtractor](https://github.com/LUC4N3X/LevyraExtractor), a GPL-3.0 fork derived from [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor) in the NewPipe/PipePipe ecosystem.*
 
 ---
 
