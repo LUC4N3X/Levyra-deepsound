@@ -29,9 +29,10 @@ class LevyraApplication : Application() {
 
     private fun warmPlaybackPipeline() {
         startupScope.launch {
-            delay(400L)
             runCatching { NewPipeRuntime.ensure() }
                 .onFailure { Timber.w(it, "Extractor warmup failed") }
+        }
+        startupScope.launch {
             runCatching { PlaybackResolver.getInstance(this@LevyraApplication).warmNetwork() }
                 .onFailure { Timber.w(it, "Network warmup failed") }
         }
