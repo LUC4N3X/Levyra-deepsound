@@ -2446,21 +2446,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 internal fun youtubePlayableTrack(track: Track): Track? {
     val videoId = youtubeVideoId(track.videoUrl)
         .ifBlank { youtubeVideoId(track.id) }
-        .ifBlank { track.id.takeUnless { it.startsWith("chart-") || it.contains("://") }.orEmpty() }
+        .ifBlank { track.id.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty() }
     if (videoId.isBlank()) return null
-    val videoUrl = track.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" }
+    val videoUrl = track.videoUrl.takeIf { youtubeVideoId(it) == videoId } ?: "https://www.youtube.com/watch?v=$videoId"
     return track.copy(id = videoId, videoUrl = videoUrl)
 }
 
 private fun youtubeVideoId(url: String): String {
     if (url.isBlank()) return ""
     val patterns = listOf(
-        Regex("[?&]v=([^&?/]+)"),
-        Regex("youtu\\.be/([^?&/]+)"),
-        Regex("/shorts/([^?&/]+)"),
-        Regex("/embed/([^?&/]+)")
+        Regex("[?&]v=([A-Za-z0-9_-]{11})(?:[&?/]|$)"),
+        Regex("youtu\\.be/([A-Za-z0-9_-]{11})(?:[?&/]|$)"),
+        Regex("/shorts/([A-Za-z0-9_-]{11})(?:[?&/]|$)"),
+        Regex("/embed/([A-Za-z0-9_-]{11})(?:[?&/]|$)")
     )
     return patterns.firstNotNullOfOrNull { pattern ->
         pattern.find(url)?.groupValues?.getOrNull(1)
-    }.orEmpty()
+    } ?: url.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty()
 }
