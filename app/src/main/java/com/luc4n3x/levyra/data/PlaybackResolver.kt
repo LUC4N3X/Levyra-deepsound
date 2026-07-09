@@ -861,9 +861,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         }.getOrDefault(false)
     }
 
-    private suspend fun resolveWithLevyraExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
+    private fun resolveWithLevyraExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
         NewPipeRuntime.ensure()
-        val info = withContext(Dispatchers.IO) { StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl) }
+        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
         val url = audio?.content
             ?: throw IllegalStateException("Nessuno stream audio diretto disponibile per ${track.title}")
@@ -882,9 +882,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
     }
 
-    private suspend fun resolveVideoWithLevyraExtractor(track: Track): Track {
+    private fun resolveVideoWithLevyraExtractor(track: Track): Track {
         NewPipeRuntime.ensure()
-        val info = withContext(Dispatchers.IO) { StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl) }
+        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
 
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)

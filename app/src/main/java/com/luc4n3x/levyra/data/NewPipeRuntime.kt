@@ -9,10 +9,8 @@ import org.schabi.newpipe.extractor.downloader.CancellableCall
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
-import org.schabi.newpipe.extractor.downloader.StreamingResponse
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
-import java.io.FilterInputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
@@ -27,10 +25,8 @@ object NewPipeRuntime {
     }
 }
 
-internal class OkHttpNewPipeDownloader : Downloader() {
+private class OkHttpNewPipeDownloader : Downloader() {
     private val client: OkHttpClient = LevyraHttpClientFactory.extractor()
-
-    override fun supportsStreamingResponses(): Boolean = true
 
     override fun execute(request: Request): Response {
         client.newCall(toOkHttpRequest(request)).execute().use { response ->
@@ -60,35 +56,6 @@ internal class OkHttpNewPipeDownloader : Downloader() {
         return cancellableCall
     }
 
-    override fun getStreaming(
-        url: String,
-        headers: Map<String, List<String>>?,
-        localization: Localization?
-    ): StreamingResponse {
-        return executeStreaming(
-            Request.newBuilder()
-                .get(url)
-                .headers(headers)
-                .localization(localization)
-                .build()
-        )
-    }
-
-    override fun postStreaming(
-        url: String,
-        headers: Map<String, List<String>>?,
-        dataToSend: ByteArray?,
-        localization: Localization?
-    ): StreamingResponse {
-        return executeStreaming(
-            Request.newBuilder()
-                .post(url, dataToSend)
-                .headers(headers)
-                .localization(localization)
-                .build()
-        )
-    }
-
     private fun toOkHttpRequest(request: Request): okhttp3.Request {
         val method = request.httpMethod().uppercase()
         val data = request.dataToSend()
@@ -108,26 +75,8 @@ internal class OkHttpNewPipeDownloader : Downloader() {
             .build()
     }
 
-    private fun executeStreaming(request: Request): StreamingResponse {
-        val response = client.newCall(toOkHttpRequest(request)).execute()
-        if (response.code == 429) {
-            response.close()
-            throw IOException("YouTube ha limitato temporaneamente le richieste")
-        }
-        val stream = object : FilterInputStream(response.body.byteStream()) {
-            override fun close() {
-                try {
-                    super.close()
-                } finally {
-                    response.close()
-                }
-            }
-        }
-        return StreamingResponse(response.code, response.headers.toMultimap(), stream)
-    }
-
     private fun toExtractorResponse(response: okhttp3.Response): Response {
-        val responseBytes = response.body.bytes()
+        val responseBytes = response.body?.bytes() ?: ByteArray(0)
         val responseText = responseBytes.toString(StandardCharsets.UTF_8)
         if (response.code == 429) throw IOException("YouTube ha limitato temporaneamente le richieste")
         return Response(

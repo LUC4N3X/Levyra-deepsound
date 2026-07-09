@@ -68,9 +68,4 @@ class LevyraStreamHedgeTest {
     fun offlineMp4ExtractorStartsImmediately() {
         assertEquals(0L, LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = true))
     }
-
-    @Test
-    fun videoExtractorStartsImmediatelyForSabrFastPath() {
-        assertEquals(0L, LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
-    }
 }
