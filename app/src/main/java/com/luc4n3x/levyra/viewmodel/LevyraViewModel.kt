@@ -65,6 +65,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -1003,13 +1004,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun enrichChartEntry(regionId: String, entry: Track, warm: Boolean): Track? {
-        if (!isActive || _state.value.selectedChartId != regionId) return null
+        if (!currentCoroutineContext().isActive || _state.value.selectedChartId != regionId) return null
         val match = if (entry.videoUrl.isNotBlank()) {
             entry
         } else {
             runCatching { repository.searchOne("${entry.title} ${entry.artist}", _state.value.languageCode) }.getOrNull() ?: return null
         }
-        if (!isActive || _state.value.selectedChartId != regionId) return null
+        if (!currentCoroutineContext().isActive || _state.value.selectedChartId != regionId) return null
         _state.update { st ->
             if (st.selectedChartId != regionId) return@update st
             st.copy(
