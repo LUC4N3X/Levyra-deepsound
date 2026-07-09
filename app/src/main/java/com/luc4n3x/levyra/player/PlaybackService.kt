@@ -70,7 +70,7 @@ class PlaybackService : MediaLibraryService() {
         super.onCreate()
         autoLibrary = AndroidAutoLibrary(this)
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(1_500, 24_000, 100, 250)
+            .setBufferDurationsMs(750, 18_000, 50, 120)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
         val okHttpClient = LevyraHttpClientFactory.media(this)
