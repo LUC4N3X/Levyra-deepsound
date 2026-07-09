@@ -50,8 +50,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          submodules: recursive
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -70,6 +68,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.4.1"
+          cache-disabled: true
 
       - name: Prepare Release Signing
         if: ${{ inputs.build_type == 'release' }}
