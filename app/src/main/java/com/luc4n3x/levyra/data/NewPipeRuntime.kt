@@ -13,6 +13,7 @@ import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 
 object NewPipeRuntime {
@@ -57,22 +58,23 @@ private class OkHttpNewPipeDownloader : Downloader() {
     }
 
     private fun toOkHttpRequest(request: Request): okhttp3.Request {
-        val method = request.httpMethod().uppercase()
+        val method = request.httpMethod().uppercase(Locale.US)
         val data = request.dataToSend()
         val body = when {
             method == "GET" || method == "HEAD" -> null
             data != null -> data.toRequestBody()
             else -> ByteArray(0).toRequestBody()
         }
-        return okhttp3.Request.Builder()
+        val headers = request.headers().flattenHeaders()
+        val builder = okhttp3.Request.Builder()
             .url(request.url())
             .method(method, body)
-            .headers(request.headers().flattenHeaders().toHeaders())
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7")
-            .header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
-            .header("Connection", "keep-alive")
-            .build()
+            .headers(headers.toHeaders())
+        builder.addDefaultHeader("User-Agent", DEFAULT_USER_AGENT, headers)
+        builder.addDefaultHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7", headers)
+        builder.addDefaultHeader("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7", headers)
+        builder.addDefaultHeader("Connection", "keep-alive", headers)
+        return builder.build()
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
@@ -95,5 +97,14 @@ private class OkHttpNewPipeDownloader : Downloader() {
             if (key.isNotBlank() && values.isNotEmpty()) out[key] = values.joinToString(",")
         }
         return out
+    }
+
+    private fun okhttp3.Request.Builder.addDefaultHeader(name: String, value: String, existing: Map<String, String>): okhttp3.Request.Builder {
+        if (existing.keys.none { it.equals(name, ignoreCase = true) }) header(name, value)
+        return this
+    }
+
+    private companion object {
+        const val DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
     }
 }

@@ -63,7 +63,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
-    private val playbackResolveTimeoutMs = 9_000L
+    private val playbackResolveTimeoutMs = 18_000L
     private val offlineResolveTimeoutMs = 60_000L
     private val hedgeBudgetMs = LevyraResolverLatency.INNER_TUBE_HEDGE_BUDGET_MS
     private val streamProbeClient: OkHttpClient = youtubeHttpClient.newBuilder()
@@ -432,6 +432,19 @@ class PlaybackResolver private constructor(private val context: Context) {
         return url.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty()
     }
 
+    private fun youtubeReadyTrack(track: Track): Track? {
+        val videoId = extractVideoId(track.videoUrl)
+            .ifBlank { extractVideoId(track.id) }
+            .ifBlank { track.id.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty() }
+        if (videoId.isBlank()) return null
+        val videoUrl = track.videoUrl.takeIf { extractVideoId(it) == videoId } ?: "https://www.youtube.com/watch?v=$videoId"
+        return track.copy(id = videoId, videoUrl = videoUrl)
+    }
+
+    private fun requireYoutubeReadyTrack(track: Track): Track {
+        return youtubeReadyTrack(track) ?: throw IllegalStateException("Identità YouTube assente per ${track.title}")
+    }
+
     private fun scoreAlternativeCandidate(original: Track, candidate: Track): Int {
         val originalTitle = original.title.lowercase()
         val originalArtist = original.artist.lowercase()
@@ -683,15 +696,17 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false, preferMp4Audio: Boolean = false): DirectStream {
+        val youtubeTrack = requireYoutubeReadyTrack(track)
+        val videoId = youtubeTrack.id
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
-        val body = buildPlayerBody(track.id, profile).toString()
+        val body = buildPlayerBody(videoId, profile).toString()
         val requestBuilder = Request.Builder()
             .url(endpoint)
             .post(body.toRequestBody(jsonMediaType))
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .header("Origin", if (profile.clientName == "WEB_REMIX") "https://music.youtube.com" else "https://www.youtube.com")
-            .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/${track.id}" else track.videoUrl)
+            .header("Referer", if (profile.clientName == "WEB_EMBEDDED_PLAYER") "https://www.youtube.com/embed/$videoId" else youtubeTrack.videoUrl)
             .header("User-Agent", profile.userAgent)
             .header("X-Youtube-Client-Name", profile.clientHeaderName)
             .header("X-Youtube-Client-Version", profile.clientVersion)
@@ -863,7 +878,8 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun resolveWithLevyraExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
         NewPipeRuntime.ensure()
-        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
+        val youtubeTrack = requireYoutubeReadyTrack(track)
+        val info = StreamInfo.getInfo(ServiceList.YouTube, youtubeTrack.videoUrl)
         val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
         val url = audio?.content
             ?: throw IllegalStateException("Nessuno stream audio diretto disponibile per ${track.title}")
@@ -873,9 +889,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         val label = streamLabel(audio)
         val artworkSafe = LevyraPersonalOrbit.preferAlbumArtwork(
             primary = track,
-            donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
+            donor = youtubeTrack.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
         )
         return artworkSafe.copy(
+            id = youtubeTrack.id,
+            videoUrl = youtubeTrack.videoUrl,
             streamUrl = url,
             durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs,
             source = "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
@@ -884,15 +902,17 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun resolveVideoWithLevyraExtractor(track: Track): Track {
         NewPipeRuntime.ensure()
-        val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
+        val youtubeTrack = requireYoutubeReadyTrack(track)
+        val info = StreamInfo.getInfo(ServiceList.YouTube, youtubeTrack.videoUrl)
 
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
         }?.url.orEmpty()
         val artworkSafe = LevyraPersonalOrbit.preferAlbumArtwork(
             primary = track,
-            donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
+            donor = youtubeTrack.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
         )
+        val baseVideoTrack = artworkSafe.copy(id = youtubeTrack.id, videoUrl = youtubeTrack.videoUrl)
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
 
         val bestAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false)?.content
@@ -905,7 +925,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .maxByOrNull { heightOf(it.getResolution()) }
 
         if (muxed != null && heightOf(muxed.getResolution()) >= 480) {
-            return artworkSafe.copy(
+            return baseVideoTrack.copy(
                 streamUrl = muxed.content,
                 videoStreamUrl = "",
                 durationMs = durationMs,
@@ -924,7 +944,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?.content
 
         if (bestVideoOnly != null && bestAudio != null) {
-            return artworkSafe.copy(
+            return baseVideoTrack.copy(
                 streamUrl = bestAudio,
                 videoStreamUrl = bestVideoOnly,
                 durationMs = durationMs,
@@ -933,7 +953,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
 
         if (muxed != null) {
-            return artworkSafe.copy(
+            return baseVideoTrack.copy(
                 streamUrl = muxed.content,
                 videoStreamUrl = "",
                 durationMs = durationMs,
@@ -943,7 +963,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         val hls = info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
         if (hls != null) {
-            return artworkSafe.copy(
+            return baseVideoTrack.copy(
                 streamUrl = hls,
                 videoStreamUrl = "",
                 durationMs = durationMs,
