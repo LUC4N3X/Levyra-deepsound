@@ -76,9 +76,9 @@ class PlaybackWarmup(context: Context) {
 
     companion object {
         private const val MIN_PRIME_BYTES = 64L * 1024L
-        private const val DEFAULT_PRIME_BYTES = 320L * 1024L
-        private const val VIDEO_AUDIO_PRIME_BYTES = 256L * 1024L
-        private const val VIDEO_PRIME_BYTES = 768L * 1024L
+        private const val DEFAULT_PRIME_BYTES = 224L * 1024L
+        private const val VIDEO_AUDIO_PRIME_BYTES = 192L * 1024L
+        private const val VIDEO_PRIME_BYTES = 512L * 1024L
         private const val MAX_PRIME_BYTES = 1024L * 1024L
         private const val PRIME_FRAGMENT_BYTES = 128L * 1024L
     }

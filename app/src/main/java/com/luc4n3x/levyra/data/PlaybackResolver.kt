@@ -63,21 +63,21 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
-    private val playbackResolveTimeoutMs = 18_000L
+    private val playbackResolveTimeoutMs = 9_000L
     private val offlineResolveTimeoutMs = 60_000L
-    private val hedgeBudgetMs = 220L
-    private val extractorBudgetMs = 160L
+    private val hedgeBudgetMs = 70L
+    private val extractorBudgetMs = 80L
     private val streamProbeClient: OkHttpClient = youtubeHttpClient.newBuilder()
-        .connectTimeout(700, TimeUnit.MILLISECONDS)
-        .readTimeout(1_400, TimeUnit.MILLISECONDS)
-        .writeTimeout(700, TimeUnit.MILLISECONDS)
-        .callTimeout(1_700, TimeUnit.MILLISECONDS)
+        .connectTimeout(450, TimeUnit.MILLISECONDS)
+        .readTimeout(800, TimeUnit.MILLISECONDS)
+        .writeTimeout(350, TimeUnit.MILLISECONDS)
+        .callTimeout(950, TimeUnit.MILLISECONDS)
         .build()
     private val searchFallbackClient: OkHttpClient = youtubeHttpClient.newBuilder()
-        .connectTimeout(1_200, TimeUnit.MILLISECONDS)
-        .readTimeout(3_000, TimeUnit.MILLISECONDS)
-        .writeTimeout(700, TimeUnit.MILLISECONDS)
-        .callTimeout(3_800, TimeUnit.MILLISECONDS)
+        .connectTimeout(800, TimeUnit.MILLISECONDS)
+        .readTimeout(2_000, TimeUnit.MILLISECONDS)
+        .writeTimeout(500, TimeUnit.MILLISECONDS)
+        .callTimeout(2_400, TimeUnit.MILLISECONDS)
         .build()
 
     @Volatile
@@ -108,7 +108,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun warmNetwork() {
         val now = System.currentTimeMillis()
-        if (now - lastNetworkWarmAt < 45_000L) return
+        if (now - lastNetworkWarmAt < 15_000L) return
         lastNetworkWarmAt = now
         listOf(
             "https://www.youtube.com/generate_204",
@@ -231,24 +231,15 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val itJob = launch {
                     val stream = runCatching { hedgedInnerTube(track, errors, true) }.getOrNull()
                     if (stream != null) {
-                        winner.complete(
-                            track.copy(
-                                streamUrl = stream.url,
-                                videoStreamUrl = stream.videoUrl,
-                                durationMs = stream.durationMs.takeIf { it > 0L } ?: track.durationMs,
-                                thumbnailUrl = stream.thumbnailUrl.ifBlank { track.thumbnailUrl },
-                                largeThumbnailUrl = stream.thumbnailUrl.ifBlank { track.largeThumbnailUrl },
-                                source = stream.source
-                            )
-                        )
+                        winner.complete(track.withDirectStream(stream))
                     }
                 }
                 val extractorJob = launch {
                     delay(extractorBudgetMs)
                     if (winner.isCompleted) return@launch
-                    val r = runCatching { resolveVideoWithPipePipeExtractor(track) }
+                    val r = runCatching { resolveVideoWithLevyraExtractor(track) }
                     r.onSuccess { winner.complete(it) }
-                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "PipePipeExtractor video: $m" } }
+                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "LevyraExtractor video: $m" } }
                 }
                 launch {
                     itJob.join(); extractorJob.join()
@@ -297,9 +288,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             val extractorJob = launch {
                 delay(extractorBudgetMs)
                 if (winner.isCompleted) return@launch
-                val resolved = runCatching { resolveWithPipePipeExtractor(track, false) }
+                val resolved = runCatching { resolveWithLevyraExtractor(track, false) }
                 resolved.onSuccess { winner.complete(it) }
-                    .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "PipePipeExtractor: $message" } }
+                    .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "LevyraExtractor: $message" } }
             }
             launch {
                 innerTubeJob.join()
@@ -319,9 +310,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         val extractorJob = launch {
-            val resolved = runCatching { resolveWithPipePipeExtractor(track, true) }
+            val resolved = runCatching { resolveWithLevyraExtractor(track, true) }
             resolved.onSuccess { winner.complete(it) }
-                .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "PipePipeExtractor: $message" } }
+                .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "LevyraExtractor: $message" } }
         }
         launch {
             innerTubeJob.join()
@@ -641,10 +632,11 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun verifyDirectAudioUrlFast(url: String): Boolean {
         if (url.isBlank() || !streamStillFresh(url) || !isDirectAudioUrl(url)) return false
+        if (isTrustedGoogleVideoUrl(url)) return true
         val request = Request.Builder()
             .url(url)
             .get()
-            .header("Range", "bytes=0-32767")
+            .header("Range", "bytes=0-8191")
             .header("Accept", "*/*")
             .header("Accept-Encoding", "identity")
             .header("User-Agent", profiles.first().userAgent)
@@ -655,10 +647,18 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (response.code !in 200..299 && response.code != 206) return@use false
                 val contentType = response.header("Content-Type").orEmpty().lowercase()
                 if (contentType.contains("text/html") || contentType.contains("application/json")) return@use false
-                val sample = response.peekBody(96L).bytes()
+                val sample = response.peekBody(32L).bytes()
                 sample.isNotEmpty()
             }
         }.getOrDefault(false)
+    }
+
+    private fun isTrustedGoogleVideoUrl(url: String): Boolean {
+        val clean = url.lowercase()
+        if (!clean.startsWith("https://")) return false
+        if (!clean.contains("googlevideo.com/")) return false
+        if (clean.contains("mime=audio%2f") || clean.contains("mime=audio/")) return true
+        return clean.contains("/videoplayback") && !isHlsManifestUrl(clean)
     }
 
     private fun expiresAtFor(url: String): Long {
@@ -862,7 +862,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }.getOrDefault(false)
     }
 
-    private fun resolveWithPipePipeExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
+    private fun resolveWithLevyraExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
@@ -879,17 +879,21 @@ class PlaybackResolver private constructor(private val context: Context) {
         return artworkSafe.copy(
             streamUrl = url,
             durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs,
-            source = "PipePipeExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
+            source = "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
         )
     }
 
-    private fun resolveVideoWithPipePipeExtractor(track: Track): Track {
+    private fun resolveVideoWithLevyraExtractor(track: Track): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
 
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
         }?.url.orEmpty()
+        val artworkSafe = LevyraPersonalOrbit.preferAlbumArtwork(
+            primary = track,
+            donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
+        )
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
 
         val bestAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false)?.content
@@ -902,13 +906,11 @@ class PlaybackResolver private constructor(private val context: Context) {
                 .maxByOrNull { heightOf(it.getResolution()) }
 
         if (muxed != null && heightOf(muxed.getResolution()) >= 480) {
-            return track.copy(
+            return artworkSafe.copy(
                 streamUrl = muxed.content,
                 videoStreamUrl = "",
                 durationMs = durationMs,
-                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
-                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "PipePipeExtractor Fast Muxed"
+                source = "LevyraExtractor Fast Muxed"
             )
         }
 
@@ -923,36 +925,30 @@ class PlaybackResolver private constructor(private val context: Context) {
             ?.content
 
         if (bestVideoOnly != null && bestAudio != null) {
-            return track.copy(
+            return artworkSafe.copy(
                 streamUrl = bestAudio,
                 videoStreamUrl = bestVideoOnly,
                 durationMs = durationMs,
-                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
-                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "PipePipeExtractor Video"
+                source = "LevyraExtractor Video"
             )
         }
 
         if (muxed != null) {
-            return track.copy(
+            return artworkSafe.copy(
                 streamUrl = muxed.content,
                 videoStreamUrl = "",
                 durationMs = durationMs,
-                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
-                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "PipePipeExtractor Muxed"
+                source = "LevyraExtractor Muxed"
             )
         }
 
         val hls = info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
         if (hls != null) {
-            return track.copy(
+            return artworkSafe.copy(
                 streamUrl = hls,
                 videoStreamUrl = "",
                 durationMs = durationMs,
-                thumbnailUrl = bestThumb.ifBlank { track.thumbnailUrl },
-                largeThumbnailUrl = bestThumb.ifBlank { track.largeThumbnailUrl },
-                source = "PipePipeExtractor HLS"
+                source = "LevyraExtractor HLS"
             )
         }
 

@@ -690,7 +690,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                     largeThumbnailUrl = upgradeThumbnail(thumbnail),
                     videoUrl = item.url,
                     query = query,
-                    source = "PipePipeExtractor Search"
+                    source = "LevyraExtractor Search"
                 )
             }
             .distinctBy { it.id }
