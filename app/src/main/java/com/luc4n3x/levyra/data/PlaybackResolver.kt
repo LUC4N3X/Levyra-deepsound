@@ -219,7 +219,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             return null
         }
         cached(track, isVideoMode)?.let { return it }
-        return runCatching { resolve(track, isVideoMode) }.getOrNull()
+        return null
     }
 
     private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false, preferMp4Audio: Boolean = false): Track = withContext(Dispatchers.IO) {
