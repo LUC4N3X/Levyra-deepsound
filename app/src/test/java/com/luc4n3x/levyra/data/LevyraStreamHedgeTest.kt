@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -56,5 +57,15 @@ class LevyraStreamHedgeTest {
     fun emptyLadderReturnsNull() = runBlocking {
         val result = hedgedFirst<String>(emptyList(), hedgeBudgetMs = 10L)
         assertNull(result)
+    }
+
+    @Test
+    fun playbackExtractorStartsInsideLowLatencyBudget() {
+        assertTrue(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = false) <= 40L)
+    }
+
+    @Test
+    fun offlineMp4ExtractorStartsImmediately() {
+        assertEquals(0L, LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = true))
     }
 }
