@@ -1,0 +1,4 @@
+[submodule "extern/LevyraExtractor"]
+	path = extern/LevyraExtractor
+	url = https://github.com/LUC4N3X/LevyraExtractor.git
+	branch = claude/high-performance-integration-d8zeao
