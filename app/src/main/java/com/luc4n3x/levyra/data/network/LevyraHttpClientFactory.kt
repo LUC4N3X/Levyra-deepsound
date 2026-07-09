@@ -28,6 +28,9 @@ object LevyraHttpClientFactory {
     @Volatile
     private var youtubePlayerClient: OkHttpClient? = null
 
+    @Volatile
+    private var extractorClient: OkHttpClient? = null
+
     fun media(context: Context? = null): OkHttpClient {
         return mediaClient ?: synchronized(this) {
             mediaClient ?: OkHttpClient.Builder()
@@ -59,6 +62,20 @@ object LevyraHttpClientFactory {
                 .retryOnConnectionFailure(true)
                 .build()
                 .also { youtubePlayerClient = it }
+        }
+    }
+
+    fun extractor(): OkHttpClient {
+        return extractorClient ?: synchronized(this) {
+            extractorClient ?: youtubePlayer().newBuilder()
+                .connectTimeout(4, TimeUnit.SECONDS)
+                .readTimeout(12, TimeUnit.SECONDS)
+                .writeTimeout(8, TimeUnit.SECONDS)
+                .callTimeout(18, TimeUnit.SECONDS)
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .build()
+                .also { extractorClient = it }
         }
     }
 
