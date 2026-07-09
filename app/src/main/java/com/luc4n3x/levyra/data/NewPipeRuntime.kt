@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -12,7 +13,6 @@ import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
 import java.io.IOException
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 object NewPipeRuntime {
@@ -26,14 +26,7 @@ object NewPipeRuntime {
 }
 
 private class OkHttpNewPipeDownloader : Downloader() {
-    private val client = OkHttpClient.Builder()
-        .followRedirects(true)
-        .followSslRedirects(true)
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .writeTimeout(8, TimeUnit.SECONDS)
-        .callTimeout(18, TimeUnit.SECONDS)
-        .build()
+    private val client: OkHttpClient = LevyraHttpClientFactory.extractor()
 
     override fun execute(request: Request): Response {
         client.newCall(toOkHttpRequest(request)).execute().use { response ->
