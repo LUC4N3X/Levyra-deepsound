@@ -65,8 +65,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val maxTtlMs = 5L * 60L * 60L * 1000L
     private val playbackResolveTimeoutMs = 9_000L
     private val offlineResolveTimeoutMs = 60_000L
-    private val hedgeBudgetMs = 70L
-    private val extractorBudgetMs = 80L
+    private val hedgeBudgetMs = LevyraResolverLatency.INNER_TUBE_HEDGE_BUDGET_MS
     private val streamProbeClient: OkHttpClient = youtubeHttpClient.newBuilder()
         .connectTimeout(450, TimeUnit.MILLISECONDS)
         .readTimeout(800, TimeUnit.MILLISECONDS)
@@ -235,7 +234,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     }
                 }
                 val extractorJob = launch {
-                    delay(extractorBudgetMs)
+                    delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
                     val r = runCatching { resolveVideoWithLevyraExtractor(track) }
                     r.onSuccess { winner.complete(it) }
@@ -286,7 +285,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 if (stream != null) winner.complete(track.withDirectStream(stream))
             }
             val extractorJob = launch {
-                delay(extractorBudgetMs)
+                delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = false))
                 if (winner.isCompleted) return@launch
                 val resolved = runCatching { resolveWithLevyraExtractor(track, false) }
                 resolved.onSuccess { winner.complete(it) }
@@ -871,7 +870,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
         }?.url.orEmpty()
-        val label = audio?.let { streamLabel(it) }.orEmpty()
+        val label = streamLabel(audio)
         val artworkSafe = LevyraPersonalOrbit.preferAlbumArtwork(
             primary = track,
             donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
