@@ -81,6 +81,12 @@ import timber.log.Timber
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
+internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
+    val safeIncoming = incoming.coerceIn(1, 99)
+    val safeCurrent = current?.coerceIn(1, 99) ?: 1
+    return maxOf(safeCurrent, safeIncoming)
+}
+
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
@@ -1306,11 +1312,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun updateDownloadProgress(trackId: String, progress: Int) {
-        val safeProgress = progress.coerceIn(1, 99)
         _state.update {
             if (trackId !in it.downloadingTrackIds) {
                 it
             } else {
+                val safeProgress = monotonicDownloadProgress(it.downloadProgressByTrackId[trackId], progress)
                 it.copy(
                     downloadProgressByTrackId = it.downloadProgressByTrackId + (trackId to safeProgress)
                 )
