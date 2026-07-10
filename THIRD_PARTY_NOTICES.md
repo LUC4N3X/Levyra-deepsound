@@ -14,10 +14,10 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 
 | Project | URL | Role | Notice |
 |:---|:---|:---|:---|
-| LevyraExtractor | https://github.com/LUC4N3X/LevyraExtractor | Primary extractor playback core used by Levyra resolver logic | GPL-3.0 derivative source and upstream notices must be preserved |
+| MetrolistExtractor | https://github.com/MetrolistGroup/MetrolistExtractor | Primary extractor playback core used by Levyra resolver logic, pinned to commit `3cd3341` | GPL-3.0 license and upstream notices must be preserved |
 | Metrolist | https://github.com/MetrolistGroup/Metrolist | Android music client ecosystem reference | GPL-3.0 license notices must be preserved where code is reused |
 | NewPipeExtractor | https://github.com/TeamNewPipe/NewPipeExtractor | Upstream extractor ecosystem reference | Original copyright and license notices remain with upstream authors |
-| PipePipeExtractor | https://github.com/InfinityLoop1308/PipePipeExtractor | Upstream base for LevyraExtractor | Original copyright and license notices remain with upstream authors |
+| PipePipeExtractor | https://github.com/InfinityLoop1308/PipePipeExtractor | Upstream base of MetrolistExtractor | Original copyright and license notices remain with upstream authors |
 | MusicApp-KMP | https://github.com/SEAbdulbasit/MusicApp-KMP | UI and modular styling inspiration only | No ownership claim is made over the original project |
 
 ## Runtime and Build Dependencies
@@ -66,7 +66,7 @@ Release derivative source under GPL-3.0-compatible terms
 
 ```text
 This build is a modified version of Levyra maintained by LUC4N3X.
-It includes changes to playback resolution, UI, offline export, caching, artwork handling and release automation.
+It includes changes to playback resolution, MetrolistExtractor integration, UI, offline export, caching, artwork handling and release automation.
 The complete corresponding source code is available in this repository under the GNU General Public License v3.0.
 ```
 
