@@ -21,7 +21,8 @@ data class Track(
     val cacheScore: Int,
     val accentStart: Int,
     val accentEnd: Int,
-    val videoStreamUrl: String = ""
+    val videoStreamUrl: String = "",
+    val sponsorSegments: List<SponsorSegment> = emptyList()
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()

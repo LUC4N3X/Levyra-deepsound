@@ -40,23 +40,23 @@ object LevyraThemes {
 
     val cosmic = LevyraPalette(
         id = COSMIC,
-        label = "Cosmic",
-        emoji = "🌌",
+        label = "Linear Glass",
+        emoji = "✨",
         isLight = false,
         followsCover = false,
         followsMood = false,
-        black = Color(0xFF03020A),
-        ink = Color(0xFF090814),
-        panel = Color(0xFF12101D),
-        panelSoft = Color(0xFF1A1728),
-        cyan = Color(0xFF67E8FF),
-        blue = Color(0xFF5C8CFF),
-        violet = Color(0xFFA78BFA),
-        pink = Color(0xFFFF5C9A),
-        orange = Color(0xFFFFA24A),
-        text = Color(0xFFF8F7FF),
-        muted = Color(0xFFB9B2CC),
-        outline = Color(0x3300E5FF)
+        black = Color(0xFF030303),
+        ink = Color(0xFF0A0A0A),
+        panel = Color(0xFF121212),
+        panelSoft = Color(0xFF1A1A1A),
+        cyan = Color(0xFF5E6AD2),
+        blue = Color(0xFF26B5CE),
+        violet = Color(0xFF8A63D2),
+        pink = Color(0xFFE24A8D),
+        orange = Color(0xFFF58E3E),
+        text = Color(0xFFEDEDED),
+        muted = Color(0xFF8A8A93),
+        outline = Color(0x33FFFFFF)
     )
 
     val amoled = cosmic.copy(
@@ -238,6 +238,7 @@ private fun schemeFor(palette: LevyraPalette): ColorScheme {
 fun LevyraTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = schemeFor(activePaletteState.value),
+        typography = LevyraTypography,
         content = content
     )
 }
