@@ -225,21 +225,26 @@ class PlaybackResolver private constructor(private val context: Context) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         if (isVideoMode) {
-            val resolved = runCatching { resolveVideoWithMetrolistExtractor(track) }
+            val metrolist = runCatching { resolveVideoWithMetrolistExtractor(track) }
                 .onFailure { error ->
                     error.message?.takeIf { it.isNotBlank() }
                         ?.let { errors += "MetrolistExtractor video: $it" }
                 }
                 .getOrNull()
-                ?: runCatching { hedgedInnerTube(track, errors, true) }
-                    .getOrNull()
-                    ?.let { stream -> track.withDirectStream(stream) }
-            if (resolved != null) {
+            if (metrolist != null && metrolist.streamUrl.isNotBlank() && streamStillFresh(metrolist.streamUrl)) {
+                store(metrolist, isVideoMode)
+                return@withContext metrolist
+            }
+
+            val innerTube = runCatching { hedgedInnerTube(track, errors, true) }.getOrNull()
+            if (innerTube != null) {
+                val resolved = track.withDirectStream(innerTube)
                 store(resolved, isVideoMode)
                 return@withContext resolved
             }
-            val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
-                ?: errors.firstOrNull()
+
+            val reason = errors.firstOrNull { it.startsWith("MetrolistExtractor", ignoreCase = true) }
+                ?: errors.firstOrNull { !it.contains("accedi", ignoreCase = true) && !it.contains("login", ignoreCase = true) }
                 ?: "Video non disponibile"
             throw PlaybackBlockedException(reason)
         }
@@ -256,24 +261,27 @@ class PlaybackResolver private constructor(private val context: Context) {
             return@withContext alternate
         }
 
-        val reason = errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) || it.contains("login", true) || it.contains("accedi", true) }
-            ?: errors.firstOrNull()
+        val reason = errors.firstOrNull { it.startsWith("MetrolistExtractor", ignoreCase = true) }
+            ?: errors.firstOrNull { !it.contains("accedi", ignoreCase = true) && !it.contains("login", ignoreCase = true) }
             ?: "Stream non disponibile"
         throw PlaybackBlockedException(reason)
     }
 
     private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
         if (preferMp4Audio) return resolveAudioResilient(track, errors)
+
         val metrolist = runCatching { resolveWithMetrolistExtractor(track, false) }
             .onFailure { error ->
                 error.message?.takeIf { it.isNotBlank() }
                     ?.let { errors += "MetrolistExtractor: $it" }
             }
             .getOrNull()
-        if (metrolist != null) return metrolist
-        return runCatching { hedgedInnerTube(track, errors, false) }
-            .getOrNull()
-            ?.let { stream -> track.withDirectStream(stream) }
+        if (metrolist != null && metrolist.streamUrl.isNotBlank() && streamStillFresh(metrolist.streamUrl) && isDirectAudioUrl(metrolist.streamUrl)) {
+            return metrolist
+        }
+
+        val innerTube = runCatching { hedgedInnerTube(track, errors, false) }.getOrNull()
+        return innerTube?.let(track::withDirectStream)
     }
 
     private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? {
@@ -283,10 +291,12 @@ class PlaybackResolver private constructor(private val context: Context) {
                     ?.let { errors += "MetrolistExtractor: $it" }
             }
             .getOrNull()
-        if (metrolist != null) return metrolist
-        return runCatching { raceInnerTube(track, errors, false, true) }
-            .getOrNull()
-            ?.let { stream -> track.withDirectStream(stream) }
+        if (metrolist != null && metrolist.streamUrl.isNotBlank() && streamStillFresh(metrolist.streamUrl) && isDirectAudioUrl(metrolist.streamUrl)) {
+            return metrolist
+        }
+
+        val innerTube = runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
+        return innerTube?.let(track::withDirectStream)
     }
 
     private suspend fun resolveAudioWithSearchFallback(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {

@@ -1,6 +1,5 @@
 package com.luc4n3x.levyra.data
 
-import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.NewPipe
@@ -13,6 +12,7 @@ import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
 import java.io.IOException
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 object NewPipeRuntime {
@@ -27,7 +27,15 @@ object NewPipeRuntime {
 }
 
 private class OkHttpNewPipeDownloader : Downloader() {
-    private val client: OkHttpClient = LevyraHttpClientFactory.extractor()
+    private val client = OkHttpClient.Builder()
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .writeTimeout(8, TimeUnit.SECONDS)
+        .callTimeout(18, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
 
     override fun execute(request: Request): Response {
         clientFor(request).newCall(toOkHttpRequest(request)).execute().use { response ->
@@ -82,35 +90,24 @@ private class OkHttpNewPipeDownloader : Downloader() {
         request.headers().forEach { (name, values) ->
             values.filter { it.isNotBlank() }.forEach { value -> builder.addHeader(name, value) }
         }
-        if (!request.headers().containsHeader("User-Agent")) {
-            builder.header(
-                "User-Agent",
-                "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36"
-            )
-        }
-        if (!request.headers().containsHeader("Accept")) {
-            builder.header("Accept", "*/*")
-        }
-        return builder.build()
+        return builder
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7")
+            .header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
+            .header("Connection", "keep-alive")
+            .build()
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
         val responseBytes = response.body?.bytes() ?: ByteArray(0)
         val responseText = responseBytes.toString(StandardCharsets.UTF_8)
-        if (response.code == 429) {
-            throw IOException("YouTube ha limitato temporaneamente le richieste")
-        }
+        if (response.code == 429) throw IOException("YouTube ha limitato temporaneamente le richieste")
         return Response(
             response.code,
             response.message,
             response.headers.toMultimap(),
             responseText,
-            responseBytes,
-            response.request.url.toString()
+            response.latestNetworkResponse?.request?.url.toString()
         )
-    }
-
-    private fun Map<String, List<String>>.containsHeader(name: String): Boolean {
-        return keys.any { it.equals(name, ignoreCase = true) }
     }
 }
