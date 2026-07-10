@@ -2851,8 +2851,8 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val trendingArtists = remember(state.tracks, state.homeSections, state.charts, state.favorites) {
         buildTrendingArtists(state)
     }
-    val personalTracks = remember(state.currentTrack, state.recentSearches, state.personalOrbitTracks, state.favorites, state.tracks, state.homeSections, state.charts) {
-        buildPersonalListeningTracks(state).take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+    val personalTracks = remember(state.personalOrbitTracks) {
+        state.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
     val resonanceTracks = remember(state.currentTrack, state.recentSearches, state.favorites, state.tracks, state.homeSections, state.charts) {
         buildResonanceTracks(state)
@@ -2864,14 +2864,13 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
         state.homeSections.filter { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
     }
     val secondaryPreloadTracks = remember(resonanceTracks, newReleases) {
-        (resonanceTracks + (newReleases?.tracks ?: emptyList())).distinctBy { it.id }.take(18)
+        (resonanceTracks + (newReleases?.tracks ?: emptyList())).distinctBy { it.id }.take(10)
     }
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
         if (personalTracks.isNotEmpty()) {
             LevyraArtworkCache.preloadPriority(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
-            LevyraArtworkCache.cachePersistent(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
         }
-        LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 14)
+        LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 10)
     }
     val homeListState = rememberLazyListState()
     LazyColumn(
@@ -3221,20 +3220,6 @@ private fun TrendingArtistsShelf(
             }
         }
     }
-}
-
-private fun buildPersonalListeningTracks(state: LevyraUiState): List<Track> {
-    return LevyraPersonalOrbit.build(
-        currentTrack = state.currentTrack,
-        recentSearches = state.recentSearches,
-        favorites = state.favorites,
-        tracks = state.tracks,
-        homeSections = state.homeSections,
-        charts = state.charts,
-        cachedOrbit = state.personalOrbitTracks,
-        limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
-        languageCode = state.languageCode
-    )
 }
 
 private fun buildResonanceTracks(state: LevyraUiState): List<Track> {
