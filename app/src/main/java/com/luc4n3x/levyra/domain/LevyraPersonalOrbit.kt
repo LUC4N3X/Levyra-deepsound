@@ -18,80 +18,27 @@ object LevyraPersonalOrbit {
         languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): List<Track> {
         val max = limit.coerceAtLeast(1)
-        val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
         val donorPool = buildList {
             addAll(charts)
             addAll(tracks)
             addAll(homeSections.flatMap { it.tracks })
             addAll(cachedOrbit)
+            addAll(favorites)
             currentTrack?.let { add(it) }
             addAll(recentSearches)
-            addAll(favorites)
         }
         val artworkDonors = buildArtworkDonors(donorPool)
-
-        fun enriched(track: Track): Track = artworkDonors[identityKey(track)]?.let { donor -> preferAlbumArtwork(track, donor) } ?: track
-
-        val playedTracks = buildList {
+        return buildList {
             currentTrack?.let { add(it) }
             addAll(recentSearches)
-            addAll(favorites)
         }
             .asSequence()
-            .map(::enriched)
+            .map { track -> artworkDonors[identityKey(track)]?.let { donor -> preferAlbumArtwork(track, donor) } ?: track }
             .filter { isReliableMusicCandidate(it) }
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
             .distinctBy { identityKey(it) }
+            .take(max)
             .toList()
-        val playedKeys = playedTracks.mapTo(mutableSetOf()) { identityKey(it) }
-        val feedTracks = donorPool
-            .asSequence()
-            .map(::enriched)
-            .filter { isReliableMusicCandidate(it) }
-            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-            .toList()
-        val localeTracks = feedTracks.filter { isLanguagePreferred(it, normalizedLanguage) }
-        val neutralTracks = feedTracks.filter { !isLanguagePreferred(it, normalizedLanguage) && !isClearlyForeignForLanguage(it, normalizedLanguage) }
-        val foreignFallbackTracks = feedTracks.filter { isClearlyForeignForLanguage(it, normalizedLanguage) }
-        val ordered = buildList {
-            addAll(playedTracks)
-            addAll(localeTracks)
-            addAll(neutralTracks)
-            addAll(foreignFallbackTracks)
-        }
-            .asSequence()
-            .map(::enriched)
-            .filter { isReliableMusicCandidate(it) }
-            .distinctBy { identityKey(it) }
-            .toList()
-        if (ordered.isEmpty()) return emptyList()
-        val selected = ArrayList<Track>(max)
-        val used = HashSet<String>()
-
-        fun addMatching(predicate: (Track) -> Boolean) {
-            if (selected.size >= max) return
-            ordered.forEach { track ->
-                if (selected.size >= max) return
-                val key = identityKey(track)
-                if (key !in used && predicate(track)) {
-                    selected += track
-                    used += key
-                }
-            }
-        }
-
-        addMatching { track -> identityKey(track) in playedKeys && hasSquareAlbumArtwork(track) }
-        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
-        addMatching { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
-        addMatching { track -> hasSquareAlbumArtwork(track) }
-        addMatching { track -> identityKey(track) in playedKeys && hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
-        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) && hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
-        addMatching { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
-        addMatching { track -> hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
-        addMatching { track -> identityKey(track) in playedKeys }
-        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) }
-        addMatching { true }
-        return selected.take(max)
     }
 
     fun stableKey(track: Track): String {
