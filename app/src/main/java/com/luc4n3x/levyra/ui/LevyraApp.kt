@@ -41,6 +41,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -167,7 +168,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -1412,7 +1418,9 @@ private fun AlbumHeroCard(
 ) {
     val context = LocalContext.current
     var descriptionExpanded by remember { mutableStateOf(false) }
-    
+    // Apple/Vercel hero: calm surface, one signature drop-shadow under the artwork,
+    // restrained hairline borders, tight negative-tracking display type, and a
+    // single primary action (Play) that owns the visual weight.
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1469,6 +1477,7 @@ private fun AlbumHeroCard(
             )
         }
 
+        // Primary action: full-width Play, the way Apple Music anchors an album.
         AlbumPrimaryPlayButton(
             enabled = trackCount > 0,
             isPlaying = isPlaying,
@@ -1478,6 +1487,7 @@ private fun AlbumHeroCard(
             onClick = onPlayAll
         )
 
+        // Secondary actions: quiet, evenly weighted, hairline chips.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1614,7 +1624,8 @@ private fun AlbumNowPlayingDock(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-
+    // Consistent with the global MiniPlayer: accent-tinted glass pill, rounded on
+    // all corners, hairline border, one gradient play button, thin progress rail.
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -3884,6 +3895,15 @@ private fun releaseKindFromSource(title: String, track: Track): String {
     }
 }
 
+/**
+ * True only when the track carries a genuine square album cover.
+ *
+ * YouTube Music serves album/song art from Google's image CDN as square,
+ * resizable URLs (`=w544-h544...` or `=s...`). "Songs" that are really music
+ * videos instead come back with a 16:9 video frame from `i.ytimg.com/vi/...`
+ * (hqdefault/mqdefault/…). Those framegrabs look wrong in a cover grid, so the
+ * personal orbit shelf keeps only tracks backed by real artwork.
+ */
 private val SQUARE_ART_WIDTH_HEIGHT_PATTERN = Regex("=w\\d+-h\\d+")
 private val SQUARE_ART_SIZE_PATTERN = Regex("=s\\d+")
 
