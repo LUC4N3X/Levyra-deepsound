@@ -9,13 +9,14 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
 
 internal object LevyraResolverLatency {
-    const val INNER_TUBE_HEDGE_BUDGET_MS = 55L
-    private const val AUDIO_EXTRACTOR_HEDGE_MS = 35L
-    private const val VIDEO_EXTRACTOR_HEDGE_MS = 45L
+    const val INNER_TUBE_HEDGE_BUDGET_MS = 350L
+    private const val AUDIO_INNER_TUBE_FALLBACK_MS = 2_000L
+    private const val VIDEO_INNER_TUBE_FALLBACK_MS = 2_500L
+    private const val OFFLINE_INNER_TUBE_FALLBACK_MS = 2_500L
 
-    fun extractorHedgeDelayMs(isVideoMode: Boolean, preferMp4Audio: Boolean): Long {
-        if (preferMp4Audio) return 0L
-        return if (isVideoMode) VIDEO_EXTRACTOR_HEDGE_MS else AUDIO_EXTRACTOR_HEDGE_MS
+    fun innerTubeFallbackDelayMs(isVideoMode: Boolean, preferMp4Audio: Boolean): Long {
+        if (preferMp4Audio) return OFFLINE_INNER_TUBE_FALLBACK_MS
+        return if (isVideoMode) VIDEO_INNER_TUBE_FALLBACK_MS else AUDIO_INNER_TUBE_FALLBACK_MS
     }
 }
 
