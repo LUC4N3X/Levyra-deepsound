@@ -18,27 +18,84 @@ object LevyraPersonalOrbit {
         languageCode: String = LevyraLanguageCatalog.deviceDefault()
     ): List<Track> {
         val max = limit.coerceAtLeast(1)
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
         val donorPool = buildList {
             addAll(charts)
             addAll(tracks)
             addAll(homeSections.flatMap { it.tracks })
-            addAll(cachedOrbit)
             addAll(favorites)
+            addAll(cachedOrbit)
             currentTrack?.let { add(it) }
             addAll(recentSearches)
         }
         val artworkDonors = buildArtworkDonors(donorPool)
-        return buildList {
+
+        fun enriched(track: Track): Track = artworkDonors[identityKey(track)]?.let { donor -> preferAlbumArtwork(track, donor) } ?: track
+
+        val playbackHistory = buildList {
             currentTrack?.let { add(it) }
             addAll(recentSearches)
         }
             .asSequence()
-            .map { track -> artworkDonors[identityKey(track)]?.let { donor -> preferAlbumArtwork(track, donor) } ?: track }
+            .map(::enriched)
             .filter { isReliableMusicCandidate(it) }
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
             .distinctBy { identityKey(it) }
             .take(max)
             .toList()
+
+        if (playbackHistory.isNotEmpty()) return playbackHistory
+
+        val restoredOrbit = cachedOrbit
+            .asSequence()
+            .map(::enriched)
+            .filter { isReliableMusicCandidate(it) }
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            .distinctBy { identityKey(it) }
+            .take(max)
+            .toList()
+
+        if (restoredOrbit.isNotEmpty()) return restoredOrbit
+
+        val fallbackTracks = donorPool
+            .asSequence()
+            .map(::enriched)
+            .filter { isReliableMusicCandidate(it) }
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            .distinctBy { identityKey(it) }
+            .toList()
+        if (fallbackTracks.isEmpty()) return emptyList()
+
+        val localeTracks = fallbackTracks.filter { isLanguagePreferred(it, normalizedLanguage) }
+        val neutralTracks = fallbackTracks.filter { !isLanguagePreferred(it, normalizedLanguage) && !isClearlyForeignForLanguage(it, normalizedLanguage) }
+        val foreignFallbackTracks = fallbackTracks.filter { isClearlyForeignForLanguage(it, normalizedLanguage) }
+        val ordered = (localeTracks + neutralTracks + foreignFallbackTracks)
+            .distinctBy { identityKey(it) }
+
+        val selected = ArrayList<Track>(max)
+        val used = HashSet<String>()
+
+        fun addMatching(predicate: (Track) -> Boolean) {
+            if (selected.size >= max) return
+            ordered.forEach { track ->
+                if (selected.size >= max) return
+                val key = identityKey(track)
+                if (key !in used && predicate(track)) {
+                    selected += track
+                    used += key
+                }
+            }
+        }
+
+        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
+        addMatching { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
+        addMatching { track -> hasSquareAlbumArtwork(track) }
+        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) && hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
+        addMatching { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
+        addMatching { track -> hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
+        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) }
+        addMatching { true }
+        return selected
     }
 
     fun stableKey(track: Track): String {
