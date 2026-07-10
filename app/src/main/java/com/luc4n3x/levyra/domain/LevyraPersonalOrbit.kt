@@ -5,6 +5,13 @@ object LevyraPersonalOrbit {
 
     private val squareArtWidthHeightPattern = Regex("=w\\d+-h\\d+")
     private val squareArtSizePattern = Regex("=s\\d+")
+    private val officialArtworkHosts = listOf(
+        "mzstatic.com",
+        "dzcdn.net",
+        "deezer.com/images/cover",
+        "i.scdn.co/image",
+        "mosaic.scdn.co"
+    )
 
     fun build(
         currentTrack: Track?,
@@ -186,6 +193,8 @@ object LevyraPersonalOrbit {
         var score = 0
         if (hasSquareAlbumArtwork(track)) score += 100
         if (url.contains("mzstatic.com")) score += 35
+        if (url.contains("dzcdn.net") || url.contains("deezer.com")) score += 30
+        if (url.contains("scdn.co")) score += 28
         if (url.contains("googleusercontent.com") || url.contains("ggpht.com")) score += 22
         if (squareArtWidthHeightPattern.containsMatchIn(url) || squareArtSizePattern.containsMatchIn(url)) score += 15
         if (track.largeThumbnailUrl.isNotBlank()) score += 8
@@ -203,11 +212,9 @@ object LevyraPersonalOrbit {
     private fun isSquareAlbumArtworkUrl(url: String): Boolean {
         if (url.isBlank() || isVideoFrameArtworkUrl(url)) return false
         val lower = url.lowercase()
-        return lower.contains("mzstatic.com") ||
-            lower.contains("googleusercontent.com") ||
-            lower.contains("ggpht.com") ||
-            squareArtWidthHeightPattern.containsMatchIn(url) ||
-            squareArtSizePattern.containsMatchIn(url)
+        if (officialArtworkHosts.any(lower::contains)) return true
+        val squareSized = squareArtWidthHeightPattern.containsMatchIn(url) || squareArtSizePattern.containsMatchIn(url)
+        return squareSized && (lower.contains("googleusercontent.com") || lower.contains("ggpht.com"))
     }
 
     private fun normalizedMusicText(value: String): String {
