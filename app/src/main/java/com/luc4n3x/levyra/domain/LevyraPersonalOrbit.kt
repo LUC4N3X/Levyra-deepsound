@@ -30,7 +30,11 @@ object LevyraPersonalOrbit {
         }
         val artworkDonors = buildArtworkDonors(donorPool)
 
-        fun enriched(track: Track): Track = artworkDonors[identityKey(track)]?.let { donor -> preferAlbumArtwork(track, donor) } ?: track
+        fun enriched(track: Track): Track {
+            val clean = withoutVideoArtwork(track)
+            val donor = artworkDonors[identityKey(track)] ?: return clean
+            return withoutVideoArtwork(preferAlbumArtwork(clean, donor))
+        }
 
         val playbackHistory = buildList {
             currentTrack?.let { add(it) }
@@ -41,10 +45,7 @@ object LevyraPersonalOrbit {
             .filter { isReliableMusicCandidate(it) }
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
             .distinctBy { identityKey(it) }
-            .take(max)
             .toList()
-
-        if (playbackHistory.isNotEmpty()) return playbackHistory
 
         val restoredOrbit = cachedOrbit
             .asSequence()
@@ -52,10 +53,7 @@ object LevyraPersonalOrbit {
             .filter { isReliableMusicCandidate(it) }
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
             .distinctBy { identityKey(it) }
-            .take(max)
             .toList()
-
-        if (restoredOrbit.isNotEmpty()) return restoredOrbit
 
         val fallbackTracks = donorPool
             .asSequence()
@@ -64,20 +62,21 @@ object LevyraPersonalOrbit {
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
             .distinctBy { identityKey(it) }
             .toList()
-        if (fallbackTracks.isEmpty()) return emptyList()
 
         val localeTracks = fallbackTracks.filter { isLanguagePreferred(it, normalizedLanguage) }
-        val neutralTracks = fallbackTracks.filter { !isLanguagePreferred(it, normalizedLanguage) && !isClearlyForeignForLanguage(it, normalizedLanguage) }
+        val neutralTracks = fallbackTracks.filter {
+            !isLanguagePreferred(it, normalizedLanguage) && !isClearlyForeignForLanguage(it, normalizedLanguage)
+        }
         val foreignFallbackTracks = fallbackTracks.filter { isClearlyForeignForLanguage(it, normalizedLanguage) }
-        val ordered = (localeTracks + neutralTracks + foreignFallbackTracks)
+        val orderedFallback = (localeTracks + neutralTracks + foreignFallbackTracks)
             .distinctBy { identityKey(it) }
 
         val selected = ArrayList<Track>(max)
         val used = HashSet<String>()
 
-        fun addMatching(predicate: (Track) -> Boolean) {
+        fun addTracks(source: List<Track>, predicate: (Track) -> Boolean = { true }) {
             if (selected.size >= max) return
-            ordered.forEach { track ->
+            source.forEach { track ->
                 if (selected.size >= max) return
                 val key = identityKey(track)
                 if (key !in used && predicate(track)) {
@@ -87,15 +86,38 @@ object LevyraPersonalOrbit {
             }
         }
 
-        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
-        addMatching { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
-        addMatching { track -> hasSquareAlbumArtwork(track) }
-        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) && hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
-        addMatching { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
-        addMatching { track -> hasAnyArtwork(track) && !hasVideoFrameArtwork(track) }
-        addMatching { track -> isLanguagePreferred(track, normalizedLanguage) }
-        addMatching { true }
+        addTracks(playbackHistory)
+        addTracks(restoredOrbit)
+        addTracks(orderedFallback) { track -> isLanguagePreferred(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
+        addTracks(orderedFallback) { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
+        addTracks(orderedFallback) { track -> hasSquareAlbumArtwork(track) }
+        addTracks(orderedFallback) { track -> isLanguagePreferred(track, normalizedLanguage) && hasAnyArtwork(track) }
+        addTracks(orderedFallback) { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasAnyArtwork(track) }
+        addTracks(orderedFallback) { track -> hasAnyArtwork(track) }
+        addTracks(orderedFallback) { track -> isLanguagePreferred(track, normalizedLanguage) }
+        addTracks(orderedFallback)
         return selected
+    }
+
+    fun prepareForOrbit(track: Track, donors: List<Track>): Track {
+        val clean = withoutVideoArtwork(track.copy(streamUrl = "", videoStreamUrl = ""))
+        val donor = donors
+            .asSequence()
+            .filter { identityKey(it) == identityKey(track) }
+            .filter { hasSquareAlbumArtwork(it) }
+            .maxByOrNull(::artworkScore)
+            ?: return clean
+        return withoutVideoArtwork(preferAlbumArtwork(clean, donor))
+    }
+
+    fun withoutVideoArtwork(track: Track): Track {
+        val thumbnail = track.thumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
+        val large = track.largeThumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
+        return if (thumbnail == track.thumbnailUrl && large == track.largeThumbnailUrl) {
+            track
+        } else {
+            track.copy(thumbnailUrl = thumbnail, largeThumbnailUrl = large)
+        }
     }
 
     fun stableKey(track: Track): String {
@@ -113,20 +135,17 @@ object LevyraPersonalOrbit {
     }
 
     fun hasSquareAlbumArtwork(track: Track): Boolean {
-        val url = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.trim()
-        if (url.isBlank()) return false
-        val lower = url.lowercase()
-        if (isVideoFrameArtworkUrl(lower)) return false
-        return lower.contains("mzstatic.com") ||
-            lower.contains("googleusercontent.com") ||
-            lower.contains("ggpht.com") ||
-            squareArtWidthHeightPattern.containsMatchIn(url) ||
-            squareArtSizePattern.containsMatchIn(url)
+        return sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .any(::isSquareAlbumArtworkUrl)
     }
 
     fun hasVideoFrameArtwork(track: Track): Boolean {
-        val url = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.trim()
-        return isVideoFrameArtworkUrl(url)
+        return sequenceOf(track.thumbnailUrl, track.largeThumbnailUrl)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .any(::isVideoFrameArtworkUrl)
     }
 
     fun isVideoFrameArtworkUrl(url: String): Boolean {
@@ -144,11 +163,9 @@ object LevyraPersonalOrbit {
     }
 
     fun preferAlbumArtwork(primary: Track, donor: Track): Track {
-        if (!hasSquareAlbumArtwork(donor)) return primary
+        val donorArtwork = albumArtworkUrl(donor) ?: return primary
         if (hasSquareAlbumArtwork(primary) && artworkScore(primary) >= artworkScore(donor)) return primary
-        val thumbnail = donor.thumbnailUrl.ifBlank { donor.largeThumbnailUrl }.ifBlank { primary.thumbnailUrl }
-        val large = donor.largeThumbnailUrl.ifBlank { donor.thumbnailUrl }.ifBlank { primary.largeThumbnailUrl }
-        return primary.copy(thumbnailUrl = thumbnail, largeThumbnailUrl = large)
+        return primary.copy(thumbnailUrl = donorArtwork, largeThumbnailUrl = donorArtwork)
     }
 
     private fun buildArtworkDonors(tracks: List<Track>): Map<String, Track> {
@@ -165,7 +182,7 @@ object LevyraPersonalOrbit {
     }
 
     private fun artworkScore(track: Track): Int {
-        val url = track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }.lowercase()
+        val url = albumArtworkUrl(track).orEmpty().lowercase()
         var score = 0
         if (hasSquareAlbumArtwork(track)) score += 100
         if (url.contains("mzstatic.com")) score += 35
@@ -177,10 +194,27 @@ object LevyraPersonalOrbit {
         return score
     }
 
+    private fun albumArtworkUrl(track: Track): String? {
+        return sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl)
+            .map { it.trim() }
+            .firstOrNull(::isSquareAlbumArtworkUrl)
+    }
+
+    private fun isSquareAlbumArtworkUrl(url: String): Boolean {
+        if (url.isBlank() || isVideoFrameArtworkUrl(url)) return false
+        val lower = url.lowercase()
+        return lower.contains("mzstatic.com") ||
+            lower.contains("googleusercontent.com") ||
+            lower.contains("ggpht.com") ||
+            squareArtWidthHeightPattern.containsMatchIn(url) ||
+            squareArtSizePattern.containsMatchIn(url)
+    }
+
     private fun normalizedMusicText(value: String): String {
         return value.lowercase()
             .replace(Regex("""\([^)]*\)|\[[^]]*]"""), " ")
             .replace(Regex("""feat\.?|featuring|ft\.?"""), " ")
+            .replace(Regex("""official audio|official video|lyrics?|visuali[sz]er|music video"""), " ")
             .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
