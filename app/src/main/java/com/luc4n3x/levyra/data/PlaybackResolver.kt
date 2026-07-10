@@ -281,7 +281,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
 
         val innerTube = runCatching { hedgedInnerTube(track, errors, false) }.getOrNull()
-        return innerTube?.let(track::withDirectStream)
+        return innerTube?.let { stream -> track.withDirectStream(stream) }
     }
 
     private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? {
@@ -296,7 +296,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
 
         val innerTube = runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
-        return innerTube?.let(track::withDirectStream)
+        return innerTube?.let { stream -> track.withDirectStream(stream) }
     }
 
     private suspend fun resolveAudioWithSearchFallback(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {

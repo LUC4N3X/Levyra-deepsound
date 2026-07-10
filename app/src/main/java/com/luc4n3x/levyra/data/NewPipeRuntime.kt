@@ -107,7 +107,8 @@ private class OkHttpNewPipeDownloader : Downloader() {
             response.message,
             response.headers.toMultimap(),
             responseText,
-            response.latestNetworkResponse?.request?.url.toString()
+            responseBytes,
+            response.request.url.toString()
         )
     }
 }
