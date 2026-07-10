@@ -9460,6 +9460,10 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
+    val zones = remember(strings) { ExploreCatalog.getZones(strings) }
+    val activeZone = remember(zones, state.exploreZoneId) {
+        zones.firstOrNull { it.id == state.exploreZoneId } ?: zones.first()
+    }
 
     Box(
         modifier = Modifier
@@ -9478,13 +9482,13 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .size(320.dp)
-                .background(Brush.radialGradient(listOf(LevyraViolet.copy(alpha = 0.22f), Color.Transparent)))
+                .background(Brush.radialGradient(listOf(Color(activeZone.accentEnd).copy(alpha = 0.22f), Color.Transparent)))
         )
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .size(260.dp)
-                .background(Brush.radialGradient(listOf(CinematicGold.copy(alpha = 0.16f), Color.Transparent)))
+                .background(Brush.radialGradient(listOf(Color(activeZone.accentStart).copy(alpha = 0.16f), Color.Transparent)))
         )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -9502,14 +9506,24 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                         shape = RoundedCornerShape(999.dp)
                     ) {
-                        Text(
-                            text = strings.exploreZones.uppercase(),
-                            color = LevyraCyan,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.4.sp,
-                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp)
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)), CircleShape)
+                            )
+                            Text(
+                                text = strings.exploreZones.uppercase(),
+                                color = LevyraCyan,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.4.sp
+                            )
+                        }
                     }
                     Text(
                         text = strings.exploreTitle,
@@ -9537,7 +9551,7 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     SectionTitle(strings.exploreZones)
                 }
             }
-            items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
+            items(zones.chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -9545,11 +9559,23 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     row.forEach { zone ->
                         ZoneCard(
                             zone = zone,
-                            selected = zone.id == state.exploreZoneId,
+                            selected = zone.id == activeZone.id,
                             onClick = { viewModel.selectExploreZone(zone) }
                         )
                     }
                     if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+
+            item {
+                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    ExploreActiveZoneCard(
+                        zone = activeZone,
+                        trackCount = state.exploreTracks.size,
+                        isLoading = state.isExploreLoading,
+                        enabled = state.exploreTracks.isNotEmpty(),
+                        onPlay = { viewModel.playAll(state.exploreTracks) }
+                    )
                 }
             }
 
@@ -9560,9 +9586,7 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
             when {
                 state.isExploreLoading -> item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
-                    }
+                    ExploreTracksLoadingRow()
                 }
                 state.exploreTracks.isEmpty() -> item {
                     Box(modifier = Modifier.padding(horizontal = 24.dp)) {
@@ -9623,40 +9647,182 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 }
 
 @Composable
+private fun ExploreActiveZoneCard(
+    zone: ExploreZone,
+    trackCount: Int,
+    isLoading: Boolean,
+    enabled: Boolean,
+    onPlay: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val start = Color(zone.accentStart)
+    val end = Color(zone.accentEnd)
+    val transition = rememberInfiniteTransition(label = "explore-hero")
+    val glow by transition.animateFloat(
+        initialValue = 0.26f,
+        targetValue = 0.54f,
+        animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing), RepeatMode.Reverse),
+        label = "explore-hero-glow"
+    )
+    val descriptor = when {
+        isLoading -> "${strings.exploreFresh}…"
+        trackCount > 0 -> "$trackCount · ${strings.exploreFresh}"
+        else -> strings.exploreFresh
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(cinematicGlassBrush(start, end, 1.18f))
+            .border(BorderStroke(1.dp, start.copy(alpha = 0.42f)), RoundedCornerShape(26.dp))
+            .pressable(enabled = enabled, onClick = onPlay)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(15.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(78.dp)
+                    .background(Brush.radialGradient(listOf(start.copy(alpha = glow), Color.Transparent)))
+            )
+            Box(
+                modifier = Modifier
+                    .size(62.dp)
+                    .background(Brush.linearGradient(listOf(start.copy(alpha = 0.5f), end.copy(alpha = 0.34f))), CircleShape)
+                    .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(zone.emoji, fontSize = 27.sp)
+            }
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                zone.label,
+                color = Color.White,
+                fontSize = 21.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(7.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(Brush.linearGradient(listOf(start, end)), CircleShape)
+                )
+                Text(
+                    text = descriptor,
+                    color = LevyraMuted.copy(alpha = 0.9f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .graphicsLayer { alpha = if (enabled) 1f else 0.45f }
+                .background(Brush.linearGradient(listOf(start, end)), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.22f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, strokeWidth = 2.5.dp, modifier = Modifier.size(22.dp))
+            } else {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = strings.play, tint = Color.White, modifier = Modifier.size(26.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploreTracksLoadingRow() {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(4, key = { "ex-track-loading-$it" }) {
+            Column(
+                modifier = Modifier.width(140.dp).shimmer(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(116.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White.copy(alpha = 0.075f))
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .height(14.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Color.White.copy(alpha = 0.07f))
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () -> Unit) {
     val start = Color(zone.accentStart)
     val end = Color(zone.accentEnd)
     Row(
         modifier = Modifier
             .weight(1f)
+            .height(64.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(cinematicGlassBrush(start, end, if (selected) 1.15f else 0.58f))
+            .background(cinematicGlassBrush(start, end, if (selected) 1.12f else 0.5f))
             .border(
-                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.08f)),
+                BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) start.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.08f)),
                 RoundedCornerShape(20.dp)
             )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 14.dp),
+            .pressable(onClick = onClick)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(34.dp)
-                .background(Brush.linearGradient(listOf(start.copy(alpha = 0.34f), end.copy(alpha = 0.24f))), CircleShape)
-                .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape),
+                .size(40.dp)
+                .background(Brush.linearGradient(listOf(start.copy(alpha = 0.4f), end.copy(alpha = 0.26f))), CircleShape)
+                .border(1.dp, if (selected) start.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.12f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(zone.emoji, fontSize = 14.sp)
+            Text(zone.emoji, fontSize = 17.sp)
         }
         Text(
             zone.label,
-            color = if (selected) Color.White else LevyraMuted.copy(alpha = 0.94f),
-            fontSize = 15.sp,
-            fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
-            maxLines = 1,
+            modifier = Modifier.weight(1f),
+            color = if (selected) Color.White else LevyraMuted.copy(alpha = 0.92f),
+            fontSize = 14.sp,
+            lineHeight = 16.sp,
+            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(Brush.linearGradient(listOf(start, end)), CircleShape)
+            )
+        }
     }
 }
 
