@@ -225,33 +225,15 @@ class PlaybackResolver private constructor(private val context: Context) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         if (isVideoMode) {
-            val resolved = coroutineScope {
-                val winner = CompletableDeferred<Track?>()
-                val extractorJob = launch {
-                    val result = runCatching { resolveVideoWithMetrolistExtractor(track) }
-                    result.onSuccess { winner.complete(it) }
-                        .onFailure { error ->
-                            error.message?.takeIf { it.isNotBlank() }
-                                ?.let { errors += "MetrolistExtractor video: $it" }
-                        }
+            val resolved = runCatching { resolveVideoWithMetrolistExtractor(track) }
+                .onFailure { error ->
+                    error.message?.takeIf { it.isNotBlank() }
+                        ?.let { errors += "MetrolistExtractor video: $it" }
                 }
-                val innerTubeJob = launch {
-                    delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
-                    if (winner.isCompleted) return@launch
-                    val stream = runCatching { hedgedInnerTube(track, errors, true) }.getOrNull()
-                    if (stream != null) {
-                        winner.complete(track.withDirectStream(stream))
-                    }
-                }
-                launch {
-                    extractorJob.join()
-                    innerTubeJob.join()
-                    winner.complete(null)
-                }
-                val result = winner.await()
-                coroutineContext.cancelChildren()
-                result
-            }
+                .getOrNull()
+                ?: runCatching { hedgedInnerTube(track, errors, true) }
+                    .getOrNull()
+                    ?.let { stream -> track.withDirectStream(stream) }
             if (resolved != null) {
                 store(resolved, isVideoMode)
                 return@withContext resolved
@@ -282,57 +264,29 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
         if (preferMp4Audio) return resolveAudioResilient(track, errors)
-        return coroutineScope {
-            val winner = CompletableDeferred<Track?>()
-            val extractorJob = launch {
-                val resolved = runCatching { resolveWithMetrolistExtractor(track, false) }
-                resolved.onSuccess { winner.complete(it) }
-                    .onFailure { error ->
-                        error.message?.takeIf { it.isNotBlank() }
-                            ?.let { errors += "MetrolistExtractor: $it" }
-                    }
+        val metrolist = runCatching { resolveWithMetrolistExtractor(track, false) }
+            .onFailure { error ->
+                error.message?.takeIf { it.isNotBlank() }
+                    ?.let { errors += "MetrolistExtractor: $it" }
             }
-            val innerTubeJob = launch {
-                delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = false))
-                if (winner.isCompleted) return@launch
-                val stream = runCatching { hedgedInnerTube(track, errors, false) }.getOrNull()
-                if (stream != null) winner.complete(track.withDirectStream(stream))
-            }
-            launch {
-                extractorJob.join()
-                innerTubeJob.join()
-                winner.complete(null)
-            }
-            val result = winner.await()
-            coroutineContext.cancelChildren()
-            result
-        }
+            .getOrNull()
+        if (metrolist != null) return metrolist
+        return runCatching { hedgedInnerTube(track, errors, false) }
+            .getOrNull()
+            ?.let { stream -> track.withDirectStream(stream) }
     }
 
-    private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? = coroutineScope {
-        val winner = CompletableDeferred<Track?>()
-        val extractorJob = launch {
-            val resolved = runCatching { resolveWithMetrolistExtractor(track, true) }
-            resolved.onSuccess { winner.complete(it) }
-                .onFailure { error ->
-                    error.message?.takeIf { it.isNotBlank() }
-                        ?.let { errors += "MetrolistExtractor: $it" }
-                }
-        }
-        val innerTubeJob = launch {
-            delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = true))
-            if (winner.isCompleted) return@launch
-            val stream = runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
-            if (stream != null) winner.complete(track.withDirectStream(stream))
-        }
-        launch {
-            extractorJob.join()
-            innerTubeJob.join()
-            winner.complete(null)
-        }
-        val result = winner.await()
-        coroutineContext.cancelChildren()
-        result
+    private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? {
+        val metrolist = runCatching { resolveWithMetrolistExtractor(track, true) }
+            .onFailure { error ->
+                error.message?.takeIf { it.isNotBlank() }
+                    ?.let { errors += "MetrolistExtractor: $it" }
+            }
+            .getOrNull()
+        if (metrolist != null) return metrolist
+        return runCatching { raceInnerTube(track, errors, false, true) }
+            .getOrNull()
+            ?.let { stream -> track.withDirectStream(stream) }
     }
 
     private suspend fun resolveAudioWithSearchFallback(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
