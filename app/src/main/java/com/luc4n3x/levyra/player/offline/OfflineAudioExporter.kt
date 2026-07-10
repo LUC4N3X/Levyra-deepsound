@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aMetadata
 import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -41,6 +42,7 @@ class OfflineAudioExporter(
             reportProgress(4)
             if (track.id.isNotBlank() || track.videoUrl.isNotBlank()) resolver.resolveForOffline(track.copy(streamUrl = "")) else track
         }.getOrElse { error ->
+            if (error is CancellationException) throw error
             if (track.streamUrl.isNotBlank()) track else throw error
         }
         if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
@@ -51,6 +53,7 @@ class OfflineAudioExporter(
         val downloaded = runCatching {
             downloadAudio(playable, workspace)
         }.getOrElse { firstError ->
+            if (firstError is CancellationException) throw firstError
             val canRefresh = track.id.isNotBlank() || track.videoUrl.isNotBlank()
             if (!canRefresh) throw firstError
             reportProgress(7)
