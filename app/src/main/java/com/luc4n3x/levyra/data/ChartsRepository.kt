@@ -8,6 +8,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import kotlin.math.absoluteValue
@@ -24,6 +25,34 @@ class ChartsRepository {
         val modern = runCatching { fetchModern(country, limit) }.getOrDefault(emptyList())
         if (modern.isNotEmpty()) return@withContext modern
         runCatching { fetchClassic(country, limit) }.getOrDefault(emptyList())
+    }
+
+    suspend fun officialArtwork(title: String, artist: String, country: String): String? = withContext(Dispatchers.IO) {
+        val cleanTitle = title.trim()
+        val cleanArtist = artist.trim()
+        if (cleanTitle.isBlank() || cleanArtist.isBlank()) return@withContext null
+        val region = country.trim().lowercase().takeIf { it.length == 2 } ?: "it"
+        val term = URLEncoder.encode("$cleanTitle $cleanArtist", StandardCharsets.UTF_8.name())
+        val body = httpGet("https://itunes.apple.com/search?term=$term&entity=song&limit=12&country=$region")
+            ?: return@withContext null
+        val results = JSONObject(body).optJSONArray("results") ?: return@withContext null
+        val targetTitle = normalizeMusicText(cleanTitle)
+        val targetArtist = normalizeMusicText(cleanArtist)
+        var bestArtwork = ""
+        var bestScore = Int.MIN_VALUE
+        for (index in 0 until results.length()) {
+            val item = results.optJSONObject(index) ?: continue
+            val artwork = item.optString("artworkUrl100").trim()
+            if (artwork.isBlank()) continue
+            val candidateTitle = normalizeMusicText(item.optString("trackName"))
+            val candidateArtist = normalizeMusicText(item.optString("artistName"))
+            val score = artworkMatchScore(targetTitle, targetArtist, candidateTitle, candidateArtist)
+            if (score > bestScore) {
+                bestScore = score
+                bestArtwork = artwork
+            }
+        }
+        bestArtwork.takeIf { bestScore >= 95 }?.let(::upgradeArtwork)
     }
 
     private fun fetchModern(country: String, limit: Int): List<Track> {
@@ -70,14 +99,49 @@ class ChartsRepository {
             setRequestProperty("Accept", "application/json")
             setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
         }
-        val code = connection.responseCode
-        if (code !in 200..299) return null
-        return BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
+        return try {
+            val code = connection.responseCode
+            if (code !in 200..299) return null
+            BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun upgradeArtwork(url: String): String {
         if (url.isBlank()) return url
-        return url.replace(Regex("\\d+x\\d+bb"), "512x512bb")
+        return url.replace(Regex("\\d+x\\d+bb"), "600x600bb")
+    }
+
+    private fun artworkMatchScore(
+        targetTitle: String,
+        targetArtist: String,
+        candidateTitle: String,
+        candidateArtist: String
+    ): Int {
+        var score = 0
+        score += when {
+            candidateTitle == targetTitle -> 90
+            candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle) -> 58
+            else -> 0
+        }
+        score += when {
+            candidateArtist == targetArtist -> 80
+            candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist) -> 48
+            else -> 0
+        }
+        if (candidateTitle.isBlank() || candidateArtist.isBlank()) score -= 100
+        return score
+    }
+
+    private fun normalizeMusicText(value: String): String {
+        return value.lowercase()
+            .replace(Regex("""\([^)]*\)|\[[^]]*]"""), " ")
+            .replace(Regex("""feat\.?|featuring|ft\.?"""), " ")
+            .replace(Regex("""official audio|official video|lyrics?|visuali[sz]er|music video"""), " ")
+            .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
     }
 
     private fun buildChartTrack(title: String, artist: String, artwork: String): Track {
