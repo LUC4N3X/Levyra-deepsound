@@ -16,7 +16,6 @@ import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
 import com.luc4n3x.levyra.data.ListeningPulseStore
-import com.luc4n3x.levyra.data.PersonalOrbitArtworkWorker
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.SponsorBlockRepository
@@ -148,6 +147,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listenSessionPersistedMs = 0L
     private var listenSessionPersistJob: Job? = null
     private var listeningPulseRefreshJob: Job? = null
+    private var lastPlaybackSaveJob: Job? = null
     private var lastListeningPulseRefreshMs = 0L
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val activeDownloadTitles = ConcurrentHashMap<String, String>()
@@ -275,66 +275,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun scheduleColdStartRefresh(initialTracks: List<Track>) {
         val appContext = getApplication<Application>().applicationContext
-        val orbitSeed = _state.value.personalOrbitTracks.ifEmpty { initialTracks }.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        val orbitSeed = _state.value.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         if (orbitSeed.isNotEmpty()) {
             LevyraArtworkCache.preloadPriority(appContext, orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT)
             warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
+        } else {
+            viewModelScope.launch(Dispatchers.IO) {
+                preferences.savePersonalOrbitTracks(emptyList(), _state.value.languageCode)
+            }
         }
         viewModelScope.launch(Dispatchers.IO) {
-            delay(180L)
+            delay(350L)
             resolver.warmNetwork()
-            val hot = (orbitSeed.take(4) + _state.value.charts.take(8) + _state.value.tracks.take(8))
+            val hot = (orbitSeed.take(2) + initialTracks.take(4))
                 .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
                 .distinctBy { playbackIdentity(it) }
-                .take(12)
-            warmTracks(hot, concurrency = 4, delayStepMs = 0L, prime = true)
+                .take(6)
+            warmTracks(hot, concurrency = 2, delayStepMs = 40L, prime = true)
         }
         viewModelScope.launch {
-            delay(450L)
-            resolver.warmNetwork()
+            delay(700L)
             loadHomeFeed()
         }
         viewModelScope.launch {
-            delay(950L)
+            delay(1600L)
             loadCharts()
         }
         viewModelScope.launch {
-            delay(1700L)
+            delay(3200L)
             checkForUpdates(silent = true)
             loadReleaseRadar()
         }
     }
 
-    private fun persistPersonalOrbit(extraTracks: List<Track> = emptyList()) {
-        val snapshot = _state.value
-        val mergedTracks = mergeTracks(snapshot.tracks, extraTracks)
-        val orbit = LevyraPersonalOrbit.build(
-            currentTrack = snapshot.currentTrack,
-            recentSearches = snapshot.recentSearches,
-            favorites = snapshot.favorites,
-            tracks = mergedTracks,
-            homeSections = snapshot.homeSections,
-            charts = snapshot.charts,
-            cachedOrbit = snapshot.personalOrbitTracks,
-            limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
-            languageCode = snapshot.languageCode
-        )
-        if (orbit.isEmpty()) return
-        val limited = orbit.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-        _state.update { it.copy(personalOrbitTracks = limited) }
-        warmPersistentOrbit(limited, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
-    }
-
     private fun warmPersistentOrbit(tracks: List<Track>, limit: Int, persist: Boolean = false) {
         val limited = tracks.take(limit.coerceAtLeast(1))
-        if (limited.isEmpty()) return
         val appContext = getApplication<Application>().applicationContext
         viewModelScope.launch(Dispatchers.IO) {
             val languageCode = _state.value.languageCode
             if (persist) preferences.savePersonalOrbitTracks(limited, languageCode)
-            LevyraArtworkCache.cachePersistent(appContext, limited, limit)
-            if (persist) PersonalOrbitArtworkWorker.enqueue(appContext, languageCode)
-            if (persist) persistHomeSnapshotSync(languageCode)
+            if (limited.isNotEmpty()) LevyraArtworkCache.cachePersistent(appContext, limited.take(4), 4)
         }
     }
 
@@ -725,7 +705,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val instantAlbums = _state.value.homeAlbums.ifEmpty {
                 instantAlbumRecommendationsFromTracks(_state.value.personalOrbitTracks + _state.value.recentSearches + _state.value.favorites, flat, 10)
             }
-            preferences.saveHomeSections(sections, languageCode)
+            viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeSections(sections, languageCode) }
             _state.update {
                 it.copy(
                     homeSections = sections,
@@ -739,11 +719,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = null
                 )
             }
-            persistPersonalOrbit(flat)
             persistHomeSnapshot()
-            LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, flat, 16)
-            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, flat, 36)
-            prefetchTop(flat, 14)
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, flat, 18)
+            prefetchTop(flat, 8)
             loadHomeAlbums(languageCode)
         }
     }
@@ -765,7 +743,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
             val mergedAlbums = mergeAlbums(albums, instantAlbums).take(10)
-            preferences.saveHomeAlbums(mergedAlbums, languageCode)
+            viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeAlbums(mergedAlbums, languageCode) }
             _state.update { it.copy(homeAlbums = mergedAlbums, homeAlbumsLoading = false) }
         }
     }
@@ -934,7 +912,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playAll(tracks: List<Track>) {
         if (tracks.isEmpty()) return
-        addToRecentSearches(tracks.first())
         _state.update { it.copy(queue = tracks) }
         queueIndex = 0
         startResolve(tracks.first())
@@ -969,14 +946,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { if (it.selectedChartId == regionId) it.copy(isLoadingCharts = false) else it }
                 return@launch
             }
-            preferences.saveChartTracks(result, languageCode, regionId)
+            viewModelScope.launch(Dispatchers.IO) { preferences.saveChartTracks(result, languageCode, regionId) }
             _state.update {
                 if (it.selectedChartId != regionId) return@update it
                 it.copy(charts = result, isLoadingCharts = false)
             }
-            persistPersonalOrbit(result)
             persistHomeSnapshot()
-            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, result, 22)
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, result, 12)
             enrichCharts(regionId, result)
         }
     }
@@ -984,21 +960,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun enrichCharts(regionId: String, charts: List<Track>) {
         chartEnrichJob?.cancel()
         chartEnrichJob = viewModelScope.launch(Dispatchers.IO) {
-            val hot = charts.take(12)
+            val hot = charts.take(6)
             coroutineScope {
-                val semaphore = Semaphore(4)
+                val semaphore = Semaphore(2)
                 hot.forEachIndexed { index, entry ->
                     launch {
                         semaphore.withPermit {
-                            enrichChartEntry(regionId, entry, warm = index < 8)
+                            enrichChartEntry(regionId, entry, warm = index < 2)
                         }
                     }
                 }
             }
-            charts.drop(12).take(28).forEach { entry ->
+            charts.drop(6).take(6).forEach { entry ->
                 if (!isActive || _state.value.selectedChartId != regionId) return@launch
                 enrichChartEntry(regionId, entry, warm = false)
-                delay(45L)
+                delay(80L)
             }
         }
     }
@@ -1038,11 +1014,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val current = _state.value.favorites
         val exists = current.any { it.id == track.id }
         val updated = if (exists) current.filterNot { it.id == track.id } else listOf(track) + current
-        favoritesStore.save(updated)
-        LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, updated, 12)
+        viewModelScope.launch(Dispatchers.IO) { favoritesStore.save(updated) }
+        LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, updated, 6)
         _state.update { it.copy(favorites = updated, favoriteIds = updated.map { fav -> fav.id }.toSet()) }
         recordSmartFavorite(track, !exists)
-        persistPersonalOrbit(updated)
     }
 
     fun exportCurrentTrack() {
@@ -1144,9 +1119,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
             recordSmartAlbumOpen(detail.album)
-            persistPersonalOrbit(detail.tracks)
-            LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 16)
-            prefetchTop(detail.tracks, 10)
+            LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 8)
         }
     }
 
@@ -1471,9 +1444,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = if (data.isEmpty) "Nessun risultato trovato per $clean" else null
                 )
             }
-            persistPersonalOrbit(tracks)
-            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 36)
-            prefetchTop(tracks, 18)
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 18)
+            prefetchTop(tracks, 8)
         }.onFailure { error ->
             _state.update {
                 it.copy(
@@ -1512,7 +1484,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = null
                 )
             }
-            persistPersonalOrbit(playable)
             LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, playable, 10)
             playFrom(playable, playable.first(), loopOnCompletion = true)
         }
@@ -1522,19 +1493,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         openArtistByName(hit.name)
     }
 
-    private fun addToRecentSearches(track: Track) {
-        if (track.id.isBlank() || track.title.isBlank()) return
-        val current = _state.value.recentSearches
-        val updated = listOf(track) + current.filterNot { it.id == track.id }
-        val limited = updated.take(8)
-        preferences.saveRecentSearches(limited)
-        LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, limited, 8)
-        _state.update { it.copy(recentSearches = limited) }
-        persistPersonalOrbit(limited)
+    private fun recordPlaybackHistory(track: Track) {
+        if (track.title.isBlank() || track.artist.isBlank()) return
+        val stableTrack = track.copy(streamUrl = "", videoStreamUrl = "")
+        val snapshot = _state.value
+        val updated = (listOf(stableTrack) + snapshot.recentSearches)
+            .distinctBy { LevyraPersonalOrbit.identityKey(it) }
+            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+        val orbit = LevyraPersonalOrbit.build(
+            currentTrack = stableTrack,
+            recentSearches = updated,
+            favorites = snapshot.favorites,
+            tracks = snapshot.tracks,
+            homeSections = snapshot.homeSections,
+            charts = snapshot.charts,
+            cachedOrbit = snapshot.personalOrbitTracks,
+            limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+            languageCode = snapshot.languageCode
+        )
+        _state.update { it.copy(recentSearches = updated, personalOrbitTracks = orbit) }
+        val appContext = getApplication<Application>().applicationContext
+        LevyraArtworkCache.preloadPriority(appContext, listOf(stableTrack), 1)
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.saveRecentSearches(updated)
+            preferences.savePersonalOrbitTracks(orbit, snapshot.languageCode)
+            LevyraArtworkCache.cachePersistent(appContext, listOf(stableTrack), 1)
+        }
     }
 
     fun play(track: Track) {
-        addToRecentSearches(track)
         val contextualQueue = queueForTrack(track)
         loopCurrentQueueOnCompletion = contextualQueue.size > 1
         _state.update { it.copy(queue = contextualQueue) }
@@ -1543,7 +1530,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
-        addToRecentSearches(track)
         loopCurrentQueueOnCompletion = loopOnCompletion
         _state.update { it.copy(queue = list) }
         queueIndex = list.indexOfFirst { samePlayableTrack(it, track) }
@@ -1719,7 +1705,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 playerError = null
             )
         }
-        addToRecentSearches(playable)
+        recordPlaybackHistory(playable)
         beginListenSession(playable)
         recordSmartPlayback(playable)
         fetchLyrics(playable)
@@ -1808,19 +1794,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun prefetchTop(tracks: List<Track>, count: Int = 18) {
+    private fun prefetchTop(tracks: List<Track>, count: Int = 8) {
         val candidates = tracks
             .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() }
             .distinctBy { youtubePlayableTrack(it)?.id ?: it.id }
-            .take(count)
+            .take(count.coerceIn(1, 8))
         if (candidates.isEmpty()) return
         listPrefetchJob?.cancel()
         listPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(250L)
             resolver.warmNetwork()
-            val hot = candidates.take(10)
-            val warmOnly = candidates.drop(10)
-            warmTracks(hot, concurrency = 4, delayStepMs = 0L, prime = true)
-            warmTracks(warmOnly, concurrency = 2, delayStepMs = 30L, prime = false)
+            val hot = candidates.take(4)
+            val warmOnly = candidates.drop(4)
+            warmTracks(hot, concurrency = 2, delayStepMs = 35L, prime = true)
+            warmTracks(warmOnly, concurrency = 1, delayStepMs = 80L, prime = false)
         }
     }
 
@@ -1900,7 +1887,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         if (_state.value.isPlaying) {
             player.pause()
-            preferences.saveLastPlayback(current, player.positionMs)
+            saveLastPlaybackAsync(current, player.positionMs)
             _state.update { it.copy(isPlaying = false) }
         } else {
             player.play(current)
@@ -1920,7 +1907,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 durationMs = 0L
             )
         }
-        preferences.saveLastPlayback(null, 0L)
+        saveLastPlaybackAsync(null, 0L)
         updateWidget()
     }
 
@@ -1996,12 +1983,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
                 val fallbackSection = com.luc4n3x.levyra.domain.HomeSection(LevyraContentLocales.forLanguage(languageCode).quickSectionTitle, tracks.take(20))
-                preferences.saveHomeSections(listOf(fallbackSection), languageCode)
+                viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeSections(listOf(fallbackSection), languageCode) }
                 _state.update { current -> if (current.homeSections.isEmpty()) current.copy(homeSections = listOf(fallbackSection)) else current }
-                persistPersonalOrbit(tracks)
-                persistHomeSnapshot()
-                LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 32)
-                prefetchTop(tracks, 14)
+                    persistHomeSnapshot()
+                LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 18)
+                prefetchTop(tracks, 8)
             }.onFailure { error ->
                 _state.update {
                     it.copy(
@@ -2017,6 +2003,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val query = moodEngine.tagQueryFor(mood, _state.value.languageCode)
         _state.update { it.copy(query = query) }
         searchNow(query)
+    }
+
+    private fun saveLastPlaybackAsync(track: Track?, positionMs: Long) {
+        if (lastPlaybackSaveJob?.isActive == true) return
+        val stableTrack = track?.copy(streamUrl = "", videoStreamUrl = "")
+        lastPlaybackSaveJob = viewModelScope.launch(Dispatchers.IO) {
+            preferences.saveLastPlayback(stableTrack, positionMs)
+        }
     }
 
     private fun startTicker() {
@@ -2057,8 +2051,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
 
-                if (current != null && player.isPlaying && ticks % 4 == 0) {
-                    preferences.saveLastPlayback(current, position)
+                if (current != null && player.isPlaying && ticks % 8 == 0) {
+                    saveLastPlaybackAsync(current, position)
                 }
                 if (snapshot.isPlaying != player.isPlaying) {
                     updateWidget()
