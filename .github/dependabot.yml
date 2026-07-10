@@ -53,7 +53,7 @@ updates:
           - "io.coil-kt*"
       extractor-stack:
         patterns:
-          - "com.github.luc4n3x*"
+          - "com.github.LUC4N3X.LevyraExtractor:*"
           - "org.schabi*"
       build-analysis:
         patterns:
