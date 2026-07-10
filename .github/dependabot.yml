@@ -53,7 +53,7 @@ updates:
           - "io.coil-kt*"
       extractor-stack:
         patterns:
-          - "com.github.MetrolistGroup*"
+          - "com.github.luc4n3x*"
           - "org.schabi*"
       build-analysis:
         patterns:
