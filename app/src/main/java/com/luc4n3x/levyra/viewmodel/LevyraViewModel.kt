@@ -1492,8 +1492,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun recordPlaybackHistory(track: Track) {
         if (track.title.isBlank() || track.artist.isBlank()) return
-        val stableTrack = track.copy(streamUrl = "", videoStreamUrl = "")
         val snapshot = _state.value
+        val artworkDonors = buildList {
+            addAll(snapshot.personalOrbitTracks)
+            addAll(snapshot.recentSearches)
+            addAll(snapshot.charts)
+            addAll(snapshot.homeSections.flatMap { it.tracks })
+            addAll(snapshot.favorites)
+            addAll(snapshot.tracks)
+        }
+        val stableTrack = LevyraPersonalOrbit.prepareForOrbit(track, artworkDonors)
         val updated = (listOf(stableTrack) + snapshot.recentSearches)
             .distinctBy { LevyraPersonalOrbit.identityKey(it) }
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -1504,18 +1512,97 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             tracks = snapshot.tracks,
             homeSections = snapshot.homeSections,
             charts = snapshot.charts,
-            cachedOrbit = emptyList(),
+            cachedOrbit = snapshot.personalOrbitTracks,
             limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
             languageCode = snapshot.languageCode
         )
         _state.update { it.copy(recentSearches = updated, personalOrbitTracks = orbit) }
         val appContext = getApplication<Application>().applicationContext
-        LevyraArtworkCache.preloadPriority(appContext, listOf(stableTrack), 1)
+        if (LevyraPersonalOrbit.hasAnyArtwork(stableTrack)) {
+            LevyraArtworkCache.preloadPriority(appContext, listOf(stableTrack), 1)
+        }
         viewModelScope.launch(Dispatchers.IO) {
             preferences.saveRecentSearches(updated)
             preferences.savePersonalOrbitTracks(orbit, snapshot.languageCode)
-            LevyraArtworkCache.cachePersistent(appContext, listOf(stableTrack), 1)
+            if (LevyraPersonalOrbit.hasAnyArtwork(stableTrack)) {
+                LevyraArtworkCache.cachePersistent(appContext, listOf(stableTrack), 1)
+            }
+            if (LevyraPersonalOrbit.hasSquareAlbumArtwork(stableTrack)) return@launch
+            val country = snapshot.selectedChartId
+                .takeIf { it.length == 2 }
+                ?: ChartsCatalog.defaultRegionForLanguage(snapshot.languageCode).country
+            val appleArtwork = runCatching {
+                chartsRepository.officialArtwork(stableTrack.title, stableTrack.artist, country)
+            }.getOrNull().orEmpty()
+            val artworkUrl = appleArtwork.ifBlank {
+                val musicMatches = runCatching {
+                    repository.search("${stableTrack.title} ${stableTrack.artist}", 10, snapshot.languageCode)
+                }.getOrDefault(emptyList())
+                val officialTrack = LevyraPersonalOrbit.prepareForOrbit(stableTrack, musicMatches)
+                if (LevyraPersonalOrbit.hasSquareAlbumArtwork(officialTrack)) {
+                    officialTrack.largeThumbnailUrl.ifBlank { officialTrack.thumbnailUrl }
+                } else {
+                    ""
+                }
+            }
+            if (artworkUrl.isBlank()) return@launch
+            applyOfficialOrbitArtwork(stableTrack, artworkUrl, appContext)
         }
+    }
+
+    private suspend fun applyOfficialOrbitArtwork(track: Track, artworkUrl: String, appContext: android.content.Context) {
+        val targetKey = LevyraPersonalOrbit.identityKey(track)
+        var persistedHistory: List<Track> = emptyList()
+        var persistedOrbit: List<Track> = emptyList()
+        var languageCode = _state.value.languageCode
+        _state.update { current ->
+            fun withArtwork(item: Track): Track {
+                return if (LevyraPersonalOrbit.identityKey(item) == targetKey) {
+                    item.copy(thumbnailUrl = artworkUrl, largeThumbnailUrl = artworkUrl)
+                } else {
+                    item
+                }
+            }
+
+            val currentTrack = current.currentTrack?.let(::withArtwork)
+            val recentSearches = current.recentSearches.map(::withArtwork)
+            val cachedOrbit = current.personalOrbitTracks.map(::withArtwork)
+            val tracks = current.tracks.map(::withArtwork)
+            val searchResults = current.searchResults.map(::withArtwork)
+            val queue = current.queue.map(::withArtwork)
+            val orbit = LevyraPersonalOrbit.build(
+                currentTrack = currentTrack,
+                recentSearches = recentSearches,
+                favorites = current.favorites,
+                tracks = tracks,
+                homeSections = current.homeSections,
+                charts = current.charts,
+                cachedOrbit = cachedOrbit,
+                limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
+                languageCode = current.languageCode
+            )
+            persistedHistory = recentSearches
+            persistedOrbit = orbit
+            languageCode = current.languageCode
+            current.copy(
+                currentTrack = currentTrack,
+                recentSearches = recentSearches,
+                personalOrbitTracks = orbit,
+                tracks = tracks,
+                searchResults = searchResults,
+                queue = queue
+            )
+        }
+        preferences.saveRecentSearches(persistedHistory)
+        preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
+        val officialTrack = track.copy(
+            streamUrl = "",
+            videoStreamUrl = "",
+            thumbnailUrl = artworkUrl,
+            largeThumbnailUrl = artworkUrl
+        )
+        LevyraArtworkCache.preloadPriority(appContext, listOf(officialTrack), 1)
+        LevyraArtworkCache.cachePersistent(appContext, listOf(officialTrack), 1)
     }
 
     fun play(track: Track) {
