@@ -66,15 +66,15 @@ jobs:
             -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
             >/dev/null
 
-      - name: Resolve MetrolistExtractor Snapshot
+      - name: Resolve LevyraExtractor Snapshot
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts
           gradle --no-daemon --refresh-dependencies :app:dependencyInsight \
             --configuration releaseRuntimeClasspath \
-            --dependency MetrolistExtractor \
-            | tee artifacts/metrolist-extractor-dependency.txt
+            --dependency levyraextractor \
+            | tee artifacts/levyra-extractor-dependency.txt
 
       - name: Nightly Release Build
         shell: bash
