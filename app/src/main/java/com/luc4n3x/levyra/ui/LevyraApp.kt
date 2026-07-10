@@ -237,6 +237,7 @@ import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.valentinilk.shimmer.shimmer
+import kotlinx.coroutines.delay
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 
@@ -2844,10 +2845,6 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    val heroUpdate = remember(state.currentTrack, state.tracks, state.homeSections, state.charts, state.favorites) {
-        pickHeroUpdate(state)
-    }
-    val heroTrack = heroUpdate?.track
     val trendingArtists = remember(state.tracks, state.homeSections, state.charts, state.favorites) {
         buildTrendingArtists(state)
     }
@@ -2866,13 +2863,16 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val secondaryPreloadTracks = remember(resonanceTracks, newReleases) {
         (resonanceTracks + (newReleases?.tracks ?: emptyList())).distinctBy { it.id }.take(10)
     }
+    val chartChunks = remember(state.charts) { state.charts.chunked(4) }
+    val homeListState = rememberLazyListState()
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
+        delay(500L)
+        while (homeListState.isScrollInProgress) delay(120L)
         if (personalTracks.isNotEmpty()) {
             LevyraArtworkCache.preloadPriority(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
         }
         LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 10)
     }
-    val homeListState = rememberLazyListState()
     LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -3030,9 +3030,8 @@ private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
                 ) {
-                    val chunks = state.charts.chunked(4)
                     itemsIndexed(
-                        items = chunks,
+                        items = chartChunks,
                         key = { chunkIndex, chunk -> "chart-column-$chunkIndex-${chunk.joinToString("-") { it.id }}" },
                         contentType = { _, _ -> "chart-column" }
                     ) { chunkIndex, chunk ->
@@ -3498,6 +3497,7 @@ private fun PersonalListeningShelf(
 ) {
     val strings = LocalLevyraStrings.current
     val shelfTracks = remember(tracks) { tracks.distinctBy { it.id } }
+    val columns = remember(shelfTracks) { shelfTracks.chunked(2) }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
             modifier = Modifier
@@ -3548,7 +3548,6 @@ private fun PersonalListeningShelf(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
-            val columns = shelfTracks.chunked(2)
             itemsIndexed(
                 items = columns,
                 key = { colIndex, colTracks -> "personal-column-$colIndex-${colTracks.joinToString("-") { it.id }}" },
@@ -8036,7 +8035,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(album.thumbnailUrl)
-                                    .crossfade(true)
+                                    .crossfade(0)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .memoryCachePolicy(CachePolicy.ENABLED)
                                     .build(),
