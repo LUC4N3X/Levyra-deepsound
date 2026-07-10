@@ -32,26 +32,32 @@ object LevyraArtworkCache {
     private val youtubeWidthHeight = Regex("=w\\d+-h\\d+[^?&]*")
     private val youtubeSquare = Regex("=s\\d+[^?&]*")
     private val appleArtwork = Regex("\\d+x\\d+bb")
+    @Volatile private var configured = false
 
     fun configure(context: Context) {
-        SingletonImageLoader.setSafe { appContext ->
-            ImageLoader.Builder(appContext)
-                .memoryCache {
-                    MemoryCache.Builder()
-                        .maxSizePercent(appContext, 0.35)
-                        .build()
-                }
-                .diskCache {
-                    DiskCache.Builder()
-                        .directory(appContext.cacheDir.resolve("levyra_images").toOkioPath())
-                        .maxSizeBytes(384L * 1024 * 1024)
-                        .build()
-                }
-                .memoryCachePolicy(CachePolicy.ENABLED)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .networkCachePolicy(CachePolicy.ENABLED)
-                .crossfade(false)
-                .build()
+        if (configured) return
+        synchronized(this) {
+            if (configured) return
+            SingletonImageLoader.setSafe { appContext ->
+                ImageLoader.Builder(appContext)
+                    .memoryCache {
+                        MemoryCache.Builder()
+                            .maxSizePercent(appContext, 0.35)
+                            .build()
+                    }
+                    .diskCache {
+                        DiskCache.Builder()
+                            .directory(appContext.cacheDir.resolve("levyra_images").toOkioPath())
+                            .maxSizeBytes(384L * 1024 * 1024)
+                            .build()
+                    }
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .networkCachePolicy(CachePolicy.ENABLED)
+                    .crossfade(false)
+                    .build()
+            }
+            configured = true
         }
     }
 
@@ -107,8 +113,8 @@ object LevyraArtworkCache {
                 .mapNotNull { track -> target(appContext, track, true) }
                 .distinctBy { it.file.name }
             if (smallTargets.isEmpty() && largeTargets.isEmpty()) return@withContext
-            cacheTargets(smallTargets, 6)
-            cacheTargets(largeTargets, 3)
+            cacheTargets(smallTargets, 3)
+            cacheTargets(largeTargets, 2)
             trimPersistentDirectory(appContext)
         }
     }
