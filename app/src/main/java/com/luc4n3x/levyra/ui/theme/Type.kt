@@ -12,25 +12,25 @@ val provider = GoogleFont.Provider(
     certificates = R.array.com_google_android_gms_fonts_certs
 )
 
-val SpaceGrotesk = FontFamily(
-    Font(googleFont = GoogleFont("Space Grotesk"), fontProvider = provider)
+val InterFont = FontFamily(
+    Font(googleFont = GoogleFont("Inter"), fontProvider = provider)
 )
 
 private val defaultTypography = Typography()
 val LevyraTypography = Typography(
-    displayLarge = defaultTypography.displayLarge.copy(fontFamily = SpaceGrotesk),
-    displayMedium = defaultTypography.displayMedium.copy(fontFamily = SpaceGrotesk),
-    displaySmall = defaultTypography.displaySmall.copy(fontFamily = SpaceGrotesk),
-    headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = SpaceGrotesk),
-    headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = SpaceGrotesk),
-    headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = SpaceGrotesk),
-    titleLarge = defaultTypography.titleLarge.copy(fontFamily = SpaceGrotesk),
-    titleMedium = defaultTypography.titleMedium.copy(fontFamily = SpaceGrotesk),
-    titleSmall = defaultTypography.titleSmall.copy(fontFamily = SpaceGrotesk),
-    bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = SpaceGrotesk),
-    bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = SpaceGrotesk),
-    bodySmall = defaultTypography.bodySmall.copy(fontFamily = SpaceGrotesk),
-    labelLarge = defaultTypography.labelLarge.copy(fontFamily = SpaceGrotesk),
-    labelMedium = defaultTypography.labelMedium.copy(fontFamily = SpaceGrotesk),
-    labelSmall = defaultTypography.labelSmall.copy(fontFamily = SpaceGrotesk)
+    displayLarge = defaultTypography.displayLarge.copy(fontFamily = InterFont),
+    displayMedium = defaultTypography.displayMedium.copy(fontFamily = InterFont),
+    displaySmall = defaultTypography.displaySmall.copy(fontFamily = InterFont),
+    headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = InterFont),
+    headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = InterFont),
+    headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = InterFont),
+    titleLarge = defaultTypography.titleLarge.copy(fontFamily = InterFont),
+    titleMedium = defaultTypography.titleMedium.copy(fontFamily = InterFont),
+    titleSmall = defaultTypography.titleSmall.copy(fontFamily = InterFont),
+    bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = InterFont),
+    bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = InterFont),
+    bodySmall = defaultTypography.bodySmall.copy(fontFamily = InterFont),
+    labelLarge = defaultTypography.labelLarge.copy(fontFamily = InterFont),
+    labelMedium = defaultTypography.labelMedium.copy(fontFamily = InterFont),
+    labelSmall = defaultTypography.labelSmall.copy(fontFamily = InterFont)
 )
