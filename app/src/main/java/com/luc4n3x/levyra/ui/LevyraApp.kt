@@ -230,6 +230,9 @@ import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import androidx.compose.ui.window.DialogProperties
+
+import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
@@ -6439,6 +6442,55 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         onSleep = viewModel::cycleSleepTimer,
                         onNormalization = viewModel::toggleAudioNormalization
                     )
+                }
+                item {
+                    if (state.lyrics.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(400.dp)
+                                .padding(vertical = 16.dp)
+                                .glassmorphism(shape = RoundedCornerShape(24.dp))
+                        ) {
+                            val listState = rememberLazyListState()
+                            val activeIndex = state.lyrics.indexOfFirst { state.positionMs in it.startMs..it.endMs }
+                            
+                            LaunchedEffect(activeIndex) {
+                                if (activeIndex >= 0) {
+                                    listState.animateScrollToItem(maxOf(0, activeIndex - 1))
+                                }
+                            }
+                            
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(24.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                itemsIndexed(state.lyrics) { index, line ->
+                                    val isActive = index == activeIndex
+                                    Text(
+                                        text = line.text,
+                                        color = if (isActive) Color.White else Color.White.copy(alpha = 0.35f),
+                                        fontSize = if (isActive) 24.sp else 20.sp,
+                                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                                        modifier = Modifier.clickable { viewModel.seekTo(progressOf(line.startMs, state.durationMs)) }
+                                    )
+                                }
+                            }
+                        }
+                    } else if (state.lyricsLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .padding(vertical = 16.dp)
+                                .glassmorphism(shape = RoundedCornerShape(24.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp)
+                        }
+                    }
                 }
                 item { PlayerError(state.playerError) }
             }

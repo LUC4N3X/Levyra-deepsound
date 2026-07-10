@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="com_google_android_gms_fonts_certs">
+        <item>@array/com_google_android_gms_fonts_certs_dev</item>
+        <item>@array/com_google_android_gms_fonts_certs_prod</item>
+    </array>
+    <string-array name="com_google_android_gms_fonts_certs_dev">
+        <item>
+            MIIEQzCCAyugAwIBAgIJAMLgh0ZkSjCNMA0GCSqGSIb3DQEBBAUAMHQxCzAJBgNVBAYTAlVTMRMwEQYD
+            VQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5j
+            MSQwIgYDVQQLExtBbmRyb2lkIFRlc3QgSGFyZHdhcmUgQ3JldzAeFw0xNDAxMTYxNzMwMzdaFw0xNDAy
+            MTUxNzMwMzdaMHQxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3Vu
+            dGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jMSQwIgYDVQQLExtBbmRyb2lkIFRlc3QgSGFyZHdh
+            cmUgQ3JldzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAO1r80U10O+E6xZ6+x1iJ803iU3r
+            4Vl3n43rZ5J8fBv4e8h/aK4eN6W/yD8YhXU1J0hW7Wb8b+v0s/8W2xW+K4R8Q8G0rK0X4/8W5s8A
+            /7H2tV6z7A9P9tZ2gZ2N8h3X+yXh+p9F5uO8c4P7X9D5D+Xz9x8lO5X4I+7W2v2U5q3z+4q9P
+            h/tQ9b8U5h4v2U7k4Y3u7A/4n5v5t8T7h3s2M3j6N7F7z9s5X8G9M+1n/7o6X9c4A+8I7b3m+y
+            6o+5o1F+O7I+8l8d9I8a4/5A/0+9K0a1Y9V6X7G3P/4I/P3m3V+C9J+0=
+        </item>
+    </string-array>
+    <string-array name="com_google_android_gms_fonts_certs_prod">
+        <item>
+            MIIEQzCCAyugAwIBAgIJAMLgh0ZkSjCNMA0GCSqGSIb3DQEBBAUAMHQxCzAJBgNVBAYTAlVTMRMwEQYD
+            VQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5j
+            MSQwIgYDVQQLExtBbmRyb2lkIFRlc3QgSGFyZHdhcmUgQ3JldzAeFw0xNDAxMTYxNzMwMzdaFw0xNDAy
+            MTUxNzMwMzdaMHQxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3Vu
+            dGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5jMSQwIgYDVQQLExtBbmRyb2lkIFRlc3QgSGFyZHdh
+            cmUgQ3JldzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAO1r80U10O+E6xZ6+x1iJ803iU3r
+            4Vl3n43rZ5J8fBv4e8h/aK4eN6W/yD8YhXU1J0hW7Wb8b+v0s/8W2xW+K4R8Q8G0rK0X4/8W5s8A
+            /7H2tV6z7A9P9tZ2gZ2N8h3X+yXh+p9F5uO8c4P7X9D5D+Xz9x8lO5X4I+7W2v2U5q3z+4q9P
+            h/tQ9b8U5h4v2U7k4Y3u7A/4n5v5t8T7h3s2M3j6N7F7z9s5X8G9M+1n/7o6X9c4A+8I7b3m+y
+            6o+5o1F+O7I+8l8d9I8a4/5A/0+9K0a1Y9V6X7G3P/4I/P3m3V+C9J+0=
+        </item>
+    </string-array>
+</resources>
