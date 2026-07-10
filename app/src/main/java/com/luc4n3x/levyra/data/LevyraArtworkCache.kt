@@ -107,8 +107,8 @@ object LevyraArtworkCache {
                 .mapNotNull { track -> target(appContext, track, true) }
                 .distinctBy { it.file.name }
             if (smallTargets.isEmpty() && largeTargets.isEmpty()) return@withContext
-            cacheTargets(smallTargets, 6)
-            cacheTargets(largeTargets, 3)
+            cacheTargets(smallTargets, 3)
+            cacheTargets(largeTargets, 2)
             trimPersistentDirectory(appContext)
         }
     }
