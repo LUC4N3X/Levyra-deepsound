@@ -204,7 +204,9 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.okhttp)
     implementation(libs.okhttp.brotli)
-    implementation(libs.newpipe.extractor)
+    implementation(libs.newpipe.extractor) {
+        exclude(group = "com.github.LUC4N3X.LevyraExtractor", module = "timeago-parser")
+    }
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.datastore.preferences)
