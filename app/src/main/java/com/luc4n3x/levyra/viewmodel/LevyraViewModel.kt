@@ -278,11 +278,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val orbitSeed = _state.value.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         if (orbitSeed.isNotEmpty()) {
             LevyraArtworkCache.preloadPriority(appContext, orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT)
-            warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
-        } else {
-            viewModelScope.launch(Dispatchers.IO) {
-                preferences.savePersonalOrbitTracks(emptyList(), _state.value.languageCode)
-            }
+            warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = false)
         }
         viewModelScope.launch(Dispatchers.IO) {
             delay(350L)
@@ -898,7 +894,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 exploreVideos = emptyList()
             )
         }
-        warmPersistentOrbit(orbit, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = true)
+        val hasPlaybackHistory = _state.value.recentSearches.isNotEmpty() || _state.value.currentTrack != null
+        warmPersistentOrbit(orbit, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = hasPlaybackHistory)
         persistHomeSnapshot()
         if (refreshRemote) {
             loadHomeFeed()
@@ -1507,7 +1504,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             tracks = snapshot.tracks,
             homeSections = snapshot.homeSections,
             charts = snapshot.charts,
-            cachedOrbit = snapshot.personalOrbitTracks,
+            cachedOrbit = emptyList(),
             limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
             languageCode = snapshot.languageCode
         )
@@ -2042,19 +2039,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     player.positionMs
                 }
                 val active = lyricsEngine.currentLine(position, snapshot.lyrics)
-                _state.update {
-                    it.copy(
-                        positionMs = position,
-                        durationMs = duration,
-                        isPlaying = player.isPlaying,
-                        activeLyric = active
-                    )
+                val playbackStateChanged = snapshot.isPlaying != player.isPlaying
+                val shouldPublishUi = snapshot.selectedTab == LevyraTab.Player ||
+                    snapshot.showLyrics ||
+                    ticks % 2 == 0 ||
+                    playbackStateChanged ||
+                    snapshot.durationMs != duration
+                if (shouldPublishUi) {
+                    _state.update {
+                        it.copy(
+                            positionMs = position,
+                            durationMs = duration,
+                            isPlaying = player.isPlaying,
+                            activeLyric = active
+                        )
+                    }
                 }
 
                 if (current != null && player.isPlaying && ticks % 8 == 0) {
                     saveLastPlaybackAsync(current, position)
                 }
-                if (snapshot.isPlaying != player.isPlaying) {
+                if (playbackStateChanged) {
                     updateWidget()
                 }
                 ticks++
