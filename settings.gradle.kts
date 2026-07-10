@@ -23,4 +23,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Levyra"
-include(":app")
+include(":app", ":extractor", ":timeago-parser")
