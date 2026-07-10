@@ -1,10 +1,10 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
-import okhttp3.Headers.Companion.toHeaders
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.downloader.CancellableCall
 import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
@@ -19,41 +19,61 @@ object NewPipeRuntime {
     private val initialized = AtomicBoolean(false)
 
     fun ensure() {
-        if (initialized.compareAndSet(false, true)) {
-            NewPipe.init(OkHttpNewPipeDownloader(), Localization("it", "IT"), ContentCountry("IT"))
+        if (initialized.get()) return
+        synchronized(this) {
+            if (initialized.get()) return
+            NewPipe.init(
+                OkHttpNewPipeDownloader(),
+                Localization("it", "IT"),
+                ContentCountry("IT")
+            )
+            NewPipe.setYoutubePlayerClient("android_vr")
+            ServiceList.YouTube.setLoadingTimeout(20)
+            initialized.set(true)
         }
     }
 }
 
 private class OkHttpNewPipeDownloader : Downloader() {
-    private val client: OkHttpClient = LevyraHttpClientFactory.extractor()
+    private val redirectClient: OkHttpClient = LevyraHttpClientFactory.extractor()
+    private val noRedirectClient: OkHttpClient = redirectClient.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
 
     override fun execute(request: Request): Response {
-        client.newCall(toOkHttpRequest(request)).execute().use { response ->
+        clientFor(request).newCall(toOkHttpRequest(request)).execute().use { response ->
             return toExtractorResponse(response)
         }
     }
 
     override fun executeAsync(request: Request, callback: Downloader.AsyncCallback): CancellableCall {
-        val call = client.newCall(toOkHttpRequest(request))
+        val call = clientFor(request).newCall(toOkHttpRequest(request))
         val cancellableCall = CancellableCall(call)
         call.enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException) {
-                cancellableCall.setFinished()
-                callback.onError(e)
+            override fun onFailure(call: okhttp3.Call, error: IOException) {
+                try {
+                    callback.onError(error)
+                } finally {
+                    cancellableCall.setFinished()
+                }
             }
 
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                 try {
                     response.use { callback.onSuccess(toExtractorResponse(it)) }
-                } catch (e: Exception) {
-                    callback.onError(e)
+                } catch (error: Exception) {
+                    callback.onError(error)
                 } finally {
                     cancellableCall.setFinished()
                 }
             }
         })
         return cancellableCall
+    }
+
+    private fun clientFor(request: Request): OkHttpClient {
+        return if (request.followRedirects()) redirectClient else noRedirectClient
     }
 
     private fun toOkHttpRequest(request: Request): okhttp3.Request {
@@ -64,21 +84,35 @@ private class OkHttpNewPipeDownloader : Downloader() {
             data != null -> data.toRequestBody()
             else -> ByteArray(0).toRequestBody()
         }
-        return okhttp3.Request.Builder()
+        val builder = okhttp3.Request.Builder()
             .url(request.url())
             .method(method, body)
-            .headers(request.headers().flattenHeaders().toHeaders())
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7")
-            .header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
-            .header("Connection", "keep-alive")
-            .build()
+
+        request.headers().forEach { (name, values) ->
+            values.asSequence()
+                .filter { it.isNotBlank() }
+                .forEach { builder.addHeader(name, it) }
+        }
+
+        if (!request.headers().containsHeader("User-Agent")) {
+            builder.header(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36"
+            )
+        }
+        if (!request.headers().containsHeader("Accept")) {
+            builder.header("Accept", "*/*")
+        }
+
+        return builder.build()
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
         val responseBytes = response.body?.bytes() ?: ByteArray(0)
         val responseText = responseBytes.toString(StandardCharsets.UTF_8)
-        if (response.code == 429) throw IOException("YouTube ha limitato temporaneamente le richieste")
+        if (response.code == 429) {
+            throw IOException("YouTube ha limitato temporaneamente le richieste")
+        }
         return Response(
             response.code,
             response.message,
@@ -89,11 +123,7 @@ private class OkHttpNewPipeDownloader : Downloader() {
         )
     }
 
-    private fun Map<String, List<String>>.flattenHeaders(): Map<String, String> {
-        val out = LinkedHashMap<String, String>()
-        forEach { (key, values) ->
-            if (key.isNotBlank() && values.isNotEmpty()) out[key] = values.joinToString(",")
-        }
-        return out
+    private fun Map<String, List<String>>.containsHeader(name: String): Boolean {
+        return keys.any { it.equals(name, ignoreCase = true) }
     }
 }
