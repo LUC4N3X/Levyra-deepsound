@@ -968,21 +968,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun enrichCharts(regionId: String, charts: List<Track>) {
         chartEnrichJob?.cancel()
         chartEnrichJob = viewModelScope.launch(Dispatchers.IO) {
-            val hot = charts.take(6)
-            coroutineScope {
-                val semaphore = Semaphore(2)
-                hot.forEachIndexed { index, entry ->
-                    launch {
-                        semaphore.withPermit {
-                            enrichChartEntry(regionId, entry, warm = index < 2)
-                        }
-                    }
-                }
-            }
-            charts.drop(6).take(6).forEach { entry ->
+            charts.take(40).forEachIndexed { index, entry ->
                 if (!isActive || _state.value.selectedChartId != regionId) return@launch
-                enrichChartEntry(regionId, entry, warm = false)
-                delay(80L)
+                enrichChartEntry(regionId, entry, warm = index < 3)
+                delay(90L)
             }
         }
     }
@@ -1690,7 +1679,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         val requestId = ++playRequestId
         playJob?.cancel()
-        cancelBackgroundWarmups(cancelList = false)
+        cancelBackgroundWarmups()
         resolver.warmNetwork()
 
         val playableTrack = youtubePlayableTrack(track) ?: track
