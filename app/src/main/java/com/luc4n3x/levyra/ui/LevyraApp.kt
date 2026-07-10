@@ -6445,37 +6445,56 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 }
                 item {
                     if (state.lyrics.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(400.dp)
-                                .padding(vertical = 16.dp)
-                                .glassmorphism(shape = RoundedCornerShape(24.dp))
-                        ) {
-                            val listState = rememberLazyListState()
-                            val activeIndex = state.lyrics.indexOfFirst { state.positionMs in it.startMs..it.endMs }
-                            
-                            LaunchedEffect(activeIndex) {
-                                if (activeIndex >= 0) {
-                                    listState.animateScrollToItem(maxOf(0, activeIndex - 1))
+                        var showInlineLyrics by remember { mutableStateOf(false) }
+                        if (!showInlineLyrics) {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.08f),
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.clickable { showInlineLyrics = true }
+                                ) {
+                                    Text("Mostra testo brano", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                                 }
                             }
-                            
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(24.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(400.dp)
+                                    .padding(vertical = 16.dp)
+                                    .glassmorphism(shape = RoundedCornerShape(24.dp))
                             ) {
-                                itemsIndexed(state.lyrics) { index, line ->
-                                    val isActive = index == activeIndex
-                                    Text(
-                                        text = line.text,
-                                        color = if (isActive) Color.White else Color.White.copy(alpha = 0.35f),
-                                        fontSize = if (isActive) 24.sp else 20.sp,
-                                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
-                                        modifier = Modifier.clickable { viewModel.seekTo(progressOf(line.startMs, state.durationMs)) }
-                                    )
+                                val listState = rememberLazyListState()
+                                val activeIndex = state.lyrics.indexOfFirst { state.positionMs in it.startMs..it.endMs }
+                                
+                                LaunchedEffect(activeIndex) {
+                                    if (activeIndex >= 0) {
+                                        listState.animateScrollToItem(maxOf(0, activeIndex - 1))
+                                    }
+                                }
+                                
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(24.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    itemsIndexed(state.lyrics) { index, line ->
+                                        val isActive = index == activeIndex
+                                        Text(
+                                            text = line.text,
+                                            color = if (isActive) Color.White else Color.White.copy(alpha = 0.35f),
+                                            fontSize = if (isActive) 24.sp else 20.sp,
+                                            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                                            modifier = Modifier.clickable { viewModel.seekTo(progressOf(line.startMs, state.durationMs)) }
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { showInlineLyrics = false },
+                                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                                ) {
+                                    Icon(Icons.Rounded.Close, "Chiudi", tint = Color.White.copy(alpha = 0.5f))
                                 }
                             }
                         }
@@ -6564,7 +6583,7 @@ private fun MainPlayerControls(
             modifier = Modifier
                 .size(72.dp)
                 .shadow(22.dp, CircleShape, clip = false)
-                .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.94f), LevyraViolet.copy(alpha = 0.88f))), CircleShape)
+                .background(Brush.radialGradient(listOf(Color.White, Color(0xFF67E8FF).copy(alpha = 0.94f), Color(0xFFA78BFA).copy(alpha = 0.88f))), CircleShape)
                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)), CircleShape)
                 .pressable(onClick = onToggle),
             contentAlignment = Alignment.Center
@@ -10174,4 +10193,5 @@ private fun LevyraViewModel.exportTrack(track: Track) {
 private fun LevyraViewModel.exportCurrentTrack() {
     selectTab(LevyraTab.Player)
 }
+
 
