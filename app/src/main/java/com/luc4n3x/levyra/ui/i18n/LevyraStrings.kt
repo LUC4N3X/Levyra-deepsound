@@ -316,7 +316,7 @@ data class LevyraStrings(
                 done = "Fine",
                 queueEmpty = "La coda è vuota.",
                 lyricsUnavailable = "Testo non disponibile per questo brano.",
-                synced = "✨ Sincronizzato",
+                synced = "✨",
                 libraryTitle = "Libreria",
                 librarySubtitle = "Playlist, preferiti, download e cronologia",
                 playlists = "🎵 Le tue playlist",

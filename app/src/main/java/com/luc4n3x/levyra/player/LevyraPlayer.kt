@@ -15,6 +15,7 @@ import androidx.media3.session.SessionToken
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import androidx.media3.common.util.UnstableApi
+import kotlinx.coroutines.*
 
 @OptIn(UnstableApi::class)
 class LevyraPlayer(context: Context) {
@@ -32,6 +33,9 @@ class LevyraPlayer(context: Context) {
     private var pendingPlay: Track? = null
     private var ignoreEndedFromManualStop = false
     private var audioSettings = LevyraAudioSettings()
+    
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var sponsorJob: Job? = null
 
     init {
         controllerFuture.addListener({
@@ -90,6 +94,26 @@ class LevyraPlayer(context: Context) {
             active.prepare()
         }
         active.play()
+        startSponsorBlockMonitor(track)
+    }
+
+    private fun startSponsorBlockMonitor(track: Track) {
+        sponsorJob?.cancel()
+        if (track.sponsorSegments.isEmpty()) return
+        sponsorJob = scope.launch {
+            while (isActive) {
+                if (isPlaying) {
+                    val current = positionMs
+                    for (segment in track.sponsorSegments) {
+                        if (current >= segment.startMs && current < segment.endMs) {
+                            seekTo(segment.endMs)
+                            break
+                        }
+                    }
+                }
+                delay(500)
+            }
+        }
     }
 
     private fun buildItem(track: Track): MediaItem {
@@ -146,6 +170,7 @@ class LevyraPlayer(context: Context) {
         loadedTrackId = null
         loadedStreamUrl = null
         pendingPlay = null
+        sponsorJob?.cancel()
         controller?.let {
             it.pause()
             it.clearMediaItems()
@@ -202,6 +227,8 @@ class LevyraPlayer(context: Context) {
     }
 
     fun release() {
+        sponsorJob?.cancel()
+        scope.cancel()
         controller?.release()
         controller = null
         MediaController.releaseFuture(controllerFuture)
