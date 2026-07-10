@@ -952,7 +952,8 @@ fun LevyraApp(viewModel: LevyraViewModel) {
                     onTogglePlayback = viewModel::togglePlay,
                     onFavorite = viewModel::toggleFavorite,
                     onDownload = viewModel::exportTrack,
-                    onDownloadAlbum = viewModel::exportCurrentAlbum,
+                    onDownloadAlbum = viewModel::exportCurrentAlbum,
+
                     onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
                     onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
                     onOpenArtist = viewModel::openArtist,
@@ -1143,7 +1144,8 @@ private fun AlbumOverlay(
     onTogglePlayback: () -> Unit,
     onFavorite: (Track) -> Unit,
     onDownload: (Track) -> Unit,
-    onDownloadAlbum: () -> Unit,
+    onDownloadAlbum: () -> Unit,
+
     onAddToPlaylist: (String, Track) -> Unit,
     onCreatePlaylistWithTrack: (String, Track) -> Unit,
     onOpenArtist: (Track) -> Unit,
@@ -1323,6 +1325,7 @@ private fun AlbumOverlay(
                                 },
                                 onFavorite = { onFavorite(track) },
                                 onDownload = { onDownload(track) },
+                                onAddToPlaylist = { addTarget = track },
                                 onArtist = { onOpenArtist(track) }
                             )
                         }
@@ -1698,6 +1701,7 @@ private fun AlbumTrackItem(
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onArtist: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -1737,7 +1741,29 @@ private fun AlbumTrackItem(
                     isDownloading -> "Download ${downloadProgress ?: 1}%"
                     else -> duration
                 }
-                Text(listOf(track.artist, status).filter { it.isNotBlank() }.joinToString("  ·  "), color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium, letterSpacing = (-0.2).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = track.artist,
+                        color = LevyraMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = (-0.2).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable(onClick = onArtist)
+                    )
+                    if (status.isNotBlank()) {
+                        Text(
+                            text = "  ·  ${status}",
+                            color = LevyraMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = (-0.2).sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
             Box {
                 IconButton(onClick = { expanded = true }) {
@@ -1745,6 +1771,7 @@ private fun AlbumTrackItem(
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti") }, leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) }, onClick = { expanded = false; onFavorite() })
+                    DropdownMenuItem(text = { Text("Aggiungi a playlist") }, leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) }, onClick = { expanded = false; onAddToPlaylist() })
                     DropdownMenuItem(text = { Text(if (isDownloaded) "Già offline" else "Scarica") }, leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) }, onClick = { expanded = false; if (!isDownloaded) onDownload() })
                     DropdownMenuItem(text = { Text("Apri artista") }, leadingIcon = { Icon(Icons.Rounded.Person, null) }, onClick = { expanded = false; onArtist() })
                     DropdownMenuItem(text = { Text("Condividi") }, leadingIcon = { Icon(Icons.Rounded.Share, null) }, onClick = {
@@ -9131,7 +9158,7 @@ private fun MiniPlayerToggleButton(
     Box(
         modifier = Modifier
             .size(42.dp)
-            .background(Brush.radialGradient(listOf(Color.White, LevyraCyan.copy(alpha = 0.96f), LevyraViolet.copy(alpha = 0.74f))), CircleShape)
+            .background(Brush.radialGradient(listOf(Color.White, Color(0xFF67E8FF).copy(alpha = 0.96f), Color(0xFFA78BFA).copy(alpha = 0.74f))), CircleShape)
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.24f)), CircleShape)
             .pressable(onClick = onToggle),
         contentAlignment = Alignment.Center
