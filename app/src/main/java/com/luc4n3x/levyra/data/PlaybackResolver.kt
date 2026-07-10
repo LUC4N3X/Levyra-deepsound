@@ -63,7 +63,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
-    private val playbackResolveTimeoutMs = 9_000L
+    private val playbackResolveTimeoutMs = 30_000L
     private val offlineResolveTimeoutMs = 60_000L
     private val hedgeBudgetMs = LevyraResolverLatency.INNER_TUBE_HEDGE_BUDGET_MS
     private val streamProbeClient: OkHttpClient = youtubeHttpClient.newBuilder()
@@ -88,9 +88,9 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val profiles = listOf(
         ClientProfile("ANDROID_MUSIC", "8.10.52", "Android Music", "Mozilla/5.0 (Linux; Android 15; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) com.google.android.apps.youtube.music/8.10.52", true, 0L, 0),
         ClientProfile("ANDROID", "19.44.38", "Android", "com.google.android.youtube/19.44.38 (Linux; U; Android 15)", true, 0L, 1),
-        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L, 1),
-        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 8L, 2),
-        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 18L, 3)
+        ClientProfile("IOS", "20.10.4", "iOS", "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X; it_IT)", false, 0L, 2),
+        ClientProfile("WEB_REMIX", "1.20260423.01.00", "YouTube Music Web", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 3),
+        ClientProfile("WEB_EMBEDDED_PLAYER", "1.20260423.01.00", "Embedded Player", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36", false, 0L, 4)
     )
 
     init {
@@ -227,21 +227,25 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (isVideoMode) {
             val resolved = coroutineScope {
                 val winner = CompletableDeferred<Track?>()
-                val itJob = launch {
+                val extractorJob = launch {
+                    val result = runCatching { resolveVideoWithLevyraExtractor(track) }
+                    result.onSuccess { winner.complete(it) }
+                        .onFailure { error ->
+                            error.message?.takeIf { it.isNotBlank() }
+                                ?.let { errors += "LevyraExtractor video: $it" }
+                        }
+                }
+                val innerTubeJob = launch {
+                    delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
+                    if (winner.isCompleted) return@launch
                     val stream = runCatching { hedgedInnerTube(track, errors, true) }.getOrNull()
                     if (stream != null) {
                         winner.complete(track.withDirectStream(stream))
                     }
                 }
-                val extractorJob = launch {
-                    delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
-                    if (winner.isCompleted) return@launch
-                    val r = runCatching { resolveVideoWithLevyraExtractor(track) }
-                    r.onSuccess { winner.complete(it) }
-                        .onFailure { it.message?.takeIf { m -> m.isNotBlank() }?.let { m -> errors += "LevyraExtractor video: $m" } }
-                }
                 launch {
-                    itJob.join(); extractorJob.join()
+                    extractorJob.join()
+                    innerTubeJob.join()
                     winner.complete(null)
                 }
                 val result = winner.await()
@@ -270,7 +274,8 @@ class PlaybackResolver private constructor(private val context: Context) {
             return@withContext alternate
         }
 
-        val reason = errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) || it.contains("login", true) || it.contains("accedi", true) }
+        val reason = errors.firstOrNull { it.startsWith("LevyraExtractor:") }
+            ?: errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) || it.contains("login", true) || it.contains("accedi", true) }
             ?: errors.firstOrNull()
             ?: "Stream non disponibile"
         throw PlaybackBlockedException(reason)
@@ -280,20 +285,23 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (preferMp4Audio) return resolveAudioResilient(track, errors)
         return coroutineScope {
             val winner = CompletableDeferred<Track?>()
+            val extractorJob = launch {
+                val resolved = runCatching { resolveWithLevyraExtractor(track, false) }
+                resolved.onSuccess { winner.complete(it) }
+                    .onFailure { error ->
+                        error.message?.takeIf { it.isNotBlank() }
+                            ?.let { errors += "LevyraExtractor: $it" }
+                    }
+            }
             val innerTubeJob = launch {
+                delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = false))
+                if (winner.isCompleted) return@launch
                 val stream = runCatching { hedgedInnerTube(track, errors, false) }.getOrNull()
                 if (stream != null) winner.complete(track.withDirectStream(stream))
             }
-            val extractorJob = launch {
-                delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = false))
-                if (winner.isCompleted) return@launch
-                val resolved = runCatching { resolveWithLevyraExtractor(track, false) }
-                resolved.onSuccess { winner.complete(it) }
-                    .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "LevyraExtractor: $message" } }
-            }
             launch {
-                innerTubeJob.join()
                 extractorJob.join()
+                innerTubeJob.join()
                 winner.complete(null)
             }
             val result = winner.await()
@@ -304,18 +312,23 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? = coroutineScope {
         val winner = CompletableDeferred<Track?>()
-        val innerTubeJob = launch {
-            val stream = runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
-            if (stream != null) winner.complete(track.withDirectStream(stream))
-        }
         val extractorJob = launch {
             val resolved = runCatching { resolveWithLevyraExtractor(track, true) }
             resolved.onSuccess { winner.complete(it) }
-                .onFailure { it.message?.takeIf { message -> message.isNotBlank() }?.let { message -> errors += "LevyraExtractor: $message" } }
+                .onFailure { error ->
+                    error.message?.takeIf { it.isNotBlank() }
+                        ?.let { errors += "LevyraExtractor: $it" }
+                }
+        }
+        val innerTubeJob = launch {
+            delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = true))
+            if (winner.isCompleted) return@launch
+            val stream = runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
+            if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         launch {
-            innerTubeJob.join()
             extractorJob.join()
+            innerTubeJob.join()
             winner.complete(null)
         }
         val result = winner.await()
