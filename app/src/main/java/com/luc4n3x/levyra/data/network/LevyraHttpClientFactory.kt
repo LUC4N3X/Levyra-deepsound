@@ -68,10 +68,10 @@ object LevyraHttpClientFactory {
     fun extractor(): OkHttpClient {
         return extractorClient ?: synchronized(this) {
             extractorClient ?: youtubePlayer().newBuilder()
-                .connectTimeout(4, TimeUnit.SECONDS)
-                .readTimeout(12, TimeUnit.SECONDS)
-                .writeTimeout(8, TimeUnit.SECONDS)
-                .callTimeout(18, TimeUnit.SECONDS)
+                .connectTimeout(6, TimeUnit.SECONDS)
+                .readTimeout(18, TimeUnit.SECONDS)
+                .writeTimeout(10, TimeUnit.SECONDS)
+                .callTimeout(25, TimeUnit.SECONDS)
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .build()
