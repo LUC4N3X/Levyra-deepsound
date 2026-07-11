@@ -10,10 +10,13 @@ import androidx.media3.datasource.cache.CacheWriter
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -21,6 +24,7 @@ import timber.log.Timber
 class PlaybackWarmup(context: Context) {
     private val appContext = context.applicationContext
     private val okHttpClient by lazy { LevyraHttpClientFactory.media(appContext) }
+    private val primeLocks = ConcurrentHashMap<String, Mutex>()
 
     suspend fun prime(track: Track, bytes: Long = DEFAULT_PRIME_BYTES): Boolean = primeUrl(
         url = track.streamUrl,
@@ -42,44 +46,56 @@ class PlaybackWarmup(context: Context) {
 
     private suspend fun primeUrl(url: String, cacheKey: String, bytes: Long): Boolean = withContext(Dispatchers.IO) {
         if (url.isBlank()) return@withContext false
-        runCatching {
-            val cache = LevyraMediaCache.get(appContext)
-            val upstream = OkHttpDataSource.Factory(okHttpClient)
-                .setUserAgent("LevyraPlayer/1.13 Android Music")
-                .setDefaultRequestProperties(
-                    mapOf(
-                        "Accept" to "*/*",
-                        "Accept-Encoding" to "identity",
-                        "Connection" to "keep-alive"
-                    )
-                )
-            val sink = CacheDataSink.Factory()
-                .setCache(cache)
-                .setFragmentSize(PRIME_FRAGMENT_BYTES)
-            val source = CacheDataSource.Factory()
-                .setCache(cache)
-                .setUpstreamDataSourceFactory(upstream)
-                .setCacheWriteDataSinkFactory(sink)
-                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-                .createDataSource()
-            val dataSpec = DataSpec.Builder()
-                .setUri(Uri.parse(url))
-                .setKey(cacheKey)
-                .setPosition(0L)
-                .setLength(bytes.coerceIn(MIN_PRIME_BYTES, MAX_PRIME_BYTES))
-                .build()
-            CacheWriter(source, dataSpec, ByteArray(64 * 1024), null).cache()
-            Timber.d("warmup cached bytes=%d key=%s", bytes, cacheKey)
-            true
-        }.onFailure { Timber.d(it, "warmup skipped key=%s", cacheKey) }.getOrDefault(false)
+        val lock = primeLocks.computeIfAbsent(cacheKey) { Mutex() }
+        try {
+            lock.withLock {
+                runCatching {
+                    val requestedBytes = bytes.coerceIn(MIN_PRIME_BYTES, MAX_PRIME_BYTES)
+                    val cache = LevyraMediaCache.get(appContext)
+                    if (cache.isCached(cacheKey, 0L, requestedBytes)) {
+                        return@runCatching true
+                    }
+                    val upstream = OkHttpDataSource.Factory(okHttpClient)
+                        .setUserAgent("LevyraPlayer/1.13 Android Music")
+                        .setDefaultRequestProperties(
+                            mapOf(
+                                "Accept" to "*/*",
+                                "Accept-Encoding" to "identity",
+                                "Connection" to "keep-alive"
+                            )
+                        )
+                    val sink = CacheDataSink.Factory()
+                        .setCache(cache)
+                        .setFragmentSize(PRIME_FRAGMENT_BYTES)
+                    val source = CacheDataSource.Factory()
+                        .setCache(cache)
+                        .setUpstreamDataSourceFactory(upstream)
+                        .setCacheWriteDataSinkFactory(sink)
+                        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+                        .createDataSource()
+                    val dataSpec = DataSpec.Builder()
+                        .setUri(Uri.parse(url))
+                        .setKey(cacheKey)
+                        .setPosition(0L)
+                        .setLength(requestedBytes)
+                        .build()
+                    CacheWriter(source, dataSpec, ByteArray(PRIME_BUFFER_BYTES), null).cache()
+                    Timber.d("warmup cached bytes=%d key=%s", requestedBytes, cacheKey)
+                    true
+                }.onFailure { Timber.d(it, "warmup skipped key=%s", cacheKey) }.getOrDefault(false)
+            }
+        } finally {
+            primeLocks.remove(cacheKey, lock)
+        }
     }
 
     companion object {
         private const val MIN_PRIME_BYTES = 64L * 1024L
-        private const val DEFAULT_PRIME_BYTES = 224L * 1024L
-        private const val VIDEO_AUDIO_PRIME_BYTES = 192L * 1024L
-        private const val VIDEO_PRIME_BYTES = 512L * 1024L
-        private const val MAX_PRIME_BYTES = 1024L * 1024L
-        private const val PRIME_FRAGMENT_BYTES = 128L * 1024L
+        private const val DEFAULT_PRIME_BYTES = 384L * 1024L
+        private const val VIDEO_AUDIO_PRIME_BYTES = 256L * 1024L
+        private const val VIDEO_PRIME_BYTES = 1024L * 1024L
+        private const val MAX_PRIME_BYTES = 1536L * 1024L
+        private const val PRIME_FRAGMENT_BYTES = 256L * 1024L
+        private const val PRIME_BUFFER_BYTES = 128 * 1024
     }
 }
