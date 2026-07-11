@@ -47,7 +47,7 @@ jobs:
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
-            "platforms;android-36" \
+            "platforms;android-37" \
             "build-tools;36.0.0"
 
       - name: Setup Gradle
@@ -90,7 +90,18 @@ jobs:
         run: gradle --no-daemon --version
 
       - name: Android Lint
-        run: gradle --no-daemon :app:lintRelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          task_list="$(gradle --no-daemon :app:tasks --all)"
+          if grep -qE '^lintRelease([[:space:]]|$)' <<<"${task_list}"; then
+            gradle --no-daemon :app:lintRelease
+          elif grep -qE '^lint([[:space:]]|$)' <<<"${task_list}"; then
+            gradle --no-daemon :app:lint
+          else
+            echo "No Android lint task is available in the app module."
+            exit 1
+          fi
 
       - name: Unit Tests
         shell: bash
