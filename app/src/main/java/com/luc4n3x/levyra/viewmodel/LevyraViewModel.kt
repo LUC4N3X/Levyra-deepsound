@@ -56,8 +56,12 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
+import com.luc4n3x.levyra.player.AdaptivePlaybackPolicy
 import com.luc4n3x.levyra.player.LevyraPlayer
+import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.PlaybackWarmup
+import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
@@ -171,6 +175,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val lyricsEngine = LyricsEngine()
     private val player = LevyraPlayer(application.applicationContext)
     private val playbackWarmup = PlaybackWarmup(application.applicationContext)
+    private val adaptivePlaybackPolicy = AdaptivePlaybackPolicy(application.applicationContext)
+    private val queueEngine = PersistentQueueEngine.get(application.applicationContext)
     private val offlineExporter = OfflineAudioExporter(application.applicationContext, resolver)
     private val favoritesStore = FavoritesStore(application.applicationContext)
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
@@ -194,7 +200,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
             smartProfile = startupSmartProfile,
             audioNormalization = startupSettings.audioNormalization,
-            audioSettings = startupSettings.audioSettings
+            audioSettings = startupSettings.audioSettings,
+            lyricsTranslationEnabled = startupSettings.lyricsTranslationEnabled
         )
     )
     private var searchJob: Job? = null
@@ -212,6 +219,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var artistJob: Job? = null
     private var albumJob: Job? = null
     private var radarJob: Job? = null
+    private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val tabBackStack = ArrayDeque<LevyraTab>()
     private var playRequestId: Long = 0L
@@ -296,13 +304,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 cacheReport = repository.cacheReport(),
                 userName = settings.userName,
                 languageCode = settings.languageCode,
-                animationsEnabled = settings.animationsEnabled,
+                animationsEnabled = settings.animationsEnabled && !adaptivePlaybackPolicy.current(videoMode = false).lowRam,
                 dynamicColor = settings.dynamicColor,
                 sponsorBlockEnabled = settings.sponsorBlock,
                 skipSilence = settings.skipSilence,
                 audioQuality = settings.audioQuality,
                 audioNormalization = settings.audioNormalization,
                 audioSettings = settings.audioSettings,
+                lyricsTranslationEnabled = settings.lyricsTranslationEnabled,
                 playbackSpeed = settings.audioSettings.playbackSpeed,
                 themePreset = settings.themePreset,
                 showOnboarding = !settings.onboarded,
@@ -311,6 +320,49 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 durationMs = restoredTrack?.durationMs ?: 0L,
                 lyrics = emptyList()
             )
+        }
+        val fallbackQueue = (listOfNotNull(restoredTrack) + initialQueue)
+            .distinctBy { playbackIdentity(it) }
+        val fallbackIndex = restoredTrack
+            ?.let { target -> fallbackQueue.indexOfFirst { samePlayableTrack(it, target) } }
+            ?.takeIf { it >= 0 }
+            ?: fallbackQueue.indices.firstOrNull()
+            ?: -1
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                queueEngine.restore(
+                    fallbackTracks = fallbackQueue,
+                    fallbackIndex = fallbackIndex,
+                    fallbackPositionMs = pendingSeekMs,
+                    fallbackRepeatMode = RepeatMode.Off,
+                    fallbackShuffleEnabled = false,
+                    fallbackRadioEnabled = true
+                )
+            }
+            queueEngine.state.collectLatest { queueSnapshot ->
+                val previousIndex = queueIndex
+                queueIndex = queueSnapshot.currentIndex
+                val currentPersisted = queueSnapshot.currentTrack
+                val externalSelectionChanged = previousIndex != queueSnapshot.currentIndex
+                if ((!_state.value.isPlaying || externalSelectionChanged) && !_state.value.isResolving && currentPersisted != null) {
+                    pendingSeekMs = queueSnapshot.positionMs
+                }
+                _state.update { current ->
+                    val synchronizeCurrent = !current.isResolving && (!current.isPlaying || externalSelectionChanged)
+                    current.copy(
+                        queue = queueSnapshot.tracks,
+                        queueCurrentIndex = queueSnapshot.currentIndex,
+                        queueUndoAvailable = queueSnapshot.undoAvailable,
+                        queueHistoryCount = queueSnapshot.history.size,
+                        repeatMode = queueSnapshot.repeatMode,
+                        shuffleEnabled = queueSnapshot.shuffleEnabled,
+                        radioEnabled = queueSnapshot.radioEnabled,
+                        currentTrack = if (synchronizeCurrent) currentPersisted ?: current.currentTrack else current.currentTrack,
+                        positionMs = if (synchronizeCurrent) queueSnapshot.positionMs else current.positionMs,
+                        durationMs = if (synchronizeCurrent) currentPersisted?.durationMs ?: current.durationMs else current.durationMs
+                    )
+                }
+            }
         }
         player.setSkipSilence(settings.skipSilence)
         player.setPremiumAudioSettings(settings.audioSettings)
@@ -595,31 +647,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (duration > 0L && player.positionMs < (duration - 1_500L).coerceAtLeast(0L)) return
         listenSessionCompleted = true
         recordSmartCompletion(current)
-        val queue = snapshot.queue.ifEmpty { currentQueue() }
+        val nextTrack = queueEngine.next()
         when {
-            _state.value.shuffleEnabled && queue.size > 1 -> {
-                queueIndex = queue.indices.filter { it != queueIndex }.ifEmpty { queue.indices.toList() }.random()
-                startResolve(queue[queueIndex])
+            nextTrack != null -> startResolve(nextTrack)
+            queueEngine.state.value.radioEnabled -> ensureRadioTail(force = true, playWhenReady = true)
+            loopCurrentQueueOnCompletion && queueEngine.state.value.tracks.isNotEmpty() -> {
+                val first = queueEngine.select(0, rememberCurrent = true)
+                if (first != null) startResolve(first)
             }
-            _state.value.repeatMode == RepeatMode.All -> next()
-            queueIndex in 0 until queue.lastIndex -> next()
-            loopCurrentQueueOnCompletion && queue.size > 1 -> next()
-            loopCurrentQueueOnCompletion && queue.size == 1 -> next()
             else -> {
                 player.pause()
+                queueEngine.updatePosition(0L)
                 _state.update { it.copy(isPlaying = false, positionMs = 0L) }
             }
         }
     }
 
     fun toggleRepeat() {
-        val mode = when (_state.value.repeatMode) {
+        val mode = when (queueEngine.state.value.repeatMode) {
             RepeatMode.Off -> RepeatMode.All
             RepeatMode.All -> RepeatMode.One
             RepeatMode.One -> RepeatMode.Off
         }
+        queueEngine.setRepeatMode(mode)
         player.setRepeatOne(mode == RepeatMode.One)
-        _state.update { it.copy(repeatMode = mode) }
     }
 
     fun toggleVideoMode() {
@@ -652,7 +703,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleShuffle() {
-        _state.update { it.copy(shuffleEnabled = !it.shuffleEnabled) }
+        queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
+        refreshQueuePrefetch()
     }
 
     fun cycleSpeed() {
@@ -797,7 +849,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     homeAlbums = instantAlbums,
                     homeAlbumsLoading = instantAlbums.isEmpty(),
                     tracks = flat,
-                    queue = queue,
                     searchResults = flat.take(12),
                     isSearching = false,
                     cacheReport = repository.cacheReport(),
@@ -805,8 +856,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
             persistHomeSnapshot()
-            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, flat, 18)
-            prefetchTop(flat, 8)
+            val startupPlan = adaptivePlaybackPolicy.current(videoMode = false)
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, flat, if (startupPlan.lowRam) 8 else 18)
+            prefetchTop(flat, if (startupPlan.lowRam) 3 else 8)
             loadHomeAlbums(languageCode)
         }
     }
@@ -977,7 +1029,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 charts = chartTracks,
                 personalOrbitTracks = orbit,
                 tracks = allTracks,
-                queue = queue,
                 searchResults = allTracks.take(12),
                 searchSuggestions = emptyList(),
                 searchData = SearchResults(),
@@ -1005,20 +1056,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun playAll(tracks: List<Track>) {
         if (tracks.isEmpty()) return
-        _state.update { it.copy(queue = tracks) }
+        queueEngine.replace(tracks, 0, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
         queueIndex = 0
         startResolve(tracks.first())
     }
 
     fun addToQueue(track: Track) {
-        val current = _state.value.queue.ifEmpty { currentQueue() }
-        val updated = (current + track).distinctBy { it.id }
-        _state.update {
-            it.copy(
-                queue = updated,
-                offlineExportMessage = "Aggiunto alla coda: ${track.title}"
-            )
+        queueEngine.addLast(track)
+        refreshQueuePrefetch()
+        _state.update { it.copy(offlineExportMessage = "Aggiunto alla coda: ${track.title}") }
+    }
+
+    fun playNext(track: Track) {
+        queueEngine.playNext(track)
+        refreshQueuePrefetch()
+        _state.update { it.copy(offlineExportMessage = "Riproduci dopo: ${track.title}") }
+    }
+
+    fun removeFromQueue(index: Int) {
+        val snapshot = queueEngine.remove(index)
+        if (snapshot.tracks.isEmpty()) {
+            closePlayer()
+        } else {
+            refreshQueuePrefetch()
         }
+    }
+
+    fun undoQueueRemoval() {
+        queueEngine.undoRemove()
+        refreshQueuePrefetch()
+    }
+
+    fun moveQueueItem(from: Int, to: Int) {
+        queueEngine.move(from, to)
+        refreshQueuePrefetch()
+    }
+
+    fun toggleContinuousRadio() {
+        val enabled = !queueEngine.state.value.radioEnabled
+        queueEngine.setRadioEnabled(enabled)
+        if (enabled) ensureRadioTail(force = true)
+    }
+
+    fun setLyricsTranslationEnabled(value: Boolean) {
+        preferences.setLyricsTranslationEnabled(value)
+        _state.update { it.copy(lyricsTranslationEnabled = value) }
+        _state.value.currentTrack?.let(::fetchLyrics)
     }
 
     fun selectChart(regionId: String) {
@@ -1528,7 +1611,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update {
                 it.copy(
                     tracks = mergeTracks(it.tracks, tracks),
-                    queue = queue,
                     searchResults = tracks,
                     searchData = data,
                     cacheReport = repository.cacheReport(),
@@ -1537,8 +1619,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchError = if (data.isEmpty) "Nessun risultato trovato per $clean" else null
                 )
             }
-            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 18)
-            prefetchTop(tracks, 8)
+            val startupPlan = adaptivePlaybackPolicy.current(videoMode = false)
+            LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, if (startupPlan.lowRam) 8 else 18)
+            prefetchTop(tracks, if (startupPlan.lowRam) 3 else 8)
         }.onFailure { error ->
             _state.update {
                 it.copy(
@@ -1571,7 +1654,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update {
                 it.copy(
                     tracks = mergedTracks,
-                    queue = playable,
                     searchResults = playable.take(12),
                     cacheReport = repository.cacheReport(),
                     searchError = null
@@ -1716,7 +1798,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val cachedOrbit = current.personalOrbitTracks.map(::withArtwork)
             val tracks = current.tracks.map(::withArtwork)
             val searchResults = current.searchResults.map(::withArtwork)
-            val queue = current.queue.map(::withArtwork)
             val orbit = LevyraPersonalOrbit.build(
                 currentTrack = currentTrack,
                 recentSearches = recentSearches,
@@ -1736,10 +1817,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 recentSearches = recentSearches,
                 personalOrbitTracks = orbit,
                 tracks = tracks,
-                searchResults = searchResults,
-                queue = queue
+                searchResults = searchResults
             )
         }
+        queueEngine.updateTrackMetadata(enriched)
         val appContext = getApplication<Application>().applicationContext
         val artworkTrack = persistedOrbit.firstOrNull {
             LevyraPersonalOrbit.identityKey(it) == targetKey
@@ -1752,19 +1833,34 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraArtworkCache.preloadPriority(appContext, listOf(artworkTrack), 1)
     }
 
+    fun playQueueTrack(track: Track) {
+        val snapshot = queueEngine.state.value
+        val index = snapshot.tracks.indexOfFirst { samePlayableTrack(it, track) }
+        if (index < 0) {
+            play(track)
+            return
+        }
+        queueEngine.select(index, positionMs = 0L, rememberCurrent = true)
+        loopCurrentQueueOnCompletion = snapshot.tracks.size > 1
+        startResolve(snapshot.tracks[index])
+    }
+
     fun play(track: Track) {
         val contextualQueue = queueForTrack(track)
         loopCurrentQueueOnCompletion = contextualQueue.size > 1
-        _state.update { it.copy(queue = contextualQueue) }
-        queueIndex = contextualQueue.indexOfFirst { samePlayableTrack(it, track) }
-        startResolve(track)
+        val index = contextualQueue.indexOfFirst { samePlayableTrack(it, track) }.coerceAtLeast(0)
+        queueEngine.replace(contextualQueue, index, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
+        queueIndex = index
+        startResolve(contextualQueue.getOrElse(index) { track })
     }
 
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+        if (list.isEmpty()) return
         loopCurrentQueueOnCompletion = loopOnCompletion
-        _state.update { it.copy(queue = list) }
-        queueIndex = list.indexOfFirst { samePlayableTrack(it, track) }
-        startResolve(track)
+        val index = list.indexOfFirst { samePlayableTrack(it, track) }.coerceAtLeast(0)
+        queueEngine.replace(list, index, keepPlaybackModes = true, radioEnabled = queueEngine.state.value.radioEnabled)
+        queueIndex = index
+        startResolve(list.getOrElse(index) { track })
     }
 
     private fun startResolve(track: Track, preserveCrossfade: Boolean = false) {
@@ -1909,17 +2005,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             accentEnd = 0
         )
         loopCurrentQueueOnCompletion = false
-        _state.update { it.copy(queue = emptyList()) }
-        queueIndex = -1
+        queueEngine.replace(listOf(track), 0, keepPlaybackModes = true, radioEnabled = false)
+        queueIndex = 0
         startResolve(track)
     }
 
     private fun startPlayback(playable: Track) {
+        val selectedIndex = queueEngine.state.value.currentIndex
+        if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)
         repository.replace(playable)
         player.play(playable)
         // Resume from the saved position when continuing the last session's track.
         val resumeMs = pendingSeekMs.takeIf { it > 1500L && it < playable.durationMs } ?: 0L
         if (resumeMs > 0L) player.seekTo(resumeMs)
+        queueEngine.updatePosition(resumeMs)
         pendingSeekMs = 0L
         _state.update {
             it.copy(
@@ -1992,7 +2091,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(lyrics = emptyList(), lyricsSynced = false, lyricsProvider = "", lyricsConfidence = 0, lyricsCached = false, lyricsLoading = true) }
         lyricsJob = viewModelScope.launch {
             val result = runCatching {
-                lyricsRepository.fetch(track.title, track.artist, track.durationMs / 1000L)
+                lyricsRepository.fetch(
+                    title = track.title,
+                    artist = track.artist,
+                    durationSec = track.durationMs / 1000L,
+                    videoId = youtubePlayableTrack(track)?.id.orEmpty(),
+                    languageCode = _state.value.languageCode,
+                    translate = _state.value.lyricsTranslationEnabled
+                )
             }.getOrNull()
             if (_state.value.currentTrack?.id != track.id) return@launch
             _state.update {
@@ -2008,42 +2114,108 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun refreshQueuePrefetch() {
+        prefetchJob?.cancel()
+        PlaybackService.clearPreparedQueueNext()
+        val current = _state.value.currentTrack
+        if (_state.value.isPlaying && current != null && current.streamUrl.isNotBlank()) prefetchAround(current)
+    }
+
     private fun prefetchAround(playable: Track) {
         prefetchJob?.cancel()
+        PlaybackService.clearPreparedQueueNext()
+        val generation = queueEngine.state.value.generation
         prefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            val queue = _state.value.queue.ifEmpty { currentQueue() }
-            if (queue.isEmpty()) return@launch
-            val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { samePlayableTrack(it, playable) }
-            if (base < 0) return@launch
-            val offsets = if (_state.value.isVideoMode) listOf(1) else listOf(1, 2, -1)
-            val candidates = offsets
-                .map { offset -> queue[(base + offset + queue.size) % queue.size] }
+            val plan = adaptivePlaybackPolicy.current(_state.value.isVideoMode)
+            val candidates = queueEngine.upcoming(plan.resolveCount)
                 .filterNot { samePlayableTrack(it, playable) }
                 .distinctBy { playbackIdentity(it) }
-            warmTracks(candidates.take(3), concurrency = 3, delayStepMs = 10L, prime = true)
+            if (candidates.isEmpty()) {
+                ensureRadioTail(force = false)
+                return@launch
+            }
+            val semaphore = Semaphore(plan.concurrency.coerceAtLeast(1))
+            coroutineScope {
+                candidates.forEachIndexed { index, track ->
+                    launch {
+                        if (index > 0) delay(index * plan.staggerMs)
+                        semaphore.withPermit {
+                            if (!isActive || queueEngine.state.value.generation != generation) return@withPermit
+                            val youtube = youtubePlayableTrack(track)
+                            val resolved = if (youtube != null) {
+                                resolver.prefetch(youtube, _state.value.isVideoMode)
+                            } else {
+                                val match = runCatching {
+                                    repository.searchOne("${track.title} ${track.artist}", _state.value.languageCode)
+                                }.getOrNull()
+                                match?.let { resolver.prefetch(it, _state.value.isVideoMode) }
+                            }
+                            if (resolved != null && index < plan.primeCount && queueEngine.state.value.generation == generation) {
+                                if (_state.value.isVideoMode) {
+                                    runCatching { playbackWarmup.primeVideo(resolved) }
+                                } else {
+                                    runCatching { playbackWarmup.prime(resolved, plan.primeBytes) }
+                                    if (index == 0 && !plan.lowRam && !plan.powerConstrained) {
+                                        PlaybackService.prepareQueueNext(resolved)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            ensureRadioTail(force = false)
+        }
+    }
+
+    private fun ensureRadioTail(force: Boolean, playWhenReady: Boolean = false) {
+        val queueSnapshot = queueEngine.state.value
+        if (!queueSnapshot.radioEnabled || queueSnapshot.currentTrack == null) return
+        if (!force && queueEngine.upcoming(3).size >= 3) return
+        if (radioJob?.isActive == true) return
+        val seed = queueSnapshot.currentTrack ?: return
+        val generation = queueSnapshot.generation
+        radioJob = viewModelScope.launch(Dispatchers.IO) {
+            val radioTracks = runCatching {
+                repository.radio(seed, _state.value.languageCode, 20)
+            }.getOrDefault(emptyList())
+            if (!isActive || radioTracks.isEmpty()) return@launch
+            val before = queueEngine.state.value
+            val sameSeed = before.currentTrack?.let { playbackQueueIdentity(it) } == playbackQueueIdentity(seed)
+            if (!sameSeed || (before.generation != generation && !force)) return@launch
+            queueEngine.appendRadioTracks(radioTracks)
+            if (playWhenReady) {
+                withContext(Dispatchers.Main) {
+                    queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
+                }
+            }
         }
     }
 
     private fun prefetchTop(tracks: List<Track>, count: Int = 8) {
+        val plan = adaptivePlaybackPolicy.current(videoMode = false)
+        val effectiveCount = if (plan.lowRam || plan.powerConstrained) count.coerceAtMost(3) else count
         val candidates = tracks
             .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() }
             .distinctBy { youtubePlayableTrack(it)?.id ?: it.id }
-            .take(count.coerceIn(1, 8))
+            .take(effectiveCount.coerceIn(1, 8))
         if (candidates.isEmpty()) return
         listPrefetchJob?.cancel()
         listPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(250L)
+            delay(if (plan.lowRam) 450L else 250L)
             resolver.warmNetwork()
-            val hot = candidates.take(4)
-            val warmOnly = candidates.drop(4)
-            warmTracks(hot, concurrency = 2, delayStepMs = 35L, prime = true)
-            warmTracks(warmOnly, concurrency = 1, delayStepMs = 80L, prime = false)
+            val hotCount = if (plan.lowRam || plan.powerConstrained) 1 else 4
+            val hot = candidates.take(hotCount)
+            val warmOnly = candidates.drop(hotCount)
+            warmTracks(hot, concurrency = plan.concurrency, delayStepMs = plan.staggerMs, prime = true)
+            warmTracks(warmOnly, concurrency = 1, delayStepMs = plan.staggerMs.coerceAtLeast(80L), prime = false)
         }
     }
 
     private fun cancelBackgroundWarmups(cancelList: Boolean = true) {
         prefetchJob?.cancel()
         prefetchJob = null
+        PlaybackService.clearPreparedQueueNext()
         if (cancelList) {
             listPrefetchJob?.cancel()
             listPrefetchJob = null
@@ -2142,43 +2314,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun next() {
-        val queue = _state.value.queue.ifEmpty { currentQueue() }
-        if (queue.isEmpty()) return
-        if (queue.size == 1) {
-            queueIndex = 0
-            val current = _state.value.currentTrack
-            if (current?.streamUrl?.isNotBlank() == true) {
-                player.seekTo(0L)
-                player.play(current)
-                _state.update { it.copy(isPlaying = true, positionMs = 0L) }
-            } else {
-                startResolve(queue[0])
-            }
+        val nextTrack = queueEngine.next(respectRepeatOne = false)
+        if (nextTrack != null) {
+            startResolve(nextTrack)
             return
         }
-        if (_state.value.shuffleEnabled && queue.size > 1) {
-            queueIndex = queue.indices.filter { it != queueIndex }.ifEmpty { queue.indices.toList() }.random()
-            startResolve(queue[queueIndex])
-            return
-        }
-        val base = if (queueIndex in queue.indices) queueIndex else _state.value.currentTrack?.let { current -> queue.indexOfFirst { samePlayableTrack(it, current) } } ?: -1
-        val nextIndex = if (base < 0) 0 else (base + 1) % queue.size
-        queueIndex = nextIndex
-        startResolve(queue[nextIndex])
+        if (queueEngine.state.value.radioEnabled) ensureRadioTail(force = true, playWhenReady = true)
     }
 
     fun previous() {
-        val queue = _state.value.queue.ifEmpty { currentQueue() }
-        if (queue.isEmpty()) return
-        val base = if (queueIndex in queue.indices) queueIndex else _state.value.currentTrack?.let { current -> queue.indexOfFirst { samePlayableTrack(it, current) } } ?: -1
-        val previousIndex = if (base <= 0) queue.lastIndex else base - 1
-        queueIndex = previousIndex
-        startResolve(queue[previousIndex])
+        if (player.positionMs > 5_000L) {
+            player.seekTo(0L)
+            queueEngine.updatePosition(0L)
+            _state.update { it.copy(positionMs = 0L) }
+            return
+        }
+        queueEngine.previous()?.let(::startResolve)
     }
 
     fun seekTo(progress: Float) {
         val duration = _state.value.durationMs.coerceAtLeast(1L)
-        player.seekTo((duration * progress.coerceIn(0f, 1f)).toLong())
+        val target = (duration * progress.coerceIn(0f, 1f)).toLong()
+        player.seekTo(target)
+        queueEngine.updatePosition(target)
     }
 
     private fun loadHome(preserveCurrent: Boolean = false) {
@@ -2204,7 +2362,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update {
                     it.copy(
                         tracks = tracks,
-                        queue = queue,
                         searchResults = tracks.take(12),
                         isSearching = false,
                         smartScore = calculateSmartScore(queue),
@@ -2216,8 +2373,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeSections(listOf(fallbackSection), languageCode) }
                 _state.update { current -> if (current.homeSections.isEmpty()) current.copy(homeSections = listOf(fallbackSection)) else current }
                     persistHomeSnapshot()
-                LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, 18)
-                prefetchTop(tracks, 8)
+                val startupPlan = adaptivePlaybackPolicy.current(videoMode = false)
+                LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, if (startupPlan.lowRam) 8 else 18)
+                prefetchTop(tracks, if (startupPlan.lowRam) 3 else 8)
             }.onFailure { error ->
                 _state.update {
                     it.copy(
@@ -2289,6 +2447,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
 
+                if (current != null && ticks % 2 == 0) {
+                    queueEngine.updatePosition(position)
+                }
                 if (current != null && player.isPlaying && ticks % 8 == 0) {
                     saveLastPlaybackAsync(current, position)
                 }
@@ -2332,24 +2493,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun nextTrackForCrossfade(snapshot: LevyraUiState): Track? {
         if (snapshot.repeatMode == RepeatMode.One) return null
-        val queue = snapshot.queue.ifEmpty { currentQueue() }
-        if (queue.isEmpty()) return null
-        if (snapshot.shuffleEnabled && queue.size > 1) {
-            val nextIndex = queue.indices.filter { it != queueIndex }.ifEmpty { queue.indices.toList() }.random()
-            queueIndex = nextIndex
-            return queue[nextIndex]
-        }
-        val base = if (queueIndex in queue.indices) queueIndex else snapshot.currentTrack?.let { current -> queue.indexOfFirst { samePlayableTrack(it, current) } } ?: -1
-        if (base < 0) return queue.firstOrNull()
-        if (base < queue.lastIndex) {
-            queueIndex = base + 1
-            return queue[queueIndex]
-        }
-        if (snapshot.repeatMode == RepeatMode.All || loopCurrentQueueOnCompletion) {
-            queueIndex = 0
-            return queue.firstOrNull()
-        }
-        return null
+        return queueEngine.next(respectRepeatOne = false)
     }
 
     private suspend fun fadeVolume(from: Float, to: Float, durationMs: Long) {
@@ -2631,7 +2775,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         sponsorJob?.cancel()
         artistJob?.cancel()
         radarJob?.cancel()
+        radioJob?.cancel()
         crossfadeJob?.cancel()
+        queueEngine.updatePosition(player.positionMs)
         player.release()
         searchJob?.cancel()
         super.onCleared()

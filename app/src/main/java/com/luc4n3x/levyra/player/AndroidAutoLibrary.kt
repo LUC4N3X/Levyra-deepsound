@@ -20,6 +20,8 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -38,6 +40,7 @@ class AndroidAutoLibrary(context: Context) {
     private val chartsRepository = ChartsRepository()
     private val musicRepository = YoutubeMusicRepository(appContext)
     private val resolver = PlaybackResolver.getInstance(appContext)
+    private val queueEngine = PersistentQueueEngine.get(appContext)
     private val catalog = ConcurrentHashMap<String, Track>()
     private val folders = ConcurrentHashMap<String, MediaItem>()
     private val albumFolders = ConcurrentHashMap<String, Pair<String, String>>()
@@ -50,6 +53,7 @@ class AndroidAutoLibrary(context: Context) {
         when (parentId) {
             ID_ROOT -> rootChildren()
             ID_HOME -> homeChildren()
+            ID_QUEUE -> queueTracks().map { trackItem(it) }
             ID_RECOMMENDED -> smartRecommended().map { trackItem(it) }
             ID_ALBUMS -> albumChildren()
             ID_ARTISTS -> artistChildren()
@@ -74,6 +78,7 @@ class AndroidAutoLibrary(context: Context) {
         folders[mediaId] ?: catalog[mediaId]?.let { trackItem(it, mediaId) } ?: when {
             mediaId == ID_ROOT -> root()
             mediaId == ID_HOME -> folder(ID_HOME, "Home", "Mix veloci, offline e classifiche")
+            mediaId == ID_QUEUE -> folder(ID_QUEUE, "Coda attuale", "Coda persistente condivisa con Levyra")
             mediaId == ID_RECOMMENDED -> folder(ID_RECOMMENDED, "Consigliati", "Profilo musicale, preferiti e ascolti recenti")
             mediaId == ID_ALBUMS -> folder(ID_ALBUMS, "Album", "Album locali e suggeriti")
             mediaId == ID_ARTISTS -> folder(ID_ARTISTS, "Artisti", "Artisti più ascoltati e seguiti")
@@ -112,6 +117,7 @@ class AndroidAutoLibrary(context: Context) {
 
     private fun rootChildren(): List<MediaItem> = listOf(
         folder(ID_HOME, "Home", "Mix veloci, offline e classifiche"),
+        folder(ID_QUEUE, "Coda attuale", "Riprendi e controlla la coda persistente"),
         folder(ID_RECOMMENDED, "Consigliati", "Profilo musicale intelligente"),
         folder(ID_ALBUMS, "Album", "Album veri, playlist offline e raccolte locali"),
         folder(ID_ARTISTS, "Artisti", "Artisti più ascoltati e seguiti"),
@@ -185,9 +191,22 @@ class AndroidAutoLibrary(context: Context) {
         val track = catalog[mediaId]
             ?: mediaItem.mediaMetadata.extras?.getString(EXTRA_TRACK_PAYLOAD)?.let(TrackPayloadCodec::decode)
             ?: return mediaItem
+        val queueSnapshot = queueEngine.state.value
+        val queueIndex = queueSnapshot.tracks.indexOfFirst { playbackQueueIdentity(it) == playbackQueueIdentity(track) }
+        if (queueIndex >= 0) queueEngine.select(queueIndex, positionMs = 0L, rememberCurrent = true)
         val ready = when {
             track.streamUrl.isLocalUri() -> track
             else -> resolver.resolve(track.ensureYoutubeIdentity())
+        }
+        if (queueIndex >= 0) {
+            queueEngine.updateTrackAt(queueIndex, ready)
+        } else {
+            queueEngine.replace(
+                tracks = listOf(ready),
+                currentIndex = 0,
+                keepPlaybackModes = true,
+                radioEnabled = !ready.streamUrl.isLocalUri()
+            )
         }
         return buildPlaybackItem(ready)
     }
@@ -238,6 +257,18 @@ class AndroidAutoLibrary(context: Context) {
     private fun trackMediaId(track: Track): String {
         val seed = listOf(track.id, track.title, track.artist, track.streamUrl.ifBlank { track.videoUrl }).joinToString("|")
         return ID_TRACK_PREFIX + seed.sha256().take(24)
+    }
+
+    private suspend fun queueTracks(): List<Track> = withContext(Dispatchers.IO) {
+        if (queueEngine.state.value.tracks.isEmpty()) {
+            queueEngine.restore(
+                fallbackTracks = emptyList(),
+                fallbackIndex = -1,
+                fallbackPositionMs = 0L,
+                fallbackRadioEnabled = true
+            )
+        }
+        queueEngine.state.value.tracks.take(MAX_FOLDER_TRACKS)
     }
 
     private suspend fun favorites(): List<Track> = withContext(Dispatchers.IO) {
@@ -465,6 +496,7 @@ class AndroidAutoLibrary(context: Context) {
     companion object {
         const val ID_ROOT = "levyra:auto:root"
         const val ID_HOME = "levyra:auto:home"
+        const val ID_QUEUE = "levyra:auto:queue"
         const val ID_HOME_DRIVER = "levyra:auto:home:driver"
         const val ID_HOME_TOP_IT = "levyra:auto:home:top-it"
         const val ID_HOME_OFFLINE = "levyra:auto:home:offline"
