@@ -275,7 +275,7 @@ If you intend to distribute custom builds of Levyra:
   </tr>
 </table>
 
-*UI and modular styling conventions draw structural inspiration from the open-source projects [Metrolist](https://github.com/MetrolistGroup/Metrolist) and [MusicApp-KMP](https://github.com/SEAbdulbasit/MusicApp-KMP).*
+*UI and modular styling conventions draw structural inspiration from the open-source project [Metrolist](https://github.com/MetrolistGroup/Metrolist).*
 
 *The stream extraction core uses [LevyraExtractor](https://github.com/LUC4N3X/LevyraExtractor), a GPL-3.0 fork derived from [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor) in the NewPipe/PipePipe ecosystem.*
 
