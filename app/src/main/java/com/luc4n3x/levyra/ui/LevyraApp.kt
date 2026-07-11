@@ -9438,8 +9438,15 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 @Composable
 private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
-    LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
+    val zones = remember(strings) { ExploreCatalog.getZones(strings) }
+    val selectedZone = zones.firstOrNull { it.id == state.exploreZoneId } ?: zones.firstOrNull()
+    val accentStart = selectedZone?.let { Color(it.accentStart) } ?: LevyraCyan
+    val accentEnd = selectedZone?.let { Color(it.accentEnd) } ?: LevyraViolet
+    val featuredTrack = state.exploreTracks.firstOrNull()
+    val shelfTracks = if (state.exploreTracks.size > 1) state.exploreTracks.drop(1) else emptyList()
+
+    LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
 
     Box(
         modifier = Modifier
@@ -9448,55 +9455,44 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 Brush.verticalGradient(
                     listOf(
                         Color.Transparent,
-                        CinematicPlum.copy(alpha = 0.18f),
-                        LevyraBlack.copy(alpha = 0.64f)
+                        accentStart.copy(alpha = if (LevyraIsLight) 0.045f else 0.085f),
+                        accentEnd.copy(alpha = if (LevyraIsLight) 0.035f else 0.07f),
+                        if (LevyraIsLight) LevyraInk.copy(alpha = 0.42f) else LevyraBlack.copy(alpha = 0.76f)
                     )
                 )
             )
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 42.dp, bottom = 190.dp),
-            verticalArrangement = Arrangement.spacedBy(28.dp)
+            contentPadding = PaddingValues(top = 30.dp, bottom = 190.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
-                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    SectionTitle(strings.exploreFresh)
-                }
+                ExploreEditorialHeader(
+                    title = strings.exploreTitle,
+                    subtitle = strings.exploreSubtitle,
+                    selectedZone = selectedZone,
+                    accentStart = accentStart,
+                    accentEnd = accentEnd
+                )
             }
-            when {
-                state.isExploreLoading -> item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = LevyraCyan, strokeWidth = 3.dp, modifier = Modifier.size(30.dp))
-                    }
-                }
-                state.exploreTracks.isEmpty() -> item {
-                    Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                        EmptyState(strings.exploreEmpty)
-                    }
-                }
-                else -> item {
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                    ExploreSectionHeader(
+                        title = strings.exploreZones,
+                        value = zones.size.toString(),
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(state.exploreTracks, key = { "ex-track-${it.id}" }) { track ->
-                            TrackGlassCard(
-                                track = track,
-                                isCurrent = track.id == state.currentTrack?.id,
-                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                isFavorite = track.id in state.favoriteIds,
-                                onClick = { viewModel.playFrom(state.exploreTracks, track) },
-                                onFavorite = { viewModel.toggleFavorite(track) },
-                                onShare = {
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_SUBJECT, track.title)
-                                        putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, "Condividi via"))
-                                },
-                                onAddToPlaylist = {}
+                        items(zones, key = { "zone-${it.id}" }) { zone ->
+                            ExploreZoneChip(
+                                zone = zone,
+                                selected = zone.id == selectedZone?.id,
+                                onClick = { viewModel.selectExploreZone(zone) }
                             )
                         }
                     }
@@ -9504,36 +9500,81 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
 
             item {
-                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    SectionTitle(strings.exploreZones)
-                }
+                ExploreSectionHeader(
+                    title = strings.exploreFresh,
+                    value = state.exploreTracks.size.takeIf { it > 0 && !state.isExploreLoading }?.toString(),
+                    modifier = Modifier.padding(horizontal = 20.dp)
+                )
             }
-            items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    row.forEach { zone ->
-                        ZoneCard(
-                            zone = zone,
-                            selected = zone.id == state.exploreZoneId,
-                            onClick = { viewModel.selectExploreZone(zone) }
+
+            when {
+                state.isExploreLoading -> item {
+                    ExploreLoadingState(modifier = Modifier.padding(horizontal = 20.dp))
+                }
+
+                featuredTrack == null -> item {
+                    Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                        EmptyState(strings.exploreEmpty)
+                    }
+                }
+
+                else -> {
+                    item(key = "featured-${featuredTrack.id}") {
+                        ExploreFeaturedCard(
+                            track = featuredTrack,
+                            zone = selectedZone,
+                            isCurrent = featuredTrack.id == state.currentTrack?.id,
+                            isPlaying = state.isPlaying && featuredTrack.id == state.currentTrack?.id,
+                            isFavorite = featuredTrack.id in state.favoriteIds,
+                            onClick = { viewModel.playFrom(state.exploreTracks, featuredTrack) },
+                            onFavorite = { viewModel.toggleFavorite(featuredTrack) },
+                            modifier = Modifier.padding(horizontal = 20.dp)
                         )
                     }
-                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+
+                    if (shelfTracks.isNotEmpty()) {
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(shelfTracks, key = { "ex-track-${it.id}" }) { track ->
+                                    TrackGlassCard(
+                                        track = track,
+                                        isCurrent = track.id == state.currentTrack?.id,
+                                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                        isFavorite = track.id in state.favoriteIds,
+                                        onClick = { viewModel.playFrom(state.exploreTracks, track) },
+                                        onFavorite = { viewModel.toggleFavorite(track) },
+                                        onShare = {
+                                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(Intent.EXTRA_SUBJECT, track.title)
+                                                putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
+                                            }
+                                            context.startActivity(Intent.createChooser(intent, "Condividi via"))
+                                        },
+                                        onAddToPlaylist = {}
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
-            if (state.exploreVideos.isNotEmpty()) {
+            if (!state.isExploreLoading && state.exploreVideos.isNotEmpty()) {
                 item {
-                    Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                        SectionTitle(strings.exploreNewVideos)
-                    }
+                    ExploreSectionHeader(
+                        title = strings.exploreNewVideos,
+                        value = state.exploreVideos.size.toString(),
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
                 }
                 item {
                     LazyRow(
-                        contentPadding = PaddingValues(horizontal = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(state.exploreVideos, key = { "ex-video-${it.id}" }) { track ->
                             VideoGlassCard(
@@ -9551,37 +9592,388 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 }
 
 @Composable
-private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () -> Unit) {
-    val start = Color(zone.accentStart)
-    val end = Color(zone.accentEnd)
+private fun ExploreEditorialHeader(
+    title: String,
+    subtitle: String,
+    selectedZone: ExploreZone?,
+    accentStart: Color,
+    accentEnd: Color
+) {
     Row(
         modifier = Modifier
-            .weight(1f)
-            .height(56.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(cinematicGlassBrush(start, end, if (selected) 1.1f else 0.45f))
-            .border(
-                BorderStroke(Dp.Hairline, if (selected) start.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.08f)),
-                RoundedCornerShape(12.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Text(
+                text = title,
+                color = LevyraText,
+                fontSize = 38.sp,
+                lineHeight = 40.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.2).sp,
+                style = TextStyle(brush = cinematicTextBrush())
             )
-            .clickable(onClick = onClick),
+            Text(
+                text = subtitle,
+                color = LevyraMuted,
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            selectedZone?.let { zone ->
+                Row(
+                    modifier = Modifier
+                        .padding(top = 3.dp)
+                        .background(
+                            brush = cinematicGlassBrush(accentStart, accentEnd, 0.72f),
+                            shape = CircleShape
+                        )
+                        .border(Dp.Hairline, accentStart.copy(alpha = 0.34f), CircleShape)
+                        .padding(horizontal = 11.dp, vertical = 7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(zone.emoji, fontSize = 13.sp)
+                    Text(
+                        text = zone.label,
+                        color = LevyraText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .shadow(18.dp, CircleShape, ambientColor = accentStart.copy(alpha = 0.28f), spotColor = accentEnd.copy(alpha = 0.22f))
+                .background(Brush.linearGradient(listOf(accentStart, accentEnd)), CircleShape)
+                .border(1.dp, Color.White.copy(alpha = 0.28f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Explore,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(27.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExploreSectionHeader(
+    title: String,
+    value: String?,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            color = LevyraText,
+            fontSize = 20.sp,
+            lineHeight = 24.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.35).sp
+        )
+        value?.let {
+            Box(
+                modifier = Modifier
+                    .background(LevyraAdaptiveChip, CircleShape)
+                    .border(Dp.Hairline, LevyraAdaptiveHairline, CircleShape)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = it,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploreZoneChip(zone: ExploreZone, selected: Boolean, onClick: () -> Unit) {
+    val start = Color(zone.accentStart)
+    val end = Color(zone.accentEnd)
+    val selectedScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.97f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMedium),
+        label = "explore-zone-scale"
+    )
+
+    Row(
+        modifier = Modifier
+            .graphicsLayer {
+                scaleX = selectedScale
+                scaleY = selectedScale
+            }
+            .height(50.dp)
+            .background(
+                brush = if (selected) {
+                    cinematicGlassBrush(start, end, 1.05f)
+                } else {
+                    cinematicGlassBrush(start, end, 0.22f)
+                },
+                shape = RoundedCornerShape(17.dp)
+            )
+            .border(
+                width = if (selected) 1.dp else Dp.Hairline,
+                color = if (selected) start.copy(alpha = 0.54f) else LevyraAdaptiveSoftHairline,
+                shape = RoundedCornerShape(17.dp)
+            )
+            .pressable(pressedScale = 0.95f, onClick = onClick)
+            .padding(horizontal = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .width(6.dp)
-                .fillMaxHeight()
-                .background(Brush.verticalGradient(listOf(start, end)))
-        )
+                .size(29.dp)
+                .background(
+                    if (selected) Brush.linearGradient(listOf(start.copy(alpha = 0.9f), end.copy(alpha = 0.9f)))
+                    else Brush.linearGradient(listOf(start.copy(alpha = 0.18f), end.copy(alpha = 0.13f))),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(zone.emoji, fontSize = 14.sp)
+        }
         Text(
-            zone.label,
-            modifier = Modifier.padding(start = 14.dp, end = 10.dp),
-            color = if (selected) Color.White else LevyraMuted.copy(alpha = 0.94f),
-            fontSize = 15.sp,
+            text = zone.label,
+            color = if (selected) LevyraText else LevyraMuted,
+            fontSize = 13.sp,
             fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun ExploreFeaturedCard(
+    track: Track,
+    zone: ExploreZone?,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val start = Color(track.accentStart)
+    val end = Color(track.accentEnd)
+    val currentScale by animateFloatAsState(
+        targetValue = if (isCurrent) 1.012f else 1f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow),
+        label = "featured-scale"
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(236.dp)
+            .graphicsLayer {
+                scaleX = currentScale
+                scaleY = currentScale
+            }
+            .shadow(20.dp, RoundedCornerShape(28.dp), ambientColor = start.copy(alpha = 0.24f), spotColor = end.copy(alpha = 0.18f))
+            .clip(RoundedCornerShape(28.dp))
+            .background(LevyraAdaptiveCardDeep)
+            .border(
+                1.dp,
+                if (isCurrent) start.copy(alpha = 0.68f) else Color.White.copy(alpha = 0.13f),
+                RoundedCornerShape(28.dp)
+            )
+            .pressable(pressedScale = 0.985f, onClick = onClick)
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(track.largeThumbnailUrl.ifEmpty { track.thumbnailUrl })
+                .crossfade(true)
+                .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.12f),
+                            Color.Transparent,
+                            end.copy(alpha = 0.12f)
+                        )
+                    )
+                )
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.08f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.42f),
+                            Color.Black.copy(alpha = 0.92f)
+                        )
+                    )
+                )
+        )
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            zone?.let {
+                Row(
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.48f), CircleShape)
+                        .border(Dp.Hairline, Color.White.copy(alpha = 0.18f), CircleShape)
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(it.emoji, fontSize = 12.sp)
+                    Text(
+                        text = it.label,
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            if (isCurrent) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .background(start.copy(alpha = 0.88f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.GraphicEq,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        IconButton(
+            onClick = onFavorite,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+                .size(38.dp)
+                .background(Color.Black.copy(alpha = 0.46f), CircleShape)
+                .border(Dp.Hairline, Color.White.copy(alpha = 0.18f), CircleShape)
+        ) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                contentDescription = null,
+                tint = if (isFavorite) LevyraPink else Color.White,
+                modifier = Modifier.size(19.dp)
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 17.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = track.title,
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    lineHeight = 25.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.45).sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = track.artist,
+                    color = Color.White.copy(alpha = 0.76f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .shadow(12.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.3f), spotColor = Color.Black.copy(alpha = 0.3f))
+                    .background(Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isCurrent && isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploreLoadingState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(236.dp)
+                .shimmer()
+                .background(LevyraAdaptiveCard, RoundedCornerShape(28.dp))
+                .border(Dp.Hairline, LevyraAdaptiveHairline, RoundedCornerShape(28.dp))
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            repeat(2) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(218.dp)
+                        .shimmer()
+                        .background(LevyraAdaptiveCard, RoundedCornerShape(20.dp))
+                        .border(Dp.Hairline, LevyraAdaptiveHairline, RoundedCornerShape(20.dp))
+                )
+            }
+        }
     }
 }
 
@@ -9596,24 +9988,39 @@ private fun TrackGlassCard(
     onShare: () -> Unit,
     onAddToPlaylist: () -> Unit
 ) {
-    val scale by animateFloatAsState(if (isCurrent) 1.02f else 1f, label = "scale")
+    val scale by animateFloatAsState(
+        targetValue = if (isCurrent) 1.018f else 1f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow),
+        label = "explore-track-scale"
+    )
     var menuExpanded by remember { mutableStateOf(false) }
+    val start = Color(track.accentStart)
+    val end = Color(track.accentEnd)
+
     Column(
         modifier = Modifier
-            .width(140.dp)
+            .width(158.dp)
+            .height(232.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .background(cinematicGlassBrush(start, end, if (isCurrent) 0.72f else 0.30f), RoundedCornerShape(21.dp))
+            .border(
+                Dp.Hairline,
+                if (isCurrent) start.copy(alpha = 0.62f) else LevyraAdaptiveHairline,
+                RoundedCornerShape(21.dp)
+            )
+            .pressable(pressedScale = 0.975f, onClick = onClick)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(140.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(Dp.Hairline, Color.White.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(LevyraAdaptiveCardDeep)
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -9624,55 +10031,81 @@ private fun TrackGlassCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = if (isCurrent) 0.52f else 0.14f)
+                            )
+                        )
+                    )
+            )
+
             if (isCurrent) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
+                        .align(Alignment.Center)
+                        .size(46.dp)
+                        .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                        .border(Dp.Hairline, Color.White.copy(alpha = 0.24f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (isPlaying) {
-                        Icon(Icons.Rounded.Pause, null, tint = Color.White, modifier = Modifier.size(32.dp))
-                    } else {
-                        Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(32.dp))
-                    }
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(25.dp)
+                    )
                 }
             }
-            
+
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(4.dp)
+                    .padding(5.dp)
             ) {
                 IconButton(
                     onClick = { menuExpanded = true },
                     modifier = Modifier
-                        .size(28.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        .size(31.dp)
+                        .background(Color.Black.copy(alpha = 0.52f), CircleShape)
                 ) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.MoreVert,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
-                    modifier = Modifier.background(CinematicGlass)
+                    modifier = Modifier.background(LevyraAdaptiveCardDeep)
                 ) {
                     DropdownMenuItem(
-                        text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi a preferiti", color = Color.White) },
+                        text = {
+                            Text(
+                                text = if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi a preferiti",
+                                color = LevyraText
+                            )
+                        },
                         onClick = {
                             onFavorite()
                             menuExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Condividi", color = Color.White) },
+                        text = { Text("Condividi", color = LevyraText) },
                         onClick = {
                             onShare()
                             menuExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Aggiungi a playlist", color = Color.White) },
+                        text = { Text("Aggiungi a playlist", color = LevyraText) },
                         onClick = {
                             onAddToPlaylist()
                             menuExpanded = false
@@ -9681,20 +10114,25 @@ private fun TrackGlassCard(
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+
+        Column(
+            modifier = Modifier.padding(horizontal = 3.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
             Text(
-                track.title,
-                color = Color.White,
+                text = track.title,
+                color = LevyraText,
                 fontSize = 14.sp,
-                lineHeight = 18.sp,
+                lineHeight = 17.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                track.artist,
-                color = LevyraMuted.copy(alpha = 0.76f),
+                text = track.artist,
+                color = LevyraMuted,
                 fontSize = 12.sp,
+                lineHeight = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -9710,24 +10148,37 @@ private fun VideoGlassCard(
     isPlaying: Boolean,
     onClick: () -> Unit
 ) {
-    val scale by animateFloatAsState(if (isCurrent) 1.02f else 1f, label = "scale")
+    val scale by animateFloatAsState(
+        targetValue = if (isCurrent) 1.012f else 1f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "explore-video-scale"
+    )
+    val start = Color(track.accentStart)
+    val end = Color(track.accentEnd)
+
     Column(
         modifier = Modifier
-            .width(280.dp)
+            .width(292.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick),
+            .background(cinematicGlassBrush(start, end, if (isCurrent) 0.66f else 0.28f), RoundedCornerShape(22.dp))
+            .border(
+                Dp.Hairline,
+                if (isCurrent) start.copy(alpha = 0.62f) else LevyraAdaptiveHairline,
+                RoundedCornerShape(22.dp)
+            )
+            .pressable(pressedScale = 0.98f, onClick = onClick)
+            .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(12.dp))
-                .border(Dp.Hairline, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(16.dp))
+                .background(LevyraAdaptiveCardDeep)
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -9741,29 +10192,72 @@ private fun VideoGlassCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = if (isCurrent) 0.4f else 0.15f)),
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.52f)
+                            )
+                        )
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(48.dp)
+                    .background(Color.Black.copy(alpha = 0.56f), CircleShape)
+                    .border(Dp.Hairline, Color.White.copy(alpha = 0.24f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                if (isCurrent && isPlaying) {
-                    Icon(Icons.Rounded.Pause, null, tint = Color.White, modifier = Modifier.size(42.dp))
-                } else {
-                    Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(42.dp))
-                }
+                Icon(
+                    imageVector = if (isCurrent && isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(27.dp)
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(10.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    .padding(horizontal = 9.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Videocam,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(13.dp)
+                )
+                Text(
+                    text = "VIDEO",
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.8.sp
+                )
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+
+        Column(
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
             Text(
-                track.title,
-                color = Color.White,
+                text = track.title,
+                color = LevyraText,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                lineHeight = 19.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                track.artist,
-                color = LevyraMuted.copy(alpha = 0.76f),
-                fontSize = 13.sp,
+                text = track.artist,
+                color = LevyraMuted,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -9771,6 +10265,7 @@ private fun VideoGlassCard(
         }
     }
 }
+
 
 @Composable
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
