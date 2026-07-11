@@ -104,7 +104,7 @@ val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
 
 android {
     namespace = "com.luc4n3x.levyra"
-    compileSdk = 37
+    compileSdkPreview = "CinnamonBun"
 
     defaultConfig {
         applicationId = "com.luc4n3x.levyra"
@@ -180,6 +180,13 @@ kotlin {
     jvmToolchain(17)
 }
 
+ruler {
+    abi.set("arm64-v8a")
+    locale.set("it")
+    screenDensity.set(480)
+    sdkVersion.set(35)
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -204,7 +211,7 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.okhttp)
     implementation(libs.okhttp.brotli)
-    implementation(libs.levyra.extractor)
+    implementation(project(":extractor"))
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.datastore.preferences)
