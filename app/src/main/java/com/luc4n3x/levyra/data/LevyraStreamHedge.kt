@@ -14,6 +14,10 @@ internal object LevyraResolverLatency {
     private const val VIDEO_INNER_TUBE_FALLBACK_MS = 2_500L
     private const val OFFLINE_INNER_TUBE_FALLBACK_MS = 2_500L
 
+    fun extractorHedgeDelayMs(isVideoMode: Boolean, preferMp4Audio: Boolean): Long {
+        return 0L
+    }
+
     fun innerTubeFallbackDelayMs(isVideoMode: Boolean, preferMp4Audio: Boolean): Long {
         if (preferMp4Audio) return OFFLINE_INNER_TUBE_FALLBACK_MS
         return if (isVideoMode) VIDEO_INNER_TUBE_FALLBACK_MS else AUDIO_INNER_TUBE_FALLBACK_MS

@@ -1,6 +1,6 @@
 package com.luc4n3x.levyra.data
 
-import okhttp3.Headers.Companion.toHeaders
+import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.schabi.newpipe.extractor.NewPipe
@@ -29,10 +29,10 @@ private class OkHttpNewPipeDownloader : Downloader() {
     private val client = OkHttpClient.Builder()
         .followRedirects(true)
         .followSslRedirects(true)
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .writeTimeout(8, TimeUnit.SECONDS)
-        .callTimeout(18, TimeUnit.SECONDS)
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(25, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
+        .callTimeout(35, TimeUnit.SECONDS)
         .build()
 
     override fun execute(request: Request): Response {
@@ -53,8 +53,8 @@ private class OkHttpNewPipeDownloader : Downloader() {
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                 try {
                     response.use { callback.onSuccess(toExtractorResponse(it)) }
-                } catch (e: Exception) {
-                    callback.onError(e)
+                } catch (error: Exception) {
+                    callback.onError(error)
                 } finally {
                     cancellableCall.setFinished()
                 }
@@ -71,21 +71,31 @@ private class OkHttpNewPipeDownloader : Downloader() {
             data != null -> data.toRequestBody()
             else -> ByteArray(0).toRequestBody()
         }
-        return okhttp3.Request.Builder()
+        val headers = request.headers().toOkHttpHeaders()
+        val builder = okhttp3.Request.Builder()
             .url(request.url())
             .method(method, body)
-            .headers(request.headers().flattenHeaders().toHeaders())
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7")
-            .header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
-            .header("Connection", "keep-alive")
-            .build()
+            .headers(headers)
+
+        if (headers["User-Agent"].isNullOrBlank()) {
+            builder.header("User-Agent", "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/142.0.0.0 Mobile Safari/537.36")
+        }
+        if (headers["Accept"].isNullOrBlank()) {
+            builder.header("Accept", "*/*")
+        }
+        if (headers["Accept-Language"].isNullOrBlank()) {
+            builder.header("Accept-Language", "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7")
+        }
+
+        return builder.build()
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
         val responseBytes = response.body?.bytes() ?: ByteArray(0)
         val responseText = responseBytes.toString(StandardCharsets.UTF_8)
-        if (response.code == 429) throw IOException("YouTube ha limitato temporaneamente le richieste")
+        if (response.code == 429) {
+            throw IOException("YouTube ha limitato temporaneamente le richieste")
+        }
         return Response(
             response.code,
             response.message,
@@ -96,11 +106,17 @@ private class OkHttpNewPipeDownloader : Downloader() {
         )
     }
 
-    private fun Map<String, List<String>>.flattenHeaders(): Map<String, String> {
-        val out = LinkedHashMap<String, String>()
-        forEach { (key, values) ->
-            if (key.isNotBlank() && values.isNotEmpty()) out[key] = values.joinToString(",")
+    private fun Map<String, List<String>>.toOkHttpHeaders(): Headers {
+        val builder = Headers.Builder()
+        forEach { (name, values) ->
+            if (name.isNotBlank()) {
+                values.forEach { value ->
+                    if (value.isNotBlank()) {
+                        builder.add(name, value)
+                    }
+                }
+            }
         }
-        return out
+        return builder.build()
     }
 }
