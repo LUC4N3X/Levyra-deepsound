@@ -65,8 +65,7 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var musicRepository: YoutubeMusicRepository
     private lateinit var sharedMediaSourceFactory: MediaSource.Factory
     private val adaptivePlaybackPolicy by lazy { AdaptivePlaybackPolicy(this) }
-    private var preparedQueuePlayer: ExoPlayer? = null
-    private var preparedQueueTrackId: String = ""
+    private val playbackWarmup by lazy { PlaybackWarmup(this) }
     private var queueSkipJob: Job? = null
     private var servicePrefetchJob: Job? = null
 
@@ -95,19 +94,11 @@ class PlaybackService : MediaLibraryService() {
             return true
         }
 
-        fun prepareQueueNext(track: com.luc4n3x.levyra.domain.Track): Boolean {
-            val service = activeService ?: return false
-            service.prepareSecondaryQueuePlayer(track)
-            return true
-        }
+        fun prepareQueueNext(track: com.luc4n3x.levyra.domain.Track): Boolean = false
 
-        fun clearPreparedQueueNext() {
-            activeService?.releasePreparedQueuePlayer()
-        }
+        fun clearPreparedQueueNext() = Unit
 
-        fun consumePreparedQueueNext(trackId: String) {
-            activeService?.consumePreparedQueuePlayer(trackId)
-        }
+        fun consumePreparedQueueNext(trackId: String) = Unit
 
         val normalizationProcessor = NormalizationAudioProcessor()
         val visualizerProcessor = VisualizerAudioProcessor()
@@ -394,7 +385,6 @@ class PlaybackService : MediaLibraryService() {
     private fun skipQueue(forward: Boolean, respectRepeatOne: Boolean) {
         queueSkipJob?.cancel()
         servicePrefetchJob?.cancel()
-        releasePreparedQueuePlayer()
         queueSkipJob = serviceScope.launch {
             val player = activePlayer ?: return@launch
             if (!forward && player.currentPosition > 5_000L) {
@@ -461,7 +451,7 @@ class PlaybackService : MediaLibraryService() {
                     .getOrNull()
             } ?: return@launch
             if (queueEngine.state.value.generation != generation) return@launch
-            prepareSecondaryQueuePlayer(resolved)
+            withContext(Dispatchers.IO) { runCatching { playbackWarmup.prime(resolved, 256L * 1024L) } }
         }
     }
 
@@ -488,55 +478,10 @@ class PlaybackService : MediaLibraryService() {
         return resolver.resolve(candidate)
     }
 
-    private fun prepareSecondaryQueuePlayer(track: com.luc4n3x.levyra.domain.Track) {
-        if (track.streamUrl.isBlank()) return
-        val plan = adaptivePlaybackPolicy.current(videoMode = false)
-        if (plan.lowRam || plan.powerConstrained) {
-            releasePreparedQueuePlayer()
-            return
-        }
-        if (preparedQueueTrackId == track.id && preparedQueuePlayer != null) return
-        releasePreparedQueuePlayer()
-        val preloadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(250, 7_000, 100, 180)
-            .setBackBuffer(0, false)
-            .setPrioritizeTimeOverSizeThresholds(true)
-            .build()
-        preparedQueuePlayer = ExoPlayer.Builder(this)
-            .setLoadControl(preloadControl)
-            .setMediaSourceFactory(sharedMediaSourceFactory)
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .build(),
-                false
-            )
-            .setHandleAudioBecomingNoisy(false)
-            .build()
-            .apply {
-                volume = 0f
-                playWhenReady = false
-                setMediaItem(LevyraMediaItemFactory.build(track))
-                prepare()
-            }
-        preparedQueueTrackId = track.id
-    }
-
-    private fun consumePreparedQueuePlayer(trackId: String) {
-        if (preparedQueueTrackId == trackId) releasePreparedQueuePlayer()
-    }
-
-    private fun releasePreparedQueuePlayer() {
-        preparedQueuePlayer?.release()
-        preparedQueuePlayer = null
-        preparedQueueTrackId = ""
-    }
-
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
-            releasePreparedQueuePlayer()
+            servicePrefetchJob?.cancel()
         }
     }
 
@@ -550,8 +495,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         queueSkipJob?.cancel()
         servicePrefetchJob?.cancel()
-        releasePreparedQueuePlayer()
-        queueEngine.flushBlocking()
+        mediaSession?.player?.let { queueEngine.updatePosition(it.currentPosition) }
         if (activeService === this) activeService = null
         serviceScope.cancel()
         mediaSession?.run {
@@ -561,7 +505,6 @@ class PlaybackService : MediaLibraryService() {
         activePlayer = null
         mediaSession = null
         premiumAudioEffects.release()
-        LevyraMediaCache.release()
         super.onDestroy()
     }
 
