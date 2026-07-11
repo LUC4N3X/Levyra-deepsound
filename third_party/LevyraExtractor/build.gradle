@@ -1,0 +1,80 @@
+def environmentValue = { String name, String fallback ->
+    def value = System.getenv(name)
+    value == null || value.trim().isEmpty() ? fallback : value.trim()
+}
+
+def rootGroupId = environmentValue("GROUP", "com.github.LUC4N3X")
+def rootArtifactId = environmentValue("ARTIFACT", "LevyraExtractor")
+def publicationVersion = environmentValue("VERSION", "v1.0.0-levyra.10")
+def moduleGroupId = "${rootGroupId}.${rootArtifactId}"
+
+allprojects {
+    apply plugin: "java-library"
+    apply plugin: "maven-publish"
+
+    project.group = project == rootProject ? rootGroupId : moduleGroupId
+    project.version = publicationVersion
+
+    java {
+        withSourcesJar()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = "UTF-8"
+        options.release = 17
+        sourceCompatibility = JavaVersion.VERSION_17.toString()
+        targetCompatibility = JavaVersion.VERSION_17.toString()
+    }
+
+    repositories {
+        mavenCentral()
+        google()
+        maven {
+            url "https://jitpack.io"
+        }
+    }
+
+    afterEvaluate {
+        if (components.findByName("java") != null) {
+            publishing {
+                publications {
+                    mavenJava(MavenPublication) {
+                        from components.java
+                        groupId = project.group.toString()
+                        artifactId = project.name
+                        version = project.version.toString()
+                    }
+                }
+            }
+        }
+    }
+
+    ext {
+        nanojsonVersion = "1d9e1aea9049fc9f85e68b43ba39fe7be1c1f751"
+        spotbugsVersion = "4.10.2"
+        checkstyleVersion = "10.21.1"
+    }
+}
+
+dependencies {
+    api project(":extractor")
+}
+
+tasks.register("verifyJitPackPublication") {
+    dependsOn subprojects.collect { it.tasks.named("publishToMavenLocal") }
+
+    doLast {
+        def repositoryRoot = new File(System.getProperty("user.home"), ".m2/repository")
+        def groupPath = moduleGroupId.replace('.', File.separatorChar)
+
+        ["extractor", "timeago-parser"].each { moduleName ->
+            def moduleDirectory = new File(repositoryRoot, "${groupPath}/${moduleName}/${publicationVersion}")
+            def pomFile = new File(moduleDirectory, "${moduleName}-${publicationVersion}.pom")
+            def jarFile = new File(moduleDirectory, "${moduleName}-${publicationVersion}.jar")
+
+            if (!pomFile.isFile() || !jarFile.isFile()) {
+                throw new GradleException("Missing JitPack publication for ${moduleGroupId}:${moduleName}:${publicationVersion}")
+            }
+        }
+    }
+}
