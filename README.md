@@ -32,9 +32,9 @@
 
 ## ✦ What is Levyra?
 
-Unlike typical wrapper or web-reskin apps, **Levyra** is a native, ground-up Android audio application. It queries, resolves, and streams music dynamically using YouTube Music's InnerTube API with a LevyraExtractor-powered fallback, routes audio via an optimized **AndroidX Media3/ExoPlayer** background service, and outputs full tracks straight into your local storage. 
+Unlike typical wrapper or web-reskin apps, **Levyra** is a native, ground-up Android audio application. It queries, resolves, and streams music dynamically through LevyraExtractor with a delayed direct InnerTube fallback, routes audio via an optimized **AndroidX Media3/ExoPlayer** background service, and outputs full tracks straight into your local storage.
 
-Every track you download is fully parsed, tagged, and structured as a clean M4A file in your system `Music/Levyra` directory, complete with embedded metadata, titles, artists, and album artwork. 
+Every track you download is fully parsed, tagged, and structured as a clean M4A file in your system `Music/Levyra` directory, complete with embedded metadata, titles, artists, and album artwork.
 
 ```text
 📦 Application Specifications
@@ -137,18 +137,18 @@ graph TD
     classDef ext fill:#F9AB00,stroke:#EA8600,stroke-width:2px,color:#000;
 
     UI["📱 Jetpack Compose UI"]:::ui --> VM["⚙️ Central LevyraViewModel"]:::vm
-    
+
     VM --> Player["🔊 LevyraPlayer Controller"]:::core
     VM --> Resolver["🔗 PlaybackResolver Link"]:::core
     VM --> Repos["📂 Data Repositories (Music/Lyrics/Charts)"]:::core
     VM --> Store["💾 Storage System (Room / DataStore)"]:::core
     VM --> Work["🔄 WorkManager Download Worker"]:::core
-    
+
     Player --> Media3["🎵 AndroidX Media3 / ExoPlayer Service"]:::engine
-    
+
     Resolver --> InnerTube["☁️ YT Music InnerTube API"]:::ext
     Resolver --> Extractor["🔌 LevyraExtractor Engine"]:::ext
-    
+
     Work --> Exporter["📦 OfflineAudioExporter"]:::core
     Exporter --> MediaStore["💿 Android MediaStore API"]:::engine
     Exporter --> Tagger["🏷️ Pure-Kotlin M4A Tag Writer"]:::core
@@ -181,7 +181,7 @@ graph TD
 *   **Build Pipeline:** Gradle Kotlin DSL (`.gradle.kts`), Version Catalogs (`libs.versions.toml`), KSP (Kotlin Symbol Processing)
 *   **APK Size Guard:** Spotify Ruler report workflow for bundle size analysis and dependency weight tracking
 *   **Player Architecture:** Mobius-sample-inspired `Model / Event / Effect / Update` foundation for safe player refactoring
-*   **Extraction Layer:** InnerTube resolver plus GPL-3.0 LevyraExtractor playback core via JitPack
+*   **Extraction Layer:** InnerTube resolver plus the GPL-3.0 LevyraExtractor source modules built directly with Levyra
 
 <br>
 
@@ -283,8 +283,8 @@ If you intend to distribute custom builds of Levyra:
 
 ## ✦ Disclaimers & License
 
-> [!WARNING]  
-> **Educational and Research Purposes Only**  
+> [!WARNING]
+> **Educational and Research Purposes Only**
 > Levyra is an open-source client and does not host, upload, or index copyrighted files. The app interacts solely with public, third-party content endpoints. The user takes full responsibility for any usage that may violate local laws or third-party terms of service. The developers assume no liability for service changes, system blocks, or client misuse.
 
 Licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
