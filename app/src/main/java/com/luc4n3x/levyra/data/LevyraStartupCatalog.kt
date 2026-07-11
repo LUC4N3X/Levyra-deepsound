@@ -38,15 +38,63 @@ object LevyraStartupCatalog {
 
     fun chartTracks(languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = homeSections(languageCode).flatMap { it.tracks }.distinctBy { it.title.lowercase() to it.artist.lowercase() }.take(20)
 
+    fun repairHomeSections(sections: List<HomeSection>, languageCode: String): List<HomeSection> {
+        if (sections.isEmpty()) return sections
+        return sections.map { section ->
+            section.copy(tracks = repairTracks(section.tracks, languageCode))
+        }
+    }
+
+    fun repairTracks(tracks: List<Track>, languageCode: String): List<Track> {
+        if (tracks.isEmpty()) return tracks
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
+        val canonical = homeSections(normalizedLanguage).flatMap { it.tracks }
+        val exact = canonical.associateBy { seedTrackKey(it.title, it.artist) }
+        val byTitle = canonical.groupBy { seedTitleKey(it.title) }
+        return tracks.map { current ->
+            if (!isStartupSeed(current)) return@map current
+            val direct = exact[seedTrackKey(current.title, current.artist)]
+            val legacy = if (normalizedLanguage == "it" && seedTitleKey(current.title) == "la fine del mondo") {
+                byTitle["la fine del mondo"]?.firstOrNull()
+            } else {
+                null
+            }
+            val replacement = direct ?: legacy ?: return@map current
+            replacement.copy(
+                durationMs = current.durationMs.takeIf { it > 0L } ?: replacement.durationMs,
+                streamUrl = current.streamUrl,
+                videoStreamUrl = current.videoStreamUrl,
+                thumbnailUrl = current.thumbnailUrl.ifBlank { replacement.thumbnailUrl },
+                largeThumbnailUrl = current.largeThumbnailUrl.ifBlank { replacement.largeThumbnailUrl },
+                source = current.source.ifBlank { replacement.source },
+                cacheScore = maxOf(current.cacheScore, replacement.cacheScore),
+                sponsorSegments = current.sponsorSegments
+            )
+        }
+    }
+
+    private fun isStartupSeed(track: Track): Boolean {
+        return track.source.equals("Levyra Start", ignoreCase = true) || track.id.startsWith("chart-seed-")
+    }
+
+    private fun seedTrackKey(title: String, artist: String): String = "${seedTitleKey(title)}|${seedTitleKey(artist)}"
+
+    private fun seedTitleKey(value: String): String {
+        return value.lowercase()
+            .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+    }
+
     private fun localTracks(languageCode: String): List<Track> {
         return when (LevyraLanguageCatalog.normalize(languageCode)) {
             "it" -> listOf(
-                track("LA FINE DEL MONDO", "Sfera Ebbasta", "YouTube Music", "", setOf("rap", "local", "hit"), 86, 70, 90),
-                track("Tuta Gold", "Mahmood", "YouTube Music", "", setOf("pop", "local", "hit"), 82, 76, 88),
-                track("Cenere", "Lazza", "YouTube Music", "", setOf("rap", "local", "melodic"), 80, 75, 89),
-                track("Bellissima", "Annalisa", "YouTube Music", "", setOf("pop", "local", "dance"), 84, 77, 87),
-                track("Pastello Bianco", "Pinguini Tattici Nucleari", "YouTube Music", "", setOf("pop", "local", "chill"), 66, 74, 84),
-                track("Superclassico", "Ernia", "YouTube Music", "", setOf("rap", "local", "mood"), 72, 70, 82)
+                track("LA FINE DEL MONDO", "Sgribaz feat. Disme", "Emotional Kid", "AFkftETigws", setOf("rap", "local", "hit"), 86, 70, 90),
+                track("Tuta Gold", "Mahmood", "TUTA GOLD", "Pz168-XMNIk", setOf("pop", "local", "hit"), 82, 76, 88),
+                track("Cenere", "Lazza", "SIRIO", "A5ab7U9RVLE", setOf("rap", "local", "melodic"), 80, 75, 89),
+                track("Bellissima", "Annalisa", "E POI SIAMO FINITI NEL VORTICE", "qz88Dx-_lA4", setOf("pop", "local", "dance"), 84, 77, 87),
+                track("Pastello Bianco", "Pinguini Tattici Nucleari", "AHIA!", "to8uZT8j8UI", setOf("pop", "local", "chill"), 66, 74, 84),
+                track("Superclassico", "Ernia", "Gemelli", "8R6tP8xhT2s", setOf("rap", "local", "mood"), 72, 70, 82)
             )
             "es" -> listOf(
                 track("Despacito", "Luis Fonsi", "YouTube Music", "", setOf("latin", "local", "hit"), 88, 72, 96),
@@ -176,7 +224,7 @@ object LevyraStartupCatalog {
             album = album,
             durationMs = 0L,
             streamUrl = "",
-            videoUrl = "",
+            videoUrl = if (videoId.isBlank()) "" else "https://www.youtube.com/watch?v=$videoId",
             thumbnailUrl = art,
             largeThumbnailUrl = art,
             source = "Levyra Start",
