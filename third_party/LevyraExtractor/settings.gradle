@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        google()
+        maven {
+            url "https://jitpack.io"
+        }
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        mavenCentral()
+        google()
+        maven {
+            url "https://jitpack.io"
+        }
+    }
+}
+
+rootProject.name = "LevyraExtractor"
+
+include "timeago-parser"
+include "extractor"

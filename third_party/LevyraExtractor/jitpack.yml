@@ -1,0 +1,6 @@
+jdk:
+  - openjdk17
+
+install:
+  - chmod +x gradlew
+  - ./gradlew --no-daemon clean publishToMavenLocal verifyJitPackPublication -x test -x check
