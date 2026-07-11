@@ -1,0 +1,24 @@
+plugins {
+    id 'com.squareup.wire' version '6.4.1'
+}
+
+wire {
+    java {
+    }
+}
+
+dependencies {
+    implementation project(':timeago-parser')
+
+    implementation "com.github.TeamNewPipe:nanojson:$nanojsonVersion"
+    implementation 'org.jsoup:jsoup:1.22.2'
+    implementation "org.java-websocket:Java-WebSocket:1.6.0"
+    implementation "com.github.spotbugs:spotbugs-annotations:$spotbugsVersion"
+    implementation 'org.nibor.autolink:autolink:0.12.0'
+    implementation "com.google.protobuf:protobuf-java:4.35.1"
+    implementation "com.squareup.okhttp3:okhttp:5.4.0"
+    implementation "org.brotli:dec:0.1.2"
+    implementation 'org.apache.commons:commons-lang3:3.20.0'
+    implementation 'commons-codec:commons-codec:1.22.0'
+    compileOnly "org.json:json:20260522"
+}
