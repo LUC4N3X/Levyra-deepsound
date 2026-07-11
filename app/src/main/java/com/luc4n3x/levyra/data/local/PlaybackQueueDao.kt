@@ -23,6 +23,9 @@ interface PlaybackQueueDao {
     @Query("DELETE FROM playback_queue_items")
     suspend fun clearItems()
 
+    @Query("DELETE FROM playback_queue_state")
+    suspend fun clearState()
+
     @Query("UPDATE playback_queue_state SET positionMs = :positionMs, updatedAt = :updatedAt WHERE singletonId = 1")
     suspend fun updatePosition(positionMs: Long, updatedAt: Long)
 
@@ -31,5 +34,11 @@ interface PlaybackQueueDao {
         clearItems()
         if (items.isNotEmpty()) insertItems(items)
         insertState(state)
+    }
+
+    @Transaction
+    suspend fun clear() {
+        clearItems()
+        clearState()
     }
 }
