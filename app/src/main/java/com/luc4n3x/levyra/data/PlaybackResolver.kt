@@ -499,7 +499,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                         .getOrNull()
                         ?.takeIf { stream ->
                             val accepted = acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)
-                            if (!accepted) recordClientFailure(profile, 1L, IllegalStateException("Stream non valido o URL scaduto"))
+                            if (!accepted) recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
                             accepted
                         }
                 }
@@ -536,7 +536,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio) }
                 attempt.onSuccess { stream ->
                     if (!acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)) {
-                        recordClientFailure(profile, 1L, IllegalStateException("Stream non valido o URL scaduto"))
+                        recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
                         return@onSuccess
                     }
                     if (!isVideoMode && preferMp4Audio && !isMp4AudioUrl(stream.url)) {
@@ -572,51 +572,52 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun recordClientSuccess(profile: ClientProfile, latencyMs: Long) {
-        val previous = clientHealth[profile.clientName] ?: ClientHealth()
-        val samples = (previous.successes + 1).coerceAtMost(10_000)
-        val average = if (previous.successes <= 0 || previous.averageLatencyMs == Long.MAX_VALUE) {
-            latencyMs
-        } else {
-            ((previous.averageLatencyMs * 7L) + latencyMs) / 8L
-        }
-        val updated = previous.copy(
-            successes = samples,
-            consecutiveFailures = 0,
-            averageLatencyMs = average.coerceAtLeast(1L),
-            blockedUntilMs = 0L,
-            updatedAtMs = System.currentTimeMillis()
-        )
-        clientHealth[profile.clientName] = updated
-        persistClientHealth(profile.clientName, updated)
-    }
-
-    private fun recordClientFailure(profile: ClientProfile, latencyMs: Long, error: Throwable) {
-        val previous = clientHealth[profile.clientName] ?: ClientHealth()
-        val failures = (previous.failures + 1).coerceAtMost(10_000)
-        val consecutive = (previous.consecutiveFailures + 1).coerceAtMost(100)
-        val message = error.message.orEmpty().lowercase()
-        val hardBlock = message.contains("http 403") || message.contains("http 410") || message.contains("http 429") || message.contains("sign in") || message.contains("login")
-        val invalidStream = message.contains("scaduto") || message.contains("stream non valido")
-        val blockDurationMs = when {
-            hardBlock -> 10L * 60L * 1000L
-            invalidStream -> 2L * 60L * 1000L
-            consecutive >= 4 -> 2L * 60L * 1000L
-            consecutive >= 2 -> 25_000L
-            else -> 0L
-        }
-        val updated = previous.copy(
-            failures = failures,
-            consecutiveFailures = consecutive,
-            averageLatencyMs = if (previous.averageLatencyMs <= 0L || previous.averageLatencyMs == Long.MAX_VALUE) {
+        clientHealth.compute(profile.clientName) { name, current ->
+            val previous = current ?: ClientHealth()
+            val samples = (previous.successes + 1).coerceAtMost(10_000)
+            val average = if (previous.successes <= 0 || previous.averageLatencyMs == Long.MAX_VALUE) {
                 latencyMs
             } else {
-                ((previous.averageLatencyMs * 3L) + latencyMs) / 4L
-            },
-            blockedUntilMs = System.currentTimeMillis() + blockDurationMs,
-            updatedAtMs = System.currentTimeMillis()
-        )
-        clientHealth[profile.clientName] = updated
-        persistClientHealth(profile.clientName, updated)
+                ((previous.averageLatencyMs * 7L) + latencyMs) / 8L
+            }
+            previous.copy(
+                successes = samples,
+                consecutiveFailures = 0,
+                averageLatencyMs = average.coerceAtLeast(1L),
+                blockedUntilMs = 0L,
+                updatedAtMs = System.currentTimeMillis()
+            ).also { persistClientHealth(name, it) }
+        }
+    }
+
+    private fun recordClientFailure(profile: ClientProfile, latencyMs: Long?, error: Throwable) {
+        clientHealth.compute(profile.clientName) { name, current ->
+            val previous = current ?: ClientHealth()
+            val failures = (previous.failures + 1).coerceAtMost(10_000)
+            val consecutive = (previous.consecutiveFailures + 1).coerceAtMost(100)
+            val message = error.message.orEmpty().lowercase()
+            val hardBlock = message.contains("http 403") || message.contains("http 410") || message.contains("http 429") || message.contains("sign in") || message.contains("login")
+            val invalidStream = message.contains("scaduto") || message.contains("stream non valido")
+            val blockDurationMs = when {
+                hardBlock -> 10L * 60L * 1000L
+                invalidStream -> 2L * 60L * 1000L
+                consecutive >= 4 -> 2L * 60L * 1000L
+                consecutive >= 2 -> 25_000L
+                else -> 0L
+            }
+            val averageLatencyMs = when {
+                latencyMs == null -> previous.averageLatencyMs
+                previous.averageLatencyMs <= 0L || previous.averageLatencyMs == Long.MAX_VALUE -> latencyMs
+                else -> ((previous.averageLatencyMs * 3L) + latencyMs) / 4L
+            }
+            previous.copy(
+                failures = failures,
+                consecutiveFailures = consecutive,
+                averageLatencyMs = averageLatencyMs,
+                blockedUntilMs = System.currentTimeMillis() + blockDurationMs,
+                updatedAtMs = System.currentTimeMillis()
+            ).also { persistClientHealth(name, it) }
+        }
     }
 
     private fun elapsedMs(startedAt: Long): Long = ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)

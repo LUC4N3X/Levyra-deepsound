@@ -616,7 +616,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val artist = tokens.firstOrNull().orEmpty().ifBlank { seed.artist.ifBlank { "YouTube Music" } }
         val album = tokens.drop(1).firstOrNull().orEmpty().ifBlank { "YouTube Music Radio" }
         val durationText = renderer.optJSONObject("lengthText")?.optString("simpleText").orEmpty()
-        val durationMs = parseDurationMs(durationText)
+        val durationMs = durationText.durationToMs()
         val thumbnail = findBestThumbnail(renderer)
         return buildTrack(
             id = videoId,
@@ -630,15 +630,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             query = "radio ${seed.artist} ${seed.title}",
             source = "YouTube Music Radio"
         )
-    }
-
-    private fun parseDurationMs(value: String): Long {
-        val parts = value.trim().split(":").mapNotNull { it.toLongOrNull() }
-        return when (parts.size) {
-            2 -> (parts[0] * 60L + parts[1]) * 1_000L
-            3 -> (parts[0] * 3_600L + parts[1] * 60L + parts[2]) * 1_000L
-            else -> 0L
-        }
     }
 
     fun searchSuggestions(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<String> {
