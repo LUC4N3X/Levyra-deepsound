@@ -18,8 +18,8 @@ class LevyraWidgetProvider : AppWidgetProvider() {
         super.onReceive(context, intent)
         when (intent.action) {
             ACTION_TOGGLE -> handleToggle(context)
-            ACTION_NEXT -> handleSkip(context, LevyraWidgetBridge.onNext)
-            ACTION_PREVIOUS -> handleSkip(context, LevyraWidgetBridge.onPrevious)
+            ACTION_NEXT -> handleSkip(context, LevyraWidgetBridge.onNext, true)
+            ACTION_PREVIOUS -> handleSkip(context, LevyraWidgetBridge.onPrevious, false)
         }
     }
 
@@ -39,12 +39,13 @@ class LevyraWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    private fun handleSkip(context: Context, action: (() -> Unit)?) {
+    private fun handleSkip(context: Context, action: (() -> Unit)?, forward: Boolean) {
         if (action != null) {
             action()
-        } else {
-            openApp(context)
+            return
         }
+        val handled = if (forward) PlaybackService.requestQueueNext() else PlaybackService.requestQueuePrevious()
+        if (!handled) openApp(context)
     }
 
     private fun openApp(context: Context, shortcut: String? = null) {

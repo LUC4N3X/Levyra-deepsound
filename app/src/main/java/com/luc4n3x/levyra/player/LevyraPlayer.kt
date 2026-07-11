@@ -2,11 +2,8 @@ package com.luc4n3x.levyra.player
 
 import android.content.ComponentName
 import android.content.Context
-import android.net.Uri
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.PlaybackParameters
@@ -39,7 +36,10 @@ class LevyraPlayer(context: Context) {
 
     init {
         controllerFuture.addListener({
-            val connected = controllerFuture.get()
+            val connected = runCatching { controllerFuture.get() }.getOrElse { error ->
+                onError?.invoke(error.message?.takeIf { it.isNotBlank() } ?: "Servizio di riproduzione non disponibile")
+                return@addListener
+            }
             controller = connected
             connected.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -90,7 +90,8 @@ class LevyraPlayer(context: Context) {
         if (loadedTrackId != track.id || loadedStreamUrl != track.streamUrl) {
             loadedTrackId = track.id
             loadedStreamUrl = track.streamUrl
-            active.setMediaItem(buildItem(track))
+            PlaybackService.consumePreparedQueueNext(track.id)
+            active.setMediaItem(LevyraMediaItemFactory.build(track))
             active.prepare()
         }
         active.play()
@@ -116,50 +117,7 @@ class LevyraPlayer(context: Context) {
         }
     }
 
-    private fun buildItem(track: Track): MediaItem {
-        val art = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
-        val extras = android.os.Bundle().apply {
-            putString("levyra.title", track.title)
-            putString("levyra.artist", track.artist)
-            putString("levyra.album", track.album)
-            putLong("levyra.durationMs", track.durationMs.coerceAtLeast(0L))
-            putString("levyra.source", track.source)
-            if (track.videoStreamUrl.isNotBlank()) {
-                putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
-                putString(PlaybackService.EXTRA_VIDEO_CACHE_KEY, LevyraPlaybackCacheKey.video(track))
-            }
-        }
-        val metadata = MediaMetadata.Builder()
-            .setTitle(track.title)
-            .setDisplayTitle(track.title)
-            .setArtist(track.artist)
-            .setSubtitle(track.artist)
-            .setAlbumTitle(track.album.ifBlank { "Levyra" })
-            .apply { if (art.isNotBlank()) setArtworkUri(Uri.parse(art)) }
-            .setExtras(extras)
-            .build()
-        return MediaItem.Builder()
-            .setUri(track.streamUrl)
-            .setMimeType(mimeTypeFor(track.streamUrl))
-            .setCustomCacheKey(LevyraPlaybackCacheKey.stream(track))
-            .setMediaId(track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}-${track.title}" } })
-            .setMediaMetadata(metadata)
-            .build()
-    }
 
-
-    private fun mimeTypeFor(url: String): String {
-        val clean = url.substringBefore('#').lowercase()
-        val path = clean.substringBefore('?')
-        return when {
-            path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") -> "application/x-mpegURL"
-            path.endsWith(".mpd") -> "application/dash+xml"
-            path.endsWith(".webm") || clean.contains("mime=audio%2fwebm") || clean.contains("mime=audio/webm") -> "audio/webm"
-            path.endsWith(".mp3") || clean.contains("mime=audio%2fmpeg") || clean.contains("mime=audio/mpeg") -> "audio/mpeg"
-            path.endsWith(".m4a") || path.endsWith(".mp4") || clean.contains("mime=audio%2fmp4") || clean.contains("mime=audio/mp4") -> "audio/mp4"
-            else -> "audio/mp4"
-        }
-    }
 
     fun pause() {
         controller?.pause()

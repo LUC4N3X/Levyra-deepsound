@@ -56,9 +56,11 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val prefs = context.getSharedPreferences("levyra_stream_cache", Context.MODE_PRIVATE)
+    private val clientHealthPrefs = context.getSharedPreferences("levyra_innertube_client_health", Context.MODE_PRIVATE)
     private val userPreferences = LevyraPreferences(context)
     private val streamCache = ConcurrentHashMap<String, CachedStream>()
     private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
+    private val clientHealth = ConcurrentHashMap<String, ClientHealth>()
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val fallbackTtlMs = 90L * 60L * 1000L
@@ -95,6 +97,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     init {
         restoreCache()
+        restoreClientHealth()
     }
 
     fun setAudioQuality(value: String) {
@@ -486,21 +489,22 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private suspend fun hedgedInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean): DirectStream? {
-        val ladder = profiles
-            .groupBy { it.tier }
-            .toSortedMap()
-            .map { (_, group) ->
-                group.map { profile ->
-                    suspend {
-                        runCatching { resolveWithInnerTube(track, profile, isVideoMode, false) }
-                            .onFailure { error ->
-                                error.message?.takeIf { it.isNotBlank() }?.let { errors += "${profile.label}: $it" }
-                            }
-                            .getOrNull()
-                            ?.takeIf { stream -> acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors) }
-                    }
+        val ladder = orderedProfiles().map { profile ->
+            listOf(
+                suspend {
+                    runCatching { resolveWithInnerTube(track, profile, isVideoMode, false) }
+                        .onFailure { error ->
+                            error.message?.takeIf { it.isNotBlank() }?.let { errors += "${profile.label}: $it" }
+                        }
+                        .getOrNull()
+                        ?.takeIf { stream ->
+                            val accepted = acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)
+                            if (!accepted) recordClientFailure(profile, 1L, IllegalStateException("Stream non valido o URL scaduto"))
+                            accepted
+                        }
                 }
-            }
+            )
+        }
         return hedgedFirst(ladder, hedgeBudgetMs)
     }
 
@@ -525,12 +529,16 @@ class PlaybackResolver private constructor(private val context: Context) {
     ): DirectStream? = coroutineScope {
         val winner = CompletableDeferred<DirectStream?>()
         val fallback = AtomicReference<DirectStream?>(null)
-        val workers = profiles.map { profile ->
+        val workers = orderedProfiles().mapIndexed { index, profile ->
             launch {
-                if (profile.delayMs > 0L) delay(profile.delayMs)
+                val dynamicDelay = profile.delayMs + index * 45L
+                if (dynamicDelay > 0L) delay(dynamicDelay)
                 val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio) }
                 attempt.onSuccess { stream ->
-                    if (!acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)) return@onSuccess
+                    if (!acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)) {
+                        recordClientFailure(profile, 1L, IllegalStateException("Stream non valido o URL scaduto"))
+                        return@onSuccess
+                    }
                     if (!isVideoMode && preferMp4Audio && !isMp4AudioUrl(stream.url)) {
                         fallback.compareAndSet(null, stream)
                     } else {
@@ -550,6 +558,93 @@ class PlaybackResolver private constructor(private val context: Context) {
         val result = winner.await()
         coroutineContext.cancelChildren()
         result
+    }
+
+    private fun orderedProfiles(): List<ClientProfile> {
+        val now = System.currentTimeMillis()
+        val available = profiles.filter { profile -> (clientHealth[profile.clientName]?.blockedUntilMs ?: 0L) <= now }
+        val candidates = if (available.isNotEmpty()) available else profiles
+        return candidates.sortedWith(
+            compareByDescending<ClientProfile> { profile -> clientHealth[profile.clientName]?.score ?: 0.0 }
+                .thenBy { profile -> clientHealth[profile.clientName]?.averageLatencyMs ?: Long.MAX_VALUE }
+                .thenBy { it.tier }
+        )
+    }
+
+    private fun recordClientSuccess(profile: ClientProfile, latencyMs: Long) {
+        val previous = clientHealth[profile.clientName] ?: ClientHealth()
+        val samples = (previous.successes + 1).coerceAtMost(10_000)
+        val average = if (previous.successes <= 0 || previous.averageLatencyMs == Long.MAX_VALUE) {
+            latencyMs
+        } else {
+            ((previous.averageLatencyMs * 7L) + latencyMs) / 8L
+        }
+        val updated = previous.copy(
+            successes = samples,
+            consecutiveFailures = 0,
+            averageLatencyMs = average.coerceAtLeast(1L),
+            blockedUntilMs = 0L,
+            updatedAtMs = System.currentTimeMillis()
+        )
+        clientHealth[profile.clientName] = updated
+        persistClientHealth(profile.clientName, updated)
+    }
+
+    private fun recordClientFailure(profile: ClientProfile, latencyMs: Long, error: Throwable) {
+        val previous = clientHealth[profile.clientName] ?: ClientHealth()
+        val failures = (previous.failures + 1).coerceAtMost(10_000)
+        val consecutive = (previous.consecutiveFailures + 1).coerceAtMost(100)
+        val message = error.message.orEmpty().lowercase()
+        val hardBlock = message.contains("http 403") || message.contains("http 410") || message.contains("http 429") || message.contains("sign in") || message.contains("login")
+        val invalidStream = message.contains("scaduto") || message.contains("stream non valido")
+        val blockDurationMs = when {
+            hardBlock -> 10L * 60L * 1000L
+            invalidStream -> 2L * 60L * 1000L
+            consecutive >= 4 -> 2L * 60L * 1000L
+            consecutive >= 2 -> 25_000L
+            else -> 0L
+        }
+        val updated = previous.copy(
+            failures = failures,
+            consecutiveFailures = consecutive,
+            averageLatencyMs = if (previous.averageLatencyMs <= 0L || previous.averageLatencyMs == Long.MAX_VALUE) {
+                latencyMs
+            } else {
+                ((previous.averageLatencyMs * 3L) + latencyMs) / 4L
+            },
+            blockedUntilMs = System.currentTimeMillis() + blockDurationMs,
+            updatedAtMs = System.currentTimeMillis()
+        )
+        clientHealth[profile.clientName] = updated
+        persistClientHealth(profile.clientName, updated)
+    }
+
+    private fun elapsedMs(startedAt: Long): Long = ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
+
+    private fun restoreClientHealth() {
+        clientHealthPrefs.all.forEach { (name, rawValue) ->
+            val raw = rawValue as? String ?: return@forEach
+            val json = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
+            clientHealth[name] = ClientHealth(
+                successes = json.optInt("successes", 0),
+                failures = json.optInt("failures", 0),
+                consecutiveFailures = json.optInt("consecutiveFailures", 0),
+                averageLatencyMs = json.optLong("averageLatencyMs", Long.MAX_VALUE),
+                blockedUntilMs = json.optLong("blockedUntilMs", 0L),
+                updatedAtMs = json.optLong("updatedAtMs", 0L)
+            )
+        }
+    }
+
+    private fun persistClientHealth(name: String, health: ClientHealth) {
+        val json = JSONObject()
+            .put("successes", health.successes)
+            .put("failures", health.failures)
+            .put("consecutiveFailures", health.consecutiveFailures)
+            .put("averageLatencyMs", health.averageLatencyMs)
+            .put("blockedUntilMs", health.blockedUntilMs)
+            .put("updatedAtMs", health.updatedAtMs)
+        clientHealthPrefs.edit().putString(name, json.toString()).apply()
     }
 
     private fun restoreCache() {
@@ -712,6 +807,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun resolveWithInnerTube(track: Track, profile: ClientProfile, isVideoMode: Boolean = false, preferMp4Audio: Boolean = false): DirectStream {
+        val startedAt = System.nanoTime()
+
         val endpoint = "https://www.youtube.com/youtubei/v1/player?key=$apiKey&prettyPrint=false"
         val body = buildPlayerBody(track.id, profile).toString()
         val requestBuilder = Request.Builder()
@@ -726,9 +823,10 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("X-Youtube-Client-Version", profile.clientVersion)
         val request = GoogleApiKeyHeaders.applyTo(requestBuilder, context).build()
 
-        youtubeHttpClient.newCall(request).execute().use { response ->
-            val responseText = response.body.string()
-            if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}")
+        return try {
+            youtubeHttpClient.newCall(request).execute().use responseUse@{ response ->
+                val responseText = response.body.string()
+                if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}")
             val root = JSONObject(responseText)
             val playability = root.optJSONObject("playabilityStatus")
             val status = playability?.optString("status").orEmpty()
@@ -798,7 +896,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
                 val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
 
-                return when {
+                return@responseUse when {
                     muxedUrl.isNotBlank() && muxedScore >= 480 -> DirectStream(
                         url = muxedUrl,
                         videoUrl = "",
@@ -838,14 +936,19 @@ class PlaybackResolver private constructor(private val context: Context) {
             val details = root.optJSONObject("videoDetails")
             val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
             val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
-            return DirectStream(
+            return@responseUse DirectStream(
                 url = bestAudioUrl,
                 videoUrl = "",
                 durationMs = duration,
                 thumbnailUrl = thumbnail,
                 source = "YouTube ${profile.label}${bestAudioLabel.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
             )
+        }.also { recordClientSuccess(profile, elapsedMs(startedAt)) }
+        } catch (error: Throwable) {
+            recordClientFailure(profile, elapsedMs(startedAt), error)
+            throw error
         }
+
     }
 
     private fun selectAudioStream(streams: List<AudioStream>, preferMp4Audio: Boolean): AudioStream? {
@@ -1173,6 +1276,23 @@ private data class ClientProfile(
             "WEB_REMIX" -> "67"
             "WEB_EMBEDDED_PLAYER" -> "56"
             else -> "1"
+        }
+}
+
+private data class ClientHealth(
+    val successes: Int = 0,
+    val failures: Int = 0,
+    val consecutiveFailures: Int = 0,
+    val averageLatencyMs: Long = Long.MAX_VALUE,
+    val blockedUntilMs: Long = 0L,
+    val updatedAtMs: Long = 0L
+) {
+    val score: Double
+        get() {
+            val total = successes + failures
+            val reliability = if (total <= 0) 0.5 else successes.toDouble() / total.toDouble()
+            val latencyBonus = if (averageLatencyMs == Long.MAX_VALUE) 0.0 else 1_500.0 / averageLatencyMs.coerceAtLeast(50L).toDouble()
+            return reliability * 100.0 + latencyBonus - consecutiveFailures * 12.0
         }
 }
 
