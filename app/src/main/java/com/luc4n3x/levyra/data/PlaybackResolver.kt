@@ -111,7 +111,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         lastNetworkWarmAt = now
         listOf(
             "https://www.youtube.com/generate_204",
-            "https://music.youtube.com/generate_204"
+            "https://music.youtube.com/generate_204",
+            "https://youtubei.googleapis.com/generate_204"
         ).forEach { url ->
             val request = Request.Builder()
                 .url(url)
