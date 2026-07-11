@@ -1186,6 +1186,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return match
     }
 
+    fun removeRecentSearch(track: Track) {
+        val current = _state.value.recentSearches
+        val identity = LevyraPersonalOrbit.identityKey(track)
+        val updated = current.filterNot {
+            it.id == track.id || LevyraPersonalOrbit.identityKey(it) == identity
+        }
+        if (updated.size == current.size) return
+        _state.update { it.copy(recentSearches = updated) }
+        viewModelScope.launch(Dispatchers.IO) {
+            preferences.saveRecentSearches(updated)
+        }
+    }
+
     fun toggleFavorite(track: Track) {
         val current = _state.value.favorites
         val exists = current.any { it.id == track.id }

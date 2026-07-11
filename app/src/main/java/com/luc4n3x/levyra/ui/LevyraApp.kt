@@ -4883,25 +4883,20 @@ private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     item {
                         RecentSearchesRow(
                             tracks = state.recentSearches,
+                            favoriteIds = state.favoriteIds,
+                            downloadedTrackIds = state.downloadedTrackIds,
                             onTrackClick = { track ->
                                 focusManager.clearFocus()
                                 keyboardController?.hide()
                                 viewModel.play(track)
-                            }
-                        )
-                    }
-                }
-
-                if (state.charts.isNotEmpty()) {
-                    item {
-                        MetroDiscoveryRail(
-                            tracks = state.charts.take(8),
-                            currentId = state.currentTrack?.id,
-                            onPlay = { track ->
-                                focusManager.clearFocus()
-                                keyboardController?.hide()
-                                viewModel.playFrom(state.charts, track)
-                            }
+                            },
+                            onRemove = viewModel::removeRecentSearch,
+                            onFavorite = viewModel::toggleFavorite,
+                            onAddToPlaylist = { addTarget = it },
+                            onPlayNext = viewModel::playNext,
+                            onAddToQueue = viewModel::addToQueue,
+                            onDownload = viewModel::exportTrack,
+                            onArtist = viewModel::openArtist
                         )
                     }
                 }
@@ -5194,8 +5189,19 @@ private fun SearchHeader(
 @Composable
 private fun RecentSearchesRow(
     tracks: List<Track>,
-    onTrackClick: (Track) -> Unit
+    favoriteIds: Set<String>,
+    downloadedTrackIds: Set<String>,
+    onTrackClick: (Track) -> Unit,
+    onRemove: (Track) -> Unit,
+    onFavorite: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit,
+    onPlayNext: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onDownload: (Track) -> Unit,
+    onArtist: (Track) -> Unit
 ) {
+    val context = LocalContext.current
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "Ricerche recenti",
@@ -5208,10 +5214,14 @@ private fun RecentSearchesRow(
             contentPadding = PaddingValues(end = 16.dp)
         ) {
             items(tracks, key = { "recent-${it.id}" }) { track ->
+                var menuExpanded by remember(track.id) { mutableStateOf(false) }
+                val isFavorite = track.id in favoriteIds
+                val isDownloaded = track.id in downloadedTrackIds
+
                 Column(
                     modifier = Modifier
                         .width(140.dp)
-                        .pressable { onTrackClick(track) },
+                        .clickable { onTrackClick(track) },
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Box(
@@ -5243,6 +5253,101 @@ private fun RecentSearchesRow(
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                            IconButton(
+                                onClick = { menuExpanded = true },
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .size(32.dp)
+                                    .background(Color.Black.copy(alpha = 0.58f), CircleShape)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.MoreVert,
+                                    contentDescription = "Azioni",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti") },
+                                    leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onFavorite(track)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Riproduci dopo") },
+                                    leadingIcon = { Icon(Icons.Rounded.PlaylistPlay, null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onPlayNext(track)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Aggiungi alla coda") },
+                                    leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onAddToQueue(track)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Aggiungi a playlist") },
+                                    leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onAddToPlaylist(track)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(if (isDownloaded) "Già offline" else "Scarica") },
+                                    leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        if (!isDownloaded) onDownload(track)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Apri artista") },
+                                    leadingIcon = { Icon(Icons.Rounded.Person, null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onArtist(track)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Condividi") },
+                                    leadingIcon = { Icon(Icons.Rounded.Share, null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        val shareText = buildString {
+                                            append(track.title)
+                                            if (track.artist.isNotBlank()) append(" - ").append(track.artist)
+                                            val link = track.videoUrl.ifBlank { track.streamUrl }
+                                            if (link.isNotBlank()) append("\n").append(link)
+                                        }
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, shareText)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "Condividi brano"))
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Rimuovi dalle recenti") },
+                                    leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onRemove(track)
+                                    }
                                 )
                             }
                         }
@@ -7971,51 +8076,6 @@ private fun MetroActionButton(icon: ImageVector, text: String, accent: Color, mo
             Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(text, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
-@Composable
-private fun MetroDiscoveryRail(tracks: List<Track>, currentId: String?, onPlay: (Track) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionHeaderAction("Trend da aprire subito", onPlayAll = { tracks.firstOrNull()?.let(onPlay) })
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            itemsIndexed(tracks, key = { index, track -> "metro-discovery-$index-${track.id}" }) { index, track ->
-                val isCurrent = track.id == currentId
-                Surface(
-                    color = if (isCurrent) LevyraCyan.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.48f) else Color.White.copy(alpha = 0.09f)),
-                    shape = RoundedCornerShape(22.dp),
-                    modifier = Modifier
-                        .width(210.dp)
-                        .pressable(onClick = { onPlay(track) })
-                ) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box {
-                            CoverImage(track, Modifier.size(58.dp).clip(RoundedCornerShape(16.dp)))
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.48f),
-                                shape = CircleShape,
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .size(24.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text("${index + 1}", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                                }
-                            }
-                        }
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                }
-            }
         }
     }
 }
