@@ -66,7 +66,6 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val playbackResolveTimeoutMs = 30_000L
     private val offlineResolveTimeoutMs = 60_000L
     private val hedgeBudgetMs = LevyraResolverLatency.INNER_TUBE_HEDGE_BUDGET_MS
-    private val extractorBudgetMs = 160L
     private val streamProbeClient: OkHttpClient = youtubeHttpClient.newBuilder()
         .connectTimeout(450, TimeUnit.MILLISECONDS)
         .readTimeout(800, TimeUnit.MILLISECONDS)
@@ -226,38 +225,24 @@ class PlaybackResolver private constructor(private val context: Context) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         if (isVideoMode) {
-            val resolved = coroutineScope {
-                val winner = CompletableDeferred<Track?>()
-                val innerTubeJob = launch {
-                    val stream = runCatching { hedgedInnerTube(track, errors, true) }.getOrNull()
-                    if (stream != null) {
-                        winner.complete(track.withDirectStream(stream))
-                    }
-                }
-                val extractorJob = launch {
-                    delay(extractorBudgetMs)
-                    if (winner.isCompleted) return@launch
-                    val result = runCatching { resolveVideoWithLevyraExtractor(track) }
-                    result.onSuccess { winner.complete(it) }
-                        .onFailure { error ->
-                            error.message?.takeIf { it.isNotBlank() }
-                                ?.let { errors += "LevyraExtractor video: $it" }
-                        }
-                }
-                launch {
-                    innerTubeJob.join()
-                    extractorJob.join()
-                    winner.complete(null)
-                }
-                val result = winner.await()
-                coroutineContext.cancelChildren()
-                result
+            val extractorResult = runCatching { resolveVideoWithLevyraExtractor(track) }
+            extractorResult.onSuccess { resolved ->
+                store(resolved, true)
+                return@withContext resolved
+            }.onFailure { error ->
+                error.message?.takeIf { it.isNotBlank() }
+                    ?.let { errors += "LevyraExtractor video: $it" }
             }
-            if (resolved != null) {
-                store(resolved, isVideoMode)
+
+            val stream = runCatching { hedgedInnerTube(track, errors, true) }.getOrNull()
+            if (stream != null) {
+                val resolved = track.withDirectStream(stream)
+                store(resolved, true)
                 return@withContext resolved
             }
-            val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
+
+            val reason = errors.firstOrNull { it.startsWith("LevyraExtractor video:") }
+                ?: errors.firstOrNull { it.contains("age", true) || it.contains("login", true) || it.contains("accedi", true) }
                 ?: errors.firstOrNull()
                 ?: "Video non disponibile"
             throw PlaybackBlockedException(reason)
@@ -265,74 +250,42 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         val resolved = resolveAudioFast(track, errors, preferMp4Audio)
         if (resolved != null) {
-            store(resolved, isVideoMode)
+            store(resolved, false)
             return@withContext resolved
         }
 
         val alternate = resolveAudioWithSearchFallback(track, errors, preferMp4Audio)
         if (alternate != null) {
-            store(alternate, isVideoMode)
+            store(alternate, false)
             return@withContext alternate
         }
 
         val reason = errors.firstOrNull { it.startsWith("LevyraExtractor:") }
-            ?: errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) || it.contains("login", true) || it.contains("accedi", true) }
+            ?: errors.firstOrNull { it.contains("age", true) || it.contains("anonymous", true) }
+            ?: errors.firstOrNull { !it.contains("android music", true) && !it.contains("accedi", true) && !it.contains("login", true) }
             ?: errors.firstOrNull()
             ?: "Stream non disponibile"
         throw PlaybackBlockedException(reason)
     }
 
     private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
-        if (preferMp4Audio) return resolveAudioResilient(track, errors)
-        return coroutineScope {
-            val winner = CompletableDeferred<Track?>()
-            val innerTubeJob = launch {
-                val stream = runCatching { hedgedInnerTube(track, errors, false) }.getOrNull()
-                if (stream != null) winner.complete(track.withDirectStream(stream))
+        val extractorResult = runCatching { resolveWithLevyraExtractor(track, preferMp4Audio) }
+        extractorResult.onSuccess { return it }
+            .onFailure { error ->
+                error.message?.takeIf { it.isNotBlank() }
+                    ?.let { errors += "LevyraExtractor: $it" }
             }
-            val extractorJob = launch {
-                delay(extractorBudgetMs)
-                if (winner.isCompleted) return@launch
-                val resolved = runCatching { resolveWithLevyraExtractor(track, false) }
-                resolved.onSuccess { winner.complete(it) }
-                    .onFailure { error ->
-                        error.message?.takeIf { it.isNotBlank() }
-                            ?.let { errors += "LevyraExtractor: $it" }
-                    }
-            }
-            launch {
-                innerTubeJob.join()
-                extractorJob.join()
-                winner.complete(null)
-            }
-            val result = winner.await()
-            coroutineContext.cancelChildren()
-            result
+
+        val stream = if (preferMp4Audio) {
+            runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
+        } else {
+            runCatching { hedgedInnerTube(track, errors, false) }.getOrNull()
         }
+        return stream?.let { track.withDirectStream(it) }
     }
 
-    private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? = coroutineScope {
-        val winner = CompletableDeferred<Track?>()
-        val innerTubeJob = launch {
-            val stream = runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
-            if (stream != null) winner.complete(track.withDirectStream(stream))
-        }
-        val extractorJob = launch {
-            val resolved = runCatching { resolveWithLevyraExtractor(track, true) }
-            resolved.onSuccess { winner.complete(it) }
-                .onFailure { error ->
-                    error.message?.takeIf { it.isNotBlank() }
-                        ?.let { errors += "LevyraExtractor: $it" }
-                }
-        }
-        launch {
-            innerTubeJob.join()
-            extractorJob.join()
-            winner.complete(null)
-        }
-        val result = winner.await()
-        coroutineContext.cancelChildren()
-        result
+    private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? {
+        return resolveAudioFast(track, errors, true)
     }
 
     private suspend fun resolveAudioWithSearchFallback(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
