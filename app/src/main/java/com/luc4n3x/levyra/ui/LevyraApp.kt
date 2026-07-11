@@ -158,6 +158,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -2427,9 +2428,11 @@ private fun QueueOverlay(
             if (state.queue.isEmpty()) {
                 item { Text(strings.queueEmpty, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
             } else {
-                itemsIndexed(state.queue, key = { index, track -> "q-$index-${track.id}" }) { index, track ->
+                itemsIndexed(state.queue, key = { _, track -> "q-${System.identityHashCode(track)}-${track.id}-${track.videoUrl}" }) { index, track ->
                     val isCurrent = index == state.queueCurrentIndex
-                    var dragDistance by remember(index, track.id) { mutableFloatStateOf(0f) }
+                    var dragDistance by remember(track) { mutableFloatStateOf(0f) }
+                    val latestQueue by rememberUpdatedState(state.queue)
+                    val latestMove by rememberUpdatedState(onMove)
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
@@ -2450,22 +2453,32 @@ private fun QueueOverlay(
                                 tint = LevyraMuted,
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .pointerInput(index, state.queue.size) {
+                                    .pointerInput(track) {
+                                        var dragIndex = index
                                         detectDragGesturesAfterLongPress(
-                                            onDragStart = { dragDistance = 0f },
+                                            onDragStart = {
+                                                dragDistance = 0f
+                                                dragIndex = latestQueue.indexOfFirst { it === track }
+                                                    .takeIf { it >= 0 }
+                                                    ?: latestQueue.indexOf(track).takeIf { it >= 0 }
+                                                    ?: index
+                                            },
                                             onDragCancel = { dragDistance = 0f },
                                             onDragEnd = { dragDistance = 0f },
                                             onDrag = { change, amount ->
                                                 change.consume()
                                                 dragDistance += amount.y
                                                 val threshold = 46.dp.toPx()
+                                                val lastIndex = latestQueue.lastIndex
                                                 when {
-                                                    dragDistance > threshold && index < state.queue.lastIndex -> {
-                                                        onMove(index, index + 1)
+                                                    dragDistance > threshold && dragIndex < lastIndex -> {
+                                                        latestMove(dragIndex, dragIndex + 1)
+                                                        dragIndex += 1
                                                         dragDistance = 0f
                                                     }
-                                                    dragDistance < -threshold && index > 0 -> {
-                                                        onMove(index, index - 1)
+                                                    dragDistance < -threshold && dragIndex > 0 -> {
+                                                        latestMove(dragIndex, dragIndex - 1)
+                                                        dragIndex -= 1
                                                         dragDistance = 0f
                                                     }
                                                 }
