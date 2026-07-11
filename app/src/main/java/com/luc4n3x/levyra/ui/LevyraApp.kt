@@ -45,7 +45,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -5222,13 +5221,7 @@ private fun RecentSearchesRow(
                 Column(
                     modifier = Modifier
                         .width(140.dp)
-                        .combinedClickable(
-                            onClick = { onTrackClick(track) },
-                            onLongClick = {
-                                onRemove(track)
-                                Toast.makeText(context, "Rimossa dalle ricerche recenti", Toast.LENGTH_SHORT).show()
-                            }
-                        ),
+                        .clickable { onTrackClick(track) },
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Box(
