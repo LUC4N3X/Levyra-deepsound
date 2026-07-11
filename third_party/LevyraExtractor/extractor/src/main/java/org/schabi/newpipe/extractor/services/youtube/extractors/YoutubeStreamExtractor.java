@@ -1848,50 +1848,70 @@ public class YoutubeStreamExtractor extends StreamExtractor {
     @Override
     public void onFetchPage(@Nonnull final Downloader downloader)
             throws IOException, ExtractionException {
-        NewPipe.checkWebViewAvailable();
-
         final String videoId = getId();
         final Localization localization = new Localization("en");
         final ContentCountry contentCountry = getExtractorContentCountry();
 
         resetFetchState();
 
-        final CancellableCall webPageCall = YoutubeParsingHelper.getWebPlayerResponse(
-                localization, contentCountry, videoId, this);
-        final CancellableCall androidCall = fetchAndroidVRJsonPlayer(
-                contentCountry, localization, videoId);
-        final CancellableCall safariCall = fetchSafariJsonPlayer(
-                contentCountry, localization, videoId);
-        final CancellableCall tvHtml5Call = fetchTvHtml5EmbedJsonPlayer(
-                contentCountry, localization, videoId);
+        CancellableCall androidCall = null;
+        CancellableCall safariCall = null;
+        CancellableCall tvHtml5Call = null;
+        CancellableCall webPageCall = null;
+        CancellableCall nextDataCall = null;
 
-        final byte[] body = JsonWriter.string(
-                prepareDesktopJsonBuilder(getExtractorLocalization(), contentCountry)
-                        .value(VIDEO_ID, videoId)
-                        .value(CONTENT_CHECK_OK, true)
-                        .value(RACY_CHECK_OK, true)
-                        .done())
-                .getBytes(StandardCharsets.UTF_8);
-        final CancellableCall nextDataCall = getJsonPostResponseAsync(
-                NEXT,
-                body,
-                localization,
-                new Downloader.AsyncCallback() {
-                    @Override
-                    public void onSuccess(final Response response) {
-                        try {
-                            nextResponse = JsonUtils.toJsonObject(
-                                    getValidJsonResponseBody(response));
-                        } catch (final Exception error) {
+        try {
+            androidCall = fetchAndroidVRJsonPlayer(contentCountry, localization, videoId);
+        } catch (final Exception error) {
+            addError(error);
+        }
+        try {
+            safariCall = fetchSafariJsonPlayer(contentCountry, localization, videoId);
+        } catch (final Exception error) {
+            addError(error);
+        }
+        try {
+            tvHtml5Call = fetchTvHtml5EmbedJsonPlayer(contentCountry, localization, videoId);
+        } catch (final Exception error) {
+            addError(error);
+        }
+        try {
+            webPageCall = YoutubeParsingHelper.getWebPlayerResponse(
+                    localization, contentCountry, videoId, this);
+        } catch (final Exception error) {
+            addError(error);
+        }
+        try {
+            final byte[] body = JsonWriter.string(
+                    prepareDesktopJsonBuilder(getExtractorLocalization(), contentCountry)
+                            .value(VIDEO_ID, videoId)
+                            .value(CONTENT_CHECK_OK, true)
+                            .value(RACY_CHECK_OK, true)
+                            .done())
+                    .getBytes(StandardCharsets.UTF_8);
+            nextDataCall = getJsonPostResponseAsync(
+                    NEXT,
+                    body,
+                    localization,
+                    new Downloader.AsyncCallback() {
+                        @Override
+                        public void onSuccess(final Response response) {
+                            try {
+                                nextResponse = JsonUtils.toJsonObject(
+                                        getValidJsonResponseBody(response));
+                            } catch (final Exception error) {
+                                addError(error);
+                            }
+                        }
+
+                        @Override
+                        public void onError(final Exception error) {
                             addError(error);
                         }
-                    }
-
-                    @Override
-                    public void onError(final Exception error) {
-                        addError(error);
-                    }
-                });
+                    });
+        } catch (final Exception error) {
+            addError(error);
+        }
 
         if (ServiceList.YouTube.isFetchDislike()) {
             downloader.getAsync(
@@ -2434,14 +2454,19 @@ public class YoutubeStreamExtractor extends StreamExtractor {
         headers.put("Content-Type", singletonList("application/json"));
         headers.put("User-Agent", singletonList(getAndroidUserAgent(localization)));
         headers.put("X-Goog-Api-Format-Version", singletonList("2"));
-        final String visitorData = getVisitorDataFromInnertube(
-                requestInfo,
-                localization,
-                contentCountry,
-                headers,
-                YOUTUBEI_V1_GAPIS_URL,
-                null,
-                false);
+        String visitorData = EMPTY_STRING;
+        try {
+            visitorData = getVisitorDataFromInnertube(
+                    requestInfo,
+                    localization,
+                    contentCountry,
+                    headers,
+                    YOUTUBEI_V1_GAPIS_URL,
+                    null,
+                    false);
+        } catch (final Exception error) {
+            addError(error);
+        }
         final byte[] body = JsonWriter.string(
                         prepareAndroidVRJsonBuilder(localization, contentCountry, visitorData)
                                 .value(VIDEO_ID, videoId)
