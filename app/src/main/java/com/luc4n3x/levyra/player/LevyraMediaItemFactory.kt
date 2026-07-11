@@ -52,7 +52,7 @@ object LevyraMediaItemFactory {
         val clean = url.substringBefore('#').lowercase()
         val path = clean.substringBefore('?')
         return when {
-            path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") -> "application/x-mpegURL"
+            path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") || clean.contains("mime=application/vnd.apple.mpegurl") || clean.contains("type=application%2fx-mpegurl") -> "application/x-mpegURL"
             path.endsWith(".mpd") -> "application/dash+xml"
             path.endsWith(".webm") || clean.contains("mime=audio%2fwebm") || clean.contains("mime=audio/webm") -> "audio/webm"
             path.endsWith(".mp3") || clean.contains("mime=audio%2fmpeg") || clean.contains("mime=audio/mpeg") -> "audio/mpeg"
