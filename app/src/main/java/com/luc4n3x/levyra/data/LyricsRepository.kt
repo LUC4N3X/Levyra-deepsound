@@ -19,7 +19,9 @@ import java.security.MessageDigest
 import java.util.Locale
 
 class LyricsRepository(context: Context? = null) {
-    private val cacheDir = context?.applicationContext?.cacheDir?.let { File(it, "lyrics_pro") }
+    private val appContext = context?.applicationContext
+    private val cacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
+    private val youtubeTranscript = appContext?.let(::YoutubeTranscriptLyricsProvider)
     private val memory = LinkedHashMap<String, LyricsResult>()
 
     data class LyricsResult(
@@ -30,11 +32,18 @@ class LyricsRepository(context: Context? = null) {
         val cached: Boolean
     )
 
-    suspend fun fetch(title: String, artist: String, durationSec: Long): LyricsResult? = withContext(Dispatchers.IO) {
+    suspend fun fetch(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        videoId: String = "",
+        languageCode: String = "",
+        translate: Boolean = false
+    ): LyricsResult? = withContext(Dispatchers.IO) {
         val cleanTitle = cleanTitle(title)
         val cleanArtist = cleanArtist(artist)
         if (cleanTitle.length < 2 || cleanArtist.length < 2) return@withContext null
-        val key = cacheKey(cleanTitle, cleanArtist, durationSec)
+        val key = cacheKey(cleanTitle, cleanArtist, durationSec, languageCode, translate)
         memory[key]?.let { return@withContext it.copy(cached = true) }
         readCache(key)?.let { cached ->
             memory[key] = cached
@@ -49,12 +58,32 @@ class LyricsRepository(context: Context? = null) {
         runCatching { searchLrcLib(cleanTitle, cleanArtist) }
             .getOrDefault(emptyList())
             .let { candidates += it }
+        if (videoId.isNotBlank()) {
+            runCatching { youtubeTranscript?.fetch(videoId, languageCode, translate) }
+                .getOrNull()
+                ?.takeIf { it.lines.isNotEmpty() }
+                ?.let { transcript ->
+                    val provider = buildString {
+                        append("YouTube Transcript")
+                        if (transcript.automatic) append(" Auto")
+                        append(" · ").append(transcript.sourceLanguage)
+                        if (transcript.translated) append(" → ").append(languageCode)
+                    }
+                    candidates += LyricsCandidate(
+                        result = LyricsResult(true, transcript.lines, provider, if (transcript.automatic) 72 else 82, false),
+                        title = cleanTitle,
+                        artist = cleanArtist,
+                        durationSec = durationSec
+                    )
+                }
+        }
         if (candidates.none { it.result.lines.isNotEmpty() }) {
             runCatching { lyricsOvh(cleanTitle, cleanArtist) }
                 .getOrNull()
                 ?.let { candidates += it }
         }
         val best = LyricsResultRanker.best(candidates, LyricsRequest(cleanTitle, cleanArtist, durationSec))
+            ?.let { normalizeTiming(it, durationSec) }
         if (best != null) {
             val stable = best.copy(cached = false)
             memory[key] = stable
@@ -230,9 +259,42 @@ class LyricsRepository(context: Context? = null) {
         return clean.length >= 16 && !clean.equals("null", ignoreCase = true)
     }
 
-    private fun cacheKey(title: String, artist: String, durationSec: Long): String {
-        val seed = "${title.cleanComparable()}|${artist.cleanComparable()}|${durationSec.coerceAtLeast(0L) / 10L}"
+    private fun cacheKey(title: String, artist: String, durationSec: Long, languageCode: String, translate: Boolean): String {
+        val seed = "${title.cleanComparable()}|${artist.cleanComparable()}|${durationSec.coerceAtLeast(0L) / 10L}|${languageCode.lowercase(Locale.ROOT)}|$translate"
         return MessageDigest.getInstance("SHA-256").digest(seed.toByteArray(StandardCharsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    }
+
+    private fun normalizeTiming(result: LyricsResult, durationSec: Long): LyricsResult {
+        val durationMs = durationSec.coerceAtLeast(0L) * 1_000L
+        if (durationMs <= 0L || result.lines.isEmpty()) return result
+        val sorted = result.lines.sortedBy { it.startMs }
+        val lastEnd = sorted.maxOfOrNull { it.endMs } ?: return result
+        if (lastEnd <= 0L) return result
+        val ratio = durationMs.toDouble() / lastEnd.toDouble()
+        val shouldScale = ratio in 0.82..1.18 && kotlin.math.abs(durationMs - lastEnd) >= 3_000L
+        val scaled = if (shouldScale) {
+            sorted.map { line ->
+                line.copy(
+                    startMs = (line.startMs * ratio).toLong().coerceAtLeast(0L),
+                    endMs = (line.endMs * ratio).toLong().coerceAtMost(durationMs),
+                    words = line.words.map { word ->
+                        word.copy(
+                            startMs = (word.startMs * ratio).toLong().coerceAtLeast(0L),
+                            endMs = (word.endMs * ratio).toLong().coerceAtMost(durationMs)
+                        )
+                    }
+                )
+            }
+        } else {
+            sorted
+        }
+        val corrected = scaled.mapIndexed { index, line ->
+            val nextStart = scaled.getOrNull(index + 1)?.startMs
+            val safeEnd = nextStart?.minus(60L)?.coerceAtLeast(line.startMs + 350L)
+                ?: line.endMs.coerceAtMost(durationMs).coerceAtLeast(line.startMs + 350L)
+            line.copy(endMs = safeEnd.coerceAtMost(durationMs))
+        }
+        return result.copy(lines = corrected)
     }
 
     private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")

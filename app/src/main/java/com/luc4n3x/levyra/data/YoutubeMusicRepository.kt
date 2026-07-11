@@ -531,6 +531,116 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         }.orEmpty()
     }
 
+    suspend fun radio(
+        seed: Track,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        limit: Int = 20
+    ): List<Track> = withContext(Dispatchers.IO) {
+        val videoId = seed.id.takeIf { it.isNotBlank() && !it.contains("://") }
+            ?: extractVideoId(seed.videoUrl)
+        if (videoId.isBlank()) return@withContext emptyList()
+        val root = runCatching { requestRadioRoot(videoId, languageCode) }.getOrNull()
+        val tracks = LinkedHashMap<String, Track>()
+        if (root != null) {
+            val panelRenderers = mutableListOf<JSONObject>()
+            collectObjectsByKey(root, "playlistPanelVideoRenderer", panelRenderers)
+            panelRenderers.forEach { renderer ->
+                parsePlaylistPanelTrack(renderer, seed)?.let { track ->
+                    if (track.id != videoId && !tracks.containsKey(track.id)) tracks[track.id] = track
+                }
+            }
+            val responsive = mutableListOf<JSONObject>()
+            collectObjectsByKey(root, "musicResponsiveListItemRenderer", responsive)
+            responsive.forEach { renderer ->
+                parseMusicRenderer(renderer, "radio ${seed.artist} ${seed.title}")?.let { track ->
+                    if (track.id != videoId && !tracks.containsKey(track.id)) tracks[track.id] = track
+                }
+            }
+        }
+        if (tracks.isEmpty()) {
+            search("${seed.artist} ${seed.title} radio", limit + 4, languageCode)
+                .filter { it.id != videoId }
+                .filterNot { candidate ->
+                    val blob = "${candidate.title} ${candidate.artist}".lowercase()
+                    listOf("karaoke", "reaction", "nightcore", "slowed", "sped up").any(blob::contains)
+                }
+                .forEach { candidate -> if (!tracks.containsKey(candidate.id)) tracks[candidate.id] = candidate }
+        }
+        tracks.values.take(limit.coerceIn(1, 30)).also { items -> items.forEach { memory[it.id] = it } }
+    }
+
+    private fun requestRadioRoot(videoId: String, languageCode: String): JSONObject? {
+        val endpoint = "https://music.youtube.com/youtubei/v1/next?key=$apiKey&prettyPrint=false"
+        val body = JSONObject()
+            .put("context", JSONObject().put("client", clientPayload(languageCode)))
+            .put("videoId", videoId)
+            .put("playlistId", "RDAMVM$videoId")
+            .put("isAudioOnly", true)
+            .put("enablePersistentPlaylistPanel", true)
+            .toString()
+        val bytes = body.toByteArray(StandardCharsets.UTF_8)
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 8_000
+            readTimeout = 12_000
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Origin", "https://music.youtube.com")
+            setRequestProperty("Referer", "https://music.youtube.com/watch?v=$videoId")
+            setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36")
+            setRequestProperty("X-Youtube-Client-Name", "67")
+            setRequestProperty("X-Youtube-Client-Version", clientVersion)
+            GoogleApiKeyHeaders.applyTo(this, context)
+            setRequestProperty("Content-Length", bytes.size.toString())
+        }
+        return try {
+            connection.outputStream.use { it.write(bytes) }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val response = BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { it.readText() }
+            if (code !in 200..299 || response.isBlank()) null else JSONObject(response)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun parsePlaylistPanelTrack(renderer: JSONObject, seed: Track): Track? {
+        val videoId = renderer.optString("videoId")
+            .ifBlank { renderer.optJSONObject("navigationEndpoint")?.optJSONObject("watchEndpoint")?.optString("videoId").orEmpty() }
+        if (videoId.isBlank()) return null
+        val title = renderer.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
+        if (title.isBlank()) return null
+        val byline = renderer.optJSONObject("longBylineText")?.optJSONArray("runs")?.joinText().orEmpty()
+        val tokens = byline.split(" • ", " · ").map { it.trim() }.filter { it.isNotBlank() }
+        val artist = tokens.firstOrNull().orEmpty().ifBlank { seed.artist.ifBlank { "YouTube Music" } }
+        val album = tokens.drop(1).firstOrNull().orEmpty().ifBlank { "YouTube Music Radio" }
+        val durationText = renderer.optJSONObject("lengthText")?.optString("simpleText").orEmpty()
+        val durationMs = parseDurationMs(durationText)
+        val thumbnail = findBestThumbnail(renderer)
+        return buildTrack(
+            id = videoId,
+            title = title,
+            artist = artist,
+            album = album,
+            durationMs = durationMs,
+            thumbnailUrl = thumbnail,
+            largeThumbnailUrl = upgradeThumbnail(thumbnail),
+            videoUrl = "https://www.youtube.com/watch?v=$videoId",
+            query = "radio ${seed.artist} ${seed.title}",
+            source = "YouTube Music Radio"
+        )
+    }
+
+    private fun parseDurationMs(value: String): Long {
+        val parts = value.trim().split(":").mapNotNull { it.toLongOrNull() }
+        return when (parts.size) {
+            2 -> (parts[0] * 60L + parts[1]) * 1_000L
+            3 -> (parts[0] * 3_600L + parts[1] * 60L + parts[2]) * 1_000L
+            else -> 0L
+        }
+    }
+
     fun searchSuggestions(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<String> {
         if (query.isBlank()) return emptyList()
         val locale = LevyraContentLocales.forLanguage(languageCode)
