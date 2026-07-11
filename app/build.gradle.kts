@@ -180,6 +180,13 @@ kotlin {
     jvmToolchain(17)
 }
 
+ruler {
+    abi.set("arm64-v8a")
+    locale.set("it")
+    screenDensity.set(480)
+    sdkVersion.set(35)
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
