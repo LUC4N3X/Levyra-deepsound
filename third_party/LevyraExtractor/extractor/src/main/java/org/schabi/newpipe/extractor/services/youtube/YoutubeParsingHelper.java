@@ -544,12 +544,70 @@ YoutubeParsingHelper {
     }
 
     private static JsonObject getInitialData(final String html) throws ParsingException {
+        final String[] markers = {
+                "window[\"ytInitialData\"]",
+                "window['ytInitialData']",
+                "var ytInitialData",
+                "let ytInitialData",
+                "const ytInitialData",
+                "ytInitialData"
+        };
+        for (final String marker : markers) {
+            final int markerIndex = html.indexOf(marker);
+            if (markerIndex < 0) {
+                continue;
+            }
+            final int objectStart = html.indexOf('{', markerIndex + marker.length());
+            if (objectStart < 0) {
+                continue;
+            }
+            final String json = extractBalancedJsonObject(html, objectStart);
+            if (json == null) {
+                continue;
+            }
+            try {
+                return JsonParser.object().from(json);
+            } catch (final JsonParserException ignored) {
+            }
+        }
         try {
-            return JsonParser.object().from(getStringResultFromRegexArray(html,
-                    INITIAL_DATA_REGEXES, 1));
+            return JsonParser.object().from(getStringResultFromRegexArray(
+                    html, INITIAL_DATA_REGEXES, 1));
         } catch (final JsonParserException | Parser.RegexException e) {
             throw new ParsingException("Could not get ytInitialData", e);
         }
+    }
+
+    @Nullable
+    private static String extractBalancedJsonObject(@Nonnull final String input,
+                                                    final int objectStart) {
+        int depth = 0;
+        boolean inString = false;
+        boolean escaped = false;
+        for (int i = objectStart; i < input.length(); i++) {
+            final char current = input.charAt(i);
+            if (inString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (current == '\\') {
+                    escaped = true;
+                } else if (current == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (current == '"') {
+                inString = true;
+            } else if (current == '{') {
+                depth++;
+            } else if (current == '}') {
+                depth--;
+                if (depth == 0) {
+                    return input.substring(objectStart, i + 1);
+                }
+            }
+        }
+        return null;
     }
 
     public static boolean isHardcodedClientVersionValid()
@@ -621,46 +679,49 @@ YoutubeParsingHelper {
 
     private static void extractClientVersionFromHtmlSearchResultsPage()
             throws IOException, ExtractionException {
-        // Don't extract the InnerTube client version if it has been already extracted
         if (clientVersionExtracted) {
             return;
         }
 
-        // Don't provide a search term in order to have a smaller response
         final String url = "https://www.youtube.com/results?search_query=&ucbcb=1";
         final String html = getDownloader().get(url, getCookieHeader()).responseBody();
-        final JsonObject initialData = getInitialData(html);
-        final JsonArray serviceTrackingParams = initialData.getObject("responseContext")
-                .getArray("serviceTrackingParams");
 
-        // Try to get version from initial data first
-        final Stream<JsonObject> serviceTrackingParamsStream = serviceTrackingParams.stream()
-                .filter(JsonObject.class::isInstance)
-                .map(JsonObject.class::cast);
+        try {
+            clientVersion = getStringResultFromRegexArray(
+                    html, INNERTUBE_CONTEXT_CLIENT_VERSION_REGEXES, 1);
+        } catch (final Parser.RegexException ignored) {
+        }
+        if (!isNullOrEmpty(clientVersion)) {
+            clientVersionExtracted = true;
+            return;
+        }
 
-        clientVersion = getClientVersionFromServiceTrackingParam(
-                serviceTrackingParamsStream, "CSI", "cver");
+        JsonObject initialData = null;
+        try {
+            initialData = getInitialData(html);
+        } catch (final ParsingException ignored) {
+        }
+        if (initialData != null) {
+            final List<JsonObject> serviceTrackingParams = initialData
+                    .getObject("responseContext")
+                    .getArray("serviceTrackingParams")
+                    .stream()
+                    .filter(JsonObject.class::isInstance)
+                    .map(JsonObject.class::cast)
+                    .collect(Collectors.toList());
 
-        if (clientVersion == null) {
-            try {
-                clientVersion = getStringResultFromRegexArray(html,
-                        INNERTUBE_CONTEXT_CLIENT_VERSION_REGEXES, 1);
-            } catch (final Parser.RegexException ignored) {
+            clientVersion = getClientVersionFromServiceTrackingParam(
+                    serviceTrackingParams.stream(), "CSI", "cver");
+            if (isNullOrEmpty(clientVersion)) {
+                clientVersion = getClientVersionFromServiceTrackingParam(
+                        serviceTrackingParams.stream(), "ECATCHER", "client.version");
             }
         }
 
-        // Fallback to get a shortened client version which does not contain the last two
-        // digits
         if (isNullOrEmpty(clientVersion)) {
-            clientVersion = getClientVersionFromServiceTrackingParam(
-                    serviceTrackingParamsStream, "ECATCHER", "client.version");
-        }
-
-        if (clientVersion == null) {
             throw new ParsingException(
                     "Could not extract YouTube WEB InnerTube client version from HTML search results page");
         }
-
         clientVersionExtracted = true;
     }
 
@@ -687,31 +748,40 @@ YoutubeParsingHelper {
     /**
      * Get the client version used by YouTube website on InnerTube requests.
      */
-    public static String getClientVersion() throws IOException, ExtractionException {
+    public static synchronized String getClientVersion()
+            throws IOException, ExtractionException {
         if (!isNullOrEmpty(clientVersion)) {
             return clientVersion;
         }
 
-        // Always extract the latest client version, by trying first to extract it from the
-        // JavaScript service worker, then from HTML search results page as a fallback, to prevent
-        // fingerprinting based on the client version used
         try {
             extractClientVersionFromSwJs();
-        } catch (final Exception e) {
+        } catch (final Exception ignored) {
+        }
+        if (!isNullOrEmpty(clientVersion)) {
+            return clientVersion;
+        }
+
+        try {
             extractClientVersionFromHtmlSearchResultsPage();
+        } catch (final Exception ignored) {
         }
-
-        if (clientVersionExtracted) {
+        if (!isNullOrEmpty(clientVersion)) {
             return clientVersion;
         }
 
-        // Fallback to the hardcoded one if it is valid
-        if (isHardcodedClientVersionValid()) {
-            clientVersion = WEB_HARDCODED_CLIENT_VERSION;
-            return clientVersion;
+        try {
+            if (isHardcodedClientVersionValid()) {
+                clientVersion = WEB_HARDCODED_CLIENT_VERSION;
+                clientVersionExtracted = true;
+                return clientVersion;
+            }
+        } catch (final Exception ignored) {
         }
 
-        throw new ExtractionException("Could not get YouTube WEB client version");
+        clientVersion = WEB_HARDCODED_CLIENT_VERSION;
+        clientVersionExtracted = true;
+        return clientVersion;
     }
 
     /**
