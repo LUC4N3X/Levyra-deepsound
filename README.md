@@ -224,8 +224,8 @@ docs/PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md
 ### Version Control & CI overrides
 The application's version numbering is centralized inside `gradle.properties`:
 ```properties
-levyraVersionName=2.3.5
-levyraVersionCode=2030500
+levyraVersionName=2.3.6
+levyraVersionCode=2030600
 ```
 *Version code logic is calculated sequentially to prevent duplicate deployment IDs:*
 `versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`
