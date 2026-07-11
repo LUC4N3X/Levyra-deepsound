@@ -13,9 +13,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadEntity::class,
         PlaylistEntity::class,
         PlaylistTrackEntity::class,
-        ListenEventEntity::class
+        ListenEventEntity::class,
+        PlaybackQueueItemEntity::class,
+        PlaybackQueueStateEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -23,6 +25,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun downloadedTracksDao(): DownloadedTracksDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun listenEventsDao(): ListenEventsDao
+    abstract fun playbackQueueDao(): PlaybackQueueDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -97,6 +100,38 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS playback_queue_items (
+                        position INTEGER NOT NULL PRIMARY KEY,
+                        payload TEXT NOT NULL,
+                        identity TEXT NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS playback_queue_state (
+                        singletonId INTEGER NOT NULL PRIMARY KEY,
+                        currentIndex INTEGER NOT NULL,
+                        positionMs INTEGER NOT NULL,
+                        shuffleEnabled INTEGER NOT NULL,
+                        shuffleOrder TEXT NOT NULL,
+                        shuffleCursor INTEGER NOT NULL,
+                        history TEXT NOT NULL,
+                        repeatMode TEXT NOT NULL,
+                        radioEnabled INTEGER NOT NULL,
+                        generation INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -105,7 +140,7 @@ abstract class LevyraDatabase : RoomDatabase() {
                     "levyra.db"
                 )
                     // Migrazioni versionate: i dati utente sopravvivono agli aggiornamenti.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }
