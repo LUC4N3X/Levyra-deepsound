@@ -52,6 +52,7 @@ data class LevyraPreferencesSnapshot(
     val recentSearches: List<Track>,
     val personalOrbitTracks: List<Track>,
     val audioNormalization: Boolean,
+    val lyricsTranslationEnabled: Boolean,
     val themePreset: String,
     val audioSettings: LevyraAudioSettings
 )
@@ -120,6 +121,12 @@ class LevyraPreferences(context: Context) {
 
     fun setAudioNormalization(value: Boolean) {
         write { it[KEY_AUDIO_NORMALIZATION] = value }
+    }
+
+    fun lyricsTranslationEnabled(): Boolean = read(false) { it[KEY_LYRICS_TRANSLATION] ?: false }
+
+    fun setLyricsTranslationEnabled(value: Boolean) {
+        write { it[KEY_LYRICS_TRANSLATION] = value }
     }
 
     fun audioSettings(): LevyraAudioSettings = read(LevyraAudioSettings()) { audioSettingsFrom(it) }
@@ -281,6 +288,7 @@ class LevyraPreferences(context: Context) {
             recentSearches = parseTrackList(preferences[KEY_RECENT_SEARCHES].orEmpty()),
             personalOrbitTracks = parseTrackList(localizedOrbit),
             audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false,
+            lyricsTranslationEnabled = preferences[KEY_LYRICS_TRANSLATION] ?: false,
             themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty()),
             audioSettings = audioSettingsFrom(preferences)
         )
@@ -302,6 +310,7 @@ class LevyraPreferences(context: Context) {
         recentSearches = emptyList(),
         personalOrbitTracks = emptyList(),
         audioNormalization = false,
+        lyricsTranslationEnabled = false,
         themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC,
         audioSettings = LevyraAudioSettings()
     )
@@ -436,6 +445,7 @@ class LevyraPreferences(context: Context) {
         val KEY_PERSONAL_ORBIT_TRACKS = stringPreferencesKey("personal_orbit_tracks")
         val KEY_DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
         val KEY_AUDIO_NORMALIZATION = booleanPreferencesKey("audio_normalization")
+        val KEY_LYRICS_TRANSLATION = booleanPreferencesKey("lyrics_translation_enabled")
         val KEY_THEME_PRESET = stringPreferencesKey("theme_preset")
         val KEY_AUDIO_EQ_ENABLED = booleanPreferencesKey("audio_equalizer_enabled")
         val KEY_AUDIO_EQ_PRESET = stringPreferencesKey("audio_equalizer_preset")
