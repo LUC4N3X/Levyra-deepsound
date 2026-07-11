@@ -36,7 +36,10 @@ class LevyraPlayer(context: Context) {
 
     init {
         controllerFuture.addListener({
-            val connected = controllerFuture.get()
+            val connected = runCatching { controllerFuture.get() }.getOrElse { error ->
+                onError?.invoke(error.message?.takeIf { it.isNotBlank() } ?: "Servizio di riproduzione non disponibile")
+                return@addListener
+            }
             controller = connected
             connected.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
