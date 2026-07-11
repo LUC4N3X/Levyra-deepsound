@@ -9478,22 +9478,37 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             }
 
             item {
+                ExploreSearchBar(modifier = Modifier.padding(horizontal = 20.dp))
+            }
+
+            item {
                 Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
                     ExploreSectionHeader(
                         title = strings.exploreZones,
                         value = zones.size.toString(),
                         modifier = Modifier.padding(horizontal = 20.dp)
                     )
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    val chunkedZones = zones.chunked(2)
+                    Column(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(zones, key = { "zone-${it.id}" }) { zone ->
-                            ExploreZoneChip(
-                                zone = zone,
-                                selected = zone.id == selectedZone?.id,
-                                onClick = { viewModel.selectExploreZone(zone) }
-                            )
+                        chunkedZones.forEach { rowZones ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                rowZones.forEach { zone ->
+                                    ExploreZoneCard(
+                                        zone = zone,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = { viewModel.selectExploreZone(zone) }
+                                    )
+                                }
+                                if (rowZones.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
                         }
                     }
                 }
@@ -9707,6 +9722,67 @@ private fun ExploreSectionHeader(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ExploreSearchBar(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .background(LevyraAdaptiveCardDeep, RoundedCornerShape(12.dp))
+            .border(Dp.Hairline, LevyraAdaptiveHairline, RoundedCornerShape(12.dp))
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Search,
+            contentDescription = null,
+            tint = LevyraMuted,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text = "Search songs, artists, podcasts...",
+            color = LevyraMuted,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun ExploreZoneCard(zone: ExploreZone, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val start = Color(zone.accentStart)
+    val end = Color(zone.accentEnd)
+
+    Box(
+        modifier = modifier
+            .height(100.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Brush.linearGradient(listOf(start, end)))
+            .pressable(pressedScale = 0.95f, onClick = onClick)
+    ) {
+        Text(
+            text = zone.label,
+            color = Color.White,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Black,
+            lineHeight = 22.sp,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(14.dp)
+        )
+        
+        Text(
+            text = zone.emoji,
+            fontSize = 42.sp,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 8.dp, y = 8.dp)
+                .graphicsLayer { rotationZ = 25f }
+        )
     }
 }
 
