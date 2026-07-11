@@ -4,6 +4,7 @@ package com.luc4n3x.levyra.ui
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
 import android.content.Intent
@@ -92,6 +93,9 @@ import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.Undo
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Pause
@@ -151,6 +155,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -901,7 +906,7 @@ fun LevyraApp(viewModel: LevyraViewModel) {
             }
 
             AnimatedVisibility(visible = state.showLyrics, enter = overlayEnter, exit = overlayExit) {
-                LyricsOverlay(state = state, onClose = viewModel::closeLyrics)
+                LyricsOverlay(state = state, onTranslation = viewModel::setLyricsTranslationEnabled, onClose = viewModel::closeLyrics)
             }
 
             AnimatedVisibility(visible = state.showAudioQualityPanel, enter = miniEnter, exit = miniExit) {
@@ -940,7 +945,12 @@ fun LevyraApp(viewModel: LevyraViewModel) {
             AnimatedVisibility(visible = state.showQueue, enter = overlayEnter, exit = overlayExit) {
                 QueueOverlay(
                     state = state,
-                    onPlay = { viewModel.playFrom(state.queue, it) },
+                    onPlay = viewModel::playQueueTrack,
+                    onPlayNext = viewModel::playNext,
+                    onRemove = viewModel::removeFromQueue,
+                    onMove = viewModel::moveQueueItem,
+                    onUndo = viewModel::undoQueueRemoval,
+                    onToggleRadio = viewModel::toggleContinuousRadio,
                     onClose = viewModel::closeQueue
                 )
             }
@@ -2340,10 +2350,18 @@ private fun openExternalUrl(context: android.content.Context, url: String) {
 }
 
 @Composable
-private fun QueueOverlay(state: LevyraUiState, onPlay: (Track) -> Unit, onClose: () -> Unit) {
+private fun QueueOverlay(
+    state: LevyraUiState,
+    onPlay: (Track) -> Unit,
+    onPlayNext: (Track) -> Unit,
+    onRemove: (Int) -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onUndo: () -> Unit,
+    onToggleRadio: () -> Unit,
+    onClose: () -> Unit
+) {
     val strings = LocalLevyraStrings.current
     val blocker = remember { MutableInteractionSource() }
-    val currentId = state.currentTrack?.id
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -2365,7 +2383,12 @@ private fun QueueOverlay(state: LevyraUiState, onPlay: (Track) -> Unit, onClose:
                 ) {
                     Column {
                         Text(strings.queue, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                        Text("${state.queue.size} brani", color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "${state.queue.size} brani · ${state.queueHistoryCount} nella cronologia",
+                            color = LevyraMuted,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                     CircleIconButton(
                         icon = Icons.Rounded.Close,
@@ -2375,32 +2398,97 @@ private fun QueueOverlay(state: LevyraUiState, onPlay: (Track) -> Unit, onClose:
                     )
                 }
             }
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(Icons.Rounded.Bolt, null, tint = if (state.radioEnabled) LevyraCyan else LevyraMuted, modifier = Modifier.size(20.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Radio continua", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Text("Aggiunge brani coerenti quando la coda sta finendo", color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Switch(checked = state.radioEnabled, onCheckedChange = { onToggleRadio() })
+                        if (state.queueUndoAvailable) {
+                            IconButton(onClick = onUndo) {
+                                Icon(Icons.Rounded.Undo, "Annulla rimozione", tint = LevyraCyan)
+                            }
+                        }
+                    }
+                }
+            }
             if (state.queue.isEmpty()) {
                 item { Text(strings.queueEmpty, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
             } else {
-                itemsIndexed(state.queue, key = { _, t -> "q-${t.id}" }) { index, track ->
-                    val isCurrent = track.id == currentId
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .pressable(onClick = { onPlay(track) }),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                itemsIndexed(state.queue, key = { index, track -> "q-$index-${track.id}" }) { index, track ->
+                    val isCurrent = index == state.queueCurrentIndex
+                    var dragDistance by remember(index, track.id) { mutableFloatStateOf(0f) }
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = if (isCurrent) LevyraCyan.copy(alpha = 0.09f) else Color.White.copy(alpha = 0.035f),
+                        border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.055f))
                     ) {
-                        Text(
-                            text = "${index + 1}",
-                            color = if (isCurrent) LevyraCyan else LevyraMuted,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.size(22.dp),
-                            textAlign = TextAlign.Center
-                        )
-                        CoverImage(track, Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)))
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .pressable(onClick = { onPlay(track) })
+                                .padding(horizontal = 10.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.DragHandle,
+                                "Trascina per riordinare",
+                                tint = LevyraMuted,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .pointerInput(index, state.queue.size) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = { dragDistance = 0f },
+                                            onDragCancel = { dragDistance = 0f },
+                                            onDragEnd = { dragDistance = 0f },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragDistance += amount.y
+                                                val threshold = 46.dp.toPx()
+                                                when {
+                                                    dragDistance > threshold && index < state.queue.lastIndex -> {
+                                                        onMove(index, index + 1)
+                                                        dragDistance = 0f
+                                                    }
+                                                    dragDistance < -threshold && index > 0 -> {
+                                                        onMove(index, index - 1)
+                                                        dragDistance = 0f
+                                                    }
+                                                }
+                                            }
+                                        )
+                                    }
+                            )
+                            CoverImage(track, Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)))
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            if (isCurrent) {
+                                Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                            } else {
+                                IconButton(onClick = { onPlayNext(track) }, modifier = Modifier.size(34.dp)) {
+                                    Icon(Icons.Rounded.SkipNext, "Riproduci dopo", tint = LevyraText, modifier = Modifier.size(19.dp))
+                                }
+                                IconButton(onClick = { onRemove(index) }, modifier = Modifier.size(34.dp)) {
+                                    Icon(Icons.Rounded.Delete, "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(19.dp))
+                                }
+                            }
                         }
-                        if (isCurrent) Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -2470,7 +2558,7 @@ private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> 
 }
 
 @Composable
-private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
+private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit, onClose: () -> Unit) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
     val accentStart = if (track != null) Color(track.accentStart) else LevyraCyan
@@ -2536,6 +2624,30 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
                     syncedLabel = strings.synced
                 )
             }
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White.copy(alpha = 0.055f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(Icons.Rounded.Translate, null, tint = if (state.lyricsTranslationEnabled) LevyraCyan else LevyraMuted)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Traduzione automatica", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                            Text("Usa le lingue disponibili nei transcript YouTube", color = LevyraMuted, fontSize = 11.sp)
+                        }
+                        Switch(
+                            checked = state.lyricsTranslationEnabled,
+                            onCheckedChange = onTranslation
+                        )
+                    }
+                }
+            }
             if (state.lyrics.isEmpty()) {
                 item { Text(strings.lyricsUnavailable, color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
             } else {
@@ -2564,18 +2676,29 @@ private fun LyricsOverlay(state: LevyraUiState, onClose: () -> Unit) {
                             append(line.text)
                         }
                     }
-                    Text(
-                        text = annotatedLine,
-                        color = lineColor,
-                        fontSize = if (isActive) 28.sp else 22.sp,
-                        lineHeight = if (isActive) 34.sp else 28.sp,
-                        fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
-                        modifier = Modifier.graphicsLayer {
-                            scaleX = if (isActive) 1f else 0.95f
-                            scaleY = if (isActive) 1f else 0.95f
-                            transformOrigin = TransformOrigin(0f, 0.5f)
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(
+                            text = annotatedLine,
+                            color = lineColor,
+                            fontSize = if (isActive) 28.sp else 22.sp,
+                            lineHeight = if (isActive) 34.sp else 28.sp,
+                            fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = if (isActive) 1f else 0.95f
+                                scaleY = if (isActive) 1f else 0.95f
+                                transformOrigin = TransformOrigin(0f, 0.5f)
+                            }
+                        )
+                        if (line.translated.isNotBlank()) {
+                            Text(
+                                text = line.translated,
+                                color = if (isActive) accentEnd.copy(alpha = 0.95f) else LevyraMuted,
+                                fontSize = if (isActive) 17.sp else 15.sp,
+                                lineHeight = 21.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
