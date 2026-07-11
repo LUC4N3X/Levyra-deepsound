@@ -9444,15 +9444,7 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color.Transparent,
-                        CinematicPlum.copy(alpha = 0.18f),
-                        LevyraBlack.copy(alpha = 0.64f)
-                    )
-                )
-            )
+            .background(Color.Transparent)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -9553,32 +9545,32 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
 @Composable
 private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () -> Unit) {
     val start = Color(zone.accentStart)
-    val end = Color(zone.accentEnd)
     Row(
         modifier = Modifier
             .weight(1f)
-            .height(56.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(cinematicGlassBrush(start, end, if (selected) 1.1f else 0.45f))
+            .height(50.dp)
+            .clip(CircleShape)
+            .background(if (selected) Color(0xFF1F1F24) else Color(0xFF0F0F12))
             .border(
-                BorderStroke(Dp.Hairline, if (selected) start.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.08f)),
-                RoundedCornerShape(12.dp)
+                BorderStroke(Dp.Hairline, if (selected) start.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.15f)),
+                CircleShape
             )
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .width(6.dp)
-                .fillMaxHeight()
-                .background(Brush.verticalGradient(listOf(start, end)))
+                .padding(start = 16.dp)
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(start)
         )
         Text(
             zone.label,
-            modifier = Modifier.padding(start = 14.dp, end = 10.dp),
-            color = if (selected) Color.White else LevyraMuted.copy(alpha = 0.94f),
-            fontSize = 15.sp,
-            fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
+            modifier = Modifier.padding(start = 10.dp, end = 16.dp),
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -9605,15 +9597,15 @@ private fun TrackGlassCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(6.dp))
             .clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(140.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(Dp.Hairline, Color.White.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(6.dp))
+                .border(Dp.Hairline, Color.White.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -9687,7 +9679,7 @@ private fun TrackGlassCard(
                 color = Color.White,
                 fontSize = 14.sp,
                 lineHeight = 18.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -9718,7 +9710,7 @@ private fun VideoGlassCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(6.dp))
             .clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -9726,8 +9718,8 @@ private fun VideoGlassCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(12.dp))
-                .border(Dp.Hairline, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(6.dp))
+                .border(Dp.Hairline, Color.White.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
