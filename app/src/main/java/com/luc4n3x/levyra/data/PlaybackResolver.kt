@@ -132,7 +132,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun cached(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
-            if (!isVideoMode && !isDirectAudioUrl(track.streamUrl)) return null
+            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             return if (streamStillFresh(track.streamUrl)) track else null
         }
         val key = cacheKey(track, isVideoMode)
@@ -141,7 +141,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             remove(key)
             return null
         }
-        if (!isVideoMode && !isDirectAudioUrl(hit.track.streamUrl)) {
+        if (!isVideoMode && !isPlayableAudioUrl(hit.track.streamUrl)) {
             remove(key)
             return null
         }
@@ -179,7 +179,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean,
         requestKind: String
     ): Track = coroutineScope {
-        track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) && (isVideoMode || isDirectAudioUrl(it)) }?.let { return@coroutineScope track }
+        track.streamUrl.takeIf { it.isNotBlank() && streamStillFresh(it) && (isVideoMode || isPlayableAudioUrl(it)) }?.let { return@coroutineScope track }
         cached(track, isVideoMode)?.let { return@coroutineScope it }
 
         val key = "${cacheKey(track, isVideoMode)}_$requestKind"
@@ -210,7 +210,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (track.streamUrl.isNotBlank()) {
-            if (!isVideoMode && !isDirectAudioUrl(track.streamUrl)) return null
+            if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             if (streamStillFresh(track.streamUrl)) {
                 store(track, isVideoMode)
                 return track
@@ -233,8 +233,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     val result = runCatching { resolveVideoWithLevyraExtractor(track) }
                     result.onSuccess { winner.complete(it) }
                         .onFailure { error ->
-                            error.message?.takeIf { it.isNotBlank() }
-                                ?.let { errors += "LevyraExtractor video: $it" }
+                            errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
                         }
                 }
                 val innerTubeJob = launch {
@@ -293,8 +292,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val resolved = runCatching { resolveWithLevyraExtractor(track, false) }
                 resolved.onSuccess { winner.complete(it) }
                     .onFailure { error ->
-                        error.message?.takeIf { it.isNotBlank() }
-                            ?.let { errors += "LevyraExtractor: $it" }
+                        errors += "LevyraExtractor: ${error.playbackDiagnostic()}"
                     }
             }
             val innerTubeJob = launch {
@@ -322,8 +320,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val resolved = runCatching { resolveWithLevyraExtractor(track, true) }
             resolved.onSuccess { winner.complete(it) }
                 .onFailure { error ->
-                    error.message?.takeIf { it.isNotBlank() }
-                        ?.let { errors += "LevyraExtractor: $it" }
+                    errors += "LevyraExtractor: ${error.playbackDiagnostic()}"
                 }
         }
         val innerTubeJob = launch {
@@ -348,7 +345,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         for (candidate in candidates) {
             val localErrors = Collections.synchronizedList(mutableListOf<String>())
             val resolved = runCatching { resolveAudioFast(candidate, localErrors, preferMp4Audio) }.getOrNull()
-            if (resolved != null && resolved.streamUrl.isNotBlank() && streamStillFresh(resolved.streamUrl) && isDirectAudioUrl(resolved.streamUrl)) {
+            if (resolved != null && resolved.streamUrl.isNotBlank() && streamStillFresh(resolved.streamUrl) && isPlayableAudioUrl(resolved.streamUrl)) {
                 return track.copy(
                     streamUrl = resolved.streamUrl,
                     videoUrl = resolved.videoUrl.ifBlank { candidate.videoUrl },
@@ -566,7 +563,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val expiresAt = json.optLong("expiresAt", json.optLong("at", 0L) + fallbackTtlMs)
                 val track = json.optJSONObject("track")?.let(TrackJson::fromJson)?.copy(streamUrl = streamUrl)
                 val audioCache = key.contains("_audio_", ignoreCase = true)
-                if (track != null && streamUrl.isNotBlank() && now < expiresAt && streamStillFresh(streamUrl) && (!audioCache || isDirectAudioUrl(streamUrl))) {
+                if (track != null && streamUrl.isNotBlank() && now < expiresAt && streamStillFresh(streamUrl) && (!audioCache || isPlayableAudioUrl(streamUrl))) {
                     streamCache[key] = CachedStream(track, expiresAt)
                 } else {
                     editor.remove(key)
@@ -579,7 +576,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun store(track: Track, isVideoMode: Boolean = false) {
         if (track.streamUrl.isBlank() || !streamStillFresh(track.streamUrl)) return
-        if (!isVideoMode && !isDirectAudioUrl(track.streamUrl)) return
+        if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return
         val key = cacheKey(track, isVideoMode)
         val expiresAt = expiresAtFor(track.streamUrl)
         streamCache[key] = CachedStream(track, expiresAt)
@@ -606,6 +603,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun isDirectAudioUrl(url: String): Boolean {
         if (isLegacyWebmAudioUrl(url) || isHlsManifestUrl(url)) return false
         return true
+    }
+
+    private fun isPlayableAudioUrl(url: String): Boolean {
+        if (url.isBlank() || isLegacyWebmAudioUrl(url)) return false
+        return isDirectAudioUrl(url) || isHlsManifestUrl(url)
     }
 
     private fun isLegacyWebmAudioUrl(url: String): Boolean {
@@ -637,8 +639,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             return false
         }
         if (isVideoMode) return true
+        if (isHlsManifestUrl(stream.url)) {
+            if (!isVerifiedHlsManifest(stream.url)) {
+                errors += "$label: manifest HLS non valido"
+                return false
+            }
+            return true
+        }
         if (!isDirectAudioUrl(stream.url)) {
-            errors += "$label: stream non audio diretto"
+            errors += "$label: stream audio non supportato"
             return false
         }
         if (!verifyDirectAudioUrlFast(stream.url)) {
@@ -884,12 +893,13 @@ class PlaybackResolver private constructor(private val context: Context) {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
-        val url = audio?.content
-            ?: throw IllegalStateException("Nessuno stream audio diretto disponibile per ${track.title}")
+        val hlsUrl = if (preferMp4Audio) null else info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
+        val url = audio?.content ?: hlsUrl
+            ?: throw IllegalStateException("LevyraExtractor non ha restituito stream audio diretti o HLS per ${track.title}")
         val bestThumb = info.thumbnails.maxByOrNull { image ->
             image.width.coerceAtLeast(0) * image.height.coerceAtLeast(0)
         }?.url.orEmpty()
-        val label = streamLabel(audio)
+        val label = audio?.let { streamLabel(it) }.orEmpty()
         val artworkSafe = LevyraPersonalOrbit.preferAlbumArtwork(
             primary = track,
             donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
@@ -897,7 +907,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         return artworkSafe.copy(
             streamUrl = url,
             durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs,
-            source = "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
+            source = if (audio != null) {
+                "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
+            } else {
+                "LevyraExtractor HLS"
+            }
         )
     }
 
@@ -1129,6 +1143,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         return best
     }
+}
+
+private fun Throwable.playbackDiagnostic(): String {
+    val messages = generateSequence(this) { it.cause }
+        .mapNotNull { cause -> cause.message?.trim()?.takeIf { it.isNotBlank() } }
+        .distinct()
+        .toList()
+    return messages.joinToString(" → ").ifBlank { this::class.java.simpleName.ifBlank { "errore sconosciuto" } }
 }
 
 class PlaybackBlockedException(message: String) : IllegalStateException(message)
