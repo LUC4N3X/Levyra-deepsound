@@ -21,7 +21,9 @@ LevyraExtractor is the media extraction layer used by **Levyra**.
 
 It reads metadata, discovers playable audio and video streams, selects suitable formats and gives the app clearer information when a source cannot be resolved.
 
-The project is based on the NewPipe and PipePipe ecosystem, with additional work focused on Levyra's playback needs.
+LevyraExtractor is a fork of [InfinityLoop1308/PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor), with additional work focused on Levyra's playback needs.
+
+It retains the NewPipe and PipePipe extractor foundation while introducing Levyra-specific stream resolution, playback reliability, diagnostics and fallback improvements.
 
 This is an independent downstream project. It is not an official NewPipe, PipePipe, Metrolist, Google or YouTube repository.
 
