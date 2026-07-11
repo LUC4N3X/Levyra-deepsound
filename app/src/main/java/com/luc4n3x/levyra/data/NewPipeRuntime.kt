@@ -1,8 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import okhttp3.Headers
-import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
+import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.downloader.CancellableCall
 import org.schabi.newpipe.extractor.downloader.Downloader
@@ -26,7 +26,7 @@ object NewPipeRuntime {
 }
 
 private class OkHttpNewPipeDownloader : Downloader() {
-    private val client = OkHttpClient.Builder()
+    private val client = LevyraHttpClientFactory.extractor().newBuilder()
         .followRedirects(true)
         .followSslRedirects(true)
         .connectTimeout(8, TimeUnit.SECONDS)
