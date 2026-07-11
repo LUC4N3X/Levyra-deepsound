@@ -9,7 +9,7 @@ media3 = "1.10.1"
 coroutines = "1.11.0"
 coil = "3.5.0"
 okhttp = "5.4.0"
-newpipe = "99f699b"
+newpipe = "v1.0.0-levyra.10"
 desugar = "2.1.5"
 junit = "4.13.2"
 json = "20260522"
@@ -50,7 +50,7 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-brotli = { group = "com.squareup.okhttp3", name = "okhttp-brotli", version.ref = "okhttp" }
-newpipe-extractor = { group = "com.github.luc4n3x", name = "levyraextractor", version.ref = "newpipe" }
+newpipe-extractor = { group = "com.github.LUC4N3X.LevyraExtractor", name = "extractor", version.ref = "newpipe" }
 desugar-jdk-libs-nio = { group = "com.android.tools", name = "desugar_jdk_libs_nio", version.ref = "desugar" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 json = { group = "org.json", name = "json", version.ref = "json" }
