@@ -13,8 +13,17 @@ internal class PlaybackQueueStore(context: Context) {
 
     suspend fun load(): PersistentQueueSnapshot? {
         val state = dao.state() ?: return null
-        val tracks = dao.items().mapNotNull { TrackPayloadCodec.decode(it.payload) }
-        if (tracks.isEmpty()) return null
+        val items = dao.items()
+        if (items.isEmpty()) return null
+        val tracks = ArrayList<Track>(items.size)
+        for (item in items) {
+            val track = TrackPayloadCodec.decode(item.payload)
+            if (track == null) {
+                dao.clear()
+                return null
+            }
+            tracks += track
+        }
         return PersistentQueueSnapshot(
             tracks = tracks,
             currentIndex = state.currentIndex.coerceIn(0, tracks.lastIndex),
