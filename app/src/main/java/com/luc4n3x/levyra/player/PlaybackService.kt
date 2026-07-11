@@ -250,7 +250,7 @@ class PlaybackService : MediaLibraryService() {
                     .add(queuePreviousCommand)
                     .add(queueNextCommand)
                     .build()
-                return MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
+                return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(sessionCommands)
                     .build()
             }
