@@ -6499,7 +6499,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                             }
                         }
                     } else {
-                       
+                        // Artwork
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -6522,7 +6522,7 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
-                           
+                            // Elegant glossy shine overlay
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -9546,7 +9546,6 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     }
                 }
             }
-        }
         }
     }
 }
