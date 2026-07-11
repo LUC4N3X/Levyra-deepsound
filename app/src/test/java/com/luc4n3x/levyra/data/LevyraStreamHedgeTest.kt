@@ -65,6 +65,16 @@ class LevyraStreamHedgeTest {
     }
 
     @Test
+    fun playbackInnerTubeFallbackStartsInsideTapLatencyBudget() {
+        assertTrue(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = false) <= 120L)
+    }
+
+    @Test
+    fun innerTubeProfilesFanOutInsideLowLatencyBudget() {
+        assertTrue(LevyraResolverLatency.INNER_TUBE_HEDGE_BUDGET_MS <= 150L)
+    }
+
+    @Test
     fun offlineMp4ExtractorStartsImmediately() {
         assertEquals(0L, LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = true))
     }
