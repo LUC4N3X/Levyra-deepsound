@@ -58,6 +58,7 @@ import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import com.luc4n3x.levyra.player.AdaptivePlaybackPolicy
 import com.luc4n3x.levyra.player.LevyraPlayer
+import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.player.PlaybackWarmup
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
