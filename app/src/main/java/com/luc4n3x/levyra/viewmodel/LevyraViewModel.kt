@@ -87,6 +87,76 @@ internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     return maxOf(safeCurrent, safeIncoming)
 }
 
+internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boolean {
+    val targetTitle = playbackTextKey(target.title)
+    val candidateTitle = playbackTextKey(candidate.title)
+    if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
+
+    val targetTitleTokens = playbackTokens(targetTitle)
+    val candidateTitleTokens = playbackTokens(candidateTitle).toSet()
+    val titleMatches = targetTitleTokens.count { it in candidateTitleTokens }
+    val titleCoverage = if (targetTitleTokens.isEmpty()) 0.0 else titleMatches.toDouble() / targetTitleTokens.size.toDouble()
+    val titleCompatible = candidateTitle == targetTitle ||
+        candidateTitle.startsWith("$targetTitle ") ||
+        targetTitle.startsWith("$candidateTitle ") ||
+        titleCoverage >= 0.8
+    if (!titleCompatible) return false
+
+    val targetArtistTokens = playbackArtistTokens(target.artist)
+    if (targetArtistTokens.isEmpty()) return true
+    val candidateArtistTokens = playbackArtistTokens("${candidate.artist} ${candidate.title}").toSet()
+    val artistMatches = targetArtistTokens.count { it in candidateArtistTokens }
+    val requiredMatches = maxOf(1, (targetArtistTokens.size + 1) / 2)
+    return artistMatches >= requiredMatches
+}
+
+internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
+    val targetTitle = playbackTextKey(target.title)
+    val targetArtist = playbackTextKey(target.artist)
+    val candidateTitle = playbackTextKey(candidate.title)
+    val candidateArtist = playbackTextKey(candidate.artist)
+    val candidateBlob = playbackTextKey("${candidate.title} ${candidate.artist} ${candidate.album}")
+    val titleTokens = playbackTokens(targetTitle)
+    val artistTokens = playbackArtistTokens(target.artist)
+    var score = 0
+    when {
+        candidateTitle == targetTitle -> score += 140
+        candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle) -> score += 95
+        titleTokens.isNotEmpty() && titleTokens.all { candidateBlob.split(' ').contains(it) } -> score += 70
+    }
+    when {
+        targetArtist.isNotBlank() && candidateArtist == targetArtist -> score += 80
+        targetArtist.isNotBlank() && (candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist)) -> score += 55
+        artistTokens.isNotEmpty() && artistTokens.all { candidateBlob.split(' ').contains(it) } -> score += 35
+    }
+    val penaltyTerms = listOf("karaoke", "cover", "reaction", "sped up", "slowed", "instrumental", "remix", "live", "nightcore")
+    if (penaltyTerms.any { candidateBlob.contains(it) } && penaltyTerms.none { targetTitle.contains(it) }) score -= 60
+    if (candidate.source.contains("YouTube Music", ignoreCase = true)) score += 18
+    if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
+    if (candidate.durationMs > 0L && target.durationMs > 0L) {
+        val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
+        if (delta <= 5_000L) score += 30 else if (delta > 35_000L) score -= 25
+    }
+    return score
+}
+
+internal fun playbackTextKey(value: String): String {
+    return value.lowercase()
+        .replace(Regex("""[()\[\]]"""), " ")
+        .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
+        .replace(Regex("""\s+"""), " ")
+        .trim()
+}
+
+private fun playbackTokens(value: String): List<String> {
+    return playbackTextKey(value).split(' ').filter { it.length >= 2 }
+}
+
+private fun playbackArtistTokens(value: String): List<String> {
+    val ignored = setOf("feat", "featuring", "ft", "and", "the", "con", "with", "vs")
+    return playbackTokens(value).filterNot { it in ignored }
+}
+
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
@@ -171,13 +241,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(settings.languageCode)
         val instantSnapshot = homeSnapshotCache.load(settings.languageCode)
         val cachedHomeSections = instantSnapshot?.homeSections?.takeIf { it.isNotEmpty() } ?: preferences.loadHomeSections(settings.languageCode)
-        val startupHomeSections = cachedHomeSections.ifEmpty { LevyraStartupCatalog.homeSections(settings.languageCode) }
+        val startupHomeSections = LevyraStartupCatalog.repairHomeSections(
+            cachedHomeSections.ifEmpty { LevyraStartupCatalog.homeSections(settings.languageCode) },
+            settings.languageCode
+        )
         val startupHomeTracks = startupHomeSections.flatMap { it.tracks }.distinctBy { it.id }
         val cachedCharts = instantSnapshot?.charts?.takeIf { it.isNotEmpty() } ?: preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
-        val startupCharts = cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) }
-        val rawCachedOrbitTracks = settings.personalOrbitTracks
-            .ifEmpty { instantSnapshot?.personalOrbit.orEmpty() }
-            .ifEmpty { preferences.loadPersonalOrbitTracks(settings.languageCode) }
+        val startupCharts = LevyraStartupCatalog.repairTracks(
+            cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) },
+            settings.languageCode
+        )
+        val rawCachedOrbitTracks = LevyraStartupCatalog.repairTracks(
+            settings.personalOrbitTracks
+                .ifEmpty { instantSnapshot?.personalOrbit.orEmpty() }
+                .ifEmpty { preferences.loadPersonalOrbitTracks(settings.languageCode) },
+            settings.languageCode
+        )
         val startupOrbitSeed = mergeTracks(rawCachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
         val cachedOrbitTracks = LevyraPersonalOrbit.build(
             currentTrack = null,
@@ -856,10 +935,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(languageCode)
         val localizedMoods = moodEngine.moodsForLanguage(languageCode)
         val selectedMood = localizedMoods.firstOrNull { it.id == _state.value.selectedMood?.id } ?: localizedMoods.firstOrNull()
-        val homeSections = preferences.loadHomeSections(languageCode).ifEmpty { LevyraStartupCatalog.homeSections(languageCode) }
+        val homeSections = LevyraStartupCatalog.repairHomeSections(
+            preferences.loadHomeSections(languageCode).ifEmpty { LevyraStartupCatalog.homeSections(languageCode) },
+            languageCode
+        )
         val homeTracks = homeSections.flatMap { it.tracks }.distinctBy { it.id }
-        val chartTracks = preferences.loadChartTracks(languageCode, defaultChartRegion.id).ifEmpty { LevyraStartupCatalog.chartTracks(languageCode) }
-        val cachedOrbit = preferences.loadPersonalOrbitTracks(languageCode)
+        val chartTracks = LevyraStartupCatalog.repairTracks(
+            preferences.loadChartTracks(languageCode, defaultChartRegion.id).ifEmpty { LevyraStartupCatalog.chartTracks(languageCode) },
+            languageCode
+        )
+        val cachedOrbit = LevyraStartupCatalog.repairTracks(preferences.loadPersonalOrbitTracks(languageCode), languageCode)
         val seed = mergeTracks(cachedOrbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
         val orbit = LevyraPersonalOrbit.build(
             currentTrack = _state.value.currentTrack,
@@ -2310,46 +2395,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (candidates.size >= 10) break
         }
         return candidates.values
+            .filter { isPlaybackCandidateCompatible(track, it) }
             .sortedByDescending { playbackCandidateScore(track, it) }
             .take(10)
-    }
-
-    private fun playbackCandidateScore(target: Track, candidate: Track): Int {
-        val targetTitle = playbackTextKey(target.title)
-        val targetArtist = playbackTextKey(target.artist)
-        val candidateTitle = playbackTextKey(candidate.title)
-        val candidateArtist = playbackTextKey(candidate.artist)
-        val candidateBlob = playbackTextKey("${candidate.title} ${candidate.artist} ${candidate.album}")
-        val titleTokens = targetTitle.split(' ').filter { it.length >= 2 }
-        val artistTokens = targetArtist.split(' ').filter { it.length >= 2 }
-        var score = 0
-        when {
-            candidateTitle == targetTitle -> score += 140
-            candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle) -> score += 95
-            titleTokens.isNotEmpty() && titleTokens.all { candidateBlob.contains(it) } -> score += 70
-        }
-        when {
-            targetArtist.isNotBlank() && candidateArtist == targetArtist -> score += 80
-            targetArtist.isNotBlank() && (candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist)) -> score += 55
-            artistTokens.isNotEmpty() && artistTokens.all { candidateBlob.contains(it) } -> score += 35
-        }
-        val penaltyTerms = listOf("karaoke", "cover", "reaction", "sped up", "slowed", "instrumental", "remix", "live", "nightcore")
-        if (penaltyTerms.any { candidateBlob.contains(it) } && penaltyTerms.none { targetTitle.contains(it) }) score -= 60
-        if (candidate.source.contains("YouTube Music", ignoreCase = true)) score += 18
-        if (candidate.source.contains("Extractor", ignoreCase = true)) score += 8
-        if (candidate.durationMs > 0L && target.durationMs > 0L) {
-            val delta = kotlin.math.abs(candidate.durationMs - target.durationMs)
-            if (delta <= 5_000L) score += 30 else if (delta > 35_000L) score -= 25
-        }
-        return score
-    }
-
-    private fun playbackTextKey(value: String): String {
-        return value.lowercase()
-            .replace(Regex("""\([^)]*\)|\[[^]]*]"""), " ")
-            .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
-            .replace(Regex("""\s+"""), " ")
-            .trim()
     }
 
     private suspend fun resolvePlayableTrack(track: Track): Track {
