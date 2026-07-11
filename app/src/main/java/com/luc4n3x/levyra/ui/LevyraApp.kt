@@ -3369,13 +3369,13 @@ private fun ResonanceCard(
     val pulseWidth = ((score % 72) + 24) / 100f
     Box(
         modifier = Modifier
-            .width(318.dp)
-            .height(164.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .width(280.dp)
+            .height(112.dp)
+            .clip(RoundedCornerShape(20.dp))
             .border(
                 width = if (active) 1.5.dp else Dp.Hairline,
                 color = if (active) LevyraCyan.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(24.dp)
+                shape = RoundedCornerShape(20.dp)
             )
             .pressable(onClick = onClick)
     ) {
@@ -3408,15 +3408,15 @@ private fun ResonanceCard(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(14.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(108.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .border(Dp.Hairline, Color.White.copy(alpha = 0.2f), RoundedCornerShape(18.dp))
+                    .size(88.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(Dp.Hairline, Color.White.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
             ) {
                 CoverImage(
                     track = track,
@@ -3450,8 +3450,8 @@ private fun ResonanceCard(
                     Text(
                         text = track.title,
                         color = Color.White,
-                        fontSize = 17.sp,
-                        lineHeight = 20.sp,
+                        fontSize = 15.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -3459,69 +3459,49 @@ private fun ResonanceCard(
                     Text(
                         text = track.artist,
                         color = Color.White.copy(alpha = 0.75f),
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 12.sp,
+                        lineHeight = 14.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.Bottom
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = LevyraOrange, modifier = Modifier.size(13.dp))
                             Text(
-                                text = LocalLevyraStrings.current.engagement,
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Icon(Icons.Rounded.LocalFireDepartment, contentDescription = null, tint = LevyraOrange, modifier = Modifier.size(14.dp))
-                                Text(
-                                    text = "$engagement%",
-                                    color = Color.White,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                        }
-                        
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = LocalLevyraStrings.current.totalComments,
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = formatCompactNumber(comments),
+                                text = "$engagement%",
                                 color = Color.White,
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Black
                             )
                         }
+                        
+                        Text(
+                            text = formatCompactNumber(comments),
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black
+                        )
                     }
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(4.dp)
+                            .height(3.dp)
                             .clip(RoundedCornerShape(99.dp))
                             .background(Color.White.copy(alpha = 0.1f))
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(pulseWidth.coerceIn(0.1f, 1f))
-                                .height(4.dp)
+                                .height(3.dp)
                                 .clip(RoundedCornerShape(99.dp))
                                 .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
                         )
@@ -9474,85 +9454,11 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 )
             )
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .size(320.dp)
-                .background(Brush.radialGradient(listOf(LevyraViolet.copy(alpha = 0.22f), Color.Transparent)))
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .size(260.dp)
-                .background(Brush.radialGradient(listOf(CinematicGold.copy(alpha = 0.16f), Color.Transparent)))
-        )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 62.dp, bottom = 190.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp)
+            contentPadding = PaddingValues(top = 42.dp, bottom = 190.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        color = Color.White.copy(alpha = 0.07f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                        shape = RoundedCornerShape(999.dp)
-                    ) {
-                        Text(
-                            text = strings.exploreZones.uppercase(),
-                            color = LevyraCyan,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.4.sp,
-                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 7.dp)
-                        )
-                    }
-                    Text(
-                        text = strings.exploreTitle,
-                        color = Color.White,
-                        fontSize = 43.sp,
-                        lineHeight = 45.sp,
-                        fontWeight = FontWeight.Black,
-                        textAlign = TextAlign.Center,
-                        style = TextStyle(brush = cinematicTextBrush())
-                    )
-                    Text(
-                        text = strings.exploreSubtitle,
-                        color = LevyraMuted.copy(alpha = 0.82f),
-                        fontSize = 15.sp,
-                        lineHeight = 20.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(0.86f)
-                    )
-                }
-            }
-
-            item {
-                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    SectionTitle(strings.exploreZones)
-                }
-            }
-            items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    row.forEach { zone ->
-                        ZoneCard(
-                            zone = zone,
-                            selected = zone.id == state.exploreZoneId,
-                            onClick = { viewModel.selectExploreZone(zone) }
-                        )
-                    }
-                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-
             item {
                 Box(modifier = Modifier.padding(horizontal = 24.dp)) {
                     SectionTitle(strings.exploreFresh)
@@ -9596,6 +9502,28 @@ private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                     }
                 }
             }
+
+            item {
+                Box(modifier = Modifier.padding(horizontal = 24.dp)) {
+                    SectionTitle(strings.exploreZones)
+                }
+            }
+            items(ExploreCatalog.getZones(strings).chunked(2), key = { row -> "zone-${row.first().id}" }) { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    row.forEach { zone ->
+                        ZoneCard(
+                            zone = zone,
+                            selected = zone.id == state.exploreZoneId,
+                            onClick = { viewModel.selectExploreZone(zone) }
+                        )
+                    }
+                    if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+
             if (state.exploreVideos.isNotEmpty()) {
                 item {
                     Box(modifier = Modifier.padding(horizontal = 24.dp)) {
@@ -9629,28 +9557,25 @@ private fun RowScope.ZoneCard(zone: ExploreZone, selected: Boolean, onClick: () 
     Row(
         modifier = Modifier
             .weight(1f)
-            .clip(RoundedCornerShape(20.dp))
-            .background(cinematicGlassBrush(start, end, if (selected) 1.15f else 0.58f))
+            .height(56.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(cinematicGlassBrush(start, end, if (selected) 1.1f else 0.45f))
             .border(
-                BorderStroke(1.dp, if (selected) start.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.08f)),
-                RoundedCornerShape(20.dp)
+                BorderStroke(Dp.Hairline, if (selected) start.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.08f)),
+                RoundedCornerShape(12.dp)
             )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 15.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(34.dp)
-                .background(Brush.linearGradient(listOf(start.copy(alpha = 0.34f), end.copy(alpha = 0.24f))), CircleShape)
-                .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(zone.emoji, fontSize = 14.sp)
-        }
+                .width(6.dp)
+                .fillMaxHeight()
+                .background(Brush.verticalGradient(listOf(start, end)))
+        )
         Text(
             zone.label,
+            modifier = Modifier.padding(start = 14.dp, end = 10.dp),
             color = if (selected) Color.White else LevyraMuted.copy(alpha = 0.94f),
             fontSize = 15.sp,
             fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
@@ -9680,22 +9605,15 @@ private fun TrackGlassCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(22.dp))
-            .background(cinematicGlassBrush(Color(track.accentStart), Color(track.accentEnd), if (isCurrent) 1.0f else 0.58f))
-            .border(
-                1.dp,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.075f),
-                RoundedCornerShape(22.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(116.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(16.dp))
+                .size(140.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .border(Dp.Hairline, Color.White.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -9763,13 +9681,14 @@ private fun TrackGlassCard(
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 track.title,
                 color = Color.White,
                 fontSize = 14.sp,
+                lineHeight = 18.sp,
                 fontWeight = FontWeight.Black,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -9799,23 +9718,16 @@ private fun VideoGlassCard(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(24.dp))
-            .background(cinematicGlassBrush(Color(track.accentStart), Color(track.accentEnd), if (isCurrent) 1.0f else 0.6f))
-            .border(
-                1.dp,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.42f) else Color.White.copy(alpha = 0.075f),
-                RoundedCornerShape(24.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(17.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(17.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .border(Dp.Hairline, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -9829,7 +9741,7 @@ private fun VideoGlassCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = if (isCurrent) 0.4f else 0.2f)),
+                    .background(Color.Black.copy(alpha = if (isCurrent) 0.4f else 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (isCurrent && isPlaying) {
@@ -9839,7 +9751,7 @@ private fun VideoGlassCard(
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 track.title,
                 color = Color.White,
