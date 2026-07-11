@@ -1690,7 +1690,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         val requestId = ++playRequestId
         playJob?.cancel()
-        cancelBackgroundWarmups(cancelList = false)
+        cancelBackgroundWarmups(cancelList = true)
         resolver.warmNetwork()
 
         val playableTrack = youtubePlayableTrack(track) ?: track
@@ -1926,7 +1926,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun prefetchAround(playable: Track) {
         prefetchJob?.cancel()
         prefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(120L)
             val queue = _state.value.queue.ifEmpty { currentQueue() }
             if (queue.isEmpty()) return@launch
             val base = if (queueIndex in queue.indices) queueIndex else queue.indexOfFirst { samePlayableTrack(it, playable) }
