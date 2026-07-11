@@ -22,5 +22,11 @@ dependencyResolutionManagement {
     }
 }
 
+includeBuild("third_party/LevyraExtractor") {
+    dependencySubstitution {
+        substitute(module("com.github.LUC4N3X:LevyraExtractor")).using(project(":"))
+    }
+}
+
 rootProject.name = "Levyra"
 include(":app")

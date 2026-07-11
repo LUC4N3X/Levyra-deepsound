@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package niconicobulletcomments;
+
+option java_multiple_files = true;
+option java_package = "org.schabi.newpipe.extractor.services.niconico.protobuf";
+
+message BulletComment {
+  repeated MessageItem items = 1;
+  string backward_url = 2;
+  string snapshot_url = 3;
+  repeated string segments = 4;
+
+  message MessageItem {
+    Meta meta = 1;
+    Message message = 2;
+
+    message Meta {
+      string id = 1;
+      Timestamp timestamp = 2;
+      AdditionalInfo additional_info = 3;
+
+      message Timestamp {
+        int64 seconds = 1;
+        int32 nanos = 2;
+      }
+
+      message AdditionalInfo {
+        message InnerInfo {
+          int64 value = 1;
+        }
+        InnerInfo inner_info = 1;
+      }
+    }
+
+    message Message {
+      InnerMessage text_message = 1;
+      InnerMessage gift = 8;
+      message InnerMessage {
+        string text = 1;
+        string username = 2;
+        int32 time_to_now = 3;
+        int32 bullet_comment_location = 4;
+        int32 userid = 5;
+        string identifier = 6;
+        bytes unknown_bytes_2 = 7;
+        int32 id = 8;
+      }
+      message Gift {
+        string gift_name = 1;
+        string userid = 2;
+        string username = 3;
+        int32 count = 4;
+        string gift_text = 5;
+        int32 id = 6;
+      }
+    }
+  }
+}
