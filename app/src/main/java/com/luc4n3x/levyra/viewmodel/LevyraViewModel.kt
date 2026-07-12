@@ -372,8 +372,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPremiumAudioSettings(settings.audioSettings)
         player.setPlayback(settings.audioSettings.playbackSpeed, settings.audioSettings.pitch)
         player.onCompletion = { onTrackCompleted() }
-        player.onRecoverableStreamError = { track, positionMs, videoMode, errorMessage ->
-            recoverPlaybackStream(track, positionMs, videoMode, errorMessage)
+        player.onRecoverableStreamError = { track, positionMs, videoMode, playWhenReady, errorMessage ->
+            recoverPlaybackStream(track, positionMs, videoMode, playWhenReady, errorMessage)
         }
         player.onError = { errorMsg ->
             _state.value.currentTrack?.let { resolver.invalidate(it, _state.value.isVideoMode) }
@@ -686,7 +686,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (track.videoUrl.isBlank() || snapshot.isResolving) return
         val sourceMode = snapshot.isVideoMode
         val targetMode = !sourceMode
-        val positionMs = player.positionMs.coerceAtLeast(snapshot.positionMs)
+        val positionMs = player.positionMs.coerceAtLeast(0L)
         val shouldPlay = player.isPlaying || snapshot.isPlaying
         val transitionId = ++streamTransitionId
         streamRecoveryJob?.cancel()
@@ -741,13 +741,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         failedTrack: Track,
         positionMs: Long,
         videoMode: Boolean,
+        playWhenReady: Boolean,
         errorMessage: String
     ) {
         val transitionId = ++streamTransitionId
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
         resolver.reportPlaybackFailure(failedTrack, videoMode, errorMessage)
-        _state.update { it.copy(isResolving = true, isPlaying = false, playerError = null) }
+        _state.update { it.copy(isResolving = true, isPlaying = playWhenReady, playerError = null) }
         streamRecoveryJob = viewModelScope.launch {
             try {
                 val baseTrack = (youtubePlayableTrack(failedTrack) ?: failedTrack).copy(streamUrl = "", videoStreamUrl = "")
@@ -760,7 +761,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     track = resolved,
                     positionMs = positionMs,
                     videoMode = videoMode,
-                    playWhenReady = true
+                    playWhenReady = playWhenReady
                 )
                 queueEngine.updatePosition(positionMs)
                 _state.update {
@@ -768,7 +769,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         currentTrack = resolved,
                         isVideoMode = videoMode,
                         isResolving = false,
-                        isPlaying = true,
+                        isPlaying = playWhenReady,
                         positionMs = positionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
                         playerError = null
