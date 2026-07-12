@@ -1,16 +1,16 @@
 <div align="center">
-
+ 
 <img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Logo" width="490" />
-
-
+ 
+ 
 # 🎶
-
+ 
 **A high-performance, native Android music client designed for pristine playback and complete audio control.**
-
+ 
 *Fast discovery · Immersive visualizer · Resilient background downloading · Offline-first tag manager.*
-
+ 
 ---
-
+ 
 <p>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.4.0-%237F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
   <img alt="Jetpack Compose" src="https://img.shields.io/badge/Compose-Material%203-%234285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
@@ -19,23 +19,23 @@
   <img alt="Room Database" src="https://img.shields.io/badge/SQLite-Room-%23003B57?style=for-the-badge&logo=sqlite&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
 </p>
-
+ 
 [📱 Inside Levyra](#-inside-levyra) • [✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
-
+ 
 <br>
-
+ 
 <img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI Preview" width="88%" style="border-radius: 12px; box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.4);" />
-
+ 
 </div>
-
+ 
 <br>
-
+ 
 ## ✦ What is Levyra?
-
+ 
 Unlike typical wrapper or web-reskin apps, **Levyra** is a native, ground-up Android audio application. It queries, resolves, and streams music dynamically using YouTube Music's InnerTube API with a LevyraExtractor-powered fallback, routes audio via an optimized **AndroidX Media3/ExoPlayer** background service, and outputs full tracks straight into your local storage. 
-
+ 
 Every track you download is fully parsed, tagged, and structured as a clean M4A file in your system `Music/Levyra` directory, complete with embedded metadata, titles, artists, and album artwork. 
-
+ 
 ```text
 📦 Application Specifications
 ├── Package Name      com.luc4n3x.levyra
@@ -45,18 +45,18 @@ Every track you download is fully parsed, tagged, and structured as a clean M4A 
 ├── UI Framework      Jetpack Compose + Material 3 (M3)
 └── Audio Foundation  AndroidX Media3 / ExoPlayer Engine
 ```
-
+ 
 <br>
-
+ 
 ## ✦ Inside Levyra
-
+ 
 <p align="center">
   <strong>Four views. One continuous listening experience.</strong><br>
   <sub>Discovery, playback, intelligent lyrics, and private listening insights — designed as a single native Android journey.</sub>
 </p>
-
+ 
 <br>
-
+ 
 <table width="100%">
   <tr>
     <td width="25%" align="center" valign="top">
@@ -93,15 +93,15 @@ Every track you download is fully parsed, tagged, and structured as a clean M4A 
     </td>
   </tr>
 </table>
-
+ 
 <p align="center">
   <sub>Open any preview to view it at full resolution.</sub>
 </p>
-
+ 
 <br>
-
+ 
 ## ✦ Key Features
-
+ 
 <table width="100%">
   <tr>
     <th width="50%" align="left">🎨 Dynamic & Modern Interface</th>
@@ -172,13 +172,13 @@ Every track you download is fully parsed, tagged, and structured as a clean M4A 
     </td>
   </tr>
 </table>
-
+ 
 <br>
-
+ 
 ## ✦ Architecture
-
+ 
 Levyra strictly follows unidirectional data flow (UDF) guidelines. Jetpack Compose handles rendering, while state lives in a centralized ViewModel. Downstream repositories and services act as decoupled boundaries, preventing network or database operations from blocking the main thread.
-
+ 
 ```mermaid
 graph TD
     %% Custom Styling Theme
@@ -187,7 +187,7 @@ graph TD
     classDef core fill:#202124,stroke:#3C4043,stroke-width:2px,color:#fff;
     classDef engine fill:#3DDC84,stroke:#1DDB60,stroke-width:2px,color:#000;
     classDef ext fill:#F9AB00,stroke:#EA8600,stroke-width:2px,color:#000;
-
+ 
     UI["📱 Jetpack Compose UI"]:::ui --> VM["⚙️ Central LevyraViewModel"]:::vm
     
     VM --> Player["🔊 LevyraPlayer Controller"]:::core
@@ -205,9 +205,9 @@ graph TD
     Exporter --> MediaStore["💿 Android MediaStore API"]:::engine
     Exporter --> Tagger["🏷️ Pure-Kotlin M4A Tag Writer"]:::core
 ```
-
+ 
 ### Component Layout
-
+ 
 | Layer | Responsibility | Project Directory |
 |:---|:---|:---|
 | **UI Presentation** | Composable screens, mini-player layouts, layout triggers, theme engines | [`ui/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/ui) |
@@ -217,11 +217,11 @@ graph TD
 | **Audio Pipeline** | Media3 foreground service, HLS, prefetching queue control | [`player/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/player) |
 | **Background Exports** | WorkManager pipeline, metadata tagging, MediaStore registrations | [`player/offline/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/player/offline) |
 | **Local Cache** | SQLite database, Room entities, and key-value preference stores | [`data/local/`](file:///C:/Users/Luca%20Drogo/Desktop/Levyra-deepsound/app/src/main/java/com/luc4n3x/levyra/data/local) |
-
+ 
 <br>
-
+ 
 ## ✦ Technical Stack
-
+ 
 *   **Language:** Kotlin 2.4.0
 *   **User Interface:** Jetpack Compose, Material 3 Design Components, Compose BOM
 *   **Media Playback:** AndroidX Media3, ExoPlayer, HLS Playback, MediaSession
@@ -234,45 +234,45 @@ graph TD
 *   **APK Size Guard:** Spotify Ruler report workflow for bundle size analysis and dependency weight tracking
 *   **Player Architecture:** Mobius-sample-inspired `Model / Event / Effect / Update` foundation for safe player refactoring
 *   **Extraction Layer:** InnerTube resolver plus GPL-3.0 LevyraExtractor playback core via JitPack
-
+ 
 <br>
-
+ 
 ## ✦ Getting Started
-
+ 
 ### Prerequisites
 *   Android Studio Jellyfish (or newer)
 *   Java Development Kit (JDK) 17
 *   Android SDK Platform 37 (`compileSdk = 37`, `targetSdk = 35`)
 *   Gradle 9.4.1 in CI via GitHub Actions
-
+ 
 ### Building the Project
 Clone the repository and compile the debug configuration directly to a connected Android device or emulator:
-
+ 
 ```bash
 # Clone the repository
 git clone https://github.com/LUC4N3X/Levyra-deepsound.git
 cd Levyra-deepsound
-
+ 
 # Build and install the debug app on your connected device
 ./gradlew installDebug
-
+ 
 # Compile a clean, optimized release build
 ./gradlew clean assembleRelease
-
+ 
 # Analyze bundle size with Spotify Ruler
 ./gradlew :app:analyzeDebugBundle
 ```
-
+ 
 The resulting signed/unsigned release APK will be located in:
 `app/build/outputs/apk/release/app-release.apk`
-
+ 
 Architecture and size-control notes:
-
+ 
 ```text
 docs/APK_SIZE_RULER.md
 docs/PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md
 ```
-
+ 
 ### Version Control & CI overrides
 The application's version numbering is centralized inside `gradle.properties`:
 ```properties
@@ -281,15 +281,15 @@ levyraVersionCode=2030600
 ```
 *Version code logic is calculated sequentially to prevent duplicate deployment IDs:*
 `versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`
-
+ 
 Our automated GitHub Action workflow parses this schema, checks target versions using `aapt`, verifies structural integrity, compiles the binary, names the artifact `LEVYRA-<version>.apk`, and ships it directly to **GitHub Releases**.
-
+ 
 <br>
-
+ 
 ## ✦ Permissions and Privacy
-
+ 
 Levyra does not include analytics frameworks, tracking SDKs, or developer-operated telemetry. Listening statistics generated by Pulse remain on the device. To provide search, artwork, lyrics, playback, SponsorBlock, and optional account features, the app contacts third-party services; those services may receive ordinary request data such as the IP address, HTTP headers, client or device information, and, where applicable, cookies or account identifiers.
-
+ 
 ```text
 🛡️ DECLAREDS MANIFEST PERMISSIONS
 ├── INTERNET & ACCESS_NETWORK_STATE       Streams music data and queries metadata
@@ -298,21 +298,21 @@ Levyra does not include analytics frameworks, tracking SDKs, or developer-operat
 ├── WAKE_LOCK                              Prevents playback stutters when the CPU goes to sleep
 └── WRITE_EXTERNAL_STORAGE (≤ SDK 28)     Legacy permission for offline file export
 ```
-
+ 
 <br>
-
+ 
 ## ✦ Contributing to the Fork
-
+ 
 If you intend to distribute custom builds of Levyra:
 1. **Signing Keys:** Generate and rotate your own Android keystores before publishing public packages.
 2. **Build Name:** Follow the standard release schema: `LEVYRA-<version>.apk` rather than default gradle outputs.
 3. **Execution Offloading:** All database, disk write, and network resolutions must run on background dispatchers (`Dispatchers.IO`). Keep UI threads clear.
 4. **Resiliency:** Ensure API queries route via the fallback channel if they timeout.
-
+ 
 <br>
-
+ 
 ## ✦ Credits
-
+ 
 <table>
   <tr>
     <td width="100" align="center">
@@ -326,17 +326,17 @@ If you intend to distribute custom builds of Levyra:
     </td>
   </tr>
 </table>
-
-*UI and modular styling conventions draw structural inspiration from the open-source projects [Metrolist](https://github.com/MetrolistGroup/Metrolist) and [MusicApp-KMP](https://github.com/SEAbdulbasit/MusicApp-KMP).*
-
+ 
+*UI and modular styling conventions draw structural inspiration from the open-source project [Metrolist](https://github.com/MetrolistGroup/Metrolist).*
+ 
 *The stream extraction core uses [LevyraExtractor](https://github.com/LUC4N3X/LevyraExtractor), a GPL-3.0 fork derived from [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor) in the NewPipe/PipePipe ecosystem.*
-
+ 
 ---
-
+ 
 ## ✦ Disclaimers & License
-
+ 
 > [!WARNING]  
 > **Educational and Research Purposes Only**  
 > Levyra is an open-source client and does not host, upload, or index copyrighted files. The app interacts solely with public, third-party content endpoints. The user takes full responsibility for any usage that may violate local laws or third-party terms of service. The developers assume no liability for service changes, system blocks, or client misuse.
-
+ 
 Licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
