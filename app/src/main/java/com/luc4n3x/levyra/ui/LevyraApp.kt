@@ -45,6 +45,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -63,6 +64,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -255,6 +257,7 @@ import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
+private const val PLAYER_MEDIA_SEEK_STEP_MS = 5_000L
 private val CinematicPlum = Color(0xFF2A1738)
 private val CinematicGold = Color(0xFFFFC46B)
 private val CinematicGlass = Color(0xFF151321)
@@ -6593,6 +6596,15 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
     val track = state.currentTrack
     val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
     val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
+    var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
+    var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
+
+    LaunchedEffect(mediaSeekFeedbackEvent) {
+        if (mediaSeekFeedbackEvent > 0) {
+            delay(650L)
+            mediaSeekFeedbackMs = 0L
+        }
+    }
 
     val artScale by animateFloatAsState(
         targetValue = if (state.isPlaying) 1.02f else 0.95f,
@@ -6720,59 +6732,130 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                 item { EmptyState(strings.emptyPlayer) }
             } else {
                 item {
-                    if (state.isVideoMode && track.videoUrl.isNotBlank()) {
-                        LevyraVideoSurface(
-                            state = state,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 16.dp)
-                                .graphicsLayer {
-                                    scaleX = artScale
-                                    scaleY = artScale
-                                    shadowElevation = artShadow
-                                    shape = RoundedCornerShape(artCorner)
-                                    clip = true
-                                }
-                        )
-                    } else {
-                        // Artwork
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .padding(vertical = 16.dp)
-                                .graphicsLayer {
-                                    scaleX = artScale
-                                    scaleY = artScale
-                                    shadowElevation = artShadow
-                                    shape = RoundedCornerShape(artCorner)
-                                    clip = true
-                                }
-                        ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(artworkUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        if (state.isVideoMode && track.videoUrl.isNotBlank()) {
+                            LevyraVideoSurface(
+                                state = state,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp)
+                                    .graphicsLayer {
+                                        scaleX = artScale
+                                        scaleY = artScale
+                                        shadowElevation = artShadow
+                                        shape = RoundedCornerShape(artCorner)
+                                        clip = true
+                                    }
                             )
-                            // Elegant glossy shine overlay
+                        } else {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(
-                                        Brush.linearGradient(
-                                            listOf(
-                                                Color.White.copy(alpha = 0.09f),
-                                                Color.White.copy(alpha = 0.04f),
-                                                Color.Transparent,
-                                                Color.Black.copy(alpha = 0.16f)
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                                    .padding(vertical = 16.dp)
+                                    .graphicsLayer {
+                                        scaleX = artScale
+                                        scaleY = artScale
+                                        shadowElevation = artShadow
+                                        shape = RoundedCornerShape(artCorner)
+                                        clip = true
+                                    }
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(artworkUrl)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.linearGradient(
+                                                listOf(
+                                                    Color.White.copy(alpha = 0.09f),
+                                                    Color.White.copy(alpha = 0.04f),
+                                                    Color.Transparent,
+                                                    Color.Black.copy(alpha = 0.16f)
+                                                )
                                             )
                                         )
+                                )
+                            }
+                        }
+
+                        val leftSeekInteraction = remember(track.id) { MutableInteractionSource() }
+                        val rightSeekInteraction = remember(track.id) { MutableInteractionSource() }
+                        Row(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .zIndex(20f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .combinedClickable(
+                                        interactionSource = leftSeekInteraction,
+                                        indication = null,
+                                        onClick = {},
+                                        onDoubleClick = {
+                                            viewModel.seekBy(-PLAYER_MEDIA_SEEK_STEP_MS)
+                                            mediaSeekFeedbackMs = -PLAYER_MEDIA_SEEK_STEP_MS
+                                            mediaSeekFeedbackEvent += 1
+                                        }
                                     )
                             )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .combinedClickable(
+                                        interactionSource = rightSeekInteraction,
+                                        indication = null,
+                                        onClick = {},
+                                        onDoubleClick = {
+                                            viewModel.seekBy(PLAYER_MEDIA_SEEK_STEP_MS)
+                                            mediaSeekFeedbackMs = PLAYER_MEDIA_SEEK_STEP_MS
+                                            mediaSeekFeedbackEvent += 1
+                                        }
+                                    )
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .align(
+                                    if (mediaSeekFeedbackMs < 0L) {
+                                        Alignment.CenterStart
+                                    } else {
+                                        Alignment.CenterEnd
+                                    }
+                                )
+                                .padding(horizontal = 30.dp)
+                        ) {
+                            AnimatedVisibility(
+                                visible = mediaSeekFeedbackMs != 0L,
+                                enter = fadeIn(animationSpec = tween(110)),
+                                exit = fadeOut(animationSpec = tween(180))
+                            ) {
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.62f),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                                    shape = CircleShape
+                                ) {
+                                    Text(
+                                        text = if (mediaSeekFeedbackMs < 0L) "−5 s" else "+5 s",
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 13.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
