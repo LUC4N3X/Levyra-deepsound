@@ -60,6 +60,8 @@ object LevyraMediaItemFactory {
             putLong("levyra.durationMs", track.durationMs.coerceAtLeast(0L))
             putString("levyra.source", track.source)
             putBoolean(PlaybackService.EXTRA_VIDEO_MODE, videoMode)
+            track.youtubeLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_LOUDNESS_DB, it) }
+            track.youtubePerceptualLoudnessDb?.let { putFloat(PlaybackService.EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB, it) }
             if (videoMode && track.videoStreamUrl.isNotBlank()) {
                 putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
                 putString(PlaybackService.EXTRA_VIDEO_CACHE_KEY, LevyraPlaybackCacheKey.video(track))
