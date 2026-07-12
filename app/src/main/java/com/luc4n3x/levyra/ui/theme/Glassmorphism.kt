@@ -24,12 +24,6 @@ fun Modifier.glassmorphism(
     borderWidth: Float = 1f
 ): Modifier = composed {
     this
-        .shadow(
-            elevation = 16.dp,
-            shape = shape,
-            ambientColor = Color.Black.copy(alpha = 0.5f),
-            spotColor = Color.Black.copy(alpha = 0.5f)
-        )
         .clip(shape)
         .background(overlayColor)
         .border(

@@ -47,15 +47,15 @@ object LevyraThemes {
         followsMood = false,
         black = Color(0xFF030303),
         ink = Color(0xFF0A0A0A),
-        panel = Color(0xFF121212),
-        panelSoft = Color(0xFF1A1A1A),
-        cyan = Color(0xFF5E6AD2),
-        blue = Color(0xFF26B5CE),
-        violet = Color(0xFF8A63D2),
-        pink = Color(0xFFE24A8D),
+        panel = Color(0xFF1D1D1F),
+        panelSoft = Color(0xFF2D2D2F),
+        cyan = Color(0xFF2997FF),
+        blue = Color(0xFF60A5FA),
+        violet = Color(0xFF818CF8),
+        pink = Color(0xFFEC4899),
         orange = Color(0xFFF58E3E),
-        text = Color(0xFFEDEDED),
-        muted = Color(0xFF8A8A93),
+        text = Color(0xFFF5F5F7),
+        muted = Color(0xFF86868B),
         outline = Color(0x33FFFFFF)
     )
 
