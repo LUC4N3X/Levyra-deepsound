@@ -121,6 +121,7 @@ import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Insights
@@ -150,6 +151,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -180,6 +182,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -197,6 +202,8 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.player.LevyraPipBridge
+import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -693,8 +700,20 @@ private fun Modifier.pressable(
 }
 
 @Composable
-fun LevyraApp(viewModel: LevyraViewModel) {
+fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
     val state by viewModel.state.collectAsState()
+    LaunchedEffect(state.isVideoMode, state.isPlaying) {
+        val currentPipState = LevyraPipBridge.current()
+        LevyraPipBridge.updatePlayback(
+            videoMode = state.isVideoMode,
+            playing = state.isPlaying,
+            aspectRatio = currentPipState.aspectRatio
+        )
+    }
+    if (isInPictureInPicture) {
+        LevyraPictureInPictureSurface(state)
+        return
+    }
     val toastContext = LocalContext.current
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
@@ -6660,6 +6679,18 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        if (state.isVideoMode) {
+                            PlayerRoundIconButton(
+                                icon = Icons.Rounded.PictureInPictureAlt,
+                                contentDescription = "Picture in Picture",
+                                size = 42.dp,
+                                iconSize = 21.dp,
+                                tint = LevyraText,
+                                background = Color.White.copy(alpha = 0.075f),
+                                borderColor = LevyraCyan.copy(alpha = 0.18f),
+                                onClick = { LevyraPipBridge.enter() }
+                            )
+                        }
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.Close,
                             contentDescription = "Chiudi player",
@@ -6690,55 +6721,19 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
             } else {
                 item {
                     if (state.isVideoMode && track.videoUrl.isNotBlank()) {
-                        val exo = com.luc4n3x.levyra.player.PlaybackService.activePlayer
-                        if (exo != null) {
-                            AndroidView(
-                                factory = { ctx ->
-                                    androidx.media3.ui.PlayerView(ctx).apply {
-                                        useController = false
-                                        setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
-                                        setBackgroundColor(android.graphics.Color.BLACK)
-                                        player = exo
-                                    }
-                                },
-                                update = { view ->
-                                    val current = com.luc4n3x.levyra.player.PlaybackService.activePlayer
-                                    if (view.player !== current) view.player = current
-                                },
-                                onRelease = { view ->
-                                    view.player = null
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1f)
-                                    .padding(vertical = 16.dp)
-                                    .graphicsLayer {
-                                        scaleX = artScale
-                                        scaleY = artScale
-                                        shadowElevation = artShadow
-                                        shape = RoundedCornerShape(artCorner)
-                                        clip = true
-                                    }
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1f)
-                                    .padding(vertical = 16.dp)
-                                    .graphicsLayer {
-                                        scaleX = artScale
-                                        scaleY = artScale
-                                        shadowElevation = artShadow
-                                        shape = RoundedCornerShape(artCorner)
-                                        clip = true
-                                    }
-                                    .background(Color.Black),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                VideoLoadingSkeleton()
-                            }
-                        }
+                        LevyraVideoSurface(
+                            state = state,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp)
+                                .graphicsLayer {
+                                    scaleX = artScale
+                                    scaleY = artScale
+                                    shadowElevation = artShadow
+                                    shape = RoundedCornerShape(artCorner)
+                                    clip = true
+                                }
+                        )
                     } else {
                         // Artwork
                         Box(
@@ -10107,6 +10102,92 @@ private fun ChartLoadingSkeleton() {
             ) {
                 repeat(4) { LoadingLine(height = 56.dp, radius = 16.dp) }
             }
+        }
+    }
+}
+
+@Composable
+private fun LevyraPictureInPictureSurface(state: LevyraUiState) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        LevyraVideoSurface(
+            state = state,
+            modifier = Modifier.fillMaxSize(),
+            pictureInPicture = true
+        )
+    }
+}
+
+@Composable
+private fun LevyraVideoSurface(
+    state: LevyraUiState,
+    modifier: Modifier,
+    pictureInPicture: Boolean = false
+) {
+    val player = PlaybackService.activePlayer
+    var aspectRatio by remember(player, state.currentTrack?.id) {
+        mutableFloatStateOf(
+            player?.videoSize?.let { size ->
+                if (size.width > 0 && size.height > 0) size.width.toFloat() / size.height.toFloat() else 16f / 9f
+            } ?: 16f / 9f
+        )
+    }
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                if (videoSize.width > 0 && videoSize.height > 0) {
+                    aspectRatio = (videoSize.width.toFloat() / videoSize.height.toFloat()).coerceIn(0.42f, 2.39f)
+                }
+            }
+        }
+        player?.addListener(listener)
+        onDispose { player?.removeListener(listener) }
+    }
+    LaunchedEffect(state.isVideoMode, state.isPlaying, aspectRatio) {
+        LevyraPipBridge.updatePlayback(
+            videoMode = state.isVideoMode,
+            playing = state.isPlaying,
+            aspectRatio = aspectRatio
+        )
+    }
+    val surfaceModifier = if (pictureInPicture) {
+        modifier
+    } else {
+        modifier.aspectRatio(aspectRatio.coerceIn(0.56f, 2.1f))
+    }
+    Box(
+        modifier = surfaceModifier.background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        if (player != null) {
+            AndroidView(
+                factory = { context ->
+                    androidx.media3.ui.PlayerView(context).apply {
+                        useController = false
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
+                        setBackgroundColor(android.graphics.Color.BLACK)
+                        keepScreenOn = true
+                        this.player = player
+                    }
+                },
+                update = { view ->
+                    val active = PlaybackService.activePlayer
+                    if (view.player !== active) view.player = active
+                    view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    view.keepScreenOn = state.isPlaying
+                },
+                onRelease = { view ->
+                    view.player = null
+                    view.keepScreenOn = false
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (!pictureInPicture) {
+            VideoLoadingSkeleton()
         }
     }
 }
