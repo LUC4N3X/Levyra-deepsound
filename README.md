@@ -178,14 +178,19 @@ com.luc4n3x.levyra   ·   Android 8.0 → 15   ·   100% Kotlin   ·   Compose +
 
 <br><br>
 
-<table>
-  <tr>
-    <td align="center" width="25%"><img src="docs/screenshots/home.png" width="100%" alt="Home" style="border-radius:10px;" /><br><sub><strong>Home</strong></sub></td>
-    <td align="center" width="25%"><img src="docs/screenshots/player.png" width="100%" alt="Player" style="border-radius:10px;" /><br><sub><strong>Full Player</strong></sub></td>
-    <td align="center" width="25%"><img src="docs/screenshots/lyrics.png" width="100%" alt="Lyrics" style="border-radius:10px;" /><br><sub><strong>Synced Lyrics</strong></sub></td>
-    <td align="center" width="25%"><img src="docs/screenshots/pulse.png" width="100%" alt="Listening Pulse" style="border-radius:10px;" /><br><sub><strong>Listening Pulse</strong></sub></td>
-  </tr>
-</table>
+<p align="center">
+  <a href="docs/screenshots/home.jpeg"><img src="docs/screenshots/home.jpeg" width="23%" alt="Home" style="border-radius: 12px;"/></a> &nbsp;
+  <a href="docs/screenshots/player.jpeg"><img src="docs/screenshots/player.jpeg" width="23%" alt="Full Player" style="border-radius: 12px;"/></a> &nbsp;
+  <a href="docs/screenshots/lyrics.jpeg"><img src="docs/screenshots/lyrics.jpeg" width="23%" alt="Synced Lyrics" style="border-radius: 12px;"/></a> &nbsp;
+  <a href="docs/screenshots/pulse.jpeg"><img src="docs/screenshots/pulse.jpeg" width="23%" alt="Listening Pulse" style="border-radius: 12px;"/></a>
+</p>
+
+<p align="center">
+  <sub style="width: 23%; display: inline-block; text-align: center;"><strong>Home</strong></sub> &nbsp;
+  <sub style="width: 23%; display: inline-block; text-align: center;"><strong>Full Player</strong></sub> &nbsp;
+  <sub style="width: 23%; display: inline-block; text-align: center;"><strong>Synced Lyrics</strong></sub> &nbsp;
+  <sub style="width: 23%; display: inline-block; text-align: center;"><strong>Listening Pulse</strong></sub>
+</p>
 
 </div>
 
