@@ -1760,8 +1760,7 @@ private fun AlbumTrackItem(
                         fontWeight = FontWeight.Medium,
                         letterSpacing = (-0.2).sp,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.clickable(onClick = onArtist)
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (status.isNotBlank()) {
                         Text(

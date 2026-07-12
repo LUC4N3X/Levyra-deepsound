@@ -175,6 +175,16 @@ class PlaybackResolver private constructor(private val context: Context) {
         listOf(track.streamUrl, track.videoStreamUrl)
             .filter { it.isNotBlank() }
             .forEach { failedPlaybackUrls[it] = now + ttl }
+        if (
+            lower.contains("403") ||
+            lower.contains("410") ||
+            lower.contains("429") ||
+            lower.contains("signature") ||
+            lower.contains("decoder") ||
+            lower.contains("n-transform")
+        ) {
+            YoutubeLocalDecoder.notifyStreamRejected()
+        }
     }
 
     private fun isPlaybackUrlBlocked(url: String): Boolean {
