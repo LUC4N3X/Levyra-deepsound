@@ -16,9 +16,19 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 |:---|:---|:---|:---|
 | LevyraExtractor | https://github.com/LUC4N3X/LevyraExtractor | Primary extractor playback core used by Levyra resolver logic | GPL-3.0 derivative source and upstream notices must be preserved |
 | Metrolist | https://github.com/MetrolistGroup/Metrolist | Android music client ecosystem reference | GPL-3.0 license notices must be preserved where code is reused |
+| zemer-cipher | https://github.com/ZemerTeam/zemer-cipher | Reference design and validated player configuration data for the local YouTube signature and n-parameter decoder | GPL-3.0; adapted decoder logic and configuration validation retain upstream attribution |
 | NewPipeExtractor | https://github.com/TeamNewPipe/NewPipeExtractor | Upstream extractor ecosystem reference | Original copyright and license notices remain with upstream authors |
 | PipePipeExtractor | https://github.com/InfinityLoop1308/PipePipeExtractor | Upstream base for LevyraExtractor | Original copyright and license notices remain with upstream authors |
 | MusicApp-KMP | https://github.com/SEAbdulbasit/MusicApp-KMP | UI and modular styling inspiration only | No ownership claim is made over the original project |
+
+
+## Local YouTube Decoder Attribution
+
+Levyra's local player decoder includes an independent integration adapted from the architecture and validated configuration format published by the ZemerTeam `zemer-cipher` project. The integration covers strict player-configuration validation, player JavaScript caching, WebView-based signature deciphering, `n` transformation, renderer recovery and remote configuration refresh. Levyra-specific orchestration, NewPipe decoder adaptation, fallback behavior, cache layout and playback integration are maintained in this repository.
+
+Upstream project: https://github.com/ZemerTeam/zemer-cipher
+
+Upstream license: GNU General Public License v3.0
 
 ## Runtime and Build Dependencies
 
