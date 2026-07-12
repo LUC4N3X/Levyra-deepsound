@@ -7563,14 +7563,31 @@ private fun SettingsOverlay(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
                         )
-                        AsyncImage(
-                            model = "https://github.com/LUC4N3X.png",
-                            contentDescription = "LUC4N3X",
+                        Box(
                             modifier = Modifier
-                                .size(22.dp)
-                                .clip(CircleShape)
-                                .border(1.dp, LevyraCyan.copy(alpha = 0.3f), CircleShape)
-                        )
+                                .height(28.dp)
+                                .padding(horizontal = 6.dp)
+                                .drawBehind {
+                                    drawCircle(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                LevyraCyan.copy(alpha = 0.5f),
+                                                LevyraViolet.copy(alpha = 0.2f),
+                                                Color.Transparent
+                                            ),
+                                            radius = size.height * 1.5f
+                                        )
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.levyra_logo_premium),
+                                contentDescription = "Levyra Premium",
+                                modifier = Modifier.height(20.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             "LUC4N3X",

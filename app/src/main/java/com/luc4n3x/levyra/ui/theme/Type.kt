@@ -12,25 +12,25 @@ val provider = GoogleFont.Provider(
     certificates = R.array.com_google_android_gms_fonts_certs
 )
 
-val InterFont = FontFamily(
-    Font(googleFont = GoogleFont("Inter"), fontProvider = provider)
+val OutfitFont = FontFamily(
+    Font(googleFont = GoogleFont("Outfit"), fontProvider = provider)
 )
 
 private val defaultTypography = Typography()
 val LevyraTypography = Typography(
-    displayLarge = defaultTypography.displayLarge.copy(fontFamily = InterFont),
-    displayMedium = defaultTypography.displayMedium.copy(fontFamily = InterFont),
-    displaySmall = defaultTypography.displaySmall.copy(fontFamily = InterFont),
-    headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = InterFont),
-    headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = InterFont),
-    headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = InterFont),
-    titleLarge = defaultTypography.titleLarge.copy(fontFamily = InterFont),
-    titleMedium = defaultTypography.titleMedium.copy(fontFamily = InterFont),
-    titleSmall = defaultTypography.titleSmall.copy(fontFamily = InterFont),
-    bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = InterFont),
-    bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = InterFont),
-    bodySmall = defaultTypography.bodySmall.copy(fontFamily = InterFont),
-    labelLarge = defaultTypography.labelLarge.copy(fontFamily = InterFont),
-    labelMedium = defaultTypography.labelMedium.copy(fontFamily = InterFont),
-    labelSmall = defaultTypography.labelSmall.copy(fontFamily = InterFont)
+    displayLarge = defaultTypography.displayLarge.copy(fontFamily = OutfitFont),
+    displayMedium = defaultTypography.displayMedium.copy(fontFamily = OutfitFont),
+    displaySmall = defaultTypography.displaySmall.copy(fontFamily = OutfitFont),
+    headlineLarge = defaultTypography.headlineLarge.copy(fontFamily = OutfitFont),
+    headlineMedium = defaultTypography.headlineMedium.copy(fontFamily = OutfitFont),
+    headlineSmall = defaultTypography.headlineSmall.copy(fontFamily = OutfitFont),
+    titleLarge = defaultTypography.titleLarge.copy(fontFamily = OutfitFont),
+    titleMedium = defaultTypography.titleMedium.copy(fontFamily = OutfitFont),
+    titleSmall = defaultTypography.titleSmall.copy(fontFamily = OutfitFont),
+    bodyLarge = defaultTypography.bodyLarge.copy(fontFamily = OutfitFont),
+    bodyMedium = defaultTypography.bodyMedium.copy(fontFamily = OutfitFont),
+    bodySmall = defaultTypography.bodySmall.copy(fontFamily = OutfitFont),
+    labelLarge = defaultTypography.labelLarge.copy(fontFamily = OutfitFont),
+    labelMedium = defaultTypography.labelMedium.copy(fontFamily = OutfitFont),
+    labelSmall = defaultTypography.labelSmall.copy(fontFamily = OutfitFont)
 )
