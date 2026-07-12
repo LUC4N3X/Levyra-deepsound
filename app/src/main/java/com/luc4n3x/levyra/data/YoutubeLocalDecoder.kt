@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -869,6 +870,14 @@ private class YoutubePlayerJsSource(
     }
 }
 
+internal object YoutubeCipherRuntimeFailurePolicy {
+    fun marksRuntimeDead(error: Throwable): Boolean {
+        return error is TimeoutCancellationException ||
+            (error !is CancellationException &&
+                error.message?.contains("timeout", ignoreCase = true) == true)
+    }
+}
+
 internal object YoutubePlayerJsSupport {
     private val hashRegex = Regex("/s/player/([A-Za-z0-9_-]{8,32})/")
     private val playerCacheFileRegex = Regex("^player_[a-f0-9]{8}\\.js$")
@@ -942,14 +951,16 @@ private class YoutubeCipherWebRuntime private constructor(
 
     private suspend fun evaluate(kind: String, value: String): String {
         if (isDead || closed.get()) throw ParsingException("Local decoder runtime unavailable")
-        withTimeout(READY_TIMEOUT_MS) { ready.await() }
-        val requestId = UUID.randomUUID().toString()
-        val deferred = CompletableDeferred<String>()
-        waiters[requestId] = deferred
+        var requestId: String? = null
         try {
+            withTimeout(READY_TIMEOUT_MS) { ready.await() }
+            val id = UUID.randomUUID().toString()
+            requestId = id
+            val deferred = CompletableDeferred<String>()
+            waiters[id] = deferred
             withContext(Dispatchers.Main.immediate) {
                 if (isDead || closed.get()) throw ParsingException("Local decoder renderer unavailable")
-                val script = "window.__levyraDecode(${JSONObject.quote(kind)},${JSONObject.quote(value)},${JSONObject.quote(requestId)});"
+                val script = "window.__levyraDecode(${JSONObject.quote(kind)},${JSONObject.quote(value)},${JSONObject.quote(id)});"
                 webView.evaluateJavascript(script, null)
             }
             val output = withTimeout(EVALUATION_TIMEOUT_MS) { deferred.await() }
@@ -959,11 +970,10 @@ private class YoutubeCipherWebRuntime private constructor(
             }
             return output
         } catch (error: Throwable) {
-            if (error is CancellationException) throw error
-            if (error.message?.contains("timeout", ignoreCase = true) == true) isDead = true
+            if (YoutubeCipherRuntimeFailurePolicy.marksRuntimeDead(error)) isDead = true
             throw error
         } finally {
-            waiters.remove(requestId)
+            requestId?.let { waiters.remove(it) }
         }
     }
 
