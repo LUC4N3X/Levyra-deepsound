@@ -569,6 +569,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             ?.asSequence()
             ?.filter { it.videoId != videoId }
             ?.map { watchTrackToTrack(it, seed, query) }
+            ?.filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
             ?.forEach { track -> tracks.putIfAbsent(track.id, track) }
 
         val relatedBrowseId = watch?.relatedBrowseId.orEmpty()
@@ -580,13 +581,14 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 .filter { it.type == YoutubeMusicRelatedType.Song || it.type == YoutubeMusicRelatedType.Video }
                 .filter { it.videoId.isNotBlank() && it.videoId != videoId }
                 .map { relatedItemToTrack(it, seed, query) }
+                .filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
                 .forEach { track -> tracks.putIfAbsent(track.id, track) }
         }
 
         if (tracks.size < boundedLimit) {
             search("${seed.artist} ${seed.title} radio", boundedLimit + 4, languageCode)
                 .filter { it.id != videoId }
-                .filterNot(::isLowQualityRadioCandidate)
+                .filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
                 .forEach { candidate -> tracks.putIfAbsent(candidate.id, candidate) }
         }
 
@@ -628,11 +630,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             query = query,
             source = "YouTube Music Related"
         )
-    }
-
-    private fun isLowQualityRadioCandidate(candidate: Track): Boolean {
-        val blob = "${candidate.title} ${candidate.artist}".lowercase()
-        return listOf("karaoke", "reaction", "nightcore", "slowed", "sped up").any(blob::contains)
     }
 
     fun searchSuggestions(query: String, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<String> {
@@ -1109,6 +1106,20 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return palettes[seed % palettes.size]
     }
 }
+
+internal fun isLowQualityRadioCandidate(title: String, artist: String): Boolean {
+    val value = "$title $artist"
+    return LOW_QUALITY_RADIO_PATTERNS.any { pattern -> pattern.containsMatchIn(value) }
+}
+
+private val LOW_QUALITY_RADIO_PATTERNS = listOf(
+    Regex("(?<![\\p{L}\\p{N}])karaoke(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("(?<![\\p{L}\\p{N}])nightcore(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("(?<![\\p{L}\\p{N}])slowed(?:\\s*(?:&|\\+|and)\\s*reverb)?(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("(?<![\\p{L}\\p{N}])sped[\\s-]*up(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("(?<![\\p{L}\\p{N}])(?:reaction\\s+(?:video|review)|reacts?\\s+to|first\\s+reaction)(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("\\(\\s*reaction\\s*\\)", RegexOption.IGNORE_CASE)
+)
 
 internal fun String.cleanAlbumDescription(): String {
     if (isBlank()) return ""
