@@ -12,7 +12,7 @@
 ---
 
 <p>
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3.20-%237F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
+  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.4.0-%237F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
   <img alt="Jetpack Compose" src="https://img.shields.io/badge/Compose-Material%203-%234285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
   <img alt="Media3" src="https://img.shields.io/badge/Media3-ExoPlayer-%233DDC84?style=for-the-badge&logo=android&logoColor=white">
   <img alt="WorkManager" src="https://img.shields.io/badge/WorkManager-Pipeline-%23005C97?style=for-the-badge&logo=google-cloud&logoColor=white">
@@ -20,7 +20,7 @@
   <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
 </p>
 
-[✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
+[📱 Inside Levyra](#-inside-levyra) • [✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
 
 <br>
 
@@ -45,6 +45,58 @@ Every track you download is fully parsed, tagged, and structured as a clean M4A 
 ├── UI Framework      Jetpack Compose + Material 3 (M3)
 └── Audio Foundation  AndroidX Media3 / ExoPlayer Engine
 ```
+
+<br>
+
+## ✦ Inside Levyra
+
+<p align="center">
+  <strong>Four views. One continuous listening experience.</strong><br>
+  <sub>Discovery, playback, intelligent lyrics, and private listening insights — designed as a single native Android journey.</sub>
+</p>
+
+<br>
+
+<table width="100%">
+  <tr>
+    <td width="25%" align="center" valign="top">
+      <a href="https://i.ibb.co/ynBG2ZQX/Whats-App-Image-2026-07-12-at-12-28-57.jpg">
+        <img src="https://i.ibb.co/ynBG2ZQX/Whats-App-Image-2026-07-12-at-12-28-57.jpg" alt="Levyra personalized home experience" width="220" />
+      </a>
+      <br><br>
+      <strong>01 · Your Orbit</strong><br>
+      <sub>Personal discovery, living recommendations, and sections shaped around the way you listen.</sub>
+    </td>
+    <td width="25%" align="center" valign="top">
+      <a href="https://i.ibb.co/tp5gW9ZY/Whats-App-Image-2026-07-12-at-12-30-01.jpg">
+        <img src="https://i.ibb.co/tp5gW9ZY/Whats-App-Image-2026-07-12-at-12-30-01.jpg" alt="Levyra immersive player" width="220" />
+      </a>
+      <br><br>
+      <strong>02 · Immersive Player</strong><br>
+      <sub>A focused now-playing view with visual feedback, full controls, and instant Song / Video switching.</sub>
+    </td>
+    <td width="25%" align="center" valign="top">
+      <a href="https://i.ibb.co/LXGYw6Yb/Whats-App-Image-2026-07-12-at-12-30-55.jpg">
+        <img src="https://i.ibb.co/LXGYw6Yb/Whats-App-Image-2026-07-12-at-12-30-55.jpg" alt="Levyra synchronized lyrics and translation" width="220" />
+      </a>
+      <br><br>
+      <strong>03 · Intelligent Lyrics</strong><br>
+      <sub>Source-aware synchronized lyrics with optional transcript translation and graceful fallbacks.</sub>
+    </td>
+    <td width="25%" align="center" valign="top">
+      <a href="https://i.ibb.co/twTrmtDL/Whats-App-Image-2026-07-12-at-12-31-58.jpg">
+        <img src="https://i.ibb.co/twTrmtDL/Whats-App-Image-2026-07-12-at-12-31-58.jpg" alt="Levyra listening pulse and history" width="220" />
+      </a>
+      <br><br>
+      <strong>04 · Listening Pulse</strong><br>
+      <sub>Private on-device statistics, real listening history, streaks, completion, and top artists.</sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <sub>Open any preview to view it at full resolution.</sub>
+</p>
 
 <br>
 
