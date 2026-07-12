@@ -2,9 +2,7 @@
 
 <img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="520" />
 
-<br><br>
-
-# L E V Y R A
+# 🎶
 
 ### Your music. Your files. Your phone. Nobody else's business.
 
