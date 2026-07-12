@@ -93,11 +93,9 @@ internal class LevyraVideoStreamSelector(context: Context) {
     }
 
     private fun compatibleCandidates(candidates: List<LevyraVideoCandidate>): List<LevyraVideoCandidate> {
-        val compatible = candidates.filter { candidate ->
-            val support = decoderSupport(candidate)
-            support.family == CodecFamily.OTHER || support.supported
+        return candidates.filter { candidate ->
+            decoderSupport(candidate).supported
         }
-        return compatible.ifEmpty { candidates }
     }
 
     private fun shouldPreferSeparated(
@@ -150,11 +148,17 @@ internal class LevyraVideoStreamSelector(context: Context) {
 
     private fun decoderSupport(candidate: LevyraVideoCandidate): DecoderSupport {
         val family = codecFamilyValue(candidate)
-        val matching = decoderCapabilities.filter { it.family == family }
+        val candidateMime = candidate.mimeType.substringBefore(';').trim()
+        val compatible = decoderCapabilities.filter { capability ->
+            val familyMatches = capability.family == family
+            val mimeMatches = family != CodecFamily.OTHER ||
+                candidateMime.isNotBlank() && capability.mimeType.equals(candidateMime, true)
+            familyMatches && mimeMatches && capability.supports(candidate)
+        }
         return DecoderSupport(
             family = family,
-            supported = matching.isNotEmpty(),
-            hardware = matching.any { it.hardware }
+            supported = compatible.isNotEmpty(),
+            hardware = compatible.any { it.hardware }
         )
     }
 
@@ -190,18 +194,25 @@ internal class LevyraVideoStreamSelector(context: Context) {
                     } else {
                         !info.name.contains("google", true) && !info.name.contains("software", true)
                     }
-                    info.supportedTypes.asSequence().map { mime ->
-                        CodecCapability(
-                            family = when {
-                                mime.equals("video/av01", true) -> CodecFamily.AV1
-                                mime.equals("video/x-vnd.on2.vp9", true) -> CodecFamily.VP9
-                                mime.equals("video/avc", true) -> CodecFamily.AVC
-                                mime.equals("video/hevc", true) -> CodecFamily.HEVC
-                                else -> CodecFamily.OTHER
-                            },
-                            hardware = hardware
-                        )
-                    }
+                    info.supportedTypes.asSequence()
+                        .filter { mime -> mime.startsWith("video/", true) }
+                        .mapNotNull { mime ->
+                            runCatching {
+                                val capabilities = info.getCapabilitiesForType(mime)
+                                CodecCapability(
+                                    family = when {
+                                        mime.equals("video/av01", true) -> CodecFamily.AV1
+                                        mime.equals("video/x-vnd.on2.vp9", true) -> CodecFamily.VP9
+                                        mime.equals("video/avc", true) -> CodecFamily.AVC
+                                        mime.equals("video/hevc", true) -> CodecFamily.HEVC
+                                        else -> CodecFamily.OTHER
+                                    },
+                                    mimeType = mime,
+                                    hardware = hardware,
+                                    videoCapabilities = capabilities.videoCapabilities
+                                )
+                            }.getOrNull()
+                        }
                 }
                 .toList()
         }.getOrDefault(emptyList())
@@ -215,8 +226,28 @@ internal class LevyraVideoStreamSelector(context: Context) {
 
     private data class CodecCapability(
         val family: CodecFamily,
-        val hardware: Boolean
-    )
+        val mimeType: String,
+        val hardware: Boolean,
+        val videoCapabilities: MediaCodecInfo.VideoCapabilities?
+    ) {
+        fun supports(candidate: LevyraVideoCandidate): Boolean {
+            val width = candidate.width
+            val height = candidate.height
+            if (width <= 0 || height <= 0) return true
+            val capabilities = videoCapabilities ?: return false
+            val frameRate = candidate.fps.takeIf { it > 0 }?.toDouble()
+            fun supportsSize(testWidth: Int, testHeight: Int): Boolean {
+                return runCatching {
+                    if (frameRate != null) {
+                        capabilities.areSizeAndRateSupported(testWidth, testHeight, frameRate)
+                    } else {
+                        capabilities.isSizeSupported(testWidth, testHeight)
+                    }
+                }.getOrDefault(false)
+            }
+            return supportsSize(width, height) || supportsSize(height, width)
+        }
+    }
 
     private enum class CodecFamily {
         AV1,
