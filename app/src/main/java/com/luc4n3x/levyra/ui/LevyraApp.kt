@@ -989,7 +989,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
 
                     onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
                     onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
-                    onOpenArtist = viewModel::openArtistFromAlbum,
+                    onOpenAlbumArtist = viewModel::openArtistFromAlbum,
+                    onOpenTrackArtist = viewModel::openArtist,
                     onOpenPlayer = viewModel::openPlayerScreen,
                     onClose = viewModel::closeAlbum
                 )
@@ -1178,7 +1179,8 @@ private fun AlbumOverlay(
 
     onAddToPlaylist: (String, Track) -> Unit,
     onCreatePlaylistWithTrack: (String, Track) -> Unit,
-    onOpenArtist: (Track) -> Unit,
+    onOpenAlbumArtist: () -> Unit,
+    onOpenTrackArtist: (Track) -> Unit,
     onOpenPlayer: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -1283,28 +1285,7 @@ private fun AlbumOverlay(
                                 if (albumIsActive) onTogglePlayback() else onPlayAll()
                             },
                             onDownload = onDownloadAlbum,
-                            onOpenArtist = {
-                                val artistTrack = tracks.firstOrNull()?.copy(artist = album.artist) ?: Track(
-                                    id = "album-artist-${album.artist}",
-                                    title = album.title,
-                                    artist = album.artist,
-                                    album = album.title,
-                                    durationMs = 0L,
-                                    streamUrl = "",
-                                    videoUrl = "",
-                                    thumbnailUrl = album.thumbnailUrl,
-                                    largeThumbnailUrl = album.thumbnailUrl,
-                                    source = "Album",
-                                    moodTags = emptySet(),
-                                    energy = 50,
-                                    vocal = 50,
-                                    replayScore = 50,
-                                    cacheScore = 50,
-                                    accentStart = accentStart.toArgb(),
-                                    accentEnd = accentEnd.toArgb()
-                                )
-                                onOpenArtist(artistTrack)
-                            },
+                            onOpenArtist = onOpenAlbumArtist,
                             onShare = {
                                 val shareText = buildString {
                                     append(album.title)
@@ -1356,7 +1337,7 @@ private fun AlbumOverlay(
                                 onFavorite = { onFavorite(track) },
                                 onDownload = { onDownload(track) },
                                 onAddToPlaylist = { addTarget = track },
-                                onArtist = { onOpenArtist(track) }
+                                onArtist = { onOpenTrackArtist(track) }
                             )
                         }
                     } else if (!state.albumLoading) {
