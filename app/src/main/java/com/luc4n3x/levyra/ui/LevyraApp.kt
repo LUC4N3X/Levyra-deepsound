@@ -989,11 +989,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
 
                     onAddToPlaylist = { playlistId, track -> viewModel.addToPlaylist(playlistId, track) },
                     onCreatePlaylistWithTrack = { name, track -> viewModel.createPlaylist(name, track) },
-                    onOpenArtist = viewModel::openArtist,
-                    onOpenPlayer = {
-                        viewModel.closeAlbum()
-                        viewModel.selectTab(LevyraTab.Player)
-                    },
+                    onOpenArtist = viewModel::openArtistFromAlbum,
+                    onOpenPlayer = viewModel::openPlayerScreen,
                     onClose = viewModel::closeAlbum
                 )
             }
@@ -6541,7 +6538,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 100.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = if (state.currentTrack != null) 220.dp else 100.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -6585,6 +6582,20 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                     )
                 }
             }
+        }
+        state.currentTrack?.let { current ->
+            AlbumNowPlayingDock(
+                track = current,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                progress = progressOf(state.positionMs, state.durationMs),
+                onToggle = viewModel::togglePlay,
+                onOpenPlayer = viewModel::openPlayerScreen,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
+            )
         }
     }
 }
