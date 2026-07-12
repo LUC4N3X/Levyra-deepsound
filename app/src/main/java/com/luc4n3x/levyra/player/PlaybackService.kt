@@ -75,6 +75,8 @@ class PlaybackService : MediaLibraryService() {
         const val EXTRA_VIDEO_CACHE_KEY = "levyra.videoCacheKey"
         const val EXTRA_VIDEO_MIME_TYPE = "levyra.videoMimeType"
         const val EXTRA_VIDEO_MODE = "levyra.videoMode"
+        const val EXTRA_YOUTUBE_LOUDNESS_DB = "levyra.youtubeLoudnessDb"
+        const val EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB = "levyra.youtubePerceptualLoudnessDb"
         private const val ACTION_QUEUE_PREVIOUS = "levyra.queue.previous"
         private const val ACTION_QUEUE_NEXT = "levyra.queue.next"
 
@@ -214,6 +216,15 @@ class PlaybackService : MediaLibraryService() {
 
         activePlayer = player
         player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val extras = mediaItem?.mediaMetadata?.extras
+                val loudness = extras?.takeIf { it.containsKey(EXTRA_YOUTUBE_LOUDNESS_DB) }
+                    ?.getFloat(EXTRA_YOUTUBE_LOUDNESS_DB)
+                val perceptual = extras?.takeIf { it.containsKey(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB) }
+                    ?.getFloat(EXTRA_YOUTUBE_PERCEPTUAL_LOUDNESS_DB)
+                normalizationProcessor.setYoutubeLoudness(loudness, perceptual)
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED && LevyraWidgetBridge.onNext == null) {
                     skipQueue(forward = true, respectRepeatOne = true)
