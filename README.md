@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="490" />
+<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="520" />
 
 # 🎶
 
@@ -38,19 +38,11 @@
 
 <br>
 
-<p align="center">
-  <strong><a href="#features">Features</a></strong> &nbsp;•&nbsp;
-  <strong><a href="#screens">Screens</a></strong> &nbsp;•&nbsp;
-  <strong><a href="#architecture">Architecture</a></strong> &nbsp;•&nbsp;
-  <strong><a href="#tech-stack">Stack</a></strong> &nbsp;•&nbsp;
-  <strong><a href="#build-instructions">Build</a></strong> &nbsp;•&nbsp;
-  <strong><a href="#privacy">Privacy</a></strong> &nbsp;•&nbsp;
-  <strong><a href="#license-and-legal">License</a></strong>
-</p>
+
 
 <br>
 
-<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="86%" style="border-radius: 14px; box-shadow: 0px 14px 40px rgba(0,0,0,0.5);" />
+<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="90%" style="border-radius: 14px; box-shadow: 0px 14px 40px rgba(0,0,0,0.5);" />
 
 </div>
 
