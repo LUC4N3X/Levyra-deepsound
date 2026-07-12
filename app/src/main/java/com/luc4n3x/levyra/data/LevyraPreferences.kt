@@ -230,6 +230,7 @@ class LevyraPreferences(context: Context) {
                     .put("thumbnailUrl", album.thumbnailUrl)
                     .put("query", album.query)
                     .put("browseId", album.browseId)
+                    .put("artistBrowseId", album.artistBrowseId)
             )
         }
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
@@ -370,7 +371,8 @@ class LevyraPreferences(context: Context) {
                         year = item.optString("year").trim(),
                         thumbnailUrl = thumbnailUrl,
                         query = item.optString("query").trim().ifBlank { "$title $artist album" },
-                        browseId = item.optString("browseId").trim()
+                        browseId = item.optString("browseId").trim(),
+                        artistBrowseId = item.optString("artistBrowseId").trim()
                     )
                 }
             }
