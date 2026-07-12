@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="520" />
+<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="500" />
 
 # 🎶
 
