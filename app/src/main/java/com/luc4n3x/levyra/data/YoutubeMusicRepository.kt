@@ -525,10 +525,12 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
         if (isAlbumLabel(title)) return null
         val tokens = lines.drop(1).flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }.filter { it.isNotBlank() }
-        val artist = tokens.firstOrNull { token ->
-            val normalized = token.lowercase()
-            !isTypeLabel(token) && !isAlbumLabel(token) && !normalized.matches(Regex("\\d{4}")) && !normalized.matches(Regex("\\d+:\\d{2}(?::\\d{2})?")) && !normalized.contains("views") && !normalized.contains("visualizz")
-        } ?: album.artist
+        val fallbackArtist = selectAlbumTrackArtist(tokens, album.artist)
+        val artist = extractYoutubeMusicArtistReference(renderer, fallbackArtist)
+            ?.name
+            .orEmpty()
+            .cleanAlbumArtistLabel()
+            .ifBlank { fallbackArtist }
         val thumbnail = findBestThumbnail(renderer).ifBlank { album.thumbnailUrl }
         return buildTrack(
             id = videoId,
@@ -542,6 +544,18 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             query = album.query.ifBlank { "${album.title} ${album.artist}" },
             source = "YouTube Music Album"
         )
+    }
+
+    internal fun selectAlbumTrackArtist(tokens: List<String>, fallbackArtist: String): String {
+        return tokens.firstNotNullOfOrNull { token ->
+            val cleaned = token.cleanAlbumArtistLabel()
+            cleaned.takeIf {
+                it.isNotBlank() &&
+                    !isTypeLabel(it) &&
+                    !isAlbumLabel(it) &&
+                    !isYoutubeMusicAlbumTrackMetadata(it)
+            }
+        } ?: fallbackArtist.cleanAlbumArtistLabel().ifBlank { fallbackArtist.trim() }
     }
 
     internal data class YoutubeMusicArtistReference(
@@ -1224,6 +1238,25 @@ private val ALBUM_ARTIST_ACTION_LABELS = setOf(
     "open artist",
     "view artist",
     "artist page"
+)
+
+internal fun isYoutubeMusicAlbumTrackMetadata(value: String): Boolean {
+    val normalized = value
+        .replace('\u00A0', ' ')
+        .replace('\u202F', ' ')
+        .trim()
+        .lowercase()
+    if (normalized.isBlank()) return true
+    if (normalized.matches(Regex("^(?:19|20)\\d{2}$"))) return true
+    if (normalized.matches(Regex("^\\d{1,2}:\\d{2}(?::\\d{2})?$"))) return true
+    if (normalized.matches(Regex("^\\d+\\s*(?:brani|tracce|songs?|tracks?)$", RegexOption.IGNORE_CASE))) return true
+    if (normalized.none(Char::isDigit)) return false
+    return ALBUM_TRACK_METRIC_PATTERN.containsMatchIn(normalized)
+}
+
+private val ALBUM_TRACK_METRIC_PATTERN = Regex(
+    "(?:^|\\s)[\\d.,]+\\s*(?:k|m|mln|mil|mio|mrd|bn|b|milioni?|miliardi?|millions?|billions?)?\\s*(?:views?|visualizzazioni?|riproduzioni?|ascolti?|plays?|streams?)\\b",
+    RegexOption.IGNORE_CASE
 )
 
 internal fun isLowQualityRadioCandidate(title: String, artist: String): Boolean {
