@@ -23,6 +23,19 @@ data class LyricsCandidate(
     val durationSec: Long
 )
 
+object LyricsProviderSelector {
+    fun select(
+        native: LyricsCandidate?,
+        lrcLib: List<LyricsCandidate>,
+        request: LyricsRequest
+    ): LyricsRepository.LyricsResult? {
+        native?.result?.takeIf { it.synced && it.lines.isNotEmpty() }?.let { return it }
+        LyricsResultRanker.best(lrcLib.filter { it.result.synced }, request)?.let { return it }
+        native?.result?.takeIf { !it.synced && it.lines.isNotEmpty() }?.let { return it }
+        return LyricsResultRanker.best(lrcLib.filterNot { it.result.synced }, request)
+    }
+}
+
 object LrcLyricsParser {
     private val timestampRegex = Regex("\\[(\\d{1,2}):(\\d{2})(?:[.:](\\d{1,3}))?]")
 
