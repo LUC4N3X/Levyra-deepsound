@@ -945,9 +945,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                     hasSeparateAudio = bestAudioUrl.isNotBlank(),
                     blocked = ::isPlaybackUrlBlocked
                 )
-                val hlsUrl = streamingData.optString("hlsManifestUrl")
-                    .takeIf { it.isNotBlank() && !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
-                    .orEmpty()
+                val hlsUrl = if (selection == null) {
+                    streamingData.optString("hlsManifestUrl")
+                        .takeIf { it.isNotBlank() && !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
+                        .orEmpty()
+                } else {
+                    ""
+                }
                 val details = root.optJSONObject("videoDetails")
                 val duration = details?.optString("lengthSeconds")?.toLongOrNull()?.times(1000L) ?: 0L
                 val thumbnail = details?.optJSONObject("thumbnail")?.optJSONArray("thumbnails")?.bestThumbnail().orEmpty()
@@ -1047,7 +1051,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
-        val hlsUrl = if (preferMp4Audio) null else info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
+        val hlsUrl = if (audio == null && !preferMp4Audio) {
+            info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
+        } else {
+            null
+        }
         val url = audio?.content ?: hlsUrl
             ?: throw IllegalStateException("LevyraExtractor non ha restituito stream audio diretti o HLS per ${track.title}")
         val bestThumb = info.thumbnails.maxByOrNull { image ->
@@ -1084,11 +1092,9 @@ class PlaybackResolver private constructor(private val context: Context) {
         val bestAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false)?.content
         val muxedCandidates = info.videoStreams
             .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
-            .ifEmpty { info.videoStreams.filter { it.isUrl && it.content.isNotBlank() } }
             .map(::extractorVideoCandidate)
         val videoOnlyCandidates = info.videoOnlyStreams
             .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
-            .ifEmpty { info.videoOnlyStreams.filter { it.isUrl && it.content.isNotBlank() } }
             .map(::extractorVideoCandidate)
         val selection = videoSelector.select(
             muxedCandidates = muxedCandidates,
