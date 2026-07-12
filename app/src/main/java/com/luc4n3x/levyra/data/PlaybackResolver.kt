@@ -235,6 +235,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
         val previous = inFlight.putIfAbsent(key, deferred)
         if (previous != null) {
+            deferred.cancel()
             Timber.d("resolver in-flight join kind=%s mode=%s id=%s", requestKind, if (isVideoMode) "video" else "audio", track.id)
             return@coroutineScope previous.await()
         }
