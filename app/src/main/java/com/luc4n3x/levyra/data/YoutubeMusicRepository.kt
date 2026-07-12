@@ -29,6 +29,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val clientVersion = "1.20260423.01.00"
     private val memory = LinkedHashMap<String, Track>()
+    private val watchRepository = YoutubeMusicWatchRepository(context)
 
     suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
@@ -531,104 +532,103 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         }.orEmpty()
     }
 
+    suspend fun getWatchPlaylist(
+        seed: Track,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        limit: Int = 25
+    ): YoutubeMusicWatchPlaylist? = withContext(Dispatchers.IO) {
+        val videoId = resolveVideoId(seed)
+        if (videoId.isBlank()) return@withContext null
+        runCatching { watchRepository.getWatchPlaylist(videoId, languageCode, limit) }.getOrNull()
+    }
+
+    suspend fun getSongRelated(
+        seed: Track,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): List<YoutubeMusicRelatedSection> = withContext(Dispatchers.IO) {
+        val watch = getWatchPlaylist(seed, languageCode, 1) ?: return@withContext emptyList()
+        if (watch.relatedBrowseId.isBlank()) return@withContext emptyList()
+        runCatching { watchRepository.getSongRelated(watch.relatedBrowseId, languageCode) }.getOrDefault(emptyList())
+    }
+
     suspend fun radio(
         seed: Track,
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
         limit: Int = 20
     ): List<Track> = withContext(Dispatchers.IO) {
-        val videoId = seed.id.takeIf { it.isNotBlank() && !it.contains("://") }
-            ?: extractVideoId(seed.videoUrl)
+        val boundedLimit = limit.coerceIn(1, 30)
+        val videoId = resolveVideoId(seed)
         if (videoId.isBlank()) return@withContext emptyList()
-        val root = runCatching { requestRadioRoot(videoId, languageCode) }.getOrNull()
+        val query = "radio ${seed.artist} ${seed.title}".trim()
         val tracks = LinkedHashMap<String, Track>()
-        if (root != null) {
-            val panelRenderers = mutableListOf<JSONObject>()
-            collectObjectsByKey(root, "playlistPanelVideoRenderer", panelRenderers)
-            panelRenderers.forEach { renderer ->
-                parsePlaylistPanelTrack(renderer, seed)?.let { track ->
-                    if (track.id != videoId && !tracks.containsKey(track.id)) tracks[track.id] = track
-                }
-            }
-            val responsive = mutableListOf<JSONObject>()
-            collectObjectsByKey(root, "musicResponsiveListItemRenderer", responsive)
-            responsive.forEach { renderer ->
-                parseMusicRenderer(renderer, "radio ${seed.artist} ${seed.title}")?.let { track ->
-                    if (track.id != videoId && !tracks.containsKey(track.id)) tracks[track.id] = track
-                }
-            }
+        val watch = runCatching {
+            watchRepository.getWatchPlaylist(videoId, languageCode, boundedLimit + 8)
+        }.getOrNull()
+
+        watch?.tracks
+            ?.asSequence()
+            ?.filter { it.videoId != videoId }
+            ?.map { watchTrackToTrack(it, seed, query) }
+            ?.filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
+            ?.forEach { track -> tracks.putIfAbsent(track.id, track) }
+
+        val relatedBrowseId = watch?.relatedBrowseId.orEmpty()
+        if (tracks.size < boundedLimit && relatedBrowseId.isNotBlank()) {
+            runCatching { watchRepository.getSongRelated(relatedBrowseId, languageCode) }
+                .getOrDefault(emptyList())
+                .asSequence()
+                .flatMap { it.items.asSequence() }
+                .filter { it.type == YoutubeMusicRelatedType.Song || it.type == YoutubeMusicRelatedType.Video }
+                .filter { it.videoId.isNotBlank() && it.videoId != videoId }
+                .map { relatedItemToTrack(it, seed, query) }
+                .filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
+                .forEach { track -> tracks.putIfAbsent(track.id, track) }
         }
-        if (tracks.isEmpty()) {
-            search("${seed.artist} ${seed.title} radio", limit + 4, languageCode)
+
+        if (tracks.size < boundedLimit) {
+            search("${seed.artist} ${seed.title} radio", boundedLimit + 4, languageCode)
                 .filter { it.id != videoId }
-                .filterNot { candidate ->
-                    val blob = "${candidate.title} ${candidate.artist}".lowercase()
-                    listOf("karaoke", "reaction", "nightcore", "slowed", "sped up").any(blob::contains)
-                }
-                .forEach { candidate -> if (!tracks.containsKey(candidate.id)) tracks[candidate.id] = candidate }
+                .filterNot { candidate -> isLowQualityRadioCandidate(candidate.title, candidate.artist) }
+                .forEach { candidate -> tracks.putIfAbsent(candidate.id, candidate) }
         }
-        tracks.values.take(limit.coerceIn(1, 30)).also { items -> items.forEach { memory[it.id] = it } }
+
+        tracks.values.take(boundedLimit).also { items -> items.forEach { memory[it.id] = it } }
     }
 
-    private fun requestRadioRoot(videoId: String, languageCode: String): JSONObject? {
-        val endpoint = "https://music.youtube.com/youtubei/v1/next?key=$apiKey&prettyPrint=false"
-        val body = JSONObject()
-            .put("context", JSONObject().put("client", clientPayload(languageCode)))
-            .put("videoId", videoId)
-            .put("playlistId", "RDAMVM$videoId")
-            .put("isAudioOnly", true)
-            .put("enablePersistentPlaylistPanel", true)
-            .toString()
-        val bytes = body.toByteArray(StandardCharsets.UTF_8)
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 8_000
-            readTimeout = 12_000
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Origin", "https://music.youtube.com")
-            setRequestProperty("Referer", "https://music.youtube.com/watch?v=$videoId")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Mobile Safari/537.36")
-            setRequestProperty("X-Youtube-Client-Name", "67")
-            setRequestProperty("X-Youtube-Client-Version", clientVersion)
-            GoogleApiKeyHeaders.applyTo(this, context)
-            setRequestProperty("Content-Length", bytes.size.toString())
-        }
-        return try {
-            connection.outputStream.use { it.write(bytes) }
-            val code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val response = BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { it.readText() }
-            if (code !in 200..299 || response.isBlank()) null else JSONObject(response)
-        } finally {
-            connection.disconnect()
-        }
+    private fun resolveVideoId(seed: Track): String {
+        return seed.id.takeIf { it.isNotBlank() && !it.contains("://") }
+            ?: extractVideoId(seed.videoUrl)
     }
 
-    private fun parsePlaylistPanelTrack(renderer: JSONObject, seed: Track): Track? {
-        val videoId = renderer.optString("videoId")
-            .ifBlank { renderer.optJSONObject("navigationEndpoint")?.optJSONObject("watchEndpoint")?.optString("videoId").orEmpty() }
-        if (videoId.isBlank()) return null
-        val title = renderer.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-        if (title.isBlank()) return null
-        val byline = renderer.optJSONObject("longBylineText")?.optJSONArray("runs")?.joinText().orEmpty()
-        val tokens = byline.split(" • ", " · ").map { it.trim() }.filter { it.isNotBlank() }
-        val artist = tokens.firstOrNull().orEmpty().ifBlank { seed.artist.ifBlank { "YouTube Music" } }
-        val album = tokens.drop(1).firstOrNull().orEmpty().ifBlank { "YouTube Music Radio" }
-        val durationText = renderer.optJSONObject("lengthText")?.optString("simpleText").orEmpty()
-        val durationMs = durationText.durationToMs()
-        val thumbnail = findBestThumbnail(renderer)
+    private fun watchTrackToTrack(item: YoutubeMusicWatchTrack, seed: Track, query: String): Track {
+        val thumbnail = item.thumbnailUrl.ifBlank { seed.thumbnailUrl }
         return buildTrack(
-            id = videoId,
-            title = title,
-            artist = artist,
-            album = album,
-            durationMs = durationMs,
+            id = item.videoId,
+            title = item.title,
+            artist = item.artists.joinToString(", ") { it.name }.ifBlank { seed.artist.ifBlank { "YouTube Music" } },
+            album = item.albumTitle.ifBlank { "YouTube Music Radio" },
+            durationMs = item.durationMs,
             thumbnailUrl = thumbnail,
             largeThumbnailUrl = upgradeThumbnail(thumbnail),
-            videoUrl = "https://www.youtube.com/watch?v=$videoId",
-            query = "radio ${seed.artist} ${seed.title}",
-            source = "YouTube Music Radio"
+            videoUrl = "https://www.youtube.com/watch?v=${item.videoId}",
+            query = query,
+            source = "YouTube Music Watch"
+        )
+    }
+
+    private fun relatedItemToTrack(item: YoutubeMusicRelatedItem, seed: Track, query: String): Track {
+        val thumbnail = item.thumbnailUrl.ifBlank { seed.thumbnailUrl }
+        return buildTrack(
+            id = item.videoId,
+            title = item.title,
+            artist = item.artists.joinToString(", ") { it.name }.ifBlank { seed.artist.ifBlank { "YouTube Music" } },
+            album = item.albumTitle.ifBlank { "YouTube Music Related" },
+            durationMs = item.durationMs,
+            thumbnailUrl = thumbnail,
+            largeThumbnailUrl = upgradeThumbnail(thumbnail),
+            videoUrl = "https://www.youtube.com/watch?v=${item.videoId}",
+            query = query,
+            source = "YouTube Music Related"
         )
     }
 
@@ -1106,6 +1106,20 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return palettes[seed % palettes.size]
     }
 }
+
+internal fun isLowQualityRadioCandidate(title: String, artist: String): Boolean {
+    val value = "$title $artist"
+    return LOW_QUALITY_RADIO_PATTERNS.any { pattern -> pattern.containsMatchIn(value) }
+}
+
+private val LOW_QUALITY_RADIO_PATTERNS = listOf(
+    Regex("(?<![\\p{L}\\p{N}])karaoke(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("(?<![\\p{L}\\p{N}])nightcore(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("(?<![\\p{L}\\p{N}])slowed(?:\\s*(?:&|\\+|and)\\s*reverb)?(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("(?<![\\p{L}\\p{N}])sped[\\s-]*up(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("(?<![\\p{L}\\p{N}])(?:reaction\\s+(?:video|review)|reacts?\\s+to|first\\s+reaction)(?![\\p{L}\\p{N}])", RegexOption.IGNORE_CASE),
+    Regex("\\(\\s*reaction\\s*\\)", RegexOption.IGNORE_CASE)
+)
 
 internal fun String.cleanAlbumDescription(): String {
     if (isBlank()) return ""
