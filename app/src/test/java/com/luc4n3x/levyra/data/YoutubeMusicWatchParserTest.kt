@@ -368,4 +368,40 @@ class YoutubeMusicWatchParserTest {
         assertEquals("Musixmatch", plainResult?.source)
         assertEquals(listOf("First plain line", "Second plain line"), plainResult?.lines?.map { it.text })
     }
+
+    @Test
+    fun relatedDescriptionPreservesAdjacentRunBoundaries() {
+        val root = JSONObject(
+            """
+            {
+              "contents": {
+                "musicDescriptionShelfRenderer": {
+                  "header": {"runs": [{"text": "About"}]},
+                  "description": {
+                    "runs": [
+                      {"text": "First paragraph"},
+                      {"text": "Second paragraph"}
+                    ]
+                  }
+                }
+              }
+            }
+            """.trimIndent()
+        )
+
+        val sections = YoutubeMusicWatchParser.parseRelated(root)
+
+        assertEquals(1, sections.size)
+        assertEquals("First paragraph\nSecond paragraph", sections.first().description)
+    }
+
+    @Test
+    fun lowQualityRadioFilterAppliesContextualMarkersWithoutDroppingLegitimateTitles() {
+        assertTrue(isLowQualityRadioCandidate("Song Name (Slowed + Reverb)", "Artist"))
+        assertTrue(isLowQualityRadioCandidate("Artist reacts to Song Name", "Reaction Channel"))
+        assertTrue(isLowQualityRadioCandidate("Song Name Karaoke", "Artist"))
+        assertFalse(isLowQualityRadioCandidate("Chain Reaction", "Diana Ross"))
+        assertFalse(isLowQualityRadioCandidate("Reaction", "New Order"))
+    }
+
 }
