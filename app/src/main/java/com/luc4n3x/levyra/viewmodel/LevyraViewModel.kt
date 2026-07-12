@@ -1316,30 +1316,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openArtist(track: Track) {
         openArtistByName(track.artist)
     }
+
+    fun openArtistFromAlbum(track: Track) {
+        openArtistByNameInternal(track.artist, DetailReturnTarget.Album)
+    }
+
     fun openArtistRelease(release: ArtistRelease, artistName: String) {
-        openAlbum(
-            AlbumHit(
+        openAlbumInternal(
+            album = AlbumHit(
                 title = release.title,
                 artist = artistName.ifBlank { release.subtitle },
                 year = release.year,
                 thumbnailUrl = release.thumbnailUrl,
                 query = listOf(release.title, artistName.ifBlank { release.subtitle }, "album").filter { it.isNotBlank() }.joinToString(" "),
                 browseId = release.browseId
-            )
+            ),
+            returnTarget = DetailReturnTarget.Artist
         )
     }
 
-
     fun openArtistByName(name: String) {
+        openArtistByNameInternal(name, DetailReturnTarget.None)
+    }
+
+    private fun openArtistByNameInternal(name: String, returnTarget: DetailReturnTarget) {
         val clean = name.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
         artistJob?.cancel()
-        _state.update {
-            it.copy(
+        _state.update { current ->
+            current.copy(
+                showAlbum = false,
                 showArtist = true,
                 artistLoading = true,
                 artistError = null,
-                artistProfile = if (it.artistProfile?.name.equals(clean, ignoreCase = true)) it.artistProfile else null
+                artistProfile = if (current.artistProfile?.name.equals(clean, ignoreCase = true)) current.artistProfile else null,
+                openPlaylist = null,
+                detailReturnTarget = if (returnTarget == DetailReturnTarget.Album && current.albumDetail != null) {
+                    DetailReturnTarget.Album
+                } else {
+                    DetailReturnTarget.None
+                }
             )
         }
         artistJob = viewModelScope.launch {
@@ -1367,19 +1383,39 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeArtist() {
         artistJob?.cancel()
-        _state.update { it.copy(showArtist = false, artistLoading = false, artistError = null) }
+        _state.update { current ->
+            val returnToAlbum = current.detailReturnTarget == DetailReturnTarget.Album && current.albumDetail != null
+            current.copy(
+                showArtist = false,
+                artistLoading = false,
+                artistError = null,
+                showAlbum = returnToAlbum,
+                detailReturnTarget = DetailReturnTarget.None
+            )
+        }
     }
 
     fun openAlbum(album: AlbumHit) {
+        openAlbumInternal(album, DetailReturnTarget.None)
+    }
+
+    private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
         albumJob?.cancel()
+        if (returnTarget != DetailReturnTarget.Artist) artistJob?.cancel()
         val current = _state.value.albumDetail
         val sameAlbum = current != null && current.album.title.equals(album.title, ignoreCase = true) && current.album.artist.equals(album.artist, ignoreCase = true)
-        _state.update {
-            it.copy(
+        _state.update { state ->
+            val keepArtistParent = returnTarget == DetailReturnTarget.Artist && state.showArtist
+            state.copy(
                 showAlbum = true,
                 albumLoading = true,
                 albumError = null,
-                albumDetail = if (sameAlbum) current else AlbumDetail(album, "", emptyList())
+                albumDetail = if (sameAlbum) current else AlbumDetail(album, "", emptyList()),
+                showArtist = keepArtistParent,
+                artistLoading = if (keepArtistParent) state.artistLoading else false,
+                artistError = if (keepArtistParent) state.artistError else null,
+                openPlaylist = null,
+                detailReturnTarget = if (keepArtistParent) DetailReturnTarget.Artist else DetailReturnTarget.None
             )
         }
         albumJob = viewModelScope.launch {
@@ -1413,7 +1449,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeAlbum() {
         albumJob?.cancel()
-        _state.update { it.copy(showAlbum = false, albumLoading = false, albumError = null) }
+        _state.update { current ->
+            val returnToArtist = current.detailReturnTarget == DetailReturnTarget.Artist && current.showArtist
+            current.copy(
+                showAlbum = false,
+                albumLoading = false,
+                albumError = null,
+                showArtist = returnToArtist,
+                detailReturnTarget = DetailReturnTarget.None
+            )
+        }
+    }
+
+    fun openPlayerScreen() {
+        albumJob?.cancel()
+        artistJob?.cancel()
+        _state.update {
+            it.copy(
+                showAlbum = false,
+                showArtist = false,
+                openPlaylist = null,
+                albumLoading = false,
+                artistLoading = false,
+                detailReturnTarget = DetailReturnTarget.None
+            )
+        }
+        moveToTab(LevyraTab.Player, rememberCurrent = true)
     }
 
     fun playAlbumSong(track: Track) {
