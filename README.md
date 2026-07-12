@@ -1,17 +1,17 @@
 <div align="center">
 
-<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="500" />
+<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="520" />
 
 # 🎶
 
-### Your music. Your files. Your phone. Nobody else's business.
+<h3 align="center">Your music. Your files. Your phone. Nobody else's business.</h3>
 
-Levyra is a native Android music player built from the ground up in Kotlin. No webviews, no wrappers, and absolutely no tracking.
-Stream instantly, download real tagged files to your own storage, and view your listening history without a single byte leaving your device.
+<p align="center">
+  Levyra is a native Android music player built from the ground up in Kotlin. No webviews, no wrappers, and absolutely no tracking.<br>
+  Stream instantly, download real tagged files to your own storage, and view your listening history without a single byte leaving your device.
+</p>
 
-<br>
-
-<p>
+<p align="center">
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3.20-%237F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
   <img alt="Compose" src="https://img.shields.io/badge/Compose-Material%203-%2306B6D4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
   <img alt="Media3" src="https://img.shields.io/badge/Media3-ExoPlayer-%233DDC84?style=for-the-badge&logo=android&logoColor=white">
@@ -22,21 +22,35 @@ Stream instantly, download real tagged files to your own storage, and view your 
 
 <br>
 
-### ⬇️ &nbsp;[Download the latest APK](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest) &nbsp;·&nbsp; [See what's new](https://github.com/LUC4N3X/Levyra-deepsound/releases) &nbsp;·&nbsp; [Report a bug](https://github.com/LUC4N3X/Levyra-deepsound/issues)
+<p align="center">
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
+    <img src="https://img.shields.io/badge/⬇️_DOWNLOAD_LATEST_APK-06B6D4?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases">
+    <img src="https://img.shields.io/badge/✨_SEE_WHATS_NEW-111827?style=for-the-badge" alt="What's New" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues">
+    <img src="https://img.shields.io/badge/🐛_REPORT_A_BUG-111827?style=for-the-badge" alt="Report Bug" />
+  </a>
+</p>
 
 <br>
 
-<a href="#features">Features</a> &nbsp;•&nbsp;
-<a href="#screens">Screens</a> &nbsp;•&nbsp;
-<a href="#architecture">Architecture</a> &nbsp;•&nbsp;
-<a href="#tech-stack">Stack</a> &nbsp;•&nbsp;
-<a href="#build-instructions">Build</a> &nbsp;•&nbsp;
-<a href="#privacy">Privacy</a> &nbsp;•&nbsp;
-<a href="#license-and-legal">License</a>
+<p align="center">
+  <strong><a href="#features">Features</a></strong> &nbsp;•&nbsp;
+  <strong><a href="#screens">Screens</a></strong> &nbsp;•&nbsp;
+  <strong><a href="#architecture">Architecture</a></strong> &nbsp;•&nbsp;
+  <strong><a href="#tech-stack">Stack</a></strong> &nbsp;•&nbsp;
+  <strong><a href="#build-instructions">Build</a></strong> &nbsp;•&nbsp;
+  <strong><a href="#privacy">Privacy</a></strong> &nbsp;•&nbsp;
+  <strong><a href="#license-and-legal">License</a></strong>
+</p>
 
 <br>
 
-<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="86%" style="border-radius: 14px; box-shadow: 0px 14px 40px rgba(0,0,0,0.5);" />
+<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="90%" style="border-radius: 14px; box-shadow: 0px 14px 40px rgba(0,0,0,0.5);" />
 
 </div>
 
