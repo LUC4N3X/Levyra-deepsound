@@ -74,4 +74,52 @@ class LyricsParsingTest {
         assertEquals("Synced", best?.provider)
         assertTrue((best?.confidence ?: 0) >= 80)
     }
+
+    @Test
+    fun providerSelectorUsesNativeTimedLyricsBeforeLrcLib() {
+        val request = LyricsRequest("Song", "Artist", 180)
+        val native = candidate("YouTube Music", synced = true)
+        val lrc = candidate("LRCLIB", synced = true)
+
+        val selected = LyricsProviderSelector.select(native, listOf(lrc), request)
+
+        assertEquals("YouTube Music", selected?.provider)
+    }
+
+    @Test
+    fun providerSelectorUsesSyncedLrcLibBeforeNativePlainLyrics() {
+        val request = LyricsRequest("Song", "Artist", 180)
+        val native = candidate("YouTube Music", synced = false)
+        val lrc = candidate("LRCLIB", synced = true)
+
+        val selected = LyricsProviderSelector.select(native, listOf(lrc), request)
+
+        assertEquals("LRCLIB", selected?.provider)
+    }
+
+    @Test
+    fun providerSelectorUsesNativePlainLyricsBeforeLrcLibPlainLyrics() {
+        val request = LyricsRequest("Song", "Artist", 180)
+        val native = candidate("YouTube Music", synced = false)
+        val lrc = candidate("LRCLIB", synced = false)
+
+        val selected = LyricsProviderSelector.select(native, listOf(lrc), request)
+
+        assertEquals("YouTube Music", selected?.provider)
+    }
+
+    private fun candidate(provider: String, synced: Boolean): LyricsCandidate {
+        return LyricsCandidate(
+            result = LyricsRepository.LyricsResult(
+                synced = synced,
+                lines = listOf(com.luc4n3x.levyra.domain.LyricLine(1_000L, 2_000L, "Line", "")),
+                provider = provider,
+                confidence = 90,
+                cached = false
+            ),
+            title = "Song",
+            artist = "Artist",
+            durationSec = 180
+        )
+    }
 }
