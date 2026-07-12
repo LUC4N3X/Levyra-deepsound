@@ -33,7 +33,9 @@ object TrackPayloadCodec {
         replayScore = replayScore,
         cacheScore = cacheScore,
         accentStart = accentStart,
-        accentEnd = accentEnd
+        accentEnd = accentEnd,
+        youtubeLoudnessDb = youtubeLoudnessDb,
+        youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb
     )
 }
 
@@ -55,7 +57,9 @@ private data class TrackPayload(
     val replayScore: Int = 84,
     val cacheScore: Int = 78,
     val accentStart: Int = 0xFF20E7FF.toInt(),
-    val accentEnd: Int = 0xFF8E57FF.toInt()
+    val accentEnd: Int = 0xFF8E57FF.toInt(),
+    val youtubeLoudnessDb: Float? = null,
+    val youtubePerceptualLoudnessDb: Float? = null
 ) {
     fun toTrack(): Track? {
         if (id.isBlank() || title.isBlank()) return null
@@ -76,7 +80,9 @@ private data class TrackPayload(
             replayScore = replayScore,
             cacheScore = cacheScore,
             accentStart = accentStart,
-            accentEnd = accentEnd
+            accentEnd = accentEnd,
+            youtubeLoudnessDb = youtubeLoudnessDb,
+            youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb
         )
     }
 }
