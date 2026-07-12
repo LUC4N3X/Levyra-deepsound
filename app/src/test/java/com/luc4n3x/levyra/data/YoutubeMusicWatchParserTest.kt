@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data
 
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -404,4 +405,36 @@ class YoutubeMusicWatchParserTest {
         assertFalse(isLowQualityRadioCandidate("Reaction", "New Order"))
     }
 
+    @Test
+    fun parsesDirectBotGuardChallenge() {
+        val challenge = JSONArray()
+            .put("message-id")
+            .put(JSONArray().put("window.BotGuard=function(){}"))
+            .put(JSONArray().put("https://www.youtube.com/botguard.js"))
+            .put("interpreter-hash")
+            .put("program-data")
+            .put("BotGuard")
+            .put(JSONObject.NULL)
+            .put("experiments")
+        val raw = JSONArray().put(JSONObject.NULL).put(challenge).toString()
+
+        val parsed = JSONObject(YoutubePoTokenRuntime.parseChallengeData(raw))
+
+        assertEquals("message-id", parsed.getString("messageId"))
+        assertEquals("program-data", parsed.getString("program"))
+        assertEquals("BotGuard", parsed.getString("globalName"))
+        assertEquals("experiments", parsed.getString("clientExperimentsStateBlob"))
+        assertEquals(
+            "window.BotGuard=function(){}",
+            parsed.getJSONObject("interpreterJavascript")
+                .getString("privateDoNotAccessOrElseSafeScriptWrappedValue")
+        )
+    }
+
+    @Test
+    fun rotatesGuestSessionForBotAndTokenFailuresButNotGeoRestrictions() {
+        assertTrue(YoutubePlaybackSecurity.shouldRotateGuestSession("PO token rejected", null))
+        assertTrue(YoutubePlaybackSecurity.shouldRotateGuestSession("Forbidden", 403))
+        assertFalse(YoutubePlaybackSecurity.shouldRotateGuestSession("Not available in your country", 403))
+    }
 }
