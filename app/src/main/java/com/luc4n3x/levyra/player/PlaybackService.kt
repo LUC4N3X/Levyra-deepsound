@@ -20,6 +20,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
@@ -72,6 +73,8 @@ class PlaybackService : MediaLibraryService() {
     companion object {
         const val EXTRA_VIDEO_URL = "levyra.videoUrl"
         const val EXTRA_VIDEO_CACHE_KEY = "levyra.videoCacheKey"
+        const val EXTRA_VIDEO_MIME_TYPE = "levyra.videoMimeType"
+        const val EXTRA_VIDEO_MODE = "levyra.videoMode"
         private const val ACTION_QUEUE_PREVIOUS = "levyra.queue.previous"
         private const val ACTION_QUEUE_NEXT = "levyra.queue.next"
 
@@ -131,7 +134,7 @@ class PlaybackService : MediaLibraryService() {
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
         val okHttpClient = LevyraHttpClientFactory.media(this)
-        val upstreamFactory = OkHttpDataSource.Factory(okHttpClient)
+        val baseHttpFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent("LevyraPlayer/1.13 Android Music")
             .setDefaultRequestProperties(
                 mapOf(
@@ -140,6 +143,7 @@ class PlaybackService : MediaLibraryService() {
                     "Connection" to "keep-alive"
                 )
             )
+        val upstreamFactory = LevyraYoutubeDataSource.Factory(baseHttpFactory)
         val cache = LevyraMediaCache.get(this)
         val cacheSinkFactory = CacheDataSink.Factory()
             .setCache(cache)
@@ -170,6 +174,7 @@ class PlaybackService : MediaLibraryService() {
                     .build()
             }
         }
+        renderersFactory.setEnableDecoderFallback(true)
 
         val player = ExoPlayer.Builder(this)
             .setLoadControl(loadControl)
@@ -597,11 +602,16 @@ private class LevyraMediaSourceFactory(
 
         val videoCacheKey = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_CACHE_KEY)
             ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_CACHE_KEY)
+        val videoMimeType = mediaItem.mediaMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_MIME_TYPE)
+            ?: mediaItem.requestMetadata.extras?.getString(PlaybackService.EXTRA_VIDEO_MIME_TYPE)
 
         val audioSource = mediaSourceFor(mediaItem)
         val videoItem = MediaItem.Builder()
             .setUri(videoUrl)
-            .apply { if (!videoCacheKey.isNullOrBlank()) setCustomCacheKey(videoCacheKey) }
+            .apply {
+                if (!videoCacheKey.isNullOrBlank()) setCustomCacheKey(videoCacheKey)
+                if (!videoMimeType.isNullOrBlank()) setMimeType(videoMimeType)
+            }
             .build()
         val videoSource = mediaSourceFor(videoItem)
 
@@ -616,10 +626,10 @@ private class LevyraMediaSourceFactory(
             return ProgressiveMediaSource.Factory(localDataSourceFactory).createMediaSource(localItem)
         }
         val uri = localUri?.toString().orEmpty()
-        return if (isHlsManifestUri(uri)) {
-            HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-        } else {
-            ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+        return when {
+            isHlsManifestUri(uri) -> HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            isDashManifestUri(uri) -> DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            else -> ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         }
     }
 
@@ -632,5 +642,13 @@ private class LevyraMediaSourceFactory(
             clean.contains("mime=application%2fx-mpegurl") ||
             clean.contains("mime=application/vnd.apple.mpegurl") ||
             clean.contains("type=application%2fx-mpegurl")
+    }
+
+    private fun isDashManifestUri(uri: String): Boolean {
+        val clean = uri.substringBefore('#').lowercase()
+        val path = clean.substringBefore('?')
+        return path.endsWith(".mpd") ||
+            clean.contains("mime=application%2fdash+xml") ||
+            clean.contains("mime=application/dash+xml")
     }
 }
