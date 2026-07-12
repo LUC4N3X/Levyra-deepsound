@@ -294,7 +294,8 @@ data class AlbumHit(
     val year: String,
     val thumbnailUrl: String,
     val query: String,
-    val browseId: String = ""
+    val browseId: String = "",
+    val artistBrowseId: String = ""
 )
 
 data class AlbumDetail(
