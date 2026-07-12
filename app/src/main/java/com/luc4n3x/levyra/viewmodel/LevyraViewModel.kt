@@ -206,6 +206,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     )
     private var searchJob: Job? = null
     private var playJob: Job? = null
+    private var modeSwitchJob: Job? = null
+    private var streamRecoveryJob: Job? = null
+    private var alternateModePrefetchJob: Job? = null
     private var prefetchJob: Job? = null
     private var chartEnrichJob: Job? = null
     private var orbitArtworkJob: Job? = null
@@ -223,6 +226,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val tabBackStack = ArrayDeque<LevyraTab>()
     private var playRequestId: Long = 0L
+    private var streamTransitionId: Long = 0L
     private var pendingSeekMs: Long = 0L
     private var queueIndex: Int = -1
     private var loopCurrentQueueOnCompletion: Boolean = false
@@ -368,6 +372,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         player.setPremiumAudioSettings(settings.audioSettings)
         player.setPlayback(settings.audioSettings.playbackSpeed, settings.audioSettings.pitch)
         player.onCompletion = { onTrackCompleted() }
+        player.onRecoverableStreamError = { track, positionMs, videoMode, errorMessage ->
+            recoverPlaybackStream(track, positionMs, videoMode, errorMessage)
+        }
         player.onError = { errorMsg ->
             _state.value.currentTrack?.let { resolver.invalidate(it, _state.value.isVideoMode) }
             _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
@@ -674,27 +681,118 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleVideoMode() {
-        val current = _state.value.isVideoMode
-        val track = _state.value.currentTrack ?: return
-        val newVideoMode = !current
-        _state.update { it.copy(isVideoMode = newVideoMode, isResolving = true) }
-        val oldPosition = player.positionMs
-        player.stop()
-        viewModelScope.launch {
+        val snapshot = _state.value
+        val track = snapshot.currentTrack ?: return
+        if (track.videoUrl.isBlank() || snapshot.isResolving) return
+        val sourceMode = snapshot.isVideoMode
+        val targetMode = !sourceMode
+        val positionMs = player.positionMs.coerceAtLeast(snapshot.positionMs)
+        val shouldPlay = player.isPlaying || snapshot.isPlaying
+        val transitionId = ++streamTransitionId
+        streamRecoveryJob?.cancel()
+        modeSwitchJob?.cancel()
+        _state.update { it.copy(isResolving = true, playerError = null) }
+        modeSwitchJob = viewModelScope.launch {
             try {
+                val baseTrack = (youtubePlayableTrack(track) ?: track).copy(streamUrl = "", videoStreamUrl = "")
                 val resolved = withContext(Dispatchers.IO) {
-                    resolver.resolve(track.copy(streamUrl = ""), newVideoMode)
+                    resolver.cached(baseTrack, targetMode) ?: resolver.resolve(baseTrack, targetMode)
                 }
-                _state.update { it.copy(currentTrack = resolved, isResolving = false, isPlaying = true) }
-                player.play(resolved)
-                if (oldPosition > 0L) {
-                    delay(300)
-                    player.seekTo(oldPosition)
+                if (!isActive || transitionId != streamTransitionId) return@launch
+                val currentIndex = queueEngine.state.value.currentIndex
+                if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
+                repository.replace(resolved)
+                player.replaceSource(
+                    track = resolved,
+                    positionMs = positionMs,
+                    videoMode = targetMode,
+                    playWhenReady = shouldPlay
+                )
+                queueEngine.updatePosition(positionMs)
+                _state.update {
+                    it.copy(
+                        currentTrack = resolved,
+                        isVideoMode = targetMode,
+                        isResolving = false,
+                        isPlaying = shouldPlay,
+                        positionMs = positionMs,
+                        durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                        playerError = null
+                    )
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _state.update { it.copy(isResolving = false, isVideoMode = current, playerError = cleanUserError(e)) }
+                prefetchAlternateMode(resolved, targetMode)
+                updateWidget()
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                if (transitionId != streamTransitionId) return@launch
+                _state.update {
+                    it.copy(
+                        isVideoMode = sourceMode,
+                        isResolving = false,
+                        isPlaying = player.isPlaying || snapshot.isPlaying,
+                        playerError = cleanUserError(error)
+                    )
+                }
             }
+        }
+    }
+
+    private fun recoverPlaybackStream(
+        failedTrack: Track,
+        positionMs: Long,
+        videoMode: Boolean,
+        errorMessage: String
+    ) {
+        val transitionId = ++streamTransitionId
+        modeSwitchJob?.cancel()
+        streamRecoveryJob?.cancel()
+        resolver.reportPlaybackFailure(failedTrack, videoMode, errorMessage)
+        _state.update { it.copy(isResolving = true, isPlaying = false, playerError = null) }
+        streamRecoveryJob = viewModelScope.launch {
+            try {
+                val baseTrack = (youtubePlayableTrack(failedTrack) ?: failedTrack).copy(streamUrl = "", videoStreamUrl = "")
+                val resolved = withContext(Dispatchers.IO) { resolver.resolve(baseTrack, videoMode) }
+                if (!isActive || transitionId != streamTransitionId) return@launch
+                val currentIndex = queueEngine.state.value.currentIndex
+                if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
+                repository.replace(resolved)
+                player.replaceSource(
+                    track = resolved,
+                    positionMs = positionMs,
+                    videoMode = videoMode,
+                    playWhenReady = true
+                )
+                queueEngine.updatePosition(positionMs)
+                _state.update {
+                    it.copy(
+                        currentTrack = resolved,
+                        isVideoMode = videoMode,
+                        isResolving = false,
+                        isPlaying = true,
+                        positionMs = positionMs,
+                        durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
+                        playerError = null
+                    )
+                }
+                prefetchAlternateMode(resolved, videoMode)
+                updateWidget()
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                if (transitionId != streamTransitionId) return@launch
+                val message = cleanUserError(error)
+                player.failRecovery(message)
+                _state.update { it.copy(isResolving = false, isPlaying = false, playerError = message) }
+            }
+        }
+    }
+
+    private fun prefetchAlternateMode(track: Track, activeVideoMode: Boolean) {
+        alternateModePrefetchJob?.cancel()
+        if (track.id.isBlank() || track.videoUrl.isBlank() || track.source.equals("Offline", true)) return
+        alternateModePrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(350L)
+            val cleanTrack = (youtubePlayableTrack(track) ?: track).copy(streamUrl = "", videoStreamUrl = "")
+            resolver.prefetch(cleanTrack, !activeVideoMode)
         }
     }
 
@@ -1877,6 +1975,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun startResolve(track: Track, preserveCrossfade: Boolean = false) {
+        streamTransitionId++
+        modeSwitchJob?.cancel()
+        streamRecoveryJob?.cancel()
+        alternateModePrefetchJob?.cancel()
         if (!preserveCrossfade) {
             crossfadeJob?.cancel()
             crossfadeInProgress = false
@@ -2027,7 +2129,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val selectedIndex = queueEngine.state.value.currentIndex
         if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, playable)
         repository.replace(playable)
-        player.play(playable)
+        player.play(playable, _state.value.isVideoMode)
         // Resume from the saved position when continuing the last session's track.
         val resumeMs = pendingSeekMs.takeIf { it > 1500L && it < playable.durationMs } ?: 0L
         if (resumeMs > 0L) player.seekTo(resumeMs)
@@ -2053,6 +2155,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         recordSmartPlayback(playable)
         fetchLyrics(playable)
         fetchSponsorSegments(playable)
+        prefetchAlternateMode(playable, _state.value.isVideoMode)
         updateWidget()
     }
 
@@ -2291,7 +2394,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun playbackIdentity(track: Track): String = youtubePlayableTrack(track)?.id?.takeIf { it.isNotBlank() }
         ?: track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}|${track.title}" } }.trim().lowercase()
 
-    fun play() = _state.value.currentTrack?.let { player.play(it) }
+    fun play() = _state.value.currentTrack?.let { current ->
+        if (current.streamUrl.isBlank()) play(current) else player.play(current, _state.value.isVideoMode)
+    }
     fun pause() = player.pause()
 
     fun togglePlay() {
@@ -2305,7 +2410,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             saveLastPlaybackAsync(current, player.positionMs)
             _state.update { it.copy(isPlaying = false) }
         } else {
-            player.play(current)
+            player.play(current, _state.value.isVideoMode)
             _state.update { it.copy(isPlaying = true) }
         }
         updateWidget()
@@ -2313,6 +2418,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closePlayer() {
         loopCurrentQueueOnCompletion = false
+        streamTransitionId++
+        modeSwitchJob?.cancel()
+        streamRecoveryJob?.cancel()
+        alternateModePrefetchJob?.cancel()
         player.stop()
         _state.update {
             it.copy(
@@ -2781,6 +2890,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.value.currentTrack?.let { preferences.saveLastPlayback(it, player.positionMs) }
         flushListenSessionBlocking()
         playJob?.cancel()
+        modeSwitchJob?.cancel()
+        streamRecoveryJob?.cancel()
+        alternateModePrefetchJob?.cancel()
         cancelBackgroundWarmups()
         chartEnrichJob?.cancel()
         sleepJob?.cancel()
