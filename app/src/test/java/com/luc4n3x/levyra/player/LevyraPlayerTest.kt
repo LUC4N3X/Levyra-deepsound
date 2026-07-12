@@ -16,6 +16,21 @@ class LevyraPlayerTest {
     }
 
     @Test
+    fun trackJsonPersistsYoutubeLoudnessMetadata() {
+        val json = TrackJson.toJson(
+            track(streamUrl = "").copy(
+                youtubeLoudnessDb = 5.5f,
+                youtubePerceptualLoudnessDb = 3.25f
+            )
+        )
+
+        val restored = TrackJson.fromJson(json)
+
+        assertEquals(5.5f, restored?.youtubeLoudnessDb)
+        assertEquals(3.25f, restored?.youtubePerceptualLoudnessDb)
+    }
+
+    @Test
     fun youtubePlayableTrackUsesVideoIdFromChartVideoUrl() {
         val chartTrack = track(streamUrl = "").copy(
             id = "chart-abc",
@@ -47,4 +62,31 @@ class LevyraPlayerTest {
         accentStart = 0,
         accentEnd = 0
     )
+
+    @Test
+    fun normalizationUsesPerceptualLoudnessBeforeStandardLoudness() {
+        val processor = NormalizationAudioProcessor()
+
+        processor.setYoutubeLoudness(6.0f, 3.0f)
+
+        assertEquals(0.7079f, processor.metadataGain() ?: 0.0f, 0.001f)
+    }
+
+    @Test
+    fun normalizationConvertsPositiveLoudnessToAttenuation() {
+        val processor = NormalizationAudioProcessor()
+
+        processor.setYoutubeLoudness(6.0f, null)
+
+        assertEquals(0.5012f, processor.metadataGain() ?: 0.0f, 0.001f)
+    }
+
+    @Test
+    fun normalizationDoesNotBoostNegativeYoutubeLoudness() {
+        val processor = NormalizationAudioProcessor()
+
+        processor.setYoutubeLoudness(-4.0f, null)
+
+        assertEquals(1.0f, processor.metadataGain() ?: 0.0f, 0.0f)
+    }
 }
