@@ -22,7 +22,9 @@ data class Track(
     val accentStart: Int,
     val accentEnd: Int,
     val videoStreamUrl: String = "",
-    val sponsorSegments: List<SponsorSegment> = emptyList()
+    val sponsorSegments: List<SponsorSegment> = emptyList(),
+    val youtubeLoudnessDb: Float? = null,
+    val youtubePerceptualLoudnessDb: Float? = null
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()

@@ -9,8 +9,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
 
 internal object LevyraResolverLatency {
-    const val INNER_TUBE_HEDGE_BUDGET_MS = 120L
-    private const val AUDIO_INNER_TUBE_FALLBACK_MS = 80L
+    const val INNER_TUBE_HEDGE_BUDGET_MS = 35L
+    private const val AUDIO_INNER_TUBE_FALLBACK_MS = 0L
     private const val VIDEO_INNER_TUBE_FALLBACK_MS = 2_500L
     private const val OFFLINE_INNER_TUBE_FALLBACK_MS = 2_500L
 
