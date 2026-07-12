@@ -437,4 +437,145 @@ class YoutubeMusicWatchParserTest {
         assertTrue(YoutubePlaybackSecurity.shouldRotateGuestSession("Forbidden", 403))
         assertFalse(YoutubePlaybackSecurity.shouldRotateGuestSession("Not available in your country", 403))
     }
+    @Test
+    fun albumArtistReferencePrefersMatchingHeaderRunOverUnrelatedArtists() {
+        val header = JSONObject(
+            """
+            {
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "The Weeknd",
+                    "navigationEndpoint": {
+                      "browseEndpoint": {
+                        "browseId": "UC_THE_WEEKND",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {"text": " • "},
+                  {"text": "2025"}
+                ]
+              },
+              "unrelated": {
+                "runs": [
+                  {
+                    "text": "Fedez",
+                    "navigationEndpoint": {
+                      "browseEndpoint": {
+                        "browseId": "UC_FEDEZ",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+            """.trimIndent()
+        )
+
+        val reference = YoutubeMusicRepository().extractYoutubeMusicArtistReference(header, "The Weeknd")
+
+        assertEquals("The Weeknd", reference?.name)
+        assertEquals("UC_THE_WEEKND", reference?.browseId)
+    }
+
+    @Test
+    fun albumSubtitleIgnoresNestedUiActionPayload() {
+        val runs = JSONArray(
+            """
+            [
+              {"text": {"runs": [{"text": "Vai all'artista"}]}},
+              {"text": " • 2026"}
+            ]
+            """.trimIndent()
+        )
+
+        val normalRuns = JSONArray(
+            """
+            [
+              {"text": "Album"},
+              {"text": " • "},
+              {"text": "DELIA"},
+              {"text": " • "},
+              {"text": "2026"}
+            ]
+            """.trimIndent()
+        )
+
+        assertEquals("• 2026", extractYoutubeMusicRunText(runs))
+        assertEquals("Album • DELIA • 2026", extractYoutubeMusicRunText(normalRuns))
+        assertEquals("", "{\"runs\":[{\"text\":\"Vai all'artista\"}]}".cleanAlbumArtistLabel())
+        assertEquals("", "Vai all’artista".cleanAlbumArtistLabel())
+        assertEquals("DELIA", "DELIA".cleanAlbumArtistLabel())
+    }
+
+    @Test
+    fun albumArtistReferenceUsesPreferredArtistForNestedActionText() {
+        val header = JSONObject(
+            """
+            {
+              "button": {
+                "text": {"runs": [{"text": "Vai all'artista"}]},
+                "navigationEndpoint": {
+                  "browseEndpoint": {
+                    "browseId": "UC_DELIA",
+                    "browseEndpointContextSupportedConfigs": {
+                      "browseEndpointContextMusicConfig": {
+                        "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """.trimIndent()
+        )
+
+        val reference = YoutubeMusicRepository().extractYoutubeMusicArtistReference(header, "DELIA")
+
+        assertEquals("DELIA", reference?.name)
+        assertEquals("UC_DELIA", reference?.browseId)
+    }
+
+    @Test
+    fun albumArtistReferenceFallsBackToOnlyArtistEndpoint() {
+        val header = JSONObject(
+            """
+            {
+              "subtitle": {
+                "runs": [
+                  {
+                    "text": "The Weeknd",
+                    "navigationEndpoint": {
+                      "browseEndpoint": {
+                        "browseId": "UC_THE_WEEKND",
+                        "browseEndpointContextSupportedConfigs": {
+                          "browseEndpointContextMusicConfig": {
+                            "pageType": "MUSIC_PAGE_TYPE_ARTIST"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+            """.trimIndent()
+        )
+
+        val reference = YoutubeMusicRepository().extractYoutubeMusicArtistReference(header, "")
+
+        assertEquals("The Weeknd", reference?.name)
+        assertEquals("UC_THE_WEEKND", reference?.browseId)
+    }
+
 }
