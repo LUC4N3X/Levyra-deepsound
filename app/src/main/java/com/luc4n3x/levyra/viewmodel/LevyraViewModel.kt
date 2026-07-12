@@ -2460,6 +2460,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val target = (duration * progress.coerceIn(0f, 1f)).toLong()
         player.seekTo(target)
         queueEngine.updatePosition(target)
+        _state.update { it.copy(positionMs = target) }
+    }
+
+    fun seekBy(deltaMs: Long) {
+        if (deltaMs == 0L) return
+        val currentPosition = player.positionMs.coerceAtLeast(0L)
+        val duration = player.durationMs.takeIf { it > 0L } ?: _state.value.durationMs
+        val unboundedTarget = (currentPosition + deltaMs).coerceAtLeast(0L)
+        val target = if (duration > 0L) unboundedTarget.coerceAtMost(duration) else unboundedTarget
+        player.seekTo(target)
+        queueEngine.updatePosition(target)
+        _state.update { it.copy(positionMs = target) }
     }
 
     private fun loadHome(preserveCurrent: Boolean = false) {
