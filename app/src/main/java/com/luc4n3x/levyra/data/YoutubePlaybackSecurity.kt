@@ -60,12 +60,18 @@ internal class YoutubePlaybackSecurity(
     private val failureCount = AtomicInteger(0)
     private val tokenGenerator = YoutubeWebPoTokenGenerator(appContext, httpClient)
 
+    fun cachedSession(): YoutubeGuestSession {
+        return YoutubeGuestSession(
+            visitorData = prefs.getString(KEY_VISITOR_DATA, "").orEmpty(),
+            generation = prefs.getLong(KEY_GENERATION, 0L)
+        )
+    }
+
     suspend fun currentSession(): YoutubeGuestSession = sessionMutex.withLock {
-        val stored = prefs.getString(KEY_VISITOR_DATA, "").orEmpty()
-        val generation = prefs.getLong(KEY_GENERATION, 0L)
-        if (stored.isNotBlank()) return@withLock YoutubeGuestSession(stored, generation)
+        val cached = cachedSession()
+        if (cached.visitorData.isNotBlank()) return@withLock cached
         val fresh = fetchVisitorData()
-        persistSession(fresh, generation + 1L)
+        persistSession(fresh, cached.generation + 1L)
     }
 
     fun observeVisitorData(visitorData: String) {

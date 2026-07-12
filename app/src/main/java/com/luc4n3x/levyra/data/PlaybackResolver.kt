@@ -571,7 +571,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val fallback = AtomicReference<DirectStream?>(null)
         val workers = orderedProfiles().mapIndexed { index, profile ->
             launch {
-                val dynamicDelay = profile.delayMs + index * 45L
+                val dynamicDelay = profile.delayMs + index * 20L
                 if (dynamicDelay > 0L) delay(dynamicDelay)
                 val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio) }
                 attempt.onSuccess { stream ->
@@ -883,7 +883,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         preferMp4Audio: Boolean
     ): DirectStream = withContext(Dispatchers.IO) {
-        val session = playbackSecurity.currentSession()
+        val session = if (profile.requiresPoToken) {
+            playbackSecurity.currentSession()
+        } else {
+            playbackSecurity.cachedSession()
+        }
         val poTokens = if (profile.requiresPoToken) playbackSecurity.poTokens(track.id, session) else null
         val signatureTimestamp = if (profile.clientName.startsWith("WEB")) {
             runCatching { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(track.id) }.getOrNull()
@@ -908,7 +912,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             .header("User-Agent", profile.userAgent)
             .header("X-Youtube-Client-Name", profile.clientHeaderName)
             .header("X-Youtube-Client-Version", profile.clientVersion)
-            .header("X-Goog-Visitor-Id", session.visitorData)
+        session.visitorData.takeIf { it.isNotBlank() }?.let {
+            requestBuilder.header("X-Goog-Visitor-Id", it)
+        }
         if (profile.clientName == "ANDROID_VR") {
             requestBuilder.header("X-Goog-Api-Format-Version", "2")
         }
@@ -939,23 +945,36 @@ class PlaybackResolver private constructor(private val context: Context) {
             val loudnessDb = audioConfig?.finiteFloat("loudnessDb")
             val perceptualLoudnessDb = audioConfig?.finiteFloat("perceptualLoudnessDb")
 
-            var bestAudioUrl = ""
-            var bestAudioScore = Int.MIN_VALUE
-            var bestAudioLabel = ""
-            for (i in 0 until adaptiveFormats.length()) {
-                val format = adaptiveFormats.optJSONObject(i) ?: continue
-                val mime = format.optString("mimeType")
-                val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken)
-                if (!mime.startsWith("audio/", true) || url.isBlank() || isPlaybackUrlBlocked(url)) continue
-                val itag = format.optInt("itag", 0)
-                val bitrate = format.optInt("bitrate", 0)
-                val audioQuality = format.optString("audioQuality")
-                val score = scoreAudioFormat(mime, itag, bitrate, audioQuality, preferMp4Audio)
-                if (score > bestAudioScore) {
-                    bestAudioScore = score
-                    bestAudioUrl = url
-                    bestAudioLabel = formatLabel(mime, itag, bitrate, audioQuality)
+            val audioCandidates = buildList {
+                for (i in 0 until adaptiveFormats.length()) {
+                    val format = adaptiveFormats.optJSONObject(i) ?: continue
+                    val mime = format.optString("mimeType")
+                    if (!mime.startsWith("audio/", true)) continue
+                    val itag = format.optInt("itag", 0)
+                    val bitrate = format.optInt("bitrate", 0)
+                    val audioQuality = format.optString("audioQuality")
+                    add(
+                        Triple(
+                            format,
+                            scoreAudioFormat(mime, itag, bitrate, audioQuality, preferMp4Audio),
+                            formatLabel(mime, itag, bitrate, audioQuality)
+                        )
+                    )
                 }
+            }.sortedByDescending { it.second }
+
+            var bestAudioUrl = ""
+            var bestAudioLabel = ""
+            for ((format, _, label) in audioCandidates) {
+                val url = format.resolveFormatUrl(
+                    videoId = track.id,
+                    streamingPoToken = poTokens?.streamingToken,
+                    transformThrottling = profile.clientName.startsWith("WEB")
+                )
+                if (url.isBlank() || isPlaybackUrlBlocked(url)) continue
+                bestAudioUrl = url
+                bestAudioLabel = label
+                break
             }
 
             if (isVideoMode) {
@@ -963,7 +982,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     for (i in 0 until adaptiveFormats.length()) {
                         val format = adaptiveFormats.optJSONObject(i) ?: continue
                         val mime = format.optString("mimeType")
-                        val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken)
+                        val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
                         if (!mime.startsWith("video/", true) || url.isBlank()) continue
                         add(
                             LevyraVideoCandidate(
@@ -985,7 +1004,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                     for (i in 0 until muxedFormats.length()) {
                         val format = muxedFormats.optJSONObject(i) ?: continue
                         val mime = format.optString("mimeType")
-                        val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken)
+                        val url = format.resolveFormatUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB"))
                         if (!mime.startsWith("video/", true) || url.isBlank()) continue
                         add(
                             LevyraVideoCandidate(
@@ -1012,7 +1031,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val hlsUrl = if (selection == null) {
                     streamingData.optString("hlsManifestUrl")
                         .takeIf { it.isNotBlank() }
-                        ?.let { it.finalizeStreamingUrl(track.id, poTokens?.streamingToken) }
+                        ?.let { it.finalizeStreamingUrl(track.id, poTokens?.streamingToken, profile.clientName.startsWith("WEB")) }
                         ?.takeIf { !isPlaybackUrlBlocked(it) && isVerifiedHlsManifest(it) }
                         .orEmpty()
                 } else {
@@ -1249,9 +1268,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             .put("clientVersion", profile.clientVersion)
             .put("hl", locale.hl)
             .put("gl", locale.gl)
-            .put("visitorData", visitorData)
             .put("utcOffsetMinutes", 0)
             .put("timeZone", "UTC")
+        visitorData.takeIf { it.isNotBlank() }?.let { client.put("visitorData", it) }
         if (profile.android) {
             val vr = profile.clientName == "ANDROID_VR"
             client.put("androidSdkVersion", if (vr) 32 else 35)
@@ -1350,7 +1369,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         return listOf(codec, br, tag, quality).filter { it.isNotBlank() }.joinToString(" · ")
     }
 
-    private fun JSONObject.resolveFormatUrl(videoId: String, streamingPoToken: String?): String {
+    private fun JSONObject.resolveFormatUrl(
+        videoId: String,
+        streamingPoToken: String?,
+        transformThrottling: Boolean
+    ): String {
         val direct = optString("url")
         val cipher = optString("signatureCipher").ifBlank { optString("cipher") }
         val initial = if (direct.isNotBlank()) {
@@ -1366,11 +1389,19 @@ class PlaybackResolver private constructor(private val context: Context) {
             if (signature.isNullOrBlank()) return ""
             base.withQueryParameter(signatureParameter, signature)
         }
-        return initial.finalizeStreamingUrl(videoId, streamingPoToken)
+        return initial.finalizeStreamingUrl(videoId, streamingPoToken, transformThrottling)
     }
 
-    private fun String.finalizeStreamingUrl(videoId: String, streamingPoToken: String?): String {
-        val transformed = if (containsQueryParameter("n")) decodeThrottlingParameter(videoId, this) else this
+    private fun String.finalizeStreamingUrl(
+        videoId: String,
+        streamingPoToken: String?,
+        transformThrottling: Boolean
+    ): String {
+        val transformed = if (transformThrottling && containsQueryParameter("n")) {
+            decodeThrottlingParameter(videoId, this)
+        } else {
+            this
+        }
         return streamingPoToken
             ?.takeIf { it.isNotBlank() }
             ?.let { transformed.withQueryParameterReplacing("pot", it) }
