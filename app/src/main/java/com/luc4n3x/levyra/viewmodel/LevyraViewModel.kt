@@ -1317,8 +1317,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         openArtistByName(track.artist)
     }
 
-    fun openArtistFromAlbum(track: Track) {
-        openArtistByNameInternal(track.artist, DetailReturnTarget.Album)
+    fun openArtistFromAlbum() {
+        val album = _state.value.albumDetail?.album ?: return
+        openArtistReference(
+            name = album.artist,
+            browseId = album.artistBrowseId,
+            returnTarget = DetailReturnTarget.Album
+        )
     }
 
     fun openArtistRelease(release: ArtistRelease, artistName: String) {
@@ -1340,16 +1345,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun openArtistByNameInternal(name: String, returnTarget: DetailReturnTarget) {
+        openArtistReference(name = name, browseId = "", returnTarget = returnTarget)
+    }
+
+    private fun openArtistReference(name: String, browseId: String, returnTarget: DetailReturnTarget) {
         val clean = name.trim()
+        val normalizedBrowseId = browseId.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
         artistJob?.cancel()
         _state.update { current ->
+            val sameProfile = current.artistProfile?.let { profile ->
+                if (normalizedBrowseId.isNotBlank()) {
+                    profile.browseId.equals(normalizedBrowseId, ignoreCase = true)
+                } else {
+                    profile.name.equals(clean, ignoreCase = true)
+                }
+            } == true
             current.copy(
                 showAlbum = false,
                 showArtist = true,
                 artistLoading = true,
                 artistError = null,
-                artistProfile = if (current.artistProfile?.name.equals(clean, ignoreCase = true)) current.artistProfile else null,
+                artistProfile = if (sameProfile) current.artistProfile else null,
                 openPlaylist = null,
                 detailReturnTarget = if (returnTarget == DetailReturnTarget.Album && current.albumDetail != null) {
                     DetailReturnTarget.Album
@@ -1359,7 +1376,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         artistJob = viewModelScope.launch {
-            val profile = runCatching { artistRepository.profileFor(clean) }.getOrNull()
+            val profile = if (normalizedBrowseId.isNotBlank()) {
+                runCatching { artistRepository.profile(normalizedBrowseId, clean) }.getOrNull()
+            } else {
+                runCatching { artistRepository.profileFor(clean) }.getOrNull()
+            }
             if (!isActive) return@launch
             if (profile == null || (profile.topSongs.isEmpty() && !profile.hasBio)) {
                 _state.update {
