@@ -24,6 +24,12 @@ import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 
+enum class DetailReturnTarget {
+    None,
+    Album,
+    Artist
+}
+
 data class LevyraUiState(
     val selectedTab: LevyraTab = LevyraTab.Home,
     val moods: List<Mood> = emptyList(),
@@ -57,6 +63,7 @@ data class LevyraUiState(
     val albumLoading: Boolean = false,
     val albumError: String? = null,
     val albumDetail: AlbumDetail? = null,
+    val detailReturnTarget: DetailReturnTarget = DetailReturnTarget.None,
     val favorites: List<Track> = emptyList(),
     val favoriteIds: Set<String> = emptySet(),
     val playlists: List<com.luc4n3x.levyra.domain.Playlist> = emptyList(),
