@@ -50,7 +50,7 @@
 
 <br>
 
-<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="90%" style="border-radius: 14px; box-shadow: 0px 14px 40px rgba(0,0,0,0.5);" />
+<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="86%" style="border-radius: 14px; box-shadow: 0px 14px 40px rgba(0,0,0,0.5);" />
 
 </div>
 
