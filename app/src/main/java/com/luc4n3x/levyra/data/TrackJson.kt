@@ -16,6 +16,8 @@ object TrackJson {
         .put("source", track.source)
         .put("accentStart", track.accentStart)
         .put("accentEnd", track.accentEnd)
+        .put("youtubeLoudnessDb", track.youtubeLoudnessDb)
+        .put("youtubePerceptualLoudnessDb", track.youtubePerceptualLoudnessDb)
 
     fun fromJson(json: JSONObject): Track? {
         val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
@@ -37,7 +39,15 @@ object TrackJson {
             replayScore = 84,
             cacheScore = 78,
             accentStart = json.optInt("accentStart", 0xFF20E7FF.toInt()),
-            accentEnd = json.optInt("accentEnd", 0xFF8E57FF.toInt())
+            accentEnd = json.optInt("accentEnd", 0xFF8E57FF.toInt()),
+            youtubeLoudnessDb = json.optNullableFloat("youtubeLoudnessDb"),
+            youtubePerceptualLoudnessDb = json.optNullableFloat("youtubePerceptualLoudnessDb")
         )
     }
+}
+
+private fun JSONObject.optNullableFloat(key: String): Float? {
+    if (!has(key) || isNull(key)) return null
+    val value = optDouble(key, Double.NaN)
+    return value.takeIf { it.isFinite() }?.toFloat()
 }
