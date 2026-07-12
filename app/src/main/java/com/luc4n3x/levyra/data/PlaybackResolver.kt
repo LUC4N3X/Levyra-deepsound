@@ -1060,6 +1060,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         )
         return artworkSafe.copy(
             streamUrl = url,
+            videoStreamUrl = if (audio == null) "" else artworkSafe.videoStreamUrl,
             durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs,
             source = if (audio != null) {
                 "LevyraExtractor${label.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
