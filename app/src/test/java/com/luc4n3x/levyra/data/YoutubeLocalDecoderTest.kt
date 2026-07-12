@@ -1,5 +1,10 @@
 package com.luc4n3x.levyra.data
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -161,6 +166,24 @@ class YoutubeLocalDecoderTest {
         assertTrue(modified.contains("window.__levyraSig=function(sig){return ZP(4,7936,sig);}"))
         assertTrue(modified.contains("window.__levyraN=function(n)"))
         assertTrue(modified.indexOf("window.__levyraSig") < modified.indexOf("})(_yt_player);"))
+    }
+
+    @Test
+    fun timeoutCancellationMarksRuntimeDeadBeforeRethrow() = runBlocking {
+        val timeout = try {
+            withTimeout(10L) { delay(100L) }
+            null
+        } catch (error: TimeoutCancellationException) {
+            error
+        }
+
+        assertNotNull(timeout)
+        assertTrue(YoutubeCipherRuntimeFailurePolicy.marksRuntimeDead(requireNotNull(timeout)))
+        assertFalse(
+            YoutubeCipherRuntimeFailurePolicy.marksRuntimeDead(
+                CancellationException("Caller cancelled")
+            )
+        )
     }
 
     @Test
