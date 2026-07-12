@@ -1,83 +1,120 @@
 <div align="center">
 
-<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="490" />
+<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="520" />
 
-<br>
+<br><br>
 
-# Levyra
+# ⌁ &nbsp;L E V Y R A &nbsp;⌁
 
-### Music that lives on your device — not on someone else's server.
+### Your music. Your files. Your phone. Nobody else's business.
 
-Levyra is a native Android music client built from scratch for people who care about how their audio actually sounds, where it's stored, and who's watching. No web reskin. No telemetry. Just a fast, offline-first player that streams cleanly and downloads real, fully-tagged files straight into your library.
+Levyra is a native Android music player built from the ground up in Kotlin — no webview, no wrapper, no tracking.
+Stream instantly, download real tagged files to your own storage, and see your listening stats without a single byte leaving your device.
 
 <br>
 
 <p>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3.20-%237F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
-  <img alt="Jetpack Compose" src="https://img.shields.io/badge/Compose-Material%203-%2306B6D4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
+  <img alt="Compose" src="https://img.shields.io/badge/Compose-Material%203-%2306B6D4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
   <img alt="Media3" src="https://img.shields.io/badge/Media3-ExoPlayer-%233DDC84?style=for-the-badge&logo=android&logoColor=white">
-  <img alt="WorkManager" src="https://img.shields.io/badge/WorkManager-Pipeline-%23005C97?style=for-the-badge&logo=google-cloud&logoColor=white">
-  <img alt="Room" src="https://img.shields.io/badge/SQLite-Room-%23003B57?style=for-the-badge&logo=sqlite&logoColor=white">
-  <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
-</p>
-
-<p>
-  <a href="#-features">Features</a> ·
-  <a href="#-architecture">Architecture</a> ·
-  <a href="#-tech-stack">Stack</a> ·
-  <a href="#-getting-started">Build</a> ·
-  <a href="#-privacy">Privacy</a> ·
-  <a href="#-license--legal">License</a>
+  <img alt="Offline" src="https://img.shields.io/badge/Offline-First-%2300E5FF?style=for-the-badge&logo=download&logoColor=black">
+  <img alt="Zero Telemetry" src="https://img.shields.io/badge/Telemetry-Zero-%230b0f14?style=for-the-badge&logo=ghostery&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/GPL--3.0-%23111827?style=for-the-badge">
 </p>
 
 <br>
 
-<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="88%" style="border-radius: 12px; box-shadow: 0px 10px 30px rgba(0,0,0,0.45);" />
+### ⬇️ &nbsp;[Download the latest APK](https://github.com/LUC4N3X/Levyra-deepsound/releases/latest) &nbsp;·&nbsp; [See what's new](https://github.com/LUC4N3X/Levyra-deepsound/releases) &nbsp;·&nbsp; [Report a bug](https://github.com/LUC4N3X/Levyra-deepsound/issues)
+
+<br>
+
+<a href="#-features">Features</a> &nbsp;•&nbsp;
+<a href="#-screens">Screens</a> &nbsp;•&nbsp;
+<a href="#-architecture">Architecture</a> &nbsp;•&nbsp;
+<a href="#-tech-stack">Stack</a> &nbsp;•&nbsp;
+<a href="#-getting-started">Build</a> &nbsp;•&nbsp;
+<a href="#-privacy">Privacy</a> &nbsp;•&nbsp;
+<a href="#-license--legal">License</a>
+
+<br>
+
+<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="90%" style="border-radius: 14px; box-shadow: 0px 14px 40px rgba(0,0,0,0.5);" />
 
 </div>
 
 <br>
 
-## The short version
+---
 
-Most "music apps" on the store are thin wrappers around a webview. Levyra isn't. It's a ground-up Kotlin/Compose app that queries and resolves tracks through YouTube Music's InnerTube API — with a **LevyraExtractor** fallback for when stream signatures change — routes everything through an optimized **Media3 / ExoPlayer** background service, and exports full-length tracks as clean `.m4a` files with embedded artwork, titles, artists, and album metadata.
+<div align="center">
 
-Every download lands in your public `Music/Levyra` folder as a proper file you own. Not a cache blob. Not a hidden database entry. A real song you can copy, back up, or move anywhere.
+## Why you'll actually keep it installed
+
+</div>
+
+Most "free music" apps are a webview in a trench coat — slow, ad-riddled, and quietly logging everything you touch. Levyra is the opposite of that.
+
+It's a real Android app. It resolves tracks through YouTube Music's **InnerTube** API, falls back to the **LevyraExtractor** engine the moment stream signatures change, and pushes every second of audio through an optimized **Media3 / ExoPlayer** service that keeps playing with the screen off. When you download a song, you get a genuine `.m4a` file — cover art, title, artist and album baked in — dropped straight into your public `Music/Levyra` folder. A file you own. Not a cache blob you'll never find again.
+
+<table width="100%">
+<tr>
+<td width="33%" valign="top" align="center">
+
+### 🪶
+**Instant & light**
+
+Native Kotlin + Compose. It opens fast, scrolls smooth, and stays out of your way.
+
+</td>
+<td width="33%" valign="top" align="center">
+
+### 📥
+**Downloads you own**
+
+Real tagged files in your Music folder. No lock-in, no hidden database, no expiry.
+
+</td>
+<td width="33%" valign="top" align="center">
+
+### 🔒
+**Nothing leaves your phone**
+
+Zero analytics. Zero tracking SDKs. Your stats are computed and stored on-device.
+
+</td>
+</tr>
+</table>
 
 ```text
-Application at a glance
-├── Package        com.luc4n3x.levyra
-├── Target SDK     35  (Android 15)
-├── Min SDK        26  (Android 8.0)
-├── Language       100% Kotlin
-├── UI             Jetpack Compose + Material 3
-└── Audio          AndroidX Media3 / ExoPlayer
+com.luc4n3x.levyra   ·   Android 8.0 → 15   ·   100% Kotlin   ·   Compose + Material 3   ·   Media3 / ExoPlayer
 ```
 
 <br>
+
+---
 
 ## ✦ Features
 
 <table width="100%">
   <tr>
-    <th width="50%" align="left">🎨 &nbsp;Interface that gets out of the way</th>
+    <th width="50%" align="left">🎨 &nbsp;An interface that gets out of the way</th>
     <th width="50%" align="left">⚡ &nbsp;A playback engine you can trust</th>
   </tr>
   <tr>
     <td valign="top">
       <ul>
-        <li><strong>Built for OLED.</strong> A dark-first, high-contrast theme that looks right in a dark room and saves your battery.</li>
-        <li><strong>Fluid by design.</strong> Home, Search, Library and Player tied together with custom micro-animations — nothing janky, nothing sudden.</li>
+        <li><strong>Built for OLED.</strong> A dark-first, high-contrast theme that looks right in a dark room — and saves your battery while it's at it.</li>
+        <li><strong>Fluid by design.</strong> Home, Search, Library and Player tied together with custom micro-animations. Nothing janky, nothing abrupt.</li>
         <li><strong>One player, two moods.</strong> Slide between a tucked-away mini-player and a full-screen, immersive now-playing view.</li>
-        <li><strong>Your color, your call.</strong> Optional Material 3 dynamic color that follows your system palette, with an animation toggle if you prefer things still.</li>
+        <li><strong>Your color, your call.</strong> Optional Material 3 dynamic color that follows your system palette — with an animation toggle if you like things still.</li>
       </ul>
     </td>
     <td valign="top">
       <ul>
-        <li><strong>Keeps playing, screen off.</strong> A Media3 foreground service with proper MediaSession controls — audio survives backgrounding and lock.</li>
+        <li><strong>Plays with the screen off.</strong> A Media3 foreground service with real MediaSession controls — audio survives backgrounding and lock.</li>
         <li><strong>Controls that matter.</strong> Loop (all or single), shuffle, a speed tuner, and sleep timers at 15 / 30 / 60 minutes.</li>
         <li><strong>Tune the sound.</strong> In-app normalization, silence skipping, and quality selection (Auto / High / Low).</li>
-        <li><strong>SponsorBlock, built in.</strong> Non-music and sponsored segments get skipped automatically, in real time.</li>
+        <li><strong>SponsorBlock, built in.</strong> Non-music and sponsored segments skipped automatically, in real time.</li>
       </ul>
     </td>
   </tr>
@@ -88,17 +125,17 @@ Application at a glance
   <tr>
     <td valign="top">
       <ul>
-        <li><strong>Real files, real folder.</strong> Exports straight to public <code>Music/Levyra</code> — no proprietary cache to reverse-engineer later.</li>
-        <li><strong>Tagged in pure Kotlin.</strong> High-res cover art, title, album and artist embedded the moment the download finishes.</li>
-        <li><strong>Survives reboots.</strong> A WorkManager-backed queue that rides out network drops and restarts with smart retries.</li>
-        <li><strong>No half-files.</strong> Strict Content-Length checks throw out corrupted or truncated downloads and reschedule them automatically.</li>
+        <li><strong>Real files, real folder.</strong> Straight to public <code>Music/Levyra</code> — no proprietary cache to reverse-engineer later.</li>
+        <li><strong>Tagged in pure Kotlin.</strong> High-res cover art, title, album and artist embedded the moment a download finishes.</li>
+        <li><strong>Survives reboots.</strong> A WorkManager queue that rides out network drops and restarts with smart retries.</li>
+        <li><strong>No half-files.</strong> Strict Content-Length checks throw out corrupted downloads and reschedule them for you.</li>
       </ul>
     </td>
     <td valign="top">
       <ul>
         <li><strong>Dual-channel resolving.</strong> InnerTube first, LevyraExtractor as backup — smarter Opus/M4A selection and fresh-URL caching that holds up when YouTube shifts signatures.</li>
-        <li><strong>Cached, not re-fetched.</strong> A TTL-based stream cache kills duplicate server calls and makes tracks load faster the second time.</li>
-        <li><strong>Search that guesses right.</strong> Predictive suggestions, category filters, and instant top-result matching.</li>
+        <li><strong>Cached, not re-fetched.</strong> A TTL-based stream cache kills duplicate calls and loads tracks faster the second time.</li>
+        <li><strong>Search that guesses right.</strong> Predictive suggestions, category filters, instant top-result matching.</li>
         <li><strong>Zero-gap playback.</strong> A prefetch engine loads charts and queued tracks ahead of time so nothing stalls between songs.</li>
       </ul>
     </td>
@@ -109,8 +146,8 @@ Application at a glance
   <tr>
     <td colspan="2">
       <ul>
-        <li><strong>Measured on-device.</strong> Real sessions counted second by second, stored in Room. No cloud, no telemetry — ever.</li>
-        <li><strong>A dashboard, not a report.</strong> Total minutes, plays, day streak, completion rate, peak hour, and a 7-day rhythm chart, right inside your Library.</li>
+        <li><strong>Measured on-device.</strong> Real sessions counted second by second, stored in Room. No cloud, no telemetry, ever.</li>
+        <li><strong>A dashboard, not a report.</strong> Total minutes, plays, day streak, completion rate, peak hour, and a 7-day rhythm chart — right inside your Library.</li>
         <li><strong>What you actually played.</strong> Top artists ranked by real playtime, plus a true history — not a list of things you searched and skipped.</li>
       </ul>
     </td>
@@ -130,6 +167,31 @@ Application at a glance
 </table>
 
 <br>
+
+---
+
+## ✦ Screens
+
+<div align="center">
+
+<em>A quick look at Levyra in motion. Drop your screenshots in <code>docs/screenshots/</code> and they'll show up right here.</em>
+
+<br><br>
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="docs/screenshots/home.png" width="100%" alt="Home" style="border-radius:10px;" /><br><sub><strong>Home</strong></sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/player.png" width="100%" alt="Player" style="border-radius:10px;" /><br><sub><strong>Full Player</strong></sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/lyrics.png" width="100%" alt="Lyrics" style="border-radius:10px;" /><br><sub><strong>Synced Lyrics</strong></sub></td>
+    <td align="center" width="25%"><img src="docs/screenshots/pulse.png" width="100%" alt="Listening Pulse" style="border-radius:10px;" /><br><sub><strong>Listening Pulse</strong></sub></td>
+  </tr>
+</table>
+
+</div>
+
+<br>
+
+---
 
 ## ✦ Architecture
 
@@ -175,6 +237,8 @@ graph TD
 
 <br>
 
+---
+
 ## ✦ Tech Stack
 
 - **Language** — Kotlin 2.3.20
@@ -191,6 +255,8 @@ graph TD
 - **Extraction** — InnerTube resolver + GPL-3.0 LevyraExtractor playback core via JitPack
 
 <br>
+
+---
 
 ## ✦ Getting Started
 
@@ -250,9 +316,11 @@ CI parses this schema, checks the target version with `aapt`, verifies structura
 
 <br>
 
+---
+
 ## ✦ Privacy
 
-Privacy isn't a feature bolted on afterward — it's the default. Levyra ships with **no analytics frameworks, no tracking SDKs, no third-party telemetry.** Nothing about how you listen leaves your phone.
+Privacy isn't a feature bolted on afterward — it's the default. Levyra ships with **no analytics frameworks, no tracking SDKs, no third-party telemetry.** Nothing about how you listen ever leaves your phone.
 
 ```text
 Manifest permissions — and why each one exists
@@ -265,6 +333,8 @@ Manifest permissions — and why each one exists
 
 <br>
 
+---
+
 ## ✦ Forking & Contributing
 
 Planning to ship your own build? A few ground rules:
@@ -275,6 +345,8 @@ Planning to ship your own build? A few ground rules:
 4. **Stay resilient.** If a query times out, route it through the fallback channel — don't let it fail silently.
 
 <br>
+
+---
 
 ## ✦ Credits
 
@@ -295,6 +367,8 @@ Planning to ship your own build? A few ground rules:
 *UI structure and modular styling take inspiration from the open-source [Metrolist](https://github.com/MetrolistGroup/Metrolist).*
 
 *The extraction core is [LevyraExtractor](https://github.com/LUC4N3X/LevyraExtractor) — a GPL-3.0 fork of [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor) from the NewPipe / PipePipe ecosystem.*
+
+<br>
 
 ---
 
@@ -358,9 +432,16 @@ Levyra is released under the **GNU General Public License v3.0** — see [LICENS
 
 If any part of this notice is found invalid or unenforceable, it will be limited to the minimum extent needed to make it enforceable, and the rest continues to apply. By downloading, building, installing, modifying, distributing, or using Levyra, you acknowledge the technical and legal risks described here and accept responsibility for lawful use, to the extent that acknowledgement is legally effective.
 
-<div align="center">
 <br>
 
-**Built with care by [LUC4N3X](https://github.com/LUC4N3X)** · GPL-3.0
+<div align="center">
+
+**⌁ Built with care by [LUC4N3X](https://github.com/LUC4N3X) ⌁**
+
+If Levyra earns a spot on your phone, a ⭐ on the repo means a lot.
+
+<br>
+
+<sub>GPL-3.0 · Android 8.0+ · No trackers, no ads, no compromises.</sub>
 
 </div>
