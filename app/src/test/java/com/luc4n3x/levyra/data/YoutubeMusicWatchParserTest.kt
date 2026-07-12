@@ -578,4 +578,32 @@ class YoutubeMusicWatchParserTest {
         assertEquals("UC_THE_WEEKND", reference?.browseId)
     }
 
+    @Test
+    fun albumTrackArtistRejectsLocalizedPlayCountMetadata() {
+        val repository = YoutubeMusicRepository()
+
+        val artist = repository.selectAlbumTrackArtist(
+            tokens = listOf("2,2 Mln riproduzioni", "4:44"),
+            fallbackArtist = "Eros Ramazzotti"
+        )
+
+        assertEquals("Eros Ramazzotti", artist)
+        assertTrue(isYoutubeMusicAlbumTrackMetadata("2,2 Mln riproduzioni"))
+        assertTrue(isYoutubeMusicAlbumTrackMetadata("16 Mln riproduzioni"))
+        assertTrue(isYoutubeMusicAlbumTrackMetadata("232 Mln riproduzioni"))
+    }
+
+    @Test
+    fun albumTrackArtistKeepsRealArtistBeforePlayCount() {
+        val repository = YoutubeMusicRepository()
+
+        val artist = repository.selectAlbumTrackArtist(
+            tokens = listOf("Eros Ramazzotti", "2,2 Mln riproduzioni", "4:44"),
+            fallbackArtist = "Fallback Artist"
+        )
+
+        assertEquals("Eros Ramazzotti", artist)
+        assertFalse(isYoutubeMusicAlbumTrackMetadata("2 Chainz"))
+    }
+
 }
