@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
     var onError: ((String) -> Unit)? = null
-    var onRecoverableStreamError: ((Track, Long, Boolean, String) -> Unit)? = null
+    var onRecoverableStreamError: ((Track, Long, Boolean, Boolean, String) -> Unit)? = null
 
     var controller: MediaController? = null
     private val controllerFuture = MediaController.Builder(
@@ -63,6 +63,8 @@ class LevyraPlayer(context: Context) {
                         }
                     }
                     if (playbackState != Player.STATE_ENDED) return
+                    sponsorJob?.cancel()
+                    sponsorJob = null
                     if (ignoreEndedFromManualStop || loadedTrack == null || loadedStreamIdentity == null || connected.mediaItemCount == 0) {
                         ignoreEndedFromManualStop = false
                         return
@@ -77,10 +79,21 @@ class LevyraPlayer(context: Context) {
                     if (isRecoverable(error) && !recoveryInFlight && recoveryAttempts < 3 && onRecoverableStreamError != null) {
                         recoveryInFlight = true
                         recoveryAttempts++
+                        val playWhenReadyBeforeError = connected.playWhenReady
+                        sponsorJob?.cancel()
+                        sponsorJob = null
                         connected.pause()
-                        onRecoverableStreamError?.invoke(track, connected.currentPosition.coerceAtLeast(0L), loadedVideoMode, message)
+                        onRecoverableStreamError?.invoke(
+                            track,
+                            connected.currentPosition.coerceAtLeast(0L),
+                            loadedVideoMode,
+                            playWhenReadyBeforeError,
+                            message
+                        )
                         return
                     }
+                    sponsorJob?.cancel()
+                    sponsorJob = null
                     clearLoadedState()
                     connected.pause()
                     onError?.invoke(message)
@@ -165,6 +178,8 @@ class LevyraPlayer(context: Context) {
         recoveryInFlight = false
         recoveryAttempts = 0
         recoveryResetJob?.cancel()
+        sponsorJob?.cancel()
+        sponsorJob = null
         clearLoadedState()
         controller?.pause()
         onError?.invoke(message)
@@ -179,9 +194,10 @@ class LevyraPlayer(context: Context) {
         recoveryInFlight = false
         recoveryAttempts = 0
         recoveryResetJob?.cancel()
+        sponsorJob?.cancel()
+        sponsorJob = null
         clearLoadedState()
         pendingPlayback = null
-        sponsorJob?.cancel()
         controller?.let {
             it.pause()
             it.clearMediaItems()
@@ -238,6 +254,7 @@ class LevyraPlayer(context: Context) {
 
     fun release() {
         sponsorJob?.cancel()
+        sponsorJob = null
         recoveryResetJob?.cancel()
         scope.cancel()
         controller?.release()
