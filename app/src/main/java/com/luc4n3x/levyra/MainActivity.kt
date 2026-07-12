@@ -108,12 +108,25 @@ class MainActivity : ComponentActivity() {
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) return false
         val state = LevyraPipBridge.current()
         if (!state.canEnter) return false
-        updatePictureInPictureParams(state)
-        return runCatching { enterPictureInPictureMode(pictureInPictureParams) }.getOrDefault(false)
+        val params = buildPictureInPictureParams(state)
+        setPictureInPictureParams(params)
+        return try {
+            enterPictureInPictureMode(params)
+        } catch (_: IllegalArgumentException) {
+            false
+        } catch (_: IllegalStateException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
     }
 
     private fun updatePictureInPictureParams(state: LevyraPipBridge.State) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        setPictureInPictureParams(buildPictureInPictureParams(state))
+    }
+
+    private fun buildPictureInPictureParams(state: LevyraPipBridge.State): PictureInPictureParams {
         val aspect = state.aspectRatio.coerceIn(0.42f, 2.39f)
         val denominator = 1000
         val numerator = (aspect * denominator).roundToInt().coerceAtLeast(1)
@@ -124,7 +137,7 @@ class MainActivity : ComponentActivity() {
                 .setAutoEnterEnabled(state.videoMode && state.playing)
                 .setSeamlessResizeEnabled(true)
         }
-        setPictureInPictureParams(builder.build())
+        return builder.build()
     }
 
     private fun applyOrientationPolicy() {
