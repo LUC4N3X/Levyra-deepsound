@@ -1,48 +1,30 @@
 <div align="center">
 
-<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra" width="490" />
+<img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Logo" width="490" />
+
 
 # 🎶
 
-<h3 align="center">Your music. Your files. Your phone. Nobody else's business.</h3>
+**A high-performance, native Android music client designed for pristine playback and complete audio control.**
 
-<p align="center">
-  Levyra is a native Android music player built from the ground up in Kotlin. No webviews, no wrappers, and absolutely no tracking.<br>
-  Stream instantly, download real tagged files to your own storage, and view your listening history without a single byte leaving your device.
-</p>
+*Fast discovery · Immersive visualizer · Resilient background downloading · Offline-first tag manager.*
 
-<p align="center">
+---
+
+<p>
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.3.20-%237F52FF?style=for-the-badge&logo=kotlin&logoColor=white">
-  <img alt="Compose" src="https://img.shields.io/badge/Compose-Material%203-%2306B6D4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
+  <img alt="Jetpack Compose" src="https://img.shields.io/badge/Compose-Material%203-%234285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white">
   <img alt="Media3" src="https://img.shields.io/badge/Media3-ExoPlayer-%233DDC84?style=for-the-badge&logo=android&logoColor=white">
-  <img alt="Offline" src="https://img.shields.io/badge/Offline-First-%2300E5FF?style=for-the-badge&logo=download&logoColor=black">
-  <img alt="Zero Telemetry" src="https://img.shields.io/badge/Telemetry-Zero-%230b0f14?style=for-the-badge&logo=ghostery&logoColor=white">
-  <img alt="License" src="https://img.shields.io/badge/GPL--3.0-%23111827?style=for-the-badge">
+  <img alt="WorkManager" src="https://img.shields.io/badge/WorkManager-Pipeline-%23005C97?style=for-the-badge&logo=google-cloud&logoColor=white">
+  <img alt="Room Database" src="https://img.shields.io/badge/SQLite-Room-%23003B57?style=for-the-badge&logo=sqlite&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
 </p>
 
-<br>
-
-<p align="center">
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
-    <img src="https://img.shields.io/badge/⬇️_DOWNLOAD_LATEST_APK-06B6D4?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
-  </a>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases">
-    <img src="https://img.shields.io/badge/✨_SEE_WHATS_NEW-111827?style=for-the-badge" alt="What's New" />
-  </a>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/issues">
-    <img src="https://img.shields.io/badge/🐛_REPORT_A_BUG-111827?style=for-the-badge" alt="Report Bug" />
-  </a>
-</p>
+[✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
 
 <br>
 
-
-
-<br>
-
-<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI preview" width="86%" style="border-radius: 14px; box-shadow: 0px 14px 40px rgba(0,0,0,0.5);" />
+<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI Preview" width="88%" style="border-radius: 12px; box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.4);" />
 
 </div>
 
