@@ -4,6 +4,8 @@ import android.content.Context
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricWord
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,6 +24,7 @@ class LyricsRepository(context: Context? = null) {
     private val appContext = context?.applicationContext
     private val cacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
     private val youtubeTranscript = appContext?.let(::YoutubeTranscriptLyricsProvider)
+    private val youtubeMusic = YoutubeMusicWatchRepository(appContext)
     private val memory = LinkedHashMap<String, LyricsResult>()
 
     data class LyricsResult(
@@ -42,54 +45,106 @@ class LyricsRepository(context: Context? = null) {
     ): LyricsResult? = withContext(Dispatchers.IO) {
         val cleanTitle = cleanTitle(title)
         val cleanArtist = cleanArtist(artist)
-        if (cleanTitle.length < 2 || cleanArtist.length < 2) return@withContext null
-        val key = cacheKey(cleanTitle, cleanArtist, durationSec, languageCode, translate)
+        if (cleanTitle.length < 2) return@withContext null
+        val key = cacheKey(cleanTitle, cleanArtist, durationSec, videoId, languageCode, translate)
         memory[key]?.let { return@withContext it.copy(cached = true) }
         readCache(key)?.let { cached ->
             memory[key] = cached
             return@withContext cached
         }
-        val candidates = mutableListOf<LyricsCandidate>()
-        artistVariants(cleanArtist).forEach { artistVariant ->
-            runCatching { getLrcLibExact(cleanTitle, artistVariant, durationSec) }
-                .getOrNull()
-                ?.let { candidates += it }
+
+        val request = LyricsRequest(cleanTitle, cleanArtist, durationSec)
+        val preferred = coroutineScope {
+            val nativeDeferred = async {
+                if (videoId.isBlank()) null else runCatching {
+                    youtubeMusic.getLyricsForVideo(videoId, languageCode)
+                }.getOrNull()?.toCandidate(cleanTitle, cleanArtist, durationSec)
+            }
+            val lrcLibDeferred = async {
+                if (cleanArtist.length < 2) emptyList() else collectLrcLibCandidates(cleanTitle, cleanArtist, durationSec)
+            }
+            LyricsProviderSelector.select(nativeDeferred.await(), lrcLibDeferred.await(), request)
         }
-        runCatching { searchLrcLib(cleanTitle, cleanArtist) }
-            .getOrDefault(emptyList())
-            .let { candidates += it }
-        if (videoId.isNotBlank()) {
-            runCatching { youtubeTranscript?.fetch(videoId, languageCode, translate) }
-                .getOrNull()
-                ?.takeIf { it.lines.isNotEmpty() }
-                ?.let { transcript ->
-                    val provider = buildString {
-                        append("YouTube Transcript")
-                        if (transcript.automatic) append(" Auto")
-                        append(" · ").append(transcript.sourceLanguage)
-                        if (transcript.translated) append(" → ").append(languageCode)
-                    }
-                    candidates += LyricsCandidate(
-                        result = LyricsResult(true, transcript.lines, provider, if (transcript.automatic) 72 else 82, false),
-                        title = cleanTitle,
-                        artist = cleanArtist,
-                        durationSec = durationSec
-                    )
-                }
-        }
-        if (candidates.none { it.result.lines.isNotEmpty() }) {
-            runCatching { lyricsOvh(cleanTitle, cleanArtist) }
-                .getOrNull()
-                ?.let { candidates += it }
-        }
-        val best = LyricsResultRanker.best(candidates, LyricsRequest(cleanTitle, cleanArtist, durationSec))
-            ?.let { normalizeTiming(it, durationSec) }
-        if (best != null) {
-            val stable = best.copy(cached = false)
+
+        val best = preferred
+            ?: fetchTranscriptCandidate(videoId, cleanTitle, cleanArtist, durationSec, languageCode, translate)
+                ?.result
+            ?: if (cleanArtist.length >= 2) runCatching { lyricsOvh(cleanTitle, cleanArtist) }.getOrNull()?.result else null
+
+        val normalized = best?.let { normalizeTiming(it, durationSec) }
+        if (normalized != null) {
+            val stable = normalized.copy(cached = false)
             memory[key] = stable
             writeCache(key, stable)
+            stable
+        } else {
+            null
         }
-        best
+    }
+
+    private suspend fun collectLrcLibCandidates(
+        title: String,
+        artist: String,
+        durationSec: Long
+    ): List<LyricsCandidate> = coroutineScope {
+        val exactDeferred = artistVariants(artist).map { artistVariant ->
+            async { runCatching { getLrcLibExact(title, artistVariant, durationSec) }.getOrNull() }
+        }
+        val searchDeferred = async { runCatching { searchLrcLib(title, artist) }.getOrDefault(emptyList()) }
+        buildList {
+            exactDeferred.mapNotNullTo(this) { it.await() }
+            addAll(searchDeferred.await())
+        }
+    }
+
+    private suspend fun fetchTranscriptCandidate(
+        videoId: String,
+        title: String,
+        artist: String,
+        durationSec: Long,
+        languageCode: String,
+        translate: Boolean
+    ): LyricsCandidate? {
+        if (videoId.isBlank()) return null
+        val transcript = runCatching { youtubeTranscript?.fetch(videoId, languageCode, translate) }
+            .getOrNull()
+            ?.takeIf { it.lines.isNotEmpty() }
+            ?: return null
+        val provider = buildString {
+            append("YouTube Transcript")
+            if (transcript.automatic) append(" Auto")
+            append(" · ").append(transcript.sourceLanguage)
+            if (transcript.translated) append(" → ").append(languageCode)
+        }
+        return LyricsCandidate(
+            result = LyricsResult(true, transcript.lines, provider, if (transcript.automatic) 72 else 82, false),
+            title = title,
+            artist = artist,
+            durationSec = durationSec
+        )
+    }
+
+    private fun YoutubeMusicNativeLyrics.toCandidate(
+        title: String,
+        artist: String,
+        durationSec: Long
+    ): LyricsCandidate {
+        val provider = buildString {
+            append("YouTube Music")
+            if (source.isNotBlank()) append(" · ").append(source)
+        }
+        return LyricsCandidate(
+            result = LyricsResult(
+                synced = synced,
+                lines = lines,
+                provider = provider,
+                confidence = if (synced) 100 else 90,
+                cached = false
+            ),
+            title = title,
+            artist = artist,
+            durationSec = durationSec
+        )
     }
 
     private fun getLrcLibExact(title: String, artist: String, durationSec: Long): LyricsCandidate? {
@@ -259,8 +314,15 @@ class LyricsRepository(context: Context? = null) {
         return clean.length >= 16 && !clean.equals("null", ignoreCase = true)
     }
 
-    private fun cacheKey(title: String, artist: String, durationSec: Long, languageCode: String, translate: Boolean): String {
-        val seed = "${title.cleanComparable()}|${artist.cleanComparable()}|${durationSec.coerceAtLeast(0L) / 10L}|${languageCode.lowercase(Locale.ROOT)}|$translate"
+    private fun cacheKey(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean
+    ): String {
+        val seed = "${title.cleanComparable()}|${artist.cleanComparable()}|${durationSec.coerceAtLeast(0L) / 10L}|${videoId.trim()}|${languageCode.lowercase(Locale.ROOT)}|$translate"
         return MessageDigest.getInstance("SHA-256").digest(seed.toByteArray(StandardCharsets.UTF_8)).joinToString("") { "%02x".format(it) }
     }
 
