@@ -687,7 +687,7 @@ internal object YoutubeMusicWatchParser {
             val text = optJSONObject(index)?.optString("text").orEmpty()
             if (text.isBlank()) continue
             if (preserveNewLines && builder.isNotEmpty() && text.startsWith("\n").not() && builder.lastOrNull() != '\n') {
-                builder.append("")
+                builder.append('\n')
             }
             builder.append(text)
         }
