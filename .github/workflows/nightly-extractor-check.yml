@@ -47,7 +47,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "9.4.1"
           cache-disabled: true
 
       - name: Prepare CI Release Signing
@@ -71,7 +70,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          gradle --no-daemon --refresh-dependencies :app:dependencyInsight \
+          ./gradlew --no-daemon --refresh-dependencies :app:dependencyInsight \
             --configuration releaseRuntimeClasspath \
             --dependency extractor \
             | tee artifacts/levyra-extractor-dependency.txt
@@ -80,7 +79,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon --no-configuration-cache --refresh-dependencies clean assembleRelease \
+          ./gradlew --no-daemon --no-configuration-cache --refresh-dependencies clean assembleRelease \
             | tee artifacts/nightly-release-build.log
 
       - name: Capture APK Metadata

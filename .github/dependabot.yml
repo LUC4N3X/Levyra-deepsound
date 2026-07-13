@@ -33,7 +33,6 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
-      - "gradle"
     groups:
       android-core:
         patterns:
