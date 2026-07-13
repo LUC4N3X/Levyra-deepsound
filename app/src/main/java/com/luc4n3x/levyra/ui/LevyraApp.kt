@@ -266,6 +266,8 @@ import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.delay
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
+import kotlin.math.cos
+import kotlin.math.sin
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
 private const val PLAYER_MEDIA_SEEK_STEP_MS = 5_000L
@@ -2736,208 +2738,105 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
         label = "levyra-secondary-background-accent"
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "levyra-background-breath")
-    val driftY by infiniteTransition.animateFloat(
-        initialValue = -18f,
-        targetValue = 18f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(18000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "levyra-background-drift-y"
-    )
-    val driftX by infiniteTransition.animateFloat(
-        initialValue = -10f,
-        targetValue = 10f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(22000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "levyra-background-drift-x"
-    )
-
-    if (LevyraIsLight) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFFFFFFFF),
-                            Color(0xFFF8FAFF),
-                            LevyraBlack,
-                            Color(0xFFEFF3FB)
-                        )
-                    )
-                )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(560.dp)
-                    .align(Alignment.TopCenter)
-                    .graphicsLayer {
-                        translationX = driftX
-                        translationY = driftY
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                coolAccent.copy(alpha = 0.13f),
-                                LevyraCyan.copy(alpha = 0.075f),
-                                Color.Transparent
-                            ),
-                            radius = 1050f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(540.dp)
-                    .align(Alignment.TopStart)
-                    .offset(x = (-210).dp, y = 90.dp)
-                    .graphicsLayer {
-                        translationX = driftX * -0.55f
-                        translationY = driftY * 0.35f
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                secondAccent.copy(alpha = 0.10f),
-                                LevyraViolet.copy(alpha = 0.055f),
-                                Color.Transparent
-                            ),
-                            radius = 760f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(610.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 245.dp, y = 18.dp)
-                    .graphicsLayer {
-                        translationX = driftX * 0.65f
-                        translationY = driftY * -0.45f
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                warmAccent.copy(alpha = 0.075f),
-                                Color.Transparent
-                            ),
-                            radius = 860f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.64f),
-                                LevyraBlack.copy(alpha = 0.96f)
-                            )
-                        )
-                    )
-            )
-        }
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val phaseState = if (animationsEnabled) {
+        rememberInfiniteTransition(label = "levyra-background-orbit").animateFloat(
+            initialValue = 0f,
+            targetValue = 6.2831855f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(52000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "levyra-background-phase"
+        )
     } else {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF030508),
-                            Color(0xFF05070E),
-                            Color(0xFF06030A),
-                            Color(0xFF010103)
-                        )
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val isLight = LevyraIsLight
+    val baseColors = if (isLight) {
+        listOf(Color(0xFFFFFFFF), Color(0xFFF9FBFF), Color(0xFFF4F7FE), Color(0xFFEFF3FB))
+    } else {
+        listOf(Color(0xFF040609), Color(0xFF060810), Color(0xFF07040C), Color(0xFF010102))
+    }
+    val bottomFade = if (isLight) {
+        listOf(Color.Transparent, Color.White.copy(alpha = 0.62f), Color(0xFFF2F5FC))
+    } else {
+        listOf(Color.Transparent, Color(0xFF020103).copy(alpha = 0.85f), Color.Black)
+    }
+    val vignetteAlpha = if (isLight) 0.05f else 0.34f
+    val glowAlpha = if (isLight) 0.5f else 1f
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                if (size.minDimension <= 0f) return@drawBehind
+                val phase = phaseState.value
+                val w = size.width
+                val h = size.height
+
+                drawRect(Brush.verticalGradient(baseColors))
+
+                fun blob(
+                    color: Color,
+                    alpha: Float,
+                    cx: Float,
+                    cy: Float,
+                    radius: Float,
+                    orbit: Float,
+                    speed: Float,
+                    offset: Float
+                ) {
+                    val x = cx + orbit * cos(phase * speed + offset)
+                    val y = cy + orbit * 0.62f * sin(phase * speed + offset)
+                    val center = androidx.compose.ui.geometry.Offset(x, y)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                color.copy(alpha = alpha * glowAlpha),
+                                color.copy(alpha = alpha * 0.38f * glowAlpha),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = radius
+                        ),
+                        radius = radius,
+                        center = center
+                    )
+                }
+
+                blob(coolAccent, 0.21f, w * 0.32f, h * 0.14f, w * 0.92f, w * 0.05f, 1f, 0f)
+                blob(secondAccent, 0.16f, w * 0.02f, h * 0.44f, w * 0.68f, w * 0.045f, 0.8f, 2.1f)
+                blob(warmAccent, 0.15f, w * 1.00f, h * 0.30f, w * 0.64f, w * 0.055f, 0.65f, 4.2f)
+                blob(if (isLight) coolAccent else electricCyan, 0.07f, w * 0.78f, h * 0.72f, w * 0.55f, w * 0.04f, 0.9f, 3.3f)
+                if (!isLight) {
+                    blob(softMagenta, 0.06f, w * 0.20f, h * 0.86f, w * 0.50f, w * 0.035f, 0.7f, 5.1f)
+                }
+
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Transparent,
+                            Color.Black.copy(alpha = vignetteAlpha)
+                        ),
+                        center = androidx.compose.ui.geometry.Offset(w * 0.5f, h * 0.42f),
+                        radius = kotlin.math.max(w, h) * 0.85f
                     )
                 )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(620.dp)
-                    .align(Alignment.TopCenter)
-                    .graphicsLayer {
-                        translationX = driftX
-                        translationY = driftY
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                coolAccent.copy(alpha = 0.20f),
-                                electricCyan.copy(alpha = 0.08f),
-                                Color.Transparent
-                            ),
-                            radius = 1120f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(560.dp)
-                    .align(Alignment.TopStart)
-                    .offset(x = (-190).dp, y = 72.dp)
-                    .graphicsLayer {
-                        translationX = driftX * -0.55f
-                        translationY = driftY * 0.35f
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                secondAccent.copy(alpha = 0.16f),
-                                softMagenta.copy(alpha = 0.07f),
-                                Color.Transparent
-                            ),
-                            radius = 720f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(620.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 240.dp, y = 20.dp)
-                    .graphicsLayer {
-                        translationX = driftX * 0.65f
-                        translationY = driftY * -0.45f
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                warmAccent.copy(alpha = 0.18f),
-                                Color(0xFFFF9A3D).copy(alpha = 0.055f),
-                                Color.Transparent
-                            ),
-                            radius = 820f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(320.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.Transparent,
-                                Color(0xFF020103).copy(alpha = 0.86f),
-                                Color.Black
-                            )
-                        )
-                    )
-            )
-        }
-    }
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = bottomFade,
+                        startY = h * 0.72f,
+                        endY = h
+                    ),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, h * 0.72f),
+                    size = androidx.compose.ui.geometry.Size(w, h * 0.28f)
+                )
+            }
+    )
 }
 
 @Composable
