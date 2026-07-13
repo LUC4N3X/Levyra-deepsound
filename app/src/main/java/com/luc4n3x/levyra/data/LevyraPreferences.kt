@@ -66,6 +66,65 @@ class LevyraPreferences(context: Context) {
 
     fun snapshot(): LevyraPreferencesSnapshot = read(defaultSnapshot()) { snapshotFrom(it) }
 
+    suspend fun restoreSnapshot(snapshot: LevyraPreferencesSnapshot) {
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(snapshot.languageCode)
+        val normalizedAudio = snapshot.audioSettings.normalized()
+        val normalizedInterface = snapshot.interfaceSettings.normalized()
+        val normalizedDownloads = snapshot.downloadSettings.normalized()
+        val recentSearchesJson = JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } }.toString()
+        val personalOrbitJson = JSONArray().apply {
+            snapshot.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT).forEach { put(TrackJson.toJson(it)) }
+        }.toString()
+        dataStore.edit { mutable ->
+            mutable[KEY_ONBOARDED] = snapshot.onboarded
+            mutable[KEY_TASTES] = snapshot.tastes
+            mutable[KEY_USER_NAME] = snapshot.userName
+            mutable[KEY_LANGUAGE_CODE] = normalizedLanguage
+            mutable[KEY_ANIMATIONS] = snapshot.animationsEnabled
+            mutable[KEY_DYNAMIC_COLOR] = snapshot.dynamicColor
+            mutable[KEY_SPONSORBLOCK] = snapshot.sponsorBlock
+            mutable[KEY_SKIP_SILENCE] = snapshot.skipSilence
+            mutable[KEY_AUDIO_QUALITY] = normalizeAudioQuality(snapshot.audioQuality)
+            mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
+            mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
+            mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
+            mutable[KEY_AUDIO_EQ_ENABLED] = normalizedAudio.equalizerEnabled
+            mutable[KEY_AUDIO_EQ_PRESET] = normalizedAudio.presetId
+            mutable[KEY_AUDIO_EQ_BANDS] = normalizedAudio.bandLevels.joinToString(",")
+            mutable[KEY_AUDIO_BASS_BOOST] = normalizedAudio.bassBoost
+            mutable[KEY_AUDIO_VIRTUALIZER] = normalizedAudio.virtualizer
+            mutable[KEY_AUDIO_CROSSFADE] = normalizedAudio.crossfadeSeconds
+            mutable[KEY_AUDIO_DJ_SOFT] = normalizedAudio.djSoftMode
+            mutable[KEY_AUDIO_REPLAY_GAIN] = normalizedAudio.replayGainEnabled
+            mutable[KEY_AUDIO_SPEED] = normalizedAudio.playbackSpeed
+            mutable[KEY_AUDIO_PITCH] = normalizedAudio.pitch
+            mutable[KEY_AUDIO_GAPLESS] = normalizedAudio.gaplessEnabled
+            mutable[KEY_UI_COMPACT_HOME] = normalizedInterface.compactHome
+            mutable[KEY_UI_PERSONAL_ORBIT] = normalizedInterface.showPersonalOrbit
+            mutable[KEY_UI_RESONANCE] = normalizedInterface.showResonance
+            mutable[KEY_UI_NEW_RELEASES] = normalizedInterface.showNewReleases
+            mutable[KEY_UI_ALBUMS] = normalizedInterface.showAlbumsForYou
+            mutable[KEY_UI_ARTISTS] = normalizedInterface.showTrendingArtists
+            mutable[KEY_UI_CHARTS] = normalizedInterface.showCharts
+            mutable[KEY_UI_PLAYER_GESTURES] = normalizedInterface.playerGesturesEnabled
+            mutable[KEY_UI_DOUBLE_TAP_SECONDS] = normalizedInterface.doubleTapSeekSeconds
+            mutable[KEY_UI_LONG_PRESS_SPEED] = normalizedInterface.longPressSpeed
+            mutable[KEY_DOWNLOAD_WIFI_ONLY] = normalizedDownloads.wifiOnly
+            mutable[KEY_DOWNLOAD_CHARGING_ONLY] = normalizedDownloads.chargingOnly
+            mutable[KEY_DOWNLOAD_RESUMABLE] = normalizedDownloads.resumable
+            mutable[KEY_DOWNLOAD_CONCURRENCY] = normalizedDownloads.maxConcurrentDownloads
+            mutable[KEY_RECENT_SEARCHES] = recentSearchesJson
+            mutable[personalOrbitTracksKey(normalizedLanguage)] = personalOrbitJson
+            if (snapshot.lastTrack == null) {
+                mutable.remove(KEY_LAST_TRACK)
+                mutable.remove(KEY_LAST_POSITION)
+            } else {
+                mutable[KEY_LAST_TRACK] = TrackJson.toJson(snapshot.lastTrack).toString()
+                mutable[KEY_LAST_POSITION] = snapshot.lastPositionMs.coerceAtLeast(0L)
+            }
+        }
+    }
+
     fun isOnboarded(): Boolean = read(false) { it[KEY_ONBOARDED] ?: false }
 
     fun setOnboarded(tastes: Set<String>) {

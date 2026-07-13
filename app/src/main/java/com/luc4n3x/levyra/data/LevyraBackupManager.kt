@@ -63,9 +63,14 @@ class LevyraBackupManager(private val context: Context) {
         input.use { stream ->
             ZipInputStream(stream.buffered()).use { zip ->
                 var totalBytes = 0L
+                var entryCount = 0
                 while (true) {
                     val entry = zip.nextEntry ?: break
-                    if (!entry.isDirectory && entry.name in setOf(MANIFEST_ENTRY, PAYLOAD_ENTRY)) {
+                    entryCount += 1
+                    if (entryCount > MAX_ZIP_ENTRIES) throw IOException("Backup non valido: troppe voci ZIP")
+                    if (!entry.isDirectory) {
+                        if (entry.name !in REQUIRED_ENTRIES) throw IOException("Backup non valido: voce ZIP inattesa ${entry.name}")
+                        if (entries.containsKey(entry.name)) throw IOException("Backup non valido: voce duplicata ${entry.name}")
                         if (entry.size > MAX_ENTRY_BYTES) throw IOException("Backup troppo grande")
                         val bytes = readZipEntry(zip, MAX_ENTRY_BYTES)
                         totalBytes += bytes.size
@@ -124,21 +129,39 @@ class LevyraBackupManager(private val context: Context) {
     }
 
     private suspend fun restorePayload(root: JSONObject) {
-        val settings = root.optJSONObject("settings") ?: JSONObject()
-        val favoriteTracks = root.optJSONArray("favorites").toTrackList()
-        val followedArtists = parseFollowedArtists(root.optJSONArray("followedArtists"))
-        val playlists = root.optJSONArray("playlists") ?: JSONArray()
-        val history = parseHistory(root.optJSONArray("history"))
-        val queue = root.optJSONObject("queue")
+        val target = parseRestorePayload(root)
+        val rollback = parseRestorePayload(createPayload())
+        try {
+            applyRestorePayload(target)
+        } catch (restoreError: Throwable) {
+            runCatching { applyRestorePayload(rollback) }
+                .onFailure { rollbackError -> restoreError.addSuppressed(rollbackError) }
+            throw restoreError
+        }
+    }
+
+    private fun parseRestorePayload(root: JSONObject): RestorePayload {
+        val settingsJson = root.optJSONObject("settings") ?: JSONObject()
+        return RestorePayload(
+            settings = parseSettings(settingsJson),
+            favoriteTracks = root.optJSONArray("favorites").toTrackList(),
+            followedArtists = parseFollowedArtists(root.optJSONArray("followedArtists")),
+            playlists = root.optJSONArray("playlists") ?: JSONArray(),
+            history = parseHistory(root.optJSONArray("history")),
+            queue = root.optJSONObject("queue")
+        )
+    }
+
+    private suspend fun applyRestorePayload(payload: RestorePayload) {
+        preferences.restoreSnapshot(payload.settings)
+        followedArtistsStore.saveDurable(payload.followedArtists)
         val now = System.currentTimeMillis()
         database.withTransaction {
-            database.favoriteTracksDao().replaceAll(favoriteTracks.mapIndexed { index, track -> track.toFavoriteTrackEntity(now - index) })
-            restorePlaylists(playlists)
-            database.listenEventsDao().replaceAll(history)
-            restoreQueue(queue)
+            database.favoriteTracksDao().replaceAll(payload.favoriteTracks.mapIndexed { index, track -> track.toFavoriteTrackEntity(now - index) })
+            restorePlaylists(payload.playlists)
+            database.listenEventsDao().replaceAll(payload.history)
+            restoreQueue(payload.queue)
         }
-        restoreSettings(settings)
-        followedArtistsStore.save(followedArtists)
     }
 
     private fun settingsToJson(snapshot: LevyraPreferencesSnapshot): JSONObject {
@@ -164,26 +187,29 @@ class LevyraBackupManager(private val context: Context) {
             .put("lastPositionMs", snapshot.lastPositionMs)
     }
 
-    private fun restoreSettings(json: JSONObject) {
-        val tastes = json.optJSONArray("tastes").toStringSet()
-        preferences.setOnboardingState(json.optBoolean("onboarded", false), tastes)
-        preferences.setUserName(json.optString("userName"))
-        preferences.setLanguageCode(json.optString("languageCode"))
-        preferences.setAnimationsEnabled(json.optBoolean("animationsEnabled", true))
-        preferences.setDynamicColor(json.optBoolean("dynamicColor", true))
-        preferences.setSponsorBlock(json.optBoolean("sponsorBlock", true))
-        preferences.setSkipSilence(json.optBoolean("skipSilence", false))
-        preferences.setAudioQuality(json.optString("audioQuality", "Auto"))
-        preferences.setAudioNormalization(json.optBoolean("audioNormalization", false))
-        preferences.setLyricsTranslationEnabled(json.optBoolean("lyricsTranslationEnabled", false))
-        preferences.setThemePreset(json.optString("themePreset"))
-        preferences.setAudioSettings(parseAudioSettings(json.optJSONObject("audioSettings")))
-        preferences.setInterfaceSettings(parseInterfaceSettings(json.optJSONObject("interfaceSettings")))
-        preferences.setDownloadSettings(parseDownloadSettings(json.optJSONObject("downloadSettings")))
-        preferences.saveRecentSearches(json.optJSONArray("recentSearches").toTrackList())
-        preferences.savePersonalOrbitTracks(json.optJSONArray("personalOrbitTracks").toTrackList(), json.optString("languageCode"))
-        val lastTrack = json.optJSONObject("lastTrack")?.let(TrackJson::fromJson)
-        preferences.saveLastPlayback(lastTrack, json.optLong("lastPositionMs").coerceAtLeast(0L))
+    private fun parseSettings(json: JSONObject): LevyraPreferencesSnapshot {
+        return LevyraPreferencesSnapshot(
+            onboarded = json.optBoolean("onboarded", false),
+            tastes = json.optJSONArray("tastes").toStringSet(),
+            userName = json.optString("userName"),
+            languageCode = json.optString("languageCode"),
+            animationsEnabled = json.optBoolean("animationsEnabled", true),
+            dynamicColor = json.optBoolean("dynamicColor", true),
+            sponsorBlock = json.optBoolean("sponsorBlock", true),
+            skipSilence = json.optBoolean("skipSilence", false),
+            audioQuality = json.optString("audioQuality", "Auto"),
+            dismissedUpdateVersion = preferences.dismissedUpdateVersion(),
+            lastTrack = json.optJSONObject("lastTrack")?.let(TrackJson::fromJson),
+            lastPositionMs = json.optLong("lastPositionMs").coerceAtLeast(0L),
+            recentSearches = json.optJSONArray("recentSearches").toTrackList(),
+            personalOrbitTracks = json.optJSONArray("personalOrbitTracks").toTrackList(),
+            audioNormalization = json.optBoolean("audioNormalization", false),
+            lyricsTranslationEnabled = json.optBoolean("lyricsTranslationEnabled", false),
+            themePreset = json.optString("themePreset"),
+            audioSettings = parseAudioSettings(json.optJSONObject("audioSettings")),
+            interfaceSettings = parseInterfaceSettings(json.optJSONObject("interfaceSettings")),
+            downloadSettings = parseDownloadSettings(json.optJSONObject("downloadSettings"))
+        )
     }
 
     private suspend fun restorePlaylists(array: JSONArray) {
@@ -393,12 +419,23 @@ class LevyraBackupManager(private val context: Context) {
 
     private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
+    private data class RestorePayload(
+        val settings: LevyraPreferencesSnapshot,
+        val favoriteTracks: List<com.luc4n3x.levyra.domain.Track>,
+        val followedArtists: List<FollowedArtist>,
+        val playlists: JSONArray,
+        val history: List<ListenEventEntity>,
+        val queue: JSONObject?
+    )
+
     private companion object {
         const val SCHEMA_VERSION = 1
         const val MANIFEST_ENTRY = "manifest.json"
         const val PAYLOAD_ENTRY = "payload.json"
+        const val MAX_ZIP_ENTRIES = 32
         const val MAX_ENTRY_BYTES = 64L * 1024L * 1024L
         const val MAX_TOTAL_BYTES = 65L * 1024L * 1024L
+        val REQUIRED_ENTRIES = setOf(MANIFEST_ENTRY, PAYLOAD_ENTRY)
     }
 }
 
