@@ -267,7 +267,6 @@ private data class LibraryProjection(
     val downloadedTrackIds: Set<String>,
     val downloadingTrackIds: Set<String>,
     val downloads: List<DownloadedTrack>,
-    val durationMs: Long,
     val favoriteIds: Set<String>,
     val favorites: List<Track>,
     val followedArtists: List<FollowedArtist>,
@@ -276,7 +275,6 @@ private data class LibraryProjection(
     val listeningPulse: ListeningPulse,
     val openPlaylist: Playlist?,
     val playlists: List<Playlist>,
-    val positionMs: Long,
     val recentListens: List<Track>
 )
 
@@ -286,7 +284,6 @@ private fun libraryProjection(state: LevyraUiState): LibraryProjection = Library
     downloadedTrackIds = state.downloadedTrackIds,
     downloadingTrackIds = state.downloadingTrackIds,
     downloads = state.downloads,
-    durationMs = state.durationMs,
     favoriteIds = state.favoriteIds,
     favorites = state.favorites,
     followedArtists = state.followedArtists,
@@ -295,7 +292,6 @@ private fun libraryProjection(state: LevyraUiState): LibraryProjection = Library
     listeningPulse = state.listeningPulse,
     openPlaylist = state.openPlaylist,
     playlists = state.playlists,
-    positionMs = state.positionMs,
     recentListens = state.recentListens
 )
 
