@@ -243,7 +243,7 @@ graph TD
 *   Android Studio Jellyfish (or newer)
 *   Java Development Kit (JDK) 17
 *   Android SDK Platform 37 (`compileSdk = 37`, `targetSdk = 35`)
-*   Gradle 9.4.1 in CI via GitHub Actions
+*   Gradle 9.6.1 through the repository Gradle Wrapper
  
 ### Building the Project
 Clone the repository and compile the debug configuration directly to a connected Android device or emulator:
