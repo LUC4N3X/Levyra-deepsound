@@ -35,7 +35,7 @@ jobs:
           cache-disabled: true
 
       - name: Build debug package outputs
-        run: gradle --no-daemon --no-configuration-cache --rerun-tasks :app:bundleDebug :app:assembleDebug
+        run: ./gradlew --no-daemon --no-configuration-cache --rerun-tasks :app:bundleDebug :app:assembleDebug
 
       - name: Generate size report
         shell: bash
