@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.viewmodel
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
@@ -11,6 +12,7 @@ import com.luc4n3x.levyra.data.ChartsRepository
 import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.FollowedArtistsStore
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.data.LevyraBackupManager
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
@@ -44,6 +46,9 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraLocalIntelligence
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.ListeningPulseEngine
@@ -51,6 +56,7 @@ import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
+import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -166,13 +172,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository()
     private val officialArtworkRepository = OfficialArtworkRepository(application.applicationContext)
-    private val downloadedTracksDao = LevyraDatabase.get(application.applicationContext).downloadedTracksDao()
+    private val database = LevyraDatabase.get(application.applicationContext)
+    private val downloadedTracksDao = database.downloadedTracksDao()
+    private val offlineDownloadTasksDao = database.offlineDownloadTasksDao()
     private val appUpdateRepository = AppUpdateRepository(application.applicationContext)
     private val lyricsRepository = LyricsRepository(application.applicationContext)
     private val sponsorBlockRepository = SponsorBlockRepository()
     private val resolver = PlaybackResolver.getInstance(application.applicationContext)
     private val moodEngine = MoodEngine()
     private val lyricsEngine = LyricsEngine()
+    private val localIntelligence = LevyraLocalIntelligence()
+    private val backupManager = LevyraBackupManager(application.applicationContext)
     private val player = LevyraPlayer(application.applicationContext)
     private val playbackWarmup = PlaybackWarmup(application.applicationContext)
     private val adaptivePlaybackPolicy = AdaptivePlaybackPolicy(application.applicationContext)
@@ -201,7 +211,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             smartProfile = startupSmartProfile,
             audioNormalization = startupSettings.audioNormalization,
             audioSettings = startupSettings.audioSettings,
-            lyricsTranslationEnabled = startupSettings.lyricsTranslationEnabled
+            lyricsTranslationEnabled = startupSettings.lyricsTranslationEnabled,
+            interfaceSettings = startupSettings.interfaceSettings,
+            downloadSettings = startupSettings.downloadSettings,
+            playbackDiagnostics = resolver.playbackDiagnostics()
         )
     )
     private var searchJob: Job? = null
@@ -382,6 +395,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         applyFollowedArtists(followedArtistsStore.load())
         startTicker()
         observeDownloads()
+        observeDownloadTasks()
         loadPlaylists()
         refreshListeningPulse(force = true)
         scheduleColdStartRefresh(initialTracks)
@@ -389,6 +403,38 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraWidgetBridge.onNext = { next() }
         LevyraWidgetBridge.onPrevious = { previous() }
         updateWidget()
+    }
+
+    private fun observeDownloadTasks() {
+        viewModelScope.launch {
+            offlineDownloadTasksDao.observeActive().collectLatest { tasks ->
+                val domainTasks = tasks.map { task ->
+                    OfflineDownloadTask(
+                        taskKey = task.taskKey,
+                        trackId = task.trackId,
+                        title = task.title,
+                        artist = task.artist,
+                        state = task.state,
+                        progress = task.progress,
+                        error = task.error
+                    )
+                }
+                val runningTasks = domainTasks.filter { it.state in setOf("QUEUED", "RUNNING", "RETRYING") }
+                val ids = runningTasks.mapTo(linkedSetOf()) { it.taskKey }
+                val progress = runningTasks.associate { it.taskKey to it.progress.coerceIn(0, 99) }
+                val titles = runningTasks.associate { it.taskKey to it.title.ifBlank { "brano" } }
+                _state.update {
+                    it.copy(
+                        downloadQueue = domainTasks,
+                        offlineQueueSize = runningTasks.size,
+                        isOfflineExporting = runningTasks.isNotEmpty(),
+                        downloadingTrackIds = ids,
+                        downloadProgressByTrackId = progress,
+                        downloadTitleByTrackId = titles
+                    )
+                }
+            }
+        }
     }
 
     private fun applyFollowedArtists(artists: List<FollowedArtist>) {
@@ -855,6 +901,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateAudioSettings(_state.value.audioSettings.copy(playbackSpeed = value))
     }
 
+    fun setTemporaryPlaybackSpeed(value: Float) {
+        val speed = value.coerceIn(0.25f, 3f)
+        val pitch = _state.value.audioSettings.pitch
+        player.setPlayback(speed, pitch)
+        _state.update { it.copy(playbackSpeed = speed) }
+    }
+
     fun setPitch(value: Float) {
         updateAudioSettings(_state.value.audioSettings.copy(pitch = value))
     }
@@ -1073,6 +1126,107 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setDynamicColor(value: Boolean) {
         preferences.setDynamicColor(value)
         _state.update { it.copy(dynamicColor = value) }
+    }
+
+    fun setInterfaceSettings(value: LevyraInterfaceSettings) {
+        val normalized = value.normalized()
+        preferences.setInterfaceSettings(normalized)
+        _state.update { it.copy(interfaceSettings = normalized) }
+    }
+
+    fun setDownloadSettings(value: LevyraDownloadSettings) {
+        val normalized = value.normalized()
+        preferences.setDownloadSettings(normalized)
+        _state.update { it.copy(downloadSettings = normalized) }
+    }
+
+    fun pauseDownload(taskKey: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            OfflineExportWorker.pause(getApplication<Application>().applicationContext, taskKey)
+        }
+    }
+
+    fun resumeDownload(taskKey: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            OfflineExportWorker.resume(getApplication<Application>().applicationContext, taskKey)
+        }
+    }
+
+    fun cancelDownload(taskKey: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            OfflineExportWorker.cancel(getApplication<Application>().applicationContext, taskKey)
+        }
+    }
+
+    fun createBackup(uri: Uri) {
+        viewModelScope.launch {
+            val message = runCatching { backupManager.exportTo(uri).message }
+                .getOrElse { "Backup non riuscito: ${cleanUserError(it)}" }
+            _state.update { it.copy(backupMessage = message) }
+        }
+    }
+
+    fun restoreBackup(uri: Uri) {
+        viewModelScope.launch {
+            val message = runCatching {
+                backupManager.restoreFrom(uri)
+                refreshAfterRestore()
+                "Ripristino completato"
+            }.getOrElse { "Ripristino non riuscito: ${cleanUserError(it)}" }
+            _state.update { it.copy(backupMessage = message) }
+        }
+    }
+
+    fun clearBackupMessage() {
+        _state.update { it.copy(backupMessage = null) }
+    }
+
+    fun refreshPlaybackDiagnostics(): String {
+        val diagnostics = resolver.playbackDiagnostics()
+        _state.update { it.copy(playbackDiagnostics = diagnostics) }
+        return diagnostics
+    }
+
+    private suspend fun refreshAfterRestore() {
+        val snapshot = withContext(Dispatchers.IO) { preferences.snapshot() }
+        val favorites = withContext(Dispatchers.IO) { favoritesStore.load() }
+        val playlists = playlistStore.loadAll()
+        val followed = followedArtistsStore.load()
+        applyFollowedArtists(followed)
+        _state.update {
+            it.copy(
+                favorites = favorites,
+                favoriteIds = favorites.map { track -> track.id }.toSet(),
+                playlists = playlists,
+                recentSearches = snapshot.recentSearches,
+                personalOrbitTracks = snapshot.personalOrbitTracks,
+                userName = snapshot.userName,
+                languageCode = snapshot.languageCode,
+                animationsEnabled = snapshot.animationsEnabled,
+                dynamicColor = snapshot.dynamicColor,
+                sponsorBlockEnabled = snapshot.sponsorBlock,
+                skipSilence = snapshot.skipSilence,
+                audioQuality = snapshot.audioQuality,
+                audioNormalization = snapshot.audioNormalization,
+                audioSettings = snapshot.audioSettings,
+                lyricsTranslationEnabled = snapshot.lyricsTranslationEnabled,
+                themePreset = snapshot.themePreset,
+                interfaceSettings = snapshot.interfaceSettings,
+                downloadSettings = snapshot.downloadSettings,
+                playbackDiagnostics = resolver.playbackDiagnostics()
+            )
+        }
+        player.setSkipSilence(snapshot.skipSilence)
+        player.setPremiumAudioSettings(snapshot.audioSettings)
+        player.setPlayback(snapshot.audioSettings.playbackSpeed, snapshot.audioSettings.pitch)
+        resolver.setAudioQuality(snapshot.audioQuality)
+        withContext(Dispatchers.IO) {
+            queueEngine.restore(
+                fallbackTracks = emptyList(),
+                fallbackIndex = -1,
+                fallbackPositionMs = 0L
+            )
+        }
     }
 
     fun setLanguage(code: String) {
@@ -1529,12 +1683,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         viewModelScope.launch {
-            _state.update { it.copy(offlineQueueSize = it.offlineQueueSize + pending.size, offlineExportMessage = "$label in coda: ${pending.size} brani") }
+            _state.update { it.copy(offlineExportMessage = "$label in coda: ${pending.size} brani") }
             pending.forEachIndexed { index, track ->
                 if (index > 0) delay(220L)
                 exportTrack(track)
             }
-            _state.update { it.copy(offlineQueueSize = (it.offlineQueueSize - pending.size).coerceAtLeast(0)) }
         }
     }
 
@@ -1590,7 +1743,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             result.onSuccess { workInfo ->
                 when (workInfo.state) {
                     WorkInfo.State.SUCCEEDED -> handleOfflineExportSuccess(workInfo, downloadKey)
-                    WorkInfo.State.FAILED, WorkInfo.State.CANCELLED -> handleOfflineExportFailure(cleanUserError(workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR)), downloadKey)
+                    WorkInfo.State.FAILED -> {
+                        val reason = workInfo.outputData.getString(OfflineExportWorker.KEY_ERROR)
+                        if (reason == OfflineExportWorker.ERROR_SUPERSEDED) {
+                            handleOfflineExportStopped(downloadKey)
+                        } else {
+                            handleOfflineExportFailure(cleanUserError(reason), downloadKey)
+                        }
+                    }
+                    WorkInfo.State.CANCELLED -> handleOfflineExportStopped(downloadKey)
                     else -> handleOfflineExportFailure("Esportazione non riuscita", downloadKey)
                 }
             }.onFailure { error ->
@@ -1634,6 +1795,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isOfflineExporting = it.downloadingTrackIds.size > 1,
                 offlineExportMessage = "Salvato in $destinationLabel: ${fileName.ifBlank { "brano esportato" }} ($tagStatus)",
                 embeddedMetadataWriterReady = offlineExporter.embeddedMetadataWriterReady,
+                downloadingTrackIds = it.downloadingTrackIds - trackId,
+                downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,
+                downloadTitleByTrackId = it.downloadTitleByTrackId - trackId
+            )
+        }
+    }
+
+    private fun handleOfflineExportStopped(trackId: String) {
+        activeDownloadKeys.remove(trackId)
+        activeDownloadTracks.remove(trackId)
+        activeDownloadTitles.remove(trackId)
+        _state.update {
+            it.copy(
+                isOfflineExporting = it.downloadingTrackIds.size > 1,
                 downloadingTrackIds = it.downloadingTrackIds - trackId,
                 downloadProgressByTrackId = it.downloadProgressByTrackId - trackId,
                 downloadTitleByTrackId = it.downloadTitleByTrackId - trackId
@@ -2287,7 +2462,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun fetchLyrics(track: Track) {
         lyricsJob?.cancel()
-        _state.update { it.copy(lyrics = emptyList(), lyricsSynced = false, lyricsProvider = "", lyricsConfidence = 0, lyricsCached = false, lyricsLoading = true) }
+        _state.update { it.copy(lyrics = emptyList(), lyricsSynced = false, lyricsProvider = "", lyricsConfidence = 0, lyricsCached = false, lyricsLoading = true, intelligenceSummary = com.luc4n3x.levyra.domain.LevyraIntelligenceSummary()) }
         lyricsJob = viewModelScope.launch {
             val result = runCatching {
                 lyricsRepository.fetch(
@@ -2300,14 +2475,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }.getOrNull()
             if (_state.value.currentTrack?.id != track.id) return@launch
+            val lines = result?.lines.orEmpty()
+            val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
             _state.update {
                 it.copy(
-                    lyrics = result?.lines.orEmpty(),
+                    lyrics = lines,
                     lyricsSynced = result?.synced ?: false,
                     lyricsProvider = result?.provider.orEmpty(),
                     lyricsConfidence = result?.confidence ?: 0,
                     lyricsCached = result?.cached ?: false,
-                    lyricsLoading = false
+                    lyricsLoading = false,
+                    intelligenceSummary = intelligence
                 )
             }
         }
