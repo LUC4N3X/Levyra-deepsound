@@ -2704,19 +2704,11 @@ private fun LyricsProStatusRow(provider: String, synced: Boolean, cached: Boolea
 @Composable
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     val auroraBlue = Color(0xFF0B5F86)
-    val electricCyan = Color(0xFF52D9FF)
-    val emberOrange = Color(0xFFFF6A1A)
     val deepViolet = Color(0xFF4B2A8C)
-    val softMagenta = Color(0xFFB7477A)
 
     val sourceStart = accentStart?.let { Color(it) }
     val sourceEnd = accentEnd?.let { Color(it) }
 
-    val warmAccent by animateColorAsState(
-        targetValue = if (LevyraIsLight) LevyraOrange else emberOrange,
-        animationSpec = tween(1800, easing = LinearOutSlowInEasing),
-        label = "levyra-warm-background-accent"
-    )
     val coolAccent by animateColorAsState(
         targetValue = sourceStart?.let { source ->
             val red = source.red
@@ -2744,7 +2736,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
             initialValue = 0f,
             targetValue = 6.2831855f,
             animationSpec = infiniteRepeatable(
-                animation = tween(52000, easing = LinearEasing),
+                animation = tween(96000, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart
             ),
             label = "levyra-background-phase"
@@ -2755,14 +2747,14 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
 
     val isLight = LevyraIsLight
     val baseColors = if (isLight) {
-        listOf(Color(0xFFFFFFFF), Color(0xFFF9FBFF), Color(0xFFF4F7FE), Color(0xFFEFF3FB))
+        listOf(LevyraBlack, LevyraInk, LevyraInk.copy(alpha = 0.95f), LevyraBlack)
     } else {
-        listOf(Color(0xFF040609), Color(0xFF060810), Color(0xFF07040C), Color(0xFF010102))
+        listOf(LevyraBlack, LevyraInk, LevyraInk.copy(alpha = 0.98f), LevyraBlack)
     }
     val bottomFade = if (isLight) {
-        listOf(Color.Transparent, Color.White.copy(alpha = 0.62f), Color(0xFFF2F5FC))
+        listOf(Color.Transparent, LevyraBlack.copy(alpha = 0.62f), LevyraBlack)
     } else {
-        listOf(Color.Transparent, Color(0xFF020103).copy(alpha = 0.85f), Color.Black)
+        listOf(Color.Transparent, LevyraBlack.copy(alpha = 0.85f), LevyraBlack)
     }
     val vignetteAlpha = if (isLight) 0.05f else 0.34f
     val glowAlpha = if (isLight) 0.5f else 1f
@@ -2791,35 +2783,39 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     val x = cx + orbit * cos(phase * speed + offset)
                     val y = cy + orbit * 0.62f * sin(phase * speed + offset)
                     val center = androidx.compose.ui.geometry.Offset(x, y)
+                    val breathingRadius = radius * (1.0f + 0.08f * sin(phase * 1.4f * speed + offset))
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
                                 color.copy(alpha = alpha * glowAlpha),
-                                color.copy(alpha = alpha * 0.38f * glowAlpha),
+                                color.copy(alpha = alpha * 0.35f * glowAlpha),
                                 Color.Transparent
                             ),
                             center = center,
-                            radius = radius
+                            radius = breathingRadius
                         ),
-                        radius = radius,
+                        radius = breathingRadius,
                         center = center
                     )
                 }
 
-                blob(coolAccent, 0.21f, w * 0.32f, h * 0.14f, w * 0.92f, w * 0.05f, 1f, 0f)
-                blob(secondAccent, 0.16f, w * 0.02f, h * 0.44f, w * 0.68f, w * 0.045f, 0.8f, 2.1f)
-                blob(warmAccent, 0.15f, w * 1.00f, h * 0.30f, w * 0.64f, w * 0.055f, 0.65f, 4.2f)
-                blob(if (isLight) coolAccent else electricCyan, 0.07f, w * 0.78f, h * 0.72f, w * 0.55f, w * 0.04f, 0.9f, 3.3f)
-                if (!isLight) {
-                    blob(softMagenta, 0.06f, w * 0.20f, h * 0.86f, w * 0.50f, w * 0.035f, 0.7f, 5.1f)
-                }
+                val blendAccent = Color(
+                    red = (coolAccent.red + secondAccent.red) / 2f,
+                    green = (coolAccent.green + secondAccent.green) / 2f,
+                    blue = (coolAccent.blue + secondAccent.blue) / 2f,
+                    alpha = 1f
+                )
+
+                blob(coolAccent, if (isLight) 0.08f else 0.18f, w * 0.25f, h * 0.20f, w * 1.6f, w * 0.02f, 0.6f, 0f)
+                blob(secondAccent, if (isLight) 0.06f else 0.14f, w * 0.75f, h * 0.45f, w * 1.4f, w * 0.02f, 0.4f, 2.1f)
+                blob(blendAccent, if (isLight) 0.04f else 0.08f, w * 0.40f, h * 0.75f, w * 1.7f, w * 0.015f, 0.3f, 4.2f)
 
                 drawRect(
                     Brush.radialGradient(
                         colors = listOf(
                             Color.Transparent,
                             Color.Transparent,
-                            Color.Black.copy(alpha = vignetteAlpha)
+                            LevyraBlack.copy(alpha = vignetteAlpha)
                         ),
                         center = androidx.compose.ui.geometry.Offset(w * 0.5f, h * 0.42f),
                         radius = kotlin.math.max(w, h) * 0.85f
