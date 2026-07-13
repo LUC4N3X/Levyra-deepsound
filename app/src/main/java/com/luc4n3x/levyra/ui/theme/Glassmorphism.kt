@@ -14,14 +14,14 @@ import androidx.compose.ui.unit.dp
 
 fun Modifier.glassmorphism(
     shape: Shape,
-    overlayColor: Color = Color(0x1AFFFFFF),
+    overlayColor: Color = Color(0x0DFFFFFF),
     borderGradient: Brush = Brush.linearGradient(
         colors = listOf(
-            Color.White.copy(alpha = 0.2f),
-            Color.White.copy(alpha = 0.05f)
+            Color.White.copy(alpha = 0.12f),
+            Color.White.copy(alpha = 0.03f)
         )
     ),
-    borderWidth: Float = 1f
+    borderWidth: Float = 0.8f
 ): Modifier = composed {
     this
         .clip(shape)

@@ -196,8 +196,8 @@ val LevyraPink: Color get() = activePaletteState.value.pink
 val LevyraOrange: Color get() = activePaletteState.value.orange
 val LevyraText: Color get() = activePaletteState.value.text
 val LevyraMuted: Color get() = activePaletteState.value.muted
-val LevyraGlass: Color get() = if (activePaletteState.value.isLight) Color(0x14101322) else Color(0x0FFFFFFF)
-val LevyraGlassBorder: Color get() = if (activePaletteState.value.isLight) Color(0x26101322) else Color(0x1AFFFFFF)
+val LevyraGlass: Color get() = if (activePaletteState.value.isLight) Color(0x14101322) else Color(0x08FFFFFF)
+val LevyraGlassBorder: Color get() = if (activePaletteState.value.isLight) Color(0x26101322) else Color(0x12FFFFFF)
 val LevyraOnAccent: Color get() = if (activePaletteState.value.isLight) Color(0xFFF8F7FF) else activePaletteState.value.black
 
 private fun schemeFor(palette: LevyraPalette): ColorScheme {
