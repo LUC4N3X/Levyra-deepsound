@@ -366,7 +366,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
         label = "tab-icon-scale"
     )
-    val tabActiveTint = if (LevyraIsLight) LevyraCyan else Color(0xFF9BDDFF)
+    val tabActiveTint = LevyraText
     val tabInactiveTint = if (LevyraIsLight) LevyraMuted else Color(0xFF7E7E86)
     val iconTint by animateColorAsState(
         targetValue = if (selected) tabActiveTint else tabInactiveTint,
@@ -375,8 +375,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
     )
     val labelTint by animateColorAsState(
         targetValue = when {
-            selected && LevyraIsLight -> LevyraText
-            selected -> Color(0xFFEAF7FF)
+            selected -> LevyraText
             LevyraIsLight -> LevyraMuted
             else -> Color(0xFF8A8A92)
         },
@@ -405,11 +404,11 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     .height(32.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(
-                        LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.16f else 0.14f) * selectedProgress)
+                        LevyraText.copy(alpha = (if (LevyraIsLight) 0.08f else 0.10f) * selectedProgress)
                     )
                     .border(
                         width = 1.dp,
-                        color = LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.26f else 0.22f) * selectedProgress),
+                        color = LevyraText.copy(alpha = (if (LevyraIsLight) 0.14f else 0.13f) * selectedProgress),
                         shape = RoundedCornerShape(16.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -527,13 +526,7 @@ private fun SectionTitle(title: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(3.5.dp)
-                .height(20.dp)
-                .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
-        )
-        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.4).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 @Composable
@@ -593,7 +586,7 @@ private fun InstantArtworkPlaceholder(track: Track, modifier: Modifier) {
             text = initials,
             color = LevyraText.copy(alpha = 0.88f),
             fontSize = 24.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Clip
         )
@@ -1085,7 +1078,7 @@ private fun DownloadProgressHud(state: LevyraUiState) {
                     text = "${item.progress}%",
                     color = LevyraCyan,
                     fontSize = 9.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
             }
@@ -1103,7 +1096,7 @@ private fun DownloadProgressHud(state: LevyraUiState) {
                     text = item.title,
                     color = LevyraText,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1119,9 +1112,9 @@ private fun LanguageRestartDialog(onRestart: () -> Unit, onLater: () -> Unit) {
     AlertDialog(
         onDismissRequest = onLater,
         containerColor = Color(0xFF11131C),
-        title = { Text(strings.restartRequiredTitle, color = LevyraText, fontWeight = FontWeight.Black) },
+        title = { Text(strings.restartRequiredTitle, color = LevyraText, fontWeight = FontWeight.Bold) },
         text = { Text(strings.restartRequiredBody, color = LevyraMuted, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp) },
-        confirmButton = { TextButton(onClick = onRestart) { Text(strings.restartNow, color = LevyraCyan, fontWeight = FontWeight.Black) } },
+        confirmButton = { TextButton(onClick = onRestart) { Text(strings.restartNow, color = LevyraCyan, fontWeight = FontWeight.Bold) } },
         dismissButton = { TextButton(onClick = onLater) { Text(strings.later, color = LevyraMuted, fontWeight = FontWeight.Bold) } }
     )
 }
@@ -1275,13 +1268,6 @@ private fun AlbumOverlay(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .height(22.dp)
-                                        .width(4.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-                                )
                                 Text("${tracks.size} brani", color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
                             }
                         }
@@ -1653,7 +1639,7 @@ private fun AlbumNowPlayingDock(
                     modifier = Modifier
                         .fillMaxWidth(progress.coerceIn(0f, 1f))
                         .fillMaxHeight()
-                        .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+                        .background(LevyraCyan)
                 )
             }
         }
@@ -1908,7 +1894,7 @@ private fun ArtistFollowButton(isFollowed: Boolean, accentStart: Color, accentEn
                 text = if (isFollowed) strings.followingArtist else strings.followArtist,
                 color = if (isFollowed) LevyraText else Color.White,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -1936,7 +1922,7 @@ private fun ArtistHeader(profile: ArtistProfile, accentStart: Color, accentEnd: 
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(profile.name, color = LevyraText, fontSize = 38.sp, lineHeight = 42.sp, letterSpacing = (-1.2).sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(profile.name, color = LevyraText, fontSize = 38.sp, lineHeight = 42.sp, letterSpacing = (-1.2).sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Icon(Icons.Rounded.Verified, null, tint = LevyraCyan, modifier = Modifier.size(26.dp))
         }
         val meta = listOf(profile.subscribers, profile.monthlyListeners).filter { it.isNotBlank() }.joinToString(" · ")
@@ -1955,7 +1941,7 @@ private fun ArtistBio(bio: String) {
         modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Biografia", color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text("Biografia", color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Text(
                 bio,
                 color = LevyraText.copy(alpha = 0.86f),
@@ -2050,7 +2036,7 @@ private fun ReleaseRadarRow(
                             "NEW",
                             color = Color.White,
                             fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
@@ -2147,9 +2133,9 @@ private fun UpdateAvailableOverlay(
                                 .background(LevyraCyan.copy(alpha = 0.22f), CircleShape)
                         )
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("LEVYRA", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
+                            Text("LEVYRA", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.5.sp)
                             Surface(color = Color.Black.copy(alpha = 0.28f), shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))) {
-                                Text("NUOVO AGGIORNAMENTO", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), letterSpacing = 1.4.sp)
+                                Text("NUOVO AGGIORNAMENTO", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), letterSpacing = 1.4.sp)
                             }
                         }
                     }
@@ -2166,13 +2152,13 @@ private fun UpdateAvailableOverlay(
                                     text = "Versione ${update.latestVersionName}",
                                     color = Color.White,
                                     fontSize = 22.sp,
-                                    fontWeight = FontWeight.Black,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f)
                                 )
                                 Surface(color = LevyraCyan.copy(alpha = 0.16f), shape = RoundedCornerShape(999.dp), border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.42f))) {
-                                    Text("APK", color = LevyraCyan, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), letterSpacing = 0.8.sp)
+                                    Text("APK", color = LevyraCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), letterSpacing = 0.8.sp)
                                 }
                             }
                             Text(
@@ -2203,7 +2189,7 @@ private fun UpdateAvailableOverlay(
                         }
 
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("Novità", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            Text("Novità", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             if (notes.isEmpty()) {
                                 UpdateNoteCard("Miglioramenti alle prestazioni e stabilità dell'app.")
                             } else {
@@ -2233,7 +2219,7 @@ private fun UpdateAvailableOverlay(
                                 modifier = Modifier.weight(1f).height(48.dp).pressable(onClick = onDownload)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text("Aggiorna", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                                    Text("Aggiorna", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -2349,7 +2335,7 @@ private fun QueueOverlay(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text(strings.queue, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black)
+                        Text(strings.queue, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                         Text(
                             "${state.queue.size} brani · ${state.queueHistoryCount} nella cronologia",
                             color = LevyraMuted,
@@ -2379,7 +2365,7 @@ private fun QueueOverlay(
                     ) {
                         Icon(Icons.Rounded.Bolt, null, tint = if (state.radioEnabled) LevyraCyan else LevyraMuted, modifier = Modifier.size(20.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Radio continua", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Text("Radio continua", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             Text("Aggiunge brani coerenti quando la coda sta finendo", color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Switch(checked = state.radioEnabled, onCheckedChange = { onToggleRadio() })
@@ -2454,7 +2440,7 @@ private fun QueueOverlay(
                             )
                             CoverImage(track, Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)))
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             if (isCurrent) {
@@ -2497,13 +2483,13 @@ private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> 
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet))),
+                            .background(LevyraCyan.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Rounded.GraphicEq, null, tint = Color.White, modifier = Modifier.size(23.dp))
+                        Icon(Icons.Rounded.GraphicEq, null, tint = LevyraCyan, modifier = Modifier.size(23.dp))
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Smart Music Profile", color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("Smart Music Profile", color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             if (profile.isWarm) "Personalizzazione attiva" else "Sto imparando dai tuoi ascolti",
                             color = LevyraMuted,
@@ -2521,7 +2507,7 @@ private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> 
                     ) {
                         Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
-                            Text("Flow", color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            Text("Flow", color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -2580,7 +2566,7 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
                             text = track?.title ?: strings.lyrics,
                             color = LevyraText,
                             fontSize = 24.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -2617,7 +2603,7 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
                     ) {
                         Icon(Icons.Rounded.Translate, null, tint = if (state.lyricsTranslationEnabled) LevyraCyan else LevyraMuted)
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Traduzione automatica", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                            Text("Traduzione automatica", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             Text("Usa le lingue disponibili nei transcript YouTube", color = LevyraMuted, fontSize = 11.sp)
                         }
                         Switch(
@@ -2644,7 +2630,7 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
                                 withStyle(
                                     SpanStyle(
                                         color = if (wordActive) accentStart else Color.White.copy(alpha = 0.56f),
-                                        fontWeight = if (wordActive) FontWeight.Black else FontWeight.Bold
+                                        fontWeight = if (wordActive) FontWeight.Bold else FontWeight.Medium
                                     )
                                 ) {
                                     append(word.text)
@@ -2661,7 +2647,7 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
                             color = lineColor,
                             fontSize = if (isActive) 28.sp else 22.sp,
                             lineHeight = if (isActive) 34.sp else 28.sp,
-                            fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
+                            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
                             modifier = Modifier.graphicsLayer {
                                 scaleX = if (isActive) 1f else 0.95f
                                 scaleY = if (isActive) 1f else 0.95f
@@ -2697,7 +2683,7 @@ private fun LyricsProStatusRow(provider: String, synced: Boolean, cached: Boolea
         border = BorderStroke(1.dp, if (synced) LevyraCyan.copy(alpha = 0.28f) else LevyraViolet.copy(alpha = 0.26f)),
         shape = CircleShape
     ) {
-        Text(label, color = if (synced) LevyraCyan else LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+        Text(label, color = if (synced) LevyraCyan else LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
     }
 }
 
@@ -2806,12 +2792,12 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     )
                 }
 
-                blob(coolAccent, 0.21f, w * 0.32f, h * 0.14f, w * 0.92f, w * 0.05f, 1f, 0f)
-                blob(secondAccent, 0.16f, w * 0.02f, h * 0.44f, w * 0.68f, w * 0.045f, 0.8f, 2.1f)
-                blob(warmAccent, 0.15f, w * 1.00f, h * 0.30f, w * 0.64f, w * 0.055f, 0.65f, 4.2f)
-                blob(if (isLight) coolAccent else electricCyan, 0.07f, w * 0.78f, h * 0.72f, w * 0.55f, w * 0.04f, 0.9f, 3.3f)
+                blob(coolAccent, 0.15f, w * 0.32f, h * 0.14f, w * 0.92f, w * 0.05f, 1f, 0f)
+                blob(secondAccent, 0.11f, w * 0.02f, h * 0.44f, w * 0.68f, w * 0.045f, 0.8f, 2.1f)
+                blob(warmAccent, 0.09f, w * 1.00f, h * 0.30f, w * 0.64f, w * 0.055f, 0.65f, 4.2f)
+                blob(if (isLight) coolAccent else electricCyan, 0.05f, w * 0.78f, h * 0.72f, w * 0.55f, w * 0.04f, 0.9f, 3.3f)
                 if (!isLight) {
-                    blob(softMagenta, 0.06f, w * 0.20f, h * 0.86f, w * 0.50f, w * 0.035f, 0.7f, 5.1f)
+                    blob(softMagenta, 0.04f, w * 0.20f, h * 0.86f, w * 0.50f, w * 0.035f, 0.7f, 5.1f)
                 }
 
                 drawRect(
@@ -3149,20 +3135,13 @@ private fun TrendingArtistsShelf(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .height(22.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-            )
             Text(
                 text = strings.artists,
                 color = LevyraText,
                 fontSize = 21.sp,
                 lineHeight = 23.sp,
                 letterSpacing = (-0.55).sp,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
         LazyRow(
@@ -3295,7 +3274,7 @@ private fun ResonanceShelf(
                         color = LevyraText,
                         fontSize = 22.sp,
                         lineHeight = 24.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.45).sp
                     )
                 }
@@ -3451,7 +3430,7 @@ private fun ResonanceCard(
                         color = Color.White,
                         fontSize = 15.sp,
                         lineHeight = 18.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -3478,7 +3457,7 @@ private fun ResonanceCard(
                                 text = "$engagement%",
                                 color = Color.White,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Black
+                                fontWeight = FontWeight.Bold
                             )
                         }
                         
@@ -3486,7 +3465,7 @@ private fun ResonanceCard(
                             text = formatCompactNumber(comments),
                             color = Color.White,
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
@@ -3577,7 +3556,7 @@ private fun PersonalListeningShelf(
                         color = LevyraText,
                         fontSize = 25.sp,
                         lineHeight = 27.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.6).sp
                     )
                 }
@@ -3690,7 +3669,7 @@ private fun PersonalListeningShelf(
                             .clip(CircleShape)
                             .background(
                                 if (pagerState.currentPage == index) {
-                                    Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))
+                                    Brush.horizontalGradient(listOf(LevyraCyan, LevyraCyan))
                                 } else {
                                     Brush.horizontalGradient(
                                         listOf(
@@ -3758,7 +3737,7 @@ private fun PersonalListeningCard(
                     color = LevyraReadableOnArtwork,
                     fontSize = 11.5.sp,
                     lineHeight = 13.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -3811,7 +3790,7 @@ private fun PersonalListeningCard(
                         .height(5.dp)
                         .width(28.dp)
                         .clip(CircleShape)
-                        .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+                        .background(LevyraCyan)
                 )
             }
         }
@@ -4069,7 +4048,7 @@ private fun HomeDiscoveryHero(
                                     text = copy.badge,
                                     color = LevyraText,
                                     fontSize = 9.sp,
-                                    fontWeight = FontWeight.Black,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -4078,17 +4057,17 @@ private fun HomeDiscoveryHero(
                         Text(
                             text = copy.headline,
                             fontSize = 17.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             lineHeight = 19.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = TextStyle(brush = Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+                            color = LevyraText
                         )
                         Text(
                             text = copy.detail,
                             color = LevyraText,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             lineHeight = 17.sp
@@ -4157,7 +4136,7 @@ private fun HomeDiscoveryHero(
                             .pressable(onClick = onPlay)
                     ) {
                         Box(
-                            modifier = Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))),
+                            modifier = Modifier.background(LevyraText),
                             contentAlignment = Alignment.Center
                         ) {
                             Row(
@@ -4167,12 +4146,12 @@ private fun HomeDiscoveryHero(
                                 Icon(
                                     imageVector = Icons.Rounded.PlayArrow,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = LevyraBlack,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
                                     text = copy.primaryAction,
-                                    color = Color.White,
+                                    color = LevyraBlack,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1
@@ -4284,7 +4263,7 @@ private fun ContinueListeningCard(
                             text = "Continua ad ascoltare",
                             color = LevyraCyan,
                             fontSize = 10.8.sp,
-                            fontWeight = FontWeight.ExtraBold,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -4294,7 +4273,7 @@ private fun ContinueListeningCard(
                         color = LevyraText,
                         fontSize = 15.5.sp,
                         lineHeight = 18.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -4411,7 +4390,7 @@ private fun QuickSectionHeader(title: String, actionLabel: String, onAction: () 
             text = title,
             color = LevyraText,
             fontSize = 23.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
         )
         Surface(
@@ -4435,7 +4414,7 @@ private fun QuickSectionHeader(title: String, actionLabel: String, onAction: () 
                     text = actionLabel,
                     color = LevyraText,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
             }
@@ -4557,7 +4536,7 @@ private fun QuickSongRow(
                 text = track.title,
                 color = if (isCurrent) LevyraCyan else LevyraText,
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -4699,7 +4678,7 @@ private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(region.emoji, fontSize = 14.sp)
-                    Text(region.label, color = if (selected) LevyraCyan else LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    Text(region.label, color = if (selected) LevyraCyan else LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -5070,7 +5049,7 @@ private fun RecentSearchesRow(
             text = "Ricerche recenti",
             color = LevyraText,
             fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold
+            fontWeight = FontWeight.SemiBold
         )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -5253,7 +5232,7 @@ private fun SuggestionsList(
                 color = LevyraText,
                 fontSize = 24.sp,
                 lineHeight = 28.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -5442,7 +5421,7 @@ private fun DownloadsFolderOverlay(
                             text = "Download offline",
                             color = LevyraText,
                             fontSize = 24.sp,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = if (state.downloads.size == 1) "1 brano salvato" else "${state.downloads.size} brani salvati",
@@ -5719,7 +5698,7 @@ private fun LibraryHeader(
                     color = LevyraText,
                     fontSize = 35.sp,
                     lineHeight = 38.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.7).sp
                 )
                 Text(
@@ -5767,7 +5746,7 @@ private fun LibraryStatPill(icon: ImageVector, value: String, label: String, acc
             horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             Icon(icon, null, tint = accent, modifier = Modifier.size(16.dp))
-            Text(value, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text(value, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Text(label, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
@@ -5873,7 +5852,7 @@ private fun PulseStat(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(icon, null, tint = accent, modifier = Modifier.size(17.dp))
-        Text(value, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        Text(value, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         Text(
             text = label,
             color = LevyraMuted,
@@ -6073,7 +6052,7 @@ private fun LibrarySectionHeader(
                     text = title,
                     color = LevyraText,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -6190,7 +6169,7 @@ private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onPlay: (
             Icon(Icons.Rounded.DownloadDone, null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(download.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(download.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(download.artist, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 if (download.embeddedMetadata) "Music/Levyra · cover e tag" else "Music/Levyra",
@@ -6242,7 +6221,7 @@ private fun PlaylistRow(
             }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(playlist.name, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(playlist.name, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 if (playlist.size == 1) "1 brano" else "${playlist.size} brani",
                 color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium
@@ -6263,7 +6242,7 @@ private fun PlaylistCreateDialog(onDismiss: () -> Unit, onConfirm: (String) -> U
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LevyraPanel,
-        title = { Text("Nuova playlist", color = LevyraText, fontWeight = FontWeight.Black) },
+        title = { Text("Nuova playlist", color = LevyraText, fontWeight = FontWeight.Bold) },
         text = {
             OutlinedTextField(
                 value = name,
@@ -6303,7 +6282,7 @@ private fun AddToPlaylistDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LevyraPanel,
-        title = { Text("Aggiungi a playlist", color = LevyraText, fontWeight = FontWeight.Black) },
+        title = { Text("Aggiungi a playlist", color = LevyraText, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (creating) {
@@ -6385,7 +6364,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                     }
                     Spacer(Modifier.width(4.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(playlist.name, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(playlist.name, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(if (playlist.size == 1) "1 brano" else "${playlist.size} brani", color = LevyraMuted, fontSize = 14.sp)
                     }
                     if (playlist.tracks.isNotEmpty()) {
@@ -7167,7 +7146,7 @@ private fun MainPlayerControls(
         Box(
             modifier = Modifier
                 .size(76.dp)
-                .shadow(16.dp, playShape, clip = false, ambientColor = activeColor.copy(alpha = 0.45f), spotColor = activeColor.copy(alpha = 0.55f))
+                .shadow(14.dp, playShape, clip = false, ambientColor = activeColor.copy(alpha = 0.22f), spotColor = activeColor.copy(alpha = 0.28f))
                 .background(playBg, playShape)
                 .pressable(onClick = onToggle),
             contentAlignment = Alignment.Center
@@ -7365,7 +7344,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
                         text = language.englishName,
                         color = LevyraText,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -7408,7 +7387,7 @@ private fun OnboardingOverlay(tastes: List<Taste>, selectedLanguageCode: String,
             item {
                 Text(strings.welcomeBadge, color = LevyraCyan, fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(strings.welcomeTitle, color = LevyraText, fontSize = 46.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.5).sp)
+                Text(strings.welcomeTitle, color = LevyraText, fontSize = 46.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.5).sp)
                 Spacer(modifier = Modifier.height(28.dp))
                 Text(strings.languageQuestion, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -7554,7 +7533,7 @@ private fun SettingsOverlay(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text(strings.settings, color = LevyraText, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                        Text(strings.settings, color = LevyraText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                         Text(strings.settingsSubtitle, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     }
                     CircleIconButton(
@@ -7571,7 +7550,7 @@ private fun SettingsOverlay(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(Icons.Rounded.Palette, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
                         Column {
-                            Text(strings.theme, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            Text(strings.theme, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             Text(strings.themeSubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -7653,7 +7632,7 @@ private fun SettingsOverlay(
                         "LEVYRA ${BuildConfig.VERSION_NAME}",
                         color = LevyraMuted,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -7710,7 +7689,7 @@ private fun SettingsOverlay(
 
 @Composable
 private fun SettingsSectionLabel(text: String) {
-    Text(text, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 8.dp))
+    Text(text, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 8.dp))
 }
 
 @Composable
@@ -7780,7 +7759,7 @@ private fun SettingsToggle(icon: ImageVector, title: String, subtitle: String, c
                 Icon(icon, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
             Switch(
@@ -7821,7 +7800,7 @@ private fun SettingsButton(icon: ImageVector, title: String, subtitle: String, o
                 Icon(icon, null, tint = LevyraPink, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
         }
@@ -7878,7 +7857,7 @@ private fun SettingsUpdateCard(
                         text = if (hasUpdate) "Aggiornamento disponibile" else "Aggiornamenti",
                         color = LevyraText,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Black
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = when {
@@ -7903,7 +7882,7 @@ private fun SettingsUpdateCard(
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(updateInfo.releaseTitle.ifBlank { "LEVYRA ${updateInfo.latestVersionName}" }, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(updateInfo.releaseTitle.ifBlank { "LEVYRA ${updateInfo.latestVersionName}" }, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             text = if (updateInfo.directApk) "APK firmato pronto da installare" else "Pagina release pronta da aprire",
                             color = LevyraMuted,
@@ -7966,7 +7945,7 @@ private fun SettingsMiniButton(
                 text = label,
                 color = if (enabled) LevyraText else LevyraMuted,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -8026,7 +8005,7 @@ private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
             text = "LEVYRA",
             color = LevyraText,
             fontSize = fontSize,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             letterSpacing = (-1.2).sp
         )
         Box(
@@ -8149,7 +8128,7 @@ private fun MetroHeroDeck(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(Icons.Rounded.Headphones, null, tint = LevyraCyan, modifier = Modifier.size(15.dp))
-                            Text("DISCOVERY FLOW", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+                            Text("DISCOVERY FLOW", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
                         }
                     }
                     Surface(color = Color.White.copy(alpha = 0.1f), shape = CircleShape, modifier = Modifier.pressable(onClick = onPlayAll)) {
@@ -8159,7 +8138,7 @@ private fun MetroHeroDeck(
                             horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
                             Icon(Icons.Rounded.PlayArrow, null, tint = LevyraText, modifier = Modifier.size(15.dp))
-                            Text("Play", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            Text("Play", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -8207,7 +8186,7 @@ private fun MetroHeroDeck(
                         }
                     }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(hero.title, color = LevyraText, fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(hero.title, color = LevyraText, fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(hero.artist, color = LevyraText.copy(alpha = 0.78f), fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             MetroStatPill(Icons.Rounded.QueueMusic, queueCount.coerceAtLeast(tracks.size).toString(), "queue")
@@ -8245,7 +8224,7 @@ private fun MetroStatPill(icon: ImageVector, value: String, label: String) {
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Icon(icon, null, tint = LevyraCyan, modifier = Modifier.size(13.dp))
-            Text(value, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black)
+            Text(value, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Text(label, color = LevyraText.copy(alpha = 0.62f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
@@ -8268,7 +8247,7 @@ private fun MetroActionButton(icon: ImageVector, text: String, accent: Color, mo
         ) {
             Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -8328,7 +8307,7 @@ private fun QuickStart(
                     ) {
                         CoverImage(track, Modifier.size(54.dp).clip(RoundedCornerShape(10.dp)))
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Continua ad ascoltare", color = LevyraCyan, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            Text("Continua ad ascoltare", color = LevyraCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Text(track.title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         if (isResolving) {
@@ -8393,7 +8372,7 @@ private fun QuickAction(icon: ImageVector, label: String, accent: Color, enabled
             ) {
                 Icon(icon, null, tint = accent, modifier = Modifier.size(19.dp))
             }
-            Text(label, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -8469,7 +8448,7 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
                         text = mood.title,
                         color = LevyraText,
                         fontSize = 12.5.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1
                     )
                 }
@@ -8490,20 +8469,13 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .height(22.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-            )
             Text(
                 text = title,
                 color = LevyraText,
                 fontSize = 21.sp,
                 lineHeight = 23.sp,
                 letterSpacing = (-0.55).sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -8660,7 +8632,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                     }
                 }
                 Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(album.title, color = LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(album.title, color = LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val subtitle = listOf("Album", album.artist, album.year).filter { it.isNotBlank() }.joinToString(" • ")
                     Text(subtitle, color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -8752,7 +8724,7 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                     }
                 }
                 Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     val kind = if (track.album.isNotBlank() && track.album != track.title && track.album != "YouTube Music") "Album" else "Single"
                     Text("$kind • ${track.artist}", color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -8840,7 +8812,7 @@ private fun CompactRow(
                 track.title,
                 color = if (isCurrent) LevyraCyan else LevyraText,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -8941,7 +8913,7 @@ private fun ChartRow(
                     text = rank.toString(),
                     color = if (rank <= 3) LevyraCyan else LevyraMuted,
                     fontSize = if (rank <= 3) 20.sp else 16.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold
                 )
             }
             Box {
@@ -8956,7 +8928,7 @@ private fun ChartRow(
                 }
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(track.title, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(track.title, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             var expanded by remember { mutableStateOf(false) }
@@ -9040,14 +9012,14 @@ private fun FeaturedTrackCard(
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(track.title, color = LevyraText, fontSize = 24.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(track.title, color = LevyraText, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(track.artist, color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Surface(
                 color = Color.White.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(12.dp),
             ) {
-                Text(track.source, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                Text(track.source, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
     }
@@ -9088,7 +9060,7 @@ private fun SearchResultsHeader() {
                 text = "Potrebbe piacerti anche",
                 color = LevyraText,
                 fontSize = 23.sp,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
@@ -9190,7 +9162,7 @@ private fun SearchSuggestionTrackCard(
                     text = track.title,
                     color = if (isCurrent) LevyraCyan else LevyraText,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -9265,7 +9237,7 @@ private fun TopResultCard(
     onArtist: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Risultato principale", color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        Text("Risultato principale", color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -9287,7 +9259,7 @@ private fun TopResultCard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     CoverImage(track, Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)), highRes = true)
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(track.title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(track.title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(
                             track.artist,
                             color = LevyraMuted,
@@ -9313,7 +9285,7 @@ private fun TopResultCard(
                             if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraBlack)
                             else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(22.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isPlaying) "In riproduzione" else "Riproduci", color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            Text(if (isPlaying) "In riproduzione" else "Riproduci", color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                     Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onAddToPlaylist() }) {
@@ -9386,7 +9358,7 @@ private fun SearchTrackCard(
             }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 track.artist,
                 color = LevyraMuted,
@@ -9545,7 +9517,7 @@ private fun TrackRow(
             }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     track.artist,
@@ -9592,7 +9564,7 @@ private fun DownloadButton(isDownloading: Boolean, isDownloaded: Boolean, progre
                 val label = progress?.coerceIn(1, 99)?.let { "$it%" } ?: "..."
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(34.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp, color = LevyraCyan)
-                    Text(label, color = LevyraCyan, fontSize = 8.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                    Text(label, color = LevyraCyan, fontSize = 8.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
             isDownloaded -> Icon(Icons.Rounded.DownloadDone, contentDescription = "Scaricato", tint = LevyraCyan, modifier = Modifier.size(23.dp))
@@ -9631,10 +9603,10 @@ private fun MiniPlayer(
             modifier = Modifier.background(
                 Brush.linearGradient(
                     listOf(
-                        accentStart.copy(alpha = 0.18f),
+                        accentStart.copy(alpha = 0.11f),
                         Color(0xFF141416),
                         Color(0xFF0E0E10),
-                        accentEnd.copy(alpha = 0.12f)
+                        accentEnd.copy(alpha = 0.07f)
                     )
                 )
             )
@@ -9801,7 +9773,7 @@ private fun GradientPlayButton(isPlaying: Boolean, isResolving: Boolean, enabled
     Box(
         modifier = Modifier
             .size(54.dp)
-            .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)), CircleShape)
+            .background(LevyraText, CircleShape)
             .pressable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -9816,11 +9788,11 @@ private fun GradientButton(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .background(Brush.linearGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(18.dp))
+            .background(LevyraText, RoundedCornerShape(18.dp))
             .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, color = LevyraBlack, fontSize = 16.sp, fontWeight = FontWeight.Black)
+        Text(text, color = LevyraBlack, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -10223,7 +10195,7 @@ private fun PageHeader(title: String, subtitle: String) {
             color = LevyraText,
             fontSize = 32.sp,
             lineHeight = 36.sp,
-            fontWeight = FontWeight.Black,
+            fontWeight = FontWeight.Bold,
             letterSpacing = (-0.8).sp
         )
         Text(subtitle, color = LevyraMuted, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, lineHeight = 19.sp)
@@ -10245,7 +10217,7 @@ private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
                 shape = CircleShape,
                 modifier = Modifier.pressable(onClick = { onClick(chip) })
             ) {
-                Text(chip, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp))
+                Text(chip, color = LevyraText, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp))
             }
         }
     }
@@ -10536,12 +10508,12 @@ private fun AudioQualityPanel(
                                     Icon(Icons.Rounded.Equalizer, null, tint = LevyraText.copy(alpha = 0.9f), modifier = Modifier.size(30.dp))
                                 }
                                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(strings.audioEngine, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                                    Text(strings.audioEngine, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                     Text(strings.audioEngineSubtitle, color = LevyraText.copy(alpha = 0.72f), fontSize = 12.sp, fontWeight = FontWeight.Bold, lineHeight = 16.sp)
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Icon(Icons.Rounded.GraphicEq, null, tint = LevyraText, modifier = Modifier.size(17.dp))
-                                    Text("$volumePercent%", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                                    Text("$volumePercent%", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -10549,7 +10521,7 @@ private fun AudioQualityPanel(
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(strings.audioQuality, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text(strings.audioQuality, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -10579,7 +10551,7 @@ private fun AudioQualityPanel(
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(strings.preset, color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        Text(strings.preset, color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 4.dp)) {
                             items(LevyraAudioPresets.presets, key = { it.id }) { preset ->
                                 PremiumPresetChip(
@@ -10610,7 +10582,7 @@ private fun AudioQualityPanel(
                                 .pressable(onClick = onClose)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(strings.done, color = Color(0xFF263049), fontSize = 16.sp, fontWeight = FontWeight.Black)
+                                Text(strings.done, color = Color(0xFF263049), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -10636,7 +10608,7 @@ private fun PremiumToggleRow(title: String, subtitle: String, checked: Boolean, 
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Switch(
@@ -10666,9 +10638,9 @@ private fun PremiumSliderRow(title: String, valueLabel: String, value: Float, ra
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                Text(title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Surface(color = LevyraCyan.copy(alpha = 0.13f), shape = RoundedCornerShape(999.dp)) {
-                    Text(valueLabel, color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
+                    Text(valueLabel, color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
                 }
             }
             Slider(
@@ -10697,7 +10669,7 @@ private fun PremiumPresetChip(label: String, selected: Boolean, onClick: () -> U
             .pressable(onClick = onClick)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 14.dp)) {
-            Text(label, color = if (selected) LevyraText else LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text(label, color = if (selected) LevyraText else LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -10717,7 +10689,7 @@ private fun AudioQualityChoice(label: String, selected: Boolean, modifier: Modif
                 text = label,
                 color = if (selected) Color(0xFF263049) else LevyraMuted,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -10752,7 +10724,7 @@ private fun LyricsButton(loading: Boolean, available: Boolean, onClick: () -> Un
                 },
                 color = Color.White,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Bold
             )
         }
     }
