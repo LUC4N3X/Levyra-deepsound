@@ -1193,6 +1193,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val playlists = playlistStore.loadAll()
         val followed = followedArtistsStore.load()
         applyFollowedArtists(followed)
+        pendingSeekMs = snapshot.lastPositionMs.coerceAtLeast(0L)
+        val restoredTrack = snapshot.lastTrack?.copy(streamUrl = "", videoStreamUrl = "")
         _state.update {
             it.copy(
                 favorites = favorites,
@@ -1202,23 +1204,30 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 personalOrbitTracks = snapshot.personalOrbitTracks,
                 userName = snapshot.userName,
                 languageCode = snapshot.languageCode,
-                animationsEnabled = snapshot.animationsEnabled,
+                animationsEnabled = snapshot.animationsEnabled && !adaptivePlaybackPolicy.current(videoMode = false).lowRam,
                 dynamicColor = snapshot.dynamicColor,
                 sponsorBlockEnabled = snapshot.sponsorBlock,
                 skipSilence = snapshot.skipSilence,
                 audioQuality = snapshot.audioQuality,
                 audioNormalization = snapshot.audioNormalization,
                 audioSettings = snapshot.audioSettings,
+                playbackSpeed = snapshot.audioSettings.playbackSpeed,
                 lyricsTranslationEnabled = snapshot.lyricsTranslationEnabled,
                 themePreset = snapshot.themePreset,
                 interfaceSettings = snapshot.interfaceSettings,
                 downloadSettings = snapshot.downloadSettings,
+                showOnboarding = !snapshot.onboarded,
+                currentTrack = restoredTrack ?: it.currentTrack,
+                positionMs = if (restoredTrack != null) pendingSeekMs else it.positionMs,
+                durationMs = restoredTrack?.durationMs ?: it.durationMs,
                 playbackDiagnostics = resolver.playbackDiagnostics()
             )
         }
+        applyLanguageContent(snapshot.languageCode, refreshRemote = true)
         player.setSkipSilence(snapshot.skipSilence)
         player.setPremiumAudioSettings(snapshot.audioSettings)
         player.setPlayback(snapshot.audioSettings.playbackSpeed, snapshot.audioSettings.pitch)
+        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = snapshot.audioNormalization || snapshot.audioSettings.replayGainEnabled
         resolver.setAudioQuality(snapshot.audioQuality)
         withContext(Dispatchers.IO) {
             queueEngine.restore(
