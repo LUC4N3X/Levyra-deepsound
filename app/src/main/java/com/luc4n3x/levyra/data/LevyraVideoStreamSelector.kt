@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.PowerManager
 import kotlin.math.abs
 import kotlin.math.max
+import java.util.concurrent.ConcurrentHashMap
 
 internal data class LevyraVideoCandidate(
     val url: String,
@@ -37,6 +38,14 @@ internal class LevyraVideoStreamSelector(context: Context) {
     private val connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val powerManager = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
     private val decoderCapabilities by lazy { readDecoderCapabilities() }
+    private val rejectedUrls = ConcurrentHashMap<String, Long>()
+
+    fun reportPlaybackFailure(url: String, reason: String) {
+        if (url.isBlank()) return
+        val lower = reason.lowercase()
+        val ttl = if (lower.contains("decoder") || lower.contains("codec") || lower.contains("format")) 30L * 60L * 1000L else 2L * 60L * 1000L
+        rejectedUrls[url] = System.currentTimeMillis() + ttl
+    }
 
     fun select(
         muxedCandidates: List<LevyraVideoCandidate>,
@@ -45,9 +54,9 @@ internal class LevyraVideoStreamSelector(context: Context) {
         blocked: (String) -> Boolean
     ): LevyraVideoSelection? {
         val targetHeight = targetHeight()
-        val rawMuxed = muxedCandidates.filter { it.url.isNotBlank() && !blocked(it.url) }
+        val rawMuxed = muxedCandidates.filter { it.url.isNotBlank() && !blocked(it.url) && !isRejected(it.url) }
         val rawVideoOnly = if (hasSeparateAudio) {
-            videoOnlyCandidates.filter { it.url.isNotBlank() && !blocked(it.url) }
+            videoOnlyCandidates.filter { it.url.isNotBlank() && !blocked(it.url) && !isRejected(it.url) }
         } else {
             emptyList()
         }
@@ -70,6 +79,13 @@ internal class LevyraVideoStreamSelector(context: Context) {
             append(if (chosen.muxed) " · avvio rapido" else " · qualità separata")
         }
         return LevyraVideoSelection(chosen, targetHeight, hardware, reason)
+    }
+
+    private fun isRejected(url: String): Boolean {
+        val until = rejectedUrls[url] ?: return false
+        if (until > System.currentTimeMillis()) return true
+        rejectedUrls.remove(url, until)
+        return false
     }
 
     fun targetHeight(): Int {

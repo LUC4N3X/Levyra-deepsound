@@ -67,6 +67,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val playbackSecurity = YoutubePlaybackSecurity(context, youtubeHttpClient, apiKey, userPreferences)
+    private val resilienceEngine = PlaybackResilienceEngine(context)
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
     private val playbackResolveTimeoutMs = 30_000L
@@ -165,26 +166,37 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     fun reportPlaybackFailure(track: Track, isVideoMode: Boolean, reason: String) {
         invalidate(track, isVideoMode)
+        resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
         val now = System.currentTimeMillis()
         val lower = reason.lowercase()
-        val ttl = when {
-            lower.contains("403") || lower.contains("410") || lower.contains("429") || lower.contains("scadut") -> 10L * 60L * 1000L
-            lower.contains("decoder") || lower.contains("format") || lower.contains("codec") -> 30L * 60L * 1000L
-            else -> 2L * 60L * 1000L
-        }
+        val recovery = resilienceEngine.recoveryPlan(reason)
         listOf(track.streamUrl, track.videoStreamUrl)
             .filter { it.isNotBlank() }
-            .forEach { failedPlaybackUrls[it] = now + ttl }
-        if (
-            lower.contains("403") ||
-            lower.contains("410") ||
-            lower.contains("429") ||
-            lower.contains("signature") ||
-            lower.contains("decoder") ||
-            lower.contains("n-transform")
-        ) {
+            .forEach { failedPlaybackUrls[it] = now + recovery.quarantineMs }
+        if (recovery.rotateClient) {
+            profileFromSource(track.source)?.let { profile ->
+                recordClientFailure(profile, null, PlaybackBlockedException(reason))
+            }
+        }
+        if (recovery.refreshSecurity) {
             YoutubeLocalDecoder.notifyStreamRejected(track.source)
         }
+        if (recovery.rotateCodec) {
+            videoSelector.reportPlaybackFailure(track.videoStreamUrl.ifBlank { track.streamUrl }, lower)
+        }
+    }
+
+    fun playbackDiagnostics(): String {
+        val health = clientHealth.mapValues { (_, value) ->
+            JSONObject()
+                .put("successes", value.successes)
+                .put("failures", value.failures)
+                .put("consecutiveFailures", value.consecutiveFailures)
+                .put("averageLatencyMs", value.averageLatencyMs.takeUnless { it == Long.MAX_VALUE } ?: -1L)
+                .put("blockedUntilMs", value.blockedUntilMs)
+                .put("score", value.score)
+        }
+        return resilienceEngine.diagnostics(health)
     }
 
     private fun isPlaybackUrlBlocked(url: String): Boolean {
@@ -610,17 +622,29 @@ class PlaybackResolver private constructor(private val context: Context) {
         result
     }
 
+    private fun profileFromSource(source: String): ClientProfile? {
+        val normalized = source.lowercase()
+        return profiles.firstOrNull { profile ->
+            normalized.contains(profile.label.lowercase()) || normalized.contains(profile.clientName.lowercase())
+        }
+    }
+
     private fun orderedProfiles(): List<ClientProfile> {
         val now = System.currentTimeMillis()
         val available = profiles.filter { profile -> (clientHealth[profile.clientName]?.blockedUntilMs ?: 0L) <= now }
         val candidates = if (available.isNotEmpty()) available else profiles
-        val primary = candidates.firstOrNull { it.clientName == "ANDROID_VR" }
-        val rest = candidates.filterNot { it.clientName == "ANDROID_VR" }.sortedWith(
-            compareByDescending<ClientProfile> { profile -> clientHealth[profile.clientName]?.score ?: 0.0 }
+        val sorted = candidates.sortedWith(
+            compareByDescending<ClientProfile> { profile -> clientHealth[profile.clientName]?.score ?: 50.0 }
                 .thenBy { profile -> clientHealth[profile.clientName]?.averageLatencyMs ?: Long.MAX_VALUE }
                 .thenBy { it.tier }
         )
-        return if (primary == null) rest else listOf(primary) + rest
+        val vr = sorted.firstOrNull { it.clientName == "ANDROID_VR" } ?: return sorted
+        val best = sorted.firstOrNull() ?: return sorted
+        val vrHealth = clientHealth[vr.clientName]
+        val bestScore = clientHealth[best.clientName]?.score ?: 50.0
+        val vrScore = vrHealth?.score ?: 50.0
+        val keepVrPrimary = vrHealth?.consecutiveFailures.orZero() == 0 && vrScore >= bestScore - 12.0
+        return if (keepVrPrimary) listOf(vr) + sorted.filterNot { it === vr } else sorted
     }
 
     private fun recordClientSuccess(profile: ClientProfile, latencyMs: Long) {
@@ -870,6 +894,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         preferMp4Audio: Boolean = false
     ): DirectStream {
         val startedAt = System.nanoTime()
+        val mode = if (isVideoMode) "video" else if (preferMp4Audio) "offline" else "audio"
+        resilienceEngine.recordAttempt(profile.label, mode)
         return try {
             val firstAttempt = runCatching {
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio)
@@ -879,10 +905,14 @@ class PlaybackResolver private constructor(private val context: Context) {
                 resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio)
             }
             playbackSecurity.resetFailureState()
-            recordClientSuccess(profile, elapsedMs(startedAt))
+            val latency = elapsedMs(startedAt)
+            recordClientSuccess(profile, latency)
+            resilienceEngine.recordSuccess(profile.label, mode, latency, stream.source)
             stream
         } catch (error: Throwable) {
-            recordClientFailure(profile, elapsedMs(startedAt), error)
+            val latency = elapsedMs(startedAt)
+            recordClientFailure(profile, latency, error)
+            resilienceEngine.recordFailure(profile.label, mode, latency, error)
             throw error
         }
     }
@@ -1495,6 +1525,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         return best
     }
 }
+
+private fun Int?.orZero(): Int = this ?: 0
 
 private fun Throwable.playbackDiagnostic(): String {
     val messages = generateSequence(this) { it.cause }
