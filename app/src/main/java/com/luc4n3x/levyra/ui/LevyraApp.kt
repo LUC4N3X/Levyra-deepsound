@@ -7033,13 +7033,17 @@ private fun PlayerTimeline(positionMs: Long, durationMs: Long, activeColor: Colo
                 .height(30.dp)
                 .pointerInput(durationMs) {
                     detectTapGestures { offset ->
-                        onSeek((offset.x / size.width).coerceIn(0f, 1f))
+                        val inset = 9.dp.toPx()
+                        val usable = (size.width - inset * 2f).coerceAtLeast(1f)
+                        onSeek(((offset.x - inset) / usable).coerceIn(0f, 1f))
                     }
                 }
                 .pointerInput(durationMs) {
                     detectHorizontalDragGestures(
                         onDragStart = { offset ->
-                            dragFraction = (offset.x / size.width).coerceIn(0f, 1f)
+                            val inset = 9.dp.toPx()
+                            val usable = (size.width - inset * 2f).coerceAtLeast(1f)
+                            dragFraction = ((offset.x - inset) / usable).coerceIn(0f, 1f)
                         },
                         onDragEnd = {
                             if (dragFraction >= 0f) onSeek(dragFraction)
@@ -7048,7 +7052,9 @@ private fun PlayerTimeline(positionMs: Long, durationMs: Long, activeColor: Colo
                         onDragCancel = { dragFraction = -1f },
                         onHorizontalDrag = { change, _ ->
                             change.consume()
-                            dragFraction = (change.position.x / size.width).coerceIn(0f, 1f)
+                            val inset = 9.dp.toPx()
+                            val usable = (size.width - inset * 2f).coerceAtLeast(1f)
+                            dragFraction = ((change.position.x - inset) / usable).coerceIn(0f, 1f)
                         }
                     )
                 }
@@ -7056,8 +7062,8 @@ private fun PlayerTimeline(positionMs: Long, durationMs: Long, activeColor: Colo
                     val stroke = trackHeight.toPx()
                     val radius = thumbRadius.toPx()
                     val centerY = size.height / 2f
-                    val inset = radius
-                    val usable = size.width - inset * 2f
+                    val inset = 9.dp.toPx()
+                    val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                     val playedX = inset + usable * fraction.coerceIn(0f, 1f)
                     drawLine(
                         color = Color.White.copy(alpha = 0.13f),
