@@ -7994,39 +7994,18 @@ private fun SettingsMiniButton(
 }
 
 @Composable
-private fun LevyraLogoMark(size: Dp = 58.dp) {
+private fun LevyraLogoMark(size: Dp = 42.dp) {
+    val shape = RoundedCornerShape(10.dp)
     Box(contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
-                .size(size * 1.22f)
-                .blur(18.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            LevyraCyan.copy(alpha = 0.24f),
-                            LevyraViolet.copy(alpha = 0.16f),
-                            Color.Transparent
-                        )
-                    ),
-                    CircleShape
-                )
-        )
-        Box(
-            modifier = Modifier
                 .size(size)
-                .clip(CircleShape)
-                .background(Color(0xFF1A1B22))
+                .clip(shape)
+                .background(if (LevyraIsLight) Color(0xFFF0F2F5) else Color(0xFF13141B))
                 .border(
-                    width = 1.5.dp,
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            LevyraCyan.copy(alpha = 0.9f),
-                            LevyraViolet.copy(alpha = 0.5f),
-                            Color.Transparent,
-                            Color.Transparent
-                        )
-                    ),
-                    shape = CircleShape
+                    width = 0.8.dp,
+                    color = if (LevyraIsLight) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.08f),
+                    shape = shape
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -8041,18 +8020,18 @@ private fun LevyraLogoMark(size: Dp = 58.dp) {
 }
 
 @Composable
-private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
-    Row(verticalAlignment = Alignment.Bottom) {
+private fun LevyraWordmark(fontSize: TextUnit = 21.sp, dotSize: Dp = 3.5.dp) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "LEVYRA",
             color = LevyraText,
             fontSize = fontSize,
             fontWeight = FontWeight.Black,
-            letterSpacing = (-1.2).sp
+            letterSpacing = (-0.8).sp
         )
         Box(
             modifier = Modifier
-                .padding(start = 3.dp, bottom = 4.dp)
+                .padding(start = 3.dp, top = 2.dp)
                 .size(dotSize)
                 .background(LevyraCyan, CircleShape)
         )
@@ -8064,42 +8043,43 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 2.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f)
         ) {
-            LevyraLogoMark(size = 56.dp)
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                LevyraWordmark(fontSize = 27.sp, dotSize = 5.dp)
+            LevyraLogoMark(size = 42.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                LevyraWordmark()
                 Text(
                     text = greeting(userName),
                     color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.15.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.1.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
         }
+        val shape = RoundedCornerShape(10.dp)
         Surface(
-            color = LevyraAdaptiveChip,
-            border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
-            shape = CircleShape,
+            color = Color.White.copy(alpha = 0.04f),
+            border = BorderStroke(0.8.dp, if (LevyraIsLight) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.08f)),
+            shape = shape,
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
                 .pressable(onClick = onSettings)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (isResolving) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         strokeWidth = 2.dp,
                         color = LevyraCyan
                     )
@@ -8108,7 +8088,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                         imageVector = Icons.Rounded.Settings,
                         contentDescription = LocalLevyraStrings.current.settings,
                         tint = LevyraText,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -8463,34 +8443,36 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
             contentType = { "home-mood" }
         ) { mood ->
             val selected = mood.id == selectedId
+            val contentColor = if (selected) {
+                if (LevyraIsLight) Color.White else LevyraBlack
+            } else {
+                LevyraText.copy(alpha = 0.72f)
+            }
+            val backgroundColor = if (selected) {
+                LevyraText
+            } else {
+                if (LevyraIsLight) Color.Black.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.06f)
+            }
+            val borderStroke = if (selected) {
+                null
+            } else {
+                BorderStroke(0.8.dp, if (LevyraIsLight) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.08f))
+            }
             Surface(
-                color = if (selected) {
-                    Color(mood.accentStart).copy(alpha = if (LevyraIsLight) 0.15f else 0.18f)
-                } else {
-                    LevyraAdaptiveChip
-                },
-                border = BorderStroke(
-                    width = if (selected) 1.dp else Dp.Hairline,
-                    color = if (selected) {
-                        Color(mood.accentStart).copy(alpha = 0.58f)
-                    } else {
-                        LevyraAdaptiveHairline
-                    }
-                ),
+                color = backgroundColor,
+                border = borderStroke,
                 shape = CircleShape,
                 modifier = Modifier.pressable(onClick = { onSelect(mood) })
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = mood.icon, fontSize = 15.sp)
                     Text(
                         text = mood.title,
-                        color = LevyraText,
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        color = contentColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1
                     )
                 }
@@ -10781,12 +10763,12 @@ private fun LyricsButton(loading: Boolean, available: Boolean, onClick: () -> Un
 
 private fun greeting(userName: String): String {
     val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-    val name = if (userName.isNotBlank()) " $userName" else ""
+    val name = if (userName.isNotBlank()) ", $userName" else ""
     return when (hour) {
-        in 5..11 -> "Buongiorno$name ☀️"
-        in 12..17 -> "Buon pomeriggio$name 🎶"
-        in 18..22 -> "Buonasera$name 🌙"
-        else -> "Buonanotte$name 🌌"
+        in 5..11 -> "Buongiorno$name"
+        in 12..17 -> "Buon pomeriggio$name"
+        in 18..22 -> "Buonasera$name"
+        else -> "Buonanotte$name"
     }
 }
 
