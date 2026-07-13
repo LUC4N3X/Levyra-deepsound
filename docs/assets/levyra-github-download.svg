@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="260" viewBox="0 0 920 260" role="img" aria-labelledby="title desc">
+  <title id="title">Download Levyra from GitHub</title>
+  <desc id="desc">Official GitHub release download button for the Levyra Android music app</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#121A2A"/>
+      <stop offset="0.56" stop-color="#0B1020"/>
+      <stop offset="1" stop-color="#1A1030"/>
+    </linearGradient>
+    <linearGradient id="orbit" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#35C8FF"/>
+      <stop offset="0.48" stop-color="#6574FF"/>
+      <stop offset="1" stop-color="#B14CFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="900" height="240" rx="44" fill="#05070C" opacity="0.45"/>
+  <rect x="16" y="14" width="888" height="226" rx="42" fill="url(#panel)"/>
+  <rect x="17.5" y="15.5" width="885" height="223" rx="40.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="3"/>
+  <rect x="34" y="32" width="852" height="190" rx="30" fill="none" stroke="url(#orbit)" stroke-opacity="0.42" stroke-width="2"/>
+  <ellipse cx="145" cy="130" rx="87" ry="58" fill="none" stroke="url(#orbit)" stroke-width="8" transform="rotate(-18 145 130)"/>
+  <circle cx="214" cy="91" r="11" fill="#B14CFF"/>
+  <path d="M112 84h26v68h42v24h-68z" fill="#FFFFFF"/>
+  <path d="M157 101c18 8 31 23 36 43" fill="none" stroke="url(#orbit)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M178 88c26 13 45 36 52 65" fill="none" stroke="#FFFFFF" stroke-opacity="0.42" stroke-width="7" stroke-linecap="round"/>
+  <text x="285" y="101" fill="#AEB8D0" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="27" font-weight="600" letter-spacing="3">GET THE LATEST APK</text>
+  <text x="282" y="161" fill="#FFFFFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="54" font-weight="800" letter-spacing="1">Download Levyra</text>
+  <text x="285" y="201" fill="#8FA2C7" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="25" font-weight="500">Official release on GitHub</text>
+  <g transform="translate(800 130)">
+    <circle r="42" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="2"/>
+    <path d="M0-25v35m0 0-14-14m14 14L14-4M-21 18h42" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
