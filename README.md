@@ -37,7 +37,7 @@
     <img
       src="docs/assets/levyra-github-download.svg"
       alt="Download the latest Levyra APK from GitHub Releases"
-      width="500"
+      width="400"
     />
   </a>
   <br><br>
