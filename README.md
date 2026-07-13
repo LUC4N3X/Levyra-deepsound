@@ -29,23 +29,35 @@
 </div>
  
 <br>
-
+ 
 ## ✦ Download Levyra
 
 <div align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
-    <img src="docs/assets/levyra-github-download.svg" alt="Download the latest Levyra APK from GitHub Releases" width="460" />
+    <img
+      src="docs/assets/levyra-github-download.svg"
+      alt="Download the latest Levyra APK from GitHub Releases"
+      width="500"
+    />
   </a>
   <br><br>
   <sub>Official stable APK · Signed release · Android 8.0 or newer</sub>
   <br><br>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
-    <img src="https://img.shields.io/github/v/release/LUC4N3X/Levyra-deepsound?style=flat-square&label=Latest" alt="Latest Levyra release" />
+    <img
+      src="https://img.shields.io/github/v/release/LUC4N3X/Levyra-deepsound?style=flat-square&label=Latest"
+      alt="Latest Levyra release"
+    />
   </a>
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases">
-    <img src="https://img.shields.io/github/downloads/LUC4N3X/Levyra-deepsound/total?style=flat-square&label=Downloads" alt="Total GitHub downloads" />
+    <img
+      src="https://img.shields.io/github/downloads/LUC4N3X/Levyra-deepsound/total?style=flat-square&label=Downloads"
+      alt="Total GitHub downloads"
+    />
   </a>
 </div>
+
+<br>
 
 ## ✦ What is Levyra?
  
