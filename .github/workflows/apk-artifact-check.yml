@@ -141,9 +141,6 @@ jobs:
           printf "%s\n" "${BADGING}" | grep -F "versionName='${VERSION}'"
           printf "%s\n" "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --print-certs "${APK}" > artifacts/apk-signing-certs.txt
-          OUTPUT_APK="artifacts/LEVYRA-${VERSION}-${SIGNING_PROFILE}.apk"
-          cp "${APK}" "${OUTPUT_APK}"
-          sha256sum "${OUTPUT_APK}" > "${OUTPUT_APK}.sha256"
           {
             echo "LEVYRA APK Artifact"
             echo "version=${VERSION}"
@@ -154,13 +151,31 @@ jobs:
             echo "sizeBytes=${SIZE_BYTES}"
             echo "builtAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } > artifacts/build-info.txt
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            echo "installableArtifact=false" >> artifacts/build-info.txt
+            echo "This pull-request build uses an ephemeral CI signing key and is intentionally not published as an installable APK." > artifacts/README.txt
+          else
+            OUTPUT_APK="artifacts/LEVYRA-${VERSION}-release.apk"
+            cp "${APK}" "${OUTPUT_APK}"
+            sha256sum "${OUTPUT_APK}" > "${OUTPUT_APK}.sha256"
+            echo "installableArtifact=true" >> artifacts/build-info.txt
+          fi
           if [ -f app/build/outputs/mapping/release/mapping.txt ]; then
             cp app/build/outputs/mapping/release/mapping.txt artifacts/mapping.txt
           fi
 
-      - name: Upload Verified APK Bundle
+      - name: Upload PR Verification Reports
+        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v7
         with:
-          name: levyra-${{ env.SIGNING_PROFILE }}-apk-${{ github.run_number }}
+          name: levyra-pr-verification-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: error
+
+      - name: Upload Updateable Release APK
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-release-apk-${{ github.run_number }}
           path: artifacts
           if-no-files-found: error
