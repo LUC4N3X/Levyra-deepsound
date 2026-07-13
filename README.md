@@ -20,7 +20,7 @@
   <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
 </p>
  
-[📱 Inside Levyra](#-inside-levyra) • [✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
+[⬇️ Download](#-download-levyra) • [📱 Inside Levyra](#-inside-levyra) • [✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
  
 <br>
  
@@ -29,7 +29,24 @@
 </div>
  
 <br>
- 
+
+## ✦ Download Levyra
+
+<div align="center">
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
+    <img src="docs/assets/levyra-github-download.svg" alt="Download the latest Levyra APK from GitHub Releases" width="460" />
+  </a>
+  <br><br>
+  <sub>Official stable APK · Signed release · Android 8.0 or newer</sub>
+  <br><br>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
+    <img src="https://img.shields.io/github/v/release/LUC4N3X/Levyra-deepsound?style=flat-square&label=Latest" alt="Latest Levyra release" />
+  </a>
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases">
+    <img src="https://img.shields.io/github/downloads/LUC4N3X/Levyra-deepsound/total?style=flat-square&label=Downloads" alt="Total GitHub downloads" />
+  </a>
+</div>
+
 ## ✦ What is Levyra?
  
 Unlike typical wrapper or web-reskin apps, **Levyra** is a native, ground-up Android audio application. It queries, resolves, and streams music dynamically using YouTube Music's InnerTube API with a LevyraExtractor-powered fallback, routes audio via an optimized **AndroidX Media3/ExoPlayer** background service, and outputs full tracks straight into your local storage. 
@@ -243,7 +260,7 @@ graph TD
 *   Android Studio Jellyfish (or newer)
 *   Java Development Kit (JDK) 17
 *   Android SDK Platform 37 (`compileSdk = 37`, `targetSdk = 35`)
-*   Gradle 9.4.1 in CI via GitHub Actions
+*   Gradle 9.6.1 through the repository Gradle Wrapper
  
 ### Building the Project
 Clone the repository and compile the debug configuration directly to a connected Android device or emulator:
