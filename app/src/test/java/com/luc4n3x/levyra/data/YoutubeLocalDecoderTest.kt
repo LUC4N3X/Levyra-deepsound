@@ -200,4 +200,143 @@ class YoutubeLocalDecoderTest {
         assertNotNull(success.configs["c37d60f8"])
         assertFalse(success.configs.values.any { it.signatureTimestamp <= 0 })
     }
+    @Test
+    fun configParityFixturesMatchUpstreamVerdicts() {
+        val accepted = listOf(
+            "accept-empty-players.json",
+            "accept-entry-with-alias.json"
+        )
+        val rejected = listOf(
+            "reject-alias-collision.json",
+            "reject-malformed.json",
+            "reject-players-missing.json",
+            "reject-root-array.json",
+            "reject-schema-version-future.json",
+            "reject-schema-version-missing.json",
+            "reject-schema-version-string.json",
+            "reject-schema-version-zero.json"
+        )
+
+        accepted.forEach { name ->
+            assertTrue(name, YoutubePlayerConfigParser.parse(parityResource(name)) is YoutubePlayerConfigParseResult.Success)
+        }
+        rejected.forEach { name ->
+            assertTrue(name, YoutubePlayerConfigParser.parse(parityResource(name)) is YoutubePlayerConfigParseResult.Failure)
+        }
+    }
+
+    @Test
+    fun nTemplateMatchesUpstreamGoldenFixture() {
+        assertEquals(
+            parityResource("n-template-Yx.golden").trim(),
+            YoutubePlayerConfigParser.buildNExpression("Yx")
+        )
+    }
+
+    @Test
+    fun configEpochMismatchForcesRuntimeRebuild() {
+        assertTrue(
+            YoutubeRuntimeReusePolicy.canReuse(
+                isDead = false,
+                runtimeHash = "2182a2cc",
+                requestedHash = "2182a2cc",
+                runtimeConfigKey = "2182a2cc",
+                requestedConfigKey = "2182a2cc",
+                runtimeEpoch = 4L,
+                currentEpoch = 4L
+            )
+        )
+        assertFalse(
+            YoutubeRuntimeReusePolicy.canReuse(
+                isDead = false,
+                runtimeHash = "2182a2cc",
+                requestedHash = "2182a2cc",
+                runtimeConfigKey = "2182a2cc",
+                requestedConfigKey = "2182a2cc",
+                runtimeEpoch = 4L,
+                currentEpoch = 5L
+            )
+        )
+    }
+
+    @Test
+    fun unknownAndRejectionRefreshCooldownsAreIndependent() {
+        val cooldowns = YoutubeRefreshCooldowns(60_000L, 300_000L)
+        val now = 1_000_000L
+
+        assertTrue(cooldowns.claimUnknown(now))
+        assertTrue(cooldowns.unknownActive(now + 1L))
+        assertFalse(cooldowns.rejectionActive(now + 1L))
+        assertTrue(cooldowns.claimRejection(now + 1L))
+        assertTrue(cooldowns.rejectionActive(now + 2L))
+        cooldowns.resetUnknown()
+        assertTrue(cooldowns.claimUnknown(now + 2L))
+        assertFalse(cooldowns.claimRejection(now + 2L))
+    }
+
+    @Test
+    fun futureCooldownStampNeverBlocksRefresh() {
+        assertFalse(YoutubePlayerConfigStore.withinWindow(1_000L, 2_000L, 60_000L))
+    }
+
+    @Test
+    fun automaticAnalyzerExtractsConservativeSignatureAndNFunctions() {
+        val javascript = """
+            var x=1;
+            x&&(y=Ab(4,decodeURIComponent(z)));
+            a.get("n"))&&(b=Nz[2](b));
+            var cfg={signatureTimestamp:20644};
+        """.trimIndent()
+
+        val config = YoutubePlayerJsAnalyzer.analyze("2182a2cc", javascript)
+
+        assertNotNull(config)
+        assertEquals("Ab(4,INPUT)", config?.signatureExpression)
+        assertEquals("Nz[2](INPUT)", config?.nExpression)
+        assertEquals(20644, config?.signatureTimestamp)
+        assertEquals(YoutubePlayerConfigOrigin.ANALYZED, config?.origin)
+    }
+
+    @Test
+    fun automaticAnalyzerRejectsAmbiguousSignatureMatches() {
+        val javascript = """
+            x&&(y=Ab(4,decodeURIComponent(z)));
+            q&&(r=Cd(5,decodeURIComponent(s)));
+            a.get("n"))&&(b=Nz[2](b));
+            var cfg={signatureTimestamp:20644};
+        """.trimIndent()
+
+        assertEquals(null, YoutubePlayerJsAnalyzer.analyze("2182a2cc", javascript))
+    }
+
+    @Test
+    fun atomicWriterReplacesFileWithoutLeavingTemporaryArtifacts() {
+        val directory = createTempDir(prefix = "levyra-decoder-")
+        try {
+            val file = File(directory, "player.js")
+            YoutubePlayerConfigStore.writeAtomic(file, "first")
+            YoutubePlayerConfigStore.writeAtomic(file, "second")
+
+            assertEquals("second", file.readText())
+            assertTrue(directory.listFiles().orEmpty().none { it.name.endsWith(".tmp") || it.name.endsWith(".bak") })
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun cdnRejectionFeedbackOnlyTargetsRecentDecoderBackedStreams() {
+        val now = 1_000_000L
+
+        assertTrue(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Web", now, now - 1_000L))
+        assertTrue(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("LevyraExtractor · Opus", now, now - 1_000L))
+        assertFalse(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Android VR", now, now - 1_000L))
+        assertFalse(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Web", now, now - 11L * 60L * 1000L))
+    }
+
+    private fun parityResource(name: String): String {
+        val resource = requireNotNull(javaClass.classLoader?.getResource("config-parity/$name"))
+        return resource.readText()
+    }
+
 }

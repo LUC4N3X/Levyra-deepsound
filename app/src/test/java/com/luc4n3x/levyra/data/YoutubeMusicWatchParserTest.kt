@@ -4,6 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -604,6 +605,28 @@ class YoutubeMusicWatchParserTest {
 
         assertEquals("Eros Ramazzotti", artist)
         assertFalse(isYoutubeMusicAlbumTrackMetadata("2 Chainz"))
+    }
+
+    @Test
+    fun rejectsEmptyBotguardSuccessBody() {
+        val error = runCatching { YoutubePoTokenRuntime.requireNonBlankBotguardBody("   ") }.exceptionOrNull()
+        assertNotNull(error)
+    }
+
+    @Test
+    fun poTokenExpiryAlwaysPrecedesServerTtl() {
+        val now = 10_000L
+        val expiresAt = YoutubePoTokenRuntime.safeExpiryAt(now, 3_600L)
+
+        assertTrue(expiresAt > now)
+        assertTrue(expiresAt < now + 3_600_000L)
+    }
+
+    @Test
+    fun validatesPoTokenShapeStrictly() {
+        assertTrue(YoutubePoTokenRuntime.isValidPoToken("Abcdefghijklmnop_123-XYZ"))
+        assertFalse(YoutubePoTokenRuntime.isValidPoToken("short"))
+        assertFalse(YoutubePoTokenRuntime.isValidPoToken("invalid token with spaces"))
     }
 
 }
