@@ -49,10 +49,10 @@
       alt="Latest Levyra release"
     />
   </a>
-  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/download/v2.3.8/LEVYRA-2.3.8-signed.apk">
+  <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases">
     <img
-      src="https://img.shields.io/github/downloads/LUC4N3X/Levyra-deepsound/LEVYRA-2.3.8-signed.apk?style=flat-square&label=APK%20Downloads&displayAssetName=false"
-      alt="Levyra APK downloads"
+      src="https://img.shields.io/github/downloads/LUC4N3X/Levyra-deepsound/total?style=flat-square&label=Downloads"
+      alt="Total GitHub downloads"
     />
   </a>
 </div>
