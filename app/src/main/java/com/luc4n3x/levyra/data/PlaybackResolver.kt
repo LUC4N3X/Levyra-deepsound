@@ -183,7 +183,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             lower.contains("decoder") ||
             lower.contains("n-transform")
         ) {
-            YoutubeLocalDecoder.notifyStreamRejected()
+            YoutubeLocalDecoder.notifyStreamRejected(track.source)
         }
     }
 
