@@ -8148,11 +8148,12 @@ private fun DownloadQueueSettingsCard(
                             Text("${task.state.lowercase().replaceFirstChar { it.titlecase(currentLocale) }} • ${task.progress.coerceIn(0, 100)}%", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                         val canResume = task.state == "PAUSED" || task.state == "FAILED"
+                        val actionDescription = if (canResume) "Riprendi download ${task.title}" else "Metti in pausa download ${task.title}"
                         IconButton(onClick = { if (canResume) onResume(task.taskKey) else onPause(task.taskKey) }) {
-                            Icon(if (canResume) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, null, tint = LevyraCyan)
+                            Icon(if (canResume) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, actionDescription, tint = LevyraCyan)
                         }
                         IconButton(onClick = { onCancel(task.taskKey) }) {
-                            Icon(Icons.Rounded.Close, null, tint = LevyraPink)
+                            Icon(Icons.Rounded.Close, "Annulla download ${task.title}", tint = LevyraPink)
                         }
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(5.dp).background(Color.White.copy(alpha = 0.08f), CircleShape)) {
