@@ -162,6 +162,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -248,8 +249,14 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.viewmodel.ExploreViewModel
+import com.luc4n3x.levyra.viewmodel.HomeViewModel
+import com.luc4n3x.levyra.viewmodel.LevyraScreenViewModelFactory
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
+import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import com.luc4n3x.levyra.viewmodel.PlayerViewModel
+import com.luc4n3x.levyra.viewmodel.SearchViewModel
 import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.delay
 import java.time.format.TextStyle as DayTextStyle
@@ -703,6 +710,12 @@ private fun Modifier.pressable(
 
 @Composable
 fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
+    val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
+    val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
+    val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
+    val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
+    val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
+    val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
     val state by viewModel.state.collectAsState()
     LaunchedEffect(state.isVideoMode, state.isPlaying) {
         val currentPipState = LevyraPipBridge.current()
@@ -832,11 +845,26 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             ) { tab ->
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (tab) {
-                        LevyraTab.Home -> HomeScreen(viewModel, state)
-                        LevyraTab.Search -> SearchScreen(viewModel, state)
-                        LevyraTab.Explore -> ExploreScreen(viewModel, state)
-                        LevyraTab.Library -> LibraryScreen(viewModel, state, onOpenDownloads = { showDownloadsFolder = true })
-                        LevyraTab.Player -> PlayerScreen(viewModel, state)
+                        LevyraTab.Home -> {
+                            val screenState by homeViewModel.state.collectAsState()
+                            HomeScreen(homeViewModel, screenState)
+                        }
+                        LevyraTab.Search -> {
+                            val screenState by searchViewModel.state.collectAsState()
+                            SearchScreen(searchViewModel, screenState)
+                        }
+                        LevyraTab.Explore -> {
+                            val screenState by exploreViewModel.state.collectAsState()
+                            ExploreScreen(exploreViewModel, screenState)
+                        }
+                        LevyraTab.Library -> {
+                            val screenState by libraryViewModel.state.collectAsState()
+                            LibraryScreen(libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true })
+                        }
+                        LevyraTab.Player -> {
+                            val screenState by playerViewModel.state.collectAsState()
+                            PlayerScreen(playerViewModel, screenState)
+                        }
                     }
                 }
             }
@@ -2975,7 +3003,7 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
 }
 
 @Composable
-private fun HomeScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
@@ -4842,7 +4870,7 @@ private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
 }
 
 @Composable
-private fun SearchScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -5607,7 +5635,7 @@ private fun DownloadsFolderOverlay(
 
 @Composable
 private fun LibraryScreen(
-    viewModel: LevyraViewModel,
+    viewModel: LibraryViewModel,
     state: LevyraUiState,
     onOpenDownloads: () -> Unit
 ) {
@@ -6573,7 +6601,109 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
 }
 
 @Composable
-private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+private fun PlayerArtworkCanvas(
+    track: Track,
+    artworkUrl: String,
+    isPlaying: Boolean,
+    cornerRadius: Dp,
+    modifier: Modifier = Modifier
+) {
+    val animateCanvas = LocalAnimationsEnabled.current && isPlaying
+    val canvasScale: Float
+    val canvasShiftX: Float
+    val canvasShiftY: Float
+    if (animateCanvas) {
+        val transition = rememberInfiniteTransition(label = "player-artwork-canvas")
+        val animatedScale by transition.animateFloat(
+            initialValue = 1.10f,
+            targetValue = 1.22f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 10_000, easing = LinearOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "player-artwork-canvas-scale"
+        )
+        val animatedShiftX by transition.animateFloat(
+            initialValue = -10f,
+            targetValue = 10f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 14_000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "player-artwork-canvas-x"
+        )
+        val animatedShiftY by transition.animateFloat(
+            initialValue = 8f,
+            targetValue = -8f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 12_000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "player-artwork-canvas-y"
+        )
+        canvasScale = animatedScale
+        canvasShiftX = animatedShiftX
+        canvasShiftY = animatedShiftY
+    } else {
+        canvasScale = 1.12f
+        canvasShiftX = 0f
+        canvasShiftY = 0f
+    }
+    val canvasShape = RoundedCornerShape(cornerRadius + 18.dp)
+    Box(
+        modifier = modifier
+            .clip(canvasShape)
+            .background(
+                Brush.radialGradient(
+                    listOf(
+                        Color(track.accentStart).copy(alpha = 0.90f),
+                        Color(track.accentEnd).copy(alpha = 0.72f),
+                        LevyraBlack
+                    )
+                )
+            )
+    ) {
+        if (artworkUrl.isNotBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(artworkUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(x = canvasShiftX.dp, y = canvasShiftY.dp)
+                    .graphicsLayer {
+                        scaleX = canvasScale
+                        scaleY = canvasScale
+                    }
+                    .blur(30.dp)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.18f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.58f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.10f),
+                    shape = canvasShape
+                )
+        )
+    }
+}
+
+@Composable
+private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
     val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
@@ -6737,45 +6867,48 @@ private fun PlayerScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
                                     .padding(vertical = 16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Box(
+                                PlayerArtworkCanvas(
+                                    track = track,
+                                    artworkUrl = artworkUrl,
+                                    isPlaying = state.isPlaying,
+                                    cornerRadius = artCorner,
                                     modifier = Modifier
-                                        .fillMaxSize(0.9f)
+                                        .fillMaxSize(0.96f)
                                         .graphicsLayer {
-                                            scaleX = artScale * 1.05f
-                                            scaleY = artScale * 1.05f
-                                            alpha = if (state.isPlaying) 0.55f else 0.32f
+                                            scaleX = artScale * 1.02f
+                                            scaleY = artScale * 1.02f
+                                            alpha = if (state.isPlaying) 0.82f else 0.62f
                                         }
-                                        .blur(32.dp)
-                                        .background(
-                                            Brush.radialGradient(
-                                                colors = listOf(
-                                                    Color(track.accentStart),
-                                                    Color(track.accentEnd),
-                                                    Color.Transparent
-                                                )
-                                            ),
-                                            shape = RoundedCornerShape(artCorner)
-                                        )
                                 )
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxSize()
+                                        .fillMaxSize(0.82f)
                                         .graphicsLayer {
                                             scaleX = artScale
                                             scaleY = artScale
+                                            shadowElevation = artShadow
                                             shape = RoundedCornerShape(artCorner)
                                             clip = true
                                         }
+                                        .border(
+                                            width = 1.dp,
+                                            color = Color.White.copy(alpha = 0.16f),
+                                            shape = RoundedCornerShape(artCorner)
+                                        )
                                 ) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(artworkUrl)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
+                                    if (artworkUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(artworkUrl)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                                    }
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -9764,7 +9897,7 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
 }
 
 @Composable
-private fun ExploreScreen(viewModel: LevyraViewModel, state: LevyraUiState) {
+private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
