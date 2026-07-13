@@ -15,9 +15,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaylistTrackEntity::class,
         ListenEventEntity::class,
         PlaybackQueueItemEntity::class,
-        PlaybackQueueStateEntity::class
+        PlaybackQueueStateEntity::class,
+        OfflineDownloadTaskEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -26,6 +27,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun listenEventsDao(): ListenEventsDao
     abstract fun playbackQueueDao(): PlaybackQueueDao
+    abstract fun offlineDownloadTasksDao(): OfflineDownloadTasksDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -132,6 +134,28 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS offline_download_tasks (
+                        taskKey TEXT NOT NULL PRIMARY KEY,
+                        trackId TEXT NOT NULL,
+                        payload TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        state TEXT NOT NULL,
+                        progress INTEGER NOT NULL,
+                        workId TEXT NOT NULL,
+                        error TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -140,7 +164,7 @@ abstract class LevyraDatabase : RoomDatabase() {
                     "levyra.db"
                 )
                     // Migrazioni versionate: i dati utente sopravvivono agli aggiornamenti.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also { instance = it }
             }
