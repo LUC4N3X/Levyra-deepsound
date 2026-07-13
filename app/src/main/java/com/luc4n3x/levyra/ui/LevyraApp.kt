@@ -7,8 +7,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
+import android.media.AudioManager
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -179,12 +181,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
@@ -222,6 +226,9 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraTab
@@ -263,12 +270,14 @@ import com.luc4n3x.levyra.viewmodel.LibraryViewModel
 import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import com.luc4n3x.levyra.viewmodel.SearchViewModel
 import com.valentinilk.shimmer.shimmer
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
-private const val PLAYER_MEDIA_SEEK_STEP_MS = 5_000L
 private val CinematicPlum = Color(0xFF2A1738)
 private val CinematicGold = Color(0xFFFFC46B)
 private val CinematicGlass = Color(0xFF151321)
@@ -671,6 +680,12 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
+    val createBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        uri?.let(viewModel::createBackup)
+    }
+    val restoreBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::restoreBackup)
+    }
     val accent = if (state.dynamicColor) state.currentTrack ?: state.tracks.firstOrNull() else null
     val overlayEnter = if (state.animationsEnabled) fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) else EnterTransition.None
     val overlayExit = if (state.animationsEnabled) fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing)) else ExitTransition.None
@@ -735,6 +750,12 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         state.updateMessage?.let { message ->
             Toast.makeText(toastContext, message, Toast.LENGTH_LONG).show()
             viewModel.clearUpdateMessage()
+        }
+    }
+    LaunchedEffect(state.backupMessage) {
+        state.backupMessage?.let { message ->
+            Toast.makeText(toastContext, message, Toast.LENGTH_LONG).show()
+            viewModel.clearBackupMessage()
         }
     }
     BackHandler(enabled = showLanguageRestartDialog || showDownloadsFolder || state.openPlaylist != null || state.showUpdatePrompt || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
@@ -874,7 +895,13 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     isCheckingUpdates = state.isCheckingUpdates,
                     currentLanguageCode = state.languageCode,
                     themePreset = state.themePreset,
+                    interfaceSettings = state.interfaceSettings,
+                    downloadSettings = state.downloadSettings,
+                    downloadQueue = state.downloadQueue,
+                    playbackDiagnostics = state.playbackDiagnostics,
                     onThemePreset = viewModel::setThemePreset,
+                    onInterfaceSettings = viewModel::setInterfaceSettings,
+                    onDownloadSettings = viewModel::setDownloadSettings,
                     onAnimations = viewModel::setAnimationsEnabled,
                     onDynamicColor = viewModel::setDynamicColor,
                     onSponsorBlock = viewModel::setSponsorBlock,
@@ -888,6 +915,20 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     },
                     onCheckUpdates = { viewModel.checkForUpdates(silent = false) },
                     onDownloadUpdate = { state.updateInfo?.let { openExternalUrl(toastContext, it.downloadUrl) } },
+                    onCreateBackup = { createBackupLauncher.launch("levyra-backup-${System.currentTimeMillis()}.zip") },
+                    onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                    onPauseDownload = viewModel::pauseDownload,
+                    onResumeDownload = viewModel::resumeDownload,
+                    onCancelDownload = viewModel::cancelDownload,
+                    onShareDiagnostics = {
+                        val diagnostics = viewModel.refreshPlaybackDiagnostics()
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "LEVYRA playback diagnostics")
+                            putExtra(Intent.EXTRA_TEXT, diagnostics)
+                        }
+                        toastContext.startActivity(Intent.createChooser(intent, "Condividi diagnostica"))
+                    },
                     onRedoQuestionnaire = viewModel::restartOnboarding,
                     onClose = viewModel::closeSettings
                 )
@@ -2625,6 +2666,9 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
                     }
                 }
             }
+            if (state.intelligenceSummary.available) {
+                item { LocalIntelligenceCard(state.intelligenceSummary) }
+            }
             if (state.lyrics.isEmpty()) {
                 item { Text(strings.lyricsUnavailable, color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
             } else {
@@ -2678,6 +2722,56 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LocalIntelligenceCard(summary: com.luc4n3x.levyra.domain.LevyraIntelligenceSummary) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = LevyraViolet.copy(alpha = 0.11f),
+        border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.24f)),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Rounded.Insights, null, tint = LevyraViolet, modifier = Modifier.size(20.dp))
+                    Text("Levyra Intelligence", color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                }
+                Surface(color = LevyraCyan.copy(alpha = 0.14f), shape = CircleShape) {
+                    Text("LOCALE", color = LevyraCyan, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
+                }
+            }
+            Text(summary.overview, color = LevyraText.copy(alpha = 0.9f), fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
+            if (summary.mood.isNotBlank()) {
+                Text("Atmosfera: ${summary.mood}", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+            if (summary.themes.isNotEmpty()) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    items(summary.themes, key = { "intelligence-theme-$it" }) { theme ->
+                        Surface(color = Color.White.copy(alpha = 0.07f), shape = CircleShape) {
+                            Text(theme, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+                        }
+                    }
+                }
+            }
+            summary.repeatedPhrases.firstOrNull()?.let { phrase ->
+                Text("Frase ricorrente: “$phrase”", color = LevyraText.copy(alpha = 0.82f), fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("${summary.wordCount} parole", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("Densità ${summary.lexicalDensity}%", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Text("Nessuna API, nessuna chiave e nessun costo: l'analisi resta sul dispositivo.", color = LevyraCyan.copy(alpha = 0.86f), fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -2896,7 +2990,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
         delay(500L)
         while (homeListState.isScrollInProgress) delay(120L)
-        if (personalTracks.isNotEmpty()) {
+        if (state.interfaceSettings.showPersonalOrbit && personalTracks.isNotEmpty()) {
             LevyraArtworkCache.preloadPriority(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
         }
         LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 10)
@@ -2905,7 +2999,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(top = 10.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(if (state.interfaceSettings.compactHome) 14.dp else 24.dp)
     ) {
         item(key = "home-top", contentType = "home-header") {
             HomeSectionInset {
@@ -2915,7 +3009,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 }
             }
         }
-        if (personalTracks.isNotEmpty()) {
+        if (state.interfaceSettings.showPersonalOrbit && personalTracks.isNotEmpty()) {
             item(key = "home-personal", contentType = "home-shelf") {
                 PersonalListeningShelf(
                     tracks = personalTracks,
@@ -2927,7 +3021,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (resonanceTracks.isNotEmpty()) {
+        if (state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()) {
             item(key = "home-resonance", contentType = "home-shelf") {
                 ResonanceShelf(
                     tracks = resonanceTracks,
@@ -2953,7 +3047,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
             }
         }
 
-        if (state.releaseRadar.isNotEmpty()) {
+        if (state.interfaceSettings.showNewReleases && state.releaseRadar.isNotEmpty()) {
             item(key = "sec-release-radar-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionTitle("📡 ${strings.releaseRadar}") }
             }
@@ -2965,7 +3059,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (state.similarArtists.isNotEmpty()) {
+        if (state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
             item(key = "sec-similar-artists-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionTitle("✨ ${strings.similarToFollowed}") }
             }
@@ -2977,7 +3071,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (newReleases != null && newReleases.tracks.isNotEmpty()) {
+        if (state.interfaceSettings.showNewReleases && newReleases != null && newReleases.tracks.isNotEmpty()) {
             item(key = "sec-new-releases-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionHeaderAction(strings.newReleases, onPlayAll = { viewModel.playAll(newReleases.tracks) }) }
             }
@@ -2990,7 +3084,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (state.homeAlbums.isNotEmpty() || state.homeAlbumsLoading) {
+        if (state.interfaceSettings.showAlbumsForYou && (state.homeAlbums.isNotEmpty() || state.homeAlbumsLoading)) {
             item(key = "sec-home-albums-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(state.homeAlbums) }) }
             }
@@ -3006,7 +3100,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 }
             }
         }
-        if (trendingArtists.isNotEmpty()) {
+        if (state.interfaceSettings.showTrendingArtists && trendingArtists.isNotEmpty()) {
             item(key = "home-trending-artists", contentType = "home-shelf") {
                 TrendingArtistsShelf(
                     artists = trendingArtists,
@@ -3029,55 +3123,57 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 }
             }
         }
-        item(key = "home-chart-title", contentType = "home-section-header") {
-            val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-            HomeSectionInset {
-                SectionHeaderAction("Top 50 ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
-            }
-        }
-        item(key = "home-chart-regions", contentType = "home-horizontal-row") {
-            HomeSectionInset {
-                ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
-            }
-        }
-        if (state.charts.isEmpty()) {
-            item(key = "home-chart-empty", contentType = "home-card") {
+        if (state.interfaceSettings.showCharts) {
+            item(key = "home-chart-title", contentType = "home-section-header") {
+                val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
                 HomeSectionInset {
-                    if (state.isLoadingCharts) {
-                        ChartLoadingSkeleton()
-                    } else {
-                        GlassMessage(strings.top50Unavailable, LevyraOrange)
+                    SectionHeaderAction("Top 50 ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
+                }
+            }
+            item(key = "home-chart-regions", contentType = "home-horizontal-row") {
+                HomeSectionInset {
+                    ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
+                }
+            }
+            if (state.charts.isEmpty()) {
+                item(key = "home-chart-empty", contentType = "home-card") {
+                    HomeSectionInset {
+                        if (state.isLoadingCharts) {
+                            ChartLoadingSkeleton()
+                        } else {
+                            GlassMessage(strings.top50Unavailable, LevyraOrange)
+                        }
                     }
                 }
             }
-        }
-        if (state.charts.isNotEmpty()) {
-            item(key = "home-chart-row", contentType = "home-horizontal-row") {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
-                ) {
-                    itemsIndexed(
-                        items = chartChunks,
-                        key = { chunkIndex, chunk -> "chart-column-$chunkIndex-${chunk.joinToString("-") { it.id }}" },
-                        contentType = { _, _ -> "chart-column" }
-                    ) { chunkIndex, chunk ->
-                        Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            chunk.forEachIndexed { itemIndex, track ->
-                                val rank = chunkIndex * 4 + itemIndex + 1
-                                ChartRow(
-                                    rank = rank,
-                                    track = track,
-                                    isCurrent = track.id == state.currentTrack?.id,
-                                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                                    isFavorite = track.id in state.favoriteIds,
-                                    onClick = { viewModel.playFrom(state.charts, track) },
-                                    onFavorite = { viewModel.toggleFavorite(track) },
-                                    onAddToPlaylist = { addTarget = track },
-                                    onAddToQueue = { viewModel.addToQueue(track) }
-                                )
+            if (state.charts.isNotEmpty()) {
+                item(key = "home-chart-row", contentType = "home-horizontal-row") {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
+                    ) {
+                        itemsIndexed(
+                            items = chartChunks,
+                            key = { chunkIndex, chunk -> "chart-column-$chunkIndex-${chunk.joinToString("-") { it.id }}" },
+                            contentType = { _, _ -> "chart-column" }
+                        ) { chunkIndex, chunk ->
+                            Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                chunk.forEachIndexed { itemIndex, track ->
+                                    val rank = chunkIndex * 4 + itemIndex + 1
+                                    ChartRow(
+                                        rank = rank,
+                                        track = track,
+                                        isCurrent = track.id == state.currentTrack?.id,
+                                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                                        isFavorite = track.id in state.favoriteIds,
+                                        onClick = { viewModel.playFrom(state.charts, track) },
+                                        onFavorite = { viewModel.toggleFavorite(track) },
+                                        onAddToPlaylist = { addTarget = track },
+                                        onAddToQueue = { viewModel.addToQueue(track) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -6478,15 +6574,28 @@ private fun PlayerArtworkCanvas(
 private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
+    val playerContext = LocalContext.current
+    val playerActivity = playerContext as? Activity
+    val audioManager = remember(playerContext) { playerContext.getSystemService(AudioManager::class.java) }
+    val hapticFeedback = LocalHapticFeedback.current
+    val seekStepMs = state.interfaceSettings.doubleTapSeekSeconds.toLong() * 1_000L
     val bgStart = track?.let { Color(it.accentStart) } ?: LevyraCyan
     val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
+    var gestureFeedback by remember(track?.id) { mutableStateOf("") }
+    var gestureFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
 
     LaunchedEffect(mediaSeekFeedbackEvent) {
         if (mediaSeekFeedbackEvent > 0) {
             delay(650L)
             mediaSeekFeedbackMs = 0L
+        }
+    }
+    LaunchedEffect(gestureFeedbackEvent) {
+        if (gestureFeedbackEvent > 0) {
+            delay(700L)
+            gestureFeedback = ""
         }
     }
 
@@ -6699,43 +6808,152 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                             }
                         }
 
-                        val leftSeekInteraction = remember(track.id) { MutableInteractionSource() }
-                        val rightSeekInteraction = remember(track.id) { MutableInteractionSource() }
-                        Row(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .zIndex(20f)
+                        if (state.interfaceSettings.playerGesturesEnabled) {
+                            Row(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .zIndex(20f)
+                            ) {
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .pointerInput(track.id, state.interfaceSettings.doubleTapSeekSeconds, state.interfaceSettings.longPressSpeed) {
+                                                detectTapGestures(
+                                                    onPress = {
+                                                        val originalSpeed = state.playbackSpeed
+                                                        coroutineScope {
+                                                            var boosted = false
+                                                            val speedJob = launch {
+                                                                delay(320L)
+                                                                boosted = true
+                                                                viewModel.setTemporaryPlaybackSpeed(state.interfaceSettings.longPressSpeed)
+                                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                gestureFeedback = "${String.format(Locale.US, "%.1f", state.interfaceSettings.longPressSpeed)}×"
+                                                                gestureFeedbackEvent += 1
+                                                            }
+                                                            try {
+                                                                tryAwaitRelease()
+                                                            } finally {
+                                                                speedJob.cancel()
+                                                                if (boosted) viewModel.setTemporaryPlaybackSpeed(originalSpeed)
+                                                            }
+                                                        }
+                                                    },
+                                                    onDoubleTap = {
+                                                        viewModel.seekBy(-seekStepMs)
+                                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        mediaSeekFeedbackMs = -seekStepMs
+                                                        mediaSeekFeedbackEvent += 1
+                                                    }
+                                                )
+                                            }
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterStart)
+                                            .width(54.dp)
+                                            .fillMaxHeight()
+                                            .pointerInput(track.id, playerActivity) {
+                                                detectVerticalDragGestures { change, dragAmount ->
+                                                    change.consume()
+                                                    val activity = playerActivity ?: return@detectVerticalDragGestures
+                                                    val attributes = activity.window.attributes
+                                                    val current = attributes.screenBrightness.takeIf { it >= 0f } ?: 0.5f
+                                                    val updated = (current - dragAmount / size.height.coerceAtLeast(1)).coerceIn(0.05f, 1f)
+                                                    attributes.screenBrightness = updated
+                                                    activity.window.attributes = attributes
+                                                    gestureFeedback = "Luminosità ${(updated * 100f).roundToInt()}%"
+                                                    gestureFeedbackEvent += 1
+                                                }
+                                            }
+                                    )
+                                }
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .pointerInput(track.id, state.interfaceSettings.doubleTapSeekSeconds, state.interfaceSettings.longPressSpeed) {
+                                                detectTapGestures(
+                                                    onPress = {
+                                                        val originalSpeed = state.playbackSpeed
+                                                        coroutineScope {
+                                                            var boosted = false
+                                                            val speedJob = launch {
+                                                                delay(320L)
+                                                                boosted = true
+                                                                viewModel.setTemporaryPlaybackSpeed(state.interfaceSettings.longPressSpeed)
+                                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                gestureFeedback = "${String.format(Locale.US, "%.1f", state.interfaceSettings.longPressSpeed)}×"
+                                                                gestureFeedbackEvent += 1
+                                                            }
+                                                            try {
+                                                                tryAwaitRelease()
+                                                            } finally {
+                                                                speedJob.cancel()
+                                                                if (boosted) viewModel.setTemporaryPlaybackSpeed(originalSpeed)
+                                                            }
+                                                        }
+                                                    },
+                                                    onDoubleTap = {
+                                                        viewModel.seekBy(seekStepMs)
+                                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        mediaSeekFeedbackMs = seekStepMs
+                                                        mediaSeekFeedbackEvent += 1
+                                                    }
+                                                )
+                                            }
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterEnd)
+                                            .width(54.dp)
+                                            .fillMaxHeight()
+                                            .pointerInput(track.id, audioManager) {
+                                                var accumulated = 0f
+                                                detectVerticalDragGestures(
+                                                    onDragStart = { accumulated = 0f },
+                                                    onVerticalDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        val manager = audioManager ?: return@detectVerticalDragGestures
+                                                        val maximum = manager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                                                        accumulated += -dragAmount / size.height.coerceAtLeast(1) * maximum
+                                                        val steps = accumulated.roundToInt()
+                                                        if (steps != 0) {
+                                                            val current = manager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                                            val updated = (current + steps).coerceIn(0, maximum)
+                                                            manager.setStreamVolume(AudioManager.STREAM_MUSIC, updated, 0)
+                                                            accumulated -= steps.toFloat()
+                                                            gestureFeedback = "Volume ${((updated.toFloat() / maximum.toFloat()) * 100f).roundToInt()}%"
+                                                            gestureFeedbackEvent += 1
+                                                        }
+                                                    }
+                                                )
+                                            }
+                                    )
+                                }
+                            }
+                        }
+
+                        AnimatedVisibility(
+                            visible = gestureFeedback.isNotBlank(),
+                            modifier = Modifier.align(Alignment.Center).zIndex(22f),
+                            enter = fadeIn(animationSpec = tween(110)),
+                            exit = fadeOut(animationSpec = tween(180))
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .combinedClickable(
-                                        interactionSource = leftSeekInteraction,
-                                        indication = null,
-                                        onClick = {},
-                                        onDoubleClick = {
-                                            viewModel.seekBy(-PLAYER_MEDIA_SEEK_STEP_MS)
-                                            mediaSeekFeedbackMs = -PLAYER_MEDIA_SEEK_STEP_MS
-                                            mediaSeekFeedbackEvent += 1
-                                        }
-                                    )
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .combinedClickable(
-                                        interactionSource = rightSeekInteraction,
-                                        indication = null,
-                                        onClick = {},
-                                        onDoubleClick = {
-                                            viewModel.seekBy(PLAYER_MEDIA_SEEK_STEP_MS)
-                                            mediaSeekFeedbackMs = PLAYER_MEDIA_SEEK_STEP_MS
-                                            mediaSeekFeedbackEvent += 1
-                                        }
-                                    )
-                            )
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.68f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                                shape = CircleShape
+                            ) {
+                                Text(
+                                    text = gestureFeedback,
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)
+                                )
+                            }
                         }
 
                         Box(
@@ -6760,7 +6978,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     shape = CircleShape
                                 ) {
                                     Text(
-                                        text = if (mediaSeekFeedbackMs < 0L) "−5 s" else "+5 s",
+                                        text = "${if (mediaSeekFeedbackMs < 0L) "−" else "+"}${kotlin.math.abs(mediaSeekFeedbackMs) / 1_000L} s",
                                         color = Color.White,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
@@ -7454,7 +7672,13 @@ private fun SettingsOverlay(
     isCheckingUpdates: Boolean,
     currentLanguageCode: String,
     themePreset: String,
+    interfaceSettings: LevyraInterfaceSettings,
+    downloadSettings: LevyraDownloadSettings,
+    downloadQueue: List<OfflineDownloadTask>,
+    playbackDiagnostics: String,
     onThemePreset: (String) -> Unit,
+    onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
+    onDownloadSettings: (LevyraDownloadSettings) -> Unit,
     onAnimations: (Boolean) -> Unit,
     onDynamicColor: (Boolean) -> Unit,
     onSponsorBlock: (Boolean) -> Unit,
@@ -7462,6 +7686,12 @@ private fun SettingsOverlay(
     onLanguage: (String) -> Unit,
     onCheckUpdates: () -> Unit,
     onDownloadUpdate: () -> Unit,
+    onCreateBackup: () -> Unit,
+    onRestoreBackup: () -> Unit,
+    onPauseDownload: (String) -> Unit,
+    onResumeDownload: (String) -> Unit,
+    onCancelDownload: (String) -> Unit,
+    onShareDiagnostics: () -> Unit,
     onRedoQuestionnaire: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -7531,6 +7761,102 @@ private fun SettingsOverlay(
                     onCheckedChange = onDynamicColor
                 )
             }
+            item { SettingsSectionLabel("INTERFACCIA HOME") }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Home,
+                    title = "Home compatta",
+                    subtitle = "Riduce gli spazi verticali e rende lo scorrimento più leggero",
+                    checked = interfaceSettings.compactHome,
+                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(compactHome = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.MusicNote,
+                    title = "La tua orbita",
+                    subtitle = "Mostra gli ascolti personali nella parte alta della Home",
+                    checked = interfaceSettings.showPersonalOrbit,
+                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showPersonalOrbit = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.GraphicEq,
+                    title = "Voci che risuonano",
+                    subtitle = "Mantiene la selezione personale basata sugli ascolti",
+                    checked = interfaceSettings.showResonance,
+                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showResonance = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Notifications,
+                    title = "Nuove uscite",
+                    subtitle = "Mostra release recenti e radar degli artisti",
+                    checked = interfaceSettings.showNewReleases,
+                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showNewReleases = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Album,
+                    title = "Album per te",
+                    subtitle = "Mostra gli album consigliati nella Home",
+                    checked = interfaceSettings.showAlbumsForYou,
+                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showAlbumsForYou = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Person,
+                    title = "Artisti di tendenza",
+                    subtitle = "Mostra gli artisti emersi dalle tue sezioni musicali",
+                    checked = interfaceSettings.showTrendingArtists,
+                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showTrendingArtists = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.LocalFireDepartment,
+                    title = "Classifiche Top 50",
+                    subtitle = "Mostra classifiche e selettore paese",
+                    checked = interfaceSettings.showCharts,
+                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showCharts = it)) }
+                )
+            }
+            item { SettingsSectionLabel("PLAYER MOBILE") }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Speed,
+                    title = "Gesture avanzate",
+                    subtitle = "Doppio tap, pressione prolungata, luminosità e volume",
+                    checked = interfaceSettings.playerGesturesEnabled,
+                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(playerGesturesEnabled = it)) }
+                )
+            }
+            if (interfaceSettings.playerGesturesEnabled) {
+                item {
+                    SettingsChoiceRow(
+                        icon = Icons.Rounded.SkipNext,
+                        title = "Salto con doppio tap",
+                        subtitle = "Durata del salto a sinistra e destra",
+                        options = listOf("5" to "5 s", "10" to "10 s", "15" to "15 s", "30" to "30 s"),
+                        selected = interfaceSettings.doubleTapSeekSeconds.toString(),
+                        onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(doubleTapSeekSeconds = value.toInt())) }
+                    )
+                }
+                item {
+                    SettingsChoiceRow(
+                        icon = Icons.Rounded.Speed,
+                        title = "Pressione prolungata",
+                        subtitle = "Velocità temporanea finché tieni premuto",
+                        options = listOf("1.5" to "1.5×", "2.0" to "2×", "2.5" to "2.5×", "3.0" to "3×"),
+                        selected = String.format(Locale.US, "%.1f", interfaceSettings.longPressSpeed),
+                        onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(longPressSpeed = value.toFloat())) }
+                    )
+                }
+            }
             item { SettingsSectionLabel(strings.playback) }
             item {
                 SettingsToggle(
@@ -7548,6 +7874,88 @@ private fun SettingsOverlay(
                     subtitle = strings.skipSilenceSubtitle,
                     checked = skipSilence,
                     onCheckedChange = onSkipSilence
+                )
+            }
+            item { SettingsSectionLabel("DOWNLOAD ENGINE 2.0") }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Download,
+                    title = "Solo Wi-Fi",
+                    subtitle = "WorkManager avvia i download soltanto su rete non a consumo",
+                    checked = downloadSettings.wifiOnly,
+                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(wifiOnly = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Bolt,
+                    title = "Solo durante la ricarica",
+                    subtitle = "Riduce consumo e temperatura nei download lunghi",
+                    checked = downloadSettings.chargingOnly,
+                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(chargingOnly = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.History,
+                    title = "Ripresa automatica",
+                    subtitle = "Conserva i byte parziali e continua con richieste HTTP Range",
+                    checked = downloadSettings.resumable,
+                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(resumable = it)) }
+                )
+            }
+            item {
+                SettingsChoiceRow(
+                    icon = Icons.Rounded.QueueMusic,
+                    title = "Download simultanei",
+                    subtitle = "Limite globale per memoria, rete e temperatura",
+                    options = listOf("1" to "1", "2" to "2", "3" to "3", "4" to "4"),
+                    selected = downloadSettings.maxConcurrentDownloads.toString(),
+                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxConcurrentDownloads = value.toInt())) }
+                )
+            }
+            if (downloadQueue.isNotEmpty()) {
+                item {
+                    DownloadQueueSettingsCard(
+                        tasks = downloadQueue,
+                        onPause = onPauseDownload,
+                        onResume = onResumeDownload,
+                        onCancel = onCancelDownload
+                    )
+                }
+            }
+            item { SettingsSectionLabel("LEVYRA INTELLIGENCE") }
+            item {
+                SettingsInfoCard(
+                    icon = Icons.Rounded.Insights,
+                    title = "Analisi testi completamente locale",
+                    subtitle = "Temi, atmosfera, frasi ricorrenti e densità lessicale. Nessuna API, nessuna chiave e nessun servizio a pagamento."
+                )
+            }
+            item { SettingsSectionLabel("BACKUP E RIPRISTINO") }
+            item {
+                SettingsButton(
+                    icon = Icons.Rounded.Download,
+                    title = "Crea backup dati",
+                    subtitle = "Preferiti, playlist, cronologia, coda e impostazioni in un archivio verificato SHA-256. I file audio restano in Music/Levyra.",
+                    onClick = onCreateBackup
+                )
+            }
+            item {
+                SettingsButton(
+                    icon = Icons.Rounded.History,
+                    title = "Ripristina backup",
+                    subtitle = "Verifica schema e checksum prima di sostituire i dati locali",
+                    onClick = onRestoreBackup
+                )
+            }
+            item { SettingsSectionLabel("PLAYBACK RESILIENCE") }
+            item {
+                SettingsButton(
+                    icon = Icons.Rounded.Share,
+                    title = "Esporta diagnostica sicura",
+                    subtitle = if (playbackDiagnostics.isBlank()) "Genera il tracciato dei resolver" else "Client health e ultimi tentativi, con URL e token rimossi",
+                    onClick = onShareDiagnostics
                 )
             }
             item { SettingsSectionLabel(strings.preferences) }
@@ -7636,6 +8044,116 @@ private fun SettingsOverlay(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsChoiceRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    options: List<Pair<String, String>>,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    Surface(
+        color = LevyraAdaptiveCard,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier.size(40.dp).background(LevyraViolet.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = LevyraViolet, modifier = Modifier.size(20.dp))
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                    Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(options, key = { it.first }) { option ->
+                    val active = option.first == selected
+                    Surface(
+                        color = if (active) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.055f),
+                        border = BorderStroke(1.dp, if (active) LevyraCyan.copy(alpha = 0.42f) else LevyraAdaptiveHairline),
+                        shape = CircleShape,
+                        modifier = Modifier.pressable { onSelect(option.first) }
+                    ) {
+                        Text(
+                            option.second,
+                            color = if (active) LevyraCyan else LevyraText,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsInfoCard(icon: ImageVector, title: String, subtitle: String) {
+    Surface(
+        color = LevyraViolet.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.22f)),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(modifier = Modifier.size(40.dp).background(LevyraViolet.copy(alpha = 0.16f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = LevyraViolet, modifier = Modifier.size(20.dp))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(subtitle, color = LevyraMuted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadQueueSettingsCard(
+    tasks: List<OfflineDownloadTask>,
+    onPause: (String) -> Unit,
+    onResume: (String) -> Unit,
+    onCancel: (String) -> Unit
+) {
+    Surface(
+        color = LevyraAdaptiveCard,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Coda persistente", color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            tasks.forEach { task ->
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(task.title.ifBlank { "Brano" }, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("${task.state.lowercase().replaceFirstChar { it.titlecase(Locale.getDefault()) }} • ${task.progress.coerceIn(0, 100)}%", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        val canResume = task.state == "PAUSED" || task.state == "FAILED"
+                        IconButton(onClick = { if (canResume) onResume(task.taskKey) else onPause(task.taskKey) }) {
+                            Icon(if (canResume) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, null, tint = LevyraCyan)
+                        }
+                        IconButton(onClick = { onCancel(task.taskKey) }) {
+                            Icon(Icons.Rounded.Close, null, tint = LevyraPink)
+                        }
+                    }
+                    Box(modifier = Modifier.fillMaxWidth().height(5.dp).background(Color.White.copy(alpha = 0.08f), CircleShape)) {
+                        Box(modifier = Modifier.fillMaxWidth(task.progress.coerceIn(0, 100) / 100f).fillMaxHeight().background(LevyraCyan, CircleShape))
                     }
                 }
             }
