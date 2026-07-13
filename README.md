@@ -35,9 +35,9 @@
 <div align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
     <img
-      src="docs/assets/levyra-github-download.svg"
+      src="docs/assets/levyra-github-download.png"
       alt="Download the latest Levyra APK from GitHub Releases"
-      width="470"
+      width="500"
     />
   </a>
   <br><br>
