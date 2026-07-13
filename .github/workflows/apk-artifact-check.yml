@@ -24,11 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
       LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
-      LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
-      LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
-      LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -45,18 +41,62 @@ jobs:
         run: |
           set -euo pipefail
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"             "platform-tools"             "platforms;android-36"             "build-tools;36.0.0"
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "9.4.1"
           cache-disabled: true
 
+      - name: Validate Gradle Wrapper
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x ./gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+          ./gradlew --no-daemon --version
+
+      - name: Prepare CI Signing
+        if: ${{ github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          YOUTUBE_INNERTUBE_API_KEY_VALUE="levyra_ci_dummy_key"
+          LEVYRA_KEYSTORE_PASSWORD_VALUE="levyra_ci_password"
+          LEVYRA_KEY_ALIAS_VALUE="levyra_ci"
+          LEVYRA_KEY_PASSWORD_VALUE="levyra_ci_password"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD_VALUE}" \
+            -alias "${LEVYRA_KEY_ALIAS_VALUE}" \
+            -keypass "${LEVYRA_KEY_PASSWORD_VALUE}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+          {
+            echo "YOUTUBE_INNERTUBE_API_KEY=${YOUTUBE_INNERTUBE_API_KEY_VALUE}"
+            echo "LEVYRA_KEYSTORE_PASSWORD=${LEVYRA_KEYSTORE_PASSWORD_VALUE}"
+            echo "LEVYRA_KEY_ALIAS=${LEVYRA_KEY_ALIAS_VALUE}"
+            echo "LEVYRA_KEY_PASSWORD=${LEVYRA_KEY_PASSWORD_VALUE}"
+            echo "SIGNING_PROFILE=ci"
+          } >> "${GITHUB_ENV}"
+
       - name: Prepare Release Signing
+        if: ${{ github.event_name != 'pull_request' }}
         shell: bash
         env:
+          YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
           LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+          LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+          LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+          LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           test -n "${YOUTUBE_INNERTUBE_API_KEY}"
@@ -66,13 +106,24 @@ jobs:
           test -n "${LEVYRA_KEY_PASSWORD}"
           rm -f "${LEVYRA_KEYSTORE_FILE}"
           printf "%s" "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
-          keytool -list -keystore "${LEVYRA_KEYSTORE_FILE}" -storepass "${LEVYRA_KEYSTORE_PASSWORD}" -alias "${LEVYRA_KEY_ALIAS}" >/dev/null
+          keytool -list \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            >/dev/null
+          {
+            echo "YOUTUBE_INNERTUBE_API_KEY=${YOUTUBE_INNERTUBE_API_KEY}"
+            echo "LEVYRA_KEYSTORE_PASSWORD=${LEVYRA_KEYSTORE_PASSWORD}"
+            echo "LEVYRA_KEY_ALIAS=${LEVYRA_KEY_ALIAS}"
+            echo "LEVYRA_KEY_PASSWORD=${LEVYRA_KEY_PASSWORD}"
+            echo "SIGNING_PROFILE=release"
+          } >> "${GITHUB_ENV}"
 
       - name: Build Release APK
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon --no-configuration-cache clean assembleRelease
+          ./gradlew --no-daemon --no-configuration-cache clean assembleRelease
 
       - name: Verify APK Artifact
         shell: bash
@@ -90,12 +141,14 @@ jobs:
           printf "%s\n" "${BADGING}" | grep -F "versionName='${VERSION}'"
           printf "%s\n" "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --print-certs "${APK}" > artifacts/apk-signing-certs.txt
-          cp "${APK}" "artifacts/LEVYRA-${VERSION}-signed.apk"
-          sha256sum "artifacts/LEVYRA-${VERSION}-signed.apk" > "artifacts/LEVYRA-${VERSION}-signed.apk.sha256"
+          OUTPUT_APK="artifacts/LEVYRA-${VERSION}-${SIGNING_PROFILE}.apk"
+          cp "${APK}" "${OUTPUT_APK}"
+          sha256sum "${OUTPUT_APK}" > "${OUTPUT_APK}.sha256"
           {
             echo "LEVYRA APK Artifact"
             echo "version=${VERSION}"
             echo "versionCode=${VERSION_CODE}"
+            echo "signingProfile=${SIGNING_PROFILE}"
             echo "commit=${GITHUB_SHA}"
             echo "branch=${GITHUB_REF_NAME}"
             echo "sizeBytes=${SIZE_BYTES}"
@@ -108,6 +161,6 @@ jobs:
       - name: Upload Verified APK Bundle
         uses: actions/upload-artifact@v7
         with:
-          name: levyra-signed-apk-${{ github.run_number }}
+          name: levyra-${{ env.SIGNING_PROFILE }}-apk-${{ github.run_number }}
           path: artifacts
           if-no-files-found: error
