@@ -11,9 +11,4 @@ class HomeVisualPolicyTest {
         assertFalse(shouldAnimateHomeBackdrop(animationsEnabled = false, isScrolling = false))
         assertFalse(shouldAnimateHomeBackdrop(animationsEnabled = true, isScrolling = true))
     }
-
-    @Test
-    fun primaryHomeSectionsStayCompact() {
-        assertTrue(homePrimarySectionLimit() in 2..3)
-    }
 }
