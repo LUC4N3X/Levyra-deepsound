@@ -257,6 +257,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraActivePalette
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
@@ -7539,6 +7540,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 
 @Composable
 private fun OnboardingOverlay(tastes: List<Taste>, selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
+    val currentLocale = LocalLocale.current.platformLocale
     var selected by remember { mutableStateOf(setOf<String>()) }
     var name by remember { mutableStateOf("") }
     var languageCode by remember(selectedLanguageCode) { mutableStateOf(LevyraLanguageCatalog.normalize(selectedLanguageCode)) }
@@ -7572,7 +7574,7 @@ private fun OnboardingOverlay(tastes: List<Taste>, selectedLanguageCode: String,
                     value = name,
                     onValueChange = { newName ->
                         name = newName.replaceFirstChar { char ->
-                            if (char.isLowerCase()) char.titlecase(java.util.Locale.getDefault()) else char.toString()
+                            if (char.isLowerCase()) char.titlecase(currentLocale) else char.toString()
                         }
                     },
                     textStyle = TextStyle(color = LevyraText, fontSize = 24.sp, fontWeight = FontWeight.Bold),
@@ -8129,6 +8131,7 @@ private fun DownloadQueueSettingsCard(
     onResume: (String) -> Unit,
     onCancel: (String) -> Unit
 ) {
+    val currentLocale = LocalLocale.current.platformLocale
     Surface(
         color = LevyraAdaptiveCard,
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
@@ -8142,7 +8145,7 @@ private fun DownloadQueueSettingsCard(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(task.title.ifBlank { "Brano" }, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("${task.state.lowercase().replaceFirstChar { it.titlecase(Locale.getDefault()) }} • ${task.progress.coerceIn(0, 100)}%", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text("${task.state.lowercase().replaceFirstChar { it.titlecase(currentLocale) }} • ${task.progress.coerceIn(0, 100)}%", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                         val canResume = task.state == "PAUSED" || task.state == "FAILED"
                         IconButton(onClick = { if (canResume) onResume(task.taskKey) else onPause(task.taskKey) }) {
