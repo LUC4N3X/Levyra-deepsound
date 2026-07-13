@@ -5,6 +5,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.ArrayDeque
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal enum class PlaybackFailureKind {
     Forbidden,
@@ -39,12 +42,16 @@ internal data class PlaybackTraceEvent(
 internal class PlaybackResilienceEngine(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val events = ArrayDeque<PlaybackTraceEvent>(MAX_EVENTS)
+    private val eventLock = Any()
+    private val persistenceScheduled = AtomicBoolean(false)
+    private val persistenceExecutor = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "levyra-playback-trace").apply { isDaemon = true }
+    }
 
     init {
         restore()
     }
 
-    @Synchronized
     fun recordAttempt(profile: String, mode: String) {
         append(
             PlaybackTraceEvent(
@@ -55,11 +62,11 @@ internal class PlaybackResilienceEngine(context: Context) {
                 latencyMs = 0L,
                 outcome = "attempt",
                 detail = ""
-            )
+            ),
+            persist = false
         )
     }
 
-    @Synchronized
     fun recordSuccess(profile: String, mode: String, latencyMs: Long, source: String) {
         append(
             PlaybackTraceEvent(
@@ -70,11 +77,11 @@ internal class PlaybackResilienceEngine(context: Context) {
                 latencyMs = latencyMs.coerceAtLeast(1L),
                 outcome = "success",
                 detail = sanitize(source)
-            )
+            ),
+            persist = true
         )
     }
 
-    @Synchronized
     fun recordFailure(profile: String, mode: String, latencyMs: Long?, error: Throwable) {
         val detail = error.message.orEmpty().ifBlank { error::class.java.simpleName }
         append(
@@ -86,11 +93,11 @@ internal class PlaybackResilienceEngine(context: Context) {
                 latencyMs = latencyMs?.coerceAtLeast(1L) ?: 0L,
                 outcome = classify(detail).name,
                 detail = sanitize(detail)
-            )
+            ),
+            persist = true
         )
     }
 
-    @Synchronized
     fun recordPlayerFailure(trackId: String, videoMode: Boolean, reason: String) {
         append(
             PlaybackTraceEvent(
@@ -101,7 +108,8 @@ internal class PlaybackResilienceEngine(context: Context) {
                 latencyMs = 0L,
                 outcome = classify(reason).name,
                 detail = "${trackId.take(20)} ${sanitize(reason)}".trim()
-            )
+            ),
+            persist = true
         )
     }
 
@@ -119,8 +127,8 @@ internal class PlaybackResilienceEngine(context: Context) {
         }
     }
 
-    @Synchronized
     fun diagnostics(clientHealth: Map<String, JSONObject>): String {
+        val eventSnapshot = synchronized(eventLock) { events.toList() }
         val root = JSONObject()
             .put("schemaVersion", 1)
             .put("generatedAt", System.currentTimeMillis())
@@ -128,17 +136,8 @@ internal class PlaybackResilienceEngine(context: Context) {
         clientHealth.toSortedMap().forEach { (name, snapshot) -> clients.put(name, snapshot) }
         root.put("clients", clients)
         val trace = JSONArray()
-        events.forEach { event ->
-            trace.put(
-                JSONObject()
-                    .put("atMs", event.atMs)
-                    .put("phase", event.phase)
-                    .put("profile", event.profile)
-                    .put("mode", event.mode)
-                    .put("latencyMs", event.latencyMs)
-                    .put("outcome", event.outcome)
-                    .put("detail", event.detail)
-            )
+        eventSnapshot.forEach { event ->
+            trace.put(event.toJson())
         }
         root.put("trace", trace)
         return root.toString(2)
@@ -161,17 +160,19 @@ internal class PlaybackResilienceEngine(context: Context) {
 
     private fun sanitize(value: String): String {
         return value
-            .replace(Regex("https?://[^\\s]+"), "<redacted-url>")
-            .replace(Regex("(?i)(authorization|cookie|visitor|token|signature)=[^&\\s]+"), "$1=<redacted>")
-            .replace(Regex("\\s+"), " ")
+            .replace(Regex("https?://[^\s]+"), "<redacted-url>")
+            .replace(Regex("(?i)(authorization|cookie|visitor|token|signature)=[^&\s]+"), "$1=<redacted>")
+            .replace(Regex("\s+"), " ")
             .trim()
             .take(280)
     }
 
-    private fun append(event: PlaybackTraceEvent) {
-        while (events.size >= MAX_EVENTS) events.removeFirst()
-        events.addLast(event)
-        persist()
+    private fun append(event: PlaybackTraceEvent, persist: Boolean) {
+        synchronized(eventLock) {
+            while (events.size >= MAX_EVENTS) events.removeFirst()
+            events.addLast(event)
+        }
+        if (persist) schedulePersist()
     }
 
     private fun restore() {
@@ -180,43 +181,62 @@ internal class PlaybackResilienceEngine(context: Context) {
         runCatching {
             val array = JSONArray(raw)
             val start = (array.length() - MAX_EVENTS).coerceAtLeast(0)
-            for (index in start until array.length()) {
-                val json = array.optJSONObject(index) ?: continue
-                events.addLast(
-                    PlaybackTraceEvent(
-                        atMs = json.optLong("atMs"),
-                        phase = json.optString("phase"),
-                        profile = json.optString("profile"),
-                        mode = json.optString("mode"),
-                        latencyMs = json.optLong("latencyMs"),
-                        outcome = json.optString("outcome"),
-                        detail = json.optString("detail")
+            val restored = buildList {
+                for (index in start until array.length()) {
+                    val json = array.optJSONObject(index) ?: continue
+                    add(
+                        PlaybackTraceEvent(
+                            atMs = json.optLong("atMs"),
+                            phase = json.optString("phase"),
+                            profile = json.optString("profile"),
+                            mode = json.optString("mode"),
+                            latencyMs = json.optLong("latencyMs"),
+                            outcome = json.optString("outcome"),
+                            detail = json.optString("detail")
+                        )
                     )
-                )
+                }
             }
+            synchronized(eventLock) { restored.forEach(events::addLast) }
         }
     }
 
-    private fun persist() {
-        val array = JSONArray()
-        events.forEach { event ->
-            array.put(
-                JSONObject()
-                    .put("atMs", event.atMs)
-                    .put("phase", event.phase)
-                    .put("profile", event.profile)
-                    .put("mode", event.mode)
-                    .put("latencyMs", event.latencyMs)
-                    .put("outcome", event.outcome)
-                    .put("detail", event.detail)
-            )
+    private fun schedulePersist() {
+        if (!persistenceScheduled.compareAndSet(false, true)) return
+        persistenceExecutor.schedule(
+            {
+                persistenceScheduled.set(false)
+                persistSnapshot()
+            },
+            PERSIST_DEBOUNCE_MS,
+            TimeUnit.MILLISECONDS
+        )
+    }
+
+    private fun persistSnapshot() {
+        val snapshot = synchronized(eventLock) {
+            events.filterNot { it.outcome == "attempt" }
+                .takeLast(MAX_PERSISTED_EVENTS)
         }
+        val array = JSONArray()
+        snapshot.forEach { array.put(it.toJson()) }
         prefs.edit().putString(KEY_EVENTS, array.toString()).apply()
     }
+
+    private fun PlaybackTraceEvent.toJson(): JSONObject = JSONObject()
+        .put("atMs", atMs)
+        .put("phase", phase)
+        .put("profile", profile)
+        .put("mode", mode)
+        .put("latencyMs", latencyMs)
+        .put("outcome", outcome)
+        .put("detail", detail)
 
     private companion object {
         const val PREFS_NAME = "levyra_playback_resilience"
         const val KEY_EVENTS = "events"
         const val MAX_EVENTS = 80
+        const val MAX_PERSISTED_EVENTS = 64
+        const val PERSIST_DEBOUNCE_MS = 1_500L
     }
 }
