@@ -4,7 +4,9 @@ package com.luc4n3x.levyra.ui
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
 import android.content.Intent
@@ -36,6 +38,8 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -176,6 +180,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -261,6 +266,8 @@ import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.delay
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
+import kotlin.math.cos
+import kotlin.math.sin
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
 private const val PLAYER_MEDIA_SEEK_STEP_MS = 5_000L
@@ -344,54 +351,37 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
 
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 0.8f else 1f,
-        animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow),
-        label = "tab-press-scale"
-    )
-    val pressGlow by animateFloatAsState(
-        targetValue = if (pressed) 1f else 0f,
-        animationSpec = tween(if (pressed) 100 else 300),
-        label = "tab-press-glow"
-    )
-
-    val offsetY by animateDpAsState(
-        targetValue = if (selected && LocalAnimationsEnabled.current) (-6).dp else 0.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-        label = "tab-offset-y"
-    )
-    val textAlpha by animateFloatAsState(
-        targetValue = if (selected) 1f else if (pressed) 0.7f else 0.38f,
-        animationSpec = tween(260),
-        label = "tab-text-alpha"
-    )
-    val selectedAlpha by animateFloatAsState(
+    val selectedProgress by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
-        animationSpec = tween(260, easing = FastOutSlowInEasing),
-        label = "tab-selected-alpha"
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+        label = "tab-selected-progress"
     )
-    val tabActiveTint = if (LevyraIsLight) LevyraCyan else Color(0xFF93DCFF)
-    val tabPressedTint = if (LevyraIsLight) LevyraText else Color(0xFFBDEBFF)
-    val tabInactiveTint = if (LevyraIsLight) LevyraMuted else Color(0xFF737373)
+    val pillWidth by animateDpAsState(
+        targetValue = if (selected) 58.dp else 30.dp,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow),
+        label = "tab-pill-width"
+    )
+    val iconScale by animateFloatAsState(
+        targetValue = if (pressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+        label = "tab-icon-scale"
+    )
+    val tabActiveTint = if (LevyraIsLight) LevyraCyan else Color(0xFF9BDDFF)
+    val tabInactiveTint = if (LevyraIsLight) LevyraMuted else Color(0xFF7E7E86)
     val iconTint by animateColorAsState(
-        targetValue = if (selected) tabActiveTint else if (pressed) tabPressedTint else tabInactiveTint,
-        animationSpec = tween(260),
+        targetValue = if (selected) tabActiveTint else tabInactiveTint,
+        animationSpec = tween(240),
         label = "tab-icon-tint"
     )
     val labelTint by animateColorAsState(
-        targetValue = if (selected) if (LevyraIsLight) LevyraText else Color(0xFFE0F4FF) else if (LevyraIsLight) LevyraMuted else Color.White,
-        animationSpec = tween(260),
+        targetValue = when {
+            selected && LevyraIsLight -> LevyraText
+            selected -> Color(0xFFEAF7FF)
+            LevyraIsLight -> LevyraMuted
+            else -> Color(0xFF8A8A92)
+        },
+        animationSpec = tween(240),
         label = "tab-label-tint"
-    )
-    val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.06f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-        label = "tab-icon-scale"
-    )
-    val underlineWidth by animateDpAsState(
-        targetValue = if (selected) 20.dp else 0.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-        label = "tab-underline-width"
     )
 
     Box(
@@ -400,101 +390,51 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
             .fillMaxSize()
             .pressable(
                 interactionSource = interactionSource,
-                pressedScale = 0.94f,
+                pressedScale = 0.96f,
                 onClick = onClick
             ),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier
-                .offset(y = offsetY)
-                .padding(horizontal = 2.dp, vertical = 1.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
-                    .graphicsLayer {
-                        scaleX = iconScale * pressScale
-                        scaleY = iconScale * pressScale
-                    }
-                    .drawBehind {
-                        if (pressGlow > 0f) {
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        Color(0xFF5BD6FF).copy(alpha = 0.35f * pressGlow),
-                                        LevyraViolet.copy(alpha = 0.15f * pressGlow),
-                                        Color.Transparent
-                                    )
-                                ),
-                                radius = size.minDimension * 1.5f * pressGlow
-                            )
-                            drawCircle(
-                                color = Color.White.copy(alpha = 0.15f * pressGlow),
-                                radius = size.minDimension * 0.45f * pressGlow
-                            )
-                        }
-
-                        drawCircle(
-                            color = LevyraCyan.copy(alpha = if (LevyraIsLight) 0.18f * selectedAlpha else 0.13f * selectedAlpha),
-                            radius = size.minDimension * 0.46f
-                        )
-                        drawCircle(
-                            color = LevyraCyan.copy(alpha = if (LevyraIsLight) 0.08f * selectedAlpha else 0.07f * selectedAlpha),
-                            radius = size.minDimension * 0.27f
-                        )
-                        drawCircle(
-                            color = LevyraCyan.copy(alpha = if (LevyraIsLight) 0.32f * selectedAlpha else 0.28f * selectedAlpha),
-                            radius = size.minDimension * 0.43f,
-                            style = Stroke(width = 1.dp.toPx())
-                        )
-                        drawCircle(
-                            color = LevyraCyan.copy(alpha = if (LevyraIsLight) 0.62f * selectedAlpha else 0.55f * selectedAlpha),
-                            radius = 1.35.dp.toPx(),
-                            center = androidx.compose.ui.geometry.Offset(size.width * 0.78f, size.height * 0.24f)
-                        )
-                        drawCircle(
-                            color = LevyraViolet.copy(alpha = 0.42f * selectedAlpha),
-                            radius = 1.1.dp.toPx(),
-                            center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height * 0.78f)
-                        )
-                    },
+                    .width(pillWidth)
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.16f else 0.14f) * selectedProgress)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.26f else 0.22f) * selectedProgress),
+                        shape = RoundedCornerShape(16.dp)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = null,
+                    contentDescription = label,
                     tint = iconTint,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier
+                        .size(23.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                        }
                 )
             }
             Text(
                 text = label,
-                color = labelTint.copy(alpha = textAlpha),
+                color = labelTint,
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
-                fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
+                letterSpacing = 0.1.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
-            )
-            Box(
-                modifier = Modifier
-                    .width(underlineWidth)
-                    .height(1.5.dp)
-                    .graphicsLayer { alpha = selectedAlpha }
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = 0f),
-                                LevyraCyan.copy(alpha = if (LevyraIsLight) 0.90f else 0.86f),
-                                LevyraViolet.copy(alpha = if (LevyraIsLight) 0.48f else 0.55f),
-                                LevyraCyan.copy(alpha = 0f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(99.dp)
-                    )
             )
         }
     }
@@ -589,11 +529,11 @@ private fun SectionTitle(title: String) {
     ) {
         Box(
             modifier = Modifier
-                .width(4.dp)
-                .height(22.dp)
+                .width(3.5.dp)
+                .height(20.dp)
                 .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
         )
-        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 @Composable
@@ -2798,208 +2738,105 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
         label = "levyra-secondary-background-accent"
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "levyra-background-breath")
-    val driftY by infiniteTransition.animateFloat(
-        initialValue = -18f,
-        targetValue = 18f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(18000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "levyra-background-drift-y"
-    )
-    val driftX by infiniteTransition.animateFloat(
-        initialValue = -10f,
-        targetValue = 10f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(22000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "levyra-background-drift-x"
-    )
-
-    if (LevyraIsLight) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFFFFFFFF),
-                            Color(0xFFF8FAFF),
-                            LevyraBlack,
-                            Color(0xFFEFF3FB)
-                        )
-                    )
-                )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(560.dp)
-                    .align(Alignment.TopCenter)
-                    .graphicsLayer {
-                        translationX = driftX
-                        translationY = driftY
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                coolAccent.copy(alpha = 0.13f),
-                                LevyraCyan.copy(alpha = 0.075f),
-                                Color.Transparent
-                            ),
-                            radius = 1050f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(540.dp)
-                    .align(Alignment.TopStart)
-                    .offset(x = (-210).dp, y = 90.dp)
-                    .graphicsLayer {
-                        translationX = driftX * -0.55f
-                        translationY = driftY * 0.35f
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                secondAccent.copy(alpha = 0.10f),
-                                LevyraViolet.copy(alpha = 0.055f),
-                                Color.Transparent
-                            ),
-                            radius = 760f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(610.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 245.dp, y = 18.dp)
-                    .graphicsLayer {
-                        translationX = driftX * 0.65f
-                        translationY = driftY * -0.45f
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                warmAccent.copy(alpha = 0.075f),
-                                Color.Transparent
-                            ),
-                            radius = 860f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.64f),
-                                LevyraBlack.copy(alpha = 0.96f)
-                            )
-                        )
-                    )
-            )
-        }
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val phaseState = if (animationsEnabled) {
+        rememberInfiniteTransition(label = "levyra-background-orbit").animateFloat(
+            initialValue = 0f,
+            targetValue = 6.2831855f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(52000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "levyra-background-phase"
+        )
     } else {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color(0xFF030508),
-                            Color(0xFF05070E),
-                            Color(0xFF06030A),
-                            Color(0xFF010103)
-                        )
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val isLight = LevyraIsLight
+    val baseColors = if (isLight) {
+        listOf(Color(0xFFFFFFFF), Color(0xFFF9FBFF), Color(0xFFF4F7FE), Color(0xFFEFF3FB))
+    } else {
+        listOf(Color(0xFF040609), Color(0xFF060810), Color(0xFF07040C), Color(0xFF010102))
+    }
+    val bottomFade = if (isLight) {
+        listOf(Color.Transparent, Color.White.copy(alpha = 0.62f), Color(0xFFF2F5FC))
+    } else {
+        listOf(Color.Transparent, Color(0xFF020103).copy(alpha = 0.85f), Color.Black)
+    }
+    val vignetteAlpha = if (isLight) 0.05f else 0.34f
+    val glowAlpha = if (isLight) 0.5f else 1f
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                if (size.minDimension <= 0f) return@drawBehind
+                val phase = phaseState.value
+                val w = size.width
+                val h = size.height
+
+                drawRect(Brush.verticalGradient(baseColors))
+
+                fun blob(
+                    color: Color,
+                    alpha: Float,
+                    cx: Float,
+                    cy: Float,
+                    radius: Float,
+                    orbit: Float,
+                    speed: Float,
+                    offset: Float
+                ) {
+                    val x = cx + orbit * cos(phase * speed + offset)
+                    val y = cy + orbit * 0.62f * sin(phase * speed + offset)
+                    val center = androidx.compose.ui.geometry.Offset(x, y)
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                color.copy(alpha = alpha * glowAlpha),
+                                color.copy(alpha = alpha * 0.38f * glowAlpha),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = radius
+                        ),
+                        radius = radius,
+                        center = center
+                    )
+                }
+
+                blob(coolAccent, 0.21f, w * 0.32f, h * 0.14f, w * 0.92f, w * 0.05f, 1f, 0f)
+                blob(secondAccent, 0.16f, w * 0.02f, h * 0.44f, w * 0.68f, w * 0.045f, 0.8f, 2.1f)
+                blob(warmAccent, 0.15f, w * 1.00f, h * 0.30f, w * 0.64f, w * 0.055f, 0.65f, 4.2f)
+                blob(if (isLight) coolAccent else electricCyan, 0.07f, w * 0.78f, h * 0.72f, w * 0.55f, w * 0.04f, 0.9f, 3.3f)
+                if (!isLight) {
+                    blob(softMagenta, 0.06f, w * 0.20f, h * 0.86f, w * 0.50f, w * 0.035f, 0.7f, 5.1f)
+                }
+
+                drawRect(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Transparent,
+                            Color.Black.copy(alpha = vignetteAlpha)
+                        ),
+                        center = androidx.compose.ui.geometry.Offset(w * 0.5f, h * 0.42f),
+                        radius = kotlin.math.max(w, h) * 0.85f
                     )
                 )
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(620.dp)
-                    .align(Alignment.TopCenter)
-                    .graphicsLayer {
-                        translationX = driftX
-                        translationY = driftY
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                coolAccent.copy(alpha = 0.20f),
-                                electricCyan.copy(alpha = 0.08f),
-                                Color.Transparent
-                            ),
-                            radius = 1120f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(560.dp)
-                    .align(Alignment.TopStart)
-                    .offset(x = (-190).dp, y = 72.dp)
-                    .graphicsLayer {
-                        translationX = driftX * -0.55f
-                        translationY = driftY * 0.35f
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                secondAccent.copy(alpha = 0.16f),
-                                softMagenta.copy(alpha = 0.07f),
-                                Color.Transparent
-                            ),
-                            radius = 720f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(620.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 240.dp, y = 20.dp)
-                    .graphicsLayer {
-                        translationX = driftX * 0.65f
-                        translationY = driftY * -0.45f
-                    }
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                warmAccent.copy(alpha = 0.18f),
-                                Color(0xFFFF9A3D).copy(alpha = 0.055f),
-                                Color.Transparent
-                            ),
-                            radius = 820f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(320.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.Transparent,
-                                Color(0xFF020103).copy(alpha = 0.86f),
-                                Color.Black
-                            )
-                        )
-                    )
-            )
-        }
-    }
+
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = bottomFade,
+                        startY = h * 0.72f,
+                        endY = h
+                    ),
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, h * 0.72f),
+                    size = androidx.compose.ui.geometry.Size(w, h * 0.28f)
+                )
+            }
+    )
 }
 
 @Composable
@@ -7172,25 +7009,102 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
 
 @Composable
 private fun PlayerTimeline(positionMs: Long, durationMs: Long, activeColor: Color, onSeek: (Float) -> Unit) {
+    var dragFraction by remember { mutableFloatStateOf(-1f) }
+    val isDragging = dragFraction >= 0f
+    val fraction = if (isDragging) dragFraction else progressOf(positionMs, durationMs)
+    val trackHeight by animateDpAsState(
+        targetValue = if (isDragging) 7.dp else 5.dp,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+        label = "timeline-track-height"
+    )
+    val thumbRadius by animateDpAsState(
+        targetValue = if (isDragging) 9.dp else 6.5.dp,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium),
+        label = "timeline-thumb-radius"
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {
-        Slider(
-            value = progressOf(positionMs, durationMs),
-            onValueChange = onSeek,
-            colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = activeColor,
-                inactiveTrackColor = Color.White.copy(alpha = 0.15f)
-            ),
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(24.dp)
+                .height(30.dp)
+                .pointerInput(durationMs) {
+                    detectTapGestures { offset ->
+                        val inset = 9.dp.toPx()
+                        val usable = (size.width - inset * 2f).coerceAtLeast(1f)
+                        onSeek(((offset.x - inset) / usable).coerceIn(0f, 1f))
+                    }
+                }
+                .pointerInput(durationMs) {
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            val inset = 9.dp.toPx()
+                            val usable = (size.width - inset * 2f).coerceAtLeast(1f)
+                            dragFraction = ((offset.x - inset) / usable).coerceIn(0f, 1f)
+                        },
+                        onDragEnd = {
+                            if (dragFraction >= 0f) onSeek(dragFraction)
+                            dragFraction = -1f
+                        },
+                        onDragCancel = { dragFraction = -1f },
+                        onHorizontalDrag = { change, _ ->
+                            change.consume()
+                            val inset = 9.dp.toPx()
+                            val usable = (size.width - inset * 2f).coerceAtLeast(1f)
+                            dragFraction = ((change.position.x - inset) / usable).coerceIn(0f, 1f)
+                        }
+                    )
+                }
+                .drawBehind {
+                    val stroke = trackHeight.toPx()
+                    val radius = thumbRadius.toPx()
+                    val centerY = size.height / 2f
+                    val inset = 9.dp.toPx()
+                    val usable = (size.width - inset * 2f).coerceAtLeast(1f)
+                    val playedX = inset + usable * fraction.coerceIn(0f, 1f)
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.13f),
+                        start = androidx.compose.ui.geometry.Offset(inset, centerY),
+                        end = androidx.compose.ui.geometry.Offset(inset + usable, centerY),
+                        strokeWidth = stroke,
+                        cap = StrokeCap.Round
+                    )
+                    if (playedX > inset) {
+                        drawLine(
+                            brush = Brush.horizontalGradient(
+                                listOf(activeColor.copy(alpha = 0.85f), activeColor),
+                                startX = inset,
+                                endX = playedX
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(inset, centerY),
+                            end = androidx.compose.ui.geometry.Offset(playedX, centerY),
+                            strokeWidth = stroke,
+                            cap = StrokeCap.Round
+                        )
+                    }
+                    drawCircle(
+                        color = activeColor.copy(alpha = if (isDragging) 0.28f else 0f),
+                        radius = radius * 1.9f,
+                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
+                    )
+                    drawCircle(
+                        color = Color.White,
+                        radius = radius,
+                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
+                    )
+                }
         )
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatDuration(positionMs), color = LevyraMuted, fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Medium)
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(formatDuration(if (isDragging) (durationMs * fraction).toLong() else positionMs), color = if (isDragging) LevyraText else LevyraMuted, fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Medium)
             Text(formatDuration(durationMs), color = LevyraMuted, fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Medium)
         }
     }
@@ -7244,11 +7158,17 @@ private fun MainPlayerControls(
         }
         val playBg = if (LevyraIsLight) LevyraBlack else Color.White
         val playTint = if (LevyraIsLight) Color.White else LevyraBlack
+        val playCorner by animateDpAsState(
+            targetValue = if (isPlaying) 26.dp else 38.dp,
+            animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
+            label = "play-corner"
+        )
+        val playShape = RoundedCornerShape(playCorner)
         Box(
             modifier = Modifier
                 .size(76.dp)
-                .shadow(16.dp, CircleShape, clip = false)
-                .background(playBg, CircleShape)
+                .shadow(16.dp, playShape, clip = false, ambientColor = activeColor.copy(alpha = 0.45f), spotColor = activeColor.copy(alpha = 0.55f))
+                .background(playBg, playShape)
                 .pressable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {
@@ -7259,12 +7179,21 @@ private fun MainPlayerControls(
                     color = playTint
                 )
             } else {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = if (isPlaying) "Pausa" else "Riproduci",
-                    tint = playTint,
-                    modifier = Modifier.size(42.dp)
-                )
+                AnimatedContent(
+                    targetState = isPlaying,
+                    transitionSpec = {
+                        (fadeIn(tween(160)) + scaleIn(initialScale = 0.7f, animationSpec = tween(160))) togetherWith
+                            (fadeOut(tween(120)) + scaleOut(targetScale = 0.7f, animationSpec = tween(120)))
+                    },
+                    label = "play-icon"
+                ) { playing ->
+                    Icon(
+                        imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = if (playing) "Pausa" else "Riproduci",
+                        tint = playTint,
+                        modifier = Modifier.size(42.dp)
+                    )
+                }
             }
         }
         IconButton(
@@ -8472,9 +8401,9 @@ private fun QuickAction(icon: ImageVector, label: String, accent: Color, enabled
 @Composable
 private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) -> Unit, onSearch: () -> Unit, onFocus: () -> Unit) {
     Surface(
-        color = Color.White.copy(alpha = 0.04f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(16.dp),
+        color = if (LevyraIsLight) LevyraAdaptiveChip else Color.White.copy(alpha = 0.05f),
+        border = BorderStroke(1.dp, if (LevyraIsLight) LevyraAdaptiveHairline else Color.White.copy(alpha = 0.09f)),
+        shape = CircleShape,
         modifier = Modifier
             .fillMaxWidth()
             .pressable(onClick = onFocus)
@@ -8482,35 +8411,21 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(Icons.Rounded.Search, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
-                Text(
-                    text = if (query.isEmpty()) "Cerca brani, artisti..." else query,
-                    color = if (query.isEmpty()) LevyraMuted else LevyraText,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            Surface(
-                color = Color.White.copy(alpha = 0.06f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
-                shape = RoundedCornerShape(6.dp)
-            ) {
-                Text(
-                    text = "⌘K",
-                    color = LevyraMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
+            Icon(Icons.Rounded.Search, null, tint = LevyraMuted, modifier = Modifier.size(20.dp))
+            Text(
+                text = if (query.isEmpty()) "Cerca brani, artisti..." else query,
+                color = if (query.isEmpty()) LevyraMuted else LevyraText,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(Icons.Rounded.Mic, null, tint = LevyraMuted, modifier = Modifier.size(19.dp))
         }
     }
 }
@@ -9699,6 +9614,11 @@ private fun MiniPlayer(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        animationSpec = tween(420, easing = LinearOutSlowInEasing),
+        label = "mini-progress"
+    )
     Surface(
         color = Color.Transparent,
         shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
@@ -9712,8 +9632,8 @@ private fun MiniPlayer(
                 Brush.linearGradient(
                     listOf(
                         accentStart.copy(alpha = 0.18f),
-                        Color(0xFF171717),
-                        Color(0xFF101010),
+                        Color(0xFF141416),
+                        Color(0xFF0E0E10),
                         accentEnd.copy(alpha = 0.12f)
                     )
                 )
@@ -9730,14 +9650,14 @@ private fun MiniPlayer(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(13.dp))
                         .pressable(onClick = onOpen)
                 ) {
                     CoverImage(track, Modifier.fillMaxSize())
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(12.dp))
+                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(13.dp))
                     )
                 }
                 Column(
@@ -9750,16 +9670,17 @@ private fun MiniPlayer(
                         text = track.title,
                         color = Color.White,
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.1).sp,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 2400)
                     )
                     Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = track.artist,
                         color = LevyraMuted,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -9770,29 +9691,43 @@ private fun MiniPlayer(
                     onToggle = onToggle
                 )
                 PlayerRoundIconButton(
+                    icon = Icons.Rounded.SkipNext,
+                    contentDescription = "Successivo",
+                    size = 38.dp,
+                    iconSize = 21.dp,
+                    tint = Color.White.copy(alpha = 0.92f),
+                    background = Color.White.copy(alpha = 0.070f),
+                    borderColor = Color.White.copy(alpha = 0.085f),
+                    onClick = onNext
+                )
+                PlayerRoundIconButton(
                     icon = Icons.Rounded.Close,
                     contentDescription = "Chiudi player",
                     size = 38.dp,
                     iconSize = 19.dp,
-                    tint = Color.White.copy(alpha = 0.90f),
-                    background = Color.White.copy(alpha = 0.070f),
-                    borderColor = Color.White.copy(alpha = 0.085f),
+                    tint = Color.White.copy(alpha = 0.80f),
+                    background = Color.White.copy(alpha = 0.055f),
+                    borderColor = Color.White.copy(alpha = 0.075f),
                     onClick = onClose
                 )
             }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp)
-                    .background(Color.White.copy(alpha = 0.055f))
+                    .padding(horizontal = 14.dp, vertical = 0.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Color.White.copy(alpha = 0.08f))
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .fillMaxWidth(animatedProgress)
                         .fillMaxHeight()
-                        .background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
                 )
             }
+            Spacer(modifier = Modifier.height(6.dp))
         }
     }
 }
@@ -9819,12 +9754,21 @@ private fun MiniPlayerToggleButton(
                 color = playTint
             )
         } else {
-            Icon(
-                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = if (isPlaying) "Pausa" else "Riproduci",
-                tint = playTint,
-                modifier = Modifier.size(22.dp)
-            )
+            AnimatedContent(
+                targetState = isPlaying,
+                transitionSpec = {
+                    (fadeIn(tween(140)) + scaleIn(initialScale = 0.7f, animationSpec = tween(140))) togetherWith
+                        (fadeOut(tween(100)) + scaleOut(targetScale = 0.7f, animationSpec = tween(100)))
+                },
+                label = "mini-play-icon"
+            ) { playing ->
+                Icon(
+                    imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = if (playing) "Pausa" else "Riproduci",
+                    tint = playTint,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
     }
 }
@@ -10228,13 +10172,12 @@ private fun VideoGlassCard(
 @Composable
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
-    val surfaceColor = if (LevyraIsLight) Color.White.copy(alpha = 0.94f) else Color(0xF208080B)
-    val linePrimary = if (LevyraIsLight) Color(0x1F11131F) else Color.White.copy(alpha = 0.08f)
-    val lineSecondary = if (LevyraIsLight) Color.White.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.03f)
+    val surfaceColor = if (LevyraIsLight) Color.White.copy(alpha = 0.96f) else Color(0xF708080B)
+    val linePrimary = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.07f)
     Surface(
         color = surfaceColor,
         shape = RoundedCornerShape(0.dp),
-        shadowElevation = if (LevyraIsLight) 8.dp else 12.dp,
+        shadowElevation = if (LevyraIsLight) 6.dp else 10.dp,
         modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
@@ -10244,20 +10187,14 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
                     end = androidx.compose.ui.geometry.Offset(size.width, 0f),
                     strokeWidth = 1.dp.toPx()
                 )
-                drawLine(
-                    color = lineSecondary,
-                    start = androidx.compose.ui.geometry.Offset(0f, 1.dp.toPx()),
-                    end = androidx.compose.ui.geometry.Offset(size.width, 1.dp.toPx()),
-                    strokeWidth = 1.dp.toPx()
-                )
             }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp)
-                    .padding(start = 10.dp, end = 10.dp, top = 9.dp, bottom = 8.dp),
+                    .height(76.dp)
+                    .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -10278,20 +10215,18 @@ private fun PageHeader(title: String, subtitle: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(cinematicGlassBrush(intensity = 0.62f), RoundedCornerShape(28.dp))
-            .border(1.dp, LevyraAdaptiveHairline, RoundedCornerShape(28.dp))
-            .padding(horizontal = 18.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(5.dp)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
             title,
             color = LevyraText,
-            fontSize = 34.sp,
-            lineHeight = 37.sp,
+            fontSize = 32.sp,
+            lineHeight = 36.sp,
             fontWeight = FontWeight.Black,
-            letterSpacing = (-1).sp
+            letterSpacing = (-0.8).sp
         )
-        Text(subtitle, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, lineHeight = 19.sp)
+        Text(subtitle, color = LevyraMuted, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, lineHeight = 19.sp)
     }
 }
 
