@@ -12,6 +12,10 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraIntelligenceSummary
+import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
@@ -117,6 +121,7 @@ data class LevyraUiState(
     val downloadProgressByTrackId: Map<String, Int> = emptyMap(),
     val downloadTitleByTrackId: Map<String, String> = emptyMap(),
     val offlineQueueSize: Int = 0,
+    val downloadQueue: List<OfflineDownloadTask> = emptyList(),
     val showArtist: Boolean = false,
     val artistLoading: Boolean = false,
     val artistError: String? = null,
@@ -124,6 +129,11 @@ data class LevyraUiState(
     val searchData: SearchResults = SearchResults(),
     val searchFilter: SearchFilter = SearchFilter.All,
     val themePreset: String = LevyraThemes.COSMIC,
+    val interfaceSettings: LevyraInterfaceSettings = LevyraInterfaceSettings(),
+    val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
+    val intelligenceSummary: LevyraIntelligenceSummary = LevyraIntelligenceSummary(),
+    val backupMessage: String? = null,
+    val playbackDiagnostics: String = "",
     val listeningPulse: ListeningPulse = ListeningPulse(),
     val recentListens: List<Track> = emptyList(),
     val followedArtists: List<FollowedArtist> = emptyList(),
