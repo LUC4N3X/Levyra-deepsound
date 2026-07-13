@@ -4,15 +4,19 @@ import android.content.Context
 import android.util.Base64
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.Keep
 import com.luc4n3x.levyra.domain.LevyraContentLocales
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -27,11 +31,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.nio.charset.StandardCharsets
+import java.util.LinkedHashMap
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.max
+import java.util.concurrent.atomic.AtomicLong
 
 internal data class YoutubeGuestSession(
     val visitorData: String,
@@ -89,11 +94,14 @@ internal class YoutubePlaybackSecurity(
 
     suspend fun poTokens(videoId: String, session: YoutubeGuestSession): YoutubePoTokens? {
         if (videoId.isBlank() || session.visitorData.isBlank()) return null
-        return runCatching {
+        return try {
             tokenGenerator.generate(videoId, session.visitorData, session.generation)
-        }.onFailure { error ->
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
             Timber.w(error, "PO Token generation failed")
-        }.getOrNull()
+            null
+        }
     }
 
     suspend fun rotateIfNeeded(error: Throwable): Boolean {
@@ -115,7 +123,14 @@ internal class YoutubePlaybackSecurity(
                 .putLong(KEY_LAST_ROTATION, now)
                 .apply()
             tokenGenerator.invalidate()
-            val fresh = runCatching { fetchVisitorData() }.getOrDefault("")
+            val fresh = try {
+                fetchVisitorData()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Timber.w(error, "Guest session rotation refresh failed")
+                ""
+            }
             if (fresh.isNotBlank()) persistSession(fresh, generation)
             failureCount.set(0)
             true
@@ -234,46 +249,75 @@ private class YoutubeWebPoTokenGenerator(
     private val httpClient: OkHttpClient
 ) {
     private val mutex = Mutex()
+    private val closeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val invalidationVersion = AtomicLong(0L)
     private var runtime: YoutubePoTokenRuntime? = null
+    private var runtimeVersion = -1L
     private var sessionId = ""
     private var sessionGeneration = -1L
-    private var streamingToken = ""
+    private var playerRequestToken = ""
 
     suspend fun generate(videoId: String, visitorData: String, generation: Long): YoutubePoTokens {
         return mutex.withLock {
-            val recreate = runtime == null || runtime?.isExpired == true || sessionId != visitorData || sessionGeneration != generation
-            if (recreate) recreate(visitorData, generation)
-            val active = runtime ?: throw IllegalStateException("Runtime PO Token assente")
-            val playerToken = runCatching { active.generate(videoId) }.getOrElse {
-                recreate(visitorData, generation)
-                runtime?.generate(videoId) ?: throw it
+            val version = invalidationVersion.get()
+            val recreate = runtime == null ||
+                runtime?.isExpired == true ||
+                runtimeVersion != version ||
+                sessionId != visitorData ||
+                sessionGeneration != generation
+            if (recreate) recreate(visitorData, generation, version)
+            var active = runtime ?: throw IllegalStateException("Runtime PO Token assente")
+            val streamingToken = try {
+                active.generate(videoId)
+            } catch (error: TimeoutCancellationException) {
+                recreate(visitorData, generation, invalidationVersion.get())
+                active = runtime ?: throw error
+                active.generate(videoId)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                recreate(visitorData, generation, invalidationVersion.get())
+                active = runtime ?: throw error
+                active.generate(videoId)
             }
-            YoutubePoTokens(playerToken, streamingToken)
+            YoutubePoTokens(
+                playerToken = playerRequestToken,
+                streamingToken = streamingToken
+            )
         }
     }
 
     fun invalidate() {
-        val old = runtime
-        runtime = null
-        sessionId = ""
-        sessionGeneration = -1L
-        streamingToken = ""
-        if (old != null) CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).launch { old.close() }
+        invalidationVersion.incrementAndGet()
+        closeScope.launch {
+            mutex.withLock { clearRuntime() }
+        }
     }
 
-    private suspend fun recreate(visitorData: String, generation: Long) {
-        runtime?.close()
+    private suspend fun recreate(visitorData: String, generation: Long, version: Long) {
+        clearRuntime()
         val fresh = YoutubePoTokenRuntime.create(context, httpClient)
-        val streaming = try {
+        val sessionToken = try {
             fresh.generate(visitorData)
         } catch (error: Throwable) {
             fresh.close()
             throw error
         }
         runtime = fresh
+        runtimeVersion = version
         sessionId = visitorData
         sessionGeneration = generation
-        streamingToken = streaming
+        playerRequestToken = sessionToken
+    }
+
+    private suspend fun clearRuntime() {
+        val old = runtime
+        runtime = null
+        runtimeVersion = -1L
+        sessionId = ""
+        sessionGeneration = -1L
+        playerRequestToken = ""
+        old?.close()
     }
 }
 
@@ -286,14 +330,24 @@ internal class YoutubePoTokenRuntime private constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val ready = CompletableDeferred<Unit>()
     private val tokenWaiters = ConcurrentHashMap<String, CompletableDeferred<String>>()
-    private var expiresAtMs = 0L
-    private var closed = false
+    private val tokenCache = BoundedPoTokenCache(MAX_TOKEN_CACHE_ENTRIES)
+    private val closed = AtomicBoolean(false)
+    private val dead = AtomicBoolean(false)
     private val initializationStarted = AtomicBoolean(false)
+
+    @Volatile
+    private var expiresAtMs = 0L
 
     init {
         webView.settings.javaScriptEnabled = true
         webView.settings.userAgentString = USER_AGENT
         webView.settings.blockNetworkLoads = true
+        webView.settings.allowFileAccess = false
+        webView.settings.allowContentAccess = false
+        webView.settings.javaScriptCanOpenWindowsAutomatically = false
+        webView.settings.setSupportMultipleWindows(false)
+        webView.settings.domStorageEnabled = false
+        webView.settings.databaseEnabled = false
         webView.addJavascriptInterface(this, JS_INTERFACE)
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
@@ -307,27 +361,57 @@ internal class YoutubePoTokenRuntime private constructor(
             override fun onPageFinished(view: WebView, url: String) {
                 downloadAndRunBotguard()
             }
+
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                markDead(IllegalStateException("PO Token render process gone"))
+                return true
+            }
         }
         webView.loadDataWithBaseURL("https://www.youtube.com", HTML, "text/html", "utf-8", null)
     }
 
     val isExpired: Boolean
-        get() = closed || expiresAtMs <= System.currentTimeMillis()
+        get() = closed.get() || dead.get() || expiresAtMs <= System.currentTimeMillis()
 
     suspend fun generate(identifier: String): String {
-        withTimeout(INIT_TIMEOUT_MS) { ready.await() }
+        val binding = identifier.trim()
+        require(binding.isNotEmpty() && binding.length <= MAX_BINDING_LENGTH) { "Invalid PO Token binding" }
+        tokenCache.get(binding)?.let { return it }
+        ensureActive()
+        try {
+            withTimeout(INIT_TIMEOUT_MS) { ready.await() }
+        } catch (error: TimeoutCancellationException) {
+            markDead(error)
+            throw error
+        } catch (error: CancellationException) {
+            throw error
+        }
+        ensureActive()
         val requestId = UUID.randomUUID().toString()
         val deferred = CompletableDeferred<String>()
         tokenWaiters[requestId] = deferred
-        withContext(Dispatchers.Main.immediate) {
-            val identifierBytes = jsUint8Array(identifier.toByteArray(StandardCharsets.UTF_8))
-            webView.evaluateJavascript(
-                "try{obtainPoToken($identifierBytes).then(function(v){$JS_INTERFACE.onToken(${JSONObject.quote(requestId)},Array.from(v).join(','));}).catch(function(e){$JS_INTERFACE.onTokenError(${JSONObject.quote(requestId)},String(e));});}catch(e){$JS_INTERFACE.onTokenError(${JSONObject.quote(requestId)},String(e));}",
-                null
-            )
-        }
-        return try {
-            withTimeout(TOKEN_TIMEOUT_MS) { deferred.await() }
+        try {
+            withContext(Dispatchers.Main.immediate) {
+                ensureActive()
+                val identifierBytes = jsUint8Array(binding.toByteArray(StandardCharsets.UTF_8))
+                webView.evaluateJavascript(
+                    "try{obtainPoToken($identifierBytes).then(function(v){$JS_INTERFACE.onToken(${JSONObject.quote(requestId)},Array.from(v).join(','));}).catch(function(e){$JS_INTERFACE.onTokenError(${JSONObject.quote(requestId)},String(e));});}catch(e){$JS_INTERFACE.onTokenError(${JSONObject.quote(requestId)},String(e));}",
+                    null
+                )
+            }
+            val token = try {
+                withTimeout(TOKEN_TIMEOUT_MS) { deferred.await() }
+            } catch (error: TimeoutCancellationException) {
+                markDead(error)
+                throw error
+            }
+            if (!isValidPoToken(token)) {
+                val error = IllegalStateException("Invalid PO Token output")
+                markDead(error)
+                throw error
+            }
+            tokenCache.put(binding, token)
+            return token
         } finally {
             tokenWaiters.remove(requestId)
         }
@@ -335,71 +419,95 @@ internal class YoutubePoTokenRuntime private constructor(
 
     @JavascriptInterface
     fun downloadAndRunBotguard() {
-        if (closed || !initializationStarted.compareAndSet(false, true)) return
+        if (isUnavailable() || !initializationStarted.compareAndSet(false, true)) return
         scope.launch {
-            runCatching {
+            try {
                 val challenge = requestBotguard(CREATE_URL, JSONArray().put(REQUEST_KEY).toString())
                 val parsed = parseChallengeData(challenge)
                 webView.evaluateJavascript(
                     "try{const data=$parsed;runBotGuard(data).then(function(r){window.__levyraWebPoSignalOutput=r.webPoSignalOutput;$JS_INTERFACE.onBotguardResult(String(r.botguardResponse));}).catch(function(e){$JS_INTERFACE.onInitError(String(e));});}catch(e){$JS_INTERFACE.onInitError(String(e));}",
                     null
                 )
-            }.onFailure(::failInitialization)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                failInitialization(error)
+            }
         }
     }
 
     @JavascriptInterface
     fun onBotguardResult(response: String) {
-        if (closed) return
+        if (isUnavailable()) return
+        if (response.isBlank()) {
+            failInitialization(IllegalStateException("Empty BotGuard response"))
+            return
+        }
         scope.launch {
-            runCatching {
+            try {
                 val body = JSONArray().put(REQUEST_KEY).put(response).toString()
                 val integrityResponse = requestBotguard(GENERATE_URL, body)
                 val parsed = parseIntegrityTokenData(integrityResponse)
-                expiresAtMs = System.currentTimeMillis() + max(60L, parsed.second - 600L) * 1000L
+                expiresAtMs = safeExpiryAt(System.currentTimeMillis(), parsed.second)
                 webView.evaluateJavascript(
                     "try{createPoTokenMinter(window.__levyraWebPoSignalOutput,${parsed.first}).then(function(){$JS_INTERFACE.onMinterReady();}).catch(function(e){$JS_INTERFACE.onInitError(String(e));});}catch(e){$JS_INTERFACE.onInitError(String(e));}",
                     null
                 )
-            }.onFailure(::failInitialization)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                failInitialization(error)
+            }
         }
     }
 
     @JavascriptInterface
     fun onMinterReady() {
-        if (!closed) ready.complete(Unit)
+        if (!isUnavailable()) ready.complete(Unit)
     }
 
     @JavascriptInterface
     fun onInitError(error: String) {
-        failInitialization(IllegalStateException(error))
+        failInitialization(IllegalStateException(error.ifBlank { "PO Token initialization failed" }))
     }
 
     @JavascriptInterface
     fun onToken(requestId: String, bytes: String) {
-        val token = runCatching { byteCsvToBase64Url(bytes) }
-        token.onSuccess { tokenWaiters[requestId]?.complete(it) }
-            .onFailure { tokenWaiters[requestId]?.completeExceptionally(it) }
+        val result = runCatching { byteCsvToBase64Url(bytes) }
+        result.onSuccess { token ->
+            if (isValidPoToken(token)) {
+                tokenWaiters[requestId]?.complete(token)
+            } else {
+                tokenWaiters[requestId]?.completeExceptionally(IllegalStateException("Invalid PO Token"))
+            }
+        }.onFailure { tokenWaiters[requestId]?.completeExceptionally(it) }
     }
 
     @JavascriptInterface
     fun onTokenError(requestId: String, error: String) {
-        tokenWaiters[requestId]?.completeExceptionally(IllegalStateException(error))
+        tokenWaiters[requestId]?.completeExceptionally(
+            IllegalStateException(error.ifBlank { "PO Token generation failed" })
+        )
     }
 
     suspend fun close() {
-        if (closed) return
-        closed = true
+        if (!closed.compareAndSet(false, true)) return
+        dead.set(true)
         scope.cancel()
-        tokenWaiters.values.forEach { it.completeExceptionally(IllegalStateException("PO Token runtime chiuso")) }
+        val error = IllegalStateException("PO Token runtime chiuso")
+        if (!ready.isCompleted) ready.completeExceptionally(error)
+        tokenWaiters.values.forEach { it.completeExceptionally(error) }
         tokenWaiters.clear()
-        withContext(Dispatchers.Main.immediate) {
-            webView.removeJavascriptInterface(JS_INTERFACE)
-            webView.stopLoading()
-            webView.loadUrl("about:blank")
-            webView.clearHistory()
-            webView.removeAllViews()
-            webView.destroy()
+        tokenCache.clear()
+        withContext(NonCancellable + Dispatchers.Main.immediate) {
+            runCatching {
+                webView.removeJavascriptInterface(JS_INTERFACE)
+                webView.stopLoading()
+                webView.loadUrl("about:blank")
+                webView.clearHistory()
+                webView.removeAllViews()
+                webView.destroy()
+            }
         }
     }
 
@@ -415,14 +523,50 @@ internal class YoutubePoTokenRuntime private constructor(
             .build()
         httpClient.newCall(request).execute().use { response ->
             val body = response.body.string()
-            if (!response.isSuccessful) throw YoutubePlayerRequestException(response.code, "BotGuard HTTP ${response.code}")
-            body
+            if (!response.isSuccessful) {
+                throw YoutubePlayerRequestException(response.code, "BotGuard HTTP ${response.code}")
+            }
+            requireNonBlankBotguardBody(body)
         }
     }
 
+    private fun ensureActive() {
+        if (isUnavailable()) throw IllegalStateException("PO Token runtime unavailable")
+    }
+
+    private fun isUnavailable(): Boolean = closed.get() || dead.get()
+
     private fun failInitialization(error: Throwable) {
+        markDead(error)
+    }
+
+    private fun markDead(error: Throwable) {
+        if (!dead.compareAndSet(false, true) && ready.isCompleted) return
         if (!ready.isCompleted) ready.completeExceptionally(error)
         tokenWaiters.values.forEach { it.completeExceptionally(error) }
+        tokenWaiters.clear()
+        tokenCache.clear()
+    }
+
+    private class BoundedPoTokenCache(private val maxEntries: Int) {
+        private val values = object : LinkedHashMap<String, String>(maxEntries, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean {
+                return size > maxEntries
+            }
+        }
+
+        @Synchronized
+        fun get(key: String): String? = values[key]
+
+        @Synchronized
+        fun put(key: String, value: String) {
+            values[key] = value
+        }
+
+        @Synchronized
+        fun clear() {
+            values.clear()
+        }
     }
 
     companion object {
@@ -434,6 +578,13 @@ internal class YoutubePoTokenRuntime private constructor(
         private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         private const val INIT_TIMEOUT_MS = 20_000L
         private const val TOKEN_TIMEOUT_MS = 12_000L
+        private const val MAX_BINDING_LENGTH = 4096
+        private const val MAX_TOKEN_CACHE_ENTRIES = 64
+        private const val MIN_TOKEN_LENGTH = 16
+        private const val MAX_TOKEN_LENGTH = 8192
+        private const val MIN_TTL_SECONDS = 30L
+        private const val MAX_TTL_SECONDS = 86_400L
+        private val TOKEN_PATTERN = Regex("^[A-Za-z0-9_-]+$")
         private val HTML = """
             <!doctype html><html><head><meta charset="utf-8"><script>
             let bgVmFunctions=null;let bgVm=null;let bgProgram=null;let poTokenMinter=null;
@@ -441,7 +592,7 @@ internal class YoutubePoTokenRuntime private constructor(
             function snapshot(botguard,args){return new Promise(function(resolve,reject){try{botguard.vmFunctions.asyncSnapshotFunction(function(value){resolve(value);},[args.contentBinding,args.signedTimestamp,args.webPoSignalOutput,args.skipPrivacyBuffer]);}catch(e){reject(e);}});}
             function runBotGuard(challengeData){const code=challengeData.interpreterJavascript.privateDoNotAccessOrElseSafeScriptWrappedValue;if(!code)throw new Error('BotGuard interpreter unavailable');new Function(code)();const output=[];return loadBotGuard({globalName:challengeData.globalName,program:challengeData.program}).then(function(botguard){return snapshot(botguard,{webPoSignalOutput:output});}).then(function(response){return{webPoSignalOutput:output,botguardResponse:response};});}
             async function createPoTokenMinter(output,integrityToken){if(!output||typeof output[0]!=='function')throw new Error('PO Token minter factory unavailable');const candidate=output[0](integrityToken);poTokenMinter=candidate&&typeof candidate.then==='function'?await candidate:candidate;if(typeof poTokenMinter!=='function')throw new Error('PO Token minter unavailable');}
-            async function obtainPoToken(identifier){if(typeof poTokenMinter!=='function')throw new Error('PO Token minter not initialized');const candidate=poTokenMinter(identifier);const result=candidate&&typeof candidate.then==='function'?await candidate:candidate;if(!(result instanceof Uint8Array))throw new Error('Invalid PO Token result');return result;}
+            async function obtainPoToken(identifier){if(typeof poTokenMinter!=='function')throw new Error('PO Token minter not initialized');const candidate=poTokenMinter(identifier);const result=candidate&&typeof candidate.then==='function'?await candidate:candidate;if(!(result instanceof Uint8Array)||result.length===0)throw new Error('Invalid PO Token result');return result;}
             </script></head><body></body></html>
         """.trimIndent()
 
@@ -456,41 +607,78 @@ internal class YoutubePoTokenRuntime private constructor(
             }
         }
 
+        internal fun requireNonBlankBotguardBody(raw: String): String {
+            return raw.takeIf { it.isNotBlank() }
+                ?: throw IllegalStateException("BotGuard returned an empty response")
+        }
+
         internal fun parseChallengeData(raw: String): String {
+            requireNonBlankBotguardBody(raw)
             val scrambled = JSONArray(raw)
             val challenge = if (scrambled.length() > 1 && scrambled.opt(1) is String) {
                 JSONArray(descramble(scrambled.getString(1)))
             } else {
                 scrambled.optJSONArray(1) ?: throw IllegalStateException("Challenge BotGuard non valido")
             }
+            val messageId = challenge.optString(0)
             val interpreterJavascript = firstString(challenge.optJSONArray(1))
             val interpreterUrl = firstString(challenge.optJSONArray(2))
+            val interpreterHash = challenge.optString(3)
+            val program = challenge.optString(4)
+            val globalName = challenge.optString(5)
+            if (
+                messageId.isBlank() ||
+                interpreterJavascript.isBlank() ||
+                interpreterHash.isBlank() ||
+                program.isBlank() ||
+                globalName.isBlank()
+            ) {
+                throw IllegalStateException("Challenge BotGuard incompleto")
+            }
             return JSONObject()
-                .put("messageId", challenge.optString(0))
+                .put("messageId", messageId)
                 .put(
                     "interpreterJavascript",
                     JSONObject()
                         .put("privateDoNotAccessOrElseSafeScriptWrappedValue", interpreterJavascript)
                         .put("privateDoNotAccessOrElseTrustedResourceUrlWrappedValue", interpreterUrl)
                 )
-                .put("interpreterHash", challenge.optString(3))
-                .put("program", challenge.optString(4))
-                .put("globalName", challenge.optString(5))
+                .put("interpreterHash", interpreterHash)
+                .put("program", program)
+                .put("globalName", globalName)
                 .put("clientExperimentsStateBlob", challenge.optString(7))
                 .toString()
         }
 
         internal fun parseIntegrityTokenData(raw: String): Pair<String, Long> {
+            requireNonBlankBotguardBody(raw)
             val array = JSONArray(raw)
+            if (array.length() == 0) throw IllegalStateException("Integrity token assente")
             val bytes = decodeYoutubeBase64(array.getString(0))
-            return jsUint8Array(bytes) to array.optLong(1, 3600L)
+            if (bytes.isEmpty()) throw IllegalStateException("Integrity token vuoto")
+            val ttl = array.optLong(1, 3600L)
+            if (ttl !in MIN_TTL_SECONDS..MAX_TTL_SECONDS) {
+                throw IllegalStateException("Integrity token TTL non valido")
+            }
+            return jsUint8Array(bytes) to ttl
+        }
+
+        internal fun safeExpiryAt(nowMs: Long, ttlSeconds: Long): Long {
+            val boundedTtl = ttlSeconds.coerceIn(MIN_TTL_SECONDS, MAX_TTL_SECONDS)
+            val margin = minOf(600L, maxOf(15L, boundedTtl / 10L))
+            val usable = maxOf(1L, boundedTtl - margin)
+            return nowMs + usable * 1000L
+        }
+
+        internal fun isValidPoToken(value: String): Boolean {
+            return value.length in MIN_TOKEN_LENGTH..MAX_TOKEN_LENGTH && TOKEN_PATTERN.matches(value)
         }
 
         private fun firstString(array: JSONArray?): String {
             if (array == null) return ""
             for (index in 0 until array.length()) {
                 val value = array.opt(index)
-                if (value is String) return value
+                if (value is String && value.isNotBlank()) return value
             }
             return ""
         }
@@ -502,6 +690,7 @@ internal class YoutubePoTokenRuntime private constructor(
         }
 
         private fun decodeYoutubeBase64(value: String): ByteArray {
+            if (value.isBlank()) throw IllegalArgumentException("Empty base64 payload")
             var normalized = value.replace('-', '+').replace('_', '/').replace('.', '=')
             val padding = (4 - normalized.length % 4) % 4
             normalized += "=".repeat(padding)
@@ -513,10 +702,14 @@ internal class YoutubePoTokenRuntime private constructor(
         }
 
         private fun byteCsvToBase64Url(value: String): String {
-            val bytes = value.split(',')
-                .filter { it.isNotBlank() }
-                .map { it.trim().toInt().coerceIn(0, 255).toByte() }
-                .toByteArray()
+            val parts = value.split(',').filter { it.isNotBlank() }
+            if (parts.isEmpty()) throw IllegalArgumentException("Empty PO Token bytes")
+            val bytes = parts.map { part ->
+                val number = part.trim().toIntOrNull()
+                    ?: throw IllegalArgumentException("Invalid PO Token byte")
+                if (number !in 0..255) throw IllegalArgumentException("PO Token byte out of range")
+                number.toByte()
+            }.toByteArray()
             return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
         }
     }
