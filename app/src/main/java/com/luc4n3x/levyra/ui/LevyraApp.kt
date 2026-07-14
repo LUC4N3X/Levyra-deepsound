@@ -212,7 +212,11 @@ import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.luc4n3x.levyra.data.ArtworkRequestSource
+import com.luc4n3x.levyra.data.HomeContentAvailability
+import com.luc4n3x.levyra.data.HomeLoadingPolicy
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
@@ -274,6 +278,7 @@ import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -583,11 +588,30 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     val model = remember(context, track.id, track.title, track.artist, raw, highRes) {
         LevyraArtworkCache.model(context, track, highRes)
     }
+    val artworkKey = remember(track.id, highRes) { "${track.id}:${if (highRes) "large" else "small"}" }
+    val modelIdentity = remember(model) {
+        when (model) {
+            is File -> "file:${model.absolutePath}"
+            null -> "missing"
+            else -> "remote:${model}"
+        }
+    }
+    val requestSource = remember(model) {
+        when (model) {
+            is File -> ArtworkRequestSource.PersistentFile
+            null -> ArtworkRequestSource.Missing
+            else -> ArtworkRequestSource.Remote
+        }
+    }
+    LaunchedEffect(artworkKey, modelIdentity, requestSource) {
+        LevyraArtworkStartupMetrics.recordArtworkRequest(artworkKey, modelIdentity, requestSource)
+        if (model == null) LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey)
+    }
     val background = Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
     Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
         if (model != null) {
-            val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 120 else 0
+            val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
             val request = remember(context, model, crossfadeMs) {
                 ImageRequest.Builder(context)
                     .data(model)
@@ -601,6 +625,9 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
                 model = request,
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
+                onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
+                onSuccess = { LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey) },
+                onError = { LevyraArtworkStartupMetrics.recordArtworkFailure(artworkKey) },
                 modifier = Modifier.fillMaxSize().scale(zoom)
             )
         }
@@ -3121,7 +3148,64 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         (resonanceTracks + (newReleases?.tracks ?: emptyList())).distinctBy { it.id }.take(10)
     }
     val chartChunks = remember(state.charts) { state.charts.chunked(4) }
+    val homeContent = remember(
+        state.tracks,
+        state.homeSections,
+        state.homeAlbums,
+        state.charts,
+        state.personalOrbitTracks,
+        state.releaseRadar,
+        state.similarArtists,
+        state.currentTrack
+    ) {
+        HomeContentAvailability(
+            trackCount = state.tracks.size,
+            homeSectionCount = state.homeSections.size,
+            homeSectionTrackCount = state.homeSections.sumOf { it.tracks.size },
+            albumCount = state.homeAlbums.size,
+            chartCount = state.charts.size,
+            personalOrbitCount = state.personalOrbitTracks.size,
+            releaseRadarCount = state.releaseRadar.size,
+            similarArtistCount = state.similarArtists.size,
+            hasCurrentTrack = state.currentTrack != null
+        )
+    }
+    val homeFingerprint = remember(
+        state.tracks,
+        state.homeSections,
+        state.homeAlbums,
+        state.charts,
+        state.personalOrbitTracks,
+        state.releaseRadar,
+        state.similarArtists,
+        state.currentTrack
+    ) {
+        buildString {
+            append(homeContent.fingerprint())
+            append('|')
+            append(state.tracks.take(12).joinToString(",") { it.id })
+            append('|')
+            append(state.homeSections.joinToString(",") { section -> "${section.title}:${section.tracks.take(4).joinToString(".") { it.id }}" })
+            append('|')
+            append(state.homeAlbums.take(10).joinToString(",") { it.browseId.ifBlank { "${it.title}:${it.artist}" } })
+            append('|')
+            append(state.charts.take(12).joinToString(",") { it.id })
+        }
+    }
+    val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
+    val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
     val homeListState = rememberLazyListState()
+    LaunchedEffect(homeFingerprint) {
+        LevyraArtworkStartupMetrics.recordHomeEmission(homeFingerprint, homeContent.hasUsableContent)
+    }
+    LaunchedEffect(showHomeAlbumShimmer, showChartShimmer) {
+        if (showHomeAlbumShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
+        if (showChartShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
+    }
+    LaunchedEffect(Unit) {
+        delay(5_000L)
+        LevyraArtworkStartupMetrics.persistSnapshot(context)
+    }
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
         delay(500L)
         while (homeListState.isScrollInProgress) delay(120L)
@@ -3219,7 +3303,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (state.interfaceSettings.showAlbumsForYou && (state.homeAlbums.isNotEmpty() || state.homeAlbumsLoading)) {
+        if (state.interfaceSettings.showAlbumsForYou && (state.homeAlbums.isNotEmpty() || showHomeAlbumShimmer)) {
             item(key = "sec-home-albums-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(state.homeAlbums) }) }
             }
@@ -3230,7 +3314,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                         animationsEnabled = state.animationsEnabled,
                         onOpen = viewModel::openAlbum
                     )
-                } else {
+                } else if (showHomeAlbumShimmer) {
                     HomeAlbumLoadingRow()
                 }
             }
@@ -3270,10 +3354,10 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                     ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
                 }
             }
-            if (state.charts.isEmpty()) {
+            if (state.charts.isEmpty() && (showChartShimmer || !state.isLoadingCharts)) {
                 item(key = "home-chart-empty", contentType = "home-card") {
                     HomeSectionInset {
-                        if (state.isLoadingCharts) {
+                        if (showChartShimmer) {
                             ChartLoadingSkeleton()
                         } else {
                             GlassMessage(strings.top50Unavailable, LevyraOrange)
