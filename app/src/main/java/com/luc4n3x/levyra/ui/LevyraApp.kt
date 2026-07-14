@@ -212,7 +212,11 @@ import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.luc4n3x.levyra.data.ArtworkRequestSource
+import com.luc4n3x.levyra.data.HomeContentAvailability
+import com.luc4n3x.levyra.data.HomeLoadingPolicy
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
@@ -274,6 +278,7 @@ import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -374,7 +379,8 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
         label = "tab-icon-scale"
     )
-    val tabActiveTint = if (LevyraIsLight) LevyraCyan else Color(0xFF9BDDFF)
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    val tabActiveTint = if (isAppleStyle) LevyraCyan else if (LevyraIsLight) LevyraCyan else Color(0xFF9BDDFF)
     val tabInactiveTint = if (LevyraIsLight) LevyraMuted else Color(0xFF7E7E86)
     val iconTint by animateColorAsState(
         targetValue = if (selected) tabActiveTint else tabInactiveTint,
@@ -383,6 +389,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
     )
     val labelTint by animateColorAsState(
         targetValue = when {
+            selected && isAppleStyle -> LevyraCyan
             selected && LevyraIsLight -> LevyraText
             selected -> Color(0xFFEAF7FF)
             LevyraIsLight -> LevyraMuted
@@ -409,19 +416,35 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         ) {
             Box(
                 modifier = Modifier
-                    .width(pillWidth)
+                    .width(if (isAppleStyle) 30.dp else pillWidth)
                     .height(32.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(
-                        LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.16f else 0.14f) * selectedProgress)
+                        if (isAppleStyle) Color.Transparent
+                        else LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.16f else 0.14f) * selectedProgress)
                     )
-                    .border(
-                        width = 1.dp,
-                        color = LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.26f else 0.22f) * selectedProgress),
-                        shape = RoundedCornerShape(16.dp)
+                    .then(
+                        if (isAppleStyle) Modifier
+                        else Modifier.border(
+                            width = 1.dp,
+                            color = LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.26f else 0.22f) * selectedProgress),
+                            shape = RoundedCornerShape(16.dp)
+                        )
                     ),
                 contentAlignment = Alignment.Center
             ) {
+                if (isAppleStyle && selectedProgress > 0.01f) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .graphicsLayer {
+                                scaleX = selectedProgress
+                                scaleY = selectedProgress
+                                alpha = selectedProgress * 0.14f
+                            }
+                            .background(LevyraCyan, CircleShape)
+                    )
+                }
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
@@ -444,6 +467,20 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (isAppleStyle) {
+                val indicatorWidth by animateDpAsState(
+                    targetValue = if (selected) 14.dp else 0.dp,
+                    animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
+                    label = "tab-apple-indicator-width"
+                )
+                Box(
+                    modifier = Modifier
+                        .width(indicatorWidth)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(1.5.dp))
+                        .background(LevyraCyan)
+                )
+            }
         }
     }
 }
@@ -551,11 +588,30 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     val model = remember(context, track.id, track.title, track.artist, raw, highRes) {
         LevyraArtworkCache.model(context, track, highRes)
     }
+    val artworkKey = remember(track.id, highRes) { "${track.id}:${if (highRes) "large" else "small"}" }
+    val modelIdentity = remember(model) {
+        when (model) {
+            is File -> "file:${model.absolutePath}"
+            null -> "missing"
+            else -> "remote:${model}"
+        }
+    }
+    val requestSource = remember(model) {
+        when (model) {
+            is File -> ArtworkRequestSource.PersistentFile
+            null -> ArtworkRequestSource.Missing
+            else -> ArtworkRequestSource.Remote
+        }
+    }
+    LaunchedEffect(artworkKey, modelIdentity, requestSource) {
+        LevyraArtworkStartupMetrics.recordArtworkRequest(artworkKey, modelIdentity, requestSource)
+        if (model == null) LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey)
+    }
     val background = Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
     Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
         if (model != null) {
-            val crossfadeMs = if (LocalAnimationsEnabled.current && highRes) 120 else 0
+            val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
             val request = remember(context, model, crossfadeMs) {
                 ImageRequest.Builder(context)
                     .data(model)
@@ -569,6 +625,9 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
                 model = request,
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
+                onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
+                onSuccess = { LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey) },
+                onError = { LevyraArtworkStartupMetrics.recordArtworkFailure(artworkKey) },
                 modifier = Modifier.fillMaxSize().scale(zoom)
             )
         }
@@ -1558,12 +1617,15 @@ private fun AlbumPrimaryPlayButton(
     accentEnd: Color,
     onClick: () -> Unit
 ) {
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    val cornerRadius = if (isAppleStyle) 12.dp else 16.dp
+    val buttonShape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
-            .shadow(if (enabled) 16.dp else 0.dp, RoundedCornerShape(16.dp), clip = false, spotColor = accentStart.copy(alpha = 0.6f))
-            .clip(RoundedCornerShape(16.dp))
+            .shadow(if (enabled) 16.dp else 0.dp, buttonShape, clip = false, spotColor = accentStart.copy(alpha = 0.6f))
+            .clip(buttonShape)
             .background(
                 if (enabled) Brush.horizontalGradient(listOf(accentStart, accentEnd))
                 else Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f)))
@@ -1596,12 +1658,15 @@ private fun AlbumSecondaryAction(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    val cornerRadius = if (isAppleStyle) 12.dp else 14.dp
+    val buttonShape = RoundedCornerShape(cornerRadius)
     Row(
         modifier = modifier
             .height(46.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(buttonShape)
             .background(Color.White.copy(alpha = if (enabled) 0.06f else 0.03f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) 0.08f else 0.04f)), RoundedCornerShape(14.dp))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) 0.08f else 0.04f)), buttonShape)
             .pressable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1929,9 +1994,11 @@ private fun ArtistOverlay(
 @Composable
 private fun ArtistFollowButton(isFollowed: Boolean, accentStart: Color, accentEnd: Color, onClick: () -> Unit) {
     val strings = LocalLevyraStrings.current
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    val buttonShape = RoundedCornerShape(if (isAppleStyle) 12.dp else 50.dp)
     Surface(
         color = Color.Transparent,
-        shape = RoundedCornerShape(50.dp),
+        shape = buttonShape,
         border = if (isFollowed) BorderStroke(1.dp, LevyraText.copy(alpha = 0.35f)) else null,
         modifier = Modifier.pressable(onClick = onClick)
     ) {
@@ -1939,7 +2006,7 @@ private fun ArtistFollowButton(isFollowed: Boolean, accentStart: Color, accentEn
             modifier = Modifier
                 .then(
                     if (isFollowed) Modifier
-                    else Modifier.background(Brush.linearGradient(listOf(accentStart, accentEnd)), RoundedCornerShape(50.dp))
+                    else Modifier.background(Brush.linearGradient(listOf(accentStart, accentEnd)), buttonShape)
                 )
                 .padding(horizontal = 22.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -3081,7 +3148,64 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         (resonanceTracks + (newReleases?.tracks ?: emptyList())).distinctBy { it.id }.take(10)
     }
     val chartChunks = remember(state.charts) { state.charts.chunked(4) }
+    val homeContent = remember(
+        state.tracks,
+        state.homeSections,
+        state.homeAlbums,
+        state.charts,
+        state.personalOrbitTracks,
+        state.releaseRadar,
+        state.similarArtists,
+        state.currentTrack
+    ) {
+        HomeContentAvailability(
+            trackCount = state.tracks.size,
+            homeSectionCount = state.homeSections.size,
+            homeSectionTrackCount = state.homeSections.sumOf { it.tracks.size },
+            albumCount = state.homeAlbums.size,
+            chartCount = state.charts.size,
+            personalOrbitCount = state.personalOrbitTracks.size,
+            releaseRadarCount = state.releaseRadar.size,
+            similarArtistCount = state.similarArtists.size,
+            hasCurrentTrack = state.currentTrack != null
+        )
+    }
+    val homeFingerprint = remember(
+        state.tracks,
+        state.homeSections,
+        state.homeAlbums,
+        state.charts,
+        state.personalOrbitTracks,
+        state.releaseRadar,
+        state.similarArtists,
+        state.currentTrack
+    ) {
+        buildString {
+            append(homeContent.fingerprint())
+            append('|')
+            append(state.tracks.take(12).joinToString(",") { it.id })
+            append('|')
+            append(state.homeSections.joinToString(",") { section -> "${section.title}:${section.tracks.take(4).joinToString(".") { it.id }}" })
+            append('|')
+            append(state.homeAlbums.take(10).joinToString(",") { it.browseId.ifBlank { "${it.title}:${it.artist}" } })
+            append('|')
+            append(state.charts.take(12).joinToString(",") { it.id })
+        }
+    }
+    val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
+    val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
     val homeListState = rememberLazyListState()
+    LaunchedEffect(homeFingerprint) {
+        LevyraArtworkStartupMetrics.recordHomeEmission(homeFingerprint, homeContent.hasUsableContent)
+    }
+    LaunchedEffect(showHomeAlbumShimmer, showChartShimmer) {
+        if (showHomeAlbumShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
+        if (showChartShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
+    }
+    LaunchedEffect(Unit) {
+        delay(5_000L)
+        LevyraArtworkStartupMetrics.persistSnapshot(context)
+    }
     LaunchedEffect(personalTracks, secondaryPreloadTracks) {
         delay(500L)
         while (homeListState.isScrollInProgress) delay(120L)
@@ -3179,7 +3303,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 )
             }
         }
-        if (state.interfaceSettings.showAlbumsForYou && (state.homeAlbums.isNotEmpty() || state.homeAlbumsLoading)) {
+        if (state.interfaceSettings.showAlbumsForYou && (state.homeAlbums.isNotEmpty() || showHomeAlbumShimmer)) {
             item(key = "sec-home-albums-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(state.homeAlbums) }) }
             }
@@ -3190,7 +3314,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                         animationsEnabled = state.animationsEnabled,
                         onOpen = viewModel::openAlbum
                     )
-                } else {
+                } else if (showHomeAlbumShimmer) {
                     HomeAlbumLoadingRow()
                 }
             }
@@ -3230,10 +3354,10 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                     ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
                 }
             }
-            if (state.charts.isEmpty()) {
+            if (state.charts.isEmpty() && (showChartShimmer || !state.isLoadingCharts)) {
                 item(key = "home-chart-empty", contentType = "home-card") {
                     HomeSectionInset {
-                        if (state.isLoadingCharts) {
+                        if (showChartShimmer) {
                             ChartLoadingSkeleton()
                         } else {
                             GlassMessage(strings.top50Unavailable, LevyraOrange)
