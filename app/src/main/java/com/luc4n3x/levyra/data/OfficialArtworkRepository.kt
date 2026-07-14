@@ -289,7 +289,7 @@ class OfficialArtworkRepository(context: Context) {
     private companion object {
         const val APPLE_SEARCH_URL = "https://itunes.apple.com/search"
         const val DEEZER_SEARCH_URL = "https://api.deezer.com/search/track"
-        const val USER_AGENT = "Levyra/2.3.8 Android"
+        const val USER_AGENT = "Levyra/2.3.9 Android"
         const val MIN_ACCEPTED_SCORE = 200
         const val HIGH_CONFIDENCE_SCORE = 280
         const val MISS_TTL_MS = 10 * 60 * 1000L
