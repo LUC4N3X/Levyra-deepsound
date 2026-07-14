@@ -1,10 +1,12 @@
 package com.luc4n3x.levyra.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import com.luc4n3x.levyra.domain.FollowedArtist
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.IOException
 
 class FollowedArtistsStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -30,6 +32,17 @@ class FollowedArtistsStore(context: Context) {
     }
 
     fun save(artists: List<FollowedArtist>) {
+        prefs.edit().putString(KEY_ARTISTS, encode(artists)).apply()
+    }
+
+    @SuppressLint("ApplySharedPref")
+    fun saveDurable(artists: List<FollowedArtist>) {
+        if (!prefs.edit().putString(KEY_ARTISTS, encode(artists)).commit()) {
+            throw IOException("Impossibile salvare gli artisti seguiti")
+        }
+    }
+
+    private fun encode(artists: List<FollowedArtist>): String {
         val array = JSONArray()
         artists.forEach { artist ->
             array.put(
@@ -40,7 +53,7 @@ class FollowedArtistsStore(context: Context) {
                     .put("followedAt", artist.followedAt)
             )
         }
-        prefs.edit().putString(KEY_ARTISTS, array.toString()).apply()
+        return array.toString()
     }
 
     fun hasReleaseBaseline(artistKey: String): Boolean = prefs.contains(KEY_KNOWN_PREFIX + artistKey)
