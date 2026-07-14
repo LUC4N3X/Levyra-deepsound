@@ -179,6 +179,8 @@ class LevyraStrings private constructor(
     val update: String get() = value("update")
     val updateLinkUnavailable: String get() = value("updateLinkUnavailable")
     val cannotOpenDownload: String get() = value("cannotOpenDownload")
+    val externalLinkUnavailable: String get() = value("externalLinkUnavailable")
+    val cannotOpenExternalLink: String get() = value("cannotOpenExternalLink")
     val continuousRadio: String get() = value("continuousRadio")
     val continuousRadioSubtitle: String get() = value("continuousRadioSubtitle")
     val artistsLabelPlural: String get() = value("artistsLabelPlural")
@@ -559,7 +561,7 @@ class LevyraStrings private constructor(
     fun formatPauseDownload(title: String): String = "$pauseDownload $title"
 
     companion object {
-        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreZones", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateLinkUnavailable", "cannotOpenDownload", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "coverAndTags", "madeWithBy", "activeIndicator")
+        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreZones", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "coverAndTags", "madeWithBy", "activeIndicator")
 
         private val values: Map<String, LevyraStrings> by lazy(LazyThreadSafetyMode.PUBLICATION) {
             mapOf(
@@ -766,6 +768,8 @@ class LevyraStrings private constructor(
             "update" to "Update",
             "updateLinkUnavailable" to "Update link unavailable",
             "cannotOpenDownload" to "Unable to open the download",
+            "externalLinkUnavailable" to "External link unavailable",
+            "cannotOpenExternalLink" to "Unable to open the external link",
             "continuousRadio" to "Continuous radio",
             "continuousRadioSubtitle" to "Adds matching songs as the queue is running out",
             "artistsLabelPlural" to "Artists",
@@ -1101,6 +1105,8 @@ class LevyraStrings private constructor(
             "update" to "Aggiorna",
             "updateLinkUnavailable" to "Link di aggiornamento non disponibile",
             "cannotOpenDownload" to "Impossibile aprire il download",
+            "externalLinkUnavailable" to "Link esterno non disponibile",
+            "cannotOpenExternalLink" to "Impossibile aprire il link esterno",
             "continuousRadio" to "Radio continua",
             "continuousRadioSubtitle" to "Aggiunge brani coerenti quando la coda sta per terminare",
             "artistsLabelPlural" to "Artisti",
@@ -1436,6 +1442,8 @@ class LevyraStrings private constructor(
             "update" to "Actualizar",
             "updateLinkUnavailable" to "El enlace de actualización no está disponible",
             "cannotOpenDownload" to "No se puede abrir la descarga",
+            "externalLinkUnavailable" to "Enlace externo no disponible",
+            "cannotOpenExternalLink" to "No se puede abrir el enlace externo",
             "continuousRadio" to "Radio continua",
             "continuousRadioSubtitle" to "Añade canciones afines cuando la cola está a punto de terminar",
             "artistsLabelPlural" to "Artistas",
@@ -1771,6 +1779,8 @@ class LevyraStrings private constructor(
             "update" to "Mettre à jour",
             "updateLinkUnavailable" to "Lien de mise à jour indisponible",
             "cannotOpenDownload" to "Impossible d'ouvrir le téléchargement",
+            "externalLinkUnavailable" to "Lien externe indisponible",
+            "cannotOpenExternalLink" to "Impossible d’ouvrir le lien externe",
             "continuousRadio" to "Radio continue",
             "continuousRadioSubtitle" to "Ajoute des titres cohérents lorsque la file d'attente touche à sa fin",
             "artistsLabelPlural" to "Artistes",
@@ -2106,6 +2116,8 @@ class LevyraStrings private constructor(
             "update" to "Aktualisieren",
             "updateLinkUnavailable" to "Update-Link nicht verfügbar",
             "cannotOpenDownload" to "Download kann nicht geöffnet werden",
+            "externalLinkUnavailable" to "Externer Link nicht verfügbar",
+            "cannotOpenExternalLink" to "Der externe Link kann nicht geöffnet werden",
             "continuousRadio" to "Endlosradio",
             "continuousRadioSubtitle" to "Fügt passende Titel hinzu, wenn die Warteschlange fast zu Ende ist",
             "artistsLabelPlural" to "Künstler",
@@ -2441,6 +2453,8 @@ class LevyraStrings private constructor(
             "update" to "Atualizar",
             "updateLinkUnavailable" to "Ligação de atualização indisponível",
             "cannotOpenDownload" to "Não foi possível abrir a transferência",
+            "externalLinkUnavailable" to "Ligação externa indisponível",
+            "cannotOpenExternalLink" to "Não foi possível abrir a ligação externa",
             "continuousRadio" to "Rádio contínua",
             "continuousRadioSubtitle" to "Adiciona músicas semelhantes quando a fila está quase a terminar",
             "artistsLabelPlural" to "Artistas",
@@ -2674,7 +2688,7 @@ class LevyraStrings private constructor(
             "selectLanguagePrompt" to "Selecteer een taal",
             "explore" to "Ontdekken",
             "exploreTitle" to "Ontdekken",
-            "exploreSubtitle" to "Ontdek nieuwe muziek, trends en video\\'s",
+            "exploreSubtitle" to "Ontdek nieuwe muziek, trends en video's",
             "exploreZones" to "Dieptezones",
             "exploreFresh" to "Verse stromingen",
             "exploreNewVideos" to "Nieuwe muziekvideo's",
@@ -2776,6 +2790,8 @@ class LevyraStrings private constructor(
             "update" to "Bijwerken",
             "updateLinkUnavailable" to "Updatelink niet beschikbaar",
             "cannotOpenDownload" to "De download kan niet worden geopend",
+            "externalLinkUnavailable" to "Externe link niet beschikbaar",
+            "cannotOpenExternalLink" to "De externe link kan niet worden geopend",
             "continuousRadio" to "Doorlopende radio",
             "continuousRadioSubtitle" to "Voegt passende nummers toe wanneer de wachtrij bijna is afgelopen",
             "artistsLabelPlural" to "Artiesten",
@@ -3111,6 +3127,8 @@ class LevyraStrings private constructor(
             "update" to "Aktualizuj",
             "updateLinkUnavailable" to "Link do aktualizacji jest niedostępny",
             "cannotOpenDownload" to "Nie można otworzyć pobierania",
+            "externalLinkUnavailable" to "Link zewnętrzny jest niedostępny",
+            "cannotOpenExternalLink" to "Nie można otworzyć linku zewnętrznego",
             "continuousRadio" to "Radio ciągłe",
             "continuousRadioSubtitle" to "Dodaje pasujące utwory, gdy kolejka zbliża się do końca",
             "artistsLabelPlural" to "Artyści",
@@ -3446,6 +3464,8 @@ class LevyraStrings private constructor(
             "update" to "Actualizează",
             "updateLinkUnavailable" to "Linkul de actualizare nu este disponibil",
             "cannotOpenDownload" to "Descărcarea nu poate fi deschisă",
+            "externalLinkUnavailable" to "Link extern indisponibil",
+            "cannotOpenExternalLink" to "Linkul extern nu poate fi deschis",
             "continuousRadio" to "Radio continuu",
             "continuousRadioSubtitle" to "Adaugă piese potrivite când coada este aproape de final",
             "artistsLabelPlural" to "Artiști",
@@ -3781,6 +3801,8 @@ class LevyraStrings private constructor(
             "update" to "Ενημέρωση",
             "updateLinkUnavailable" to "Ο σύνδεσμος ενημέρωσης δεν είναι διαθέσιμος",
             "cannotOpenDownload" to "Δεν είναι δυνατό το άνοιγμα της λήψης",
+            "externalLinkUnavailable" to "Ο εξωτερικός σύνδεσμος δεν είναι διαθέσιμος",
+            "cannotOpenExternalLink" to "Δεν είναι δυνατό το άνοιγμα του εξωτερικού συνδέσμου",
             "continuousRadio" to "Συνεχές ραδιόφωνο",
             "continuousRadioSubtitle" to "Προσθέτει σχετικά τραγούδια όταν η ουρά πλησιάζει στο τέλος",
             "artistsLabelPlural" to "Καλλιτέχνες",
@@ -4116,6 +4138,8 @@ class LevyraStrings private constructor(
             "update" to "Uppdatera",
             "updateLinkUnavailable" to "Uppdateringslänken är inte tillgänglig",
             "cannotOpenDownload" to "Det går inte att öppna nedladdningen",
+            "externalLinkUnavailable" to "Extern länk är inte tillgänglig",
+            "cannotOpenExternalLink" to "Det går inte att öppna den externa länken",
             "continuousRadio" to "Kontinuerlig radio",
             "continuousRadioSubtitle" to "Lägger till passande låtar när kön börjar ta slut",
             "artistsLabelPlural" to "Artister",
@@ -4451,6 +4475,8 @@ class LevyraStrings private constructor(
             "update" to "Opdater",
             "updateLinkUnavailable" to "Opdateringslinket er ikke tilgængeligt",
             "cannotOpenDownload" to "Downloaden kan ikke åbnes",
+            "externalLinkUnavailable" to "Eksternt link er ikke tilgængeligt",
+            "cannotOpenExternalLink" to "Det eksterne link kan ikke åbnes",
             "continuousRadio" to "Kontinuerlig radio",
             "continuousRadioSubtitle" to "Tilføjer passende sange, når køen er ved at være slut",
             "artistsLabelPlural" to "Kunstnere",
@@ -4786,6 +4812,8 @@ class LevyraStrings private constructor(
             "update" to "Aktualizovat",
             "updateLinkUnavailable" to "Odkaz na aktualizaci není dostupný",
             "cannotOpenDownload" to "Stažení nelze otevřít",
+            "externalLinkUnavailable" to "Externí odkaz není k dispozici",
+            "cannotOpenExternalLink" to "Externí odkaz nelze otevřít",
             "continuousRadio" to "Nepřetržité rádio",
             "continuousRadioSubtitle" to "Přidává související skladby, když se fronta blíží ke konci",
             "artistsLabelPlural" to "Interpreti",
@@ -5121,6 +5149,8 @@ class LevyraStrings private constructor(
             "update" to "Оновити",
             "updateLinkUnavailable" to "Посилання на оновлення недоступне",
             "cannotOpenDownload" to "Не вдалося відкрити завантаження",
+            "externalLinkUnavailable" to "Зовнішнє посилання недоступне",
+            "cannotOpenExternalLink" to "Не вдалося відкрити зовнішнє посилання",
             "continuousRadio" to "Безперервне радіо",
             "continuousRadioSubtitle" to "Додає схожі пісні, коли черга добігає кінця",
             "artistsLabelPlural" to "Артисти",
@@ -5456,6 +5486,8 @@ class LevyraStrings private constructor(
             "update" to "Обновить",
             "updateLinkUnavailable" to "Ссылка на обновление недоступна",
             "cannotOpenDownload" to "Не удалось открыть загрузку",
+            "externalLinkUnavailable" to "Внешняя ссылка недоступна",
+            "cannotOpenExternalLink" to "Не удалось открыть внешнюю ссылку",
             "continuousRadio" to "Бесконечное радио",
             "continuousRadioSubtitle" to "Добавляет похожие треки, когда очередь подходит к концу",
             "artistsLabelPlural" to "Исполнители",
@@ -5791,6 +5823,8 @@ class LevyraStrings private constructor(
             "update" to "Güncelle",
             "updateLinkUnavailable" to "Güncelleme bağlantısı kullanılamıyor",
             "cannotOpenDownload" to "İndirme açılamıyor",
+            "externalLinkUnavailable" to "Harici bağlantı kullanılamıyor",
+            "cannotOpenExternalLink" to "Harici bağlantı açılamıyor",
             "continuousRadio" to "Kesintisiz radyo",
             "continuousRadioSubtitle" to "Sıra bitmek üzereyken uyumlu şarkılar ekler",
             "artistsLabelPlural" to "Sanatçılar",
