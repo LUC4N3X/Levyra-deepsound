@@ -939,7 +939,9 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 LyricsOverlay(
                     state = state,
                     onTranslation = viewModel::setLyricsTranslationEnabled,
-                    onSeekToMs = viewModel::seekToPosition,
+                    onSeekToMs = { positionMs ->
+                        viewModel.seekTo(progressOf(positionMs, state.durationMs))
+                    },
                     onClose = viewModel::closeLyrics
                 )
             }
