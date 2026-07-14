@@ -729,6 +729,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
     val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
     val state by viewModel.state.collectAsState()
+    val currentStrings = LevyraStrings.forCode(state.languageCode)
     LaunchedEffect(state.isVideoMode, state.isPlaying) {
         val currentPipState = LevyraPipBridge.current()
         LevyraPipBridge.updatePlayback(
@@ -979,7 +980,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         }
                     },
                     onCheckUpdates = { viewModel.checkForUpdates(silent = false) },
-                    onDownloadUpdate = { state.updateInfo?.let { openExternalUrl(toastContext, it.downloadUrl) } },
+                    onDownloadUpdate = { state.updateInfo?.let { openExternalUrl(toastContext, it.downloadUrl, currentStrings) } },
                     onCreateBackup = { createBackupLauncher.launch("levyra-backup-${System.currentTimeMillis()}.zip") },
                     onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
                     onPauseDownload = viewModel::pauseDownload,
@@ -992,7 +993,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                             putExtra(Intent.EXTRA_SUBJECT, "LEVYRA playback diagnostics")
                             putExtra(Intent.EXTRA_TEXT, diagnostics)
                         }
-                        toastContext.startActivity(Intent.createChooser(intent, "Condividi diagnostica"))
+                        toastContext.startActivity(Intent.createChooser(intent, currentStrings.shareDiagnostics))
                     },
                     onRedoQuestionnaire = viewModel::restartOnboarding,
                     onClose = viewModel::closeSettings
@@ -1035,7 +1036,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     UpdateAvailableOverlay(
                         update = update,
                         onDownload = {
-                            openExternalUrl(toastContext, update.downloadUrl)
+                            openExternalUrl(toastContext, update.downloadUrl, currentStrings)
                             viewModel.dismissUpdatePrompt()
                         },
                         onLater = viewModel::dismissUpdatePrompt
@@ -1116,12 +1117,12 @@ private data class DownloadHudItem(
     val count: Int
 )
 
-private fun LevyraUiState.activeDownloadHudItem(): DownloadHudItem? {
+private fun LevyraUiState.activeDownloadHudItem(strings: LevyraStrings): DownloadHudItem? {
     val ids = downloadingTrackIds.toList()
     if (ids.isEmpty()) return null
     val primaryId = ids.maxByOrNull { downloadProgressByTrackId[it] ?: 1 } ?: return null
     val progress = (downloadProgressByTrackId[primaryId] ?: 1).coerceIn(1, 99)
-    val rawTitle = downloadTitleByTrackId[primaryId].orEmpty().ifBlank { "brano" }
+    val rawTitle = downloadTitleByTrackId[primaryId].orEmpty().ifBlank { strings.song }
     val title = if (ids.size > 1) "$rawTitle +${ids.size - 1}" else rawTitle
     return DownloadHudItem(progress = progress, title = title, count = ids.size)
 }
@@ -1136,7 +1137,7 @@ private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
 
 @Composable
 private fun DownloadProgressHud(state: LevyraUiState) {
-    val item = state.activeDownloadHudItem() ?: return
+    val item = state.activeDownloadHudItem(LocalLevyraStrings.current) ?: return
     val progressFraction = item.progress / 100f
     Surface(
         color = Color.Transparent,
@@ -1202,7 +1203,7 @@ private fun DownloadProgressHud(state: LevyraUiState) {
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (item.count > 1) "Download multipli in corso" else "Download in corso",
+                    text = if (item.count > 1) LocalLevyraStrings.current.downloadsInProgress else LocalLevyraStrings.current.downloadInProgress,
                     color = LevyraMuted,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -1273,8 +1274,8 @@ private fun AlbumOverlay(
     val accentStart = accentTrack?.let { Color(it.accentStart) } ?: LevyraCyan
     val accentEnd = accentTrack?.let { Color(it.accentEnd) } ?: LevyraViolet
     val context = LocalContext.current
-    val listState = rememberLazyListState()
     val strings = LocalLevyraStrings.current
+    val listState = rememberLazyListState()
     var addTarget by remember { mutableStateOf<Track?>(null) }
     val albumCurrentTrack = remember(tracks, state.currentTrack) {
         tracks.firstOrNull { candidate -> uiTrackMatches(state.currentTrack, candidate) }
@@ -1329,7 +1330,7 @@ private fun AlbumOverlay(
                         shape = CircleShape,
                         modifier = Modifier.size(44.dp).pressable(onClick = {
                             val query = listOf(album?.title.orEmpty(), album?.artist.orEmpty()).filter { it.isNotBlank() }.joinToString(" ")
-                            if (query.isNotBlank()) openExternalUrl(context, "https://music.youtube.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}")
+                            if (query.isNotBlank()) openExternalUrl(context, "https://music.youtube.com/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}", strings)
                         })
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -1346,7 +1347,7 @@ private fun AlbumOverlay(
                 }
                 album == null -> {
                     item(key = "album-empty") {
-                        GlassMessage("Album non disponibile", LevyraOrange)
+                        GlassMessage(strings.albumUnavailable, LevyraOrange)
                     }
                 }
                 else -> {
@@ -1375,7 +1376,7 @@ private fun AlbumOverlay(
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TEXT, shareText)
                                 }
-                                context.startActivity(Intent.createChooser(intent, "Condividi album"))
+                                context.startActivity(Intent.createChooser(intent, strings.share))
                             }
                         )
                     }
@@ -1393,7 +1394,7 @@ private fun AlbumOverlay(
                                         .clip(RoundedCornerShape(2.dp))
                                         .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
                                 )
-                                Text("${tracks.size} brani", color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
+                                Text(strings.formatTrackCount(tracks.size), color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
                             }
                         }
                         itemsIndexed(
@@ -1421,7 +1422,7 @@ private fun AlbumOverlay(
                         }
                     } else if (!state.albumLoading) {
                         item(key = "album-no-tracks") {
-                            GlassMessage(state.albumError ?: "Tracce album non disponibili", LevyraOrange)
+                            GlassMessage(state.albumError ?: strings.albumTracksUnavailable, LevyraOrange)
                         }
                     }
                 }
@@ -1575,9 +1576,9 @@ private fun AlbumHeroCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            AlbumSecondaryAction(icon = Icons.Rounded.Download, label = "Offline", enabled = trackCount > 0, modifier = Modifier.weight(1f), onClick = onDownload)
-            AlbumSecondaryAction(icon = Icons.Rounded.Person, label = "Artista", enabled = album.artist.isNotBlank(), modifier = Modifier.weight(1f), onClick = onOpenArtist)
-            AlbumSecondaryAction(icon = Icons.Rounded.Share, label = "Condividi", enabled = true, modifier = Modifier.weight(1f), onClick = onShare)
+            AlbumSecondaryAction(icon = Icons.Rounded.Download, label = LocalLevyraStrings.current.offline, enabled = trackCount > 0, modifier = Modifier.weight(1f), onClick = onDownload)
+            AlbumSecondaryAction(icon = Icons.Rounded.Person, label = LocalLevyraStrings.current.artistLabel, enabled = album.artist.isNotBlank(), modifier = Modifier.weight(1f), onClick = onOpenArtist)
+            AlbumSecondaryAction(icon = Icons.Rounded.Share, label = LocalLevyraStrings.current.share, enabled = true, modifier = Modifier.weight(1f), onClick = onShare)
         }
 
         if (description.isNotBlank()) {
@@ -1602,7 +1603,7 @@ private fun AlbumHeroCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    if (descriptionExpanded) "Mostra meno" else "Leggi tutto",
+                    if (descriptionExpanded) LocalLevyraStrings.current.showLess else LocalLevyraStrings.current.readAll,
                     color = accentStart,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -1645,7 +1646,7 @@ private fun AlbumPrimaryPlayButton(
                 Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = if (enabled) LevyraBlack else LevyraMuted, modifier = Modifier.size(26.dp))
             }
             Text(
-                if (isPlaying) "In riproduzione" else "Riproduci",
+                if (isPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play,
                 color = if (enabled) LevyraBlack else LevyraMuted,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -1802,6 +1803,7 @@ private fun AlbumTrackItem(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
     Surface(
         color = if (isCurrent) LevyraCyan.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.03f),
         border = BorderStroke(1.dp, if (isCurrent) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.05f)),
@@ -1833,8 +1835,8 @@ private fun AlbumTrackItem(
                 Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 15.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val duration = formatDuration(track.durationMs).takeIf { it != "--:--" }.orEmpty()
                 val status = when {
-                    isDownloaded -> "Offline"
-                    isDownloading -> "Download ${downloadProgress ?: 1}%"
+                    isDownloaded -> strings.offline
+                    isDownloading -> strings.formatDownloadProgress(downloadProgress ?: 1)
                     else -> duration
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1865,11 +1867,11 @@ private fun AlbumTrackItem(
                     Icon(Icons.Rounded.MoreVert, null, tint = LevyraMuted)
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    DropdownMenuItem(text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti") }, leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) }, onClick = { expanded = false; onFavorite() })
-                    DropdownMenuItem(text = { Text("Aggiungi a playlist") }, leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) }, onClick = { expanded = false; onAddToPlaylist() })
-                    DropdownMenuItem(text = { Text(if (isDownloaded) "Già offline" else "Scarica") }, leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) }, onClick = { expanded = false; if (!isDownloaded) onDownload() })
-                    DropdownMenuItem(text = { Text("Apri artista") }, leadingIcon = { Icon(Icons.Rounded.Person, null) }, onClick = { expanded = false; onArtist() })
-                    DropdownMenuItem(text = { Text("Condividi") }, leadingIcon = { Icon(Icons.Rounded.Share, null) }, onClick = {
+                    DropdownMenuItem(text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) }, leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) }, onClick = { expanded = false; onFavorite() })
+                    DropdownMenuItem(text = { Text(strings.addToPlaylist) }, leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) }, onClick = { expanded = false; onAddToPlaylist() })
+                    DropdownMenuItem(text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) }, leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) }, onClick = { expanded = false; if (!isDownloaded) onDownload() })
+                    DropdownMenuItem(text = { Text(strings.openArtist) }, leadingIcon = { Icon(Icons.Rounded.Person, null) }, onClick = { expanded = false; onArtist() })
+                    DropdownMenuItem(text = { Text(strings.share) }, leadingIcon = { Icon(Icons.Rounded.Share, null) }, onClick = {
                         expanded = false
                         val shareText = buildString {
                             append(track.title)
@@ -1881,7 +1883,7 @@ private fun AlbumTrackItem(
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
-                        context.startActivity(Intent.createChooser(intent, "Condividi brano"))
+                        context.startActivity(Intent.createChooser(intent, strings.shareSong))
                     })
                 }
             }
@@ -1908,6 +1910,7 @@ private fun ArtistOverlay(
         )
     val accentStart = profile?.let { Color(it.accentStart) } ?: LevyraCyan
     val accentEnd = profile?.let { Color(it.accentEnd) } ?: LevyraViolet
+    val strings = LocalLevyraStrings.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1933,7 +1936,7 @@ private fun ArtistOverlay(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
+                        Icon(Icons.Rounded.ArrowBack, contentDescription = strings.back, tint = LevyraText)
                     }
                     Spacer(modifier = Modifier.weight(1f))
                     Icon(Icons.Rounded.Person, contentDescription = null, tint = LevyraText.copy(alpha = 0.7f))
@@ -1950,7 +1953,7 @@ private fun ArtistOverlay(
                 profile == null -> {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(top = 60.dp), contentAlignment = Alignment.Center) {
-                            Text(state.artistError ?: "Profilo artista non disponibile", color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                            Text(state.artistError ?: strings.artistProfileUnavailable, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -1961,7 +1964,7 @@ private fun ArtistOverlay(
                         item { ArtistBio(profile.bio) }
                     }
                     if (profile.topSongs.isNotEmpty()) {
-                        item { SectionTitle("🔥 Brani popolari") }
+                        item { SectionTitle(strings.popularTracks) }
                         items(profile.topSongs, key = { "artist-song-${it.id}" }) { track ->
                             TrackRow(
                                 track = track,
@@ -1979,11 +1982,11 @@ private fun ArtistOverlay(
                         }
                     }
                     if (profile.albums.isNotEmpty()) {
-                        item { SectionTitle("💿 Album") }
+                        item { SectionTitle("💿 ${strings.albumsPlain}") }
                         item { ArtistReleaseRow(profile.albums, profile.name, onOpenRelease) }
                     }
                     if (profile.singles.isNotEmpty()) {
-                        item { SectionTitle("🎵 Singoli ed EP") }
+                        item { SectionTitle(strings.singlesAndEps) }
                         item { ArtistReleaseRow(profile.singles, profile.name, onOpenRelease) }
                     }
                     if (profile.relatedArtists.isNotEmpty()) {
@@ -2067,6 +2070,7 @@ private fun ArtistHeader(profile: ArtistProfile, accentStart: Color, accentEnd: 
 
 @Composable
 private fun ArtistBio(bio: String) {
+    val strings = LocalLevyraStrings.current
     var expanded by remember { mutableStateOf(false) }
     Surface(
         color = LevyraPanelSoft.copy(alpha = 0.55f),
@@ -2074,7 +2078,7 @@ private fun ArtistBio(bio: String) {
         modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Biografia", color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            Text(strings.biography, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
             Text(
                 bio,
                 color = LevyraText.copy(alpha = 0.86f),
@@ -2085,7 +2089,7 @@ private fun ArtistBio(bio: String) {
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                if (expanded) "Mostra meno" else "Mostra tutto",
+                if (expanded) strings.showLess else strings.showAll,
                 color = LevyraCyan,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
@@ -2166,7 +2170,7 @@ private fun ReleaseRadarRow(
                     }
                     if (entry.isFresh) {
                         Text(
-                            "NEW",
+                            LocalLevyraStrings.current.newBadge,
                             color = Color.White,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
@@ -2208,6 +2212,7 @@ private fun UpdateAvailableOverlay(
     onDownload: () -> Unit,
     onLater: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val blocker = remember { MutableInteractionSource() }
     val notes = remember(update.releaseNotes, update.latestVersionName) {
         cleanedUpdateNotes(update.releaseNotes, update.latestVersionName)
@@ -2268,7 +2273,7 @@ private fun UpdateAvailableOverlay(
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("LEVYRA", color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Black, letterSpacing = 2.5.sp)
                             Surface(color = Color.Black.copy(alpha = 0.28f), shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))) {
-                                Text("NUOVO AGGIORNAMENTO", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), letterSpacing = 1.4.sp)
+                                Text(strings.newUpdate, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp), letterSpacing = 1.4.sp)
                             }
                         }
                     }
@@ -2282,7 +2287,7 @@ private fun UpdateAvailableOverlay(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text(
-                                    text = "Versione ${update.latestVersionName}",
+                                    text = "${strings.versionLabel} ${update.latestVersionName}",
                                     color = Color.White,
                                     fontSize = 22.sp,
                                     fontWeight = FontWeight.Black,
@@ -2295,7 +2300,7 @@ private fun UpdateAvailableOverlay(
                                 }
                             }
                             Text(
-                                text = update.releaseTitle.ifBlank { "Miglioramenti generali e risoluzione di bug." },
+                                text = update.releaseTitle.ifBlank { strings.updateDescription },
                                 color = LevyraMuted,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -2317,14 +2322,14 @@ private fun UpdateAvailableOverlay(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Box(modifier = Modifier.size(8.dp).background(LevyraCyan, CircleShape))
-                                Text("Schermata più compatta, changelog leggibile e contenuto scrollabile su tutti gli schermi.", color = LevyraText.copy(alpha = 0.86f), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
+                                Text(strings.updateDescription, color = LevyraText.copy(alpha = 0.86f), fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
 
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("Novità", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                            Text(strings.whatsNew, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
                             if (notes.isEmpty()) {
-                                UpdateNoteCard("Miglioramenti alle prestazioni e stabilità dell'app.")
+                                UpdateNoteCard(strings.updateDescription)
                             } else {
                                 notes.forEach { note ->
                                     UpdateNoteCard(note)
@@ -2343,7 +2348,7 @@ private fun UpdateAvailableOverlay(
                                 modifier = Modifier.weight(1f).height(48.dp).pressable(onClick = onLater)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text("Più tardi", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Text(strings.later, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                             Surface(
@@ -2352,7 +2357,7 @@ private fun UpdateAvailableOverlay(
                                 modifier = Modifier.weight(1f).height(48.dp).pressable(onClick = onDownload)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Text("Aggiorna", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                                    Text(strings.update, color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black)
                                 }
                             }
                         }
@@ -2419,19 +2424,23 @@ private fun compactReleaseNotes(notes: String): String {
         .filter { it.isNotBlank() }
         .take(3)
         .joinToString(" · ")
-    return clean.ifBlank { "Correzioni, rifiniture e miglioramenti generali." }
+    return clean.ifBlank { "General improvements and bug fixes." }
 }
 
-private fun openExternalUrl(context: android.content.Context, url: String) {
+private fun openExternalUrl(
+    context: android.content.Context,
+    url: String,
+    strings: LevyraStrings = LevyraStrings.forCode("en")
+) {
     if (url.isBlank()) {
-        Toast.makeText(context, "Link aggiornamento non disponibile", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, strings.updateLinkUnavailable, Toast.LENGTH_LONG).show()
         return
     }
     runCatching {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }.onFailure {
-        Toast.makeText(context, "Impossibile aprire il download", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, strings.cannotOpenDownload, Toast.LENGTH_LONG).show()
     }
 }
 
@@ -2470,7 +2479,7 @@ private fun QueueOverlay(
                     Column {
                         Text(strings.queue, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black)
                         Text(
-                            "${state.queue.size} brani · ${state.queueHistoryCount} nella cronologia",
+                            strings.formatQueueSummary(state.queue.size, state.queueHistoryCount),
                             color = LevyraMuted,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
@@ -2498,13 +2507,13 @@ private fun QueueOverlay(
                     ) {
                         Icon(Icons.Rounded.Bolt, null, tint = if (state.radioEnabled) LevyraCyan else LevyraMuted, modifier = Modifier.size(20.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Radio continua", color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
-                            Text("Aggiunge brani coerenti quando la coda sta finendo", color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(strings.continuousRadio, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                            Text(strings.continuousRadioSubtitle, color = LevyraMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Switch(checked = state.radioEnabled, onCheckedChange = { onToggleRadio() })
                         if (state.queueUndoAvailable) {
                             IconButton(onClick = onUndo) {
-                                Icon(Icons.Rounded.Undo, "Annulla rimozione", tint = LevyraCyan)
+                                Icon(Icons.Rounded.Undo, strings.undoRemoval, tint = LevyraCyan)
                             }
                         }
                     }
@@ -2534,7 +2543,7 @@ private fun QueueOverlay(
                         ) {
                             Icon(
                                 Icons.Rounded.DragHandle,
-                                "Trascina per riordinare",
+                                LocalLevyraStrings.current.dragToReorder,
                                 tint = LevyraMuted,
                                 modifier = Modifier
                                     .size(24.dp)
@@ -2580,10 +2589,10 @@ private fun QueueOverlay(
                                 Icon(Icons.Rounded.Equalizer, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
                             } else {
                                 IconButton(onClick = { onPlayNext(track) }, modifier = Modifier.size(34.dp)) {
-                                    Icon(Icons.Rounded.SkipNext, "Riproduci dopo", tint = LevyraText, modifier = Modifier.size(19.dp))
+                                    Icon(Icons.Rounded.SkipNext, strings.playNext, tint = LevyraText, modifier = Modifier.size(19.dp))
                                 }
                                 IconButton(onClick = { onRemove(index) }, modifier = Modifier.size(34.dp)) {
-                                    Icon(Icons.Rounded.Delete, "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(19.dp))
+                                    Icon(Icons.Rounded.Delete, strings.remove, tint = LevyraMuted, modifier = Modifier.size(19.dp))
                                 }
                             }
                         }
@@ -2596,6 +2605,7 @@ private fun QueueOverlay(
 
 @Composable
 private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> Unit) {
+    val strings = LocalLevyraStrings.current
     val artists = profile.topArtists.take(3).joinToString(" • ") { it.label }
     val albums = profile.topAlbums.take(2).joinToString(" • ") { it.label.substringBefore(" • ") }
     Surface(
@@ -2622,9 +2632,9 @@ private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> 
                         Icon(Icons.Rounded.GraphicEq, null, tint = Color.White, modifier = Modifier.size(23.dp))
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Smart Music Profile", color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(LocalLevyraStrings.current.smartMusicProfile, color = LevyraText, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            if (profile.isWarm) "Personalizzazione attiva" else "Sto imparando dai tuoi ascolti",
+                            if (profile.isWarm) strings.profileActive else strings.profileLearning,
                             color = LevyraMuted,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -2640,15 +2650,15 @@ private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> 
                     ) {
                         Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(18.dp))
-                            Text("Flow", color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                            Text(LocalLevyraStrings.current.flow, color = LevyraCyan, fontSize = 12.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 }
                 if (artists.isNotBlank()) {
-                    Text("Artisti: $artists", color = LevyraText.copy(alpha = 0.88f), fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(strings.formatArtists(artists), color = LevyraText.copy(alpha = 0.88f), fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 if (albums.isNotBlank()) {
-                    Text("Album mood: $albums", color = LevyraMuted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(strings.formatAlbumMood(albums), color = LevyraMuted, fontSize = 12.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -2734,7 +2744,7 @@ private fun LyricsOverlay(
                                 tint = LevyraViolet,
                                 background = LevyraViolet.copy(alpha = 0.14f),
                                 onClick = { showIntelligenceDialog = true },
-                                contentDescription = "Apri analisi del testo"
+                                contentDescription = strings.openLyricsAnalysis
                             )
                         }
                         CircleIconButton(
@@ -2742,7 +2752,7 @@ private fun LyricsOverlay(
                             tint = LevyraText,
                             background = Color.White.copy(alpha = 0.15f),
                             onClick = onClose,
-                            contentDescription = "Chiudi testi"
+                            contentDescription = strings.closeLyrics
                         )
                     }
                 }
@@ -2770,8 +2780,8 @@ private fun LyricsOverlay(
                     ) {
                         Icon(Icons.Rounded.Translate, null, tint = if (state.lyricsTranslationEnabled) LevyraCyan else LevyraMuted)
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Traduzione automatica", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
-                            Text("Usa le lingue disponibili nei transcript YouTube", color = LevyraMuted, fontSize = 11.sp)
+                            Text(strings.automaticTranslation, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                            Text(strings.automaticTranslationSubtitle, color = LevyraMuted, fontSize = 11.sp)
                         }
                         Switch(
                             checked = state.lyricsTranslationEnabled,
@@ -2860,6 +2870,7 @@ private fun LyricsIntelligenceDialog(
     onDismiss: () -> Unit,
     onJumpToChorus: (() -> Unit)?
 ) {
+    val strings = LocalLevyraStrings.current
     val repeatedPhrase = summary.repeatedPhrases.firstOrNull()
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2874,7 +2885,7 @@ private fun LyricsIntelligenceDialog(
         },
         title = {
             Text(
-                text = "Analisi del testo",
+                text = strings.openLyricsAnalysis,
                 color = LevyraText,
                 fontWeight = FontWeight.Black
             )
@@ -2883,13 +2894,13 @@ private fun LyricsIntelligenceDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (summary.mood.isNotBlank()) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("Atmosfera", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(strings.atmosphere, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         Text(summary.mood, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 if (summary.themes.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("Temi", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(strings.themes, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         Text(
                             text = summary.themes.take(4).joinToString(" · "),
                             color = LevyraText,
@@ -2901,7 +2912,7 @@ private fun LyricsIntelligenceDialog(
                 }
                 if (!repeatedPhrase.isNullOrBlank()) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("Ritornello rilevato", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(strings.chorusDetected, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         Text(
                             text = "“$repeatedPhrase”",
                             color = LevyraText.copy(alpha = 0.9f),
@@ -2914,7 +2925,7 @@ private fun LyricsIntelligenceDialog(
                     }
                 }
                 Text(
-                    text = "${summary.lineCount} versi · ${summary.wordCount} parole · Analisi locale",
+                    text = strings.formatLyricsAnalysis(summary.lineCount, summary.wordCount),
                     color = LevyraMuted.copy(alpha = 0.82f),
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
@@ -2925,18 +2936,18 @@ private fun LyricsIntelligenceDialog(
         confirmButton = {
             if (onJumpToChorus != null) {
                 TextButton(onClick = onJumpToChorus) {
-                    Text("Vai al ritornello", color = LevyraCyan, fontWeight = FontWeight.Black)
+                    Text(strings.goToChorus, color = LevyraCyan, fontWeight = FontWeight.Black)
                 }
             } else {
                 TextButton(onClick = onDismiss) {
-                    Text("Chiudi", color = LevyraCyan, fontWeight = FontWeight.Black)
+                    Text(strings.close, color = LevyraCyan, fontWeight = FontWeight.Black)
                 }
             }
         },
         dismissButton = {
             if (onJumpToChorus != null) {
                 TextButton(onClick = onDismiss) {
-                    Text("Chiudi", color = LevyraMuted, fontWeight = FontWeight.Bold)
+                    Text(strings.close, color = LevyraMuted, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -4238,22 +4249,22 @@ private data class HomeUpdateCopy(
     val icon: ImageVector
 )
 
-private fun buildHomeUpdateCopy(update: HomeHeroUpdate): HomeUpdateCopy {
+private fun buildHomeUpdateCopy(update: HomeHeroUpdate, strings: LevyraStrings): HomeUpdateCopy {
     val track = update.track
-    val artist = track.artist.ifBlank { "Artista" }
-    val title = track.title.ifBlank { "Brano" }
+    val artist = track.artist.ifBlank { strings.artistLabel }
+    val title = track.title.ifBlank { strings.song }
     val source = track.source.ifBlank { "YouTube Music" }
     val sourceTitle = update.sourceTitle.trim().ifBlank { source }
     val sourceLabel = buildProfessionalSourceLabel(source, sourceTitle)
     if (!update.verifiedRelease) {
         val chartDriven = isChartDrivenSource(sourceTitle) || isChartDrivenSource(source)
         return HomeUpdateCopy(
-            badge = if (chartDriven) "TREND ITALIA" else "RADAR MUSICALE",
+            badge = if (chartDriven) strings.top50Charts.uppercase() else strings.releaseRadar.uppercase(),
             headline = title,
             detail = artist,
-            caption = if (chartDriven) "In evidenza nelle classifiche italiane." else "Selezionato oggi dal tuo flusso musicale.",
+            caption = strings.discoveryFlow,
             sourceLabel = sourceLabel,
-            primaryAction = "Ascolta",
+            primaryAction = strings.play,
             icon = if (chartDriven) Icons.Rounded.Equalizer else Icons.Rounded.GraphicEq
         )
     }
@@ -4265,30 +4276,30 @@ private fun buildHomeUpdateCopy(update: HomeHeroUpdate): HomeUpdateCopy {
     }
     return when (kind) {
         "album" -> HomeUpdateCopy(
-            badge = "NUOVO ALBUM",
+            badge = strings.newAlbum,
             headline = album ?: title,
             detail = artist,
-            caption = if (album != null) "Include anche “$title”." else "Disponibile nelle nuove uscite.",
+            caption = strings.newReleaseSubtitle,
             sourceLabel = sourceLabel,
-            primaryAction = "Apri",
+            primaryAction = strings.open,
             icon = Icons.Rounded.Album
         )
         "singolo" -> HomeUpdateCopy(
-            badge = "NUOVO SINGOLO",
+            badge = strings.newSingle,
             headline = title,
             detail = artist,
-            caption = "Disponibile ora nelle nuove uscite.",
+            caption = strings.newReleaseSubtitle,
             sourceLabel = sourceLabel,
-            primaryAction = "Apri",
+            primaryAction = strings.open,
             icon = Icons.Rounded.MusicNote
         )
         else -> HomeUpdateCopy(
-            badge = "NUOVA USCITA",
+            badge = strings.newRelease,
             headline = title,
             detail = artist,
-            caption = "Una novità appena entrata nel radar.",
+            caption = strings.newReleaseSubtitle,
             sourceLabel = sourceLabel,
-            primaryAction = "Apri",
+            primaryAction = strings.open,
             icon = Icons.Rounded.MusicNote
         )
     }
@@ -4322,11 +4333,12 @@ private fun HomeDiscoveryHero(
     onPlay: () -> Unit,
     onSave: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val track = update.track
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    val copy = remember(track.id, track.title, track.artist, track.album, update.sourceTitle, update.verifiedRelease) {
-        buildHomeUpdateCopy(update)
+    val copy = remember(track.id, track.title, track.artist, track.album, update.sourceTitle, update.verifiedRelease, strings.code) {
+        buildHomeUpdateCopy(update, strings)
     }
     Surface(
         color = Color.Transparent,
@@ -4510,7 +4522,7 @@ private fun HomeDiscoveryHero(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = if (isFavorite) "Salvato" else "Salva",
+                                    text = if (isFavorite) LocalLevyraStrings.current.saved else LocalLevyraStrings.current.save,
                                     color = LevyraText,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
@@ -4590,7 +4602,7 @@ private fun ContinueListeningCard(
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = "Continua ad ascoltare",
+                            text = LocalLevyraStrings.current.continueListening,
                             color = LevyraCyan,
                             fontSize = 10.8.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -4669,7 +4681,7 @@ private fun HomeShortcutRow(
         item {
             QuickAction(
                 icon = Icons.Rounded.Shuffle,
-                label = "Mix per te",
+                label = LocalLevyraStrings.current.mixForYou,
                 accent = LevyraCyan,
                 enabled = hasTracks,
                 modifier = Modifier.width(176.dp),
@@ -4679,7 +4691,7 @@ private fun HomeShortcutRow(
         item {
             QuickAction(
                 icon = Icons.Rounded.Favorite,
-                label = "Preferiti",
+                label = LocalLevyraStrings.current.favoritesPlain,
                 accent = LevyraPink,
                 enabled = true,
                 modifier = Modifier.width(176.dp),
@@ -4689,7 +4701,7 @@ private fun HomeShortcutRow(
         item {
             QuickAction(
                 icon = Icons.Rounded.Bolt,
-                label = "Nuove uscite",
+                label = LocalLevyraStrings.current.newReleases,
                 accent = LevyraViolet,
                 enabled = true,
                 modifier = Modifier.width(176.dp),
@@ -4699,7 +4711,7 @@ private fun HomeShortcutRow(
         item {
             QuickAction(
                 icon = Icons.Rounded.MusicNote,
-                label = "Generi",
+                label = LocalLevyraStrings.current.genres,
                 accent = Color(0xFFB7C7FF),
                 enabled = true,
                 modifier = Modifier.width(176.dp),
@@ -4885,7 +4897,7 @@ private fun QuickSongRow(
         IconButton(onClick = onFavorite, modifier = Modifier.size(38.dp)) {
             Icon(
                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = "Preferito",
+                contentDescription = LocalLevyraStrings.current.favorite,
                 tint = if (isFavorite) LevyraPink else LevyraMuted,
                 modifier = Modifier.size(23.dp)
             )
@@ -4913,6 +4925,7 @@ private fun TrackOverflowMenu(
     onArtist: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(
@@ -4921,7 +4934,7 @@ private fun TrackOverflowMenu(
         ) {
             Icon(
                 imageVector = Icons.Rounded.MoreVert,
-                contentDescription = "Azioni",
+                contentDescription = strings.actions,
                 tint = LevyraMuted,
                 modifier = Modifier.size(iconSize)
             )
@@ -4931,7 +4944,7 @@ private fun TrackOverflowMenu(
             onDismissRequest = { expanded = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Aggiungi alla coda") },
+                text = { Text(strings.addToQueue) },
                 leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
                 onClick = {
                     expanded = false
@@ -4939,7 +4952,7 @@ private fun TrackOverflowMenu(
                 }
             )
             DropdownMenuItem(
-                text = { Text("Condividi") },
+                text = { Text(strings.share) },
                 leadingIcon = { Icon(Icons.Rounded.Share, null) },
                 onClick = {
                     expanded = false
@@ -4953,11 +4966,11 @@ private fun TrackOverflowMenu(
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, shareText)
                     }
-                    context.startActivity(Intent.createChooser(intent, "Condividi brano"))
+                    context.startActivity(Intent.createChooser(intent, strings.shareSong))
                 }
             )
             DropdownMenuItem(
-                text = { Text("Vai al player") },
+                text = { Text(strings.goToPlayer) },
                 leadingIcon = { Icon(Icons.Rounded.PlayArrow, null) },
                 onClick = {
                     expanded = false
@@ -4965,7 +4978,7 @@ private fun TrackOverflowMenu(
                 }
             )
             DropdownMenuItem(
-                text = { Text("Apri artista") },
+                text = { Text(strings.openArtist) },
                 leadingIcon = { Icon(Icons.Rounded.Person, null) },
                 onClick = {
                     expanded = false
@@ -4973,7 +4986,7 @@ private fun TrackOverflowMenu(
                 }
             )
             DropdownMenuItem(
-                text = { Text("Salva offline") },
+                text = { Text(strings.saveOffline) },
                 leadingIcon = { Icon(Icons.Rounded.LibraryMusic, null) },
                 onClick = {
                     expanded = false
@@ -5236,6 +5249,7 @@ private fun SearchHeader(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
 
     val speechRecognizerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -5296,7 +5310,7 @@ private fun SearchHeader(
                     cursorBrush = SolidColor(LevyraCyan),
                     decorationBox = { innerTextField ->
                         if (query.isEmpty()) {
-                            Text(LocalLevyraStrings.current.searchPlaceholder, color = LevyraMuted, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                            Text(strings.searchPlaceholder, color = LevyraMuted, fontWeight = FontWeight.Medium, fontSize = 15.sp)
                         }
                         innerTextField()
                     }
@@ -5309,7 +5323,7 @@ private fun SearchHeader(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
-                            contentDescription = LocalLevyraStrings.current.clear,
+                            contentDescription = strings.clear,
                             tint = LevyraMuted,
                             modifier = Modifier.size(18.dp)
                         )
@@ -5322,12 +5336,14 @@ private fun SearchHeader(
             onClick = { 
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Ascoltando...")
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.forLanguageTag(strings.code).toLanguageTag())
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, Locale.forLanguageTag(strings.code).toLanguageTag())
+                    putExtra(RecognizerIntent.EXTRA_PROMPT, strings.listeningPrompt)
                 }
                 try {
                     speechRecognizerLauncher.launch(intent)
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Ricerca vocale non supportata", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, strings.voiceSearchUnsupported, Toast.LENGTH_SHORT).show()
                 }
             },
             modifier = Modifier
@@ -5336,21 +5352,21 @@ private fun SearchHeader(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Mic,
-                contentDescription = LocalLevyraStrings.current.voice,
+                contentDescription = strings.voice,
                 tint = LevyraText,
                 modifier = Modifier.size(20.dp)
             )
         }
 
         IconButton(
-            onClick = { Toast.makeText(context, "Filtri musicali in arrivo!", Toast.LENGTH_SHORT).show() },
+            onClick = { Toast.makeText(context, strings.musicFiltersComingSoon, Toast.LENGTH_SHORT).show() },
             modifier = Modifier
                 .size(40.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
         ) {
             Icon(
                 imageVector = Icons.Rounded.Equalizer,
-                contentDescription = "Soundwave",
+                contentDescription = strings.audioEngine,
                 tint = LevyraText,
                 modifier = Modifier.size(20.dp)
             )
@@ -5373,10 +5389,11 @@ private fun RecentSearchesRow(
     onArtist: (Track) -> Unit
 ) {
     val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Ricerche recenti",
+            text = strings.recentSearches,
             color = LevyraText,
             fontSize = 18.sp,
             fontWeight = FontWeight.ExtraBold
@@ -5438,7 +5455,7 @@ private fun RecentSearchesRow(
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.MoreVert,
-                                    contentDescription = "Azioni",
+                                    contentDescription = strings.actions,
                                     tint = Color.White,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -5448,7 +5465,7 @@ private fun RecentSearchesRow(
                                 onDismissRequest = { menuExpanded = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti") },
+                                    text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) },
                                     leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) },
                                     onClick = {
                                         menuExpanded = false
@@ -5456,7 +5473,7 @@ private fun RecentSearchesRow(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Riproduci dopo") },
+                                    text = { Text(strings.playNext) },
                                     leadingIcon = { Icon(Icons.Rounded.PlaylistPlay, null) },
                                     onClick = {
                                         menuExpanded = false
@@ -5464,7 +5481,7 @@ private fun RecentSearchesRow(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Aggiungi alla coda") },
+                                    text = { Text(strings.addToQueue) },
                                     leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
                                     onClick = {
                                         menuExpanded = false
@@ -5472,7 +5489,7 @@ private fun RecentSearchesRow(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Aggiungi a playlist") },
+                                    text = { Text(strings.addToPlaylist) },
                                     leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
                                     onClick = {
                                         menuExpanded = false
@@ -5480,7 +5497,7 @@ private fun RecentSearchesRow(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(if (isDownloaded) "Già offline" else "Scarica") },
+                                    text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) },
                                     leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) },
                                     onClick = {
                                         menuExpanded = false
@@ -5488,7 +5505,7 @@ private fun RecentSearchesRow(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Apri artista") },
+                                    text = { Text(strings.openArtist) },
                                     leadingIcon = { Icon(Icons.Rounded.Person, null) },
                                     onClick = {
                                         menuExpanded = false
@@ -5496,7 +5513,7 @@ private fun RecentSearchesRow(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Condividi") },
+                                    text = { Text(strings.share) },
                                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
                                     onClick = {
                                         menuExpanded = false
@@ -5510,11 +5527,11 @@ private fun RecentSearchesRow(
                                             type = "text/plain"
                                             putExtra(Intent.EXTRA_TEXT, shareText)
                                         }
-                                        context.startActivity(Intent.createChooser(intent, "Condividi brano"))
+                                        context.startActivity(Intent.createChooser(intent, strings.shareSong))
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Rimuovi dalle recenti") },
+                                    text = { Text(strings.removeFromRecentSearches) },
                                     leadingIcon = { Icon(Icons.Rounded.Delete, null) },
                                     onClick = {
                                         menuExpanded = false
@@ -5634,7 +5651,7 @@ private fun SuggestionsList(
                         )
                         Icon(
                             imageVector = Icons.Rounded.ArrowBack,
-                            contentDescription = "Completa",
+                            contentDescription = LocalLevyraStrings.current.complete,
                             tint = accent.copy(alpha = 0.78f),
                             modifier = Modifier
                                 .size(20.dp)
@@ -5666,6 +5683,7 @@ private fun SuggestionsList(
 
 @Composable
 private fun DownloadsFolderCard(count: Int, onClick: () -> Unit) {
+    val strings = LocalLevyraStrings.current
     Surface(
         color = Color.White.copy(alpha = 0.045f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
@@ -5697,13 +5715,13 @@ private fun DownloadsFolderCard(count: Int, onClick: () -> Unit) {
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Cartella download",
+                    text = LocalLevyraStrings.current.downloadsFolder,
                     color = LevyraText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = if (count == 1) "1 brano scaricato" else "$count brani scaricati",
+                    text = strings.formatDownloadedTrackCount(count),
                     color = LevyraMuted,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal
@@ -5725,6 +5743,7 @@ private fun DownloadsFolderOverlay(
     viewModel: LevyraViewModel,
     onClose: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -5743,18 +5762,18 @@ private fun DownloadsFolderOverlay(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = "Indietro", tint = LevyraText)
+                        Icon(Icons.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
                     }
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Download offline",
+                            text = LocalLevyraStrings.current.offlineDownloadsPlain,
                             color = LevyraText,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Black
                         )
                         Text(
-                            text = if (state.downloads.size == 1) "1 brano salvato" else "${state.downloads.size} brani salvati",
+                            text = strings.formatSavedTrackCount(state.downloads.size),
                             color = LevyraMuted,
                             fontSize = 14.sp
                         )
@@ -5763,7 +5782,7 @@ private fun DownloadsFolderOverlay(
             }
             if (state.downloads.isEmpty()) {
                 item {
-                    EmptyState("Nessun download salvato offline.")
+                    EmptyState(strings.noOfflineDownloads)
                 }
             } else {
                 items(state.downloads, key = { "dlfolder-${it.id}" }) { download ->
@@ -5809,7 +5828,7 @@ private fun LibraryScreen(
             item {
                 LibrarySectionHeader(
                     title = cleanLibraryLabel(strings.playlists),
-                    detail = "Playlist personali",
+                    detail = LocalLevyraStrings.current.personalPlaylists,
                     count = state.playlists.size,
                     icon = Icons.Rounded.QueueMusic,
                     accent = LevyraViolet,
@@ -5821,8 +5840,8 @@ private fun LibraryScreen(
                 item {
                     LibraryEmptyState(
                         icon = Icons.Rounded.QueueMusic,
-                        title = "Crea la tua prima playlist",
-                        detail = "Raccogli i brani che vuoi ritrovare subito.",
+                        title = strings.createFirstPlaylist,
+                        detail = strings.createFirstPlaylistSubtitle,
                         accent = LevyraViolet,
                         actionLabel = strings.newItem,
                         onAction = { showCreate = true }
@@ -5842,7 +5861,7 @@ private fun LibraryScreen(
             item {
                 LibrarySectionHeader(
                     title = cleanLibraryLabel(strings.downloads),
-                    detail = "Disponibili senza rete",
+                    detail = LocalLevyraStrings.current.offline,
                     count = state.downloads.size,
                     icon = Icons.Rounded.DownloadDone,
                     accent = LevyraCyan
@@ -5852,8 +5871,8 @@ private fun LibraryScreen(
                 item {
                     LibraryEmptyState(
                         icon = Icons.Rounded.Download,
-                        title = "Nessun download offline",
-                        detail = "Tocca download su un brano per salvarlo in Music/Levyra.",
+                        title = LocalLevyraStrings.current.noOfflineDownloads,
+                        detail = strings.downloadTrackHint,
                         accent = LevyraCyan
                     )
                 }
@@ -5869,7 +5888,7 @@ private fun LibraryScreen(
             item {
                 LibrarySectionHeader(
                     title = cleanLibraryLabel(strings.favorites),
-                    detail = "Brani salvati",
+                    detail = strings.savedTracks,
                     count = state.favorites.size,
                     icon = Icons.Rounded.Favorite,
                     accent = LevyraPink
@@ -5879,8 +5898,8 @@ private fun LibraryScreen(
                 item {
                     LibraryEmptyState(
                         icon = Icons.Rounded.FavoriteBorder,
-                        title = "Preferiti ancora vuoti",
-                        detail = "Tocca il cuore su un brano per metterlo qui.",
+                        title = strings.favoritesEmpty,
+                        detail = LocalLevyraStrings.current.tapHeartToAdd,
                         accent = LevyraPink
                     )
                 }
@@ -6052,13 +6071,14 @@ private fun LibraryHeader(
                 Icon(Icons.Rounded.LibraryMusic, null, tint = LevyraCyan, modifier = Modifier.size(25.dp))
             }
         }
+        val strings = LocalLevyraStrings.current
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            LibraryStatPill(Icons.Rounded.QueueMusic, playlistCount.toString(), "playlist", LevyraViolet)
-            LibraryStatPill(Icons.Rounded.DownloadDone, downloadCount.toString(), "offline", LevyraCyan)
-            LibraryStatPill(Icons.Rounded.Favorite, favoriteCount.toString(), "preferiti", LevyraPink)
+            LibraryStatPill(Icons.Rounded.QueueMusic, playlistCount.toString(), strings.playlistsPlain, LevyraViolet)
+            LibraryStatPill(Icons.Rounded.DownloadDone, downloadCount.toString(), strings.offline, LevyraCyan)
+            LibraryStatPill(Icons.Rounded.Favorite, favoriteCount.toString(), strings.favoritesPlain, LevyraPink)
         }
     }
 }
@@ -6502,7 +6522,7 @@ private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onPlay: (
             Text(download.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(download.artist, color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                if (download.embeddedMetadata) "Music/Levyra · cover e tag" else "Music/Levyra",
+                if (download.embeddedMetadata) "Music/Levyra · ${LocalLevyraStrings.current.coverAndTags}" else "Music/Levyra",
                 color = LevyraMuted.copy(alpha = 0.7f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -6511,7 +6531,7 @@ private fun DownloadRow(download: DownloadedTrack, isCurrent: Boolean, onPlay: (
             )
         }
         IconButton(onClick = onDelete) {
-            Icon(Icons.Rounded.Delete, contentDescription = "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(22.dp))
+            Icon(Icons.Rounded.Delete, contentDescription = LocalLevyraStrings.current.remove, tint = LevyraMuted, modifier = Modifier.size(22.dp))
         }
     }
 }
@@ -6553,15 +6573,15 @@ private fun PlaylistRow(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(playlist.name, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                if (playlist.size == 1) "1 brano" else "${playlist.size} brani",
+                LocalLevyraStrings.current.formatTrackCount(playlist.size),
                 color = LevyraMuted, fontSize = 14.sp, fontWeight = FontWeight.Medium
             )
         }
         IconButton(onClick = onPlay, modifier = Modifier.size(36.dp)) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = "Riproduci", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+            Icon(Icons.Rounded.PlayArrow, contentDescription = LocalLevyraStrings.current.play, tint = LevyraMuted, modifier = Modifier.size(24.dp))
         }
         IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-            Icon(Icons.Rounded.Delete, contentDescription = "Elimina", tint = LevyraMuted, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.Delete, contentDescription = LocalLevyraStrings.current.delete, tint = LevyraMuted, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -6572,13 +6592,13 @@ private fun PlaylistCreateDialog(onDismiss: () -> Unit, onConfirm: (String) -> U
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LevyraPanel,
-        title = { Text("Nuova playlist", color = LevyraText, fontWeight = FontWeight.Black) },
+        title = { Text(LocalLevyraStrings.current.newPlaylist, color = LevyraText, fontWeight = FontWeight.Black) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 singleLine = true,
-                placeholder = { Text("Nome della playlist", color = LevyraMuted) },
+                placeholder = { Text(LocalLevyraStrings.current.playlistName, color = LevyraMuted) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = LevyraText,
                     unfocusedTextColor = LevyraText,
@@ -6590,11 +6610,11 @@ private fun PlaylistCreateDialog(onDismiss: () -> Unit, onConfirm: (String) -> U
         },
         confirmButton = {
             TextButton(onClick = { if (name.isNotBlank()) onConfirm(name) }) {
-                Text("Crea", color = LevyraCyan, fontWeight = FontWeight.Bold)
+                Text(LocalLevyraStrings.current.create, color = LevyraCyan, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annulla", color = LevyraMuted) }
+            TextButton(onClick = onDismiss) { Text(LocalLevyraStrings.current.cancel, color = LevyraMuted) }
         }
     )
 }
@@ -6607,12 +6627,13 @@ private fun AddToPlaylistDialog(
     onAddTo: (String) -> Unit,
     onCreateWith: (String) -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     var creating by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LevyraPanel,
-        title = { Text("Aggiungi a playlist", color = LevyraText, fontWeight = FontWeight.Black) },
+        title = { Text(LocalLevyraStrings.current.addToPlaylist, color = LevyraText, fontWeight = FontWeight.Black) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (creating) {
@@ -6620,7 +6641,7 @@ private fun AddToPlaylistDialog(
                         value = name,
                         onValueChange = { name = it },
                         singleLine = true,
-                        placeholder = { Text("Nome nuova playlist", color = LevyraMuted) },
+                        placeholder = { Text(LocalLevyraStrings.current.newPlaylistName, color = LevyraMuted) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = LevyraText,
                             unfocusedTextColor = LevyraText,
@@ -6640,7 +6661,7 @@ private fun AddToPlaylistDialog(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Icon(Icons.Rounded.Add, null, tint = LevyraCyan)
-                        Text("Crea nuova playlist", color = LevyraCyan, fontWeight = FontWeight.Bold)
+                        Text(LocalLevyraStrings.current.createNewPlaylist, color = LevyraCyan, fontWeight = FontWeight.Bold)
                     }
                     playlists.forEach { pl ->
                         Row(
@@ -6662,12 +6683,12 @@ private fun AddToPlaylistDialog(
         confirmButton = {
             if (creating) {
                 TextButton(onClick = { if (name.isNotBlank()) onCreateWith(name) }) {
-                    Text("Crea e aggiungi", color = LevyraCyan, fontWeight = FontWeight.Bold)
+                    Text(LocalLevyraStrings.current.createAndAdd, color = LevyraCyan, fontWeight = FontWeight.Bold)
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Chiudi", color = LevyraMuted) }
+            TextButton(onClick = onDismiss) { Text(strings.close, color = LevyraMuted) }
         }
     )
 }
@@ -6695,20 +6716,20 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                     Spacer(Modifier.width(4.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(playlist.name, color = LevyraText, fontSize = 26.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(if (playlist.size == 1) "1 brano" else "${playlist.size} brani", color = LevyraMuted, fontSize = 14.sp)
+                        Text(LocalLevyraStrings.current.formatTrackCount(playlist.size), color = LevyraMuted, fontSize = 14.sp)
                     }
                     if (playlist.tracks.isNotEmpty()) {
                         IconButton(onClick = { viewModel.exportOpenPlaylist() }) {
-                            Icon(Icons.Rounded.DownloadDone, contentDescription = "Scarica playlist", tint = LevyraViolet, modifier = Modifier.size(27.dp))
+                            Icon(Icons.Rounded.DownloadDone, contentDescription = LocalLevyraStrings.current.downloadPlaylist, tint = LevyraViolet, modifier = Modifier.size(27.dp))
                         }
                         IconButton(onClick = { viewModel.playPlaylist(playlist.id) }) {
-                            Icon(Icons.Rounded.PlaylistPlay, contentDescription = "Riproduci tutto", tint = LevyraCyan, modifier = Modifier.size(30.dp))
+                            Icon(Icons.Rounded.PlaylistPlay, contentDescription = LocalLevyraStrings.current.playAll, tint = LevyraCyan, modifier = Modifier.size(30.dp))
                         }
                     }
                 }
             }
             if (playlist.tracks.isEmpty()) {
-                item { EmptyState("Playlist vuota. Aggiungi brani dai tre puntini su un brano.") }
+                item { EmptyState(LocalLevyraStrings.current.playlistEmpty) }
             } else {
                 items(playlist.tracks, key = { "pldetail-${it.id}" }) { track ->
                     TrackRow(
@@ -6955,7 +6976,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         }
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("RIPRODUZIONE DA ${track?.source ?: "LEVYRA"}", color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(LocalLevyraStrings.current.formatPlayingFrom(track?.source ?: "LEVYRA"), color = LevyraMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     Row(
@@ -6965,7 +6986,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         if (state.isVideoMode) {
                             PlayerRoundIconButton(
                                 icon = Icons.Rounded.PictureInPictureAlt,
-                                contentDescription = "Picture in Picture",
+                                contentDescription = LocalLevyraStrings.current.pictureInPicture,
                                 size = 42.dp,
                                 iconSize = 21.dp,
                                 tint = LevyraText,
@@ -6976,7 +6997,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         }
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.Close,
-                            contentDescription = "Chiudi player",
+                            contentDescription = LocalLevyraStrings.current.closePlayer,
                             size = 42.dp,
                             iconSize = 22.dp,
                             tint = Color.White,
@@ -6989,7 +7010,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         )
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.MoreVert,
-                            contentDescription = "Opzioni",
+                            contentDescription = LocalLevyraStrings.current.options,
                             size = 42.dp,
                             iconSize = 24.dp,
                             tint = LevyraText,
@@ -7141,7 +7162,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                                     val updated = (current - dragAmount / size.height.coerceAtLeast(1)).coerceIn(0.05f, 1f)
                                                     attributes.screenBrightness = updated
                                                     activity.window.attributes = attributes
-                                                    gestureFeedback = "Luminosità ${(updated * 100f).roundToInt()}%"
+                                                    gestureFeedback = "${strings.brightness} ${(updated * 100f).roundToInt()}%"
                                                     gestureFeedbackEvent += 1
                                                 }
                                             }
@@ -7202,7 +7223,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                                             val updated = (current + steps).coerceIn(0, maximum)
                                                             manager.setStreamVolume(AudioManager.STREAM_MUSIC, updated, 0)
                                                             accumulated -= steps.toFloat()
-                                                            gestureFeedback = "Volume ${((updated.toFloat() / maximum.toFloat()) * 100f).roundToInt()}%"
+                                                            gestureFeedback = "${strings.volume} ${((updated.toFloat() / maximum.toFloat()) * 100f).roundToInt()}%"
                                                             gestureFeedbackEvent += 1
                                                         }
                                                     }
@@ -7297,7 +7318,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         IconButton(onClick = { viewModel.toggleFavorite(track) }) {
                             Icon(
                                 imageVector = if (track.id in state.favoriteIds) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                contentDescription = "Preferiti",
+                                contentDescription = LocalLevyraStrings.current.favoritesPlain,
                                 tint = if (track.id in state.favoriteIds) LevyraPink else LevyraMuted,
                                 modifier = Modifier.size(28.dp)
                             )
@@ -7344,13 +7365,13 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = { viewModel.openQueue() }) {
-                            Icon(Icons.Rounded.QueueMusic, "Coda", tint = LevyraMuted, modifier = Modifier.size(28.dp))
+                            Icon(Icons.Rounded.QueueMusic, LocalLevyraStrings.current.queue, tint = LevyraMuted, modifier = Modifier.size(28.dp))
                         }
                         IconButton(onClick = { viewModel.openLyrics() }) {
-                            Icon(Icons.Rounded.Subject, "Testo", tint = LevyraMuted, modifier = Modifier.size(28.dp))
+                            Icon(Icons.Rounded.Subject, LocalLevyraStrings.current.lyrics, tint = LevyraMuted, modifier = Modifier.size(28.dp))
                         }
                         IconButton(onClick = { viewModel.exportCurrentTrack() }) {
-                            Icon(Icons.Rounded.Download, "Download", tint = if (state.isOfflineExporting) LevyraCyan else LevyraMuted, modifier = Modifier.size(28.dp))
+                            Icon(Icons.Rounded.Download, LocalLevyraStrings.current.download, tint = if (state.isOfflineExporting) LevyraCyan else LevyraMuted, modifier = Modifier.size(28.dp))
                         }
                     }
                 }
@@ -7374,7 +7395,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     shape = RoundedCornerShape(16.dp),
                                     modifier = Modifier.clickable { showInlineLyrics = true }
                                 ) {
-                                    Text("Mostra testo brano", color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                                    Text(LocalLevyraStrings.current.showLyrics, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                                 }
                             }
                         } else {
@@ -7415,7 +7436,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     onClick = { showInlineLyrics = false },
                                     modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
                                 ) {
-                                    Icon(Icons.Rounded.Close, "Chiudi", tint = Color.White.copy(alpha = 0.5f))
+                                    Icon(Icons.Rounded.Close, LocalLevyraStrings.current.close, tint = Color.White.copy(alpha = 0.5f))
                                 }
                             }
                         }
@@ -7569,7 +7590,7 @@ private fun MainPlayerControls(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Shuffle,
-                contentDescription = "Shuffle",
+                contentDescription = LocalLevyraStrings.current.shuffle,
                 tint = if (shuffleOn) activeColor else LevyraMuted,
                 modifier = Modifier.size(24.dp)
             )
@@ -7582,7 +7603,7 @@ private fun MainPlayerControls(
         ) {
             Icon(
                 imageVector = Icons.Rounded.SkipPrevious,
-                contentDescription = "Precedente",
+                contentDescription = LocalLevyraStrings.current.previous,
                 tint = LevyraText,
                 modifier = Modifier.size(36.dp)
             )
@@ -7620,7 +7641,7 @@ private fun MainPlayerControls(
                 ) { playing ->
                     Icon(
                         imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = if (playing) "Pausa" else "Riproduci",
+                        contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
                         tint = playTint,
                         modifier = Modifier.size(42.dp)
                     )
@@ -7635,7 +7656,7 @@ private fun MainPlayerControls(
         ) {
             Icon(
                 imageVector = Icons.Rounded.SkipNext,
-                contentDescription = "Successivo",
+                contentDescription = LocalLevyraStrings.current.next,
                 tint = LevyraText,
                 modifier = Modifier.size(36.dp)
             )
@@ -7649,7 +7670,7 @@ private fun MainPlayerControls(
         ) {
             Icon(
                 imageVector = repeatIcon,
-                contentDescription = "Repeat",
+                contentDescription = LocalLevyraStrings.current.repeat,
                 tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) activeColor else LevyraMuted,
                 modifier = Modifier.size(24.dp)
             )
@@ -7688,7 +7709,7 @@ private fun PlayerOptionsRow(
         )
         OptionChip(
             icon = Icons.Rounded.Bedtime,
-            label = if (sleepMinutes > 0) "${sleepMinutes}m" else "Timer",
+            label = if (sleepMinutes > 0) "${sleepMinutes}m" else LocalLevyraStrings.current.timer,
             active = sleepMinutes > 0,
             modifier = Modifier.weight(1f),
             onClick = onSleep
@@ -7740,7 +7761,7 @@ private fun ShareOptionChip(track: Track, modifier: Modifier = Modifier) {
                     putExtra(Intent.EXTRA_SUBJECT, "${track.title} — ${track.artist}")
                     putExtra(Intent.EXTRA_TEXT, "${track.title} — ${track.artist}\n$link")
                 }
-                context.startActivity(Intent.createChooser(intent, "Condividi brano"))
+                context.startActivity(Intent.createChooser(intent, LocalLevyraStrings.current.shareSong))
             }
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -8040,12 +8061,12 @@ private fun SettingsOverlay(
                     onCheckedChange = onDynamicColor
                 )
             }
-            item { SettingsSectionLabel("INTERFACCIA HOME") }
+            item { SettingsSectionLabel(strings.homeInterfaceSection) }
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Home,
-                    title = "Home compatta",
-                    subtitle = "Riduce gli spazi verticali e rende lo scorrimento più leggero",
+                    title = strings.compactHome,
+                    subtitle = strings.compactHomeSubtitle,
                     checked = interfaceSettings.compactHome,
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(compactHome = it)) }
                 )
@@ -8053,8 +8074,8 @@ private fun SettingsOverlay(
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.MusicNote,
-                    title = "La tua orbita",
-                    subtitle = "Mostra gli ascolti personali nella parte alta della Home",
+                    title = strings.yourOrbitSetting,
+                    subtitle = strings.showPersonalListening,
                     checked = interfaceSettings.showPersonalOrbit,
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showPersonalOrbit = it)) }
                 )
@@ -8062,8 +8083,8 @@ private fun SettingsOverlay(
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.GraphicEq,
-                    title = "Voci che risuonano",
-                    subtitle = "Mantiene la selezione personale basata sugli ascolti",
+                    title = strings.voicesSetting,
+                    subtitle = strings.voicesSettingSubtitle,
                     checked = interfaceSettings.showResonance,
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showResonance = it)) }
                 )
@@ -8071,8 +8092,8 @@ private fun SettingsOverlay(
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Notifications,
-                    title = "Nuove uscite",
-                    subtitle = "Mostra release recenti e radar degli artisti",
+                    title = strings.newReleasesSetting,
+                    subtitle = strings.showRecentReleases,
                     checked = interfaceSettings.showNewReleases,
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showNewReleases = it)) }
                 )
@@ -8080,8 +8101,8 @@ private fun SettingsOverlay(
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Album,
-                    title = "Album per te",
-                    subtitle = "Mostra gli album consigliati nella Home",
+                    title = strings.albumsForYouSetting,
+                    subtitle = strings.showRecommendedAlbums,
                     checked = interfaceSettings.showAlbumsForYou,
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showAlbumsForYou = it)) }
                 )
@@ -8089,8 +8110,8 @@ private fun SettingsOverlay(
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Person,
-                    title = "Artisti di tendenza",
-                    subtitle = "Mostra gli artisti emersi dalle tue sezioni musicali",
+                    title = strings.trendingArtists,
+                    subtitle = strings.showDiscoveredArtists,
                     checked = interfaceSettings.showTrendingArtists,
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showTrendingArtists = it)) }
                 )
@@ -8098,18 +8119,18 @@ private fun SettingsOverlay(
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.LocalFireDepartment,
-                    title = "Classifiche Top 50",
-                    subtitle = "Mostra classifiche e selettore paese",
+                    title = strings.top50Charts,
+                    subtitle = strings.showChartsCountry,
                     checked = interfaceSettings.showCharts,
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showCharts = it)) }
                 )
             }
-            item { SettingsSectionLabel("PLAYER MOBILE") }
+            item { SettingsSectionLabel(strings.mobilePlayerSection) }
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Speed,
-                    title = "Gesture avanzate",
-                    subtitle = "Doppio tap, pressione prolungata, luminosità e volume",
+                    title = strings.advancedGestures,
+                    subtitle = strings.advancedGesturesSubtitle,
                     checked = interfaceSettings.playerGesturesEnabled,
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(playerGesturesEnabled = it)) }
                 )
@@ -8118,8 +8139,8 @@ private fun SettingsOverlay(
                 item {
                     SettingsChoiceRow(
                         icon = Icons.Rounded.SkipNext,
-                        title = "Salto con doppio tap",
-                        subtitle = "Durata del salto a sinistra e destra",
+                        title = strings.doubleTapSeek,
+                        subtitle = strings.doubleTapSeekSubtitle,
                         options = listOf("5" to "5 s", "10" to "10 s", "15" to "15 s", "30" to "30 s"),
                         selected = interfaceSettings.doubleTapSeekSeconds.toString(),
                         onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(doubleTapSeekSeconds = value.toInt())) }
@@ -8128,8 +8149,8 @@ private fun SettingsOverlay(
                 item {
                     SettingsChoiceRow(
                         icon = Icons.Rounded.Speed,
-                        title = "Pressione prolungata",
-                        subtitle = "Velocità temporanea finché tieni premuto",
+                        title = strings.longPress,
+                        subtitle = strings.longPressSubtitle,
                         options = listOf("1.5" to "1.5×", "2.0" to "2×", "2.5" to "2.5×", "3.0" to "3×"),
                         selected = String.format(Locale.US, "%.1f", interfaceSettings.longPressSpeed),
                         onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(longPressSpeed = value.toFloat())) }
@@ -8155,12 +8176,12 @@ private fun SettingsOverlay(
                     onCheckedChange = onSkipSilence
                 )
             }
-            item { SettingsSectionLabel("DOWNLOAD ENGINE 2.0") }
+            item { SettingsSectionLabel(strings.downloadEngineSection) }
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Download,
-                    title = "Solo Wi-Fi",
-                    subtitle = "WorkManager avvia i download soltanto su rete non a consumo",
+                    title = strings.wifiOnly,
+                    subtitle = strings.wifiOnlySubtitle,
                     checked = downloadSettings.wifiOnly,
                     onCheckedChange = { onDownloadSettings(downloadSettings.copy(wifiOnly = it)) }
                 )
@@ -8168,8 +8189,8 @@ private fun SettingsOverlay(
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Bolt,
-                    title = "Solo durante la ricarica",
-                    subtitle = "Riduce consumo e temperatura nei download lunghi",
+                    title = strings.chargingOnly,
+                    subtitle = strings.chargingOnlySubtitle,
                     checked = downloadSettings.chargingOnly,
                     onCheckedChange = { onDownloadSettings(downloadSettings.copy(chargingOnly = it)) }
                 )
@@ -8177,8 +8198,8 @@ private fun SettingsOverlay(
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.History,
-                    title = "Ripresa automatica",
-                    subtitle = "Conserva i byte parziali e continua con richieste HTTP Range",
+                    title = strings.automaticResume,
+                    subtitle = strings.partialDownloadResume,
                     checked = downloadSettings.resumable,
                     onCheckedChange = { onDownloadSettings(downloadSettings.copy(resumable = it)) }
                 )
@@ -8186,8 +8207,8 @@ private fun SettingsOverlay(
             item {
                 SettingsChoiceRow(
                     icon = Icons.Rounded.QueueMusic,
-                    title = "Download simultanei",
-                    subtitle = "Limite globale per memoria, rete e temperatura",
+                    title = strings.simultaneousDownloads,
+                    subtitle = strings.simultaneousDownloadsSubtitle,
                     options = listOf("1" to "1", "2" to "2", "3" to "3", "4" to "4"),
                     selected = downloadSettings.maxConcurrentDownloads.toString(),
                     onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxConcurrentDownloads = value.toInt())) }
@@ -8203,37 +8224,37 @@ private fun SettingsOverlay(
                     )
                 }
             }
-            item { SettingsSectionLabel("ANALISI DEL TESTO") }
+            item { SettingsSectionLabel(strings.lyricsAnalysisSection) }
             item {
                 SettingsInfoCard(
                     icon = Icons.Rounded.Insights,
-                    title = "Analisi locale discreta",
-                    subtitle = "Resta compatta finché non la apri, mostra solo segnali utili e può portarti direttamente al ritornello."
+                    title = strings.lyricsAnalysisCompact,
+                    subtitle = strings.lyricsAnalysisCompactSubtitle
                 )
             }
-            item { SettingsSectionLabel("BACKUP E RIPRISTINO") }
+            item { SettingsSectionLabel(strings.backupRestoreSection) }
             item {
                 SettingsButton(
                     icon = Icons.Rounded.Download,
-                    title = "Crea backup dati",
-                    subtitle = "Preferiti, playlist, cronologia, coda e impostazioni in un archivio verificato SHA-256. I file audio restano in Music/Levyra.",
+                    title = strings.createDataBackup,
+                    subtitle = strings.createDataBackupSubtitle,
                     onClick = onCreateBackup
                 )
             }
             item {
                 SettingsButton(
                     icon = Icons.Rounded.History,
-                    title = "Ripristina backup",
-                    subtitle = "Verifica schema e checksum prima di sostituire i dati locali",
+                    title = strings.restoreBackup,
+                    subtitle = strings.restoreBackupSubtitle,
                     onClick = onRestoreBackup
                 )
             }
-            item { SettingsSectionLabel("PLAYBACK RESILIENCE") }
+            item { SettingsSectionLabel(strings.playbackResilienceSection) }
             item {
                 SettingsButton(
                     icon = Icons.Rounded.Share,
-                    title = "Esporta diagnostica sicura",
-                    subtitle = if (playbackDiagnostics.isBlank()) "Genera il tracciato dei resolver" else "Client health e ultimi tentativi, con URL e token rimossi",
+                    title = strings.exportSafeDiagnostics,
+                    subtitle = if (playbackDiagnostics.isBlank()) strings.generateResolverTrace else strings.safeDiagnosticsSubtitle,
                     onClick = onShareDiagnostics
                 )
             }
@@ -8284,7 +8305,7 @@ private fun SettingsOverlay(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            "Made with ❤️ by ",
+                            "${strings.madeWithBy} ",
                             color = LevyraMuted,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
@@ -8408,7 +8429,6 @@ private fun DownloadQueueSettingsCard(
     onResume: (String) -> Unit,
     onCancel: (String) -> Unit
 ) {
-    val currentLocale = LocalLocale.current.platformLocale
     Surface(
         color = LevyraAdaptiveCard,
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
@@ -8416,21 +8436,21 @@ private fun DownloadQueueSettingsCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Coda persistente", color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+            Text(LocalLevyraStrings.current.persistentQueue, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
             tasks.forEach { task ->
                 Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(task.title.ifBlank { "Brano" }, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("${task.state.lowercase().replaceFirstChar { it.titlecase(currentLocale) }} • ${task.progress.coerceIn(0, 100)}%", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text(task.title.ifBlank { LocalLevyraStrings.current.song }, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("${LocalLevyraStrings.current.localizeDownloadState(task.state)} • ${task.progress.coerceIn(0, 100)}%", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                         val canResume = task.state == "PAUSED" || task.state == "FAILED"
-                        val actionDescription = if (canResume) "Riprendi download ${task.title}" else "Metti in pausa download ${task.title}"
+                        val actionDescription = if (canResume) LocalLevyraStrings.current.formatResumeDownload(task.title) else LocalLevyraStrings.current.formatPauseDownload(task.title)
                         IconButton(onClick = { if (canResume) onResume(task.taskKey) else onPause(task.taskKey) }) {
                             Icon(if (canResume) Icons.Rounded.PlayArrow else Icons.Rounded.Pause, actionDescription, tint = LevyraCyan)
                         }
                         IconButton(onClick = { onCancel(task.taskKey) }) {
-                            Icon(Icons.Rounded.Close, "Annulla download ${task.title}", tint = LevyraPink)
+                            Icon(Icons.Rounded.Close, LocalLevyraStrings.current.formatCancelDownload(task.title), tint = LevyraPink)
                         }
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(5.dp).background(Color.White.copy(alpha = 0.08f), CircleShape)) {
@@ -8609,17 +8629,17 @@ private fun SettingsUpdateCard(
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
-                        text = if (hasUpdate) "Aggiornamento disponibile" else "Aggiornamenti",
+                        text = if (hasUpdate) LocalLevyraStrings.current.updateAvailable else LocalLevyraStrings.current.updates,
                         color = LevyraText,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
                         text = when {
-                            isChecking -> "Controllo ultima versione…"
-                            hasUpdate -> "LEVYRA ${updateInfo?.latestVersionName.orEmpty()} pronta al download"
-                            updateInfo != null -> "Installata la versione più recente"
-                            else -> "Verifica nuove versioni pubblicate"
+                            isChecking -> LocalLevyraStrings.current.checkingLatestVersion
+                            hasUpdate -> LocalLevyraStrings.current.formatLatestVersionReady(updateInfo?.latestVersionName.orEmpty())
+                            updateInfo != null -> LocalLevyraStrings.current.latestInstalled
+                            else -> LocalLevyraStrings.current.checkNewVersions
                         },
                         color = LevyraMuted,
                         fontSize = 12.sp,
@@ -8639,7 +8659,7 @@ private fun SettingsUpdateCard(
                     ) {
                         Text(updateInfo.releaseTitle.ifBlank { "LEVYRA ${updateInfo.latestVersionName}" }, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            text = if (updateInfo.directApk) "APK firmato pronto da installare" else "Pagina release pronta da aprire",
+                            text = if (updateInfo.directApk) LocalLevyraStrings.current.signedApkReady else LocalLevyraStrings.current.releasePageReady,
                             color = LevyraMuted,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
@@ -8653,7 +8673,7 @@ private fun SettingsUpdateCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 SettingsMiniButton(
-                    label = if (isChecking) "Controllo" else "Check",
+                    label = if (isChecking) LocalLevyraStrings.current.checking else LocalLevyraStrings.current.check,
                     accent = LevyraCyan,
                     enabled = !isChecking,
                     modifier = Modifier.weight(1f),
@@ -8661,7 +8681,7 @@ private fun SettingsUpdateCard(
                 )
                 if (hasUpdate) {
                     SettingsMiniButton(
-                        label = "Scarica",
+                        label = LocalLevyraStrings.current.download,
                         accent = LevyraViolet,
                         enabled = !isChecking,
                         modifier = Modifier.weight(1f),
@@ -8670,7 +8690,7 @@ private fun SettingsUpdateCard(
                 }
             }
             Text(
-                text = "Versione installata: ${BuildConfig.VERSION_NAME}",
+                text = LocalLevyraStrings.current.formatInstalledVersion(BuildConfig.VERSION_NAME),
                 color = LevyraMuted.copy(alpha = 0.8f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
@@ -8790,7 +8810,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 LevyraWordmark(fontSize = 27.sp, dotSize = 5.dp)
                 Text(
-                    text = greeting(userName),
+                    text = LocalLevyraStrings.current.formatGreeting(userName, java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)),
                     color = LevyraMuted,
                     fontSize = 12.5.sp,
                     lineHeight = 15.sp,
@@ -8883,7 +8903,7 @@ private fun MetroHeroDeck(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(Icons.Rounded.Headphones, null, tint = LevyraCyan, modifier = Modifier.size(15.dp))
-                            Text("DISCOVERY FLOW", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+                            Text(LocalLevyraStrings.current.discoveryFlow, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
                         }
                     }
                     Surface(color = Color.White.copy(alpha = 0.1f), shape = CircleShape, modifier = Modifier.pressable(onClick = onPlayAll)) {
@@ -8893,7 +8913,7 @@ private fun MetroHeroDeck(
                             horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
                             Icon(Icons.Rounded.PlayArrow, null, tint = LevyraText, modifier = Modifier.size(15.dp))
-                            Text("Play", color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            Text(LocalLevyraStrings.current.play, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 }
@@ -8944,22 +8964,22 @@ private fun MetroHeroDeck(
                         Text(hero.title, color = LevyraText, fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(hero.artist, color = LevyraText.copy(alpha = 0.78f), fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            MetroStatPill(Icons.Rounded.QueueMusic, queueCount.coerceAtLeast(tracks.size).toString(), "queue")
-                            MetroStatPill(Icons.Rounded.Favorite, favoritesCount.toString(), "saved")
+                            MetroStatPill(Icons.Rounded.QueueMusic, queueCount.coerceAtLeast(tracks.size).toString(), LocalLevyraStrings.current.queue)
+                            MetroStatPill(Icons.Rounded.Favorite, favoritesCount.toString(), LocalLevyraStrings.current.saved)
                         }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     MetroActionButton(
                         icon = Icons.Rounded.PlayArrow,
-                        text = if (currentTrack?.id == hero.id && isPlaying) "Apri player" else "Ascolta ora",
+                        text = if (currentTrack?.id == hero.id && isPlaying) LocalLevyraStrings.current.openPlayer else LocalLevyraStrings.current.play,
                         accent = LevyraCyan,
                         modifier = Modifier.weight(1f),
                         onClick = { onPrimary(hero) }
                     )
                     MetroActionButton(
                         icon = Icons.Rounded.LibraryMusic,
-                        text = "Libreria",
+                        text = LocalLevyraStrings.current.library,
                         accent = LevyraPink,
                         modifier = Modifier.weight(1f),
                         onClick = onOpenLibrary
@@ -9062,7 +9082,7 @@ private fun QuickStart(
                     ) {
                         CoverImage(track, Modifier.size(54.dp).clip(RoundedCornerShape(10.dp)))
                         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("Continua ad ascoltare", color = LevyraCyan, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            Text(LocalLevyraStrings.current.continueListening, color = LevyraCyan, fontSize = 11.sp, fontWeight = FontWeight.Black)
                             Text(track.title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         if (isResolving) {
@@ -9086,7 +9106,7 @@ private fun QuickStart(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             QuickAction(
                 icon = Icons.Rounded.Shuffle,
-                label = "Mix per te",
+                label = LocalLevyraStrings.current.mixForYou,
                 accent = LevyraCyan,
                 enabled = hasSuggestions,
                 modifier = Modifier.weight(1f),
@@ -9094,7 +9114,7 @@ private fun QuickStart(
             )
             QuickAction(
                 icon = Icons.Rounded.Favorite,
-                label = "Preferiti",
+                label = LocalLevyraStrings.current.favoritesPlain,
                 accent = LevyraPink,
                 enabled = true,
                 modifier = Modifier.weight(1f),
@@ -9151,7 +9171,7 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
         ) {
             Icon(Icons.Rounded.Search, null, tint = LevyraMuted, modifier = Modifier.size(20.dp))
             Text(
-                text = if (query.isEmpty()) "Cerca brani, artisti..." else query,
+                text = if (query.isEmpty()) LocalLevyraStrings.current.searchSongsArtists else query,
                 color = if (query.isEmpty()) LevyraMuted else LevyraText,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
@@ -9393,7 +9413,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                 }
                 Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(album.title, color = LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    val subtitle = listOf("Album", album.artist, album.year).filter { it.isNotBlank() }.joinToString(" • ")
+                    val subtitle = listOf(LocalLevyraStrings.current.albumPlain, album.artist, album.year).filter { it.isNotBlank() }.joinToString(" • ")
                     Text(subtitle, color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -9478,14 +9498,15 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(if (isCurrent) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(12.dp))
-                                Text(if (isCurrent) "ON" else "${index + 1}", color = LevyraText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(if (isCurrent) LocalLevyraStrings.current.activeIndicator else "${index + 1}", color = LevyraText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
                 Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    val kind = if (track.album.isNotBlank() && track.album != track.title && track.album != "YouTube Music") "Album" else "Single"
+                    val strings = LocalLevyraStrings.current
+                    val kind = if (track.album.isNotBlank() && track.album != track.title && track.album != "YouTube Music") strings.albumPlain else strings.singlePlain
                     Text("$kind • ${track.artist}", color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -9582,14 +9603,14 @@ private fun CompactRow(
             IconButton(onClick = { expanded = true }) {
                 Icon(
                     imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = "Opzioni brano",
+                    contentDescription = LocalLevyraStrings.current.songOptions,
                     tint = LevyraMuted,
                     modifier = Modifier.size(22.dp)
                 )
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(
-                    text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti") },
+                    text = { Text(if (isFavorite) LocalLevyraStrings.current.removeFromFavorites else LocalLevyraStrings.current.addToFavorites) },
                     leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) },
                     onClick = {
                         expanded = false
@@ -9597,7 +9618,7 @@ private fun CompactRow(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Aggiungi a playlist") },
+                    text = { Text(LocalLevyraStrings.current.addToPlaylist) },
                     leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
                     onClick = {
                         expanded = false
@@ -9605,7 +9626,7 @@ private fun CompactRow(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Aggiungi alla coda") },
+                    text = { Text(LocalLevyraStrings.current.addToQueue) },
                     leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
                     onClick = {
                         expanded = false
@@ -9613,7 +9634,7 @@ private fun CompactRow(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Scarica") },
+                    text = { Text(LocalLevyraStrings.current.download) },
                     leadingIcon = { Icon(Icons.Rounded.Download, null) },
                     onClick = {
                         expanded = false
@@ -9621,7 +9642,7 @@ private fun CompactRow(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Condividi") },
+                    text = { Text(LocalLevyraStrings.current.share) },
                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
                     onClick = {
                         expanded = false
@@ -9635,7 +9656,7 @@ private fun CompactRow(
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
-                        context.startActivity(Intent.createChooser(intent, "Condividi brano"))
+                        context.startActivity(Intent.createChooser(intent, LocalLevyraStrings.current.shareSong))
                     }
                 )
             }
@@ -9696,7 +9717,7 @@ private fun ChartRow(
                 IconButton(onClick = { expanded = true }) {
                     Icon(
                         imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = "Opzioni",
+                        contentDescription = LocalLevyraStrings.current.options,
                         tint = LevyraMuted,
                         modifier = Modifier.size(20.dp)
                     )
@@ -9706,7 +9727,7 @@ private fun ChartRow(
                     onDismissRequest = { expanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti") },
+                        text = { Text(if (isFavorite) LocalLevyraStrings.current.removeFromFavorites else LocalLevyraStrings.current.addToFavorites) },
                         leadingIcon = {
                             Icon(
                                 imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -9720,7 +9741,7 @@ private fun ChartRow(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Aggiungi alla coda") },
+                        text = { Text(LocalLevyraStrings.current.addToQueue) },
                         leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
                         onClick = {
                             expanded = false
@@ -9728,7 +9749,7 @@ private fun ChartRow(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Aggiungi a playlist") },
+                        text = { Text(LocalLevyraStrings.current.addToPlaylist) },
                         leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
                         onClick = {
                             expanded = false
@@ -9817,7 +9838,7 @@ private fun SearchResultsHeader() {
                 Icon(Icons.Rounded.MusicNote, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
             }
             Text(
-                text = "Potrebbe piacerti anche",
+                text = LocalLevyraStrings.current.youMightAlsoLike,
                 color = LevyraText,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Black,
@@ -9938,7 +9959,7 @@ private fun SearchSuggestionTrackCard(
             IconButton(onClick = onFavorite, modifier = Modifier.size(38.dp)) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = "Preferito",
+                    contentDescription = LocalLevyraStrings.current.favorite,
                     tint = if (isFavorite) LevyraPink else LevyraMuted,
                     modifier = Modifier.size(21.dp)
                 )
@@ -9954,11 +9975,12 @@ private fun SearchFilterChips(
     hasAlbums: Boolean,
     onSelect: (SearchFilter) -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     val chips = buildList {
-        add(SearchFilter.All to "Tutti")
-        add(SearchFilter.Songs to "Brani")
-        if (hasArtists) add(SearchFilter.Artists to "Artisti")
-        if (hasAlbums) add(SearchFilter.Albums to "Album")
+        add(SearchFilter.All to strings.all)
+        add(SearchFilter.Songs to strings.songsPlain)
+        if (hasArtists) add(SearchFilter.Artists to strings.artistsLabelPlural)
+        if (hasAlbums) add(SearchFilter.Albums to strings.albumsPlain)
     }
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -9997,7 +10019,7 @@ private fun TopResultCard(
     onArtist: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Risultato principale", color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        Text(LocalLevyraStrings.current.topResult, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Black)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -10045,7 +10067,7 @@ private fun TopResultCard(
                             if (isResolving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraBlack)
                             else Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = LevyraBlack, modifier = Modifier.size(22.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isPlaying) "In riproduzione" else "Riproduci", color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                            Text(if (isPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play, color = LevyraBlack, fontSize = 15.sp, fontWeight = FontWeight.Black)
                         }
                     }
                     Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onAddToPlaylist() }) {
@@ -10132,12 +10154,12 @@ private fun SearchTrackCard(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
             IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                Icon(Icons.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
             }
             IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = "Preferito",
+                    contentDescription = LocalLevyraStrings.current.favorite,
                     tint = if (isFavorite) LevyraPink else LevyraMuted,
                     modifier = Modifier.size(24.dp)
                 )
@@ -10181,7 +10203,7 @@ private fun ArtistHitRow(
                     }
                 }
                 Text(hit.name, color = LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("Artista", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Text(LocalLevyraStrings.current.artistLabel, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -10296,20 +10318,20 @@ private fun TrackRow(
             }
             if (onAddToPlaylist != null) {
                 IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Rounded.PlaylistAdd, contentDescription = "Aggiungi a playlist", tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
                 }
             }
             IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = "Preferito",
+                    contentDescription = LocalLevyraStrings.current.favorite,
                     tint = if (isFavorite) LevyraPink else LevyraMuted,
                     modifier = Modifier.size(24.dp)
                 )
             }
             if (onRemove != null) {
                 IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Rounded.Delete, contentDescription = "Rimuovi", tint = LevyraMuted, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Rounded.Delete, contentDescription = LocalLevyraStrings.current.remove, tint = LevyraMuted, modifier = Modifier.size(22.dp))
                 }
             }
         }
@@ -10327,8 +10349,8 @@ private fun DownloadButton(isDownloading: Boolean, isDownloaded: Boolean, progre
                     Text(label, color = LevyraCyan, fontSize = 8.sp, fontWeight = FontWeight.Black, maxLines = 1)
                 }
             }
-            isDownloaded -> Icon(Icons.Rounded.DownloadDone, contentDescription = "Scaricato", tint = LevyraCyan, modifier = Modifier.size(23.dp))
-            else -> Icon(Icons.Rounded.Download, contentDescription = "Scarica", tint = LevyraMuted, modifier = Modifier.size(23.dp))
+            isDownloaded -> Icon(Icons.Rounded.DownloadDone, contentDescription = LocalLevyraStrings.current.downloaded, tint = LevyraCyan, modifier = Modifier.size(23.dp))
+            else -> Icon(Icons.Rounded.Download, contentDescription = LocalLevyraStrings.current.download, tint = LevyraMuted, modifier = Modifier.size(23.dp))
         }
     }
 }
@@ -10424,7 +10446,7 @@ private fun MiniPlayer(
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.SkipNext,
-                    contentDescription = "Successivo",
+                    contentDescription = LocalLevyraStrings.current.next,
                     size = 38.dp,
                     iconSize = 21.dp,
                     tint = Color.White.copy(alpha = 0.92f),
@@ -10434,7 +10456,7 @@ private fun MiniPlayer(
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.Close,
-                    contentDescription = "Chiudi player",
+                    contentDescription = LocalLevyraStrings.current.closePlayer,
                     size = 38.dp,
                     iconSize = 19.dp,
                     tint = Color.White.copy(alpha = 0.80f),
@@ -10496,7 +10518,7 @@ private fun MiniPlayerToggleButton(
             ) { playing ->
                 Icon(
                     imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = if (playing) "Pausa" else "Riproduci",
+                    contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
                     tint = playTint,
                     modifier = Modifier.size(22.dp)
                 )
@@ -10629,7 +10651,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                                         putExtra(Intent.EXTRA_SUBJECT, track.title)
                                         putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
                                     }
-                                    context.startActivity(Intent.createChooser(intent, "Condividi via"))
+                                    context.startActivity(Intent.createChooser(intent, LocalLevyraStrings.current.shareVia))
                                 },
                                 onAddToPlaylist = {}
                             )
@@ -10785,7 +10807,7 @@ private fun TrackGlassCard(
                         .size(28.dp)
                         .background(Color.Black.copy(alpha = 0.5f), CircleShape)
                 ) {
-                    Icon(Icons.Rounded.MoreVert, contentDescription = "More", tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.MoreVert, contentDescription = LocalLevyraStrings.current.more, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
                 DropdownMenu(
                     expanded = menuExpanded,
@@ -10793,21 +10815,21 @@ private fun TrackGlassCard(
                     modifier = Modifier.background(CinematicGlass)
                 ) {
                     DropdownMenuItem(
-                        text = { Text(if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi a preferiti", color = Color.White) },
+                        text = { Text(if (isFavorite) LocalLevyraStrings.current.removeFromFavorites else LocalLevyraStrings.current.addToFavorites, color = Color.White) },
                         onClick = {
                             onFavorite()
                             menuExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Condividi", color = Color.White) },
+                        text = { Text(LocalLevyraStrings.current.share, color = Color.White) },
                         onClick = {
                             onShare()
                             menuExpanded = false
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Aggiungi a playlist", color = Color.White) },
+                        text = { Text(LocalLevyraStrings.current.addToPlaylist, color = Color.White) },
                         onClick = {
                             onAddToPlaylist()
                             menuExpanded = false
@@ -10992,10 +11014,10 @@ private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
 @Composable
 private fun SearchSummary(state: LevyraUiState) {
     when {
-        state.isSearching -> GlassMessage("Sto cercando su YouTube Music…", LevyraCyan)
+        state.isSearching -> GlassMessage(LocalLevyraStrings.current.searchingYouTubeMusic, LevyraCyan)
         state.searchError != null -> GlassMessage(state.searchError, LevyraOrange)
-        state.searchResults.isNotEmpty() -> GlassMessage("${state.searchResults.size} risultati", LevyraCyan)
-        else -> GlassMessage("Scrivi il nome di un brano e cerca", LevyraMuted)
+        state.searchResults.isNotEmpty() -> GlassMessage(LocalLevyraStrings.current.formatSearchResults(state.searchResults.size), LevyraCyan)
+        else -> GlassMessage(LocalLevyraStrings.current.emptySearchPrompt, LevyraMuted)
     }
 }
 
@@ -11484,9 +11506,9 @@ private fun LyricsButton(loading: Boolean, available: Boolean, onClick: () -> Un
             }
             Text(
                 text = when {
-                    loading -> "Cerco il testo…"
-                    available -> "Mostra il testo"
-                    else -> "Testo non disponibile"
+                    loading -> LocalLevyraStrings.current.searchingLyrics
+                    available -> LocalLevyraStrings.current.showLyrics
+                    else -> LocalLevyraStrings.current.lyricsUnavailable
                 },
                 color = Color.White,
                 fontSize = 15.sp,
@@ -11496,16 +11518,6 @@ private fun LyricsButton(loading: Boolean, available: Boolean, onClick: () -> Un
     }
 }
 
-private fun greeting(userName: String): String {
-    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-    val name = if (userName.isNotBlank()) " $userName" else ""
-    return when (hour) {
-        in 5..11 -> "Buongiorno$name ☀️"
-        in 12..17 -> "Buon pomeriggio$name 🎶"
-        in 18..22 -> "Buonasera$name 🌙"
-        else -> "Buonanotte$name 🌌"
-    }
-}
 
 private fun progressOf(positionMs: Long, durationMs: Long): Float {
     if (durationMs <= 0L) return 0f
