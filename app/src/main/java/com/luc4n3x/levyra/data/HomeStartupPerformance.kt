@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.data
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import java.util.concurrent.atomic.AtomicReference
 
 internal data class HomeStartupWorkPlan(
     val idleWindowMs: Long,
@@ -87,29 +88,60 @@ internal object StartupPlaybackWarmPolicy {
 internal class HomeInteractionGate(
     private val nowMs: () -> Long = { System.nanoTime() / 1_000_000L }
 ) {
-    @Volatile
-    private var scrolling = false
+    private data class InteractionState(
+        val scrolling: Boolean,
+        val lastInteractionMs: Long
+    )
 
-    @Volatile
-    private var lastInteractionMs = nowMs()
+    private data class IdleStatus(
+        val scrolling: Boolean,
+        val remainingMs: Long
+    )
+
+    private val state = AtomicReference(
+        InteractionState(
+            scrolling = false,
+            lastInteractionMs = nowMs()
+        )
+    )
 
     fun update(isScrolling: Boolean) {
-        if (scrolling == isScrolling) return
-        scrolling = isScrolling
-        lastInteractionMs = nowMs()
+        while (true) {
+            val current = state.get()
+            if (current.scrolling == isScrolling) return
+            val updated = InteractionState(
+                scrolling = isScrolling,
+                lastInteractionMs = nowMs()
+            )
+            if (state.compareAndSet(current, updated)) return
+        }
     }
 
     fun remainingIdleMs(idleWindowMs: Long): Long {
-        if (scrolling) return idleWindowMs.coerceAtLeast(1L)
-        return (idleWindowMs - (nowMs() - lastInteractionMs)).coerceAtLeast(0L)
+        return idleStatus(idleWindowMs).remainingMs
     }
 
     suspend fun awaitIdle(idleWindowMs: Long) {
         val safeWindow = idleWindowMs.coerceAtLeast(0L)
         while (currentCoroutineContext().isActive) {
-            val remaining = remainingIdleMs(safeWindow)
-            if (!scrolling && remaining == 0L) return
-            delay(if (scrolling) 80L else remaining.coerceIn(40L, 120L))
+            val status = idleStatus(safeWindow)
+            if (!status.scrolling && status.remainingMs == 0L) return
+            delay(if (status.scrolling) 80L else status.remainingMs.coerceIn(40L, 120L))
         }
+    }
+
+    private fun idleStatus(idleWindowMs: Long): IdleStatus {
+        val safeWindow = idleWindowMs.coerceAtLeast(0L)
+        val snapshot = state.get()
+        if (snapshot.scrolling) {
+            return IdleStatus(
+                scrolling = true,
+                remainingMs = safeWindow.coerceAtLeast(1L)
+            )
+        }
+        return IdleStatus(
+            scrolling = false,
+            remainingMs = (safeWindow - (nowMs() - snapshot.lastInteractionMs)).coerceAtLeast(0L)
+        )
     }
 }
