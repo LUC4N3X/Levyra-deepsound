@@ -936,7 +936,12 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             }
 
             AnimatedVisibility(visible = state.showLyrics, enter = overlayEnter, exit = overlayExit) {
-                LyricsOverlay(state = state, onTranslation = viewModel::setLyricsTranslationEnabled, onClose = viewModel::closeLyrics)
+                LyricsOverlay(
+                    state = state,
+                    onTranslation = viewModel::setLyricsTranslationEnabled,
+                    onSeekToMs = viewModel::seekToPosition,
+                    onClose = viewModel::closeLyrics
+                )
             }
 
             AnimatedVisibility(visible = state.showAudioQualityPanel, enter = miniEnter, exit = miniExit) {
@@ -2577,7 +2582,12 @@ private fun SmartMusicProfileCard(profile: SmartMusicProfile, onPlayFlow: () -> 
 }
 
 @Composable
-private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit, onClose: () -> Unit) {
+private fun LyricsOverlay(
+    state: LevyraUiState,
+    onTranslation: (Boolean) -> Unit,
+    onSeekToMs: (Long) -> Unit,
+    onClose: () -> Unit
+) {
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
     val accentStart = if (track != null) Color(track.accentStart) else LevyraCyan
@@ -2586,11 +2596,28 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
     val listState = rememberLazyListState()
     val active = state.activeLyric
     val activeIndex = if (state.lyricsSynced && active != null) state.lyrics.indexOf(active) else -1
-
-    LaunchedEffect(activeIndex) {
-        if (activeIndex >= 0) {
-            runCatching { listState.animateScrollToItem(activeIndex.coerceAtLeast(0)) }
+    val lyricsStartIndex = 3
+    val chorusPhrase = state.intelligenceSummary.repeatedPhrases.firstOrNull()
+    val chorusIndex = remember(state.lyrics, chorusPhrase) {
+        if (chorusPhrase.isNullOrBlank()) {
+            -1
+        } else {
+            state.lyrics.indexOfFirst { line -> line.text.contains(chorusPhrase, ignoreCase = true) }
         }
+    }
+    var requestedLyricIndex by remember { mutableStateOf<Int?>(null) }
+    var showIntelligenceDialog by remember(track?.id) { mutableStateOf(false) }
+
+    LaunchedEffect(activeIndex, lyricsStartIndex) {
+        if (activeIndex >= 0) {
+            runCatching { listState.animateScrollToItem(lyricsStartIndex + activeIndex) }
+        }
+    }
+
+    LaunchedEffect(requestedLyricIndex, lyricsStartIndex) {
+        val requested = requestedLyricIndex ?: return@LaunchedEffect
+        runCatching { listState.animateScrollToItem(lyricsStartIndex + requested) }
+        requestedLyricIndex = null
     }
 
     Box(
@@ -2626,12 +2653,24 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
                         )
                         Text(track?.artist ?: "", color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = LevyraText,
-                        background = Color.White.copy(alpha = 0.15f),
-                        onClick = onClose
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (state.intelligenceSummary.available) {
+                            CircleIconButton(
+                                icon = Icons.Rounded.Insights,
+                                tint = LevyraViolet,
+                                background = LevyraViolet.copy(alpha = 0.14f),
+                                onClick = { showIntelligenceDialog = true },
+                                contentDescription = "Apri analisi del testo"
+                            )
+                        }
+                        CircleIconButton(
+                            icon = Icons.Rounded.Close,
+                            tint = LevyraText,
+                            background = Color.White.copy(alpha = 0.15f),
+                            onClick = onClose,
+                            contentDescription = "Chiudi testi"
+                        )
+                    }
                 }
             }
             item {
@@ -2666,9 +2705,6 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
                         )
                     }
                 }
-            }
-            if (state.intelligenceSummary.available) {
-                item { LocalIntelligenceCard(state.intelligenceSummary) }
             }
             if (state.lyrics.isEmpty()) {
                 item { Text(strings.lyricsUnavailable, color = LevyraMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
@@ -2725,56 +2761,112 @@ private fun LyricsOverlay(state: LevyraUiState, onTranslation: (Boolean) -> Unit
             }
         }
     }
+
+    if (showIntelligenceDialog) {
+        LyricsIntelligenceDialog(
+            summary = state.intelligenceSummary,
+            onDismiss = { showIntelligenceDialog = false },
+            onJumpToChorus = if (chorusIndex >= 0) {
+                {
+                    showIntelligenceDialog = false
+                    requestedLyricIndex = chorusIndex
+                    val chorusStartMs = state.lyrics.getOrNull(chorusIndex)?.startMs ?: 0L
+                    if (state.lyricsSynced && chorusStartMs > 0L) onSeekToMs(chorusStartMs)
+                }
+            } else {
+                null
+            }
+        )
+    }
 }
 
 @Composable
-private fun LocalIntelligenceCard(summary: com.luc4n3x.levyra.domain.LevyraIntelligenceSummary) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = LevyraViolet.copy(alpha = 0.11f),
-        border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.24f)),
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Rounded.Insights, null, tint = LevyraViolet, modifier = Modifier.size(20.dp))
-                    Text("Levyra Intelligence", color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
-                }
-                Surface(color = LevyraCyan.copy(alpha = 0.14f), shape = CircleShape) {
-                    Text("LOCALE", color = LevyraCyan, fontSize = 10.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp))
-                }
-            }
-            Text(summary.overview, color = LevyraText.copy(alpha = 0.9f), fontSize = 13.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold)
-            if (summary.mood.isNotBlank()) {
-                Text("Atmosfera: ${summary.mood}", color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            if (summary.themes.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    items(summary.themes, key = { "intelligence-theme-$it" }) { theme ->
-                        Surface(color = Color.White.copy(alpha = 0.07f), shape = CircleShape) {
-                            Text(theme, color = LevyraText, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
-                        }
+private fun LyricsIntelligenceDialog(
+    summary: com.luc4n3x.levyra.domain.LevyraIntelligenceSummary,
+    onDismiss: () -> Unit,
+    onJumpToChorus: (() -> Unit)?
+) {
+    val repeatedPhrase = summary.repeatedPhrases.firstOrNull()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color(0xFF11131C),
+        icon = {
+            Icon(
+                imageVector = Icons.Rounded.Insights,
+                contentDescription = null,
+                tint = LevyraViolet,
+                modifier = Modifier.size(24.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Analisi del testo",
+                color = LevyraText,
+                fontWeight = FontWeight.Black
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (summary.mood.isNotBlank()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Atmosfera", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(summary.mood, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
+                if (summary.themes.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Temi", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = summary.themes.take(4).joinToString(" · "),
+                            color = LevyraText,
+                            fontSize = 14.sp,
+                            lineHeight = 19.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                if (!repeatedPhrase.isNullOrBlank()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Ritornello rilevato", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "“$repeatedPhrase”",
+                            color = LevyraText.copy(alpha = 0.9f),
+                            fontSize = 14.sp,
+                            lineHeight = 19.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Text(
+                    text = "${summary.lineCount} versi · ${summary.wordCount} parole · Analisi locale",
+                    color = LevyraMuted.copy(alpha = 0.82f),
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
-            summary.repeatedPhrases.firstOrNull()?.let { phrase ->
-                Text("Frase ricorrente: “$phrase”", color = LevyraText.copy(alpha = 0.82f), fontSize = 12.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold)
+        },
+        confirmButton = {
+            if (onJumpToChorus != null) {
+                TextButton(onClick = onJumpToChorus) {
+                    Text("Vai al ritornello", color = LevyraCyan, fontWeight = FontWeight.Black)
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text("Chiudi", color = LevyraCyan, fontWeight = FontWeight.Black)
+                }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("${summary.wordCount} parole", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                Text("Densità ${summary.lexicalDensity}%", color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        },
+        dismissButton = {
+            if (onJumpToChorus != null) {
+                TextButton(onClick = onDismiss) {
+                    Text("Chiudi", color = LevyraMuted, fontWeight = FontWeight.Bold)
+                }
             }
-            Text("Nessuna API, nessuna chiave e nessun costo: l'analisi resta sul dispositivo.", color = LevyraCyan.copy(alpha = 0.86f), fontSize = 11.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
         }
-    }
+    )
 }
 
 @Composable
@@ -7926,12 +8018,12 @@ private fun SettingsOverlay(
                     )
                 }
             }
-            item { SettingsSectionLabel("LEVYRA INTELLIGENCE") }
+            item { SettingsSectionLabel("ANALISI DEL TESTO") }
             item {
                 SettingsInfoCard(
                     icon = Icons.Rounded.Insights,
-                    title = "Analisi testi completamente locale",
-                    subtitle = "Temi, atmosfera, frasi ricorrenti e densità lessicale. Nessuna API, nessuna chiave e nessun servizio a pagamento."
+                    title = "Analisi locale discreta",
+                    subtitle = "Resta compatta finché non la apri, mostra solo segnali utili e può portarti direttamente al ritornello."
                 )
             }
             item { SettingsSectionLabel("BACKUP E RIPRISTINO") }
@@ -10280,7 +10372,13 @@ private fun GradientButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, onClick: () -> Unit) {
+private fun CircleIconButton(
+    icon: ImageVector,
+    tint: Color,
+    background: Color,
+    onClick: () -> Unit,
+    contentDescription: String? = null
+) {
     val resolvedBackground = if (LevyraIsLight && background.alpha < 0.2f) LevyraAdaptiveChip else background
     val resolvedBorder = if (LevyraIsLight && background.alpha < 0.2f) LevyraAdaptiveHairline else Color.Transparent
     Box(
@@ -10291,7 +10389,7 @@ private fun CircleIconButton(icon: ImageVector, tint: Color, background: Color, 
             .pressable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(21.dp))
+        Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(21.dp))
     }
 }
 
