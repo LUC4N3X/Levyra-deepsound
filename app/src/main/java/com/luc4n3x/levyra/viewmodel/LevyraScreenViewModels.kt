@@ -42,7 +42,20 @@ abstract class LevyraScreenViewModel(
         )
 }
 
+data class HomePlaybackProgress(
+    val positionMs: Long,
+    val durationMs: Long
+)
+
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
+    val playbackProgress: StateFlow<HomePlaybackProgress> = root.state
+        .map { HomePlaybackProgress(it.positionMs, it.durationMs) }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = HomePlaybackProgress(root.state.value.positionMs, root.state.value.durationMs)
+        )
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun addToQueue(track: Track) = root.addToQueue(track)
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
@@ -59,6 +72,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun selectMood(mood: Mood) = root.selectMood(mood)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
+    fun setHomeScrollInProgress(value: Boolean) = root.setHomeScrollInProgress(value)
 }
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
@@ -152,7 +166,6 @@ private data class HomeProjection(
     val chartRegions: List<ChartRegion>,
     val charts: List<Track>,
     val currentTrack: Track?,
-    val durationMs: Long,
     val favoriteIds: Set<String>,
     val favorites: List<Track>,
     val homeAlbums: List<AlbumHit>,
@@ -164,7 +177,6 @@ private data class HomeProjection(
     val moods: List<Mood>,
     val personalOrbitTracks: List<Track>,
     val playlists: List<Playlist>,
-    val positionMs: Long,
     val recentSearches: List<Track>,
     val releaseRadar: List<ReleaseRadarEntry>,
     val selectedChartId: String,
@@ -180,7 +192,6 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     chartRegions = state.chartRegions,
     charts = state.charts,
     currentTrack = state.currentTrack,
-    durationMs = state.durationMs,
     favoriteIds = state.favoriteIds,
     favorites = state.favorites,
     homeAlbums = state.homeAlbums,
@@ -192,7 +203,6 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     moods = state.moods,
     personalOrbitTracks = state.personalOrbitTracks,
     playlists = state.playlists,
-    positionMs = state.positionMs,
     recentSearches = state.recentSearches,
     releaseRadar = state.releaseRadar,
     selectedChartId = state.selectedChartId,
