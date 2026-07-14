@@ -42,7 +42,7 @@ abstract class LevyraScreenViewModel(
         )
 }
 
-internal data class HomePlaybackProgress(
+data class HomePlaybackProgress(
     val positionMs: Long,
     val durationMs: Long
 )
