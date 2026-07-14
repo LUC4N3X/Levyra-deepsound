@@ -120,6 +120,10 @@ object LevyraPersonalOrbit {
     fun withoutVideoArtwork(track: Track): Track {
         val thumbnail = track.thumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
         val large = track.largeThumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
+        if (thumbnail.isBlank() && large.isBlank()) {
+            val fallback = track.largeThumbnailUrl.trim().ifBlank { track.thumbnailUrl.trim() }
+            return if (fallback.isBlank()) track else track.copy(thumbnailUrl = fallback, largeThumbnailUrl = fallback)
+        }
         return if (thumbnail == track.thumbnailUrl && large == track.largeThumbnailUrl) {
             track
         } else {
