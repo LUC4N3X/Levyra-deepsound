@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Mini-player, favorite rapide, flow zilnic, offline și versuri</string>
+    <string name="widget_idle_subtitle">Atinge pentru a asculta</string>
+    <string name="widget_toggle">Redare/Pauză</string>
+    <string name="widget_next">Următoarea</string>
+    <string name="widget_previous">Anterioara</string>
+    <string name="widget_favorites">Favorite</string>
+    <string name="widget_flow">Flow zilnic</string>
+    <string name="widget_offline">Mix offline</string>
+    <string name="widget_lyrics">Versuri</string>
+    <string name="radar_channel_name">Radarul lansărilor</string>
+    <string name="radar_channel_description">Lansări noi de la artiștii pe care îi urmărești</string>
+    <string name="radar_new_release_title">Lansare nouă de la %1$s</string>
+</resources>
