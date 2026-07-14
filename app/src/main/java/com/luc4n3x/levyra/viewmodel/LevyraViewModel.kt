@@ -518,8 +518,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             viewModelScope.launch {
                 delay(startupPlan.secondaryStartDelayMs)
                 awaitHomeUiIdle(startupPlan)
-                LevyraArtworkCache.preloadPriority(appContext, orbitSeed, startupPlan.priorityArtworkCount)
-                warmPersistentOrbit(orbitSeed, startupPlan.persistentArtworkCount, persist = false)
+                LevyraArtworkCache.preloadPriority(appContext, orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT)
+                warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = false)
                 refreshMissingOfficialOrbitArtwork(orbitSeed, deferUntilHomeIdle = true)
             }
         }
@@ -2202,9 +2202,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             delay(if (deferUntilHomeIdle) startupPlan.secondaryStartDelayMs else 250L)
             if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
             val enrichedTracks = Collections.synchronizedList(mutableListOf<Track>())
-            val semaphore = Semaphore(if (deferUntilHomeIdle) startupPlan.chartEnrichmentConcurrency else 3)
+            val semaphore = Semaphore((startupPlan.chartEnrichmentConcurrency + 2).coerceIn(3, 4))
             coroutineScope {
-                pending.take(if (deferUntilHomeIdle) startupPlan.refreshedArtworkCount else pending.size).map { track ->
+                pending.map { track ->
                     launch {
                         semaphore.withPermit {
                             if (!isActive) return@withPermit
@@ -2301,21 +2301,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         enrichedByKey.values.forEach { queueEngine.updateTrackMetadata(it) }
         val appContext = getApplication<Application>().applicationContext
-        val startupPlan = homeStartupWorkPlan()
         val artworkTracks = persistedOrbit
             .filter { LevyraPersonalOrbit.identityKey(it) in enrichedByKey.keys }
-            .take(startupPlan.refreshedArtworkCount)
+            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         if (artworkTracks.isNotEmpty()) {
             withContext(Dispatchers.IO) {
                 preferences.saveRecentSearches(persistedHistory)
                 preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
-                val persistentTracks = artworkTracks.take(startupPlan.persistentArtworkCount)
-                LevyraArtworkCache.cachePersistent(appContext, persistentTracks, persistentTracks.size)
+                LevyraArtworkCache.cachePersistent(appContext, artworkTracks, artworkTracks.size)
             }
             LevyraArtworkCache.preloadPriority(
                 appContext,
                 artworkTracks,
-                startupPlan.priorityArtworkCount.coerceAtMost(artworkTracks.size)
+                artworkTracks.size
             )
         } else {
             withContext(Dispatchers.IO) {
