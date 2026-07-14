@@ -26,6 +26,36 @@ import java.io.File
 import java.security.MessageDigest
 import java.nio.charset.StandardCharsets
 
+internal fun isLikelyArtworkBytes(bytes: ByteArray): Boolean {
+    if (bytes.size >= 3 &&
+        bytes[0] == 0xFF.toByte() &&
+        bytes[1] == 0xD8.toByte() &&
+        bytes[2] == 0xFF.toByte()
+    ) {
+        return true
+    }
+    if (bytes.size >= 8 &&
+        bytes[0] == 0x89.toByte() &&
+        bytes[1] == 0x50.toByte() &&
+        bytes[2] == 0x4E.toByte() &&
+        bytes[3] == 0x47.toByte()
+    ) {
+        return true
+    }
+    if (bytes.size >= 12) {
+        val prefix = bytes.copyOfRange(0, 4).toString(Charsets.US_ASCII)
+        val format = bytes.copyOfRange(8, 12).toString(Charsets.US_ASCII)
+        if (prefix == "RIFF" && format == "WEBP") return true
+        val box = bytes.copyOfRange(4, 8).toString(Charsets.US_ASCII)
+        if (box == "ftyp" && format in setOf("avif", "avis", "mif1", "msf1", "heic", "heix")) return true
+    }
+    if (bytes.size >= 6) {
+        val gif = bytes.copyOfRange(0, 6).toString(Charsets.US_ASCII)
+        if (gif == "GIF87a" || gif == "GIF89a") return true
+    }
+    return false
+}
+
 object LevyraArtworkCache {
     private const val SMALL_SIZE = 192
     private const val LARGE_SIZE = 512
@@ -103,7 +133,12 @@ object LevyraArtworkCache {
         val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
         if (raw.isBlank()) return null
         val file = persistentFile(context.applicationContext, track, if (highRes) LARGE_SIZE else SMALL_SIZE)
-        return file.takeIf { it.isFile && it.length() > 512L }
+        if (!file.isFile || file.length() <= 512L) return null
+        if (!isLikelyArtworkFile(file)) {
+            runCatching { file.delete() }
+            return null
+        }
+        return file
     }
 
     fun preloadHome(context: Context, tracks: List<Track>, limit: Int = 36) {
@@ -190,10 +225,11 @@ object LevyraArtworkCache {
 
     private fun ensurePersistent(target: ArtworkTarget) {
         val file = target.file
-        if (file.isFile && file.length() > 512L) {
+        if (file.isFile && file.length() > 512L && isLikelyArtworkFile(file)) {
             file.setLastModified(System.currentTimeMillis())
             return
         }
+        if (file.exists()) runCatching { file.delete() }
         repeat(2) { attempt ->
             val saved = runCatching {
                 file.parentFile?.mkdirs()
@@ -208,7 +244,7 @@ object LevyraArtworkCache {
                     val length = body.contentLength()
                     if (length > MAX_FILE_BYTES) return@use false
                     val bytes = body.bytes()
-                    if (bytes.size < 512 || bytes.size.toLong() > MAX_FILE_BYTES) return@use false
+                    if (bytes.size < 512 || bytes.size.toLong() > MAX_FILE_BYTES || !isLikelyArtworkBytes(bytes)) return@use false
                     val temp = File(file.parentFile, "${file.name}.tmp")
                     temp.writeBytes(bytes)
                     if (file.exists()) file.delete()
@@ -222,8 +258,16 @@ object LevyraArtworkCache {
             }.onFailure { error ->
                 if (attempt == 1) Timber.d(error, "Artwork persistent cache miss")
             }.getOrDefault(false)
-            if (saved || file.isFile && file.length() > 512L) return
+            if (saved || file.isFile && file.length() > 512L && isLikelyArtworkFile(file)) return
         }
+    }
+
+    private fun isLikelyArtworkFile(file: File): Boolean {
+        return runCatching {
+            val header = ByteArray(16)
+            val read = file.inputStream().use { input -> input.read(header) }
+            read > 0 && isLikelyArtworkBytes(header.copyOf(read))
+        }.getOrDefault(false)
     }
 
     private fun persistentFile(context: Context, track: Track, size: Int): File {
