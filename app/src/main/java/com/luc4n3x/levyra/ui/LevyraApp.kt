@@ -7748,6 +7748,7 @@ private fun OptionChip(icon: ImageVector, label: String, active: Boolean, modifi
 @Composable
 private fun ShareOptionChip(track: Track, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
     Surface(
         color = Color.White.copy(alpha = 0.06f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
@@ -7761,7 +7762,7 @@ private fun ShareOptionChip(track: Track, modifier: Modifier = Modifier) {
                     putExtra(Intent.EXTRA_SUBJECT, "${track.title} — ${track.artist}")
                     putExtra(Intent.EXTRA_TEXT, "${track.title} — ${track.artist}\n$link")
                 }
-                context.startActivity(Intent.createChooser(intent, LocalLevyraStrings.current.shareSong))
+                context.startActivity(Intent.createChooser(intent, strings.shareSong))
             }
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -9569,6 +9570,7 @@ private fun CompactRow(
     onDownload: () -> Unit
 ) {
     val context = LocalContext.current
+    val strings = LocalLevyraStrings.current
     var expanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
@@ -9656,7 +9658,7 @@ private fun CompactRow(
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, shareText)
                         }
-                        context.startActivity(Intent.createChooser(intent, LocalLevyraStrings.current.shareSong))
+                        context.startActivity(Intent.createChooser(intent, strings.shareSong))
                     }
                 )
             }
@@ -10651,7 +10653,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                                         putExtra(Intent.EXTRA_SUBJECT, track.title)
                                         putExtra(Intent.EXTRA_TEXT, "${track.title} - ${track.artist}\n${track.streamUrl}")
                                     }
-                                    context.startActivity(Intent.createChooser(intent, LocalLevyraStrings.current.shareVia))
+                                    context.startActivity(Intent.createChooser(intent, strings.shareVia))
                                 },
                                 onAddToPlaylist = {}
                             )
