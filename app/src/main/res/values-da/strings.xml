@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Miniafspiller, hurtige favoritter, dagligt flow, offline og sangtekster</string>
+    <string name="widget_idle_subtitle">Tryk for at lytte</string>
+    <string name="widget_toggle">Afspil/Pause</string>
+    <string name="widget_next">Næste</string>
+    <string name="widget_previous">Forrige</string>
+    <string name="widget_favorites">Favoritter</string>
+    <string name="widget_flow">Dagligt flow</string>
+    <string name="widget_offline">Offline-mix</string>
+    <string name="widget_lyrics">Sangtekster</string>
+    <string name="radar_channel_name">Udgivelsesradar</string>
+    <string name="radar_channel_description">Nye udgivelser fra kunstnere, du følger</string>
+    <string name="radar_new_release_title">Ny udgivelse fra %1$s</string>
+</resources>
