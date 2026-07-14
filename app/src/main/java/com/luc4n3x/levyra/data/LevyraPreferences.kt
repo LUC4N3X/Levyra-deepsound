@@ -158,7 +158,7 @@ class LevyraPreferences(context: Context) {
         write { it[KEY_ANIMATIONS] = value }
     }
 
-    fun themePreset(): String = read(com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC) {
+    fun themePreset(): String = read(com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC) {
         com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(it[KEY_THEME_PRESET].orEmpty())
     }
 
@@ -411,7 +411,7 @@ class LevyraPreferences(context: Context) {
         personalOrbitTracks = emptyList(),
         audioNormalization = false,
         lyricsTranslationEnabled = false,
-        themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC,
+        themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC,
         audioSettings = LevyraAudioSettings(),
         interfaceSettings = LevyraInterfaceSettings(),
         downloadSettings = LevyraDownloadSettings()

@@ -35,6 +35,7 @@ object LevyraThemes {
     const val NEON_CYAN = "neon_cyan"
     const val PURPLE_GLASS = "purple_glass"
     const val MINIMAL_WHITE = "minimal_white"
+    const val APPLE_MUSIC = "apple_music"
     const val COVER_FLOW = "cover_flow"
     const val MOOD_FLOW = "mood_flow"
 
@@ -57,6 +58,20 @@ object LevyraThemes {
         text = Color(0xFFF5F5F7),
         muted = Color(0xFF86868B),
         outline = Color(0x33FFFFFF)
+    )
+
+    val appleMusic = cosmic.copy(
+        id = APPLE_MUSIC,
+        label = "Apple Music",
+        emoji = "🍎",
+        cyan = Color(0xFFFF2D55),
+        blue = Color(0xFFFF3B30),
+        violet = Color(0xFFAF52DE),
+        pink = Color(0xFFFF2D55),
+        orange = Color(0xFFFF9500),
+        text = Color(0xFFF5F5F7),
+        muted = Color(0xFF8E8E93),
+        outline = Color(0x33FF2D55)
     )
 
     val amoled = cosmic.copy(
@@ -138,9 +153,9 @@ object LevyraThemes {
         followsMood = true
     )
 
-    val presets: List<LevyraPalette> = listOf(cosmic, amoled, neonCyan, purpleGlass, minimalWhite, coverFlow, moodFlow)
+    val presets: List<LevyraPalette> = listOf(appleMusic, cosmic, amoled, neonCyan, purpleGlass, minimalWhite, coverFlow, moodFlow)
 
-    fun byId(id: String): LevyraPalette = presets.firstOrNull { it.id == id } ?: cosmic
+    fun byId(id: String): LevyraPalette = presets.firstOrNull { it.id == id } ?: appleMusic
 
     fun normalize(id: String): String = byId(id).id
 }
