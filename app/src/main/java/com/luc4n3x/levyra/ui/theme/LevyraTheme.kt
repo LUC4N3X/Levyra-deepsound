@@ -64,14 +64,14 @@ object LevyraThemes {
         id = APPLE_MUSIC,
         label = "Apple Music",
         emoji = "🍎",
-        cyan = Color(0xFFFF2D55),
-        blue = Color(0xFFFF3B30),
-        violet = Color(0xFFAF52DE),
-        pink = Color(0xFFFF2D55),
-        orange = Color(0xFFFF9500),
+        cyan = Color(0xFF0A84FF),
+        blue = Color(0xFF0066FF),
+        violet = Color(0xFF5E5CE6),
+        pink = Color(0xFF0A84FF),
+        orange = Color(0xFF30D158),
         text = Color(0xFFF5F5F7),
         muted = Color(0xFF8E8E93),
-        outline = Color(0x33FF2D55)
+        outline = Color(0x330A84FF)
     )
 
     val amoled = cosmic.copy(
