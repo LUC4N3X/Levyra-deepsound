@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Minioodtwarzacz, szybkie ulubione, codzienny flow, offline i teksty</string>
+    <string name="widget_description">Miniodtwarzacz, szybkie ulubione, codzienny flow, offline i teksty</string>
     <string name="widget_idle_subtitle">Dotknij, aby posłuchać</string>
     <string name="widget_toggle">Odtwarzaj/Pauza</string>
     <string name="widget_next">Następny</string>
