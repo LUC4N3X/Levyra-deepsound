@@ -447,24 +447,24 @@ Before submitting changes:
 <br>
 
 ## ✦ Credits
-
+ 
 <table>
   <tr>
     <td width="100" align="center">
       <a href="https://github.com/LUC4N3X">
-        <img src="https://github.com/LUC4N3X.png" width="80" style="border-radius: 50%; border: 2px solid #FF2D55;" alt="LUC4N3X Avatar" />
+        <img src="https://github.com/LUC4N3X.png" width="80" style="border-radius: 50%; border: 2px solid #7F52FF;" alt="LUC4N3X Avatar" />
       </a>
     </td>
     <td>
-      <strong>LUC4N3X</strong> — <em>Creator and Lead Architect</em>
-      <p>Architecture, playback orchestration, extraction integration, offline pipeline, interface, performance, and release automation.</p>
+      <strong>LUC4N3X</strong> — <em>Creator & Lead Architect</em>
+      <p>System architecture, ExoPlayer orchestration, background WorkManager export queue, automated releases pipeline, design lead.</p>
     </td>
   </tr>
 </table>
-
-Interface and startup-performance ideas are informed by the open-source work of [SimpMusic](https://github.com/maxrave-dev/SimpMusic) and [Metrolist](https://github.com/MetrolistGroup/Metrolist).
-
-The stream extraction core uses [LevyraExtractor](https://github.com/LUC4N3X/LevyraExtractor), a GPL-3.0 fork derived from [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor) in the NewPipe/PipePipe ecosystem.
+ 
+*UI and modular styling conventions draw structural inspiration from the open-source project [Metrolist](https://github.com/MetrolistGroup/Metrolist).*
+ 
+*The stream extraction core uses [LevyraExtractor](https://github.com/LUC4N3X/LevyraExtractor), a GPL-3.0 fork derived from [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor) in the NewPipe/PipePipe ecosystem.*
 
 ---
 
