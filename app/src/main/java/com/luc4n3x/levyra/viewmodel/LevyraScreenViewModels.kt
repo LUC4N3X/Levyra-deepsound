@@ -11,6 +11,7 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
@@ -127,6 +128,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun toggleRepeat() = root.toggleRepeat()
     fun toggleShuffle() = root.toggleShuffle()
     fun toggleVideoMode() = root.toggleVideoMode()
+    fun setTemporaryPlaybackSpeed(value: Float) = root.setTemporaryPlaybackSpeed(value)
 }
 
 class LevyraScreenViewModelFactory(
@@ -169,7 +171,8 @@ private data class HomeProjection(
     val selectedMood: Mood?,
     val similarArtists: List<ArtistHit>,
     val tracks: List<Track>,
-    val userName: String
+    val userName: String,
+    val interfaceSettings: LevyraInterfaceSettings
 )
 
 private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjection(
@@ -196,7 +199,8 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     selectedMood = state.selectedMood,
     similarArtists = state.similarArtists,
     tracks = state.tracks,
-    userName = state.userName
+    userName = state.userName,
+    interfaceSettings = state.interfaceSettings
 )
 
 private data class SearchProjection(
@@ -312,7 +316,8 @@ private data class PlayerProjection(
     val positionMs: Long,
     val repeatMode: RepeatMode,
     val shuffleEnabled: Boolean,
-    val sleepTimerMinutes: Int
+    val sleepTimerMinutes: Int,
+    val interfaceSettings: LevyraInterfaceSettings
 )
 
 private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
@@ -332,5 +337,6 @@ private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPro
     positionMs = state.positionMs,
     repeatMode = state.repeatMode,
     shuffleEnabled = state.shuffleEnabled,
-    sleepTimerMinutes = state.sleepTimerMinutes
+    sleepTimerMinutes = state.sleepTimerMinutes,
+    interfaceSettings = state.interfaceSettings
 )
