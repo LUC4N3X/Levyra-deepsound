@@ -415,16 +415,6 @@ major × 1,000,000 + minor × 10,000 + patch × 100 + build
 
 GitHub Actions validates version metadata, APK structure, release naming, workflow duplication, and artifact safety before publishing.
 
-<br>
-
-## ✦ Documentation
-
-- [`CHANGELOG.md`](CHANGELOG.md) — release history and user-visible changes
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — playback, startup, storage, and threading architecture
-- [`docs/RELEASE_NOTES_2.3.9.md`](docs/RELEASE_NOTES_2.3.9.md) — publish-ready GitHub release notes
-- [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) — third-party licenses and attribution
-
-<br>
 
 ## ✦ Permissions and Privacy
 
