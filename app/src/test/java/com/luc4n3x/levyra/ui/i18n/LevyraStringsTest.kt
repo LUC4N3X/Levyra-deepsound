@@ -1,5 +1,5 @@
 package com.luc4n3x.levyra.ui.i18n
- 
+
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.file.Files
 import java.nio.file.Path
- 
+
 class LevyraStringsTest {
     @Test
     fun catalogAndStringBundlesStayInSync() {
@@ -15,7 +15,7 @@ class LevyraStringsTest {
         assertEquals(catalogCodes, LevyraStrings.supportedCodes())
         assertEquals(catalogCodes, LevyraStrings.all().map { it.code }.toSet())
     }
- 
+
     @Test
     fun regionAndScriptVariantsResolveToSupportedBundles() {
         assertEquals("nl", LevyraStrings.forCode("nl-NL").code)
@@ -23,7 +23,7 @@ class LevyraStringsTest {
         assertEquals("uk", LevyraStrings.forCode("uk-UA").code)
         assertEquals("en", LevyraStrings.forCode("xx-YY").code)
     }
- 
+
     @Test
     fun dutchBundleDoesNotLeakItalianSearchCopy() {
         val strings = LevyraStrings.forCode("nl")
@@ -31,9 +31,12 @@ class LevyraStringsTest {
         assertEquals("Toevoegen aan wachtrij", strings.addToQueue)
         assertEquals("Spraakgestuurd zoeken wordt niet ondersteund", strings.voiceSearchUnsupported)
         assertEquals("YouTube Music doorzoeken…", strings.searchingYouTubeMusic)
+        assertEquals("Ontdek nieuwe muziek, trends en video's", strings.exploreSubtitle)
+        assertEquals("De externe link kan niet worden geopend", strings.cannotOpenExternalLink)
+        assertFalse(strings.exploreSubtitle.contains("\\"))
         assertFalse(strings.recentSearches.contains("Ricerche", ignoreCase = true))
     }
- 
+
     @Test
     fun newlyAddedLanguagesContainNativeCoreCopy() {
         val russian = LevyraStrings.forCode("ru")
@@ -43,7 +46,7 @@ class LevyraStringsTest {
         assertEquals("Все", russian.all)
         assertEquals("Tümü", turkish.all)
     }
- 
+
     @Test
     fun mainUiDoesNotContainKnownItalianLocalizationLeaks() {
         val source = sequenceOf(
@@ -65,7 +68,7 @@ class LevyraStringsTest {
         )
         forbidden.forEach { leaked -> assertFalse("Hardcoded localization leak: $leaked", content.contains(leaked)) }
     }
- 
+
     @Test
     fun localizedFormattersUseSelectedLanguage() {
         val dutch = LevyraStrings.forCode("nl")
