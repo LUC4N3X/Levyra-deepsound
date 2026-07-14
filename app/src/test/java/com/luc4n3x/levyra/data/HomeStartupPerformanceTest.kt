@@ -3,6 +3,11 @@ package com.luc4n3x.levyra.data
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 class HomeStartupPerformanceTest {
     @Test
@@ -62,5 +67,40 @@ class HomeStartupPerformanceTest {
         assertEquals(200L, gate.remainingIdleMs(500L))
         now += 200L
         assertEquals(0L, gate.remainingIdleMs(500L))
+    }
+
+    @Test
+    fun interactionGatePublishesScrollStateAndTimestampAtomically() {
+        val now = AtomicLong(1_000L)
+        val blockNextClockRead = AtomicBoolean(false)
+        val clockReadStarted = CountDownLatch(1)
+        val releaseClockRead = CountDownLatch(1)
+        val executor = Executors.newSingleThreadExecutor()
+        try {
+            val gate = HomeInteractionGate {
+                if (blockNextClockRead.compareAndSet(true, false)) {
+                    clockReadStarted.countDown()
+                    check(releaseClockRead.await(2L, TimeUnit.SECONDS))
+                }
+                now.get()
+            }
+            gate.update(true)
+            now.set(10_000L)
+            blockNextClockRead.set(true)
+
+            val update = executor.submit { gate.update(false) }
+            assertTrue(clockReadStarted.await(2L, TimeUnit.SECONDS))
+            assertEquals(500L, gate.remainingIdleMs(500L))
+
+            releaseClockRead.countDown()
+            update.get(2L, TimeUnit.SECONDS)
+            assertEquals(500L, gate.remainingIdleMs(500L))
+
+            now.addAndGet(500L)
+            assertEquals(0L, gate.remainingIdleMs(500L))
+        } finally {
+            releaseClockRead.countDown()
+            executor.shutdownNow()
+        }
     }
 }
