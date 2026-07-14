@@ -3918,7 +3918,7 @@ private fun PersonalListeningShelf(
     onPlayAll: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val shelfTracks = remember(tracks) { tracks.distinctBy { it.id }.take(LevyraPersonalOrbit.DISPLAY_LIMIT) }
+    val shelfTracks = remember(tracks) { tracks.distinctBy { LevyraPersonalOrbit.identityKey(it) }.take(LevyraPersonalOrbit.DISPLAY_LIMIT) }
     val pages = remember(shelfTracks) { shelfTracks.chunked(6) }
     val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
 
