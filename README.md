@@ -19,7 +19,6 @@
   <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
 </p>
 
-[⬇️ Download](#-download-levyra) • [📱 Screenshots](#-inside-levyra) • [✨ Features](#-key-features) • [⚡ Performance](#-performance-and-device-adaptation) • [🌐 Architecture](#-architecture) • [🛠️ Build](#-getting-started) • [📜 Changelog](CHANGELOG.md)
 
 <br>
 
