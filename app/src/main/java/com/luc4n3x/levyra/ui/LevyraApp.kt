@@ -2433,14 +2433,14 @@ private fun openExternalUrl(
     strings: LevyraStrings = LevyraStrings.forCode("en")
 ) {
     if (url.isBlank()) {
-        Toast.makeText(context, strings.updateLinkUnavailable, Toast.LENGTH_LONG).show()
+        Toast.makeText(context, strings.externalLinkUnavailable, Toast.LENGTH_LONG).show()
         return
     }
     runCatching {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
     }.onFailure {
-        Toast.makeText(context, strings.cannotOpenDownload, Toast.LENGTH_LONG).show()
+        Toast.makeText(context, strings.cannotOpenExternalLink, Toast.LENGTH_LONG).show()
     }
 }
 
