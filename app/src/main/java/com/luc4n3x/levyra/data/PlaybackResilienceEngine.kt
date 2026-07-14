@@ -160,9 +160,11 @@ internal class PlaybackResilienceEngine(context: Context) {
 
     private fun sanitize(value: String): String {
         return value
-            .replace(Regex("https?://[^\s]+"), "<redacted-url>")
-            .replace(Regex("(?i)(authorization|cookie|visitor|token|signature)=[^&\s]+"), "$1=<redacted>")
-            .replace(Regex("\s+"), " ")
+            .replace(Regex("""https?://[^\s]+"""), "<redacted-url>")
+            .replace(Regex("""(?i)(authorization|cookie|visitor|token|signature)=[^&\s]+""")) { match ->
+                "${match.groupValues[1]}=<redacted>"
+            }
+            .replace(Regex("""\s+"""), " ")
             .trim()
             .take(280)
     }
