@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minirreproductor, favoritos rápidos, flow diario, contenido sin conexión y letras</string>
+    <string name="widget_idle_subtitle">Toca para escuchar</string>
+    <string name="widget_toggle">Reproducir/Pausar</string>
+    <string name="widget_next">Siguiente</string>
+    <string name="widget_previous">Anterior</string>
+    <string name="widget_favorites">Favoritos</string>
+    <string name="widget_flow">Flow diario</string>
+    <string name="widget_offline">Mix sin conexión</string>
+    <string name="widget_lyrics">Letras</string>
+    <string name="radar_channel_name">Radar de lanzamientos</string>
+    <string name="radar_channel_description">Nuevos lanzamientos de los artistas que sigues</string>
+    <string name="radar_new_release_title">Nuevo lanzamiento de %1$s</string>
+</resources>
