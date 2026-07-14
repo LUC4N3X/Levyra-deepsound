@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Мини-плеер, быстрый доступ к избранному, ежедневный flow, офлайн и тексты</string>
+    <string name="widget_idle_subtitle">Нажмите, чтобы слушать</string>
+    <string name="widget_toggle">Воспроизвести/Пауза</string>
+    <string name="widget_next">Следующий</string>
+    <string name="widget_previous">Предыдущий</string>
+    <string name="widget_favorites">Избранное</string>
+    <string name="widget_flow">Ежедневный flow</string>
+    <string name="widget_offline">Офлайн-микс</string>
+    <string name="widget_lyrics">Тексты</string>
+    <string name="radar_channel_name">Радар релизов</string>
+    <string name="radar_channel_description">Новые релизы исполнителей, на которых вы подписаны</string>
+    <string name="radar_new_release_title">Новый релиз от %1$s</string>
+</resources>
