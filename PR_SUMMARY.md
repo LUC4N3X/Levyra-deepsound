@@ -15,9 +15,9 @@
 
 ## What changed
 
-- **`LevyraTheme.kt`**: Aggiunta la costante `APPLE_MUSIC` e il relativo preset con accento cromatico rosa/rosso Apple (`#FF2D55`) e grigi coordinati.
+- **`LevyraTheme.kt`**: Aggiunta la costante `APPLE_MUSIC` e il relativo preset con accento cromatico blu elettrico/Apple Blue (`#0A84FF`) e grigi coordinati.
 - **`LevyraPreferences.kt`** & **`MainActivity.kt`**: Impostato il tema `APPLE_MUSIC` come predefinito all'avvio dell'applicazione.
-- **`LevyraApp.kt` (TabButton)**: Rimosso il contenitore a pillola animato (stile Material 3) sotto le icone attive nella barra di navigazione inferiore. Ora l'indicazione dello stato attivo è data unicamente dal colore accento rosa/rosso, stile iOS.
+- **`LevyraApp.kt` (TabButton)**: Rimosso il contenitore a pillola animato (stile Material 3) sotto le icone attive nella barra di navigazione inferiore. Introdotto un indicatore di selezione minimalista: una linea orizzontale blu elettrico che si apre a scorrimento sotto il testo della scheda attiva ed una soffusa aura circolare blu dietro l'icona selezionata.
 - **`LevyraApp.kt` (Bottoni)**: Uniformate le curvature dei pulsanti (`ArtistFollowButton`, `AlbumPrimaryPlayButton` e `AlbumSecondaryAction`) a `12.dp` (rettangolo arrotondato morbido stile Apple) anziché pillola o Material 3 standard.
 
 ## Testing

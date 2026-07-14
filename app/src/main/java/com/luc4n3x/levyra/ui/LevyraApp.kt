@@ -428,6 +428,18 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     ),
                 contentAlignment = Alignment.Center
             ) {
+                if (isAppleStyle && selectedProgress > 0.01f) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .graphicsLayer {
+                                scaleX = selectedProgress
+                                scaleY = selectedProgress
+                                alpha = selectedProgress * 0.14f
+                            }
+                            .background(LevyraCyan, CircleShape)
+                    )
+                }
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
@@ -450,6 +462,20 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (isAppleStyle) {
+                val indicatorWidth by animateDpAsState(
+                    targetValue = if (selected) 14.dp else 0.dp,
+                    animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
+                    label = "tab-apple-indicator-width"
+                )
+                Box(
+                    modifier = Modifier
+                        .width(indicatorWidth)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(1.5.dp))
+                        .background(LevyraCyan)
+                )
+            }
         }
     }
 }
