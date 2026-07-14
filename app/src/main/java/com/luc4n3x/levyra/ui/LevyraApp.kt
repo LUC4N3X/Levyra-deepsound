@@ -374,7 +374,8 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
         label = "tab-icon-scale"
     )
-    val tabActiveTint = if (LevyraIsLight) LevyraCyan else Color(0xFF9BDDFF)
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    val tabActiveTint = if (isAppleStyle) LevyraCyan else if (LevyraIsLight) LevyraCyan else Color(0xFF9BDDFF)
     val tabInactiveTint = if (LevyraIsLight) LevyraMuted else Color(0xFF7E7E86)
     val iconTint by animateColorAsState(
         targetValue = if (selected) tabActiveTint else tabInactiveTint,
@@ -383,6 +384,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
     )
     val labelTint by animateColorAsState(
         targetValue = when {
+            selected && isAppleStyle -> LevyraCyan
             selected && LevyraIsLight -> LevyraText
             selected -> Color(0xFFEAF7FF)
             LevyraIsLight -> LevyraMuted
@@ -409,16 +411,20 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         ) {
             Box(
                 modifier = Modifier
-                    .width(pillWidth)
+                    .width(if (isAppleStyle) 30.dp else pillWidth)
                     .height(32.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(
-                        LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.16f else 0.14f) * selectedProgress)
+                        if (isAppleStyle) Color.Transparent
+                        else LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.16f else 0.14f) * selectedProgress)
                     )
-                    .border(
-                        width = 1.dp,
-                        color = LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.26f else 0.22f) * selectedProgress),
-                        shape = RoundedCornerShape(16.dp)
+                    .then(
+                        if (isAppleStyle) Modifier
+                        else Modifier.border(
+                            width = 1.dp,
+                            color = LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.26f else 0.22f) * selectedProgress),
+                            shape = RoundedCornerShape(16.dp)
+                        )
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -1558,12 +1564,15 @@ private fun AlbumPrimaryPlayButton(
     accentEnd: Color,
     onClick: () -> Unit
 ) {
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    val cornerRadius = if (isAppleStyle) 12.dp else 16.dp
+    val buttonShape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
-            .shadow(if (enabled) 16.dp else 0.dp, RoundedCornerShape(16.dp), clip = false, spotColor = accentStart.copy(alpha = 0.6f))
-            .clip(RoundedCornerShape(16.dp))
+            .shadow(if (enabled) 16.dp else 0.dp, buttonShape, clip = false, spotColor = accentStart.copy(alpha = 0.6f))
+            .clip(buttonShape)
             .background(
                 if (enabled) Brush.horizontalGradient(listOf(accentStart, accentEnd))
                 else Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f)))
@@ -1596,12 +1605,15 @@ private fun AlbumSecondaryAction(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    val cornerRadius = if (isAppleStyle) 12.dp else 14.dp
+    val buttonShape = RoundedCornerShape(cornerRadius)
     Row(
         modifier = modifier
             .height(46.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(buttonShape)
             .background(Color.White.copy(alpha = if (enabled) 0.06f else 0.03f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) 0.08f else 0.04f)), RoundedCornerShape(14.dp))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = if (enabled) 0.08f else 0.04f)), buttonShape)
             .pressable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1929,9 +1941,11 @@ private fun ArtistOverlay(
 @Composable
 private fun ArtistFollowButton(isFollowed: Boolean, accentStart: Color, accentEnd: Color, onClick: () -> Unit) {
     val strings = LocalLevyraStrings.current
+    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
+    val buttonShape = RoundedCornerShape(if (isAppleStyle) 12.dp else 50.dp)
     Surface(
         color = Color.Transparent,
-        shape = RoundedCornerShape(50.dp),
+        shape = buttonShape,
         border = if (isFollowed) BorderStroke(1.dp, LevyraText.copy(alpha = 0.35f)) else null,
         modifier = Modifier.pressable(onClick = onClick)
     ) {
@@ -1939,7 +1953,7 @@ private fun ArtistFollowButton(isFollowed: Boolean, accentStart: Color, accentEn
             modifier = Modifier
                 .then(
                     if (isFollowed) Modifier
-                    else Modifier.background(Brush.linearGradient(listOf(accentStart, accentEnd)), RoundedCornerShape(50.dp))
+                    else Modifier.background(Brush.linearGradient(listOf(accentStart, accentEnd)), buttonShape)
                 )
                 .padding(horizontal = 22.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
