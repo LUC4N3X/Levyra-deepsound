@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minipřehrávač, rychlé oblíbené, denní flow, offline a texty</string>
+    <string name="widget_idle_subtitle">Klepnutím spustíte poslech</string>
+    <string name="widget_toggle">Přehrát/Pozastavit</string>
+    <string name="widget_next">Další</string>
+    <string name="widget_previous">Předchozí</string>
+    <string name="widget_favorites">Oblíbené</string>
+    <string name="widget_flow">Denní flow</string>
+    <string name="widget_offline">Offline mix</string>
+    <string name="widget_lyrics">Texty</string>
+    <string name="radar_channel_name">Radar novinek</string>
+    <string name="radar_channel_description">Novinky od interpretů, které sledujete</string>
+    <string name="radar_new_release_title">Novinka od %1$s</string>
+</resources>
