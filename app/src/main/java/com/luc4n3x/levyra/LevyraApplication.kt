@@ -3,6 +3,7 @@ package com.luc4n3x.levyra
 import android.app.Application
 import android.content.ComponentCallbacks2
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeLocalDecoder
@@ -20,6 +21,7 @@ class LevyraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
+        LevyraArtworkStartupMetrics.beginSession()
         LevyraArtworkCache.configure(this)
         YoutubeLocalDecoder.install(this)
         warmPlaybackPipeline()

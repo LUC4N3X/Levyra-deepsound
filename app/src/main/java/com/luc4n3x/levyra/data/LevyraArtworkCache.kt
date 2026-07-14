@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
+import android.app.ActivityManager
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
@@ -39,10 +41,20 @@ object LevyraArtworkCache {
         synchronized(this) {
             if (configured) return
             SingletonImageLoader.setSafe { appContext ->
+                val memoryProfile = memoryDeviceProfile(appContext)
+                val memoryCacheBytes = ArtworkMemoryCachePolicy.maxSizeBytes(memoryProfile)
+                Timber.i(
+                    "Artwork memory cache size=%dMB memoryClass=%dMB largeMemoryClass=%dMB lowRam=%s largeHeap=%s",
+                    memoryCacheBytes / (1024L * 1024L),
+                    memoryProfile.memoryClassMb,
+                    memoryProfile.largeMemoryClassMb,
+                    memoryProfile.lowRamDevice,
+                    memoryProfile.largeHeapEnabled
+                )
                 ImageLoader.Builder(appContext)
                     .memoryCache {
                         MemoryCache.Builder()
-                            .maxSizePercent(appContext, 0.35)
+                            .maxSizeBytes(memoryCacheBytes)
                             .build()
                     }
                     .diskCache {
@@ -59,6 +71,20 @@ object LevyraArtworkCache {
             }
             configured = true
         }
+    }
+
+    private fun memoryDeviceProfile(context: Context): ArtworkMemoryDeviceProfile {
+        val activityManager = context.getSystemService(ActivityManager::class.java)
+        val memoryClassMb = activityManager?.memoryClass?.coerceAtLeast(64) ?: 256
+        val largeMemoryClassMb = activityManager?.largeMemoryClass?.coerceAtLeast(memoryClassMb) ?: memoryClassMb
+        val lowRamDevice = activityManager?.isLowRamDevice == true
+        val largeHeapEnabled = context.applicationInfo.flags and ApplicationInfo.FLAG_LARGE_HEAP != 0
+        return ArtworkMemoryDeviceProfile(
+            memoryClassMb = memoryClassMb,
+            largeMemoryClassMb = largeMemoryClassMb,
+            lowRamDevice = lowRamDevice,
+            largeHeapEnabled = largeHeapEnabled
+        )
     }
 
     fun small(url: String): String = resize(url, SMALL_SIZE)
