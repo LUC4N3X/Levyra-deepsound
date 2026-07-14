@@ -2,7 +2,7 @@
 
 <img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Logo" width="490" />
 
-# 🎶 Levyra
+# 🎶 
 
 **A high-performance native Android music client built for fast playback, resilient discovery, intelligent lyrics, and complete local control.**
 
