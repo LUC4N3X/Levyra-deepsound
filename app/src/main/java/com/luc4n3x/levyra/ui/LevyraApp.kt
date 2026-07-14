@@ -3129,6 +3129,14 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
     )
 }
 
+internal fun homeSectionLazyKey(
+    position: Int,
+    title: String,
+    trackIds: List<String>
+): String {
+    return "$position|${title.trim().lowercase(Locale.ROOT)}|${trackIds.take(3).joinToString(".")}"
+}
+
 @Composable
 private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
@@ -3328,9 +3336,13 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 )
             }
         }
-        otherSections.forEach { section ->
+        otherSections.forEachIndexed { sectionIndex, section ->
             if (section.tracks.isNotEmpty()) {
-                val sectionKey = "${section.title.trim().lowercase()}|${section.tracks.take(3).joinToString(".") { it.id }}"
+                val sectionKey = homeSectionLazyKey(
+                    position = sectionIndex,
+                    title = section.title,
+                    trackIds = section.tracks.take(3).map { it.id }
+                )
                 item(key = "sec-other-$sectionKey-header", contentType = "home-section-header") {
                     HomeSectionInset { SectionHeaderAction(section.title, onPlayAll = { viewModel.playAll(section.tracks) }) }
                 }
