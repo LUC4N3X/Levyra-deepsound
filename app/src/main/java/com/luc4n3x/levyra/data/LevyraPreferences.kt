@@ -18,6 +18,8 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
+import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -54,7 +56,9 @@ data class LevyraPreferencesSnapshot(
     val audioNormalization: Boolean,
     val lyricsTranslationEnabled: Boolean,
     val themePreset: String,
-    val audioSettings: LevyraAudioSettings
+    val audioSettings: LevyraAudioSettings,
+    val interfaceSettings: LevyraInterfaceSettings,
+    val downloadSettings: LevyraDownloadSettings
 )
 
 class LevyraPreferences(context: Context) {
@@ -62,11 +66,74 @@ class LevyraPreferences(context: Context) {
 
     fun snapshot(): LevyraPreferencesSnapshot = read(defaultSnapshot()) { snapshotFrom(it) }
 
+    suspend fun restoreSnapshot(snapshot: LevyraPreferencesSnapshot) {
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(snapshot.languageCode)
+        val normalizedAudio = snapshot.audioSettings.normalized()
+        val normalizedInterface = snapshot.interfaceSettings.normalized()
+        val normalizedDownloads = snapshot.downloadSettings.normalized()
+        val recentSearchesJson = JSONArray().apply { snapshot.recentSearches.forEach { put(TrackJson.toJson(it)) } }.toString()
+        val personalOrbitJson = JSONArray().apply {
+            snapshot.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT).forEach { put(TrackJson.toJson(it)) }
+        }.toString()
+        dataStore.edit { mutable ->
+            mutable[KEY_ONBOARDED] = snapshot.onboarded
+            mutable[KEY_TASTES] = snapshot.tastes
+            mutable[KEY_USER_NAME] = snapshot.userName
+            mutable[KEY_LANGUAGE_CODE] = normalizedLanguage
+            mutable[KEY_ANIMATIONS] = snapshot.animationsEnabled
+            mutable[KEY_DYNAMIC_COLOR] = snapshot.dynamicColor
+            mutable[KEY_SPONSORBLOCK] = snapshot.sponsorBlock
+            mutable[KEY_SKIP_SILENCE] = snapshot.skipSilence
+            mutable[KEY_AUDIO_QUALITY] = normalizeAudioQuality(snapshot.audioQuality)
+            mutable[KEY_AUDIO_NORMALIZATION] = snapshot.audioNormalization
+            mutable[KEY_LYRICS_TRANSLATION] = snapshot.lyricsTranslationEnabled
+            mutable[KEY_THEME_PRESET] = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(snapshot.themePreset)
+            mutable[KEY_AUDIO_EQ_ENABLED] = normalizedAudio.equalizerEnabled
+            mutable[KEY_AUDIO_EQ_PRESET] = normalizedAudio.presetId
+            mutable[KEY_AUDIO_EQ_BANDS] = normalizedAudio.bandLevels.joinToString(",")
+            mutable[KEY_AUDIO_BASS_BOOST] = normalizedAudio.bassBoost
+            mutable[KEY_AUDIO_VIRTUALIZER] = normalizedAudio.virtualizer
+            mutable[KEY_AUDIO_CROSSFADE] = normalizedAudio.crossfadeSeconds
+            mutable[KEY_AUDIO_DJ_SOFT] = normalizedAudio.djSoftMode
+            mutable[KEY_AUDIO_REPLAY_GAIN] = normalizedAudio.replayGainEnabled
+            mutable[KEY_AUDIO_SPEED] = normalizedAudio.playbackSpeed
+            mutable[KEY_AUDIO_PITCH] = normalizedAudio.pitch
+            mutable[KEY_AUDIO_GAPLESS] = normalizedAudio.gaplessEnabled
+            mutable[KEY_UI_COMPACT_HOME] = normalizedInterface.compactHome
+            mutable[KEY_UI_PERSONAL_ORBIT] = normalizedInterface.showPersonalOrbit
+            mutable[KEY_UI_RESONANCE] = normalizedInterface.showResonance
+            mutable[KEY_UI_NEW_RELEASES] = normalizedInterface.showNewReleases
+            mutable[KEY_UI_ALBUMS] = normalizedInterface.showAlbumsForYou
+            mutable[KEY_UI_ARTISTS] = normalizedInterface.showTrendingArtists
+            mutable[KEY_UI_CHARTS] = normalizedInterface.showCharts
+            mutable[KEY_UI_PLAYER_GESTURES] = normalizedInterface.playerGesturesEnabled
+            mutable[KEY_UI_DOUBLE_TAP_SECONDS] = normalizedInterface.doubleTapSeekSeconds
+            mutable[KEY_UI_LONG_PRESS_SPEED] = normalizedInterface.longPressSpeed
+            mutable[KEY_DOWNLOAD_WIFI_ONLY] = normalizedDownloads.wifiOnly
+            mutable[KEY_DOWNLOAD_CHARGING_ONLY] = normalizedDownloads.chargingOnly
+            mutable[KEY_DOWNLOAD_RESUMABLE] = normalizedDownloads.resumable
+            mutable[KEY_DOWNLOAD_CONCURRENCY] = normalizedDownloads.maxConcurrentDownloads
+            mutable[KEY_RECENT_SEARCHES] = recentSearchesJson
+            mutable[personalOrbitTracksKey(normalizedLanguage)] = personalOrbitJson
+            if (snapshot.lastTrack == null) {
+                mutable.remove(KEY_LAST_TRACK)
+                mutable.remove(KEY_LAST_POSITION)
+            } else {
+                mutable[KEY_LAST_TRACK] = TrackJson.toJson(snapshot.lastTrack).toString()
+                mutable[KEY_LAST_POSITION] = snapshot.lastPositionMs.coerceAtLeast(0L)
+            }
+        }
+    }
+
     fun isOnboarded(): Boolean = read(false) { it[KEY_ONBOARDED] ?: false }
 
     fun setOnboarded(tastes: Set<String>) {
+        setOnboardingState(true, tastes)
+    }
+
+    fun setOnboardingState(onboarded: Boolean, tastes: Set<String>) {
         write {
-            it[KEY_ONBOARDED] = true
+            it[KEY_ONBOARDED] = onboarded
             it[KEY_TASTES] = tastes
         }
     }
@@ -127,6 +194,36 @@ class LevyraPreferences(context: Context) {
 
     fun setLyricsTranslationEnabled(value: Boolean) {
         write { it[KEY_LYRICS_TRANSLATION] = value }
+    }
+
+    fun interfaceSettings(): LevyraInterfaceSettings = read(LevyraInterfaceSettings()) { interfaceSettingsFrom(it) }
+
+    fun setInterfaceSettings(value: LevyraInterfaceSettings) {
+        val normalized = value.normalized()
+        write {
+            it[KEY_UI_COMPACT_HOME] = normalized.compactHome
+            it[KEY_UI_PERSONAL_ORBIT] = normalized.showPersonalOrbit
+            it[KEY_UI_RESONANCE] = normalized.showResonance
+            it[KEY_UI_NEW_RELEASES] = normalized.showNewReleases
+            it[KEY_UI_ALBUMS] = normalized.showAlbumsForYou
+            it[KEY_UI_ARTISTS] = normalized.showTrendingArtists
+            it[KEY_UI_CHARTS] = normalized.showCharts
+            it[KEY_UI_PLAYER_GESTURES] = normalized.playerGesturesEnabled
+            it[KEY_UI_DOUBLE_TAP_SECONDS] = normalized.doubleTapSeekSeconds
+            it[KEY_UI_LONG_PRESS_SPEED] = normalized.longPressSpeed
+        }
+    }
+
+    fun downloadSettings(): LevyraDownloadSettings = read(LevyraDownloadSettings()) { downloadSettingsFrom(it) }
+
+    fun setDownloadSettings(value: LevyraDownloadSettings) {
+        val normalized = value.normalized()
+        write {
+            it[KEY_DOWNLOAD_WIFI_ONLY] = normalized.wifiOnly
+            it[KEY_DOWNLOAD_CHARGING_ONLY] = normalized.chargingOnly
+            it[KEY_DOWNLOAD_RESUMABLE] = normalized.resumable
+            it[KEY_DOWNLOAD_CONCURRENCY] = normalized.maxConcurrentDownloads
+        }
     }
 
     fun audioSettings(): LevyraAudioSettings = read(LevyraAudioSettings()) { audioSettingsFrom(it) }
@@ -291,7 +388,9 @@ class LevyraPreferences(context: Context) {
             audioNormalization = preferences[KEY_AUDIO_NORMALIZATION] ?: false,
             lyricsTranslationEnabled = preferences[KEY_LYRICS_TRANSLATION] ?: false,
             themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.normalize(preferences[KEY_THEME_PRESET].orEmpty()),
-            audioSettings = audioSettingsFrom(preferences)
+            audioSettings = audioSettingsFrom(preferences),
+            interfaceSettings = interfaceSettingsFrom(preferences),
+            downloadSettings = downloadSettingsFrom(preferences)
         )
     }
 
@@ -313,9 +412,31 @@ class LevyraPreferences(context: Context) {
         audioNormalization = false,
         lyricsTranslationEnabled = false,
         themePreset = com.luc4n3x.levyra.ui.theme.LevyraThemes.COSMIC,
-        audioSettings = LevyraAudioSettings()
+        audioSettings = LevyraAudioSettings(),
+        interfaceSettings = LevyraInterfaceSettings(),
+        downloadSettings = LevyraDownloadSettings()
     )
 
+
+    private fun interfaceSettingsFrom(preferences: Preferences): LevyraInterfaceSettings = LevyraInterfaceSettings(
+        compactHome = preferences[KEY_UI_COMPACT_HOME] ?: false,
+        showPersonalOrbit = preferences[KEY_UI_PERSONAL_ORBIT] ?: true,
+        showResonance = preferences[KEY_UI_RESONANCE] ?: true,
+        showNewReleases = preferences[KEY_UI_NEW_RELEASES] ?: true,
+        showAlbumsForYou = preferences[KEY_UI_ALBUMS] ?: true,
+        showTrendingArtists = preferences[KEY_UI_ARTISTS] ?: true,
+        showCharts = preferences[KEY_UI_CHARTS] ?: true,
+        playerGesturesEnabled = preferences[KEY_UI_PLAYER_GESTURES] ?: true,
+        doubleTapSeekSeconds = preferences[KEY_UI_DOUBLE_TAP_SECONDS] ?: 10,
+        longPressSpeed = preferences[KEY_UI_LONG_PRESS_SPEED] ?: 2f
+    ).normalized()
+
+    private fun downloadSettingsFrom(preferences: Preferences): LevyraDownloadSettings = LevyraDownloadSettings(
+        wifiOnly = preferences[KEY_DOWNLOAD_WIFI_ONLY] ?: false,
+        chargingOnly = preferences[KEY_DOWNLOAD_CHARGING_ONLY] ?: false,
+        resumable = preferences[KEY_DOWNLOAD_RESUMABLE] ?: true,
+        maxConcurrentDownloads = preferences[KEY_DOWNLOAD_CONCURRENCY] ?: 2
+    ).normalized()
 
     private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_${LevyraLanguageCatalog.normalize(languageCode)}")
 
@@ -461,5 +582,19 @@ class LevyraPreferences(context: Context) {
         val KEY_AUDIO_PITCH = floatPreferencesKey("audio_pitch")
         val KEY_AUDIO_GAPLESS = booleanPreferencesKey("audio_gapless")
         val KEY_LISTENING_PULSE_LAST_PRUNE = longPreferencesKey("listening_pulse_last_prune")
+        val KEY_UI_COMPACT_HOME = booleanPreferencesKey("ui_compact_home")
+        val KEY_UI_PERSONAL_ORBIT = booleanPreferencesKey("ui_show_personal_orbit")
+        val KEY_UI_RESONANCE = booleanPreferencesKey("ui_show_resonance")
+        val KEY_UI_NEW_RELEASES = booleanPreferencesKey("ui_show_new_releases")
+        val KEY_UI_ALBUMS = booleanPreferencesKey("ui_show_albums")
+        val KEY_UI_ARTISTS = booleanPreferencesKey("ui_show_artists")
+        val KEY_UI_CHARTS = booleanPreferencesKey("ui_show_charts")
+        val KEY_UI_PLAYER_GESTURES = booleanPreferencesKey("ui_player_gestures")
+        val KEY_UI_DOUBLE_TAP_SECONDS = intPreferencesKey("ui_double_tap_seconds")
+        val KEY_UI_LONG_PRESS_SPEED = floatPreferencesKey("ui_long_press_speed")
+        val KEY_DOWNLOAD_WIFI_ONLY = booleanPreferencesKey("download_wifi_only")
+        val KEY_DOWNLOAD_CHARGING_ONLY = booleanPreferencesKey("download_charging_only")
+        val KEY_DOWNLOAD_RESUMABLE = booleanPreferencesKey("download_resumable")
+        val KEY_DOWNLOAD_CONCURRENCY = intPreferencesKey("download_concurrency")
     }
 }

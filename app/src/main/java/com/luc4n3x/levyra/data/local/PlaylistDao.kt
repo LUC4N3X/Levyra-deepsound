@@ -30,6 +30,9 @@ abstract class PlaylistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insertTracks(tracks: List<PlaylistTrackEntity>)
 
+    @Query("DELETE FROM playlists")
+    abstract suspend fun clearAll()
+
     @Query("DELETE FROM playlists WHERE id = :playlistId")
     abstract suspend fun deletePlaylist(playlistId: String)
 
