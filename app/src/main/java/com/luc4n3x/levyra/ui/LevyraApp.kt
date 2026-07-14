@@ -168,6 +168,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -276,7 +277,11 @@ import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import com.luc4n3x.levyra.viewmodel.SearchViewModel
 import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.format.TextStyle as DayTextStyle
@@ -3144,9 +3149,6 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     val otherSections = remember(state.homeSections) {
         state.homeSections.filter { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
     }
-    val secondaryPreloadTracks = remember(resonanceTracks, newReleases) {
-        (resonanceTracks + (newReleases?.tracks ?: emptyList())).distinctBy { it.id }.take(10)
-    }
     val chartChunks = remember(state.charts) { state.charts.chunked(4) }
     val homeContent = remember(
         state.tracks,
@@ -3202,17 +3204,19 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         if (showHomeAlbumShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
         if (showChartShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
     }
+    LaunchedEffect(homeListState) {
+        snapshotFlow { homeListState.isScrollInProgress }
+            .distinctUntilChanged()
+            .collect { viewModel.setHomeScrollInProgress(it) }
+    }
+    DisposableEffect(viewModel) {
+        onDispose { viewModel.setHomeScrollInProgress(false) }
+    }
     LaunchedEffect(Unit) {
         delay(5_000L)
-        LevyraArtworkStartupMetrics.persistSnapshot(context)
-    }
-    LaunchedEffect(personalTracks, secondaryPreloadTracks) {
-        delay(500L)
-        while (homeListState.isScrollInProgress) delay(120L)
-        if (state.interfaceSettings.showPersonalOrbit && personalTracks.isNotEmpty()) {
-            LevyraArtworkCache.preloadPriority(context, personalTracks, LevyraPersonalOrbit.DISPLAY_LIMIT)
+        withContext(Dispatchers.IO) {
+            LevyraArtworkStartupMetrics.persistSnapshot(context)
         }
-        LevyraArtworkCache.preloadHome(context, secondaryPreloadTracks, 10)
     }
     LazyColumn(
         state = homeListState,
@@ -3254,15 +3258,12 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         }
         if (state.currentTrack != null) {
             item(key = "home-continue", contentType = "home-card") {
-                HomeSectionInset {
-                    ContinueListeningCard(
-                        track = state.currentTrack,
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        progress = progressOf(state.positionMs, state.durationMs),
-                        onResume = viewModel::togglePlay
-                    )
-                }
+                HomeContinueListeningCard(
+                    viewModel = viewModel,
+                    track = state.currentTrack,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving
+                )
             }
         }
 
@@ -3327,12 +3328,13 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 )
             }
         }
-        otherSections.forEachIndexed { index, section ->
+        otherSections.forEach { section ->
             if (section.tracks.isNotEmpty()) {
-                item(key = "sec-other-${index}-header", contentType = "home-section-header") {
+                val sectionKey = "${section.title.trim().lowercase()}|${section.tracks.take(3).joinToString(".") { it.id }}"
+                item(key = "sec-other-$sectionKey-header", contentType = "home-section-header") {
                     HomeSectionInset { SectionHeaderAction(section.title, onPlayAll = { viewModel.playAll(section.tracks) }) }
                 }
-                item(key = "sec-other-${index}-row", contentType = "home-horizontal-row") {
+                item(key = "sec-other-$sectionKey-row", contentType = "home-horizontal-row") {
                     AlbumCardRow(
                         tracks = section.tracks,
                         currentId = state.currentTrack?.id,
@@ -3421,6 +3423,25 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     }
 }
 
+@Composable
+private fun HomeContinueListeningCard(
+    viewModel: HomeViewModel,
+    track: Track,
+    isPlaying: Boolean,
+    isResolving: Boolean
+) {
+    val playbackProgress by viewModel.playbackProgress.collectAsState()
+    HomeSectionInset {
+        ContinueListeningCard(
+            track = track,
+            isPlaying = isPlaying,
+            isResolving = isResolving,
+            progress = progressOf(playbackProgress.positionMs, playbackProgress.durationMs),
+            onResume = viewModel::togglePlay
+        )
+    }
+}
+
 private data class HomeHeroUpdate(
     val track: Track,
     val sourceTitle: String,
@@ -3479,6 +3500,32 @@ private fun buildTrendingArtists(state: LevyraUiState): List<TrendingArtist> {
         .distinctBy { it.artist }
         .take(10)
         .map { TrendingArtist(name = it.artist, imageUrl = it.thumbnailUrl) }
+}
+
+@Composable
+private fun StableRemoteArtwork(
+    url: String,
+    contentDescription: String,
+    modifier: Modifier,
+    contentScale: ContentScale
+) {
+    val context = LocalContext.current
+    val resizedUrl = remember(url) { LevyraArtworkCache.small(url) }
+    val request = remember(context, resizedUrl) {
+        ImageRequest.Builder(context)
+            .data(resizedUrl)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .networkCachePolicy(CachePolicy.ENABLED)
+            .crossfade(false)
+            .build()
+    }
+    AsyncImage(
+        model = request,
+        contentDescription = contentDescription,
+        contentScale = contentScale,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -3543,8 +3590,8 @@ private fun TrendingArtistsShelf(
                             .padding(2.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        AsyncImage(
-                            model = artist.imageUrl,
+                        StableRemoteArtwork(
+                            url = artist.imageUrl,
                             contentDescription = artist.name,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
@@ -9247,7 +9294,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
     ) {
         itemsIndexed(
             items = albums,
-            key = { index, album -> "home-album-card-$index-${album.title}-${album.artist}" },
+            key = { _, album -> album.browseId.ifBlank { "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}" } },
             contentType = { _, _ -> "home-album-card" }
         ) { index, album ->
             var isPressed by remember { mutableStateOf(false) }
@@ -9289,8 +9336,8 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                             .aspectRatio(1f)
                     ) {
                         if (album.thumbnailUrl.isNotBlank()) {
-                            AsyncImage(
-                                model = album.thumbnailUrl,
+                            StableRemoteArtwork(
+                                url = album.thumbnailUrl,
                                 contentDescription = album.title,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -9351,7 +9398,7 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
     ) {
         itemsIndexed(
             items = tracks,
-            key = { index, track -> "album-card-$index-${track.id}" },
+            key = { _, track -> track.id.ifBlank { "${track.title.trim().lowercase()}|${track.artist.trim().lowercase()}" } },
             contentType = { _, _ -> "album-card" }
         ) { index, track ->
             val isCurrent = track.id == currentId
