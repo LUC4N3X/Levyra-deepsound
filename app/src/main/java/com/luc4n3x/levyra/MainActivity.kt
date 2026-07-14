@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
         configureFastImageLoader()
         requestNotificationPermission()
         requestLegacyStoragePermission()
-        val startPalette = LevyraThemes.byId(LevyraThemes.COSMIC)
+        val startPalette = LevyraThemes.byId(LevyraThemes.APPLE_MUSIC)
         LevyraThemeController.apply(startPalette.id)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = Color.TRANSPARENT
