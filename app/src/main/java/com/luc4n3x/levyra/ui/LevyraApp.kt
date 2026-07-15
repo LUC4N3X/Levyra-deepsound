@@ -182,6 +182,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
@@ -1771,6 +1772,7 @@ private fun AlbumNowPlayingDock(
                 MiniPlayerToggleButton(
                     isPlaying = isPlaying,
                     isResolving = isResolving,
+                    buttonColor = if (LevyraIsLight) LevyraBlack else Color.White,
                     onToggle = onToggle
                 )
             }
@@ -6790,6 +6792,156 @@ private fun Color.playerMix(other: Color, amount: Float): Color {
     )
 }
 
+private val PlayerDarkSurface = Color(0xFF0B0B10)
+private const val PlayerMinimumContrast = 4.5f
+private const val PlayerStrongContrast = 7f
+
+private data class PlayerContrastAdjustment(
+    val color: Color,
+    val amount: Float,
+    val valid: Boolean
+)
+
+private data class PlayerContrastGradient(
+    val start: Color,
+    val end: Color,
+    val content: Color
+)
+
+private fun Color.playerCompositeOver(background: Color): Color {
+    val foregroundAlpha = alpha.coerceIn(0f, 1f)
+    val backgroundAlpha = background.alpha.coerceIn(0f, 1f)
+    val outputAlpha = foregroundAlpha + backgroundAlpha * (1f - foregroundAlpha)
+    if (outputAlpha <= 0f) return Color.Transparent
+    return Color(
+        red = (red * foregroundAlpha + background.red * backgroundAlpha * (1f - foregroundAlpha)) / outputAlpha,
+        green = (green * foregroundAlpha + background.green * backgroundAlpha * (1f - foregroundAlpha)) / outputAlpha,
+        blue = (blue * foregroundAlpha + background.blue * backgroundAlpha * (1f - foregroundAlpha)) / outputAlpha,
+        alpha = outputAlpha
+    )
+}
+
+private fun playerContrastRatio(foreground: Color, background: Color): Float {
+    val opaqueBackground = background.playerCompositeOver(Color.Black).copy(alpha = 1f)
+    val opaqueForeground = foreground.playerCompositeOver(opaqueBackground).copy(alpha = 1f)
+    val foregroundLuminance = opaqueForeground.luminance()
+    val backgroundLuminance = opaqueBackground.luminance()
+    val lighter = maxOf(foregroundLuminance, backgroundLuminance)
+    val darker = minOf(foregroundLuminance, backgroundLuminance)
+    return (lighter + 0.05f) / (darker + 0.05f)
+}
+
+private fun Color.playerAdjustForegroundToward(
+    target: Color,
+    backgrounds: List<Color>,
+    minimumContrast: Float
+): PlayerContrastAdjustment {
+    val source = copy(alpha = 1f)
+    val opaqueTarget = target.copy(alpha = 1f)
+    if (backgrounds.all { playerContrastRatio(source, it) >= minimumContrast }) {
+        return PlayerContrastAdjustment(source, 0f, true)
+    }
+    if (backgrounds.any { playerContrastRatio(opaqueTarget, it) < minimumContrast }) {
+        return PlayerContrastAdjustment(opaqueTarget, 1f, false)
+    }
+    var low = 0f
+    var high = 1f
+    repeat(24) {
+        val middle = (low + high) / 2f
+        val candidate = source.playerMix(opaqueTarget, middle).copy(alpha = 1f)
+        if (backgrounds.all { playerContrastRatio(candidate, it) >= minimumContrast }) {
+            high = middle
+        } else {
+            low = middle
+        }
+    }
+    return PlayerContrastAdjustment(source.playerMix(opaqueTarget, high).copy(alpha = 1f), high, true)
+}
+
+private fun Color.playerContentColor(
+    backgrounds: List<Color>,
+    minimumContrast: Float = PlayerMinimumContrast
+): Color {
+    val white = playerAdjustForegroundToward(Color.White, backgrounds, minimumContrast)
+    val black = playerAdjustForegroundToward(Color.Black, backgrounds, minimumContrast)
+    return when {
+        white.valid && black.valid -> if (white.amount <= black.amount) white.color else black.color
+        white.valid -> white.color
+        black.valid -> black.color
+        else -> if (backgrounds.sumOf { it.luminance().toDouble() } / backgrounds.size.coerceAtLeast(1) < 0.5) Color.White else Color.Black
+    }
+}
+
+private fun Color.playerAdjustBackgroundFor(
+    content: Color,
+    minimumContrast: Float
+): PlayerContrastAdjustment {
+    val source = copy(alpha = 1f)
+    if (playerContrastRatio(content, source) >= minimumContrast) {
+        return PlayerContrastAdjustment(source, 0f, true)
+    }
+    val target = if (content.luminance() >= 0.5f) Color.Black else Color.White
+    if (playerContrastRatio(content, target) < minimumContrast) {
+        return PlayerContrastAdjustment(target, 1f, false)
+    }
+    var low = 0f
+    var high = 1f
+    repeat(24) {
+        val middle = (low + high) / 2f
+        val candidate = source.playerMix(target, middle).copy(alpha = 1f)
+        if (playerContrastRatio(content, candidate) >= minimumContrast) {
+            high = middle
+        } else {
+            low = middle
+        }
+    }
+    return PlayerContrastAdjustment(source.playerMix(target, high).copy(alpha = 1f), high, true)
+}
+
+private fun playerContrastGradient(
+    start: Color,
+    end: Color,
+    minimumContrast: Float = PlayerMinimumContrast
+): PlayerContrastGradient {
+    fun candidate(content: Color): Pair<PlayerContrastGradient, Float>? {
+        val safeStart = start.playerAdjustBackgroundFor(content, minimumContrast)
+        val safeEnd = end.playerAdjustBackgroundFor(content, minimumContrast)
+        if (!safeStart.valid || !safeEnd.valid) return null
+        return PlayerContrastGradient(safeStart.color, safeEnd.color, content) to safeStart.amount + safeEnd.amount
+    }
+    val white = candidate(Color.White)
+    val black = candidate(Color.Black)
+    return when {
+        white != null && black != null -> if (white.second <= black.second) white.first else black.first
+        white != null -> white.first
+        black != null -> black.first
+        else -> PlayerContrastGradient(Color.Black, Color.Black, Color.White)
+    }
+}
+
+private fun Color.playerMutedContentColor(
+    backgrounds: List<Color>,
+    minimumContrast: Float = PlayerMinimumContrast
+): Color {
+    val source = copy(alpha = 1f)
+    if (backgrounds.any { playerContrastRatio(source, it) < minimumContrast }) return source
+    val averageBackground = backgrounds.fold(Color.Transparent) { accumulator, color ->
+        if (accumulator == Color.Transparent) color.copy(alpha = 1f) else accumulator.playerMix(color.copy(alpha = 1f), 0.5f)
+    }
+    var low = 0f
+    var high = 1f
+    repeat(24) {
+        val middle = (low + high) / 2f
+        val candidate = source.playerMix(averageBackground, middle).copy(alpha = 1f)
+        if (backgrounds.all { playerContrastRatio(candidate, it) >= minimumContrast }) {
+            low = middle
+        } else {
+            high = middle
+        }
+    }
+    return source.playerMix(averageBackground, low).copy(alpha = 1f)
+}
+
 @Composable
 private fun PlayerImmersiveBackdrop(
     primaryTarget: Color,
@@ -6812,15 +6964,24 @@ private fun PlayerImmersiveBackdrop(
         animationSpec = tween(600, easing = FastOutSlowInEasing),
         label = "player-backdrop-intensity"
     )
+    val primarySurface = remember(primary) {
+        primary.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
+    }
+    val secondarySurface = remember(secondary) {
+        secondary.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
+    }
+    val mixedSurface = remember(primary, secondary) {
+        primary.playerMix(secondary, 0.5f).playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
+    }
 
     Box(
         modifier = modifier
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        primary.playerMix(Color.Black, 0.46f),
-                        primary.playerMix(secondary, 0.52f).playerMix(Color.Black, 0.58f),
-                        secondary.playerMix(Color.Black, 0.72f),
+                        primarySurface.playerMix(Color.Black, 0.18f),
+                        mixedSurface.playerMix(Color.Black, 0.32f),
+                        secondarySurface.playerMix(Color.Black, 0.46f),
                         Color(0xFF050508),
                         Color.Black
                     )
@@ -6834,8 +6995,8 @@ private fun PlayerImmersiveBackdrop(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            primary.playerMix(Color.White, 0.10f).copy(alpha = 0.52f * intensity),
-                            primary.copy(alpha = 0.16f * intensity),
+                            primarySurface.playerMix(Color.White, 0.08f).copy(alpha = 0.42f * intensity),
+                            primarySurface.copy(alpha = 0.16f * intensity),
                             Color.Transparent
                         ),
                         center = topCenter,
@@ -6847,8 +7008,8 @@ private fun PlayerImmersiveBackdrop(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            secondary.playerMix(Color.White, 0.08f).copy(alpha = 0.34f * intensity),
-                            secondary.copy(alpha = 0.10f * intensity),
+                            secondarySurface.playerMix(Color.White, 0.06f).copy(alpha = 0.30f * intensity),
+                            secondarySurface.copy(alpha = 0.10f * intensity),
                             Color.Transparent
                         ),
                         center = sideCenter,
@@ -6860,7 +7021,7 @@ private fun PlayerImmersiveBackdrop(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            primary.playerMix(secondary, 0.5f).copy(alpha = 0.17f * intensity),
+                            mixedSurface.copy(alpha = 0.17f * intensity),
                             Color.Transparent
                         ),
                         center = lowerCenter,
@@ -7018,6 +7179,11 @@ private fun PlayerModeSwitch(
             animationSpec = tween(180),
             label = "player-mode-video"
         )
+        val selectedContent = remember(activeColor) {
+            Color.White.playerContentColor(
+                listOf(activeColor.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
+            )
+        }
         Box(
             modifier = Modifier
                 .background(songBackground, RoundedCornerShape(500.dp))
@@ -7026,7 +7192,7 @@ private fun PlayerModeSwitch(
         ) {
             Text(
                 text = strings.song,
-                color = if (!isVideoMode) Color.White else Color.White.copy(alpha = 0.62f),
+                color = if (!isVideoMode) selectedContent else Color.White.copy(alpha = 0.72f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -7039,7 +7205,7 @@ private fun PlayerModeSwitch(
         ) {
             Text(
                 text = strings.video,
-                color = if (isVideoMode) Color.White else Color.White.copy(alpha = 0.62f),
+                color = if (isVideoMode) selectedContent else Color.White.copy(alpha = 0.72f),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -7052,11 +7218,13 @@ private fun PlayerUtilityDock(
     activeColor: Color,
     secondaryColor: Color,
     lyricsAvailable: Boolean,
-    isDownloading: Boolean,
+    isExporting: Boolean,
+    isDownloaded: Boolean,
     onQueue: () -> Unit,
     onLyrics: () -> Unit,
     onDownload: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
     Surface(
         color = Color.Black.copy(alpha = 0.22f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.11f)),
@@ -7069,20 +7237,26 @@ private fun PlayerUtilityDock(
         ) {
             PlayerDockAction(
                 icon = Icons.Rounded.QueueMusic,
-                label = LocalLevyraStrings.current.queue,
+                label = strings.queue,
                 tint = Color.White.copy(alpha = 0.86f),
                 onClick = onQueue
             )
             PlayerDockAction(
                 icon = Icons.Rounded.Subject,
-                label = LocalLevyraStrings.current.lyrics,
-                tint = if (lyricsAvailable) activeColor.playerMix(Color.White, 0.22f) else Color.White.copy(alpha = 0.70f),
+                label = strings.lyrics,
+                tint = if (lyricsAvailable) activeColor else Color.White.copy(alpha = 0.70f),
                 onClick = onLyrics
             )
             PlayerDockAction(
-                icon = if (isDownloading) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
-                label = LocalLevyraStrings.current.download,
-                tint = if (isDownloading) secondaryColor.playerMix(Color.White, 0.24f) else Color.White.copy(alpha = 0.70f),
+                icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                label = when {
+                    isExporting -> strings.downloadInProgress
+                    isDownloaded -> strings.downloaded
+                    else -> strings.download
+                },
+                tint = if (isExporting || isDownloaded) secondaryColor else Color.White.copy(alpha = 0.70f),
+                isBusy = isExporting,
+                enabled = !isExporting,
                 onClick = onDownload
             )
         }
@@ -7094,17 +7268,27 @@ private fun RowScope.PlayerDockAction(
     icon: ImageVector,
     label: String,
     tint: Color,
+    isBusy: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .weight(1f)
             .height(62.dp)
-            .pressable(onClick = onClick),
+            .pressable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(23.dp))
+        if (isBusy) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(21.dp),
+                strokeWidth = 2.4.dp,
+                color = tint
+            )
+        } else {
+            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(23.dp))
+        }
         Spacer(modifier = Modifier.height(5.dp))
         Text(
             text = label,
@@ -7138,6 +7322,12 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
         animationSpec = tween(700, easing = LinearOutSlowInEasing),
         label = "player-secondary-color"
     )
+    val primaryContent = remember(primary) {
+        primary.playerContentColor(listOf(PlayerDarkSurface))
+    }
+    val secondaryContent = remember(secondary) {
+        secondary.playerContentColor(listOf(PlayerDarkSurface))
+    }
     val artworkUrl = track?.largeThumbnailUrl?.ifBlank { track.thumbnailUrl }.orEmpty()
     var mediaSeekFeedbackMs by remember(track?.id) { mutableStateOf(0L) }
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
@@ -7528,7 +7718,13 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                             contentDescription = strings.favoritesPlain,
                             size = 46.dp,
                             iconSize = 24.dp,
-                            tint = if (isFavorite) Color.White else Color.White.copy(alpha = 0.78f),
+                            tint = if (isFavorite) {
+                                Color.White.playerContentColor(
+                                    listOf(primary.copy(alpha = 0.46f).playerCompositeOver(PlayerDarkSurface))
+                                )
+                            } else {
+                                Color.White.copy(alpha = 0.78f)
+                            },
                             background = if (isFavorite) primary.copy(alpha = 0.46f) else Color.Black.copy(alpha = 0.20f),
                             borderColor = if (isFavorite) primary.playerMix(Color.White, 0.25f).copy(alpha = 0.62f) else Color.White.copy(alpha = 0.12f),
                             onClick = { viewModel.toggleFavorite(track) }
@@ -7552,6 +7748,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         repeatMode = state.repeatMode,
                         activeColor = primary,
                         secondaryColor = secondary,
+                        activeContentColor = primaryContent,
+                        secondaryContentColor = secondaryContent,
                         onShuffle = viewModel::toggleShuffle,
                         onPrevious = viewModel::previous,
                         onToggle = viewModel::togglePlay,
@@ -7561,10 +7759,11 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                 }
                 item {
                     PlayerUtilityDock(
-                        activeColor = primary,
-                        secondaryColor = secondary,
+                        activeColor = primaryContent,
+                        secondaryColor = secondaryContent,
                         lyricsAvailable = state.lyrics.isNotEmpty(),
-                        isDownloading = state.isOfflineExporting || track.id in state.downloadedTrackIds,
+                        isExporting = state.isOfflineExporting,
+                        isDownloaded = track.id in state.downloadedTrackIds,
                         onQueue = viewModel::openQueue,
                         onLyrics = viewModel::openLyrics,
                         onDownload = viewModel::exportCurrentTrack
@@ -7600,7 +7799,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Rounded.Subject, null, tint = primary.playerMix(Color.White, 0.20f), modifier = Modifier.size(19.dp))
+                                        Icon(Icons.Rounded.Subject, null, tint = primaryContent, modifier = Modifier.size(19.dp))
                                         Spacer(modifier = Modifier.width(9.dp))
                                         Text(strings.showLyrics, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
@@ -7635,7 +7834,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                         val isActive = index == activeIndex
                                         Text(
                                             text = line.text,
-                                            color = if (isActive) primary.playerMix(Color.White, 0.32f) else Color.White.copy(alpha = 0.34f),
+                                            color = if (isActive) primaryContent else Color.White.copy(alpha = 0.48f),
                                             fontSize = if (isActive) 24.sp else 19.sp,
                                             lineHeight = if (isActive) 29.sp else 24.sp,
                                             fontWeight = if (isActive) FontWeight.Black else FontWeight.Medium,
@@ -7660,7 +7859,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(24.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = primary, strokeWidth = 3.dp)
+                            CircularProgressIndicator(color = primaryContent, strokeWidth = 3.dp)
                         }
                     }
                 }
@@ -7801,6 +8000,8 @@ private fun MainPlayerControls(
     repeatMode: com.luc4n3x.levyra.domain.RepeatMode,
     activeColor: Color,
     secondaryColor: Color,
+    activeContentColor: Color,
+    secondaryContentColor: Color,
     onShuffle: () -> Unit,
     onPrevious: () -> Unit,
     onToggle: () -> Unit,
@@ -7819,7 +8020,7 @@ private fun MainPlayerControls(
             contentDescription = LocalLevyraStrings.current.shuffle,
             size = 40.dp,
             iconSize = 22.dp,
-            tint = if (shuffleOn) activeColor.playerMix(Color.White, 0.24f) else Color.White.copy(alpha = 0.58f),
+            tint = if (shuffleOn) activeContentColor else Color.White.copy(alpha = 0.58f),
             background = Color.Transparent,
             borderColor = Color.Transparent,
             onClick = onShuffle
@@ -7835,6 +8036,13 @@ private fun MainPlayerControls(
             label = "play-corner"
         )
         val playShape = RoundedCornerShape(playCorner)
+        val playGradient = remember(activeColor, secondaryColor) {
+            playerContrastGradient(
+                start = activeColor.playerMix(Color.White, 0.16f),
+                end = secondaryColor.playerMix(Color.White, 0.08f),
+                minimumContrast = PlayerMinimumContrast
+            )
+        }
         Box(
             modifier = Modifier
                 .size(width = 82.dp, height = 66.dp)
@@ -7847,10 +8055,7 @@ private fun MainPlayerControls(
                 )
                 .background(
                     Brush.linearGradient(
-                        listOf(
-                            activeColor.playerMix(Color.White, 0.16f),
-                            secondaryColor.playerMix(Color.White, 0.08f)
-                        )
+                        listOf(playGradient.start, playGradient.end)
                     ),
                     playShape
                 )
@@ -7862,7 +8067,7 @@ private fun MainPlayerControls(
                 CircularProgressIndicator(
                     modifier = Modifier.size(29.dp),
                     strokeWidth = 3.2.dp,
-                    color = Color.White
+                    color = playGradient.content
                 )
             } else {
                 AnimatedContent(
@@ -7876,7 +8081,7 @@ private fun MainPlayerControls(
                     Icon(
                         imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
-                        tint = Color.White,
+                        tint = playGradient.content,
                         modifier = Modifier.size(39.dp)
                     )
                 }
@@ -7893,7 +8098,7 @@ private fun MainPlayerControls(
             contentDescription = LocalLevyraStrings.current.repeat,
             size = 40.dp,
             iconSize = 22.dp,
-            tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) secondaryColor.playerMix(Color.White, 0.24f) else Color.White.copy(alpha = 0.58f),
+            tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) secondaryContentColor else Color.White.copy(alpha = 0.58f),
             background = Color.Transparent,
             borderColor = Color.Transparent,
             onClick = onRepeat
@@ -7943,7 +8148,7 @@ private fun PlayerOptionsRow(
     ) {
         OptionChip(
             icon = Icons.Rounded.GraphicEq,
-            label = "Norm",
+            label = LocalLevyraStrings.current.normalizationShort,
             active = audioNormalization,
             activeColor = activeColor,
             modifier = Modifier.weight(1f),
@@ -7984,8 +8189,13 @@ private fun OptionChip(
         label = "player-option-alpha"
     )
     val background = if (active) activeColor.copy(alpha = 0.28f) else Color.Black.copy(alpha = 0.20f)
-    val contentColor = if (active) activeColor.playerMix(Color.White, 0.35f) else Color.White.copy(alpha = 0.72f)
-    val borderColor = if (active) activeColor.playerMix(Color.White, 0.16f).copy(alpha = 0.52f) else Color.White.copy(alpha = 0.10f)
+    val effectiveBackground = background.playerCompositeOver(PlayerDarkSurface)
+    val contentColor = if (active) {
+        activeColor.playerContentColor(listOf(effectiveBackground))
+    } else {
+        Color.White.playerContentColor(listOf(effectiveBackground))
+    }
+    val borderColor = if (active) activeColor.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.10f)
 
     Surface(
         color = background,
@@ -10641,6 +10851,22 @@ private fun MiniPlayer(
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
     val accentCenter = accentStart.playerMix(accentEnd, 0.48f)
+    val rawMiniStart = accentStart.playerMix(Color.Black, 0.34f)
+    val rawMiniEnd = accentEnd.playerMix(Color.Black, 0.48f)
+    val miniGradient = remember(accentStart, accentEnd) {
+        PlayerContrastGradient(
+            start = rawMiniStart.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color,
+            end = rawMiniEnd.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color,
+            content = Color.White
+        )
+    }
+    val miniBackgrounds = remember(miniGradient) {
+        listOf(miniGradient.start, Color(0xFF111114), Color(0xFF09090C), miniGradient.end)
+    }
+    val miniPrimaryContent = miniGradient.content
+    val miniSecondaryContent = remember(miniGradient) {
+        miniPrimaryContent.playerMutedContentColor(miniBackgrounds)
+    }
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(420, easing = LinearOutSlowInEasing),
@@ -10665,10 +10891,10 @@ private fun MiniPlayer(
             modifier = Modifier.background(
                 Brush.linearGradient(
                     listOf(
-                        accentStart.playerMix(Color.Black, 0.34f).copy(alpha = 0.94f),
+                        miniGradient.start,
                         Color(0xFF111114),
                         Color(0xFF09090C),
-                        accentEnd.playerMix(Color.Black, 0.48f).copy(alpha = 0.82f)
+                        miniGradient.end
                     )
                 )
             )
@@ -10703,7 +10929,7 @@ private fun MiniPlayer(
                 ) {
                     Text(
                         text = track.title,
-                        color = Color.White,
+                        color = miniPrimaryContent,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.1).sp,
@@ -10713,7 +10939,7 @@ private fun MiniPlayer(
                     Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = track.artist,
-                        color = Color.White.copy(alpha = 0.58f),
+                        color = miniSecondaryContent,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
@@ -10723,6 +10949,7 @@ private fun MiniPlayer(
                 MiniPlayerToggleButton(
                     isPlaying = isPlaying,
                     isResolving = isResolving,
+                    buttonColor = miniPrimaryContent,
                     onToggle = onToggle
                 )
                 PlayerRoundIconButton(
@@ -10730,9 +10957,9 @@ private fun MiniPlayer(
                     contentDescription = LocalLevyraStrings.current.next,
                     size = 38.dp,
                     iconSize = 21.dp,
-                    tint = Color.White.copy(alpha = 0.92f),
-                    background = Color.Black.copy(alpha = 0.18f),
-                    borderColor = Color.White.copy(alpha = 0.10f),
+                    tint = miniPrimaryContent,
+                    background = miniPrimaryContent.copy(alpha = 0.08f),
+                    borderColor = miniPrimaryContent.copy(alpha = 0.16f),
                     onClick = onNext
                 )
                 PlayerRoundIconButton(
@@ -10740,9 +10967,9 @@ private fun MiniPlayer(
                     contentDescription = LocalLevyraStrings.current.closePlayer,
                     size = 38.dp,
                     iconSize = 19.dp,
-                    tint = Color.White.copy(alpha = 0.76f),
-                    background = Color.Black.copy(alpha = 0.15f),
-                    borderColor = Color.White.copy(alpha = 0.09f),
+                    tint = miniSecondaryContent,
+                    background = miniPrimaryContent.copy(alpha = 0.06f),
+                    borderColor = miniPrimaryContent.copy(alpha = 0.13f),
                     onClick = onClose
                 )
             }
@@ -10752,7 +10979,7 @@ private fun MiniPlayer(
                     .padding(horizontal = 14.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(Color.White.copy(alpha = 0.09f))
+                    .background(miniPrimaryContent.copy(alpha = 0.12f))
             ) {
                 Box(
                     modifier = Modifier
@@ -10778,10 +11005,11 @@ private fun MiniPlayer(
 private fun MiniPlayerToggleButton(
     isPlaying: Boolean,
     isResolving: Boolean,
+    buttonColor: Color,
     onToggle: () -> Unit
 ) {
-    val playBg = if (LevyraIsLight) LevyraBlack else Color.White
-    val playTint = if (LevyraIsLight) Color.White else LevyraBlack
+    val playBg = buttonColor.copy(alpha = 1f)
+    val playTint = Color.White.playerContentColor(listOf(playBg))
     Box(
         modifier = Modifier
             .size(40.dp)
