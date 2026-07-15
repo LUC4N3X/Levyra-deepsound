@@ -589,10 +589,20 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false, zoom: Float = 1f) {
     val context = LocalContext.current
-    val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
-    val model = remember(context, track.id, track.title, track.artist, raw, highRes) {
-        LevyraArtworkCache.model(context, track, highRes)
+    val models = remember(
+        context,
+        track.id,
+        track.title,
+        track.artist,
+        track.videoUrl,
+        track.thumbnailUrl,
+        track.largeThumbnailUrl,
+        highRes
+    ) {
+        LevyraArtworkCache.models(context, track, highRes)
     }
+    var modelIndex by remember(models) { mutableStateOf(0) }
+    val model = models.getOrNull(modelIndex)
     val artworkKey = remember(track.id, highRes) { "${track.id}:${if (highRes) "large" else "small"}" }
     val modelIdentity = remember(model) {
         when (model) {
@@ -632,7 +642,10 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
                 contentScale = ContentScale.Crop,
                 onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
                 onSuccess = { LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey) },
-                onError = { LevyraArtworkStartupMetrics.recordArtworkFailure(artworkKey) },
+                onError = {
+                    LevyraArtworkStartupMetrics.recordArtworkFailure(artworkKey)
+                    if (modelIndex < models.lastIndex) modelIndex += 1
+                },
                 modifier = Modifier.fillMaxSize().scale(zoom)
             )
         }
