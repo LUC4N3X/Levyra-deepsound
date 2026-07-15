@@ -5,6 +5,12 @@ object LevyraPersonalOrbit {
 
     private val squareArtWidthHeightPattern = Regex("=w\\d+-h\\d+")
     private val squareArtSizePattern = Regex("=s\\d+")
+    private val youtubeVideoIdPattern = Regex("^[A-Za-z0-9_-]{11}$")
+    private val youtubeVideoUrlPatterns = listOf(
+        Regex("[?&]v=([A-Za-z0-9_-]{11})"),
+        Regex("youtu\\.be/([A-Za-z0-9_-]{11})"),
+        Regex("/(?:shorts|embed|live|vi)/([A-Za-z0-9_-]{11})")
+    )
     private val officialArtworkHosts = listOf(
         "mzstatic.com",
         "dzcdn.net",
@@ -121,7 +127,9 @@ object LevyraPersonalOrbit {
         val thumbnail = track.thumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
         val large = track.largeThumbnailUrl.takeUnless(::isVideoFrameArtworkUrl).orEmpty()
         if (thumbnail.isBlank() && large.isBlank()) {
-            val fallback = track.largeThumbnailUrl.trim().ifBlank { track.thumbnailUrl.trim() }
+            val fallback = track.largeThumbnailUrl.trim()
+                .ifBlank { track.thumbnailUrl.trim() }
+                .ifBlank { youtubeFallbackArtwork(track).orEmpty() }
             return if (fallback.isBlank()) track else track.copy(thumbnailUrl = fallback, largeThumbnailUrl = fallback)
         }
         return if (thumbnail == track.thumbnailUrl && large == track.largeThumbnailUrl) {
@@ -157,6 +165,11 @@ object LevyraPersonalOrbit {
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .any(::isVideoFrameArtworkUrl)
+    }
+
+    fun youtubeFallbackArtwork(track: Track): String? {
+        val videoId = youtubeVideoId(track) ?: return null
+        return "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
     }
 
     fun isVideoFrameArtworkUrl(url: String): Boolean {
@@ -211,6 +224,15 @@ object LevyraPersonalOrbit {
         return sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl)
             .map { it.trim() }
             .firstOrNull(::isSquareAlbumArtworkUrl)
+    }
+
+    private fun youtubeVideoId(track: Track): String? {
+        val fromUrl = youtubeVideoUrlPatterns
+            .asSequence()
+            .mapNotNull { pattern -> pattern.find(track.videoUrl)?.groupValues?.getOrNull(1) }
+            .firstOrNull { youtubeVideoIdPattern.matches(it) }
+        if (fromUrl != null) return fromUrl
+        return track.id.trim().takeIf { youtubeVideoIdPattern.matches(it) }
     }
 
     private fun isSquareAlbumArtworkUrl(url: String): Boolean {
