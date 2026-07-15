@@ -1,0 +1,162 @@
+name: Release APK Asset
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing GitHub Release tag"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: release-apk-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  RELEASE_EVENT_ID: ${{ github.event.release.id || '' }}
+
+jobs:
+  publish:
+    name: Attach APK Artifact to Existing Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout Release Tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate Release and Version
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${RELEASE_TAG}"
+          if [ -n "${RELEASE_EVENT_ID}" ]; then
+            RELEASE_ID="${RELEASE_EVENT_ID}"
+          else
+            gh api --paginate "/repos/${GITHUB_REPOSITORY}/releases?per_page=100" > release-pages.jsonl
+            RELEASE_ID="$(jq -sr --arg tag "${RELEASE_TAG}" '[.[][] | select(.tag_name == $tag)] | first | .id // empty' release-pages.jsonl)"
+          fi
+          test -n "${RELEASE_ID}"
+          gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" > release-before.json
+          test "$(jq -r '.tag_name' release-before.json)" = "${RELEASE_TAG}"
+          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+          test -n "${VERSION}"
+          test -n "${VERSION_CODE}"
+          test "${RELEASE_TAG}" = "v${VERSION}"
+          RELEASE_SHA="$(git rev-parse HEAD)"
+          ARTIFACT_PREFIX="levyra-release-${VERSION}-run-"
+          APK_NAME="LEVYRA-${VERSION}.apk"
+          jq -S '{name: (.name // ""), body: (.body // "")}' release-before.json > release-message-before.json
+          {
+            echo "VERSION=${VERSION}"
+            echo "VERSION_CODE=${VERSION_CODE}"
+            echo "RELEASE_ID=${RELEASE_ID}"
+            echo "RELEASE_SHA=${RELEASE_SHA}"
+            echo "ARTIFACT_PREFIX=${ARTIFACT_PREFIX}"
+            echo "APK_NAME=${APK_NAME}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Wait for Matching APK Artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARTIFACT_ID=""
+          ARTIFACT_NAME=""
+          for attempt in $(seq 1 180); do
+            rm -f artifact-pages.jsonl
+            gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" > artifact-pages.jsonl
+            RECORD="$(jq -sr --arg sha "${RELEASE_SHA}" --arg prefix "${ARTIFACT_PREFIX}" '[.[].artifacts[] | select(.expired == false and .workflow_run.head_sha == $sha and (.name | startswith($prefix)))] | sort_by(.created_at) | last // empty | [.id, .name] | @tsv' artifact-pages.jsonl)"
+            if [ -n "${RECORD}" ]; then
+              IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME <<< "${RECORD}"
+              break
+            fi
+            echo "Waiting for APK Artifact for ${RELEASE_TAG} at ${RELEASE_SHA} (${attempt}/180)"
+            sleep 20
+          done
+          test -n "${ARTIFACT_ID}"
+          test -n "${ARTIFACT_NAME}"
+          {
+            echo "ARTIFACT_ID=${ARTIFACT_ID}"
+            echo "ARTIFACT_NAME=${ARTIFACT_NAME}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Download and Verify APK Artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf downloaded-artifact artifact.zip
+          mkdir -p downloaded-artifact
+          curl --fail --location --retry 5 --retry-all-errors \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            --output artifact.zip
+          unzip -q artifact.zip -d downloaded-artifact
+          APK_PATH="$(find downloaded-artifact -type f -name "${APK_NAME}" -print -quit)"
+          CHECKSUM_PATH="$(find downloaded-artifact -type f -name "${APK_NAME}.sha256" -print -quit)"
+          test -f "${APK_PATH}"
+          test -f "${CHECKSUM_PATH}"
+          APK_SIZE="$(stat -c%s "${APK_PATH}")"
+          test "${APK_SIZE}" -gt 1048576
+          EXPECTED_SHA="$(awk 'NR == 1 {print $1}' "${CHECKSUM_PATH}")"
+          ACTUAL_SHA="$(sha256sum "${APK_PATH}" | awk '{print $1}')"
+          test -n "${EXPECTED_SHA}"
+          test "${EXPECTED_SHA}" = "${ACTUAL_SHA}"
+          {
+            echo "APK_PATH=${APK_PATH}"
+            echo "APK_SHA256=${ACTUAL_SHA}"
+            echo "APK_SIZE=${APK_SIZE}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Attach APK Without Changing Release Message
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          verify_release_asset() {
+            local asset_id="$1"
+            local asset_digest="$2"
+            local expected_digest="sha256:${APK_SHA256}"
+            if [ -n "${asset_digest}" ]; then
+              test "${asset_digest}" = "${expected_digest}"
+              return
+            fi
+            rm -f existing-release-asset.apk
+            curl --fail --location --retry 5 --retry-all-errors \
+              -H "Accept: application/octet-stream" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
+              --output existing-release-asset.apk
+            test "$(sha256sum existing-release-asset.apk | awk '{print $1}')" = "${APK_SHA256}"
+          }
+
+          gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" > release-current.json
+          EXISTING_ID="$(jq -r --arg name "${APK_NAME}" '.assets[]? | select(.name == $name) | .id' release-current.json | head -n 1)"
+          EXISTING_DIGEST="$(jq -r --arg name "${APK_NAME}" '.assets[]? | select(.name == $name) | .digest // empty' release-current.json | head -n 1)"
+          if [ -n "${EXISTING_ID}" ]; then
+            verify_release_asset "${EXISTING_ID}" "${EXISTING_DIGEST}"
+          else
+            gh release upload "${RELEASE_TAG}" "${APK_PATH}" --repo "${GITHUB_REPOSITORY}"
+          fi
+          gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" > release-after.json
+          jq -S '{name: (.name // ""), body: (.body // "")}' release-after.json > release-message-after.json
+          cmp --silent release-message-before.json release-message-after.json
+          FINAL_ID="$(jq -r --arg name "${APK_NAME}" '.assets[]? | select(.name == $name) | .id' release-after.json | head -n 1)"
+          FINAL_DIGEST="$(jq -r --arg name "${APK_NAME}" '.assets[]? | select(.name == $name) | .digest // empty' release-after.json | head -n 1)"
+          test -n "${FINAL_ID}"
+          verify_release_asset "${FINAL_ID}" "${FINAL_DIGEST}"
+          echo "Attached ${APK_NAME} from ${ARTIFACT_NAME} to ${RELEASE_TAG} without modifying the release title or message."
