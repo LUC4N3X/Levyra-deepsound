@@ -171,8 +171,8 @@ object PlaybackNetworkStack {
             current = current.cause
         }
         val httpError = error as? HttpDataSource.HttpDataSourceException ?: return false
-        return httpError.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
-            httpError.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+        return httpError.reason == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+            httpError.reason == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
     }
 
     private class ResilientHttpDataSourceFactory(
