@@ -9,6 +9,7 @@ on:
       - gradle.properties
       - app/build.gradle.kts
       - README.md
+      - .github/workflows/apk-artifact-check.yml
       - .github/workflows/release-apk.yml
       - .github/workflows/release-guard.yml
   push:
@@ -85,7 +86,15 @@ jobs:
           grep -F "\"${VERSION}\"" app/build.gradle.kts >/dev/null
           grep -F "levyraVersionName=${VERSION}" README.md >/dev/null
           grep -F "levyraVersionCode=${VERSION_CODE}" README.md >/dev/null
-          grep -F "default: \"v${VERSION}\"" .github/workflows/release-apk.yml >/dev/null
+          test -f .github/workflows/release-apk.yml
+          grep -F "types:" .github/workflows/release-apk.yml >/dev/null
+          grep -F -- "- published" .github/workflows/release-apk.yml >/dev/null
+          grep -F "actions/artifacts" .github/workflows/release-apk.yml >/dev/null
+          grep -Eq 'gh[[:space:]]+release[[:space:]]+upload' .github/workflows/release-apk.yml
+          if grep -Eq 'gh[[:space:]]+release[[:space:]]+(create|edit)|generate[_-]release[_-]notes|generate-notes' .github/workflows/release-apk.yml; then
+            echo "release-apk.yml must not create releases or modify manually written release messages" >&2
+            exit 1
+          fi
 
           {
             echo "Release guard passed"

@@ -36,13 +36,10 @@ fun buildConfigString(value: String): String {
     return "\"$escaped\""
 }
 
-fun isReleaseTaskRequested(): Boolean {
-    return gradle.startParameter.taskNames.any { task ->
-        task.contains("Release", ignoreCase = true) ||
-            task == "bundle" ||
-            task == "assemble"
+fun isReleaseTaskRequested(): Boolean =
+    gradle.startParameter.taskNames.any { task ->
+        task.contains("Release", ignoreCase = true) || task.equals("bundle", ignoreCase = true) || task.equals("assemble", ignoreCase = true)
     }
-}
 
 val youtubeInnertubeApiKey = envOrProperty("YOUTUBE_INNERTUBE_API_KEY", "youtubeInnertubeApiKey")
 val releaseStoreFilePath = envOrProperty("LEVYRA_KEYSTORE_FILE", "levyraStoreFile").ifBlank { "app/levyra-release.jks" }
@@ -62,7 +59,7 @@ if (isReleaseTaskRequested() && (!releaseStoreFile.isFile || releaseStorePasswor
 fun normalizedVersionName(value: String): String {
     val clean = value.trim().removePrefix("v").removePrefix("V")
     val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
-    return match ?: clean.ifBlank { "2.3.9" }
+    return match ?: clean.ifBlank { "2.3.10" }
 }
 
 fun generatedVersionCode(versionName: String): Int {
@@ -93,7 +90,7 @@ val levyraVersionName = normalizedVersionName(
     (findProperty("levyraVersionName") as? String)
         ?: System.getenv("LEVYRA_VERSION_NAME")
         ?: githubTagVersionName()
-        ?: "2.3.9"
+        ?: "2.3.10"
 )
 
 val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)
