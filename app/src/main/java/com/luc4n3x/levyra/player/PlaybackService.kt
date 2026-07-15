@@ -14,7 +14,6 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -41,7 +40,6 @@ import com.luc4n3x.levyra.MainActivity
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
-import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
@@ -135,14 +133,11 @@ class PlaybackService : MediaLibraryService() {
             .setBackBuffer(bufferProfile.backBufferMs, false)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
-        val okHttpClient = LevyraHttpClientFactory.media(this)
-        val baseHttpFactory = OkHttpDataSource.Factory(okHttpClient)
-            .setUserAgent("LevyraPlayer/1.13 Android Music")
+        val baseHttpFactory = PlaybackNetworkStack.playbackFactory(this)
             .setDefaultRequestProperties(
                 mapOf(
                     "Accept" to "*/*",
-                    "Accept-Encoding" to "identity",
-                    "Connection" to "keep-alive"
+                    "Accept-Encoding" to "identity"
                 )
             )
         val upstreamFactory = LevyraYoutubeDataSource.Factory(baseHttpFactory)
