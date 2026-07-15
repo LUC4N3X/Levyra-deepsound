@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.player
 
 import com.luc4n3x.levyra.data.TrackJson
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.viewmodel.playbackIdentity
 import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -28,6 +29,25 @@ class LevyraPlayerTest {
 
         assertEquals(5.5f, restored?.youtubeLoudnessDb)
         assertEquals(3.25f, restored?.youtubePerceptualLoudnessDb)
+    }
+
+    @Test
+    fun playbackIdentitySeparatesTracksWithBlankIds() {
+        val first = track(streamUrl = "").copy(
+            id = "",
+            title = "First song",
+            artist = "First artist",
+            videoUrl = ""
+        )
+        val second = track(streamUrl = "").copy(
+            id = "",
+            title = "Second song",
+            artist = "Second artist",
+            videoUrl = ""
+        )
+
+        assertEquals("first artist|first song", playbackIdentity(first))
+        assertEquals("second artist|second song", playbackIdentity(second))
     }
 
     @Test
