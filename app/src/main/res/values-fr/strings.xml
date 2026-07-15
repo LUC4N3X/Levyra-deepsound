@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Mini-lecteur, favoris rapides, flow du jour, hors connexion et paroles</string>
+    <string name="widget_idle_subtitle">Touchez pour écouter</string>
+    <string name="widget_toggle">Lecture/Pause</string>
+    <string name="widget_next">Suivant</string>
+    <string name="widget_previous">Précédent</string>
+    <string name="widget_favorites">Favoris</string>
+    <string name="widget_flow">Flow du jour</string>
+    <string name="widget_offline">Mix hors connexion</string>
+    <string name="widget_lyrics">Paroles</string>
+    <string name="radar_channel_name">Radar des sorties</string>
+    <string name="radar_channel_description">Nouvelles sorties des artistes que vous suivez</string>
+    <string name="radar_new_release_title">Nouvelle sortie de %1$s</string>
+</resources>

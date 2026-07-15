@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minispelare, snabba favoriter, dagligt flow, offline och låttexter</string>
+    <string name="widget_idle_subtitle">Tryck för att lyssna</string>
+    <string name="widget_toggle">Spela/Pausa</string>
+    <string name="widget_next">Nästa</string>
+    <string name="widget_previous">Föregående</string>
+    <string name="widget_favorites">Favoriter</string>
+    <string name="widget_flow">Dagligt flow</string>
+    <string name="widget_offline">Offlinemix</string>
+    <string name="widget_lyrics">Låttexter</string>
+    <string name="radar_channel_name">Släppradar</string>
+    <string name="radar_channel_description">Nya släpp från artister du följer</string>
+    <string name="radar_new_release_title">Nytt släpp från %1$s</string>
+</resources>

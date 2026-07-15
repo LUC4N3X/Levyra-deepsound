@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import com.luc4n3x.levyra.data.PlaybackResolver
@@ -23,9 +24,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -35,8 +38,10 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import timber.log.Timber
 
-internal const val DEFAULT_PARALLEL_RANGE_CHUNK_BYTES = 4L * 1024L * 1024L
-internal const val MIN_PARALLEL_AUDIO_BYTES = 16L * 1024L * 1024L
+internal const val DEFAULT_PARALLEL_RANGE_CHUNK_BYTES = 2L * 1024L * 1024L
+internal const val MIN_PARALLEL_AUDIO_BYTES = 8L * 1024L * 1024L
+internal const val FAST_METADATA_EMBED_MAX_BYTES = 32L * 1024L * 1024L
+internal const val FAST_METADATA_EMBED_MAX_DURATION_MS = 20L * 60L * 1000L
 
 internal data class AudioDownloadRange(
     val start: Long,
@@ -62,6 +67,26 @@ internal fun planParallelAudioRanges(
     return ranges
 }
 
+internal fun parallelAudioChunkSize(contentLength: Long): Long {
+    val oneMb = 1024L * 1024L
+    return when {
+        contentLength >= 256L * oneMb -> 8L * oneMb
+        contentLength >= 96L * oneMb -> 4L * oneMb
+        contentLength >= 24L * oneMb -> 3L * oneMb
+        else -> 2L * oneMb
+    }
+}
+
+internal fun parallelAudioConcurrency(contentLength: Long): Int {
+    val oneMb = 1024L * 1024L
+    return when {
+        contentLength >= 256L * oneMb -> 10
+        contentLength >= 96L * oneMb -> 8
+        contentLength >= 24L * oneMb -> 6
+        else -> 4
+    }
+}
+
 internal fun isUsableAudioRangeResponse(
     code: Int,
     bodyLength: Long,
@@ -69,21 +94,66 @@ internal fun isUsableAudioRangeResponse(
     range: AudioDownloadRange,
     rangeParamApplied: Boolean
 ): Boolean {
-    if (code == 206) return true
+    if (code == 206) {
+        if (bodyLength > 0L && bodyLength != range.length) return false
+        if (contentRange.isBlank()) return true
+        val bounds = contentRange.substringAfter("bytes", contentRange)
+            .substringBefore('/')
+            .trim()
+            .split('-', limit = 2)
+        val start = bounds.getOrNull(0)?.trim()?.toLongOrNull()
+        val end = bounds.getOrNull(1)?.trim()?.toLongOrNull()
+        return start == range.start && end == range.endInclusive
+    }
     if (!rangeParamApplied || code !in 200..299) return false
     if (bodyLength != range.length) return false
     if (contentRange.isBlank()) return true
-    return contentRange.contains("${range.start}-") && contentRange.substringAfterLast('/').toLongOrNull() != null
+    return contentRange.contains("${range.start}-${range.endInclusive}") &&
+        contentRange.substringAfterLast('/').toLongOrNull() != null
 }
 
 internal fun audioContentLengthFromUrl(url: String): Long {
-    return Regex("(?:[?&])clen=(\\d+)").find(url)?.groupValues?.getOrNull(1)?.toLongOrNull() ?: -1L
+    return url.toHttpUrlOrNull()
+        ?.queryParameter("clen")
+        ?.toLongOrNull()
+        ?.takeIf { it > 0L }
+        ?: Regex("(?:[?&])clen=(\\d+)").find(url)?.groupValues?.getOrNull(1)?.toLongOrNull()
+        ?: -1L
+}
+
+internal fun audioContentTypeFromUrl(url: String): String {
+    return url.toHttpUrlOrNull()
+        ?.queryParameter("mime")
+        ?.substringBefore(';')
+        ?.trim()
+        ?.lowercase(Locale.US)
+        .orEmpty()
+}
+
+internal fun stripAudioRangeParameters(url: String): String {
+    val fragmentIndex = url.indexOf('#')
+    val fragment = if (fragmentIndex >= 0) url.substring(fragmentIndex) else ""
+    val source = if (fragmentIndex >= 0) url.substring(0, fragmentIndex) else url
+    val queryIndex = source.indexOf('?')
+    if (queryIndex < 0) return url
+    val base = source.substring(0, queryIndex)
+    val query = source.substring(queryIndex + 1)
+    val retained = query
+        .split('&')
+        .filterNot { parameter -> parameter.substringBefore('=').equals("range", ignoreCase = true) }
+    val normalized = if (retained.isEmpty()) base else "$base?${retained.joinToString("&")}"
+    return normalized + fragment
+}
+
+internal fun shouldEmbedFastMetadata(fileLength: Long, durationMs: Long = 0L): Boolean {
+    val durationIsFast = durationMs <= 0L || durationMs <= FAST_METADATA_EMBED_MAX_DURATION_MS
+    return durationIsFast && fileLength in 1L..FAST_METADATA_EMBED_MAX_BYTES
 }
 
 class OfflineAudioExporter(
     private val context: Context,
     private val resolver: PlaybackResolver,
-    private val client: OkHttpClient = LevyraHttpClientFactory.general(context.applicationContext),
+    private val client: OkHttpClient = LevyraHttpClientFactory.download(),
     private val progress: suspend (Int) -> Unit = {},
     private val taskKey: String = "",
     private val resumable: Boolean = true
@@ -93,12 +163,11 @@ class OfflineAudioExporter(
 
     suspend fun export(track: Track): OfflineExportResult = withContext(Dispatchers.IO) {
         reportProgress(1)
-        var playable = runCatching {
+        var playable = if (track.streamUrl.isNotBlank()) {
+            track
+        } else {
             reportProgress(4)
-            if (track.id.isNotBlank() || track.videoUrl.isNotBlank()) resolver.resolveForOffline(track.copy(streamUrl = "")) else track
-        }.getOrElse { error ->
-            if (error is CancellationException) throw error
-            if (track.streamUrl.isNotBlank()) track else throw error
+            resolver.resolveForOffline(track.copy(streamUrl = ""))
         }
         if (playable.streamUrl.isBlank()) throw IOException("Stream audio non disponibile")
         reportProgress(10)
@@ -119,7 +188,11 @@ class OfflineAudioExporter(
         var embeddedFile: PreparedAudioFile? = null
         try {
             reportProgress(84)
-            val artwork = downloadArtwork(playable)
+            val artwork = if (downloaded.container.supportsEmbeddedMetadata && shouldEmbedFastMetadata(downloaded.file.length(), playable.durationMs)) {
+                downloadArtwork(playable)
+            } else {
+                null
+            }
             reportProgress(88)
             embeddedFile = maybeEmbedMetadata(downloaded.file, playable, artwork, downloaded.container, workspace)
             reportProgress(92)
@@ -158,38 +231,48 @@ class OfflineAudioExporter(
 
     private suspend fun downloadAudioAttempt(track: Track, workspace: File, useRange: Boolean): DownloadedAudio {
         reportProgress(12)
-        val probe = probeAudio(track.streamUrl)
+        val sourceUrl = stripAudioRangeParameters(track.streamUrl)
+        val probe = probeAudio(sourceUrl)
         val expectedLength = probe.contentLength
         val contentType = probe.contentType
-        val container = detectContainer(contentType, track.streamUrl)
+        val container = detectContainer(contentType, sourceUrl)
         val partial = resumablePartialFile(workspace, container)
         val existingBytes = partial.takeIf { resumable && it.exists() }?.length()?.coerceAtLeast(0L) ?: 0L
         ensureStorageAvailable(workspace, expectedLength, existingBytes)
-        val parallelRanges = if (!useRange && existingBytes == 0L && !hasRangeParameter(track.streamUrl)) {
-            planParallelAudioRanges(expectedLength)
+        if (expectedLength > 0L && existingBytes == expectedLength) {
+            reportProgress(82)
+            return DownloadedAudio(partial, container)
+        }
+        val parallelRanges = if (!useRange && existingBytes == 0L) {
+            planParallelAudioRanges(
+                contentLength = expectedLength,
+                chunkSize = parallelAudioChunkSize(expectedLength)
+            )
         } else {
             emptyList()
         }
         if (parallelRanges.isNotEmpty()) {
-            runCatching {
+            try {
                 return downloadAudioRanges(
-                    track = track,
+                    track = track.copy(streamUrl = sourceUrl),
                     workspace = workspace,
                     targetLength = expectedLength,
                     contentType = contentType,
                     ranges = parallelRanges
                 )
-            }.onFailure { error ->
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: IOException) {
                 Timber.w(error, "Parallel offline download failed, falling back to serial")
             }
         }
         val rangeStart = existingBytes.takeIf { resumable && it > 0L && expectedLength > it } ?: 0L
         val downloadUrl = when {
-            rangeStart > 0L -> withGoogleVideoRange(track.streamUrl, AudioDownloadRange(rangeStart, (expectedLength - 1L).coerceAtLeast(rangeStart)))
-            useRange -> withGoogleVideoRange(track.streamUrl, expectedLength)
-            else -> track.streamUrl
+            rangeStart > 0L -> withGoogleVideoRange(sourceUrl, AudioDownloadRange(rangeStart, (expectedLength - 1L).coerceAtLeast(rangeStart)))
+            useRange -> withGoogleVideoRange(sourceUrl, expectedLength)
+            else -> sourceUrl
         }
-        val rangeParamApplied = downloadUrl != track.streamUrl
+        val rangeParamApplied = downloadUrl != sourceUrl
         val request = Request.Builder()
             .url(downloadUrl)
             .header("User-Agent", USER_AGENT)
@@ -206,11 +289,18 @@ class OfflineAudioExporter(
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Download audio fallito: HTTP ${response.code}")
             val body = response.body
-            val append = rangeStart > 0L && response.code == 206
+            val declaredLength = body.contentLength()
+            val contentRange = response.header("Content-Range").orEmpty()
+            if (rangeStart > 0L) {
+                val resumeRange = AudioDownloadRange(rangeStart, expectedLength - 1L)
+                if (!isUsableAudioRangeResponse(response.code, declaredLength, contentRange, resumeRange, rangeParamApplied)) {
+                    throw IOException("Ripresa audio non supportata: HTTP ${response.code}")
+                }
+            }
+            val append = rangeStart > 0L
             val baseBytes = if (append) rangeStart else 0L
             if (!append && partial.exists()) runCatching { partial.delete() }
-            val declaredLength = body.contentLength()
-            val contentRangeTotal = response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull() ?: -1L
+            val contentRangeTotal = contentRange.substringAfterLast('/').toLongOrNull() ?: -1L
             val targetLength = when {
                 contentRangeTotal > 0L -> contentRangeTotal
                 expectedLength > 0L -> expectedLength
@@ -237,7 +327,7 @@ class OfflineAudioExporter(
                             }
                         }
                         output.flush()
-                        if (targetLength > 0L && total < targetLength) throw IOException("Download troncato: $total/$targetLength byte")
+                        if (targetLength > 0L && total != targetLength) throw IOException("Download non valido: $total/$targetLength byte")
                     }
                 }
                 if (partial.length() <= 0L) throw IOException("File audio esportato vuoto")
@@ -293,7 +383,7 @@ class OfflineAudioExporter(
         val temp = File(workspace, "raw-${System.nanoTime()}.${container.extension}")
         val downloadedBytes = AtomicLong(0L)
         val lastProgress = AtomicInteger(12)
-        val limiter = Semaphore(PARALLEL_RANGE_CONCURRENCY)
+        val limiter = Semaphore(parallelAudioConcurrency(targetLength))
         try {
             RandomAccessFile(temp, "rw").use { file -> file.setLength(targetLength) }
             ranges.map { range ->
@@ -325,6 +415,27 @@ class OfflineAudioExporter(
         lastProgress: AtomicInteger,
         targetLength: Long
     ) {
+        var lastError: IOException? = null
+        repeat(RANGE_RETRY_COUNT) { attempt ->
+            try {
+                downloadAudioRangeAttempt(url, range, outputFile, downloadedBytes, lastProgress, targetLength)
+                return
+            } catch (error: IOException) {
+                lastError = error
+                if (attempt < RANGE_RETRY_COUNT - 1) delay(RANGE_RETRY_DELAY_MS * (attempt + 1L))
+            }
+        }
+        throw lastError ?: IOException("Range audio non riuscito")
+    }
+
+    private suspend fun downloadAudioRangeAttempt(
+        url: String,
+        range: AudioDownloadRange,
+        outputFile: File,
+        downloadedBytes: AtomicLong,
+        lastProgress: AtomicInteger,
+        targetLength: Long
+    ) {
         val rangeUrl = withGoogleVideoRange(url, range)
         val rangeParamApplied = rangeUrl != url
         val request = Request.Builder()
@@ -342,26 +453,25 @@ class OfflineAudioExporter(
             if (!isUsableAudioRangeResponse(response.code, contentLength, contentRange, range, rangeParamApplied)) {
                 throw IOException("Range audio non supportato: HTTP ${response.code}")
             }
+            var written = 0L
             body.byteStream().use { input ->
                 RandomAccessFile(outputFile, "rw").use { output ->
                     output.seek(range.start)
                     val buffer = ByteArray(DOWNLOAD_BUFFER_BYTES)
-                    var written = 0L
                     while (written < range.length) {
                         val maxRead = minOf(buffer.size.toLong(), range.length - written).toInt()
                         val read = input.read(buffer, 0, maxRead)
                         if (read < 0) break
                         output.write(buffer, 0, read)
                         written += read.toLong()
-                        val total = downloadedBytes.addAndGet(read.toLong())
-                        val nextProgress = downloadProgress(total, targetLength)
-                        updateParallelProgress(lastProgress, nextProgress)
-                    }
-                    if (written != range.length) {
-                        throw IOException("Range troncato: ${range.start}-${range.endInclusive} ($written/${range.length} byte)")
                     }
                 }
             }
+            if (written != range.length) {
+                throw IOException("Range troncato: ${range.start}-${range.endInclusive} ($written/${range.length} byte)")
+            }
+            val total = downloadedBytes.addAndGet(range.length)
+            updateParallelProgress(lastProgress, downloadProgress(total, targetLength))
         }
     }
 
@@ -377,9 +487,14 @@ class OfflineAudioExporter(
     }
 
     private fun probeAudio(url: String): AudioProbe {
-        val urlLength = audioContentLengthFromUrl(url)
+        val sourceUrl = stripAudioRangeParameters(url)
+        val urlLength = audioContentLengthFromUrl(sourceUrl)
+        val urlContentType = audioContentTypeFromUrl(sourceUrl)
+        if (urlLength > 0L && urlContentType.isNotBlank()) {
+            return AudioProbe(contentLength = urlLength, contentType = urlContentType)
+        }
         val request = Request.Builder()
-            .url(url)
+            .url(sourceUrl)
             .head()
             .header("User-Agent", USER_AGENT)
             .header("Accept-Encoding", "identity")
@@ -387,39 +502,36 @@ class OfflineAudioExporter(
         return runCatching {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    AudioProbe()
+                    AudioProbe(contentLength = urlLength, contentType = urlContentType)
                 } else {
                     AudioProbe(
                         contentLength = response.header("Content-Length")?.toLongOrNull()?.takeIf { it > 0L } ?: urlLength,
-                        contentType = response.header("Content-Type").orEmpty().substringBefore(';').trim().lowercase(Locale.US)
+                        contentType = response.header("Content-Type").orEmpty()
+                            .substringBefore(';')
+                            .trim()
+                            .lowercase(Locale.US)
+                            .ifBlank { urlContentType }
                     )
                 }
             }
-        }.getOrDefault(AudioProbe(contentLength = urlLength))
+        }.getOrDefault(AudioProbe(contentLength = urlLength, contentType = urlContentType))
     }
 
     private fun withGoogleVideoRange(url: String, contentLength: Long): String {
-        if (contentLength <= 0L) return url
-        if (!isGoogleVideoUrl(url)) return url
-        if (hasRangeParameter(url)) return url
-        val separator = if (url.contains('?')) '&' else '?'
-        return "$url${separator}range=0-${contentLength - 1}"
+        if (contentLength <= 0L) return stripAudioRangeParameters(url)
+        return withGoogleVideoRange(url, AudioDownloadRange(0L, contentLength - 1L))
     }
 
     private fun withGoogleVideoRange(url: String, range: AudioDownloadRange): String {
-        if (!isGoogleVideoUrl(url)) return url
-        if (hasRangeParameter(url)) return url
-        val separator = if (url.contains('?')) '&' else '?'
-        return "$url${separator}range=${range.start}-${range.endInclusive}"
+        val sourceUrl = stripAudioRangeParameters(url)
+        if (!isGoogleVideoUrl(sourceUrl)) return sourceUrl
+        val separator = if (sourceUrl.contains('?')) '&' else '?'
+        return "$sourceUrl${separator}range=${range.start}-${range.endInclusive}"
     }
 
     private fun isGoogleVideoUrl(url: String): Boolean {
         val host = url.substringAfter("://").substringBefore('/').substringBefore(':').lowercase(Locale.US)
         return host.endsWith("googlevideo.com")
-    }
-
-    private fun hasRangeParameter(url: String): Boolean {
-        return url.contains("&range=", ignoreCase = true) || url.contains("?range=", ignoreCase = true)
     }
 
     private fun maybeEmbedMetadata(
@@ -430,7 +542,7 @@ class OfflineAudioExporter(
         workspace: File
     ): PreparedAudioFile {
         val fileName = buildFileName(track, container.extension)
-        if (!container.supportsEmbeddedMetadata) {
+        if (!container.supportsEmbeddedMetadata || !shouldEmbedFastMetadata(input.length(), track.durationMs)) {
             return PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)
         }
         val output = File(workspace, "tagged-${System.nanoTime()}.${container.extension}")
@@ -551,8 +663,26 @@ class OfflineAudioExporter(
     }
 
     private fun copyIntoMediaStore(uri: Uri, input: File) {
+        val channelCopySucceeded = runCatching {
+            val descriptor = context.contentResolver.openFileDescriptor(uri, "w") ?: return@runCatching false
+            ParcelFileDescriptor.AutoCloseOutputStream(descriptor).use { output ->
+                FileInputStream(input).use { sourceStream ->
+                    val source = sourceStream.channel
+                    val target = output.channel
+                    var position = 0L
+                    val length = source.size()
+                    while (position < length) {
+                        val transferred = source.transferTo(position, minOf(FILE_CHANNEL_CHUNK_BYTES, length - position), target)
+                        if (transferred <= 0L) return@runCatching false
+                        position += transferred
+                    }
+                }
+            }
+            true
+        }.getOrDefault(false)
+        if (channelCopySucceeded) return
         context.contentResolver.openOutputStream(uri, "w")?.use { output ->
-            input.inputStream().use { source -> source.copyTo(output) }
+            input.inputStream().use { source -> source.copyTo(output, COPY_BUFFER_BYTES) }
         } ?: throw IOException("Impossibile scrivere il file esportato")
     }
 
@@ -663,9 +793,11 @@ class OfflineAudioExporter(
         private const val MIN_FREE_STORAGE_RESERVE_BYTES = 128L * 1024L * 1024L
         private const val UNKNOWN_LENGTH_STORAGE_ALLOWANCE_BYTES = 256L * 1024L * 1024L
         private const val MAX_ARTWORK_BYTES = 4 * 1024 * 1024
-        private const val DOWNLOAD_BUFFER_BYTES = 256 * 1024
-        private const val COPY_BUFFER_BYTES = 512 * 1024
-        private const val PARALLEL_RANGE_CONCURRENCY = 4
+        private const val DOWNLOAD_BUFFER_BYTES = 512 * 1024
+        private const val COPY_BUFFER_BYTES = 1024 * 1024
+        private const val FILE_CHANNEL_CHUNK_BYTES = 32L * 1024L * 1024L
+        private const val RANGE_RETRY_COUNT = 3
+        private const val RANGE_RETRY_DELAY_MS = 140L
         private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
         private val MUSIC_DESTINATION_LABEL = "${Environment.DIRECTORY_MUSIC}/Levyra"
         private val DOWNLOADS_DESTINATION_LABEL = "${Environment.DIRECTORY_DOWNLOADS}/Levyra"

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Mini oynatıcı, hızlı favoriler, günlük flow, çevrimdışı ve şarkı sözleri</string>
+    <string name="widget_idle_subtitle">Dinlemek için dokunun</string>
+    <string name="widget_toggle">Oynat/Duraklat</string>
+    <string name="widget_next">Sonraki</string>
+    <string name="widget_previous">Önceki</string>
+    <string name="widget_favorites">Favoriler</string>
+    <string name="widget_flow">Günlük flow</string>
+    <string name="widget_offline">Çevrimdışı mix</string>
+    <string name="widget_lyrics">Şarkı sözleri</string>
+    <string name="radar_channel_name">Yayın radarı</string>
+    <string name="radar_channel_description">Takip ettiğiniz sanatçıların yeni yayınları</string>
+    <string name="radar_new_release_title">%1$s sanatçısından yeni yayın</string>
+</resources>

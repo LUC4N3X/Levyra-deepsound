@@ -21,6 +21,11 @@ object LevyraHttpClientFactory {
         maxRequests = 64
         maxRequestsPerHost = 24
     }
+    private val downloadConnectionPool = ConnectionPool(48, 5, TimeUnit.MINUTES)
+    private val downloadDispatcher = Dispatcher().apply {
+        maxRequests = 128
+        maxRequestsPerHost = 48
+    }
 
     @Volatile
     private var mediaClient: OkHttpClient? = null
@@ -30,6 +35,9 @@ object LevyraHttpClientFactory {
 
     @Volatile
     private var extractorClient: OkHttpClient? = null
+
+    @Volatile
+    private var downloadClient: OkHttpClient? = null
 
     fun media(context: Context? = null): OkHttpClient {
         return mediaClient ?: synchronized(this) {
@@ -76,6 +84,24 @@ object LevyraHttpClientFactory {
                 .followSslRedirects(true)
                 .build()
                 .also { extractorClient = it }
+        }
+    }
+
+    fun download(): OkHttpClient {
+        return downloadClient ?: synchronized(this) {
+            downloadClient ?: OkHttpClient.Builder()
+                .connectionPool(downloadConnectionPool)
+                .dispatcher(downloadDispatcher)
+                .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
+                .connectTimeout(6, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(15, TimeUnit.SECONDS)
+                .callTimeout(0, TimeUnit.MILLISECONDS)
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .retryOnConnectionFailure(true)
+                .build()
+                .also { downloadClient = it }
         }
     }
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Miniodtwarzacz, szybkie ulubione, codzienny flow, offline i teksty</string>
+    <string name="widget_idle_subtitle">Dotknij, aby posłuchać</string>
+    <string name="widget_toggle">Odtwarzaj/Pauza</string>
+    <string name="widget_next">Następny</string>
+    <string name="widget_previous">Poprzedni</string>
+    <string name="widget_favorites">Ulubione</string>
+    <string name="widget_flow">Codzienny flow</string>
+    <string name="widget_offline">Miks offline</string>
+    <string name="widget_lyrics">Teksty</string>
+    <string name="radar_channel_name">Radar premier</string>
+    <string name="radar_channel_description">Nowe wydania obserwowanych artystów</string>
+    <string name="radar_new_release_title">Nowe wydanie od %1$s</string>
+</resources>

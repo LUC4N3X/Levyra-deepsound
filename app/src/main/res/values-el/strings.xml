@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Μίνι player, γρήγορα αγαπημένα, καθημερινό flow, εκτός σύνδεσης και στίχοι</string>
+    <string name="widget_idle_subtitle">Πατήστε για ακρόαση</string>
+    <string name="widget_toggle">Αναπαραγωγή/Παύση</string>
+    <string name="widget_next">Επόμενο</string>
+    <string name="widget_previous">Προηγούμενο</string>
+    <string name="widget_favorites">Αγαπημένα</string>
+    <string name="widget_flow">Καθημερινό flow</string>
+    <string name="widget_offline">Mix εκτός σύνδεσης</string>
+    <string name="widget_lyrics">Στίχοι</string>
+    <string name="radar_channel_name">Ραντάρ κυκλοφοριών</string>
+    <string name="radar_channel_description">Νέες κυκλοφορίες από καλλιτέχνες που ακολουθείτε</string>
+    <string name="radar_new_release_title">Νέα κυκλοφορία από %1$s</string>
+</resources>
