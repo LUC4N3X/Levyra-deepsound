@@ -347,7 +347,7 @@ object TtmlLyricsParser {
         val values = ArrayList<String>()
         for (index in 0 until spans.length) {
             val span = spans.item(index) as? Element ?: continue
-            if (span.roleAttribute() != expectedRole) continue
+            if (span.roleAttribute() != expectedRole || span.hasAncestorWithSpecialRole(this)) continue
             val value = span.textContent.orEmpty().replace(Regex("\\s+"), " ").trim()
             if (value.isNotBlank()) values += value
         }
@@ -451,10 +451,7 @@ object LyricsCleaner {
                     text = if (instrumental && text.isBlank()) "♪" else text,
                     translated = translated,
                     romanized = romanized,
-                    words = line.words.mapNotNull { word ->
-                        val value = word.text.replace(Regex("\\s+"), " ")
-                        if (value.isBlank()) null else word.copy(text = value)
-                    },
+                    words = cleanTimedWords(line.words),
                     role = role,
                     isInstrumental = instrumental,
                     isMetadata = metadata
@@ -470,9 +467,7 @@ object LyricsCleaner {
         prepared.forEach { line ->
             val previous = deduplicated.lastOrNull()
             if (previous != null && previous.startMs == line.startMs && previous.text.equals(line.text, ignoreCase = true) && previous.role == line.role) {
-                if (line.words.size > previous.words.size || line.translated.isNotBlank() || line.romanized.isNotBlank()) {
-                    deduplicated[deduplicated.lastIndex] = line
-                }
+                deduplicated[deduplicated.lastIndex] = mergeDuplicate(previous, line)
             } else {
                 deduplicated += line
             }
@@ -490,17 +485,99 @@ object LyricsCleaner {
         }
     }
 
+    private fun cleanTimedWords(words: List<LyricWord>): List<LyricWord> {
+        val normalized = words.mapNotNull { word ->
+            val value = word.text.replace(Regex("\\s+"), " ")
+            if (value.isBlank()) null else word.copy(text = value)
+        }
+        if (normalized.isEmpty()) return emptyList()
+
+        val rendered = StringBuilder()
+        val ranges = ArrayList<WordTextRange>(normalized.size)
+        var previousEndedWithWhitespace = true
+        normalized.forEachIndexed { index, word ->
+            val value = word.text.trim()
+            if (index > 0 && !previousEndedWithWhitespace && !value.first().isPunctuationWithoutLeadingSpace()) {
+                rendered.append(' ')
+            }
+            val start = rendered.length
+            rendered.append(value)
+            ranges += WordTextRange(start, rendered.length)
+            previousEndedWithWhitespace = word.text.lastOrNull()?.isWhitespace() == true
+        }
+
+        val prefixLength = LyricRoleClassifier.prefixLength(rendered.toString())
+        if (prefixLength <= 0) return normalized
+
+        return normalized.mapIndexedNotNull { index, word ->
+            val range = ranges[index]
+            val removed = (prefixLength - range.start).coerceIn(0, range.endExclusive - range.start)
+            val value = word.text.trim().drop(removed).trimStart()
+            if (value.isBlank()) null else word.copy(text = value)
+        }
+    }
+
+    private fun mergeDuplicate(previous: LyricLine, current: LyricLine): LyricLine {
+        return previous.copy(
+            endMs = max(previous.endMs, current.endMs),
+            translated = richerText(previous.translated, current.translated),
+            words = mergeWords(previous.words, current.words),
+            romanized = richerText(previous.romanized, current.romanized),
+            isInstrumental = previous.isInstrumental || current.isInstrumental,
+            isMetadata = previous.isMetadata || current.isMetadata
+        )
+    }
+
+    private fun mergeWords(previous: List<LyricWord>, current: List<LyricWord>): List<LyricWord> {
+        if (previous.isEmpty()) return current
+        if (current.isEmpty()) return previous
+        val previousScore = wordListScore(previous)
+        val currentScore = wordListScore(current)
+        val primary = if (currentScore > previousScore) current else previous
+        val secondary = if (primary === current) previous else current
+        return primary.mapIndexed { index, word ->
+            val indexed = secondary.getOrNull(index)
+            val counterpart = indexed?.takeIf {
+                it.text.equals(word.text, ignoreCase = true) || (it.startMs - word.startMs).absoluteValue <= 350L
+            } ?: secondary.minByOrNull { candidate ->
+                val textPenalty = if (candidate.text.equals(word.text, ignoreCase = true)) 0L else 2_000L
+                (candidate.startMs - word.startMs).absoluteValue + textPenalty
+            }?.takeIf { candidate ->
+                candidate.text.equals(word.text, ignoreCase = true) || (candidate.startMs - word.startMs).absoluteValue <= 350L
+            }
+            word.copy(romanized = richerText(word.romanized, counterpart?.romanized.orEmpty()))
+        }
+    }
+
+    private fun wordListScore(words: List<LyricWord>): Int {
+        val validTimings = words.count { it.endMs > it.startMs }
+        val romanized = words.count { it.romanized.isNotBlank() }
+        return words.size * 100 + validTimings * 10 + romanized
+    }
+
+    private fun richerText(previous: String, current: String): String = when {
+        previous.isBlank() -> current
+        current.isBlank() -> previous
+        current.length > previous.length -> current
+        else -> previous
+    }
+
     private fun normalizeText(value: String): String = value
         .replace('\n', ' ')
         .replace(Regex("\\s+"), " ")
         .replace(Regex("\\s+([,.;:!?])"), "$1")
         .trim()
+
+    private fun Char.isPunctuationWithoutLeadingSpace(): Boolean = this in charArrayOf(',', '.', ';', ':', '!', '?', ')', ']', '}', '’', '\'', '…')
+
+    private data class WordTextRange(val start: Int, val endExclusive: Int)
 }
 
 object LyricRoleClassifier {
     private val backgroundRegex = Regex("(?i)^(?:\\(|\\[)?(?:bg|background|backing|choir|chorus)[:：]\\s*")
     private val rightRegex = Regex("(?i)^(?:\\(|\\[)?(?:v2|voice 2|singer 2|right)[:：]\\s*")
     private val leftRegex = Regex("(?i)^(?:\\(|\\[)?(?:v1|voice 1|singer 1|left)[:：]\\s*")
+    private val prefixRegexes = listOf(backgroundRegex, rightRegex, leftRegex)
 
     fun roleOf(text: String): LyricVocalRole = when {
         backgroundRegex.containsMatchIn(text) -> LyricVocalRole.BACKGROUND
@@ -514,6 +591,12 @@ object LyricRoleClassifier {
         .replace(rightRegex, "")
         .replace(leftRegex, "")
         .trim()
+
+    fun prefixLength(text: String): Int = prefixRegexes
+        .asSequence()
+        .mapNotNull { it.find(text) }
+        .maxOfOrNull { it.range.last + 1 }
+        ?: 0
 }
 
 object LyricsResultRanker {
