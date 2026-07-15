@@ -1,5 +1,8 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.domain.LyricLine
+import com.luc4n3x.levyra.domain.LyricVocalRole
+import com.luc4n3x.levyra.domain.LyricWord
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +23,24 @@ class LyricsParsingTest {
         assertEquals(20_500L, lines[1].startMs)
         assertEquals(24_920L, lines[1].endMs)
         assertEquals("Next line", lines[2].text)
+    }
+
+    @Test
+    fun enhancedLrcAppliesOffsetAndKeepsWordTiming() {
+        val lines = LrcLyricsParser.parse(
+            """
+            [offset:+250]
+            [00:10.00]<00:10.00>Hello <00:10.50>world
+            [00:20.00]Next line
+            """.trimIndent()
+        )
+
+        assertEquals(2, lines.size)
+        assertEquals(10_250L, lines[0].startMs)
+        assertEquals("Hello world", lines[0].text)
+        assertEquals(2, lines[0].words.size)
+        assertEquals(10_250L, lines[0].words[0].startMs)
+        assertEquals(10_750L, lines[0].words[1].startMs)
     }
 
     @Test
@@ -44,9 +65,178 @@ class LyricsParsingTest {
         assertEquals(3_500L, lines[0].endMs)
         assertEquals("Hello world", lines[0].text)
         assertEquals(2, lines[0].words.size)
-        assertEquals("Hello", lines[0].words[0].text)
+        assertEquals("Hello", lines[0].words[0].text.trim())
         assertEquals(1_400L, lines[0].words[0].endMs)
         assertEquals("world", lines[0].words[1].text)
+    }
+
+    @Test
+    fun ttmlParserPreservesTranslationRomanizationBackgroundAndDuetRole() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt>
+              <body>
+                <div>
+                  <p begin="1s" end="4s" ttm:agent="v2">
+                    <span begin="1s" end="2s">Hello </span>
+                    <span begin="2s" end="3s">world</span>
+                    <span ttm:role="x-translation">Ciao mondo</span>
+                    <span ttm:role="x-roman">hello world</span>
+                    <span ttm:role="x-bg" begin="2s" end="3.5s">ooh</span>
+                  </p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        assertEquals(2, lines.size)
+        val main = lines.first { it.role == LyricVocalRole.DUET_RIGHT }
+        val background = lines.first { it.role == LyricVocalRole.BACKGROUND }
+        assertEquals("Hello world", main.text)
+        assertEquals("Ciao mondo", main.translated)
+        assertEquals("hello world", main.romanized)
+        assertEquals("ooh", background.text)
+        assertEquals(2_000L, background.startMs)
+    }
+
+    @Test
+    fun ttmlMainTranslationExcludesBackgroundDescendants() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt>
+              <body>
+                <div>
+                  <p begin="1s" end="4s">
+                    <span begin="1s" end="2s">Main line</span>
+                    <span ttm:role="x-translation">Main translation</span>
+                    <span ttm:role="x-bg" begin="2s" end="3s">
+                      <span begin="2s" end="2.5s">Background</span>
+                      <span ttm:role="x-translation">Background translation</span>
+                      <span ttm:role="x-roman">background romanized</span>
+                    </span>
+                  </p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        val main = lines.first { it.role == LyricVocalRole.MAIN }
+        val background = lines.first { it.role == LyricVocalRole.BACKGROUND }
+        assertEquals("Main translation", main.translated)
+        assertEquals("", main.romanized)
+        assertEquals("Background translation", background.translated)
+        assertEquals("background romanized", background.romanized)
+    }
+
+    @Test
+    fun cleanerStripsVocalPrefixFromTimedWordsWithoutChangingTiming() {
+        val cleaned = LyricsCleaner.clean(
+            listOf(
+                LyricLine(
+                    startMs = 1_000L,
+                    endMs = 3_000L,
+                    text = "voice 2: hello world",
+                    translated = "",
+                    words = listOf(
+                        LyricWord(1_000L, 1_200L, "voice"),
+                        LyricWord(1_200L, 1_400L, "2:"),
+                        LyricWord(1_400L, 2_000L, "hello"),
+                        LyricWord(2_000L, 2_600L, "world")
+                    )
+                )
+            )
+        )
+
+        assertEquals(1, cleaned.size)
+        assertEquals(LyricVocalRole.DUET_RIGHT, cleaned[0].role)
+        assertEquals("hello world", cleaned[0].text)
+        assertEquals(listOf("hello", "world"), cleaned[0].words.map { it.text })
+        assertEquals(1_400L, cleaned[0].words[0].startMs)
+        assertEquals(2_000L, cleaned[0].words[0].endMs)
+    }
+
+    @Test
+    fun cleanerMergesComplementaryDuplicateEnrichmentFields() {
+        val cleaned = LyricsCleaner.clean(
+            listOf(
+                LyricLine(
+                    startMs = 1_000L,
+                    endMs = 2_800L,
+                    text = "Hello world",
+                    translated = "",
+                    words = listOf(
+                        LyricWord(1_000L, 1_500L, "Hello", romanized = "he-llo"),
+                        LyricWord(1_500L, 2_000L, "world")
+                    ),
+                    romanized = "hello world"
+                ),
+                LyricLine(
+                    startMs = 1_000L,
+                    endMs = 3_200L,
+                    text = "Hello world",
+                    translated = "Ciao mondo",
+                    words = emptyList(),
+                    romanized = ""
+                )
+            )
+        )
+
+        assertEquals(1, cleaned.size)
+        assertEquals("Ciao mondo", cleaned[0].translated)
+        assertEquals("hello world", cleaned[0].romanized)
+        assertEquals(2, cleaned[0].words.size)
+        assertEquals("he-llo", cleaned[0].words[0].romanized)
+        assertEquals(3_200L, cleaned[0].endMs)
+    }
+
+    @Test
+    fun yrcParserKeepsAbsoluteSyllableTiming() {
+        val lines = YrcLyricsParser.parse("[1000,1500](1000,500,0)Hel(1500,500,0)lo")
+
+        assertEquals(1, lines.size)
+        assertEquals("Hello", lines[0].text)
+        assertEquals(2, lines[0].words.size)
+        assertEquals(1_500L, lines[0].words[1].startMs)
+    }
+
+    @Test
+    fun qrcParserKeepsAbsoluteSyllableTiming() {
+        val lines = QrcLyricsParser.parse("[1000,1500]<1000,500,0>Hel<1500,500,0>lo")
+
+        assertEquals(1, lines.size)
+        assertEquals("Hello", lines[0].text)
+        assertEquals(1_500L, lines[0].words[1].startMs)
+    }
+
+    @Test
+    fun krcParserConvertsRelativeSyllableTiming() {
+        val lines = KrcLyricsParser.parse("[1000,1500]<0,500,0>Hel<500,500,0>lo")
+
+        assertEquals(1, lines.size)
+        assertEquals("Hello", lines[0].text)
+        assertEquals(1_500L, lines[0].words[1].startMs)
+    }
+
+    @Test
+    fun cleanerRemovesCreditsAndRecognizesBackgroundPrefixes() {
+        val lines = LyricsCleaner.clean(
+            listOf(
+                LyricLine(0L, 1_000L, "Lyrics by: Someone", ""),
+                LyricLine(1_000L, 2_000L, "BG: ooh", "")
+            )
+        )
+
+        assertEquals(1, lines.size)
+        assertEquals("ooh", lines[0].text)
+        assertEquals(LyricVocalRole.BACKGROUND, lines[0].role)
+    }
+
+    @Test
+    fun matcherNormalizesOfficialMetadataAndPenalizesWrongVersions() {
+        assertTrue(LyricsMatcher.similarity("Song (Official Video)", "Song") >= 90)
+        assertTrue(LyricsMatcher.versionMismatchPenalty("Song Live", "Song") > 0)
     }
 
     @Test
@@ -112,7 +302,7 @@ class LyricsParsingTest {
         return LyricsCandidate(
             result = LyricsRepository.LyricsResult(
                 synced = synced,
-                lines = listOf(com.luc4n3x.levyra.domain.LyricLine(1_000L, 2_000L, "Line", "")),
+                lines = listOf(LyricLine(1_000L, 2_000L, "Line", "")),
                 provider = provider,
                 confidence = 90,
                 cached = false
