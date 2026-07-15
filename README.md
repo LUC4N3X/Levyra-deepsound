@@ -20,7 +20,6 @@
   <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
 </p>
  
-[⬇️ Download](#-download-levyra) • [📱 Inside Levyra](#-inside-levyra) • [✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
  
 <br>
  
