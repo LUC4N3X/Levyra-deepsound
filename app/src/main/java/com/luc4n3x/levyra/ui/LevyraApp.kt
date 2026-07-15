@@ -198,7 +198,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -212,8 +214,10 @@ import androidx.core.view.WindowCompat
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -3269,6 +3273,8 @@ private fun KaraokeLyricLine(
 ) {
     val cinema = viewMode == LyricsViewMode.CINEMA
     val compact = viewMode == LyricsViewMode.COMPACT
+    val strings = LocalLevyraStrings.current
+    val sectionLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
     val alignment = when (line.role) {
         LyricVocalRole.DUET_RIGHT -> Alignment.End
         LyricVocalRole.BACKGROUND -> Alignment.CenterHorizontally
@@ -3352,7 +3358,7 @@ private fun KaraokeLyricLine(
     ) {
         if (!sectionLabel.isNullOrBlank()) {
             Text(
-                text = sectionLabel.uppercase(),
+                text = sectionLabel.uppercase(sectionLocale),
                 color = accentEnd.copy(alpha = if (isPrimaryActive) 0.92f else 0.56f),
                 fontSize = if (compact) 9.sp else 10.sp,
                 lineHeight = 12.sp,
@@ -3436,7 +3442,7 @@ private fun KaraokeWordTimedText(
 ) {
     val timedText = remember(words) { buildTimedLyricText(words) }
     val karaokeEasing = remember { CubicBezierEasing(0.18f, 0f, 0.20f, 1f) }
-    val targetProgress = remember(timedText, positionMs, isActive) {
+    val targetCharacterProgress = remember(timedText, positionMs, isActive) {
         if (!isActive || timedText.text.isEmpty()) {
             0f
         } else {
@@ -3455,11 +3461,11 @@ private fun KaraokeWordTimedText(
                     }
                 }
             }
-            (filledCharacters / timedText.text.length.coerceAtLeast(1)).coerceIn(0f, 1f)
+            filledCharacters.coerceIn(0f, timedText.text.length.toFloat())
         }
     }
-    val progress by animateFloatAsState(
-        targetValue = targetProgress,
+    val characterProgress by animateFloatAsState(
+        targetValue = targetCharacterProgress,
         animationSpec = tween(durationMillis = 65, easing = LinearEasing),
         label = "karaoke-word-progress"
     )
@@ -3471,6 +3477,9 @@ private fun KaraokeWordTimedText(
         TextAlign.Center -> Alignment.Center
         TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
         else -> Alignment.CenterStart
+    }
+    var textLayoutResult by remember(timedText.text, fontSize, lineHeight, textAlign, fontWeight) {
+        mutableStateOf<TextLayoutResult?>(null)
     }
 
     Box(
@@ -3485,9 +3494,10 @@ private fun KaraokeWordTimedText(
                 lineHeight = lineHeight,
                 fontWeight = fontWeight,
                 textAlign = textAlign,
+                onTextLayout = { textLayoutResult = it },
                 modifier = Modifier.wrapContentWidth()
             )
-            if (isActive && progress > 0f) {
+            if (isActive && characterProgress > 0f) {
                 Text(
                     text = timedText.text,
                     color = fillColor,
@@ -3498,21 +3508,60 @@ private fun KaraokeWordTimedText(
                     modifier = Modifier
                         .matchParentSize()
                         .drawWithContent {
-                            val visibleWidth = size.width * progress
-                            if (layoutDirection == LayoutDirection.Rtl) {
-                                clipRect(left = size.width - visibleWidth) {
-                                    this@drawWithContent.drawContent()
-                                }
-                            } else {
-                                clipRect(right = visibleWidth) {
-                                    this@drawWithContent.drawContent()
-                                }
+                            val layoutResult = textLayoutResult ?: return@drawWithContent
+                            val path = buildKaraokeGlyphPath(
+                                layoutResult = layoutResult,
+                                textLength = timedText.text.length,
+                                characterProgress = characterProgress
+                            )
+                            clipPath(path) {
+                                this@drawWithContent.drawContent()
                             }
                         }
                 )
             }
         }
     }
+}
+
+private fun buildKaraokeGlyphPath(
+    layoutResult: TextLayoutResult,
+    textLength: Int,
+    characterProgress: Float
+): Path {
+    val path = Path()
+    if (textLength == 0 || characterProgress <= 0f) return path
+    val boundedProgress = characterProgress.coerceIn(0f, textLength.toFloat())
+    val completedCharacters = boundedProgress.toInt().coerceIn(0, textLength)
+    for (index in 0 until completedCharacters) {
+        val bounds = layoutResult.getBoundingBox(index)
+        if (bounds.width > 0f && bounds.height > 0f) path.addRect(bounds)
+    }
+    if (completedCharacters < textLength) {
+        val fraction = boundedProgress - completedCharacters
+        if (fraction > 0f) {
+            val bounds = layoutResult.getBoundingBox(completedCharacters)
+            if (bounds.width > 0f && bounds.height > 0f) {
+                val partialBounds = if (layoutResult.getBidiRunDirection(completedCharacters) == ResolvedTextDirection.Rtl) {
+                    Rect(
+                        left = bounds.right - bounds.width * fraction,
+                        top = bounds.top,
+                        right = bounds.right,
+                        bottom = bounds.bottom
+                    )
+                } else {
+                    Rect(
+                        left = bounds.left,
+                        top = bounds.top,
+                        right = bounds.left + bounds.width * fraction,
+                        bottom = bounds.bottom
+                    )
+                }
+                path.addRect(partialBounds)
+            }
+        }
+    }
+    return path
 }
 
 private fun buildTimedLyricText(words: List<com.luc4n3x.levyra.domain.LyricWord>): TimedLyricText {
