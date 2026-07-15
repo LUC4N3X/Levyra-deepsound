@@ -2622,11 +2622,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     lyricsLoading = false
                 )
             }
-            if (lines.isNotEmpty()) {
-                val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
-                if (_state.value.currentTrack?.id == track.id) {
-                    _state.update { it.copy(intelligenceSummary = intelligence) }
-                }
+            val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
+            if (_state.value.currentTrack?.id == track.id) {
+                _state.update { it.copy(intelligenceSummary = intelligence) }
             }
         }
     }
