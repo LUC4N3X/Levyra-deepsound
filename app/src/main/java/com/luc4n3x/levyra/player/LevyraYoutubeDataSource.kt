@@ -76,9 +76,7 @@ class LevyraYoutubeDataSource private constructor(
         return linkedMapOf(
             "User-Agent" to userAgent,
             "Accept" to "*/*",
-            "Accept-Encoding" to "identity",
-            "Connection" to "keep-alive",
-            "TE" to "trailers"
+            "Accept-Encoding" to "identity"
         ).apply {
             if (web || embedded) {
                 put("Origin", "https://www.youtube.com")

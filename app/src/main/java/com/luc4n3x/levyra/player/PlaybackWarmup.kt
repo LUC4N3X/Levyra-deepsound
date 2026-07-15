@@ -7,8 +7,6 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
-import androidx.media3.datasource.okhttp.OkHttpDataSource
-import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +21,6 @@ import timber.log.Timber
 @OptIn(UnstableApi::class)
 class PlaybackWarmup(context: Context) {
     private val appContext = context.applicationContext
-    private val okHttpClient by lazy { LevyraHttpClientFactory.media(appContext) }
     private val primeLocks = ConcurrentHashMap<String, Mutex>()
 
     suspend fun prime(track: Track, bytes: Long = DEFAULT_PRIME_BYTES): Boolean = primeUrl(
@@ -55,15 +52,15 @@ class PlaybackWarmup(context: Context) {
                     if (cache.isCached(cacheKey, 0L, requestedBytes)) {
                         return@runCatching true
                     }
-                    val upstream = OkHttpDataSource.Factory(okHttpClient)
-                        .setUserAgent("LevyraPlayer/1.13 Android Music")
-                        .setDefaultRequestProperties(
-                            mapOf(
-                                "Accept" to "*/*",
-                                "Accept-Encoding" to "identity",
-                                "Connection" to "keep-alive"
+                    val upstream = LevyraYoutubeDataSource.Factory(
+                        PlaybackNetworkStack.warmupFactory(appContext)
+                            .setDefaultRequestProperties(
+                                mapOf(
+                                    "Accept" to "*/*",
+                                    "Accept-Encoding" to "identity"
+                                )
                             )
-                        )
+                    )
                     val sink = CacheDataSink.Factory()
                         .setCache(cache)
                         .setFragmentSize(PRIME_FRAGMENT_BYTES)

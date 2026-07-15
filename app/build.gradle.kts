@@ -177,6 +177,10 @@ kotlin {
     jvmToolchain(17)
 }
 
+configurations.configureEach {
+    exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -195,6 +199,8 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.datasource.okhttp)
+    implementation(libs.androidx.media3.datasource.cronet)
+    implementation(libs.google.play.services.cronet)
     implementation(libs.androidx.media3.datasource)
     implementation(libs.androidx.media3.database)
     implementation(libs.kotlinx.coroutines.android)
