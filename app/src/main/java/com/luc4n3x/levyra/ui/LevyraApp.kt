@@ -8,6 +8,8 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
 import android.media.AudioManager
@@ -80,6 +82,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -174,6 +177,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -2707,7 +2711,6 @@ private fun LyricsOverlay(
     val blocker = remember { MutableInteractionSource() }
     val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
-    val density = LocalDensity.current
     var viewMode by remember(track?.id) { mutableStateOf(LyricsViewMode.CINEMA) }
     var showRomanization by remember(track?.id) { mutableStateOf(true) }
     var showSecondaryVoices by remember(track?.id) { mutableStateOf(true) }
@@ -2725,9 +2728,6 @@ private fun LyricsOverlay(
     val effectivePositionMs = (state.positionMs - lyricsOffsetMs).coerceAtLeast(0L)
     val activeIndex = if (state.lyricsSynced) activeLyricIndex(effectivePositionMs, visibleLyrics) else -1
     val lyricsStartIndex = 4
-    val scrollOffsetPx = with(density) {
-        if (viewMode == LyricsViewMode.CINEMA) 176.dp.roundToPx() else 120.dp.roundToPx()
-    }
     val hasRomanization = state.lyrics.any { it.romanized.isNotBlank() || it.words.any { word -> word.romanized.isNotBlank() } }
     val hasMultipleVoices = state.lyrics.any { it.role != LyricVocalRole.MAIN }
     val chorusPhrase = state.intelligenceSummary.repeatedPhrases.firstOrNull()
@@ -2750,36 +2750,31 @@ private fun LyricsOverlay(
         }
     }
 
-    LaunchedEffect(activeIndex, lyricsStartIndex, scrollOffsetPx, autoScrollEnabled) {
+    LaunchedEffect(activeIndex, lyricsStartIndex, autoScrollEnabled, viewMode, visibleLyrics.size) {
         if (activeIndex >= 0 && autoScrollEnabled) {
             autoScrolling = true
             runCatching {
                 val targetIndex = lyricsStartIndex + activeIndex
-                val distance = kotlin.math.abs(listState.firstVisibleItemIndex - targetIndex)
-                if (!initialLyricsPositioned || distance > 6) {
-                    listState.scrollToItem(
-                        index = targetIndex,
-                        scrollOffset = scrollOffsetPx
-                    )
-                } else {
-                    listState.animateScrollToItem(
-                        index = targetIndex,
-                        scrollOffset = scrollOffsetPx
-                    )
-                }
+                val targetVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
+                centerLyricsItem(
+                    listState = listState,
+                    index = targetIndex,
+                    animate = initialLyricsPositioned && targetVisible
+                )
                 initialLyricsPositioned = true
             }
             autoScrolling = false
         }
     }
 
-    LaunchedEffect(requestedLyricIndex, lyricsStartIndex, scrollOffsetPx) {
+    LaunchedEffect(requestedLyricIndex, lyricsStartIndex) {
         val requested = requestedLyricIndex ?: return@LaunchedEffect
         autoScrolling = true
         runCatching {
-            listState.animateScrollToItem(
+            centerLyricsItem(
+                listState = listState,
                 index = lyricsStartIndex + requested,
-                scrollOffset = scrollOffsetPx
+                animate = true
             )
         }
         autoScrolling = false
@@ -2972,7 +2967,10 @@ private fun LyricsOverlay(
                     items = visibleLyrics,
                     key = { index, line -> "${line.startMs}-${line.role.name}-$index" }
                 ) { index, line ->
-                    val timedActive = state.lyricsSynced && effectivePositionMs in line.startMs..line.endMs
+                    val timedActive = state.lyricsSynced && (
+                        index == activeIndex ||
+                            line.role == LyricVocalRole.BACKGROUND && effectivePositionMs in line.startMs..line.endMs
+                        )
                     KaraokeLyricLine(
                         line = line,
                         positionMs = effectivePositionMs,
@@ -3016,6 +3014,34 @@ private fun LyricsOverlay(
                 null
             }
         )
+    }
+}
+
+
+private suspend fun centerLyricsItem(
+    listState: LazyListState,
+    index: Int,
+    animate: Boolean
+) {
+    if (index < 0) return
+    var itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+    if (itemInfo == null) {
+        listState.scrollToItem(index)
+        withFrameNanos { }
+        itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+    }
+    val item = itemInfo ?: return
+    val layoutInfo = listState.layoutInfo
+    val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+    if (viewportHeight <= 0) return
+    val desiredCenter = layoutInfo.viewportStartOffset + viewportHeight * 0.38f
+    val currentCenter = item.offset + item.size / 2f
+    val delta = currentCenter - desiredCenter
+    if (kotlin.math.abs(delta) < 2f) return
+    if (animate && kotlin.math.abs(delta) <= viewportHeight * 0.75f) {
+        listState.animateScrollBy(delta)
+    } else {
+        listState.scrollBy(delta)
     }
 }
 
