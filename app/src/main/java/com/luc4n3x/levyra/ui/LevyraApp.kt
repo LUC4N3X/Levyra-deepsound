@@ -26,6 +26,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -71,12 +72,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -190,10 +193,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -203,12 +208,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -2893,7 +2895,7 @@ private fun LyricsOverlay(
                     )
                     if (hasMultipleVoices) {
                         LyricsControlChip(
-                            label = "Duet",
+                            label = strings.lyricsDuet,
                             selected = showSecondaryVoices,
                             icon = Icons.Rounded.GraphicEq,
                             onClick = { showSecondaryVoices = !showSecondaryVoices }
@@ -2908,7 +2910,7 @@ private fun LyricsOverlay(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     LyricsControlChip(
-                        label = if (viewMode == LyricsViewMode.CINEMA) "Cinema" else "Page",
+                        label = if (viewMode == LyricsViewMode.CINEMA) strings.lyricsCinema else strings.lyricsPage,
                         selected = viewMode == LyricsViewMode.CINEMA,
                         icon = if (viewMode == LyricsViewMode.CINEMA) Icons.Rounded.GraphicEq else Icons.Rounded.Subject,
                         onClick = {
@@ -2923,7 +2925,7 @@ private fun LyricsOverlay(
                     )
                     if (hasRomanization) {
                         LyricsControlChip(
-                            label = "Romanization",
+                            label = strings.lyricsRomanization,
                             selected = showRomanization,
                             icon = Icons.Rounded.Language,
                             onClick = { showRomanization = !showRomanization }
@@ -3009,7 +3011,7 @@ private fun LyricsOverlay(
                     showIntelligenceDialog = false
                     requestedLyricIndex = chorusIndex
                     val chorusStartMs = visibleLyrics.getOrNull(chorusIndex)?.startMs ?: 0L
-                    if (state.lyricsSynced && chorusStartMs > 0L) onSeekToMs((chorusStartMs + lyricsOffsetMs).coerceAtLeast(0L))
+                    if (state.lyricsSynced) onSeekToMs((chorusStartMs + lyricsOffsetMs).coerceAtLeast(0L))
                 }
             } else {
                 null
@@ -3191,36 +3193,113 @@ private fun KaraokeWordTimedText(
     pendingColor: Color,
     fontWeight: FontWeight
 ) {
-    val styledText = remember(words, positionMs, isActive, inactiveColor, completedColor, activeColor, pendingColor) {
-        buildAnnotatedString {
-            var previousEndedWithWhitespace = true
-            words.forEachIndexed { index, word ->
-                val value = word.text.trim()
-                if (value.isNotBlank()) {
-                    if (index > 0 && !previousEndedWithWhitespace && !value.first().isPunctuationWithoutLeadingSpace()) append(' ')
-                    val color = when {
-                        !isActive -> inactiveColor
-                        positionMs >= word.endMs -> completedColor
-                        positionMs >= word.startMs -> activeColor
-                        else -> pendingColor
-                    }
-                    withStyle(SpanStyle(color = color)) {
-                        append(value)
-                    }
-                    previousEndedWithWhitespace = word.text.lastOrNull()?.isWhitespace() == true
+    val timedText = remember(words) { buildTimedLyricText(words) }
+    val progress = remember(timedText, positionMs, isActive) {
+        if (!isActive || timedText.text.isEmpty()) {
+            0f
+        } else {
+            var filledCharacters = 0f
+            timedText.words.forEach { timedWord ->
+                val wordProgress = when {
+                    positionMs <= timedWord.startMs -> 0f
+                    positionMs >= timedWord.endMs -> 1f
+                    else -> (positionMs - timedWord.startMs).toFloat() /
+                        (timedWord.endMs - timedWord.startMs).coerceAtLeast(1L).toFloat()
                 }
+                filledCharacters = maxOf(
+                    filledCharacters,
+                    timedWord.startIndex + timedWord.length * wordProgress.coerceIn(0f, 1f)
+                )
+            }
+            (filledCharacters / timedText.text.length.coerceAtLeast(1)).coerceIn(0f, 1f)
+        }
+    }
+    val fillColor = remember(words, positionMs, activeColor, completedColor) {
+        if (words.any { positionMs in it.startMs until it.endMs }) activeColor else completedColor
+    }
+    val contentAlignment = when (textAlign) {
+        TextAlign.Center -> Alignment.Center
+        TextAlign.End, TextAlign.Right -> Alignment.CenterEnd
+        else -> Alignment.CenterStart
+    }
+
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = contentAlignment
+    ) {
+        Box(modifier = Modifier.wrapContentWidth()) {
+            Text(
+                text = timedText.text,
+                color = if (isActive) pendingColor else inactiveColor,
+                fontSize = fontSize,
+                lineHeight = lineHeight,
+                fontWeight = fontWeight,
+                textAlign = textAlign,
+                modifier = Modifier.wrapContentWidth()
+            )
+            if (isActive && progress > 0f) {
+                Text(
+                    text = timedText.text,
+                    color = fillColor,
+                    fontSize = fontSize,
+                    lineHeight = lineHeight,
+                    fontWeight = fontWeight,
+                    textAlign = textAlign,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .drawWithContent {
+                            val visibleWidth = size.width * progress
+                            if (layoutDirection == LayoutDirection.Rtl) {
+                                clipRect(left = size.width - visibleWidth) {
+                                    this@drawWithContent.drawContent()
+                                }
+                            } else {
+                                clipRect(right = visibleWidth) {
+                                    this@drawWithContent.drawContent()
+                                }
+                            }
+                        }
+                )
             }
         }
     }
-    Text(
-        text = styledText,
-        fontSize = fontSize,
-        lineHeight = lineHeight,
-        fontWeight = fontWeight,
-        textAlign = textAlign,
-        modifier = Modifier.fillMaxWidth()
-    )
 }
+
+private fun buildTimedLyricText(words: List<com.luc4n3x.levyra.domain.LyricWord>): TimedLyricText {
+    val text = StringBuilder()
+    val timedWords = ArrayList<TimedLyricWord>(words.size)
+    var previousEndedWithWhitespace = true
+    words.forEachIndexed { index, word ->
+        val value = word.text.trim()
+        if (value.isNotBlank()) {
+            if (index > 0 && !previousEndedWithWhitespace && !value.first().isPunctuationWithoutLeadingSpace()) {
+                text.append(' ')
+            }
+            val startIndex = text.length
+            text.append(value)
+            timedWords += TimedLyricWord(
+                startIndex = startIndex,
+                length = value.length,
+                startMs = word.startMs,
+                endMs = word.endMs.coerceAtLeast(word.startMs + 1L)
+            )
+            previousEndedWithWhitespace = word.text.lastOrNull()?.isWhitespace() == true
+        }
+    }
+    return TimedLyricText(text.toString(), timedWords)
+}
+
+private data class TimedLyricText(
+    val text: String,
+    val words: List<TimedLyricWord>
+)
+
+private data class TimedLyricWord(
+    val startIndex: Int,
+    val length: Int,
+    val startMs: Long,
+    val endMs: Long
+)
 
 private fun Char.isPunctuationWithoutLeadingSpace(): Boolean = this in charArrayOf(',', '.', ';', ':', '!', '?', ')', ']', '}', '’', '\'', '…')
 
