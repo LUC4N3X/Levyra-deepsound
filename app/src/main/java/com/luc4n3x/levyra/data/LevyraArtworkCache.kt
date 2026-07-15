@@ -11,6 +11,7 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -122,16 +123,23 @@ object LevyraArtworkCache {
     fun large(url: String): String = resize(url, LARGE_SIZE)
 
     fun model(context: Context, track: Track, highRes: Boolean = false): Any? {
-        val local = localFile(context, track, highRes)
-        if (local != null) return local
-        val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
-        if (raw.isBlank()) return null
-        return if (highRes) large(raw) else small(raw)
+        return models(context, track, highRes).firstOrNull()
+    }
+
+    fun models(context: Context, track: Track, highRes: Boolean = false): List<Any> {
+        val result = ArrayList<Any>(7)
+        localFile(context, track, highRes)?.let(result::add)
+        artworkUrlCandidates(track, highRes).forEach(result::add)
+        return result.distinctBy { model ->
+            when (model) {
+                is File -> "file:${model.absolutePath}"
+                else -> model.toString()
+            }
+        }
     }
 
     fun localFile(context: Context, track: Track, highRes: Boolean = false): File? {
-        val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
-        if (raw.isBlank()) return null
+        if (artworkUrlCandidates(track, highRes).isEmpty()) return null
         val file = persistentFile(context.applicationContext, track, if (highRes) LARGE_SIZE else SMALL_SIZE)
         if (!file.isFile || file.length() <= 512L) return null
         if (!isLikelyArtworkFile(file)) {
@@ -205,22 +213,19 @@ object LevyraArtworkCache {
     private fun artworkUrls(tracks: List<Track>, limit: Int): List<String> {
         return tracks
             .asSequence()
-            .flatMap { track -> sequenceOf(track.thumbnailUrl, track.largeThumbnailUrl) }
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .map(::small)
-            .distinct()
             .take(limit.coerceAtLeast(1))
+            .mapNotNull { track -> artworkUrlCandidates(track, false).firstOrNull() }
+            .distinct()
             .toList()
     }
 
-    private data class ArtworkTarget(val url: String, val file: File)
+    private data class ArtworkTarget(val urls: List<String>, val file: File)
 
     private fun target(context: Context, track: Track, highRes: Boolean): ArtworkTarget? {
-        val raw = if (highRes) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
-        if (raw.isBlank()) return null
+        val urls = artworkUrlCandidates(track, highRes)
+        if (urls.isEmpty()) return null
         val size = if (highRes) LARGE_SIZE else SMALL_SIZE
-        return ArtworkTarget(if (highRes) large(raw) else small(raw), persistentFile(context, track, size))
+        return ArtworkTarget(urls, persistentFile(context, track, size))
     }
 
     private fun ensurePersistent(target: ArtworkTarget) {
@@ -230,36 +235,56 @@ object LevyraArtworkCache {
             return
         }
         if (file.exists()) runCatching { file.delete() }
-        repeat(2) { attempt ->
-            val saved = runCatching {
-                file.parentFile?.mkdirs()
-                val request = Request.Builder()
-                    .url(target.url)
-                    .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Mobile Safari/537.36")
-                    .build()
-                LevyraHttpClientFactory.media().newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@use false
-                    val body = response.body ?: return@use false
-                    val length = body.contentLength()
-                    if (length > MAX_FILE_BYTES) return@use false
-                    val bytes = body.bytes()
-                    if (bytes.size < 512 || bytes.size.toLong() > MAX_FILE_BYTES || !isLikelyArtworkBytes(bytes)) return@use false
-                    val temp = File(file.parentFile, "${file.name}.tmp")
-                    temp.writeBytes(bytes)
-                    if (file.exists()) file.delete()
-                    if (!temp.renameTo(file)) {
-                        temp.copyTo(file, overwrite = true)
-                        temp.delete()
+        target.urls.forEach { url ->
+            repeat(2) { attempt ->
+                val saved = runCatching {
+                    file.parentFile?.mkdirs()
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("Accept", "image/webp,image/jpeg,image/png,image/*;q=0.9,*/*;q=0.5")
+                        .header("User-Agent", "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Mobile Safari/537.36")
+                        .build()
+                    LevyraHttpClientFactory.media().newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) return@use false
+                        val body = response.body ?: return@use false
+                        val length = body.contentLength()
+                        if (length > MAX_FILE_BYTES) return@use false
+                        val bytes = body.bytes()
+                        if (bytes.size < 512 || bytes.size.toLong() > MAX_FILE_BYTES || !isLikelyArtworkBytes(bytes)) return@use false
+                        val temp = File(file.parentFile, "${file.name}.tmp")
+                        temp.writeBytes(bytes)
+                        if (file.exists()) file.delete()
+                        if (!temp.renameTo(file)) {
+                            temp.copyTo(file, overwrite = true)
+                            temp.delete()
+                        }
+                        file.setLastModified(System.currentTimeMillis())
+                        true
                     }
-                    file.setLastModified(System.currentTimeMillis())
-                    true
-                }
-            }.onFailure { error ->
-                if (attempt == 1) Timber.d(error, "Artwork persistent cache miss")
-            }.getOrDefault(false)
-            if (saved || file.isFile && file.length() > 512L && isLikelyArtworkFile(file)) return
+                }.onFailure { error ->
+                    if (attempt == 1) Timber.d(error, "Artwork persistent cache miss")
+                }.getOrDefault(false)
+                if (saved || file.isFile && file.length() > 512L && isLikelyArtworkFile(file)) return
+            }
         }
+    }
+
+    internal fun artworkUrlCandidates(track: Track, highRes: Boolean): List<String> {
+        val ordered = if (highRes) {
+            sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl, LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty())
+        } else {
+            sequenceOf(track.thumbnailUrl, track.largeThumbnailUrl, LevyraPersonalOrbit.youtubeFallbackArtwork(track).orEmpty())
+        }
+        return ordered
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .flatMap { raw ->
+                val resized = if (highRes) large(raw) else small(raw)
+                sequenceOf(resized, raw)
+            }
+            .distinct()
+            .take(6)
+            .toList()
     }
 
     private fun isLikelyArtworkFile(file: File): Boolean {
@@ -279,7 +304,7 @@ object LevyraArtworkCache {
     }
 
     private fun persistentKey(track: Track, size: Int): String {
-        val rawArtwork = if (size >= LARGE_SIZE) track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } else track.thumbnailUrl.ifBlank { track.largeThumbnailUrl }
+        val rawArtwork = artworkUrlCandidates(track, size >= LARGE_SIZE).firstOrNull().orEmpty()
         val stable = buildString {
             append(size)
             append('|')
