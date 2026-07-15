@@ -20,7 +20,6 @@
   <img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-%230b0f14?style=for-the-badge">
 </p>
  
-[⬇️ Download](#-download-levyra) • [📱 Inside Levyra](#-inside-levyra) • [✨ Key Features](#-key-features) • [🌐 Architecture](#-architecture) • [🛠️ Technical Stack](#%EF%B8%8F-technical-stack) • [🚀 Getting Started](#-getting-started) • [🔒 Permissions](#-permissions-and-privacy) • [📝 License](#-disclaimers--license)
  
 <br>
  
@@ -31,7 +30,7 @@
 <br>
  
 ## ✦ Download Levyra
-
+ 
 <div align="center">
   <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
     <img
@@ -56,9 +55,9 @@
     />
   </a>
 </div>
-
+ 
 <br>
-
+ 
 ## ✦ What is Levyra?
  
 Unlike typical wrapper or web-reskin apps, **Levyra** is a native, ground-up Android audio application. It queries, resolves, and streams music dynamically using YouTube Music's InnerTube API with a LevyraExtractor-powered fallback, routes audio via an optimized **AndroidX Media3/ExoPlayer** background service, and outputs full tracks straight into your local storage. 
@@ -78,13 +77,13 @@ Every track you download is fully parsed, tagged, and structured as a clean M4A 
 <br>
  
 ## ✦ Inside Levyra
-
+ 
 <p align="center">
   <a href="docs/assets/inside_levyra_banner.png">
     <img src="docs/assets/inside_levyra_banner.png" alt="Inside Levyra Showcase" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);" />
   </a>
 </p>
-
+ 
 <br>
  
 ## ✦ Key Features
@@ -263,13 +262,13 @@ docs/PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md
 ### Version Control & CI overrides
 The application's version numbering is centralized inside `gradle.properties`:
 ```properties
-levyraVersionName=2.3.9
-levyraVersionCode=2030900
+levyraVersionName=2.3.10
+levyraVersionCode=2031000
 ```
 *Version code logic is calculated sequentially to prevent duplicate deployment IDs:*
 `versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`
  
-Our automated GitHub Action workflow parses this schema, checks target versions using `aapt`, verifies structural integrity, compiles the binary, names the artifact `LEVYRA-<version>.apk`, and ships it directly to **GitHub Releases**.
+The APK Artifact workflow parses this schema, checks target versions using `aapt`, verifies structural integrity, compiles the signed binary, names the artifact `LEVYRA-<version>.apk`, and uploads it as a GitHub Actions artifact.
  
 <br>
  
