@@ -2378,6 +2378,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playJob?.cancel()
         cancelBackgroundWarmups(cancelList = true)
         resolver.warmNetwork()
+        _state.update {
+            it.copy(
+                isResolving = true,
+                playerError = null,
+                currentTrack = track.copy(streamUrl = ""),
+                isPlaying = false,
+                positionMs = 0L,
+                durationMs = track.durationMs
+            )
+        }
+        fetchLyrics(track)
 
         val playableTrack = youtubePlayableTrack(track) ?: track
         playJob = viewModelScope.launch {
@@ -2396,16 +2407,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
-            _state.update {
-                it.copy(
-                    isResolving = true,
-                    playerError = null,
-                    currentTrack = track.copy(streamUrl = ""),
-                    isPlaying = false,
-                    positionMs = 0L,
-                    durationMs = track.durationMs
-                )
-            }
             player.stop()
             try {
                 val playable = resolveForPlayback(track)
@@ -2530,8 +2531,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 currentTrack = playable,
                 tracks = mergeTracks(it.tracks, listOf(playable)),
                 searchResults = mergeTracks(it.searchResults, listOf(playable)),
-                lyrics = emptyList(),
-                activeLyric = null,
+                activeLyric = lyricsEngine.currentLine(resumeMs, it.lyrics),
                 isPlaying = true,
                 isResolving = false,
                 durationMs = effectiveDuration(playable),
@@ -2543,7 +2543,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         recordPlaybackHistory(playable)
         beginListenSession(playable)
         recordSmartPlayback(playable)
-        fetchLyrics(playable)
         fetchSponsorSegments(playable)
         prefetchAlternateMode(playable, _state.value.isVideoMode)
         updateWidget()
@@ -2586,6 +2585,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openLyrics() {
         _state.update { it.copy(showLyrics = true) }
+        val snapshot = _state.value
+        val track = snapshot.currentTrack
+        if (track != null && snapshot.lyrics.isEmpty() && !snapshot.lyricsLoading) {
+            fetchLyrics(track)
+        }
     }
 
     fun closeLyrics() {
@@ -2935,12 +2939,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun startTicker() {
         viewModelScope.launch {
-            var ticks = 0
+            var lastBackgroundUiUpdateMs = 0L
+            var lastQueueUpdateMs = 0L
+            var lastPlaybackSaveMs = 0L
             while (isActive) {
                 val snapshot = _state.value
                 val current = snapshot.currentTrack
                 val duration = current?.let { effectiveDuration(it) } ?: player.durationMs
-  
+
                 if (snapshot.sponsorBlockEnabled && sponsorSegments.isNotEmpty() && player.isPlaying) {
                     val pos = player.positionMs
                     val segment = sponsorSegments.firstOrNull { pos >= it.startMs && pos < it.endMs - 250 }
@@ -2965,7 +2971,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val playbackStateChanged = snapshot.isPlaying != player.isPlaying
                 val shouldPublishUi = snapshot.selectedTab == LevyraTab.Player ||
                     snapshot.showLyrics ||
-                    ticks % 2 == 0 ||
+                    nowElapsed - lastBackgroundUiUpdateMs >= 1_000L ||
                     playbackStateChanged ||
                     snapshot.durationMs != duration
                 if (shouldPublishUi) {
@@ -2977,19 +2983,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             activeLyric = active
                         )
                     }
+                    lastBackgroundUiUpdateMs = nowElapsed
                 }
 
-                if (current != null && ticks % 2 == 0) {
+                if (current != null && nowElapsed - lastQueueUpdateMs >= 1_000L) {
                     queueEngine.updatePosition(position)
+                    lastQueueUpdateMs = nowElapsed
                 }
-                if (current != null && player.isPlaying && ticks % 8 == 0) {
+                if (current != null && player.isPlaying && nowElapsed - lastPlaybackSaveMs >= 4_000L) {
                     saveLastPlaybackAsync(current, position)
+                    lastPlaybackSaveMs = nowElapsed
                 }
                 if (playbackStateChanged) {
                     updateWidget()
                 }
-                ticks++
-                delay(500L)
+                delay(if (snapshot.showLyrics) 100L else 500L)
             }
         }
     }
