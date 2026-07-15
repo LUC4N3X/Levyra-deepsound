@@ -6,6 +6,7 @@ coreKtx = "1.19.0"
 activityCompose = "1.13.0"
 lifecycle = "2.11.0"
 media3 = "1.10.1"
+cronet = "18.1.1"
 coroutines = "1.11.0"
 coil = "3.5.0"
 okhttp = "5.4.0"
@@ -44,6 +45,8 @@ androidx-media3-exoplayer-dash = { group = "androidx.media3", name = "media3-exo
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
 androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "media3" }
+androidx-media3-datasource-cronet = { group = "androidx.media3", name = "media3-datasource-cronet", version.ref = "media3" }
+google-play-services-cronet = { group = "com.google.android.gms", name = "play-services-cronet", version.ref = "cronet" }
 androidx-media3-database = { group = "androidx.media3", name = "media3-database", version.ref = "media3" }
 androidx-media3-datasource = { group = "androidx.media3", name = "media3-datasource", version.ref = "media3" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
