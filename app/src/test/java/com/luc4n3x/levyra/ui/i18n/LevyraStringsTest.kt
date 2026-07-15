@@ -48,6 +48,16 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun lyricsControlsUseLocalizedLabels() {
+        val italian = LevyraStrings.forCode("it")
+        val ukrainian = LevyraStrings.forCode("uk")
+        assertEquals("Duetto", italian.lyricsDuet)
+        assertEquals("Pagina", italian.lyricsPage)
+        assertEquals("Романізація", ukrainian.lyricsRomanization)
+        assertEquals("Кіно", ukrainian.lyricsCinema)
+    }
+
+    @Test
     fun mainUiDoesNotContainKnownItalianLocalizationLeaks() {
         val source = sequenceOf(
             Path.of("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"),
