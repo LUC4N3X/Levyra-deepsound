@@ -96,6 +96,26 @@ enum class LyricVocalRole {
     DUET_RIGHT
 }
 
+enum class LyricSectionType {
+    INTRO,
+    VERSE,
+    PRE_CHORUS,
+    CHORUS,
+    BRIDGE,
+    INSTRUMENTAL,
+    OUTRO
+}
+
+data class LyricSection(
+    val type: LyricSectionType,
+    val ordinal: Int,
+    val startLineIndex: Int,
+    val endLineIndex: Int,
+    val startMs: Long,
+    val endMs: Long,
+    val confidence: Int
+)
+
 data class LyricLine(
     val startMs: Long,
     val endMs: Long,
