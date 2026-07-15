@@ -2608,7 +2608,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }.getOrNull()
             if (_state.value.currentTrack?.id != track.id) return@launch
             val lines = result?.lines.orEmpty()
-            val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
             _state.update {
                 it.copy(
                     lyrics = lines,
@@ -2616,9 +2615,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     lyricsProvider = result?.provider.orEmpty(),
                     lyricsConfidence = result?.confidence ?: 0,
                     lyricsCached = result?.cached ?: false,
-                    lyricsLoading = false,
-                    intelligenceSummary = intelligence
+                    lyricsLoading = false
                 )
+            }
+            if (lines.isNotEmpty()) {
+                val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
+                if (_state.value.currentTrack?.id == track.id) {
+                    _state.update { it.copy(intelligenceSummary = intelligence) }
+                }
             }
         }
     }
