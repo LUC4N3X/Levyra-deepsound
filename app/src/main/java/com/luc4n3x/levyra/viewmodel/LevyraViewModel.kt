@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.viewmodel
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -84,6 +86,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -233,6 +236,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var crossfadeJob: Job? = null
     private var crossfadeInProgress = false
     private var lyricsJob: Job? = null
+    private var lyricsPrefetchJob: Job? = null
+    private var lyricsTrackId: String = ""
+    private var lyricsRequestGeneration = 0L
     private var sponsorJob: Job? = null
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
@@ -1329,6 +1335,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (normalizedLanguage == _state.value.languageCode) return
         preferences.setLanguageCode(normalizedLanguage)
         applyLanguageContent(normalizedLanguage, refreshRemote = true)
+        _state.value.currentTrack?.let { track ->
+            fetchLyrics(track)
+            prefetchLyricsAround(track)
+        }
     }
 
     private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
@@ -1449,7 +1459,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setLyricsTranslationEnabled(value: Boolean) {
         preferences.setLyricsTranslationEnabled(value)
         _state.update { it.copy(lyricsTranslationEnabled = value) }
-        _state.value.currentTrack?.let(::fetchLyrics)
+        _state.value.currentTrack?.let { track ->
+            fetchLyrics(track)
+            prefetchLyricsAround(track)
+        }
     }
 
     fun selectChart(regionId: String) {
@@ -2389,6 +2402,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         fetchLyrics(track)
+        prefetchLyricsAround(track)
 
         val playableTrack = youtubePlayableTrack(track) ?: track
         playJob = viewModelScope.launch {
@@ -2598,33 +2612,61 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun fetchLyrics(track: Track) {
         lyricsJob?.cancel()
-        _state.update { it.copy(lyrics = emptyList(), lyricsSynced = false, lyricsProvider = "", lyricsConfidence = 0, lyricsCached = false, lyricsLoading = true, intelligenceSummary = com.luc4n3x.levyra.domain.LevyraIntelligenceSummary()) }
+        val requestGeneration = ++lyricsRequestGeneration
+        val preserveVisibleLyrics = lyricsTrackId == track.id && _state.value.lyrics.isNotEmpty()
+        _state.update {
+            it.copy(
+                lyrics = if (preserveVisibleLyrics) it.lyrics else emptyList(),
+                lyricsSections = if (preserveVisibleLyrics) it.lyricsSections else emptyList(),
+                lyricsSynced = if (preserveVisibleLyrics) it.lyricsSynced else false,
+                lyricsProvider = if (preserveVisibleLyrics) it.lyricsProvider else "",
+                lyricsConfidence = if (preserveVisibleLyrics) it.lyricsConfidence else 0,
+                lyricsCached = if (preserveVisibleLyrics) it.lyricsCached else false,
+                lyricsLoading = true,
+                intelligenceSummary = if (preserveVisibleLyrics) it.intelligenceSummary else com.luc4n3x.levyra.domain.LevyraIntelligenceSummary()
+            )
+        }
         lyricsJob = viewModelScope.launch {
-            val result = runCatching {
-                lyricsRepository.fetch(
+            var received = false
+            try {
+                lyricsRepository.observe(
                     title = track.title,
                     artist = track.artist,
                     durationSec = track.durationMs / 1000L,
                     videoId = youtubePlayableTrack(track)?.id.orEmpty(),
                     languageCode = _state.value.languageCode,
                     translate = _state.value.lyricsTranslationEnabled
-                )
-            }.getOrNull()
-            if (_state.value.currentTrack?.id != track.id) return@launch
-            val lines = result?.lines.orEmpty()
-            _state.update {
-                it.copy(
-                    lyrics = lines,
-                    lyricsSynced = result?.synced ?: false,
-                    lyricsProvider = result?.provider.orEmpty(),
-                    lyricsConfidence = result?.confidence ?: 0,
-                    lyricsCached = result?.cached ?: false,
-                    lyricsLoading = false
-                )
-            }
-            val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
-            if (_state.value.currentTrack?.id == track.id) {
-                _state.update { it.copy(intelligenceSummary = intelligence) }
+                ).collect { result ->
+                    if (requestGeneration != lyricsRequestGeneration || _state.value.currentTrack?.id != track.id) return@collect
+                    received = true
+                    lyricsTrackId = track.id
+                    val lines = result.lines
+                    _state.update {
+                        it.copy(
+                            lyrics = lines,
+                            lyricsSections = result.sections,
+                            lyricsSynced = result.synced,
+                            lyricsProvider = result.provider,
+                            lyricsConfidence = result.confidence,
+                            lyricsCached = result.cached,
+                            lyricsLoading = false
+                        )
+                    }
+                    val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
+                    if (requestGeneration == lyricsRequestGeneration && _state.value.currentTrack?.id == track.id) {
+                        _state.update { it.copy(intelligenceSummary = intelligence) }
+                    }
+                }
+            } finally {
+                if (requestGeneration == lyricsRequestGeneration && _state.value.currentTrack?.id == track.id) {
+                    _state.update { it.copy(lyricsLoading = false) }
+                    if (!received && _state.value.lyrics.isEmpty()) {
+                        val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, emptyList()) }
+                        if (requestGeneration == lyricsRequestGeneration && _state.value.currentTrack?.id == track.id) {
+                            _state.update { it.copy(intelligenceSummary = intelligence) }
+                        }
+                    }
+                }
             }
         }
     }
@@ -2633,8 +2675,69 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         prefetchJob?.cancel()
         PlaybackService.clearPreparedQueueNext()
         val current = _state.value.currentTrack
+        if (current != null) prefetchLyricsAround(current)
         if (_state.value.isPlaying && current != null && current.streamUrl.isNotBlank()) prefetchAround(current)
     }
+
+    private fun prefetchLyricsAround(current: Track) {
+        lyricsPrefetchJob?.cancel()
+        val generation = queueEngine.state.value.generation
+        val plan = adaptivePlaybackPolicy.current(videoMode = false)
+        val networkProfile = lyricsNetworkProfile()
+        if (!networkProfile.connected) return
+        val unmetered = networkProfile.unmetered
+        val limit = when {
+            plan.powerConstrained || plan.lowRam -> 1
+            unmetered -> 2
+            else -> 1
+        }
+        val upcoming = queueEngine.upcoming(limit + 1)
+            .filterNot { samePlayableTrack(it, current) }
+            .distinctBy { playbackIdentity(it) }
+            .take(limit)
+        if (upcoming.isEmpty()) return
+        val languageCode = _state.value.languageCode
+        val translate = _state.value.lyricsTranslationEnabled
+        lyricsPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(if (plan.powerConstrained) 1_500L else 550L)
+            upcoming.forEachIndexed { index, track ->
+                if (!isActive || queueEngine.state.value.generation != generation) return@launch
+                if (index > 0) delay(if (unmetered) 650L else 1_200L)
+                runCatching {
+                    lyricsRepository.prefetch(
+                        title = track.title,
+                        artist = track.artist,
+                        durationSec = track.durationMs / 1_000L,
+                        videoId = youtubePlayableTrack(track)?.id.orEmpty(),
+                        languageCode = languageCode,
+                        translate = translate
+                    )
+                }.onFailure { error ->
+                    if (error is CancellationException) throw error
+                    Timber.d(error, "Lyrics prefetch failed for %s", track.id)
+                }
+            }
+        }
+    }
+
+    private fun lyricsNetworkProfile(): LyricsNetworkProfile {
+        val connectivity = getApplication<Application>().getSystemService(ConnectivityManager::class.java)
+            ?: return LyricsNetworkProfile(false, false)
+        val network = connectivity.activeNetwork ?: return LyricsNetworkProfile(false, false)
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return LyricsNetworkProfile(false, false)
+        val connected = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        val unmetered = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        val backgroundRestricted = !unmetered &&
+            connectivity.restrictBackgroundStatus == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED
+        return LyricsNetworkProfile(connected && !backgroundRestricted, unmetered)
+    }
+
+
+    private data class LyricsNetworkProfile(
+        val connected: Boolean,
+        val unmetered: Boolean
+    )
 
     private fun prefetchAround(playable: Track) {
         prefetchJob?.cancel()
@@ -2731,6 +2834,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun cancelBackgroundWarmups(cancelList: Boolean = true) {
         prefetchJob?.cancel()
         prefetchJob = null
+        lyricsPrefetchJob?.cancel()
+        lyricsPrefetchJob = null
         PlaybackService.clearPreparedQueueNext()
         if (cancelList) {
             listPrefetchJob?.cancel()
@@ -2995,7 +3100,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (playbackStateChanged) {
                     updateWidget()
                 }
-                delay(if (snapshot.showLyrics) 100L else 500L)
+                delay(if (snapshot.showLyrics) 50L else 500L)
             }
         }
     }
@@ -3313,6 +3418,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         chartEnrichJob?.cancel()
         sleepJob?.cancel()
         lyricsJob?.cancel()
+        lyricsPrefetchJob?.cancel()
         sponsorJob?.cancel()
         artistJob?.cancel()
         radarJob?.cancel()

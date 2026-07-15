@@ -18,6 +18,7 @@ import com.luc4n3x.levyra.domain.LevyraIntelligenceSummary
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
+import com.luc4n3x.levyra.domain.LyricSection
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.RepeatMode
@@ -74,6 +75,7 @@ data class LevyraUiState(
     val openPlaylist: com.luc4n3x.levyra.domain.Playlist? = null,
     val currentTrack: Track? = null,
     val lyrics: List<LyricLine> = emptyList(),
+    val lyricsSections: List<LyricSection> = emptyList(),
     val activeLyric: LyricLine? = null,
     val showLyrics: Boolean = false,
     val lyricsLoading: Boolean = false,
