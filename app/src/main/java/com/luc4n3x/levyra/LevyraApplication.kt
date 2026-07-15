@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.data.NewPipeRuntime
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeLocalDecoder
 import com.luc4n3x.levyra.data.ReleaseRadarWorker
+import com.luc4n3x.levyra.player.PlaybackNetworkStack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +25,7 @@ class LevyraApplication : Application() {
         LevyraArtworkStartupMetrics.beginSession()
         LevyraArtworkCache.configure(this)
         YoutubeLocalDecoder.install(this)
+        PlaybackNetworkStack.initialize(this)
         warmPlaybackPipeline()
         startupScope.launch {
             delay(1800L)
