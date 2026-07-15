@@ -89,18 +89,30 @@ object ChartsCatalog {
     }
 }
 
+enum class LyricVocalRole {
+    MAIN,
+    BACKGROUND,
+    DUET_LEFT,
+    DUET_RIGHT
+}
+
 data class LyricLine(
     val startMs: Long,
     val endMs: Long,
     val text: String,
     val translated: String,
-    val words: List<LyricWord> = emptyList()
+    val words: List<LyricWord> = emptyList(),
+    val romanized: String = "",
+    val role: LyricVocalRole = LyricVocalRole.MAIN,
+    val isInstrumental: Boolean = false,
+    val isMetadata: Boolean = false
 )
 
 data class LyricWord(
     val startMs: Long,
     val endMs: Long,
-    val text: String
+    val text: String,
+    val romanized: String = ""
 )
 
 data class CacheReport(
