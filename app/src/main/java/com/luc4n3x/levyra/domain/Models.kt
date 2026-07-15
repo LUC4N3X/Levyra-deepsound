@@ -120,7 +120,7 @@ data class LyricLine(
     val startMs: Long,
     val endMs: Long,
     val text: String,
-    val translated: String,
+    val translated: String = "",
     val words: List<LyricWord> = emptyList(),
     val romanized: String = "",
     val role: LyricVocalRole = LyricVocalRole.MAIN,
