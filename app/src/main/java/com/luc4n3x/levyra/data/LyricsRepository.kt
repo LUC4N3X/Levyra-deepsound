@@ -13,6 +13,7 @@ import java.security.MessageDigest
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -20,6 +21,7 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Request
@@ -55,6 +57,24 @@ class LyricsRepository(context: Context? = null) {
         val cached: Boolean
     )
 
+    private data class ProviderAttempt(
+        val candidates: List<LyricsCandidate> = emptyList(),
+        val attempted: Boolean = false,
+        val hadTransientFailure: Boolean = false
+    )
+
+    private data class PreferredFetch(
+        val result: LyricsResult?,
+        val attempted: Boolean,
+        val hadTransientFailure: Boolean
+    )
+
+    private sealed interface HttpGetResult {
+        data class Success(val body: String) : HttpGetResult
+        data object NotFound : HttpGetResult
+        data object Failure : HttpGetResult
+    }
+
     suspend fun fetch(
         title: String,
         artist: String,
@@ -88,17 +108,23 @@ class LyricsRepository(context: Context? = null) {
             languageCode = languageCode,
             translate = translate
         )
-
-        val best = preferred
-            ?: if (queryArtist.length >= 2) runCatching { lyricsOvh(queryTitle, queryArtist) }.getOrNull()?.result else null
-
+        val fallback = if (preferred.result == null && queryArtist.length >= 2) {
+            lyricsOvh(queryTitle, queryArtist)
+        } else {
+            ProviderAttempt()
+        }
+        val best = preferred.result ?: fallback.candidates.firstOrNull()?.result
         val normalized = best
             ?.let { normalizeTiming(it, durationSec) }
             ?.let(::cleanAndEnrich)
             ?.takeIf { it.lines.isNotEmpty() }
 
         if (normalized == null) {
-            negativePut(key)
+            val allAttemptedProvidersCompleted = preferred.attempted &&
+                !preferred.hadTransientFailure &&
+                fallback.attempted &&
+                !fallback.hadTransientFailure
+            if (allAttemptedProvidersCompleted) negativePut(key)
             return@withContext null
         }
 
@@ -118,55 +144,89 @@ class LyricsRepository(context: Context? = null) {
         videoId: String,
         languageCode: String,
         translate: Boolean
-    ): LyricsResult? = supervisorScope {
-        val tasks = ArrayList<Deferred<List<LyricsCandidate>>>()
+    ): PreferredFetch = supervisorScope {
+        val tasks = ArrayList<Deferred<ProviderAttempt>>()
         if (videoId.isNotBlank()) {
             tasks += async {
-                listOfNotNull(
-                    runCatching { youtubeMusic.getLyricsForVideo(videoId, languageCode) }
-                        .getOrNull()
-                        ?.toCandidate(requestedTitle, requestedArtist, durationSec)
-                )
+                youtubeMusicAttempt(videoId, languageCode, requestedTitle, requestedArtist, durationSec)
             }
             tasks += async {
-                listOfNotNull(
-                    fetchTranscriptCandidate(
-                        videoId = videoId,
-                        title = requestedTitle,
-                        artist = requestedArtist,
-                        durationSec = durationSec,
-                        languageCode = languageCode,
-                        translate = translate
-                    )
-                )
+                transcriptAttempt(videoId, requestedTitle, requestedArtist, durationSec, languageCode, translate)
             }
         }
         if (queryArtist.length >= 2) {
-            tasks += async {
-                listOfNotNull(runCatching { getLrcLibExact(queryTitle, queryArtist, durationSec) }.getOrNull())
-            }
-            tasks += async {
-                runCatching { searchLrcLib(queryTitle, queryArtist) }.getOrDefault(emptyList())
-            }
+            tasks += async { getLrcLibExact(queryTitle, queryArtist, durationSec) }
+            tasks += async { searchLrcLib(queryTitle, queryArtist) }
         }
-        if (tasks.isEmpty()) return@supervisorScope null
+        if (tasks.isEmpty()) return@supervisorScope PreferredFetch(null, attempted = false, hadTransientFailure = false)
 
         val candidates = ArrayList<LyricsCandidate>()
+        var attempted = false
+        var hadTransientFailure = false
         while (tasks.isNotEmpty()) {
-            val completed = select<Pair<Deferred<List<LyricsCandidate>>, List<LyricsCandidate>>> {
+            val completed = select<Pair<Deferred<ProviderAttempt>, ProviderAttempt>> {
                 tasks.forEach { task ->
                     task.onAwait { result -> task to result }
                 }
             }
             tasks.remove(completed.first)
-            candidates += completed.second
+            val attempt = completed.second
+            attempted = attempted || attempt.attempted
+            hadTransientFailure = hadTransientFailure || attempt.hadTransientFailure
+            candidates += attempt.candidates
             val best = LyricsResultRanker.best(candidates, request)
             if (best != null && isFastPathAcceptable(best)) {
                 tasks.forEach { it.cancel() }
-                return@supervisorScope best
+                return@supervisorScope PreferredFetch(best, attempted, hadTransientFailure)
             }
         }
-        LyricsResultRanker.best(candidates, request)
+        PreferredFetch(LyricsResultRanker.best(candidates, request), attempted, hadTransientFailure)
+    }
+
+    private suspend fun youtubeMusicAttempt(
+        videoId: String,
+        languageCode: String,
+        title: String,
+        artist: String,
+        durationSec: Long
+    ): ProviderAttempt {
+        return try {
+            val candidate = youtubeMusic.getLyricsForVideo(videoId, languageCode)
+                ?.toCandidate(title, artist, durationSec)
+            if (candidate == null) {
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            } else {
+                ProviderAttempt(candidates = listOf(candidate), attempted = true)
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
+            Timber.w(exception, "YouTube Music lyrics request failed")
+            ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+    }
+
+    private suspend fun transcriptAttempt(
+        videoId: String,
+        title: String,
+        artist: String,
+        durationSec: Long,
+        languageCode: String,
+        translate: Boolean
+    ): ProviderAttempt {
+        return try {
+            val candidate = fetchTranscriptCandidate(videoId, title, artist, durationSec, languageCode, translate)
+            if (candidate == null) {
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            } else {
+                ProviderAttempt(candidates = listOf(candidate), attempted = true)
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
+            Timber.w(exception, "YouTube transcript lyrics request failed")
+            ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
     }
 
     private fun isFastPathAcceptable(result: LyricsResult): Boolean {
@@ -225,7 +285,7 @@ class LyricsRepository(context: Context? = null) {
         )
     }
 
-    private suspend fun getLrcLibExact(title: String, artist: String, durationSec: Long): LyricsCandidate? {
+    private suspend fun getLrcLibExact(title: String, artist: String, durationSec: Long): ProviderAttempt {
         val url = buildString {
             append("https://lrclib.net/api/get?track_name=")
             append(enc(title))
@@ -233,42 +293,75 @@ class LyricsRepository(context: Context? = null) {
             append(enc(artist))
             if (durationSec > 0) append("&duration=").append(durationSec)
         }
-        val body = httpGet(url, "application/json") ?: return null
-        val json = JSONObject(body)
-        val result = parseLrcLibEntry(json, "LRCLIB Exact") ?: return null
-        return LyricsCandidate(
-            result = result,
-            title = json.optString("trackName", title),
-            artist = json.optString("artistName", artist),
-            durationSec = json.optLong("duration", durationSec)
-        )
-    }
-
-    private suspend fun searchLrcLib(title: String, artist: String): List<LyricsCandidate> {
-        val url = "https://lrclib.net/api/search?track_name=${enc(title)}&artist_name=${enc(artist)}"
-        val body = httpGet(url, "application/json") ?: return emptyList()
-        val array = JSONArray(body)
-        val out = ArrayList<LyricsCandidate>()
-        for (index in 0 until array.length()) {
-            val json = array.optJSONObject(index) ?: continue
-            val result = parseLrcLibEntry(json, "LRCLIB Search") ?: continue
-            out += LyricsCandidate(
-                result = result,
-                title = json.optString("trackName", title),
-                artist = json.optString("artistName", artist),
-                durationSec = json.optLong("duration", 0L)
-            )
+        return when (val response = httpGet(url, "application/json")) {
+            is HttpGetResult.Success -> runCatching {
+                val json = JSONObject(response.body)
+                val result = parseLrcLibEntry(json, "LRCLIB Exact")
+                val candidates = result?.let {
+                    listOf(
+                        LyricsCandidate(
+                            result = it,
+                            title = json.optString("trackName", title),
+                            artist = json.optString("artistName", artist),
+                            durationSec = json.optLong("duration", durationSec)
+                        )
+                    )
+                }.orEmpty()
+                ProviderAttempt(candidates = candidates, attempted = true)
+            }.getOrElse {
+                Timber.w(it, "LRCLIB exact response parsing failed")
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> ProviderAttempt(attempted = true, hadTransientFailure = true)
         }
-        return out.take(16)
     }
 
-    private suspend fun lyricsOvh(title: String, artist: String): LyricsCandidate? {
+    private suspend fun searchLrcLib(title: String, artist: String): ProviderAttempt {
+        val url = "https://lrclib.net/api/search?track_name=${enc(title)}&artist_name=${enc(artist)}"
+        return when (val response = httpGet(url, "application/json")) {
+            is HttpGetResult.Success -> runCatching {
+                val array = JSONArray(response.body)
+                val out = ArrayList<LyricsCandidate>()
+                for (index in 0 until array.length()) {
+                    val json = array.optJSONObject(index) ?: continue
+                    val result = parseLrcLibEntry(json, "LRCLIB Search") ?: continue
+                    out += LyricsCandidate(
+                        result = result,
+                        title = json.optString("trackName", title),
+                        artist = json.optString("artistName", artist),
+                        durationSec = json.optLong("duration", 0L)
+                    )
+                }
+                ProviderAttempt(candidates = out.take(16), attempted = true)
+            }.getOrElse {
+                Timber.w(it, "LRCLIB search response parsing failed")
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
+    }
+
+    private suspend fun lyricsOvh(title: String, artist: String): ProviderAttempt {
         val url = "https://api.lyrics.ovh/v1/${encPath(artist)}/${encPath(title)}"
-        val body = httpGet(url, "application/json") ?: return null
-        val lyrics = JSONObject(body).optString("lyrics").trim()
-        val lines = UnifiedLyricsParser.parsePlain(lyrics)
-        if (lines.isEmpty()) return null
-        return LyricsCandidate(LyricsResult(false, lines, "Lyrics.ovh", 54, false), title, artist, 0L)
+        return when (val response = httpGet(url, "application/json")) {
+            is HttpGetResult.Success -> runCatching {
+                val lyrics = JSONObject(response.body).optString("lyrics").trim()
+                val lines = UnifiedLyricsParser.parsePlain(lyrics)
+                val candidate = if (lines.isEmpty()) {
+                    null
+                } else {
+                    LyricsCandidate(LyricsResult(false, lines, "Lyrics.ovh", 54, false), title, artist, 0L)
+                }
+                ProviderAttempt(candidates = listOfNotNull(candidate), attempted = true)
+            }.getOrElse {
+                Timber.w(it, "Lyrics.ovh response parsing failed")
+                ProviderAttempt(attempted = true, hadTransientFailure = true)
+            }
+            HttpGetResult.NotFound -> ProviderAttempt(attempted = true)
+            HttpGetResult.Failure -> ProviderAttempt(attempted = true, hadTransientFailure = true)
+        }
     }
 
     private fun parseLrcLibEntry(json: JSONObject, provider: String): LyricsResult? {
@@ -286,11 +379,11 @@ class LyricsRepository(context: Context? = null) {
         return LyricsResult(false, lines, provider, 68, false)
     }
 
-    private suspend fun httpGet(url: String, accept: String): String? {
+    private suspend fun httpGet(url: String, accept: String): HttpGetResult {
         val request = Request.Builder()
             .url(url)
             .header("Accept", accept)
-            .header("User-Agent", "LEVYRA Lyrics Engine/3.0 Android")
+            .header("User-Agent", "LEVYRA Lyrics Engine/3.1 Android")
             .get()
             .build()
         return suspendCancellableCoroutine { continuation ->
@@ -301,17 +394,24 @@ class LyricsRepository(context: Context? = null) {
                     override fun onFailure(call: Call, exception: IOException) {
                         if (continuation.isActive) {
                             Timber.w(exception, "Lyrics request failed for %s", request.url.host)
-                            continuation.resume(null) { _, _, _ -> }
+                            continuation.resume(HttpGetResult.Failure)
                         }
                     }
 
                     override fun onResponse(call: Call, response: Response) {
-                        val body = runCatching {
+                        val result = runCatching {
                             response.use {
-                                if (it.isSuccessful) it.body?.string()?.takeIf(String::isNotBlank) else null
+                                when {
+                                    it.code == 404 -> HttpGetResult.NotFound
+                                    !it.isSuccessful -> HttpGetResult.Failure
+                                    else -> it.body?.string()?.takeIf(String::isNotBlank)
+                                        ?.let(HttpGetResult::Success)
+                                        ?: HttpGetResult.Failure
+                                }
                             }
-                        }.onFailure { Timber.w(it, "Lyrics response failed for %s", request.url.host) }.getOrNull()
-                        if (continuation.isActive) continuation.resume(body) { _, _, _ -> }
+                        }.onFailure { Timber.w(it, "Lyrics response failed for %s", request.url.host) }
+                            .getOrDefault(HttpGetResult.Failure)
+                        if (continuation.isActive) continuation.resume(result)
                     }
                 }
             )
@@ -351,7 +451,7 @@ class LyricsRepository(context: Context? = null) {
                     romanized = item.optString("romanized"),
                     role = role,
                     isInstrumental = item.optBoolean("instrumental"),
-                    isMetadata = false
+                    isMetadata = item.optBoolean("metadata")
                 )
             }
             if (parsed.isEmpty()) {
@@ -393,6 +493,7 @@ class LyricsRepository(context: Context? = null) {
                         .put("romanized", line.romanized)
                         .put("role", line.role.name)
                         .put("instrumental", line.isInstrumental)
+                        .put("metadata", line.isMetadata)
                         .put("words", wordsJson)
                 )
             }
@@ -554,7 +655,7 @@ class LyricsRepository(context: Context? = null) {
     private fun encPath(value: String): String = value.split("/").joinToString("%2F") { enc(it) }
 
     companion object {
-        private const val CACHE_VERSION = 3
+        private const val CACHE_VERSION = 4
         private const val CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
         private const val NEGATIVE_CACHE_TTL_MS = 15L * 60L * 1_000L
         private const val MEMORY_CACHE_SIZE = 64
