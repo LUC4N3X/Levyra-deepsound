@@ -340,6 +340,7 @@ class LevyraStrings private constructor(
     val newBadge: String get() = value("newBadge")
     val brightness: String get() = value("brightness")
     val timer: String get() = value("timer")
+    val normalizationShort: String get() = value("normalizationShort")
     val coverAndTags: String get() = value("coverAndTags")
     val madeWithBy: String get() = value("madeWithBy")
     val activeIndicator: String get() = value("activeIndicator")
@@ -561,7 +562,7 @@ class LevyraStrings private constructor(
     fun formatPauseDownload(title: String): String = "$pauseDownload $title"
 
     companion object {
-        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreZones", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "coverAndTags", "madeWithBy", "activeIndicator")
+        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreZones", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator")
 
         private val values: Map<String, LevyraStrings> by lazy(LazyThreadSafetyMode.PUBLICATION) {
             mapOf(
@@ -929,6 +930,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NEW",
             "brightness" to "Brightness",
             "timer" to "Timer",
+            "normalizationShort" to "Norm",
             "coverAndTags" to "cover and tags",
             "madeWithBy" to "Made with ❤️ by",
             "activeIndicator" to "ON"
@@ -1266,6 +1268,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NOVITÀ",
             "brightness" to "Luminosità",
             "timer" to "Timer",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "cover e tag",
             "madeWithBy" to "Creato con ❤️ da",
             "activeIndicator" to "ATTIVO"
@@ -1603,6 +1606,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NUEVO",
             "brightness" to "Brillo",
             "timer" to "Temporizador",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "carátula y etiquetas",
             "madeWithBy" to "Creado con ❤️ por",
             "activeIndicator" to "ACTIVO"
@@ -1940,6 +1944,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NOUVEAU",
             "brightness" to "Luminosité",
             "timer" to "Minuteur",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "pochette et tags",
             "madeWithBy" to "Créé avec ❤️ par",
             "activeIndicator" to "ACTIF"
@@ -2277,6 +2282,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NEU",
             "brightness" to "Helligkeit",
             "timer" to "Timer",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "Cover und Tags",
             "madeWithBy" to "Mit ❤️ erstellt von",
             "activeIndicator" to "AKTIV"
@@ -2614,6 +2620,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NOVO",
             "brightness" to "Brilho",
             "timer" to "Temporizador",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "capa e etiquetas",
             "madeWithBy" to "Criado com ❤️ por",
             "activeIndicator" to "ATIVO"
@@ -2951,6 +2958,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NIEUW",
             "brightness" to "Helderheid",
             "timer" to "Timer",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "hoes en tags",
             "madeWithBy" to "Gemaakt met ❤️ door",
             "activeIndicator" to "ACTIEF"
@@ -3288,6 +3296,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NOWOŚĆ",
             "brightness" to "Jasność",
             "timer" to "Minutnik",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "okładka i tagi",
             "madeWithBy" to "Stworzone z ❤️ przez",
             "activeIndicator" to "AKTYWNE"
@@ -3625,6 +3634,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NOU",
             "brightness" to "Luminozitate",
             "timer" to "Temporizator",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "copertă și etichete",
             "madeWithBy" to "Creat cu ❤️ de",
             "activeIndicator" to "ACTIV"
@@ -3962,6 +3972,7 @@ class LevyraStrings private constructor(
             "newBadge" to "ΝΕΟ",
             "brightness" to "Φωτεινότητα",
             "timer" to "Χρονοδιακόπτης",
+            "normalizationShort" to "Κανον.",
             "coverAndTags" to "εξώφυλλο και ετικέτες",
             "madeWithBy" to "Δημιουργήθηκε με ❤️ από",
             "activeIndicator" to "ΕΝΕΡΓΟ"
@@ -4299,6 +4310,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NYTT",
             "brightness" to "Ljusstyrka",
             "timer" to "Timer",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "omslag och taggar",
             "madeWithBy" to "Skapad med ❤️ av",
             "activeIndicator" to "AKTIV"
@@ -4636,6 +4648,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NYT",
             "brightness" to "Lysstyrke",
             "timer" to "Timer",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "cover og tags",
             "madeWithBy" to "Skabt med ❤️ af",
             "activeIndicator" to "AKTIV"
@@ -4973,6 +4986,7 @@ class LevyraStrings private constructor(
             "newBadge" to "NOVINKA",
             "brightness" to "Jas",
             "timer" to "Časovač",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "obal a tagy",
             "madeWithBy" to "Vytvořeno s ❤️ od",
             "activeIndicator" to "AKTIVNÍ"
@@ -5310,6 +5324,7 @@ class LevyraStrings private constructor(
             "newBadge" to "НОВЕ",
             "brightness" to "Яскравість",
             "timer" to "Таймер",
+            "normalizationShort" to "Норм.",
             "coverAndTags" to "обкладинка й теги",
             "madeWithBy" to "Створено з ❤️ автором",
             "activeIndicator" to "АКТИВНО"
@@ -5647,6 +5662,7 @@ class LevyraStrings private constructor(
             "newBadge" to "НОВОЕ",
             "brightness" to "Яркость",
             "timer" to "Таймер",
+            "normalizationShort" to "Норм.",
             "coverAndTags" to "обложка и теги",
             "madeWithBy" to "Создано с ❤️ автором",
             "activeIndicator" to "АКТИВНО"
@@ -5984,6 +6000,7 @@ class LevyraStrings private constructor(
             "newBadge" to "YENİ",
             "brightness" to "Parlaklık",
             "timer" to "Zamanlayıcı",
+            "normalizationShort" to "Norm.",
             "coverAndTags" to "kapak ve etiketler",
             "madeWithBy" to "❤️ ile hazırlayan",
             "activeIndicator" to "ETKİN"
