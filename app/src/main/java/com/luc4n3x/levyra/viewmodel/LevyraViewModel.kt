@@ -2613,7 +2613,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun fetchLyrics(track: Track) {
         lyricsJob?.cancel()
         val requestGeneration = ++lyricsRequestGeneration
-        val preserveVisibleLyrics = lyricsTrackId == track.id && _state.value.lyrics.isNotEmpty()
+        val trackIdentity = playbackIdentity(track)
+        val preserveVisibleLyrics = lyricsTrackId == trackIdentity && _state.value.lyrics.isNotEmpty()
         _state.update {
             it.copy(
                 lyrics = if (preserveVisibleLyrics) it.lyrics else emptyList(),
@@ -2637,9 +2638,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     languageCode = _state.value.languageCode,
                     translate = _state.value.lyricsTranslationEnabled
                 ).collect { result ->
-                    if (requestGeneration != lyricsRequestGeneration || _state.value.currentTrack?.id != track.id) return@collect
+                    val currentIdentity = _state.value.currentTrack?.let(::playbackIdentity)
+                    if (requestGeneration != lyricsRequestGeneration || currentIdentity != trackIdentity) return@collect
                     received = true
-                    lyricsTrackId = track.id
+                    lyricsTrackId = trackIdentity
                     val lines = result.lines
                     _state.update {
                         it.copy(
@@ -2653,16 +2655,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         )
                     }
                     val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, lines) }
-                    if (requestGeneration == lyricsRequestGeneration && _state.value.currentTrack?.id == track.id) {
+                    val latestIdentity = _state.value.currentTrack?.let(::playbackIdentity)
+                    if (requestGeneration == lyricsRequestGeneration && latestIdentity == trackIdentity) {
                         _state.update { it.copy(intelligenceSummary = intelligence) }
                     }
                 }
             } finally {
-                if (requestGeneration == lyricsRequestGeneration && _state.value.currentTrack?.id == track.id) {
+                val currentIdentity = _state.value.currentTrack?.let(::playbackIdentity)
+                if (requestGeneration == lyricsRequestGeneration && currentIdentity == trackIdentity) {
                     _state.update { it.copy(lyricsLoading = false) }
                     if (!received && _state.value.lyrics.isEmpty()) {
                         val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, emptyList()) }
-                        if (requestGeneration == lyricsRequestGeneration && _state.value.currentTrack?.id == track.id) {
+                        val latestIdentity = _state.value.currentTrack?.let(::playbackIdentity)
+                        if (requestGeneration == lyricsRequestGeneration && latestIdentity == trackIdentity) {
                             _state.update { it.copy(intelligenceSummary = intelligence) }
                         }
                     }
@@ -2895,9 +2900,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun samePlayableTrack(left: Track, right: Track): Boolean = playbackIdentity(left) == playbackIdentity(right)
-
-    private fun playbackIdentity(track: Track): String = youtubePlayableTrack(track)?.id?.takeIf { it.isNotBlank() }
-        ?: track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}|${track.title}" } }.trim().lowercase()
 
     fun play() = _state.value.currentTrack?.let { current ->
         if (current.streamUrl.isBlank()) play(current) else player.play(current, _state.value.isVideoMode)
@@ -3430,6 +3432,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         super.onCleared()
     }
 }
+
+internal fun playbackIdentity(track: Track): String = youtubePlayableTrack(track)?.id?.takeIf { it.isNotBlank() }
+    ?: track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}|${track.title}" } }.trim().lowercase()
 
 internal fun youtubePlayableTrack(track: Track): Track? {
     val videoId = youtubeVideoId(track.videoUrl)
