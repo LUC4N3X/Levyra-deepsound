@@ -285,6 +285,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     init {
         val favorites = favoritesStore.load()
         val settings = startupSettings
+        val repairedRecentSearches = settings.recentSearches
+            .map(LevyraPersonalOrbit::withoutVideoArtwork)
+            .distinctBy(LevyraPersonalOrbit::identityKey)
+            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(settings.languageCode)
         val instantSnapshot = homeSnapshotCache.load(settings.languageCode)
         val cachedHomeSections = instantSnapshot?.homeSections?.takeIf { it.isNotEmpty() } ?: preferences.loadHomeSections(settings.languageCode)
@@ -304,10 +308,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .ifEmpty { preferences.loadPersonalOrbitTracks(settings.languageCode) },
             settings.languageCode
         )
-        val startupOrbitSeed = mergeTracks(rawCachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
+        val startupOrbitSeed = mergeTracks(rawCachedOrbitTracks + repairedRecentSearches + favorites, startupHomeTracks + startupCharts)
         val cachedOrbitTracks = LevyraPersonalOrbit.build(
             currentTrack = null,
-            recentSearches = settings.recentSearches,
+            recentSearches = repairedRecentSearches,
             favorites = favorites,
             tracks = startupOrbitSeed,
             homeSections = startupHomeSections,
@@ -316,19 +320,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
             languageCode = settings.languageCode
         )
-        val initialTracks = mergeTracks(cachedOrbitTracks + settings.recentSearches + favorites, startupHomeTracks + startupCharts)
+        val initialTracks = mergeTracks(cachedOrbitTracks + repairedRecentSearches + favorites, startupHomeTracks + startupCharts)
         val startupAlbums = preferences.loadHomeAlbums(settings.languageCode).ifEmpty {
-            instantAlbumRecommendationsFromTracks(cachedOrbitTracks + settings.recentSearches + favorites, initialTracks, 10)
+            instantAlbumRecommendationsFromTracks(cachedOrbitTracks + repairedRecentSearches + favorites, initialTracks, 10)
         }
         val initialQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), initialTracks)
-        val restoredTrack = settings.lastTrack?.copy(streamUrl = "", videoStreamUrl = "")
+        val restoredTrack = settings.lastTrack
+            ?.copy(streamUrl = "", videoStreamUrl = "")
+            ?.let(LevyraPersonalOrbit::withoutVideoArtwork)
         pendingSeekMs = settings.lastPositionMs.coerceAtLeast(0L)
         resolver.setAudioQuality(settings.audioQuality)
         _state.update {
             it.copy(
                 favorites = favorites,
                 favoriteIds = favorites.map { fav -> fav.id }.toSet(),
-                recentSearches = settings.recentSearches,
+                recentSearches = repairedRecentSearches,
                 personalOrbitTracks = cachedOrbitTracks,
                 homeSections = startupHomeSections,
                 homeAlbums = startupAlbums,
@@ -359,6 +365,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 durationMs = restoredTrack?.durationMs ?: 0L,
                 lyrics = emptyList()
             )
+        }
+        if (repairedRecentSearches != settings.recentSearches) {
+            viewModelScope.launch(Dispatchers.IO) {
+                preferences.saveRecentSearches(repairedRecentSearches)
+            }
         }
         val fallbackQueue = (listOfNotNull(restoredTrack) + initialQueue)
             .distinctBy { playbackIdentity(it) }
@@ -518,8 +529,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             viewModelScope.launch {
                 delay(startupPlan.secondaryStartDelayMs)
                 awaitHomeUiIdle(startupPlan)
-                LevyraArtworkCache.preloadPriority(appContext, orbitSeed, startupPlan.priorityArtworkCount)
-                warmPersistentOrbit(orbitSeed, startupPlan.persistentArtworkCount, persist = false)
+                LevyraArtworkCache.preloadPriority(appContext, orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT)
+                warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = false)
                 refreshMissingOfficialOrbitArtwork(orbitSeed, deferUntilHomeIdle = true)
             }
         }
@@ -2202,9 +2213,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             delay(if (deferUntilHomeIdle) startupPlan.secondaryStartDelayMs else 250L)
             if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
             val enrichedTracks = Collections.synchronizedList(mutableListOf<Track>())
-            val semaphore = Semaphore(if (deferUntilHomeIdle) startupPlan.chartEnrichmentConcurrency else 3)
+            val semaphore = Semaphore((startupPlan.chartEnrichmentConcurrency + 2).coerceIn(3, 4))
             coroutineScope {
-                pending.take(if (deferUntilHomeIdle) startupPlan.refreshedArtworkCount else pending.size).map { track ->
+                pending.map { track ->
                     launch {
                         semaphore.withPermit {
                             if (!isActive) return@withPermit
@@ -2301,21 +2312,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         enrichedByKey.values.forEach { queueEngine.updateTrackMetadata(it) }
         val appContext = getApplication<Application>().applicationContext
-        val startupPlan = homeStartupWorkPlan()
         val artworkTracks = persistedOrbit
             .filter { LevyraPersonalOrbit.identityKey(it) in enrichedByKey.keys }
-            .take(startupPlan.refreshedArtworkCount)
+            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
         if (artworkTracks.isNotEmpty()) {
             withContext(Dispatchers.IO) {
                 preferences.saveRecentSearches(persistedHistory)
                 preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
-                val persistentTracks = artworkTracks.take(startupPlan.persistentArtworkCount)
-                LevyraArtworkCache.cachePersistent(appContext, persistentTracks, persistentTracks.size)
+                LevyraArtworkCache.cachePersistent(appContext, artworkTracks, artworkTracks.size)
             }
             LevyraArtworkCache.preloadPriority(
                 appContext,
                 artworkTracks,
-                startupPlan.priorityArtworkCount.coerceAtMost(artworkTracks.size)
+                artworkTracks.size
             )
         } else {
             withContext(Dispatchers.IO) {

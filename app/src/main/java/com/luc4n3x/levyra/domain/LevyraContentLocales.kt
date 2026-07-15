@@ -33,7 +33,9 @@ object LevyraContentLocales {
             "sv" -> listOf("Veronica Maggio", "Zara Larsson", "Hov1", "Miriam Bryant", "svenska hits", "svensk rap", "night drive", "gym bass")
             "da" -> listOf("Gilli", "Tobias Rahim", "MØ", "Medina", "danske hits", "dansk rap", "night drive", "gym bass")
             "cs" -> listOf("Calin", "Ewa Farna", "Ben Cristovao", "Viktor Sheen", "české hity", "český rap", "night drive", "gym bass")
-            "uk" -> listOf("alyona alyona", "KALUSH", "Jerry Heil", "The Hardkiss", "українські хіти", "український реп", "night drive", "gym bass")
+            "uk" -> listOf("alyona alyona", "KALUSH", "Jerry Heil", "The Hardkiss", "українські хіти", "український реп", "нічна поїздка", "бас для тренувань")
+            "ru" -> listOf("MiyaGi & Andy Panda", "Zivert", "Баста", "Клава Кока", "русские хиты", "русский рэп", "ночная поездка", "бас для тренировки")
+            "tr" -> listOf("Tarkan", "Sefo", "Mabel Matiz", "Simge", "Türkçe hitler", "Türkçe rap", "gece sürüşü", "spor bas")
             else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "top hits", "rap hits", "night drive", "gym bass")
         }
     }
@@ -53,6 +55,8 @@ object LevyraContentLocales {
             "da" -> listOf("Gilli", "Tobias Rahim", "MØ", "Medina", "KESI", "Lamin", "Andreas Odbjerg", "Christopher", "Artigeardit", "Burhan G")
             "cs" -> listOf("Calin", "Ewa Farna", "Ben Cristovao", "Viktor Sheen", "Yzomandias", "Mirai", "Kryštof", "Pam Rabbit", "Separ", "Rytmus")
             "uk" -> listOf("alyona alyona", "KALUSH", "Jerry Heil", "The Hardkiss", "Monatik", "Dorofeeva", "Okean Elzy", "Wellboy", "Artem Pivovarov", "Kazka")
+            "ru" -> listOf("MiyaGi & Andy Panda", "Zivert", "Баста", "Клава Кока", "JONY", "Мот", "ANNA ASTI", "MACAN", "Егор Крид", "Artik & Asti")
+            "tr" -> listOf("Tarkan", "Sefo", "Mabel Matiz", "Simge", "Ezhel", "UZI", "Semicenk", "Edis", "Hadise", "Güneş")
             else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "SZA", "Travis Scott", "Dua Lipa", "Post Malone", "Ariana Grande", "Kendrick Lamar")
         }
     }
@@ -72,6 +76,8 @@ object LevyraContentLocales {
             "da" -> "Udforsk kunstnere"
             "cs" -> "Objevuj interprety"
             "uk" -> "Досліджуй артистів"
+            "ru" -> "Открой для себя исполнителей"
+            "tr" -> "Sanatçıları keşfet"
             else -> "Explore artists"
         }
     }
@@ -91,6 +97,8 @@ object LevyraContentLocales {
             "da" -> "Forslag"
             "cs" -> "Návrhy"
             "uk" -> "Пропозиції"
+            "ru" -> "Рекомендации"
+            "tr" -> "Öneriler"
             else -> "Suggestions"
         }
     }
@@ -391,6 +399,36 @@ object LevyraContentLocales {
                 pop = "українська поп музика 2026",
                 party = "вечірка dance hits Україна 2026",
                 sad = "сумні українські пісні"
+            )
+            "ru" -> compact(
+                languageCode = "ru",
+                hl = "ru",
+                gl = "RU",
+                chartRegionId = "ru",
+                chartCountry = "ru",
+                quick = "Быстрый выбор",
+                local = "Россия в твоей орбите",
+                energy = "Мгновенная энергия",
+                localMusic = "русские хиты 2026",
+                rap = "русский рэп 2026",
+                pop = "русская поп-музыка 2026",
+                party = "танцевальные хиты Россия 2026",
+                sad = "грустные русские песни"
+            )
+            "tr" -> compact(
+                languageCode = "tr",
+                hl = "tr",
+                gl = "TR",
+                chartRegionId = "tr",
+                chartCountry = "tr",
+                quick = "Hızlı seçimler",
+                local = "Türkiye yörüngende",
+                energy = "Anında enerji",
+                localMusic = "Türkçe hitler 2026",
+                rap = "Türkçe rap 2026",
+                pop = "Türkçe pop 2026",
+                party = "Türkiye parti ve dans hitleri 2026",
+                sad = "hüzünlü Türkçe şarkılar"
             )
             else -> locale(
                 languageCode = "en",

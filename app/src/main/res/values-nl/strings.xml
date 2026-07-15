@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Minispeler, snelle favorieten, dagelijkse flow, offline en songteksten</string>
+    <string name="widget_idle_subtitle">Tik om te luisteren</string>
+    <string name="widget_toggle">Afspelen/Pauzeren</string>
+    <string name="widget_next">Volgende</string>
+    <string name="widget_previous">Vorige</string>
+    <string name="widget_favorites">Favorieten</string>
+    <string name="widget_flow">Dagelijkse flow</string>
+    <string name="widget_offline">Offlinemix</string>
+    <string name="widget_lyrics">Songteksten</string>
+    <string name="radar_channel_name">Release-radar</string>
+    <string name="radar_channel_description">Nieuwe releases van artiesten die je volgt</string>
+    <string name="radar_new_release_title">Nieuwe release van %1$s</string>
+</resources>
