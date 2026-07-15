@@ -53,6 +53,8 @@ class LevyraStringsTest {
         val ukrainian = LevyraStrings.forCode("uk")
         assertEquals("Duetto", italian.lyricsDuet)
         assertEquals("Pagina", italian.lyricsPage)
+        assertEquals("Compatta", italian.lyricsCompact)
+        assertEquals("Ritornello", italian.lyricsSectionChorus)
         assertEquals("Романізація", ukrainian.lyricsRomanization)
         assertEquals("Кіно", ukrainian.lyricsCinema)
     }
