@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricVocalRole
+import com.luc4n3x.levyra.domain.LyricWord
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -97,6 +98,97 @@ class LyricsParsingTest {
         assertEquals("hello world", main.romanized)
         assertEquals("ooh", background.text)
         assertEquals(2_000L, background.startMs)
+    }
+
+    @Test
+    fun ttmlMainTranslationExcludesBackgroundDescendants() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt>
+              <body>
+                <div>
+                  <p begin="1s" end="4s">
+                    <span begin="1s" end="2s">Main line</span>
+                    <span ttm:role="x-translation">Main translation</span>
+                    <span ttm:role="x-bg" begin="2s" end="3s">
+                      <span begin="2s" end="2.5s">Background</span>
+                      <span ttm:role="x-translation">Background translation</span>
+                      <span ttm:role="x-roman">background romanized</span>
+                    </span>
+                  </p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        val main = lines.first { it.role == LyricVocalRole.MAIN }
+        val background = lines.first { it.role == LyricVocalRole.BACKGROUND }
+        assertEquals("Main translation", main.translated)
+        assertEquals("", main.romanized)
+        assertEquals("Background translation", background.translated)
+        assertEquals("background romanized", background.romanized)
+    }
+
+    @Test
+    fun cleanerStripsVocalPrefixFromTimedWordsWithoutChangingTiming() {
+        val cleaned = LyricsCleaner.clean(
+            listOf(
+                LyricLine(
+                    startMs = 1_000L,
+                    endMs = 3_000L,
+                    text = "voice 2: hello world",
+                    translated = "",
+                    words = listOf(
+                        LyricWord(1_000L, 1_200L, "voice"),
+                        LyricWord(1_200L, 1_400L, "2:"),
+                        LyricWord(1_400L, 2_000L, "hello"),
+                        LyricWord(2_000L, 2_600L, "world")
+                    )
+                )
+            )
+        )
+
+        assertEquals(1, cleaned.size)
+        assertEquals(LyricVocalRole.DUET_RIGHT, cleaned[0].role)
+        assertEquals("hello world", cleaned[0].text)
+        assertEquals(listOf("hello", "world"), cleaned[0].words.map { it.text })
+        assertEquals(1_400L, cleaned[0].words[0].startMs)
+        assertEquals(2_000L, cleaned[0].words[0].endMs)
+    }
+
+    @Test
+    fun cleanerMergesComplementaryDuplicateEnrichmentFields() {
+        val cleaned = LyricsCleaner.clean(
+            listOf(
+                LyricLine(
+                    startMs = 1_000L,
+                    endMs = 2_800L,
+                    text = "Hello world",
+                    translated = "",
+                    words = listOf(
+                        LyricWord(1_000L, 1_500L, "Hello", romanized = "he-llo"),
+                        LyricWord(1_500L, 2_000L, "world")
+                    ),
+                    romanized = "hello world"
+                ),
+                LyricLine(
+                    startMs = 1_000L,
+                    endMs = 3_200L,
+                    text = "Hello world",
+                    translated = "Ciao mondo",
+                    words = emptyList(),
+                    romanized = ""
+                )
+            )
+        )
+
+        assertEquals(1, cleaned.size)
+        assertEquals("Ciao mondo", cleaned[0].translated)
+        assertEquals("hello world", cleaned[0].romanized)
+        assertEquals(2, cleaned[0].words.size)
+        assertEquals("he-llo", cleaned[0].words[0].romanized)
+        assertEquals(3_200L, cleaned[0].endMs)
     }
 
     @Test
