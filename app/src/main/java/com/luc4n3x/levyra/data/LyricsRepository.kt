@@ -383,7 +383,7 @@ class LyricsRepository(context: Context? = null) {
         val request = Request.Builder()
             .url(url)
             .header("Accept", accept)
-            .header("User-Agent", "LEVYRA Lyrics Engine/3.1 Android")
+            .header("User-Agent", "LEVYRA Lyrics Engine/3.3 Android")
             .get()
             .build()
         return suspendCancellableCoroutine { continuation ->
@@ -565,31 +565,12 @@ class LyricsRepository(context: Context? = null) {
     private fun normalizeTiming(result: LyricsResult, durationSec: Long): LyricsResult {
         val durationMs = durationSec.coerceAtLeast(0L) * 1_000L
         if (result.lines.isEmpty()) return result
-        val sorted = result.lines.sortedWith(compareBy<LyricLine> { it.startMs }.thenBy { it.role.ordinal })
-        val lastEnd = sorted.maxOfOrNull { it.endMs } ?: return result
-        val ratio = if (durationMs > 0L && lastEnd > 0L) durationMs.toDouble() / lastEnd.toDouble() else 1.0
-        val shouldScale = durationMs > 0L && ratio in 0.82..1.18 && kotlin.math.abs(durationMs - lastEnd) >= 3_000L
-        val scaled = if (shouldScale) {
-            sorted.map { line ->
-                line.copy(
-                    startMs = (line.startMs * ratio).toLong().coerceAtLeast(0L),
-                    endMs = (line.endMs * ratio).toLong().coerceAtMost(durationMs),
-                    words = line.words.map { word ->
-                        word.copy(
-                            startMs = (word.startMs * ratio).toLong().coerceAtLeast(0L),
-                            endMs = (word.endMs * ratio).toLong().coerceAtMost(durationMs)
-                        )
-                    }
-                )
-            }
-        } else {
-            sorted
-        }
-        val nextStartByIndex = arrayOfNulls<Long>(scaled.size)
+        val normalizedLines = result.lines.sortedWith(compareBy<LyricLine> { it.startMs }.thenBy { it.role.ordinal })
+        val nextStartByIndex = arrayOfNulls<Long>(normalizedLines.size)
         var nextMainStart: Long? = null
         var nextBackgroundStart: Long? = null
-        for (index in scaled.indices.reversed()) {
-            val line = scaled[index]
+        for (index in normalizedLines.indices.reversed()) {
+            val line = normalizedLines[index]
             if (line.role == LyricVocalRole.BACKGROUND) {
                 nextStartByIndex[index] = nextBackgroundStart
                 nextBackgroundStart = line.startMs
@@ -598,7 +579,7 @@ class LyricsRepository(context: Context? = null) {
                 nextMainStart = line.startMs
             }
         }
-        val corrected = scaled.mapIndexed { index, line ->
+        val corrected = normalizedLines.mapIndexed { index, line ->
             val lineStart = if (durationMs > 0L) line.startMs.coerceIn(0L, durationMs) else line.startMs.coerceAtLeast(0L)
             val nextStart = nextStartByIndex[index]
             val naturalEnd = line.endMs.coerceAtLeast(lineStart + 120L)
@@ -655,7 +636,7 @@ class LyricsRepository(context: Context? = null) {
     private fun encPath(value: String): String = value.split("/").joinToString("%2F") { enc(it) }
 
     companion object {
-        private const val CACHE_VERSION = 4
+        private const val CACHE_VERSION = 5
         private const val CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
         private const val NEGATIVE_CACHE_TTL_MS = 15L * 60L * 1_000L
         private const val MEMORY_CACHE_SIZE = 64
