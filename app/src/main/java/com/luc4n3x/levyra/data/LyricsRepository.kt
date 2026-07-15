@@ -253,10 +253,13 @@ class LyricsRepository(context: Context? = null) {
         return candidate.copy(result = enriched)
     }
 
-    private fun shouldUpgrade(previous: LyricsResult?, current: LyricsResult): Boolean {
+    internal fun shouldUpgrade(previous: LyricsResult?, current: LyricsResult): Boolean {
         if (current.lines.isEmpty()) return false
         if (previous == null) return true
-        if (sameResult(previous, current)) return false
+        if (sameResult(previous, current)) {
+            return current.confidence > previous.confidence ||
+                (current.confidence == previous.confidence && previous.cached && !current.cached)
+        }
         val previousWordTimed = previous.lines.any { it.words.isNotEmpty() }
         val currentWordTimed = current.lines.any { it.words.isNotEmpty() }
         if (currentWordTimed && !previousWordTimed && current.confidence >= previous.confidence - 5) return true
@@ -664,9 +667,10 @@ class LyricsRepository(context: Context? = null) {
         if (count > MAX_ROOM_CACHE_ENTRIES) dao.deleteOldest(count - MAX_ROOM_CACHE_ENTRIES)
     }
 
-    private fun serializeResult(result: LyricsResult): String {
+    internal fun serializeResult(result: LyricsResult): String {
+        val serializedLines = result.lines.take(MAX_CACHE_LINES)
         val linesJson = JSONArray()
-        result.lines.take(MAX_CACHE_LINES).forEach { line ->
+        serializedLines.forEach { line ->
             val wordsJson = JSONArray()
             line.words.take(MAX_CACHE_WORDS_PER_LINE).forEach { word ->
                 wordsJson.put(
@@ -691,18 +695,26 @@ class LyricsRepository(context: Context? = null) {
             )
         }
         val sectionsJson = JSONArray()
-        result.sections.forEach { section ->
-            sectionsJson.put(
-                JSONObject()
-                    .put("type", section.type.name)
-                    .put("ordinal", section.ordinal)
-                    .put("startLineIndex", section.startLineIndex)
-                    .put("endLineIndex", section.endLineIndex)
-                    .put("startMs", section.startMs)
-                    .put("endMs", section.endMs)
-                    .put("confidence", section.confidence)
-            )
-        }
+        val serializedIndices = serializedLines.indices
+        result.sections
+            .asSequence()
+            .filter { section ->
+                section.startLineIndex in serializedIndices &&
+                    section.endLineIndex in serializedIndices &&
+                    section.endLineIndex >= section.startLineIndex
+            }
+            .forEach { section ->
+                sectionsJson.put(
+                    JSONObject()
+                        .put("type", section.type.name)
+                        .put("ordinal", section.ordinal)
+                        .put("startLineIndex", section.startLineIndex)
+                        .put("endLineIndex", section.endLineIndex)
+                        .put("startMs", section.startMs)
+                        .put("endMs", section.endMs)
+                        .put("confidence", section.confidence)
+                )
+            }
         return JSONObject()
             .put("version", CACHE_VERSION)
             .put("synced", result.synced)
@@ -713,10 +725,11 @@ class LyricsRepository(context: Context? = null) {
             .toString()
     }
 
-    private fun deserializeResult(payload: String): LyricsResult? {
+    internal fun deserializeResult(payload: String): LyricsResult? {
         if (payload.isBlank()) return null
         return runCatching {
             val json = JSONObject(payload)
+            if (json.optInt("version", -1) != CACHE_VERSION) return@runCatching null
             val linesJson = json.optJSONArray("lines") ?: JSONArray()
             val lines = ArrayList<LyricLine>()
             for (index in 0 until linesJson.length()) {
@@ -754,14 +767,19 @@ class LyricsRepository(context: Context? = null) {
                 val type = runCatching {
                     LyricSectionType.valueOf(item.optString("type"))
                 }.getOrNull() ?: continue
+                val startLineIndex = item.optInt("startLineIndex", -1)
+                val endLineIndex = item.optInt("endLineIndex", -1)
+                if (startLineIndex !in lines.indices || endLineIndex !in lines.indices || endLineIndex < startLineIndex) continue
+                val startMs = item.optLong("startMs", lines[startLineIndex].startMs)
+                val endMs = item.optLong("endMs", lines[endLineIndex].endMs).coerceAtLeast(startMs)
                 sections += LyricSection(
                     type = type,
-                    ordinal = item.optInt("ordinal", 1),
-                    startLineIndex = item.optInt("startLineIndex"),
-                    endLineIndex = item.optInt("endLineIndex"),
-                    startMs = item.optLong("startMs"),
-                    endMs = item.optLong("endMs"),
-                    confidence = item.optInt("confidence", 50)
+                    ordinal = item.optInt("ordinal", 1).coerceAtLeast(1),
+                    startLineIndex = startLineIndex,
+                    endLineIndex = endLineIndex,
+                    startMs = startMs,
+                    endMs = endMs,
+                    confidence = item.optInt("confidence", 50).coerceIn(0, 100)
                 )
             }
             if (lines.isEmpty()) null else LyricsResult(
@@ -928,7 +946,7 @@ class LyricsRepository(context: Context? = null) {
     private fun encPath(value: String): String = value.split("/").joinToString("%2F") { enc(it) }
 
     companion object {
-        private const val CACHE_VERSION = 6
+        internal const val CACHE_VERSION = 7
         private const val POSITIVE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
         private const val STALE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
         private const val LEGACY_CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
@@ -939,7 +957,7 @@ class LyricsRepository(context: Context? = null) {
         private const val MEMORY_CACHE_SIZE = 64
         private const val NEGATIVE_CACHE_SIZE = 96
         private const val MAX_ROOM_CACHE_ENTRIES = 420
-        private const val MAX_CACHE_LINES = 700
+        internal const val MAX_CACHE_LINES = 700
         private const val MAX_CACHE_WORDS_PER_LINE = 120
         private const val INSTANT_MIN_CONFIDENCE = 48
         private const val FALLBACK_TRIGGER_CONFIDENCE = 58

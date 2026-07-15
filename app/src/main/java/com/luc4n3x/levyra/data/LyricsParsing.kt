@@ -623,13 +623,13 @@ object LyricsResultRanker {
             -1L
         }
         val durationScore = when {
-            durationDifference < 0L -> 5
-            durationDifference <= 2L -> 16
-            durationDifference <= 5L -> 13
-            durationDifference <= 10L -> 8
-            durationDifference <= 18L -> 2
-            durationDifference <= 30L -> -8
-            else -> -18
+            durationDifference < 0L -> 3
+            durationDifference <= 2L -> 10
+            durationDifference <= 5L -> 8
+            durationDifference <= 10L -> 5
+            durationDifference <= 18L -> 1
+            durationDifference <= 30L -> -6
+            else -> -14
         }
         val visibleLines = result.lines.filterNot { it.isMetadata || it.text.isBlank() }
         val primaryLines = visibleLines.filter { it.role != LyricVocalRole.BACKGROUND }
@@ -648,36 +648,36 @@ object LyricsResultRanker {
         val lastEndMs = primaryLines.maxOfOrNull { it.endMs } ?: 0L
         val expectedDurationMs = request.durationSec.coerceAtLeast(0L) * 1_000L
         val timelineScore = when {
-            !result.synced || primaryLines.size < 4 || expectedDurationMs <= 0L -> 3
-            lastEndMs in expectedDurationMs * 55L / 100L..expectedDurationMs * 108L / 100L -> 8
-            lastEndMs in expectedDurationMs * 35L / 100L..expectedDurationMs * 120L / 100L -> 3
-            else -> -7
+            !result.synced || primaryLines.size < 4 || expectedDurationMs <= 0L -> 2
+            lastEndMs in expectedDurationMs * 55L / 100L..expectedDurationMs * 108L / 100L -> 6
+            lastEndMs in expectedDurationMs * 35L / 100L..expectedDurationMs * 120L / 100L -> 2
+            else -> -6
         }
         val providerScore = when {
-            result.provider.startsWith("YouTube Music", ignoreCase = true) -> 10
-            result.provider.startsWith("LRCLIB Exact", ignoreCase = true) -> 9
-            result.provider.startsWith("LRCLIB Search", ignoreCase = true) -> 6
-            result.provider.startsWith("YouTube Transcript Auto", ignoreCase = true) -> 1
-            result.provider.startsWith("YouTube Transcript", ignoreCase = true) -> 5
-            result.provider.startsWith("Lyrics.ovh", ignoreCase = true) -> -4
+            result.provider.startsWith("YouTube Music", ignoreCase = true) -> 6
+            result.provider.startsWith("LRCLIB Exact", ignoreCase = true) -> 5
+            result.provider.startsWith("LRCLIB Search", ignoreCase = true) -> 4
+            result.provider.startsWith("YouTube Transcript Auto", ignoreCase = true) -> 0
+            result.provider.startsWith("YouTube Transcript", ignoreCase = true) -> 3
+            result.provider.startsWith("Lyrics.ovh", ignoreCase = true) -> -3
             else -> 0
         }
         val syncScore = when {
             !result.synced -> 0
-            syncCoverage >= 95 -> 10
-            syncCoverage >= 75 -> 7
-            else -> 3
+            syncCoverage >= 95 -> 8
+            syncCoverage >= 75 -> 6
+            else -> 2
         }
         val wordScore = when {
-            wordCoverage >= 85 -> 14
-            wordCoverage >= 55 -> 10
-            wordCoverage >= 20 -> 5
+            wordCoverage >= 85 -> 12
+            wordCoverage >= 55 -> 9
+            wordCoverage >= 20 -> 4
             else -> 0
         }
         val contentScore = when {
-            primaryLines.size >= 18 -> 6
-            primaryLines.size >= 8 -> 4
-            primaryLines.size >= 3 -> 2
+            primaryLines.size >= 18 -> 4
+            primaryLines.size >= 8 -> 3
+            primaryLines.size >= 3 -> 1
             else -> 0
         }
         val enrichmentScore = listOf(
@@ -685,7 +685,7 @@ object LyricsResultRanker {
             visibleLines.any { it.romanized.isNotBlank() },
             visibleLines.any { it.role != LyricVocalRole.MAIN }
         ).count { it }
-        val providerConfidenceScore = result.confidence.coerceIn(0, 100) * 8 / 100
+        val providerConfidenceScore = result.confidence.coerceIn(0, 100) * 5 / 100
         val duplicatePenalty = when {
             duplicateRatio >= 45 -> 12
             duplicateRatio >= 30 -> 7
@@ -699,9 +699,9 @@ object LyricsResultRanker {
             else -> 0
         }
         val mismatchPenalty = LyricsMatcher.versionMismatchPenalty(candidate.title, request.title)
-        val total = 8 +
-            titleScore * 30 / 100 +
-            artistScore * 20 / 100 +
+        val total = 6 +
+            titleScore * 24 / 100 +
+            artistScore * 16 / 100 +
             durationScore +
             syncScore +
             wordScore +
