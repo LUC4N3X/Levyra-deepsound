@@ -6,7 +6,6 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.luc4n3x.levyra.domain.Track
 
-/** Una playlist creata dall'utente. */
 @Entity(tableName = "playlists")
 data class PlaylistEntity(
     @PrimaryKey val id: String,
@@ -16,11 +15,6 @@ data class PlaylistEntity(
     val updatedAt: Long
 )
 
-/**
- * Una traccia dentro una playlist. Contiene una copia completa dei dati del brano così la
- * playlist resta consultabile offline e indipendente dalla cache di risoluzione.
- * position mantiene l'ordine scelto dall'utente.
- */
 @Entity(
     tableName = "playlist_tracks",
     primaryKeys = ["playlistId", "trackId"],
@@ -48,6 +42,22 @@ data class PlaylistTrackEntity(
     val source: String,
     val accentStart: Int,
     val accentEnd: Int,
+    val youtubeLoudnessDb: Float?,
+    val youtubePerceptualLoudnessDb: Float?,
+    val isrc: String,
+    val upc: String,
+    val releaseDate: String,
+    val year: String,
+    val trackNumber: Int,
+    val discNumber: Int,
+    val explicit: Boolean,
+    val albumBrowseId: String,
+    val artistBrowseIds: String,
+    val counterpartVideoId: String,
+    val videoType: String,
+    val metadataProvider: String,
+    val metadataConfidence: Int,
+    val canonicalAlbumUrl: String,
     val addedAt: Long
 )
 
@@ -68,7 +78,23 @@ fun PlaylistTrackEntity.toTrack(): Track = Track(
     replayScore = 84,
     cacheScore = 78,
     accentStart = accentStart,
-    accentEnd = accentEnd
+    accentEnd = accentEnd,
+    youtubeLoudnessDb = youtubeLoudnessDb,
+    youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb,
+    isrc = isrc,
+    upc = upc,
+    releaseDate = releaseDate,
+    year = year,
+    trackNumber = trackNumber,
+    discNumber = discNumber,
+    explicit = explicit,
+    albumBrowseId = albumBrowseId,
+    artistBrowseIds = artistBrowseIds.split(TAG_SEPARATOR).filter(String::isNotBlank),
+    counterpartVideoId = counterpartVideoId,
+    videoType = videoType,
+    metadataProvider = metadataProvider,
+    metadataConfidence = metadataConfidence.coerceIn(0, 100),
+    canonicalAlbumUrl = canonicalAlbumUrl
 )
 
 fun Track.toPlaylistTrackEntity(playlistId: String, position: Int, addedAt: Long): PlaylistTrackEntity =
@@ -86,5 +112,23 @@ fun Track.toPlaylistTrackEntity(playlistId: String, position: Int, addedAt: Long
         source = source,
         accentStart = accentStart,
         accentEnd = accentEnd,
+        youtubeLoudnessDb = youtubeLoudnessDb,
+        youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb,
+        isrc = isrc,
+        upc = upc,
+        releaseDate = releaseDate,
+        year = year,
+        trackNumber = trackNumber,
+        discNumber = discNumber,
+        explicit = explicit,
+        albumBrowseId = albumBrowseId,
+        artistBrowseIds = artistBrowseIds.joinToString(TAG_SEPARATOR),
+        counterpartVideoId = counterpartVideoId,
+        videoType = videoType,
+        metadataProvider = metadataProvider,
+        metadataConfidence = metadataConfidence.coerceIn(0, 100),
+        canonicalAlbumUrl = canonicalAlbumUrl,
         addedAt = addedAt
     )
+
+private const val TAG_SEPARATOR = "\u001F"
