@@ -1099,6 +1099,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
             prefetchTop(flat, startupPlan.refreshedArtworkCount, respectHomeScroll = deferUntilHomeIdle)
+            refreshOfficialMetadataBatch(flat, 8, deferUntilHomeIdle)
             loadHomeAlbums(languageCode, deferUntilHomeIdle)
         }
     }
@@ -1501,6 +1502,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
             enrichCharts(regionId, result, deferUntilHomeIdle)
+            refreshOfficialMetadataBatch(result, 6, deferUntilHomeIdle)
         }
     }
 
@@ -1742,6 +1744,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             recordSmartAlbumOpen(detail.album)
             LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 8)
+            refreshOfficialMetadataBatch(detail.tracks, 12)
         }
     }
 
@@ -2198,7 +2201,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 LevyraArtworkCache.cachePersistent(appContext, listOf(stableTrack), 1)
             }
         }
-        if (!LevyraPersonalOrbit.hasSquareAlbumArtwork(stableTrack)) {
+        if (needsOfficialMetadata(stableTrack)) {
             refreshOfficialOrbitArtwork(stableTrack)
         }
     }
@@ -2211,11 +2214,43 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun refreshOfficialMetadataBatch(
+        tracks: List<Track>,
+        limit: Int,
+        deferUntilHomeIdle: Boolean = false
+    ) {
+        val pending = tracks
+            .asSequence()
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            .filter(::needsOfficialMetadata)
+            .distinctBy { LevyraPersonalOrbit.identityKey(it) }
+            .take(limit.coerceIn(1, 16))
+            .toList()
+        if (pending.isEmpty()) return
+        viewModelScope.launch {
+            if (deferUntilHomeIdle) awaitHomeUiIdle(homeStartupWorkPlan())
+            val enrichedTracks = Collections.synchronizedList(mutableListOf<Track>())
+            val semaphore = Semaphore(3)
+            coroutineScope {
+                pending.map { track ->
+                    launch {
+                        semaphore.withPermit {
+                            if (!isActive) return@withPermit
+                            val enriched = resolveOfficialOrbitArtwork(track, _state.value.languageCode) ?: return@withPermit
+                            enrichedTracks += enriched
+                        }
+                    }
+                }.forEach { it.join() }
+            }
+            if (enrichedTracks.isNotEmpty()) applyOfficialOrbitArtworkBatch(enrichedTracks.toList())
+        }
+    }
+
     private fun refreshMissingOfficialOrbitArtwork(tracks: List<Track>, deferUntilHomeIdle: Boolean = false) {
         val pending = tracks
             .asSequence()
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-            .filterNot { LevyraPersonalOrbit.hasSquareAlbumArtwork(it) }
+            .filter(::needsOfficialMetadata)
             .distinctBy { LevyraPersonalOrbit.identityKey(it) }
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
             .toList()
@@ -2237,7 +2272,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             val current = _state.value.personalOrbitTracks.firstOrNull {
                                 LevyraPersonalOrbit.identityKey(it) == key
                             } ?: return@withPermit
-                            if (LevyraPersonalOrbit.hasSquareAlbumArtwork(current)) return@withPermit
+                            if (!needsOfficialMetadata(current)) return@withPermit
                             val enriched = resolveOfficialOrbitArtwork(current, _state.value.languageCode) ?: return@withPermit
                             enrichedTracks += enriched
                         }
@@ -2250,8 +2285,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun needsOfficialMetadata(track: Track): Boolean {
+        return !LevyraPersonalOrbit.hasSquareAlbumArtwork(track) ||
+            track.metadataProvider.isBlank() ||
+            (track.canonicalAlbumUrl.isBlank() && track.releaseDate.isBlank())
+    }
+
+    private fun officialMetadataConfidence(score: Int): Int = when {
+        score >= 500 -> 100
+        score >= 420 -> 96
+        score >= 360 -> 91
+        score >= 320 -> 86
+        score >= 280 -> 80
+        score >= 240 -> 72
+        score >= 200 -> 64
+        else -> (score / 4).coerceIn(0, 63)
+    }
+
     private suspend fun resolveOfficialOrbitArtwork(track: Track, languageCode: String): Track? {
-        if (LevyraPersonalOrbit.hasSquareAlbumArtwork(track)) return track
+        if (!needsOfficialMetadata(track)) return track
         val selectedCountry = ChartsCatalog.regions
             .firstOrNull { it.id == _state.value.selectedChartId }
             ?.country
@@ -2264,7 +2316,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             return track.copy(
                 album = official.album.ifBlank { track.album },
                 thumbnailUrl = official.thumbnailUrl,
-                largeThumbnailUrl = official.largeThumbnailUrl
+                largeThumbnailUrl = official.largeThumbnailUrl,
+                isrc = official.isrc.ifBlank { track.isrc },
+                upc = official.upc.ifBlank { track.upc },
+                releaseDate = official.releaseDate.ifBlank { track.releaseDate },
+                year = official.year.ifBlank { track.year },
+                trackNumber = official.trackNumber.takeIf { it > 0 } ?: track.trackNumber,
+                discNumber = official.discNumber.takeIf { it > 0 } ?: track.discNumber,
+                explicit = official.explicit || track.explicit,
+                metadataProvider = official.provider.ifBlank { track.metadataProvider },
+                metadataConfidence = maxOf(track.metadataConfidence, officialMetadataConfidence(official.score)),
+                canonicalAlbumUrl = official.canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl }
             )
         }
         val musicMatches = runCatching {
@@ -2285,14 +2347,72 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (enrichedByKey.isEmpty()) return
         var persistedHistory: List<Track> = emptyList()
         var persistedOrbit: List<Track> = emptyList()
+        var persistedHomeAlbums: List<AlbumHit> = emptyList()
         var languageCode = _state.value.languageCode
         _state.update { current ->
             fun withArtwork(item: Track): Track {
                 val enriched = enrichedByKey[LevyraPersonalOrbit.identityKey(item)] ?: return item
                 return item.copy(
                     album = enriched.album.ifBlank { item.album },
-                    thumbnailUrl = enriched.thumbnailUrl,
-                    largeThumbnailUrl = enriched.largeThumbnailUrl
+                    thumbnailUrl = enriched.thumbnailUrl.ifBlank { item.thumbnailUrl },
+                    largeThumbnailUrl = enriched.largeThumbnailUrl.ifBlank { item.largeThumbnailUrl },
+                    isrc = enriched.isrc.ifBlank { item.isrc },
+                    upc = enriched.upc.ifBlank { item.upc },
+                    releaseDate = enriched.releaseDate.ifBlank { item.releaseDate },
+                    year = enriched.year.ifBlank { item.year },
+                    trackNumber = enriched.trackNumber.takeIf { it > 0 } ?: item.trackNumber,
+                    discNumber = enriched.discNumber.takeIf { it > 0 } ?: item.discNumber,
+                    explicit = enriched.explicit || item.explicit,
+                    metadataProvider = enriched.metadataProvider.ifBlank { item.metadataProvider },
+                    metadataConfidence = maxOf(item.metadataConfidence, enriched.metadataConfidence),
+                    canonicalAlbumUrl = enriched.canonicalAlbumUrl.ifBlank { item.canonicalAlbumUrl }
+                )
+            }
+
+            fun normalizedMetadataText(value: String): String = value
+                .lowercase()
+                .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+
+            fun withAlbumMetadata(item: AlbumHit): AlbumHit {
+                val targetTitle = normalizedMetadataText(item.title)
+                val targetArtist = normalizedMetadataText(item.artist)
+                val enriched = enrichedByKey.values
+                    .asSequence()
+                    .map { track ->
+                        val candidateAlbum = normalizedMetadataText(track.album)
+                        val candidateArtist = normalizedMetadataText(track.artist)
+                        val albumScore = when {
+                            targetTitle.isBlank() || candidateAlbum.isBlank() -> 0
+                            targetTitle == candidateAlbum -> 4
+                            targetTitle.contains(candidateAlbum) || candidateAlbum.contains(targetTitle) -> 2
+                            else -> 0
+                        }
+                        val artistScore = when {
+                            targetArtist.isBlank() || candidateArtist.isBlank() -> 0
+                            targetArtist == candidateArtist -> 3
+                            targetArtist.contains(candidateArtist) || candidateArtist.contains(targetArtist) -> 1
+                            else -> 0
+                        }
+                        track to albumScore + artistScore
+                    }
+                    .filter { it.second >= 4 }
+                    .maxWithOrNull(compareBy<Pair<Track, Int>> { it.second }.thenBy { it.first.metadataConfidence })
+                    ?.first
+                    ?: return item
+                return item.copy(
+                    title = enriched.album.ifBlank { item.title },
+                    year = enriched.year.ifBlank { item.year },
+                    thumbnailUrl = enriched.largeThumbnailUrl.ifBlank {
+                        enriched.thumbnailUrl.ifBlank { item.thumbnailUrl }
+                    },
+                    explicit = enriched.explicit || item.explicit,
+                    releaseDate = enriched.releaseDate.ifBlank { item.releaseDate },
+                    upc = enriched.upc.ifBlank { item.upc },
+                    canonicalUrl = enriched.canonicalAlbumUrl.ifBlank { item.canonicalUrl },
+                    metadataProvider = enriched.metadataProvider.ifBlank { item.metadataProvider },
+                    metadataConfidence = maxOf(item.metadataConfidence, enriched.metadataConfidence)
                 )
             }
 
@@ -2300,29 +2420,78 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val recentSearches = current.recentSearches.map(::withArtwork)
             val cachedOrbit = current.personalOrbitTracks.map(::withArtwork)
             val tracks = current.tracks.map(::withArtwork)
+            val queue = current.queue.map(::withArtwork)
             val searchResults = current.searchResults.map(::withArtwork)
+            val favorites = current.favorites.map(::withArtwork)
+            val charts = current.charts.map(::withArtwork)
+            val homeAlbums = current.homeAlbums.map(::withAlbumMetadata)
+            val homeSections = current.homeSections.map { section ->
+                section.copy(tracks = section.tracks.map(::withArtwork))
+            }
+            val exploreTracks = current.exploreTracks.map(::withArtwork)
+            val exploreVideos = current.exploreVideos.map(::withArtwork)
+            val recentListens = current.recentListens.map(::withArtwork)
+            val playlists = current.playlists.map { playlist ->
+                playlist.copy(tracks = playlist.tracks.map(::withArtwork))
+            }
+            val openPlaylist = current.openPlaylist?.let { playlist ->
+                playlist.copy(tracks = playlist.tracks.map(::withArtwork))
+            }
+            val searchData = current.searchData.copy(
+                topTrack = current.searchData.topTrack?.let(::withArtwork),
+                songs = current.searchData.songs.map(::withArtwork),
+                albums = current.searchData.albums.map(::withAlbumMetadata)
+            )
+            val albumDetail = current.albumDetail?.let { detail ->
+                detail.copy(
+                    album = withAlbumMetadata(detail.album),
+                    tracks = detail.tracks.map(::withArtwork),
+                    otherVersions = detail.otherVersions.map(::withAlbumMetadata)
+                )
+            }
+            val artistProfile = current.artistProfile?.let { profile ->
+                profile.copy(
+                    topSongs = profile.topSongs.map(::withArtwork),
+                    videos = profile.videos.map(::withArtwork)
+                )
+            }
             val orbit = LevyraPersonalOrbit.build(
                 currentTrack = currentTrack,
                 recentSearches = recentSearches,
-                favorites = current.favorites,
+                favorites = favorites,
                 tracks = tracks,
-                homeSections = current.homeSections,
-                charts = current.charts,
+                homeSections = homeSections,
+                charts = charts,
                 cachedOrbit = cachedOrbit,
                 limit = LevyraPersonalOrbit.DISPLAY_LIMIT,
                 languageCode = current.languageCode
             )
             persistedHistory = recentSearches
             persistedOrbit = orbit
+            persistedHomeAlbums = homeAlbums
             languageCode = current.languageCode
             current.copy(
                 currentTrack = currentTrack,
                 recentSearches = recentSearches,
                 personalOrbitTracks = orbit,
                 tracks = tracks,
-                searchResults = searchResults
+                queue = queue,
+                searchResults = searchResults,
+                favorites = favorites,
+                charts = charts,
+                homeAlbums = homeAlbums,
+                homeSections = homeSections,
+                exploreTracks = exploreTracks,
+                exploreVideos = exploreVideos,
+                recentListens = recentListens,
+                playlists = playlists,
+                openPlaylist = openPlaylist,
+                searchData = searchData,
+                albumDetail = albumDetail,
+                artistProfile = artistProfile
             )
         }
+        persistHomeSnapshot()
         enrichedByKey.values.forEach { queueEngine.updateTrackMetadata(it) }
         val appContext = getApplication<Application>().applicationContext
         val artworkTracks = persistedOrbit
@@ -2332,6 +2501,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             withContext(Dispatchers.IO) {
                 preferences.saveRecentSearches(persistedHistory)
                 preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
+                preferences.saveHomeAlbums(persistedHomeAlbums, languageCode)
                 LevyraArtworkCache.cachePersistent(appContext, artworkTracks, artworkTracks.size)
             }
             LevyraArtworkCache.preloadPriority(
@@ -2343,6 +2513,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             withContext(Dispatchers.IO) {
                 preferences.saveRecentSearches(persistedHistory)
                 preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
+                preferences.saveHomeAlbums(persistedHomeAlbums, languageCode)
             }
         }
     }
@@ -2481,9 +2652,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!exploreVideosLoaded) {
             exploreVideosLoaded = true
             viewModelScope.launch {
-                val videos = runCatching { repository.search("${strings.exploreNewVideos} 2026", 12, _state.value.languageCode) }.getOrDefault(emptyList())
+                val videos = runCatching { repository.newMusicVideos(_state.value.languageCode, 12) }.getOrDefault(emptyList())
                 if (videos.isEmpty()) exploreVideosLoaded = false
                 _state.update { it.copy(exploreVideos = videos) }
+                refreshOfficialMetadataBatch(videos, 6)
             }
         }
     }
@@ -2492,15 +2664,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(exploreZoneId = zone.id) }
         exploreCache[zone.id]?.let { cached ->
             _state.update { it.copy(exploreTracks = cached, isExploreLoading = false) }
+            refreshOfficialMetadataBatch(cached, 8)
             return
         }
         exploreJob?.cancel()
         _state.update { it.copy(exploreTracks = emptyList(), isExploreLoading = true) }
         exploreJob = viewModelScope.launch {
-            val results = runCatching { repository.search(zone.query, 24, _state.value.languageCode) }.getOrDefault(emptyList())
+            val results = runCatching {
+                repository.exploreZone(zone.id, zone.query, _state.value.languageCode, 24)
+            }.getOrDefault(emptyList())
             if (results.isNotEmpty()) exploreCache[zone.id] = results
             if (_state.value.exploreZoneId != zone.id) return@launch
             _state.update { it.copy(exploreTracks = results, isExploreLoading = false) }
+            refreshOfficialMetadataBatch(results, 8)
         }
     }
 
