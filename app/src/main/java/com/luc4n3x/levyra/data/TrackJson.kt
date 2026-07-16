@@ -68,7 +68,7 @@ object TrackJson {
             counterpartVideoId = json.optString("counterpartVideoId"),
             videoType = json.optString("videoType"),
             metadataProvider = json.optString("metadataProvider"),
-            metadataConfidence = json.optInt("metadataConfidence"),
+            metadataConfidence = json.optInt("metadataConfidence").coerceIn(0, 100),
             canonicalAlbumUrl = json.optString("canonicalAlbumUrl")
         )
     }
