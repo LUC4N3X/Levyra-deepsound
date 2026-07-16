@@ -2945,8 +2945,8 @@ private fun LyricsOverlay(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (viewMode != LyricsViewMode.COMPACT) {
-                        LyricsProStatusRow(
+                    if (visibleLyrics.isNotEmpty() && viewMode != LyricsViewMode.COMPACT) {
+                        LyricsStatusRow(
                             provider = state.lyricsProvider,
                             synced = state.lyricsSynced,
                             cached = state.lyricsCached,
@@ -3729,10 +3729,14 @@ private fun LyricsIntelligenceDialog(
 }
 
 @Composable
-private fun LyricsProStatusRow(provider: String, synced: Boolean, cached: Boolean, confidence: Int, syncedLabel: String) {
+private fun LyricsStatusRow(provider: String, synced: Boolean, cached: Boolean, confidence: Int, syncedLabel: String) {
     val label = buildString {
-        append(if (synced) syncedLabel else "Lyrics Pro")
-        if (provider.isNotBlank()) append(" • ").append(provider)
+        if (synced) {
+            append(syncedLabel)
+            if (provider.isNotBlank()) append(" • ").append(provider)
+        } else {
+            append(provider.ifBlank { "Lyrics" })
+        }
         if (cached) append(" • cache")
         if (confidence > 0) append(" • ").append(confidence).append("%")
     }
