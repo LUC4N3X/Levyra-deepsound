@@ -16,9 +16,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ListenEventEntity::class,
         PlaybackQueueItemEntity::class,
         PlaybackQueueStateEntity::class,
-        OfflineDownloadTaskEntity::class
+        OfflineDownloadTaskEntity::class,
+        LyricsCacheEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -28,6 +29,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun listenEventsDao(): ListenEventsDao
     abstract fun playbackQueueDao(): PlaybackQueueDao
     abstract fun offlineDownloadTasksDao(): OfflineDownloadTasksDao
+    abstract fun lyricsCacheDao(): LyricsCacheDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -156,6 +158,37 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS lyrics_cache (
+                        cacheKey TEXT NOT NULL PRIMARY KEY,
+                        titleKey TEXT NOT NULL,
+                        artistKey TEXT NOT NULL,
+                        durationBucket INTEGER NOT NULL,
+                        videoId TEXT NOT NULL,
+                        languageCode TEXT NOT NULL,
+                        translate INTEGER NOT NULL,
+                        synced INTEGER NOT NULL,
+                        provider TEXT NOT NULL,
+                        confidence INTEGER NOT NULL,
+                        payload TEXT NOT NULL,
+                        negative INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        lastAccessedAt INTEGER NOT NULL,
+                        expiresAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_lyrics_cache_expiresAt ON lyrics_cache(expiresAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_lyrics_cache_lastAccessedAt ON lyrics_cache(lastAccessedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_lyrics_cache_titleKey_artistKey_durationBucket_languageCode_translate ON lyrics_cache(titleKey, artistKey, durationBucket, languageCode, translate)")
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -164,7 +197,7 @@ abstract class LevyraDatabase : RoomDatabase() {
                     "levyra.db"
                 )
                     // Migrazioni versionate: i dati utente sopravvivono agli aggiornamenti.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                     .also { instance = it }
             }
