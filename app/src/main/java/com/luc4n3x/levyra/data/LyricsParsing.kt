@@ -654,7 +654,11 @@ object LyricsResultRanker {
             else -> -6
         }
         val providerScore = when {
+            result.provider.startsWith("Binimum · Word", ignoreCase = true) -> 8
+            result.provider.startsWith("LyricsPlus", ignoreCase = true) && result.lines.any { it.words.isNotEmpty() } -> 7
             result.provider.startsWith("YouTube Music", ignoreCase = true) -> 6
+            result.provider.startsWith("Binimum", ignoreCase = true) -> 6
+            result.provider.startsWith("LyricsPlus", ignoreCase = true) -> 5
             result.provider.startsWith("LRCLIB Exact", ignoreCase = true) -> 5
             result.provider.startsWith("LRCLIB Search", ignoreCase = true) -> 4
             result.provider.startsWith("YouTube Transcript Auto", ignoreCase = true) -> 0
