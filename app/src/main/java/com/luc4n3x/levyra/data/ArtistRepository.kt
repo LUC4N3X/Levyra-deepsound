@@ -29,6 +29,65 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.absoluteValue
 
+internal data class ArtistHeaderArtwork(
+    val portraitUrl: String,
+    val bannerUrl: String
+)
+
+internal fun parseArtistHeaderArtwork(header: JSONObject?): ArtistHeaderArtwork {
+    fun bestThumbnail(array: JSONArray?): String {
+        if (array == null) return ""
+        var bestUrl = ""
+        var bestArea = -1L
+        for (index in 0 until array.length()) {
+            val item = array.optJSONObject(index) ?: continue
+            val url = item.optString("url").trim()
+            if (url.isBlank()) continue
+            val width = item.optLong("width", 0L)
+            val height = item.optLong("height", 0L)
+            val area = width * height
+            if (area >= bestArea) {
+                bestArea = area
+                bestUrl = url
+            }
+        }
+        return bestUrl
+    }
+
+    fun thumbnailFrom(container: JSONObject?): String {
+        container ?: return ""
+        val renderer = container.optJSONObject("musicThumbnailRenderer")
+            ?: container.optJSONObject("croppedSquareThumbnailRenderer")
+            ?: container
+        val thumbnails = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+            ?: renderer.optJSONArray("thumbnails")
+        return bestThumbnail(thumbnails)
+    }
+
+    val immersive = header?.optJSONObject("musicImmersiveHeaderRenderer")
+    val visual = header?.optJSONObject("musicVisualHeaderRenderer")
+    val detail = header?.optJSONObject("musicDetailHeaderRenderer")
+    val responsive = header?.optJSONObject("musicResponsiveHeaderRenderer")
+
+    val portrait = sequenceOf(
+        thumbnailFrom(immersive?.optJSONObject("thumbnail")),
+        thumbnailFrom(visual?.optJSONObject("foregroundThumbnail")),
+        thumbnailFrom(detail?.optJSONObject("thumbnail")),
+        thumbnailFrom(responsive?.optJSONObject("thumbnail"))
+    ).firstOrNull { it.isNotBlank() }.orEmpty()
+
+    val banner = sequenceOf(
+        thumbnailFrom(immersive?.optJSONObject("backgroundThumbnail")),
+        thumbnailFrom(visual?.optJSONObject("backgroundThumbnail")),
+        thumbnailFrom(responsive?.optJSONObject("backgroundThumbnail"))
+    ).firstOrNull { it.isNotBlank() }.orEmpty()
+
+    return ArtistHeaderArtwork(
+        portraitUrl = portrait,
+        bannerUrl = banner
+    )
+}
+
 class ArtistRepository(private val music: YoutubeMusicRepository, private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val clientVersion = "1.20260423.01.00"
@@ -93,8 +152,17 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         if (browseId.isBlank()) return@withContext profileFor(fallbackName)
         val cacheKey = artistIdentityKey(fallbackName)
         memory[cacheKey]?.takeIf { it.browseId.equals(browseId, ignoreCase = true) }?.let { return@withContext it }
-        val resolved = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
-            ?: runCatching { profileFor(fallbackName) }.getOrNull()
+        val fetched = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
+        val resolved = if (fetched != null && fetched.thumbnailUrl.isBlank()) {
+            val fallbackHit = runCatching { artistHitFor(fetched.name.ifBlank { fallbackName }) }.getOrNull()
+            fetched.copy(
+                name = fetched.name.ifBlank { fallbackHit?.name.orEmpty().ifBlank { fallbackName } },
+                thumbnailUrl = fallbackHit?.thumbnailUrl.orEmpty(),
+                bannerUrl = fetched.bannerUrl.ifBlank { fallbackHit?.thumbnailUrl.orEmpty() }
+            )
+        } else {
+            fetched ?: runCatching { profileFor(fallbackName) }.getOrNull()
+        }
         resolved?.also { profile ->
             memory[cacheKey] = profile
             memory[artistIdentityKey(profile.name)] = profile
@@ -194,8 +262,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val inlineBio = extractBio(root)
         val subscribers = extractSubscribers(header)
         val monthly = extractMonthlyListeners(root)
-        val thumb = upgradeThumbnail(extractArtistThumbnail(header))
-        val banner = extractBanner(header)
+        val artwork = parseArtistHeaderArtwork(header)
+        val thumb = upgradeThumbnail(artwork.portraitUrl)
+        val banner = artwork.bannerUrl
         val songsPointer = findSongsPointer(root)
         val albumPointer = findReleasePointer(root, "Album")
         val singlePointer = findReleasePointer(root, "Singol")
@@ -449,24 +518,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ""
     }
 
-    private fun extractBanner(header: JSONObject?): String {
-        val arrays = mutableListOf<JSONArray>()
-        collectArrays(header, "thumbnails", arrays)
-        var best = ""
-        var bestScore = -1
-        arrays.forEach { array ->
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                val score = item.optInt("width", 0) * item.optInt("height", 0)
-                val isWide = item.optInt("width", 0) > item.optInt("height", 0)
-                if (isWide && score > bestScore && item.optString("url").isNotBlank()) {
-                    best = item.optString("url")
-                    bestScore = score
-                }
-            }
-        }
-        return best
-    }
 
     private fun extractTopSongs(root: JSONObject): List<Track> {
         val renderers = mutableListOf<JSONObject>()
@@ -844,37 +895,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ""
     }
 
-    private fun extractArtistThumbnail(header: JSONObject?): String {
-        val arrays = mutableListOf<JSONArray>()
-        collectArrays(header, "thumbnails", arrays)
-        var bestUrl = ""
-        var bestScore = Long.MIN_VALUE
-        arrays.forEach { array ->
-            for (index in 0 until array.length()) {
-                val item = array.optJSONObject(index) ?: continue
-                val url = item.optString("url").trim()
-                if (url.isBlank()) continue
-                val width = item.optInt("width", 0)
-                val height = item.optInt("height", 0)
-                val area = width.toLong() * height.toLong()
-                val shortest = minOf(width, height)
-                val longest = maxOf(width, height)
-                val squareRatio = if (longest > 0) shortest.toDouble() / longest.toDouble() else 0.0
-                val squareBonus = when {
-                    squareRatio >= 0.92 -> 4_000_000_000L
-                    squareRatio >= 0.80 -> 2_000_000_000L
-                    squareRatio >= 0.68 -> 500_000_000L
-                    else -> -4_000_000_000L
-                }
-                val score = squareBonus + area
-                if (score > bestScore) {
-                    bestScore = score
-                    bestUrl = url
-                }
-            }
-        }
-        return bestUrl
-    }
 
     private fun thumbnailsOf(node: JSONObject): JSONArray {
         val arrays = mutableListOf<JSONArray>()
