@@ -30,11 +30,16 @@ import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.SponsorBlockRepository
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
+import com.luc4n3x.levyra.data.REJECTED_ALBUM_RECOMMENDATION_SCORE
+import com.luc4n3x.levyra.data.albumRecommendationMatchScore
+import com.luc4n3x.levyra.data.recommendationAlbumKey
+import com.luc4n3x.levyra.data.recommendationTextKey
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartsCatalog
@@ -247,6 +252,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var updateJob: Job? = null
     private var artistJob: Job? = null
     private var albumJob: Job? = null
+    private var homeAlbumsJob: Job? = null
     private var radarJob: Job? = null
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
@@ -334,9 +340,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             languageCode = settings.languageCode
         )
         val initialTracks = mergeTracks(cachedOrbitTracks + repairedRecentSearches + favorites, startupHomeTracks + startupCharts)
-        val startupAlbums = preferences.loadHomeAlbums(settings.languageCode).ifEmpty {
-            instantAlbumRecommendationsFromTracks(cachedOrbitTracks + repairedRecentSearches + favorites, initialTracks, 10)
-        }
+        val startupInstantAlbums = instantAlbumRecommendationsFromTracks(
+            primary = repairedRecentSearches + favorites,
+            secondary = cachedOrbitTracks + initialTracks,
+            limit = HOME_ALBUM_RECOMMENDATION_LIMIT,
+            profile = startupSmartProfile
+        )
+        val startupAlbumState = LevyraUiState(
+            languageCode = settings.languageCode,
+            recentSearches = repairedRecentSearches,
+            personalOrbitTracks = cachedOrbitTracks,
+            favorites = favorites,
+            homeSections = startupHomeSections,
+            charts = startupCharts,
+            tracks = initialTracks,
+            smartProfile = startupSmartProfile
+        )
+        val startupAlbums = rankAlbumRecommendations(
+            remote = preferences.loadHomeAlbums(settings.languageCode),
+            instant = startupInstantAlbums,
+            state = startupAlbumState,
+            limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+        ).ifEmpty { startupInstantAlbums }
         val initialQueue = moodEngine.buildQueue(startupMoods.firstOrNull(), initialTracks)
         val restoredTrack = settings.lastTrack
             ?.copy(streamUrl = "", videoStreamUrl = "")
@@ -1068,7 +1093,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
             val instantAlbums = _state.value.homeAlbums.ifEmpty {
-                instantAlbumRecommendationsFromTracks(_state.value.personalOrbitTracks + _state.value.recentSearches + _state.value.favorites, flat, 10)
+                instantAlbumRecommendationsFromTracks(
+                    primary = _state.value.recentListens + _state.value.recentSearches + _state.value.favorites,
+                    secondary = _state.value.personalOrbitTracks + flat,
+                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT,
+                    profile = _state.value.smartProfile
+                )
             }
             viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeSections(sections, languageCode) }
             if (deferUntilHomeIdle) awaitHomeUiIdle()
@@ -1113,57 +1143,232 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun loadHomeAlbums(languageCode: String, deferUntilHomeIdle: Boolean = false) {
-        viewModelScope.launch {
-            val instantAlbums = instantAlbumRecommendations(_state.value)
+        homeAlbumsJob?.cancel()
+        homeAlbumsJob = viewModelScope.launch {
+            val initialState = _state.value
+            if (initialState.languageCode != languageCode) return@launch
+            val instantAlbums = instantAlbumRecommendations(initialState)
+            val visibleAlbums = rankAlbumRecommendations(
+                remote = initialState.homeAlbums,
+                instant = instantAlbums,
+                state = initialState,
+                limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+            ).ifEmpty { instantAlbums.take(HOME_ALBUM_RECOMMENDATION_LIMIT) }
             _state.update { current ->
-                val visibleAlbums = if (current.homeAlbums.isEmpty() && instantAlbums.isNotEmpty()) instantAlbums else current.homeAlbums
                 val shouldLoadVisibly = visibleAlbums.isEmpty()
                 if (current.homeAlbums == visibleAlbums && current.homeAlbumsLoading == shouldLoadVisibly) current
                 else current.copy(homeAlbums = visibleAlbums, homeAlbumsLoading = shouldLoadVisibly)
             }
-            val seedQueries = albumRecommendationSeeds(_state.value)
-            val albums = runCatching { repository.homeAlbums(languageCode, seedQueries = seedQueries) }.getOrDefault(emptyList())
-            if (_state.value.languageCode != languageCode) return@launch
-            if (albums.isEmpty()) {
-                _state.update { it.copy(homeAlbumsLoading = false) }
-                return@launch
+            val seeds = albumRecommendationSeeds(_state.value)
+            val albums = try {
+                repository.homeAlbums(
+                    languageCode = languageCode,
+                    limit = HOME_ALBUM_REMOTE_CANDIDATE_LIMIT,
+                    seeds = seeds
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "Personalized home albums failed")
+                emptyList()
             }
-            val mergedAlbums = mergeAlbums(albums, instantAlbums).take(10)
-            viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeAlbums(mergedAlbums, languageCode) }
+            if (_state.value.languageCode != languageCode) return@launch
+            val latestState = _state.value
+            val latestInstantAlbums = instantAlbumRecommendations(latestState)
+            val rankedAlbums = rankAlbumRecommendations(
+                remote = albums,
+                instant = latestInstantAlbums,
+                state = latestState,
+                limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+            ).ifEmpty { latestInstantAlbums.take(HOME_ALBUM_RECOMMENDATION_LIMIT) }
+            if (rankedAlbums.isNotEmpty()) {
+                viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeAlbums(rankedAlbums, languageCode) }
+            }
             if (deferUntilHomeIdle) awaitHomeUiIdle()
             _state.update { current ->
-                if (current.homeAlbums == mergedAlbums && !current.homeAlbumsLoading) current
-                else current.copy(homeAlbums = mergedAlbums, homeAlbumsLoading = false)
+                if (current.languageCode != languageCode) current
+                else if (current.homeAlbums == rankedAlbums && !current.homeAlbumsLoading) current
+                else current.copy(homeAlbums = rankedAlbums, homeAlbumsLoading = false)
             }
         }
     }
 
-    private fun albumRecommendationSeeds(state: LevyraUiState): List<String> {
-        val seedTracks = mergeTracks(
-            listOfNotNull(state.currentTrack) + state.recentSearches + state.favorites + state.personalOrbitTracks,
-            state.tracks + state.charts + state.homeSections.flatMap { it.tracks }
+    private fun albumRecommendationSeeds(state: LevyraUiState): List<AlbumRecommendationSeed> {
+        val seeds = LinkedHashMap<String, AlbumRecommendationSeed>()
+        fun put(seed: AlbumRecommendationSeed) {
+            val cleanQuery = seed.query.trim()
+            if (cleanQuery.length < 2) return
+            val normalized = seed.copy(
+                query = cleanQuery,
+                artist = seed.artist.trim(),
+                album = seed.album.trim(),
+                moodTags = seed.moodTags.map { it.trim() }.filter { it.length >= 2 }.toSet(),
+                weight = seed.weight.coerceIn(0, 2_000)
+            )
+            val key = listOf(
+                recommendationTextKey(normalized.artist),
+                recommendationTextKey(normalized.album),
+                normalized.moodTags.map(::recommendationTextKey).sorted().joinToString("|")
+            ).joinToString("|")
+            if (key.isBlank() || key == "||") return
+            val existing = seeds[key]
+            if (existing == null || normalized.weight > existing.weight) seeds[key] = normalized
+        }
+        fun putTrack(track: Track, baseWeight: Int) {
+            val artist = track.artist.trim()
+            if (!isUsefulRecommendationArtist(artist)) return
+            val album = track.album.trim()
+            if (isUsefulRecommendationAlbum(album, track.title)) {
+                put(
+                    AlbumRecommendationSeed(
+                        query = "$album $artist album",
+                        artist = artist,
+                        album = album,
+                        weight = baseWeight + 60
+                    )
+                )
+            }
+            put(
+                AlbumRecommendationSeed(
+                    query = "$artist album",
+                    artist = artist,
+                    weight = baseWeight
+                )
+            )
+        }
+
+        state.smartProfile.topAlbums.take(6).forEachIndexed { index, profileSeed ->
+            val parts = profileSeed.label.split(" • ", limit = 2)
+            val album = parts.getOrNull(0).orEmpty().trim()
+            val artist = parts.getOrNull(1).orEmpty().trim()
+            if (isUsefulRecommendationAlbum(album, "") && isUsefulRecommendationArtist(artist)) {
+                put(
+                    AlbumRecommendationSeed(
+                        query = profileSeed.query.ifBlank { "$album $artist album" },
+                        artist = artist,
+                        album = album,
+                        weight = 520 + profileSeed.weight.coerceIn(0, 1_000) / 4 - index * 8
+                    )
+                )
+            }
+        }
+        state.smartProfile.topArtists.take(8).forEachIndexed { index, profileSeed ->
+            val artist = profileSeed.label.trim()
+            if (isUsefulRecommendationArtist(artist)) {
+                put(
+                    AlbumRecommendationSeed(
+                        query = profileSeed.query.ifBlank { "$artist album" },
+                        artist = artist,
+                        weight = 440 + profileSeed.weight.coerceIn(0, 1_000) / 5 - index * 8
+                    )
+                )
+            }
+        }
+        state.currentTrack?.let { putTrack(it, 420) }
+        state.recentListens.take(12).forEachIndexed { index, track -> putTrack(track, 390 - index * 9) }
+        state.favorites.take(12).forEachIndexed { index, track -> putTrack(track, 340 - index * 7) }
+        state.recentSearches.take(8).forEachIndexed { index, track -> putTrack(track, 210 - index * 6) }
+
+        var directSeeds = seeds.values.count { it.artist.isNotBlank() || it.album.isNotBlank() }
+        if (directSeeds in 1..5) {
+            state.personalOrbitTracks.take(8).forEachIndexed { index, track -> putTrack(track, 170 - index * 6) }
+            directSeeds = seeds.values.count { it.artist.isNotBlank() || it.album.isNotBlank() }
+        }
+        if (directSeeds < 4) {
+            state.smartProfile.topMoods.take(2).forEachIndexed { index, profileSeed ->
+                val mood = profileSeed.label.trim()
+                if (mood.length >= 2) {
+                    put(
+                        AlbumRecommendationSeed(
+                            query = "$mood album",
+                            moodTags = setOf(mood),
+                            weight = 120 + profileSeed.weight.coerceIn(0, 600) / 8 - index * 8
+                        )
+                    )
+                }
+            }
+        }
+        val values = seeds.values.toList()
+        val albumSeeds = values.filter { it.album.isNotBlank() }.sortedByDescending { it.weight }
+        val artistSeeds = values.filter { it.album.isBlank() && it.artist.isNotBlank() }.sortedByDescending { it.weight }
+        val moodSeeds = values.filter { it.artist.isBlank() && it.album.isBlank() }.sortedByDescending { it.weight }
+        val selected = LinkedHashSet<AlbumRecommendationSeed>()
+        selected.addAll(albumSeeds.take(5))
+        selected.addAll(artistSeeds.take(6))
+        selected.addAll(moodSeeds.take(1))
+        values.sortedByDescending { it.weight }.forEach { seed ->
+            if (selected.size < HOME_ALBUM_SEED_LIMIT) selected += seed
+        }
+        return selected.take(HOME_ALBUM_SEED_LIMIT)
+    }
+
+    private fun rankAlbumRecommendations(
+        remote: List<AlbumHit>,
+        instant: List<AlbumHit>,
+        state: LevyraUiState,
+        limit: Int
+    ): List<AlbumHit> {
+        val candidates = mergeAlbums(instant, remote)
+        if (candidates.isEmpty()) return emptyList()
+        val allSeeds = albumRecommendationSeeds(state)
+        val directSeeds = allSeeds.filter { it.artist.isNotBlank() || it.album.isNotBlank() }
+        val scoringSeeds = directSeeds.ifEmpty { allSeeds }
+        if (scoringSeeds.isEmpty()) return candidates.take(limit)
+
+        val ranked = candidates.mapNotNull { album ->
+            val score = scoringSeeds.maxOfOrNull { seed ->
+                val match = albumRecommendationMatchScore(album, seed)
+                if (match == REJECTED_ALBUM_RECOMMENDATION_SCORE) REJECTED_ALBUM_RECOMMENDATION_SCORE
+                else seed.weight + match
+            } ?: REJECTED_ALBUM_RECOMMENDATION_SCORE
+            if (score == REJECTED_ALBUM_RECOMMENDATION_SCORE) null else album to score
+        }.sortedWith(
+            compareByDescending<Pair<AlbumHit, Int>> { it.second }
+                .thenByDescending { it.first.metadataConfidence }
+                .thenBy { recommendationTextKey(it.first.artist) }
+                .thenBy { recommendationTextKey(it.first.title) }
         )
-        val artistSeeds = seedTracks
-            .asSequence()
-            .map { it.artist.trim() }
-            .filter { it.length >= 2 }
-            .filterNot { it.equals("YouTube", ignoreCase = true) || it.equals("YouTube Music", ignoreCase = true) }
-            .distinctBy { it.lowercase() }
-            .take(8)
-            .map { "$it album" }
-            .toList()
-        val albumSeeds = seedTracks
-            .asSequence()
-            .map { it.album.trim() }
-            .filter { it.length >= 2 }
-            .filterNot { it.equals("YouTube", ignoreCase = true) || it.equals("YouTube Music", ignoreCase = true) }
-            .distinctBy { it.lowercase() }
-            .take(4)
-            .map { "$it album" }
-            .toList()
-        val profileSeeds = (state.smartProfile.albumQueries + state.smartProfile.artistQueries).take(10)
-        val moodSeeds = state.selectedMood?.let { mood -> listOf("${mood.title} album") }.orEmpty()
-        return (profileSeeds + artistSeeds + albumSeeds + moodSeeds).distinctBy { it.lowercase() }.take(16)
+        if (ranked.isEmpty()) return emptyList()
+
+        val distinctSeedArtists = directSeeds
+            .map { recommendationTextKey(it.artist) }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .size
+        val maxPerArtist = if (distinctSeedArtists <= 2) 4 else 2
+        val artistCounts = HashMap<String, Int>()
+        val selected = ArrayList<AlbumHit>(limit)
+        ranked.forEach { (album, _) ->
+            if (selected.size >= limit) return@forEach
+            val artistKey = recommendationTextKey(album.artist)
+            val count = artistCounts[artistKey] ?: 0
+            if (count < maxPerArtist) {
+                selected += album
+                artistCounts[artistKey] = count + 1
+            }
+        }
+        if (selected.size < limit) {
+            ranked.asSequence()
+                .map { it.first }
+                .filterNot { candidate -> selected.any { recommendationAlbumKey(it) == recommendationAlbumKey(candidate) } }
+                .take(limit - selected.size)
+                .forEach(selected::add)
+        }
+        return selected
+    }
+
+    private fun isUsefulRecommendationArtist(value: String): Boolean {
+        val key = recommendationTextKey(value)
+        if (key.length < 2) return false
+        return key !in setOf("youtube", "youtube music", "various artists", "artisti vari", "unknown artist")
+    }
+
+    private fun isUsefulRecommendationAlbum(album: String, trackTitle: String): Boolean {
+        val key = recommendationTextKey(album)
+        if (key.length < 2) return false
+        if (key == recommendationTextKey(trackTitle) && trackTitle.isNotBlank()) return false
+        if (key in setOf("youtube", "youtube music", "single", "singolo", "ep")) return false
+        return !key.endsWith(" single") && !key.endsWith(" singolo") && !key.endsWith(" ep")
     }
 
     fun openSettings() {
@@ -1377,9 +1582,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             languageCode = languageCode
         )
         val allTracks = mergeTracks(orbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
-        val instantAlbums = preferences.loadHomeAlbums(languageCode).ifEmpty {
-            instantAlbumRecommendationsFromTracks(orbit + _state.value.recentSearches + _state.value.favorites, allTracks, 10)
-        }
+        val recommendationState = _state.value.copy(
+            languageCode = languageCode,
+            selectedMood = selectedMood,
+            homeSections = homeSections,
+            charts = chartTracks,
+            personalOrbitTracks = orbit,
+            tracks = allTracks
+        )
+        val localAlbums = instantAlbumRecommendations(recommendationState, HOME_ALBUM_RECOMMENDATION_LIMIT)
+        val instantAlbums = rankAlbumRecommendations(
+            remote = preferences.loadHomeAlbums(languageCode),
+            instant = localAlbums,
+            state = recommendationState,
+            limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+        ).ifEmpty { localAlbums }
         val queue = moodEngine.buildQueue(selectedMood, allTracks)
         exploreCache.clear()
         exploreVideosLoaded = false
@@ -3439,17 +3656,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun instantAlbumRecommendations(state: LevyraUiState, limit: Int = 10): List<AlbumHit> {
         return instantAlbumRecommendationsFromTracks(
-            primary = listOfNotNull(state.currentTrack) + state.recentSearches + state.favorites + state.personalOrbitTracks,
-            secondary = state.tracks + state.charts + state.homeSections.flatMap { it.tracks },
-            limit = limit
+            primary = listOfNotNull(state.currentTrack) + state.recentListens + state.favorites + state.recentSearches,
+            secondary = state.personalOrbitTracks + state.tracks + state.homeSections.flatMap { it.tracks } + state.charts,
+            limit = limit,
+            profile = state.smartProfile
         )
     }
 
-    private fun instantAlbumRecommendationsFromTracks(primary: List<Track>, secondary: List<Track>, limit: Int): List<AlbumHit> {
-        val profile = _state.value.smartProfile
-        return mergeTracks(primary, secondary)
+    private fun instantAlbumRecommendationsFromTracks(
+        primary: List<Track>,
+        secondary: List<Track>,
+        limit: Int,
+        profile: SmartMusicProfile = _state.value.smartProfile
+    ): List<AlbumHit> {
+        val primaryCandidates = mergeTracks(emptyList(), primary).filter(::isInstantAlbumCandidate)
+        val candidates = if (primaryCandidates.isNotEmpty()) primaryCandidates else {
+            mergeTracks(emptyList(), secondary).filter(::isInstantAlbumCandidate)
+        }
+        return candidates
             .asSequence()
-            .filter { isInstantAlbumCandidate(it) }
             .sortedWith(compareByDescending<Track> { smartAlbumScore(it.album, it.artist, profile) }.thenByDescending { it.replayScore + it.cacheScore })
             .distinctBy { "${it.album.trim().lowercase()}|${it.artist.trim().lowercase()}" }
             .map { track ->
@@ -3572,7 +3797,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val recent = listeningPulseStore.recentTracks()
             val pulse = listeningPulseEngine.build(events)
             lastListeningPulseRefreshMs = android.os.SystemClock.elapsedRealtime()
-            _state.update { it.copy(listeningPulse = pulse, recentListens = recent) }
+            _state.update { current ->
+                val updated = current.copy(listeningPulse = pulse, recentListens = recent)
+                val localAlbums = instantAlbumRecommendations(updated, HOME_ALBUM_RECOMMENDATION_LIMIT)
+                val rankedAlbums = rankAlbumRecommendations(
+                    remote = current.homeAlbums,
+                    instant = localAlbums,
+                    state = updated,
+                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+                )
+                val hasPersonalSignals = albumRecommendationSeeds(updated).any { it.artist.isNotBlank() || it.album.isNotBlank() }
+                updated.copy(
+                    homeAlbums = when {
+                        rankedAlbums.isNotEmpty() -> rankedAlbums
+                        hasPersonalSignals -> emptyList()
+                        else -> current.homeAlbums
+                    }
+                )
+            }
         }
     }
 
@@ -3600,25 +3842,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch(Dispatchers.IO) {
             val profile = runCatching { block() }.getOrNull() ?: return@launch
             _state.update { current ->
-                val boostedAlbums = boostHomeAlbumsWithSmartProfile(current.homeAlbums, profile)
+                val personalizedState = current.copy(smartProfile = profile)
+                val localAlbums = instantAlbumRecommendations(personalizedState, HOME_ALBUM_RECOMMENDATION_LIMIT)
+                val boostedAlbums = rankAlbumRecommendations(
+                    remote = current.homeAlbums,
+                    instant = localAlbums,
+                    state = personalizedState,
+                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+                )
+                val hasPersonalSignals = albumRecommendationSeeds(personalizedState).any { it.artist.isNotBlank() || it.album.isNotBlank() }
                 current.copy(
                     smartProfile = profile,
-                    homeAlbums = if (boostedAlbums.isNotEmpty()) boostedAlbums else current.homeAlbums
+                    homeAlbums = when {
+                        boostedAlbums.isNotEmpty() -> boostedAlbums
+                        hasPersonalSignals -> emptyList()
+                        else -> current.homeAlbums
+                    }
                 )
             }
         }
     }
 
-    private fun boostHomeAlbumsWithSmartProfile(albums: List<AlbumHit>, profile: SmartMusicProfile): List<AlbumHit> {
-        if (albums.isEmpty()) return albums
-        return albums.sortedByDescending { album -> smartAlbumScore(album.title, album.artist, profile) }.take(12)
-    }
-
     private fun smartAlbumScore(albumTitle: String, artistName: String, profile: SmartMusicProfile): Int {
-        val album = albumTitle.trim().lowercase()
-        val artist = artistName.trim().lowercase()
-        val albumScore = profile.topAlbums.firstOrNull { seed -> seed.label.lowercase().contains(album) && (artist.isBlank() || seed.label.lowercase().contains(artist)) }?.weight ?: 0
-        val artistScore = profile.topArtists.firstOrNull { seed -> seed.label.lowercase() == artist }?.weight ?: 0
+        val album = recommendationTextKey(albumTitle)
+        val artist = recommendationTextKey(artistName)
+        val albumScore = profile.topAlbums.firstOrNull { seed ->
+            val label = recommendationTextKey(seed.label)
+            album.isNotBlank() && label.contains(album) && (artist.isBlank() || label.contains(artist))
+        }?.weight ?: 0
+        val artistScore = profile.topArtists.firstOrNull { seed -> recommendationTextKey(seed.label) == artist }?.weight ?: 0
         return albumScore * 3 + artistScore * 2
     }
 
@@ -3630,6 +3882,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
+        private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
+        private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
+        private const val HOME_ALBUM_SEED_LIMIT = 12
         private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 16
         private const val OFFICIAL_METADATA_CONCURRENCY = 3
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
@@ -3659,6 +3914,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         queueEngine.updatePosition(player.positionMs)
         player.release()
         searchJob?.cancel()
+        homeAlbumsJob?.cancel()
         super.onCleared()
     }
 }
