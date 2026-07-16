@@ -2012,6 +2012,9 @@ private fun ArtistOverlay(
                             onClose = onClose
                         )
                     }
+                    if (artist.hasBio) {
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistBio(artist.bio) } }
+                    }
                     if (artist.topSongs.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.popularTracks) } }
                         items(artist.topSongs, key = { "artist-song-${it.id}" }) { track ->
@@ -2040,8 +2043,23 @@ private fun ArtistOverlay(
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.singlesAndEps) } }
                         item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(artist.singles, artist.name, onOpenRelease) } }
                     }
-                    if (artist.hasBio) {
-                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistBio(artist.bio) } }
+                    if (artist.videos.isNotEmpty()) {
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.video) } }
+                        item {
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
+                            ) {
+                                items(artist.videos.take(20), key = { "artist-video-${it.id}" }) { track ->
+                                    VideoGlassCard(
+                                        track = track,
+                                        isCurrent = track.id == state.currentTrack?.id,
+                                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                        onClick = { onPlay(track) }
+                                    )
+                                }
+                            }
+                        }
                     }
                     if (artist.relatedArtists.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.similarArtists) } }
@@ -4034,8 +4052,21 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    val trendingArtists = remember(state.tracks, state.homeSections, state.charts, state.favorites) {
-        buildTrendingArtists(state)
+    val homeArtistFingerprint = remember(state.tracks, state.homeSections, state.charts, state.favorites, state.languageCode) {
+        buildString {
+            append(state.languageCode)
+            append('|')
+            append(state.charts.take(14).joinToString(",") { it.artist })
+            append('|')
+            append(state.homeSections.flatMap { it.tracks }.take(20).joinToString(",") { it.artist })
+            append('|')
+            append(state.tracks.take(14).joinToString(",") { it.artist })
+            append('|')
+            append(state.favorites.take(14).joinToString(",") { it.artist })
+        }
+    }
+    LaunchedEffect(homeArtistFingerprint) {
+        viewModel.refreshHomeArtists()
     }
     val personalTracks = remember(state.personalOrbitTracks) {
         state.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -4220,11 +4251,11 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 }
             }
         }
-        if (state.interfaceSettings.showTrendingArtists && trendingArtists.isNotEmpty()) {
+        if (state.interfaceSettings.showTrendingArtists && state.homeArtists.isNotEmpty()) {
             item(key = "home-trending-artists", contentType = "home-shelf") {
                 TrendingArtistsShelf(
-                    artists = trendingArtists,
-                    onArtistClick = viewModel::openArtistByName
+                    artists = state.homeArtists,
+                    onArtistClick = viewModel::openArtistFromHit
                 )
             }
         }
@@ -4390,22 +4421,6 @@ private fun pickHeroUpdate(state: LevyraUiState): HomeHeroUpdate? {
         ?: state.currentTrack?.let { HomeHeroUpdate(it, it.source.ifBlank { "YouTube Music" }, false) }
 }
 
-private data class TrendingArtist(val name: String, val imageUrl: String)
-
-private fun buildTrendingArtists(state: LevyraUiState): List<TrendingArtist> {
-    val allTracks = buildList {
-        addAll(state.charts)
-        addAll(state.homeSections.flatMap { it.tracks })
-        addAll(state.tracks)
-        addAll(state.favorites)
-    }
-    return allTracks
-        .filter { it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() && !it.artist.contains("Unknown", ignoreCase = true) }
-        .distinctBy { it.artist }
-        .take(10)
-        .map { TrendingArtist(name = it.artist, imageUrl = it.thumbnailUrl) }
-}
-
 @Composable
 private fun StableRemoteArtwork(
     url: String,
@@ -4434,8 +4449,8 @@ private fun StableRemoteArtwork(
 
 @Composable
 private fun TrendingArtistsShelf(
-    artists: List<TrendingArtist>,
-    onArtistClick: (String) -> Unit
+    artists: List<ArtistHit>,
+    onArtistClick: (ArtistHit) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -4466,7 +4481,7 @@ private fun TrendingArtistsShelf(
         ) {
             items(
                 items = artists,
-                key = { it.name },
+                key = { it.browseId.ifBlank { it.name } },
                 contentType = { "trending-artist" }
             ) { artist ->
                 Column(
@@ -4476,7 +4491,7 @@ private fun TrendingArtistsShelf(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { onArtistClick(artist.name) }
+                            onClick = { onArtistClick(artist) }
                         )
                 ) {
                     Box(
@@ -4494,15 +4509,24 @@ private fun TrendingArtistsShelf(
                             .padding(2.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        StableRemoteArtwork(
-                            url = artist.imageUrl,
-                            contentDescription = artist.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .background(CinematicGlassDeep)
-                        )
+                        if (artist.thumbnailUrl.isNotBlank()) {
+                            StableRemoteArtwork(
+                                url = artist.thumbnailUrl,
+                                contentDescription = artist.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                                    .background(CinematicGlassDeep)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Person,
+                                contentDescription = artist.name,
+                                tint = LevyraText,
+                                modifier = Modifier.size(34.dp)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
