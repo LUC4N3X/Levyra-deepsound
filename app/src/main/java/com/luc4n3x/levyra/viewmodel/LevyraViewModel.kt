@@ -43,6 +43,7 @@ import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
@@ -110,6 +111,11 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
+
+private data class HomeArtistCandidate(
+    val name: String,
+    val browseId: String
+)
 
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
@@ -631,25 +637,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             addAll(snapshot.favorites)
         }
             .asSequence()
-            .map { it.artist.trim() }
-            .filter { it.length >= 2 }
-            .filterNot { it.contains("unknown", ignoreCase = true) }
-            .filterNot { it.equals("YouTube", ignoreCase = true) || it.equals("YouTube Music", ignoreCase = true) }
-            .distinctBy(::artistIdentityKey)
+            .map { track ->
+                val browseIds = track.artistBrowseIds.filter { it.isNotBlank() }
+                val displayName = if (browseIds.size == 1) {
+                    track.artist.trim()
+                } else {
+                    primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
+                }
+                HomeArtistCandidate(
+                    name = displayName,
+                    browseId = browseIds.firstOrNull().orEmpty().trim()
+                )
+            }
+            .filter { it.name.length >= 2 }
+            .filterNot { it.name.contains("unknown", ignoreCase = true) }
+            .filterNot {
+                it.name.equals("YouTube", ignoreCase = true) ||
+                    it.name.equals("YouTube Music", ignoreCase = true)
+            }
+            .distinctBy { candidate ->
+                candidate.browseId
+                    .takeIf { it.isNotBlank() }
+                    ?.lowercase()
+                    ?: artistIdentityKey(candidate.name)
+            }
             .take(14)
             .toList()
+
         val fingerprint = buildString {
             append(snapshot.languageCode)
             append('|')
-            append(candidates.joinToString("|") { artistIdentityKey(it) })
+            append(
+                candidates.joinToString("|") { candidate ->
+                    candidate.browseId.ifBlank { artistIdentityKey(candidate.name) }
+                }
+            )
         }
+
         if (fingerprint == homeArtistsFingerprint && (snapshot.homeArtists.isNotEmpty() || candidates.isEmpty())) return
         homeArtistsFingerprint = fingerprint
         homeArtistsJob?.cancel()
+
         if (candidates.isEmpty()) {
             _state.update { it.copy(homeArtists = emptyList()) }
             return
         }
+
         homeArtistsJob = viewModelScope.launch {
             awaitHomeUiIdle()
             val semaphore = Semaphore(3)
@@ -657,22 +690,51 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 candidates.map { candidate ->
                     async {
                         semaphore.withPermit {
-                            runCatching { artistRepository.artistHitFor(candidate) }.getOrNull()
+                            if (candidate.browseId.isNotBlank()) {
+                                val profile = runCatching {
+                                    artistRepository.profile(candidate.browseId, candidate.name)
+                                }.getOrNull()
+                                profile?.let { resolvedProfile ->
+                                    ArtistHit(
+                                        name = resolvedProfile.name,
+                                        subscribers = resolvedProfile.subscribers,
+                                        thumbnailUrl = resolvedProfile.thumbnailUrl,
+                                        accentStart = resolvedProfile.accentStart,
+                                        accentEnd = resolvedProfile.accentEnd,
+                                        browseId = resolvedProfile.browseId
+                                    )
+                                } ?: runCatching {
+                                    artistRepository.artistHitFor(candidate.name)
+                                }.getOrNull()
+                            } else {
+                                runCatching {
+                                    artistRepository.artistHitFor(candidate.name)
+                                }.getOrNull()
+                            }
                         }
                     }
                 }.awaitAll()
             }
+
             if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
+
             val artists = resolvedArtists
                 .filterNotNull()
-                .filter { it.name.isNotBlank() }
+                .filter { it.name.isNotBlank() && it.thumbnailUrl.isNotBlank() }
                 .distinctBy { hit ->
-                    hit.browseId.takeIf { it.isNotBlank() }?.lowercase() ?: artistIdentityKey(hit.name)
+                    hit.browseId
+                        .takeIf { it.isNotBlank() }
+                        ?.lowercase()
+                        ?: artistIdentityKey(hit.name)
                 }
                 .take(10)
+
             _state.update { current ->
-                if (homeArtistsFingerprint != fingerprint || current.homeArtists == artists) current
-                else current.copy(homeArtists = artists)
+                if (homeArtistsFingerprint != fingerprint || current.homeArtists == artists) {
+                    current
+                } else {
+                    current.copy(homeArtists = artists)
+                }
             }
         }
     }
