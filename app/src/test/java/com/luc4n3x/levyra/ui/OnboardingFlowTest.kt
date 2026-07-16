@@ -29,4 +29,11 @@ class OnboardingFlowTest {
         assertFalse(onboardingPrimaryEnabled(OnboardingStep.Taste, selectedTasteCount = 2))
         assertTrue(onboardingPrimaryEnabled(OnboardingStep.Taste, selectedTasteCount = 3))
     }
+
+    @Test
+    fun `profile name is preserved exactly as entered`() {
+        listOf("e.e. cummings", " lowercase", "iPhone DJ", "Élodie", "").forEach { input ->
+            assertEquals(input, preserveProfileNameInput(input))
+        }
+    }
 }
