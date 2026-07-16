@@ -2007,6 +2007,9 @@ private fun ArtistOverlay(
                             onClose = onClose
                         )
                     }
+                    if (profile.hasBio) {
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistBio(profile.bio) } }
+                    }
                     if (profile.topSongs.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.popularTracks) } }
                         items(profile.topSongs, key = { "artist-song-${it.id}" }) { track ->
@@ -2034,9 +2037,6 @@ private fun ArtistOverlay(
                     if (profile.singles.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.singlesAndEps) } }
                         item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(profile.singles, profile.name, onOpenRelease) } }
-                    }
-                    if (profile.hasBio) {
-                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistBio(profile.bio) } }
                     }
                     if (profile.relatedArtists.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.similarArtists) } }
