@@ -24,7 +24,21 @@ data class Track(
     val videoStreamUrl: String = "",
     val sponsorSegments: List<SponsorSegment> = emptyList(),
     val youtubeLoudnessDb: Float? = null,
-    val youtubePerceptualLoudnessDb: Float? = null
+    val youtubePerceptualLoudnessDb: Float? = null,
+    val isrc: String = "",
+    val upc: String = "",
+    val releaseDate: String = "",
+    val year: String = "",
+    val trackNumber: Int = 0,
+    val discNumber: Int = 0,
+    val explicit: Boolean = false,
+    val albumBrowseId: String = "",
+    val artistBrowseIds: List<String> = emptyList(),
+    val counterpartVideoId: String = "",
+    val videoType: String = "",
+    val metadataProvider: String = "",
+    val metadataConfidence: Int = 0,
+    val canonicalAlbumUrl: String = ""
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()
@@ -267,7 +281,17 @@ data class ArtistProfile(
     val singles: List<ArtistRelease>,
     val accentStart: Int,
     val accentEnd: Int,
-    val relatedArtists: List<ArtistHit> = emptyList()
+    val relatedArtists: List<ArtistHit> = emptyList(),
+    val videos: List<Track> = emptyList(),
+    val shufflePlaylistId: String = "",
+    val radioPlaylistId: String = "",
+    val songsBrowseId: String = "",
+    val albumsBrowseId: String = "",
+    val albumsParams: String = "",
+    val singlesBrowseId: String = "",
+    val singlesParams: String = "",
+    val videosBrowseId: String = "",
+    val videosParams: String = ""
 ) {
     val hasBio: Boolean
         get() = bio.isNotBlank()
@@ -295,7 +319,10 @@ data class ArtistRelease(
     val title: String,
     val subtitle: String,
     val thumbnailUrl: String,
-    val year: String
+    val year: String,
+    val params: String = "",
+    val playlistId: String = "",
+    val explicit: Boolean = false
 )
 
 data class DownloadedTrack(
@@ -317,7 +344,8 @@ data class ArtistHit(
     val subscribers: String,
     val thumbnailUrl: String,
     val accentStart: Int,
-    val accentEnd: Int
+    val accentEnd: Int,
+    val browseId: String = ""
 )
 
 data class AlbumHit(
@@ -327,13 +355,23 @@ data class AlbumHit(
     val thumbnailUrl: String,
     val query: String,
     val browseId: String = "",
-    val artistBrowseId: String = ""
+    val artistBrowseId: String = "",
+    val audioPlaylistId: String = "",
+    val explicit: Boolean = false,
+    val releaseDate: String = "",
+    val upc: String = "",
+    val canonicalUrl: String = "",
+    val metadataProvider: String = "",
+    val metadataConfidence: Int = 0
 )
 
 data class AlbumDetail(
     val album: AlbumHit,
     val description: String,
-    val tracks: List<Track>
+    val tracks: List<Track>,
+    val otherVersions: List<AlbumHit> = emptyList(),
+    val trackCount: Int = tracks.size,
+    val durationMs: Long = tracks.sumOf { it.durationMs }
 )
 
 data class SearchResults(
