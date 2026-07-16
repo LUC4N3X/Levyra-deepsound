@@ -2634,6 +2634,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     title = track.title,
                     artist = track.artist,
                     durationSec = track.durationMs / 1000L,
+                    album = track.album,
                     videoId = youtubePlayableTrack(track)?.id.orEmpty(),
                     languageCode = _state.value.languageCode,
                     translate = _state.value.lyricsTranslationEnabled
@@ -2713,6 +2714,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         title = track.title,
                         artist = track.artist,
                         durationSec = track.durationMs / 1_000L,
+                        album = track.album,
                         videoId = youtubePlayableTrack(track)?.id.orEmpty(),
                         languageCode = languageCode,
                         translate = translate
