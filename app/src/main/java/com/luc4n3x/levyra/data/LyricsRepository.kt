@@ -1,8 +1,13 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.data.local.LyricsCacheDao
+import com.luc4n3x.levyra.data.local.LyricsCacheEntity
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LyricLine
+import com.luc4n3x.levyra.domain.LyricSection
+import com.luc4n3x.levyra.domain.LyricSectionType
 import com.luc4n3x.levyra.domain.LyricVocalRole
 import com.luc4n3x.levyra.domain.LyricWord
 import java.io.File
@@ -17,10 +22,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import okhttp3.Call
 import okhttp3.Callback
@@ -32,13 +42,20 @@ import timber.log.Timber
 
 class LyricsRepository(context: Context? = null) {
     private val appContext = context?.applicationContext
-    private val cacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
+    private val lyricsCacheDao: LyricsCacheDao? = appContext?.let { LevyraDatabase.get(it).lyricsCacheDao() }
+    private val legacyCacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
     private val youtubeTranscript = appContext?.let(::YoutubeTranscriptLyricsProvider)
     private val youtubeMusic = YoutubeMusicWatchRepository(appContext)
+    private val lyricsPlusClient = LevyraHttpClientFactory.media(appContext).newBuilder()
+        .connectTimeout(3, TimeUnit.SECONDS)
+        .readTimeout(4, TimeUnit.SECONDS)
+        .callTimeout(5, TimeUnit.SECONDS)
+        .build()
+    private val lyricsPlus = LyricsPlusProvider(lyricsPlusClient)
     private val memoryLock = Any()
     private val negativeLock = Any()
-    private val memory = object : LinkedHashMap<String, LyricsResult>(MEMORY_CACHE_SIZE + 1, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, LyricsResult>?): Boolean = size > MEMORY_CACHE_SIZE
+    private val memory = object : LinkedHashMap<String, MemoryEntry>(MEMORY_CACHE_SIZE + 1, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, MemoryEntry>?): Boolean = size > MEMORY_CACHE_SIZE
     }
     private val negativeCache = object : LinkedHashMap<String, Long>(NEGATIVE_CACHE_SIZE + 1, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>?): Boolean = size > NEGATIVE_CACHE_SIZE
@@ -54,7 +71,33 @@ class LyricsRepository(context: Context? = null) {
         val lines: List<LyricLine>,
         val provider: String,
         val confidence: Int,
-        val cached: Boolean
+        val cached: Boolean,
+        val sections: List<LyricSection> = emptyList()
+    )
+
+    private data class QuerySpec(
+        val requestedTitle: String,
+        val requestedArtist: String,
+        val album: String,
+        val queryTitle: String,
+        val queryArtist: String,
+        val durationSec: Long,
+        val videoId: String,
+        val languageCode: String,
+        val translate: Boolean,
+        val key: String
+    )
+
+    private data class MemoryEntry(
+        val result: LyricsResult,
+        val updatedAt: Long,
+        val expiresAt: Long
+    )
+
+    private data class CacheLookup(
+        val result: LyricsResult? = null,
+        val negative: Boolean = false,
+        val refreshRequired: Boolean = true
     )
 
     private data class ProviderAttempt(
@@ -63,8 +106,8 @@ class LyricsRepository(context: Context? = null) {
         val hadTransientFailure: Boolean = false
     )
 
-    private data class PreferredFetch(
-        val result: LyricsResult?,
+    private data class NetworkOutcome(
+        val best: LyricsResult?,
         val attempted: Boolean,
         val hadTransientFailure: Boolean
     )
@@ -75,94 +118,118 @@ class LyricsRepository(context: Context? = null) {
         data object Failure : HttpGetResult
     }
 
+    fun observe(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String = "",
+        videoId: String = "",
+        languageCode: String = "",
+        translate: Boolean = false
+    ): Flow<LyricsResult> = channelFlow {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return@channelFlow
+        var current: LyricsResult? = null
+        val cached = readCached(query)
+        cached.result?.let { result ->
+            current = result.copy(cached = true)
+            send(current!!)
+        }
+        if (cached.negative) return@channelFlow
+        if (!cached.refreshRequired) return@channelFlow
+
+        val outcome = fetchNetworkProgressive(query) { candidate ->
+            val previous = current
+            if (shouldUpgrade(previous, candidate)) {
+                val stable = candidate.copy(cached = false)
+                current = stable
+                memoryPut(query.key, stable, System.currentTimeMillis())
+                persistPositive(query, stable)
+                send(stable)
+            }
+        }
+
+        val final = outcome.best
+        if (final != null && shouldUpgrade(current, final)) {
+            val stable = final.copy(cached = false)
+            current = stable
+            memoryPut(query.key, stable, System.currentTimeMillis())
+            persistPositive(query, stable)
+            send(stable)
+        } else if (final != null && current != null) {
+            persistPositive(query, current!!.copy(cached = false))
+        }
+
+        if (current == null && outcome.attempted && !outcome.hadTransientFailure) {
+            persistNegative(query)
+        }
+    }.flowOn(Dispatchers.IO)
+
     suspend fun fetch(
         title: String,
         artist: String,
         durationSec: Long,
+        album: String = "",
         videoId: String = "",
         languageCode: String = "",
         translate: Boolean = false
-    ): LyricsResult? = withContext(Dispatchers.IO) {
-        val queryTitle = cleanTitle(title)
-        val queryArtist = cleanArtist(artist)
-        val requestedTitle = title.trim().ifBlank { queryTitle }
-        val requestedArtist = artist.trim().ifBlank { queryArtist }
-        if (queryTitle.length < 2) return@withContext null
-        val key = cacheKey(requestedTitle, requestedArtist, durationSec, videoId, languageCode, translate)
-        memoryGet(key)?.let { return@withContext it.copy(cached = true) }
-        readCache(key)?.let { cached ->
-            memoryPut(key, cached)
-            return@withContext cached
-        }
-        if (isNegativeCached(key)) return@withContext null
+    ): LyricsResult? = observe(title, artist, durationSec, album, videoId, languageCode, translate).lastOrNull()
 
-        val request = LyricsRequest(requestedTitle, requestedArtist, durationSec)
-        val preferred = fetchPreferredCandidate(
-            request = request,
-            queryTitle = queryTitle,
-            queryArtist = queryArtist,
-            requestedTitle = requestedTitle,
-            requestedArtist = requestedArtist,
-            durationSec = durationSec,
-            videoId = videoId,
-            languageCode = languageCode,
-            translate = translate
-        )
-        val fallback = if (preferred.result == null && queryArtist.length >= 2) {
-            lyricsOvh(queryTitle, queryArtist)
-        } else {
-            ProviderAttempt()
-        }
-        val best = preferred.result ?: fallback.candidates.firstOrNull()?.result
-        val normalized = best
-            ?.let { normalizeTiming(it, durationSec) }
-            ?.let(::cleanAndEnrich)
-            ?.takeIf { it.lines.isNotEmpty() }
-
-        if (normalized == null) {
-            val allAttemptedProvidersCompleted = preferred.attempted &&
-                !preferred.hadTransientFailure &&
-                fallback.attempted &&
-                !fallback.hadTransientFailure
-            if (allAttemptedProvidersCompleted) negativePut(key)
-            return@withContext null
-        }
-
-        val stable = normalized.copy(cached = false)
-        memoryPut(key, stable)
-        writeCache(key, stable)
-        stable
+    suspend fun prefetch(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String = "",
+        videoId: String = "",
+        languageCode: String = "",
+        translate: Boolean = false
+    ) {
+        observe(title, artist, durationSec, album, videoId, languageCode, translate).collect { }
     }
 
-    private suspend fun fetchPreferredCandidate(
-        request: LyricsRequest,
-        queryTitle: String,
-        queryArtist: String,
-        requestedTitle: String,
-        requestedArtist: String,
-        durationSec: Long,
-        videoId: String,
-        languageCode: String,
-        translate: Boolean
-    ): PreferredFetch = supervisorScope {
+    private suspend fun fetchNetworkProgressive(
+        query: QuerySpec,
+        onCandidate: suspend (LyricsResult) -> Unit
+    ): NetworkOutcome = supervisorScope {
+        val request = LyricsRequest(query.requestedTitle, query.requestedArtist, query.durationSec)
         val tasks = ArrayList<Deferred<ProviderAttempt>>()
-        if (videoId.isNotBlank()) {
+        if (query.videoId.isNotBlank()) {
             tasks += async {
-                youtubeMusicAttempt(videoId, languageCode, requestedTitle, requestedArtist, durationSec)
+                providerWithin(YOUTUBE_MUSIC_TIMEOUT_MS) {
+                    youtubeMusicAttempt(
+                        query.videoId,
+                        query.languageCode,
+                        query.requestedTitle,
+                        query.requestedArtist,
+                        query.durationSec
+                    )
+                }
             }
             tasks += async {
-                transcriptAttempt(videoId, requestedTitle, requestedArtist, durationSec, languageCode, translate)
+                providerWithin(TRANSCRIPT_TIMEOUT_MS) {
+                    transcriptAttempt(
+                        query.videoId,
+                        query.requestedTitle,
+                        query.requestedArtist,
+                        query.durationSec,
+                        query.languageCode,
+                        query.translate
+                    )
+                }
             }
         }
-        if (queryArtist.length >= 2) {
-            tasks += async { getLrcLibExact(queryTitle, queryArtist, durationSec) }
-            tasks += async { searchLrcLib(queryTitle, queryArtist) }
+        if (query.queryArtist.length >= 2) {
+            tasks += async { providerWithin(FAST_PROVIDER_TIMEOUT_MS) { getLrcLibExact(query.queryTitle, query.queryArtist, query.durationSec) } }
+            tasks += async { providerWithin(FAST_PROVIDER_TIMEOUT_MS) { searchLrcLib(query.queryTitle, query.queryArtist) } }
+            tasks += async { providerWithin(LYRICS_PLUS_TIMEOUT_MS) { lyricsPlusMirrorAttempt(query) } }
+            tasks += async { providerWithin(LYRICS_PLUS_TIMEOUT_MS) { binimumAttempt(query) } }
+            tasks += async { providerWithin(FAST_PROVIDER_TIMEOUT_MS) { lyricsOvh(query.queryTitle, query.queryArtist) } }
         }
-        if (tasks.isEmpty()) return@supervisorScope PreferredFetch(null, attempted = false, hadTransientFailure = false)
+        if (tasks.isEmpty()) return@supervisorScope NetworkOutcome(null, attempted = false, hadTransientFailure = false)
 
         val candidates = ArrayList<LyricsCandidate>()
         var attempted = false
         var hadTransientFailure = false
+        var emitted: LyricsResult? = null
         while (tasks.isNotEmpty()) {
             val completed = select<Pair<Deferred<ProviderAttempt>, ProviderAttempt>> {
                 tasks.forEach { task ->
@@ -173,14 +240,103 @@ class LyricsRepository(context: Context? = null) {
             val attempt = completed.second
             attempted = attempted || attempt.attempted
             hadTransientFailure = hadTransientFailure || attempt.hadTransientFailure
-            candidates += attempt.candidates
+            attempt.candidates.mapNotNullTo(candidates) { prepareCandidate(it, query.durationSec) }
             val best = LyricsResultRanker.best(candidates, request)
-            if (best != null && isFastPathAcceptable(best)) {
-                tasks.forEach { it.cancel() }
-                return@supervisorScope PreferredFetch(best, attempted, hadTransientFailure)
+            if (best != null && best.confidence >= INSTANT_MIN_CONFIDENCE && shouldUpgrade(emitted, best)) {
+                emitted = best
+                onCandidate(best)
             }
         }
-        PreferredFetch(LyricsResultRanker.best(candidates, request), attempted, hadTransientFailure)
+
+        val best = LyricsResultRanker.best(candidates, request)
+        NetworkOutcome(best, attempted, hadTransientFailure)
+    }
+
+
+    private suspend fun providerWithin(
+        timeoutMs: Long,
+        block: suspend () -> ProviderAttempt
+    ): ProviderAttempt = withTimeoutOrNull(timeoutMs) { block() }
+        ?: ProviderAttempt(attempted = true, hadTransientFailure = true)
+
+    private suspend fun lyricsPlusMirrorAttempt(query: QuerySpec): ProviderAttempt {
+        val outcome = lyricsPlus.fetchMirrors(
+            title = query.queryTitle,
+            artist = query.queryArtist,
+            album = query.album,
+            durationSec = query.durationSec
+        )
+        return outcome.toProviderAttempt()
+    }
+
+    private suspend fun binimumAttempt(query: QuerySpec): ProviderAttempt {
+        val outcome = lyricsPlus.fetchBinimum(
+            title = query.queryTitle,
+            artist = query.queryArtist,
+            album = query.album,
+            durationSec = query.durationSec
+        )
+        return outcome.toProviderAttempt()
+    }
+
+    private fun LyricsPlusProviderOutcome.toProviderAttempt(): ProviderAttempt {
+        val candidates = results.map { result ->
+            LyricsCandidate(
+                result = LyricsResult(
+                    synced = result.synced,
+                    lines = result.lines,
+                    provider = result.provider,
+                    confidence = result.confidence,
+                    cached = false
+                ),
+                title = result.title,
+                artist = result.artist,
+                durationSec = result.durationSec
+            )
+        }
+        return ProviderAttempt(
+            candidates = candidates,
+            attempted = attempted,
+            hadTransientFailure = hadTransientFailure
+        )
+    }
+
+    private fun prepareCandidate(candidate: LyricsCandidate, durationSec: Long): LyricsCandidate? {
+        val normalized = normalizeTiming(candidate.result, durationSec)
+        val enriched = cleanAndEnrich(normalized)
+        if (enriched.lines.isEmpty()) return null
+        return candidate.copy(result = enriched)
+    }
+
+    internal fun shouldUpgrade(previous: LyricsResult?, current: LyricsResult): Boolean {
+        if (current.lines.isEmpty()) return false
+        if (previous == null) return true
+        if (sameResult(previous, current)) {
+            return current.confidence > previous.confidence ||
+                (current.confidence == previous.confidence && previous.cached && !current.cached)
+        }
+        val previousWordTimed = previous.lines.any { it.words.isNotEmpty() }
+        val currentWordTimed = current.lines.any { it.words.isNotEmpty() }
+        if (currentWordTimed && !previousWordTimed && current.confidence >= previous.confidence - 5) return true
+        if (current.synced && !previous.synced && current.confidence >= previous.confidence - 3) return true
+        if (current.sections.size > previous.sections.size && current.confidence >= previous.confidence) return true
+        if (current.lines.any { it.translated.isNotBlank() } && previous.lines.none { it.translated.isNotBlank() } && current.confidence >= previous.confidence) return true
+        return current.confidence >= previous.confidence + MIN_QUALITY_UPGRADE
+    }
+
+    private fun sameResult(left: LyricsResult, right: LyricsResult): Boolean {
+        if (left.synced != right.synced || left.lines.size != right.lines.size || left.sections != right.sections) return false
+        return left.lines.zip(right.lines).all { (first, second) ->
+            first.startMs == second.startMs &&
+                first.endMs == second.endMs &&
+                first.text.equals(second.text, ignoreCase = true) &&
+                first.translated == second.translated &&
+                first.romanized == second.romanized &&
+                first.role == second.role &&
+                first.isInstrumental == second.isInstrumental &&
+                first.isMetadata == second.isMetadata &&
+                first.words == second.words
+        }
     }
 
     private suspend fun youtubeMusicAttempt(
@@ -229,12 +385,6 @@ class LyricsRepository(context: Context? = null) {
         }
     }
 
-    private fun isFastPathAcceptable(result: LyricsResult): Boolean {
-        if (result.lines.isEmpty()) return false
-        if (result.synced && result.confidence >= FAST_SYNCED_CONFIDENCE) return true
-        return result.confidence >= FAST_PLAIN_CONFIDENCE
-    }
-
     private suspend fun fetchTranscriptCandidate(
         videoId: String,
         title: String,
@@ -244,8 +394,7 @@ class LyricsRepository(context: Context? = null) {
         translate: Boolean
     ): LyricsCandidate? {
         if (videoId.isBlank()) return null
-        val transcript = runCatching { youtubeTranscript?.fetch(videoId, languageCode, translate) }
-            .getOrNull()
+        val transcript = youtubeTranscript?.fetch(videoId, languageCode, translate)
             ?.takeIf { it.lines.isNotEmpty() }
             ?: return null
         val provider = buildString {
@@ -383,7 +532,7 @@ class LyricsRepository(context: Context? = null) {
         val request = Request.Builder()
             .url(url)
             .header("Accept", accept)
-            .header("User-Agent", "LEVYRA Lyrics Engine/3.3 Android")
+            .header("User-Agent", "LEVYRA Lyrics Engine/3.4 Android")
             .get()
             .build()
         return suspendCancellableCoroutine { continuation ->
@@ -418,14 +567,226 @@ class LyricsRepository(context: Context? = null) {
         }
     }
 
-    private fun readCache(key: String): LyricsResult? {
-        val dir = cacheDir ?: return null
-        val file = File(dir, "$key.json")
-        if (!file.isFile || System.currentTimeMillis() - file.lastModified() > CACHE_TTL_MS) return null
+    private suspend fun readCached(query: QuerySpec): CacheLookup {
+        val now = System.currentTimeMillis()
+        memoryGet(query.key)?.let { entry ->
+            if (entry.expiresAt >= now - STALE_CACHE_TTL_MS) {
+                return CacheLookup(
+                    result = entry.result.copy(cached = true),
+                    refreshRequired = shouldRefresh(entry.result, entry.updatedAt, entry.expiresAt, now)
+                )
+            }
+            memoryRemove(query.key)
+        }
+        if (isNegativeCached(query.key)) return CacheLookup(negative = true, refreshRequired = false)
+
+        val dao = lyricsCacheDao
+        if (dao != null) {
+            suspend fun restore(entity: LyricsCacheEntity): CacheLookup? {
+                if (entity.expiresAt < now - STALE_CACHE_TTL_MS) {
+                    runCatching { dao.delete(entity.cacheKey) }
+                    return null
+                }
+                val result = deserializeResult(entity.payload)?.copy(
+                    synced = entity.synced,
+                    provider = entity.provider,
+                    confidence = entity.confidence,
+                    cached = true
+                )
+                if (result == null || result.lines.isEmpty()) {
+                    runCatching { dao.delete(entity.cacheKey) }
+                    return null
+                }
+                memoryPut(query.key, result, entity.updatedAt, entity.expiresAt)
+                if (now - entity.lastAccessedAt >= ACCESS_TOUCH_INTERVAL_MS) {
+                    runCatching { dao.touch(entity.cacheKey, now) }
+                }
+                return CacheLookup(
+                    result = result,
+                    refreshRequired = shouldRefresh(result, entity.updatedAt, entity.expiresAt, now)
+                )
+            }
+
+            val exact = runCatching { dao.get(query.key) }.getOrNull()
+            if (exact?.negative == true) {
+                if (exact.expiresAt > now) {
+                    negativePut(query.key, exact.expiresAt)
+                    return CacheLookup(negative = true, refreshRequired = false)
+                }
+                runCatching { dao.delete(exact.cacheKey) }
+            } else if (exact != null) {
+                restore(exact)?.let { return it }
+            }
+
+            val titleKey = LyricsMatcher.normalize(query.requestedTitle)
+            val artistKey = LyricsMatcher.normalize(query.requestedArtist)
+            val durationBucket = query.durationSec.coerceAtLeast(0L) / 5L
+            if (titleKey.isNotBlank() && artistKey.isNotBlank()) {
+                val alias = runCatching {
+                    dao.findBestPositive(
+                        titleKey = titleKey,
+                        artistKey = artistKey,
+                        durationBucket = durationBucket,
+                        minimumDurationBucket = (durationBucket - 1L).coerceAtLeast(0L),
+                        maximumDurationBucket = durationBucket + 1L,
+                        languageCode = query.languageCode.lowercase(Locale.ROOT),
+                        translate = query.translate
+                    )
+                }.getOrNull()
+                if (alias != null && alias.cacheKey != query.key) {
+                    restore(alias)?.let { return it }
+                }
+            }
+        }
+
+        val legacy = readLegacyCache(query.key)
+        if (legacy != null) {
+            val enriched = cleanAndEnrich(legacy)
+            if (enriched.lines.isNotEmpty()) {
+                persistPositive(query, enriched)
+                memoryPut(query.key, enriched, now)
+                File(legacyCacheDir, "${query.key}.json").delete()
+                return CacheLookup(result = enriched.copy(cached = true), refreshRequired = true)
+            }
+        }
+        return CacheLookup()
+    }
+
+    private fun shouldRefresh(result: LyricsResult, updatedAt: Long, expiresAt: Long, now: Long): Boolean {
+        if (expiresAt <= now) return true
+        if (now - updatedAt >= CACHE_REFRESH_INTERVAL_MS) return true
+        if (!result.synced || result.confidence < QUALITY_REFRESH_THRESHOLD) return true
+        return result.lines.none { it.words.isNotEmpty() } && now - updatedAt >= WORD_TIMING_REFRESH_INTERVAL_MS
+    }
+
+    private suspend fun persistPositive(query: QuerySpec, result: LyricsResult) {
+        val dao = lyricsCacheDao ?: return
+        val now = System.currentTimeMillis()
+        val existingCreatedAt = runCatching { dao.get(query.key)?.createdAt }.getOrNull() ?: now
+        val entity = LyricsCacheEntity(
+            cacheKey = query.key,
+            titleKey = LyricsMatcher.normalize(query.requestedTitle),
+            artistKey = LyricsMatcher.normalize(query.requestedArtist),
+            durationBucket = query.durationSec.coerceAtLeast(0L) / 5L,
+            videoId = query.videoId,
+            languageCode = query.languageCode.lowercase(Locale.ROOT),
+            translate = query.translate,
+            synced = result.synced,
+            provider = result.provider,
+            confidence = result.confidence,
+            payload = serializeResult(result),
+            negative = false,
+            createdAt = existingCreatedAt,
+            updatedAt = now,
+            lastAccessedAt = now,
+            expiresAt = now + POSITIVE_CACHE_TTL_MS
+        )
+        runCatching {
+            dao.upsert(entity)
+            pruneRoomCache(dao, now)
+        }.onFailure { Timber.w(it, "Lyrics Room cache save failed") }
+    }
+
+    private suspend fun persistNegative(query: QuerySpec) {
+        val now = System.currentTimeMillis()
+        val expiresAt = now + NEGATIVE_CACHE_TTL_MS
+        negativePut(query.key, expiresAt)
+        val dao = lyricsCacheDao ?: return
+        val entity = LyricsCacheEntity(
+            cacheKey = query.key,
+            titleKey = LyricsMatcher.normalize(query.requestedTitle),
+            artistKey = LyricsMatcher.normalize(query.requestedArtist),
+            durationBucket = query.durationSec.coerceAtLeast(0L) / 5L,
+            videoId = query.videoId,
+            languageCode = query.languageCode.lowercase(Locale.ROOT),
+            translate = query.translate,
+            synced = false,
+            provider = "",
+            confidence = 0,
+            payload = "",
+            negative = true,
+            createdAt = now,
+            updatedAt = now,
+            lastAccessedAt = now,
+            expiresAt = expiresAt
+        )
+        runCatching {
+            dao.upsert(entity)
+            pruneRoomCache(dao, now)
+        }.onFailure { Timber.w(it, "Lyrics negative cache save failed") }
+    }
+
+    private suspend fun pruneRoomCache(dao: LyricsCacheDao, now: Long) {
+        dao.deleteExpired(now, now - STALE_CACHE_TTL_MS)
+        val count = dao.count()
+        if (count > MAX_ROOM_CACHE_ENTRIES) dao.deleteOldest(count - MAX_ROOM_CACHE_ENTRIES)
+    }
+
+    internal fun serializeResult(result: LyricsResult): String {
+        val serializedLines = result.lines.take(MAX_CACHE_LINES)
+        val linesJson = JSONArray()
+        serializedLines.forEach { line ->
+            val wordsJson = JSONArray()
+            line.words.take(MAX_CACHE_WORDS_PER_LINE).forEach { word ->
+                wordsJson.put(
+                    JSONObject()
+                        .put("startMs", word.startMs)
+                        .put("endMs", word.endMs)
+                        .put("text", word.text)
+                        .put("romanized", word.romanized)
+                )
+            }
+            linesJson.put(
+                JSONObject()
+                    .put("startMs", line.startMs)
+                    .put("endMs", line.endMs)
+                    .put("text", line.text)
+                    .put("translated", line.translated)
+                    .put("romanized", line.romanized)
+                    .put("role", line.role.name)
+                    .put("instrumental", line.isInstrumental)
+                    .put("metadata", line.isMetadata)
+                    .put("words", wordsJson)
+            )
+        }
+        val sectionsJson = JSONArray()
+        val serializedIndices = serializedLines.indices
+        result.sections
+            .asSequence()
+            .filter { section ->
+                section.startLineIndex in serializedIndices &&
+                    section.endLineIndex in serializedIndices &&
+                    section.endLineIndex >= section.startLineIndex
+            }
+            .forEach { section ->
+                sectionsJson.put(
+                    JSONObject()
+                        .put("type", section.type.name)
+                        .put("ordinal", section.ordinal)
+                        .put("startLineIndex", section.startLineIndex)
+                        .put("endLineIndex", section.endLineIndex)
+                        .put("startMs", section.startMs)
+                        .put("endMs", section.endMs)
+                        .put("confidence", section.confidence)
+                )
+            }
+        return JSONObject()
+            .put("version", CACHE_VERSION)
+            .put("synced", result.synced)
+            .put("provider", result.provider)
+            .put("confidence", result.confidence)
+            .put("lines", linesJson)
+            .put("sections", sectionsJson)
+            .toString()
+    }
+
+    internal fun deserializeResult(payload: String): LyricsResult? {
+        if (payload.isBlank()) return null
         return runCatching {
-            val json = JSONObject(file.readText())
+            val json = JSONObject(payload)
+            if (json.optInt("version", -1) != CACHE_VERSION) return@runCatching null
             val linesJson = json.optJSONArray("lines") ?: JSONArray()
-            val parsed = ArrayList<LyricLine>()
+            val lines = ArrayList<LyricLine>()
             for (index in 0 until linesJson.length()) {
                 val item = linesJson.optJSONObject(index) ?: continue
                 val wordsJson = item.optJSONArray("words") ?: JSONArray()
@@ -442,7 +803,7 @@ class LyricsRepository(context: Context? = null) {
                 val role = runCatching {
                     LyricVocalRole.valueOf(item.optString("role", LyricVocalRole.MAIN.name))
                 }.getOrDefault(LyricVocalRole.MAIN)
-                parsed += LyricLine(
+                lines += LyricLine(
                     startMs = item.optLong("startMs"),
                     endMs = item.optLong("endMs"),
                     text = item.optString("text"),
@@ -454,67 +815,46 @@ class LyricsRepository(context: Context? = null) {
                     isMetadata = item.optBoolean("metadata")
                 )
             }
-            if (parsed.isEmpty()) {
-                null
-            } else {
-                LyricsResult(
-                    synced = json.optBoolean("synced"),
-                    lines = parsed,
-                    provider = json.optString("provider"),
-                    confidence = json.optInt("confidence", 70),
-                    cached = true
+            val sectionsJson = json.optJSONArray("sections") ?: JSONArray()
+            val sections = ArrayList<LyricSection>()
+            for (index in 0 until sectionsJson.length()) {
+                val item = sectionsJson.optJSONObject(index) ?: continue
+                val type = runCatching {
+                    LyricSectionType.valueOf(item.optString("type"))
+                }.getOrNull() ?: continue
+                val startLineIndex = item.optInt("startLineIndex", -1)
+                val endLineIndex = item.optInt("endLineIndex", -1)
+                if (startLineIndex !in lines.indices || endLineIndex !in lines.indices || endLineIndex < startLineIndex) continue
+                val startMs = item.optLong("startMs", lines[startLineIndex].startMs)
+                val endMs = item.optLong("endMs", lines[endLineIndex].endMs).coerceAtLeast(startMs)
+                sections += LyricSection(
+                    type = type,
+                    ordinal = item.optInt("ordinal", 1).coerceAtLeast(1),
+                    startLineIndex = startLineIndex,
+                    endLineIndex = endLineIndex,
+                    startMs = startMs,
+                    endMs = endMs,
+                    confidence = item.optInt("confidence", 50).coerceIn(0, 100)
                 )
             }
-        }.onFailure { Timber.w(it, "Lyrics cache restore failed") }.getOrNull()
+            if (lines.isEmpty()) null else LyricsResult(
+                synced = json.optBoolean("synced"),
+                lines = lines,
+                provider = json.optString("provider"),
+                confidence = json.optInt("confidence", 70),
+                cached = true,
+                sections = sections
+            )
+        }.onFailure { Timber.w(it, "Lyrics cache decode failed") }.getOrNull()
     }
 
-    private fun writeCache(key: String, result: LyricsResult) {
-        val dir = cacheDir ?: return
-        runCatching {
-            if (!dir.isDirectory && !dir.mkdirs()) return
-            val linesJson = JSONArray()
-            result.lines.take(MAX_CACHE_LINES).forEach { line ->
-                val wordsJson = JSONArray()
-                line.words.take(MAX_CACHE_WORDS_PER_LINE).forEach { word ->
-                    wordsJson.put(
-                        JSONObject()
-                            .put("startMs", word.startMs)
-                            .put("endMs", word.endMs)
-                            .put("text", word.text)
-                            .put("romanized", word.romanized)
-                    )
-                }
-                linesJson.put(
-                    JSONObject()
-                        .put("startMs", line.startMs)
-                        .put("endMs", line.endMs)
-                        .put("text", line.text)
-                        .put("translated", line.translated)
-                        .put("romanized", line.romanized)
-                        .put("role", line.role.name)
-                        .put("instrumental", line.isInstrumental)
-                        .put("metadata", line.isMetadata)
-                        .put("words", wordsJson)
-                )
-            }
-            val target = File(dir, "$key.json")
-            val temporary = File(dir, "$key.tmp")
-            temporary.writeText(
-                JSONObject()
-                    .put("version", CACHE_VERSION)
-                    .put("synced", result.synced)
-                    .put("provider", result.provider)
-                    .put("confidence", result.confidence)
-                    .put("lines", linesJson)
-                    .toString()
-            )
-            val renamed = if (target.exists() && !target.delete()) false else temporary.renameTo(target)
-            if (!renamed) {
-                target.writeText(temporary.readText())
-                temporary.delete()
-            }
-            pruneDiskCache(dir)
-        }.onFailure { Timber.w(it, "Lyrics cache save failed") }
+    private fun readLegacyCache(key: String): LyricsResult? {
+        val dir = legacyCacheDir ?: return null
+        val file = File(dir, "$key.json")
+        if (!file.isFile || System.currentTimeMillis() - file.lastModified() > LEGACY_CACHE_TTL_MS) return null
+        return runCatching { deserializeResult(file.readText()) }
+            .onFailure { Timber.w(it, "Legacy lyrics cache restore failed") }
+            .getOrNull()
     }
 
     private fun cleanAndEnrich(result: LyricsResult): LyricsResult {
@@ -530,7 +870,8 @@ class LyricsRepository(context: Context? = null) {
             }
             line.copy(romanized = lineRomanized, words = enrichedWords)
         }
-        return result.copy(lines = enriched)
+        val detection = LyricsSectionDetector.detect(enriched)
+        return result.copy(lines = detection.lines, sections = detection.sections)
     }
 
     private fun cleanTitle(title: String): String = title
@@ -542,10 +883,38 @@ class LyricsRepository(context: Context? = null) {
         .replace(Regex("(?i)\\s*VEVO$"), "")
         .trim()
 
-
     private fun String.isMeaningfulLyrics(): Boolean {
         val clean = trim()
         return clean.length >= 16 && !clean.equals("null", ignoreCase = true)
+    }
+
+    private fun querySpec(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean
+    ): QuerySpec? {
+        val queryTitle = cleanTitle(title)
+        val queryArtist = cleanArtist(artist)
+        val requestedTitle = title.trim().ifBlank { queryTitle }
+        val requestedArtist = artist.trim().ifBlank { queryArtist }
+        if (queryTitle.length < 2) return null
+        val key = cacheKey(requestedTitle, requestedArtist, durationSec, videoId, languageCode, translate)
+        return QuerySpec(
+            requestedTitle = requestedTitle,
+            requestedArtist = requestedArtist,
+            album = album.trim(),
+            queryTitle = queryTitle,
+            queryArtist = queryArtist,
+            durationSec = durationSec,
+            videoId = videoId.trim(),
+            languageCode = languageCode.trim(),
+            translate = translate,
+            key = key
+        )
     }
 
     private fun cacheKey(
@@ -585,32 +954,38 @@ class LyricsRepository(context: Context? = null) {
             val naturalEnd = line.endMs.coerceAtLeast(lineStart + 120L)
             val limitedEnd = nextStart?.minus(45L)?.coerceAtLeast(lineStart + 120L)?.let { minOf(naturalEnd, it) } ?: naturalEnd
             val finalEnd = if (durationMs > 0L) limitedEnd.coerceIn(lineStart, durationMs) else limitedEnd
-            line.copy(
-                startMs = lineStart,
-                endMs = finalEnd,
-                words = line.words.map { word ->
-                    val wordStart = word.startMs.coerceIn(lineStart, finalEnd)
-                    word.copy(
-                        startMs = wordStart,
-                        endMs = word.endMs.coerceIn(wordStart, finalEnd)
-                    )
-                }
-            )
+            val sortedWords = line.words.sortedBy { it.startMs }
+            val correctedWords = sortedWords.mapIndexed { wordIndex, word ->
+                val wordStart = word.startMs.coerceIn(lineStart, finalEnd)
+                val nextWordStart = sortedWords.getOrNull(wordIndex + 1)?.startMs?.coerceIn(wordStart, finalEnd)
+                val naturalWordEnd = word.endMs.coerceAtLeast(wordStart + MIN_WORD_DURATION_MS)
+                val wordEnd = nextWordStart
+                    ?.minus(WORD_GAP_MS)
+                    ?.coerceAtLeast(wordStart + MIN_WORD_DURATION_MS)
+                    ?.let { minOf(naturalWordEnd, it) }
+                    ?: naturalWordEnd
+                word.copy(startMs = wordStart, endMs = wordEnd.coerceIn(wordStart, finalEnd))
+            }
+            line.copy(startMs = lineStart, endMs = finalEnd, words = correctedWords)
         }
         return result.copy(lines = corrected)
     }
 
-    private fun memoryGet(key: String): LyricsResult? = synchronized(memoryLock) { memory[key] }
+    private fun memoryGet(key: String): MemoryEntry? = synchronized(memoryLock) { memory[key] }
 
-    private fun memoryPut(key: String, value: LyricsResult) {
-        synchronized(memoryLock) { memory[key] = value }
+    private fun memoryPut(key: String, value: LyricsResult, updatedAt: Long, expiresAt: Long = updatedAt + POSITIVE_CACHE_TTL_MS) {
+        synchronized(memoryLock) { memory[key] = MemoryEntry(value, updatedAt, expiresAt) }
+    }
+
+    private fun memoryRemove(key: String) {
+        synchronized(memoryLock) { memory.remove(key) }
     }
 
     private fun isNegativeCached(key: String): Boolean {
         val now = System.currentTimeMillis()
         return synchronized(negativeLock) {
-            val timestamp = negativeCache[key] ?: return@synchronized false
-            if (now - timestamp > NEGATIVE_CACHE_TTL_MS) {
+            val expiresAt = negativeCache[key] ?: return@synchronized false
+            if (now >= expiresAt) {
                 negativeCache.remove(key)
                 false
             } else {
@@ -619,16 +994,8 @@ class LyricsRepository(context: Context? = null) {
         }
     }
 
-    private fun negativePut(key: String) {
-        synchronized(negativeLock) { negativeCache[key] = System.currentTimeMillis() }
-    }
-
-    private fun pruneDiskCache(dir: File) {
-        val files = dir.listFiles { file -> file.isFile && file.extension == "json" }.orEmpty()
-        if (files.size <= MAX_DISK_CACHE_FILES) return
-        files.sortedBy(File::lastModified)
-            .take(files.size - MAX_DISK_CACHE_FILES)
-            .forEach(File::delete)
+    private fun negativePut(key: String, expiresAt: Long) {
+        synchronized(negativeLock) { negativeCache[key] = expiresAt }
     }
 
     private fun enc(value: String): String = URLEncoder.encode(value, "UTF-8")
@@ -636,15 +1003,27 @@ class LyricsRepository(context: Context? = null) {
     private fun encPath(value: String): String = value.split("/").joinToString("%2F") { enc(it) }
 
     companion object {
-        private const val CACHE_VERSION = 5
-        private const val CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
+        internal const val CACHE_VERSION = 8
+        private const val POSITIVE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
+        private const val STALE_CACHE_TTL_MS = 90L * 24L * 60L * 60L * 1_000L
+        private const val LEGACY_CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
+        private const val CACHE_REFRESH_INTERVAL_MS = 7L * 24L * 60L * 60L * 1_000L
+        private const val WORD_TIMING_REFRESH_INTERVAL_MS = 24L * 60L * 60L * 1_000L
+        private const val ACCESS_TOUCH_INTERVAL_MS = 24L * 60L * 60L * 1_000L
         private const val NEGATIVE_CACHE_TTL_MS = 15L * 60L * 1_000L
         private const val MEMORY_CACHE_SIZE = 64
         private const val NEGATIVE_CACHE_SIZE = 96
-        private const val MAX_DISK_CACHE_FILES = 180
-        private const val MAX_CACHE_LINES = 700
+        private const val MAX_ROOM_CACHE_ENTRIES = 420
+        internal const val MAX_CACHE_LINES = 700
         private const val MAX_CACHE_WORDS_PER_LINE = 120
-        private const val FAST_SYNCED_CONFIDENCE = 68
-        private const val FAST_PLAIN_CONFIDENCE = 86
+        private const val INSTANT_MIN_CONFIDENCE = 48
+        private const val FAST_PROVIDER_TIMEOUT_MS = 4_500L
+        private const val LYRICS_PLUS_TIMEOUT_MS = 5_500L
+        private const val YOUTUBE_MUSIC_TIMEOUT_MS = 5_500L
+        private const val TRANSCRIPT_TIMEOUT_MS = 6_000L
+        private const val QUALITY_REFRESH_THRESHOLD = 84
+        private const val MIN_QUALITY_UPGRADE = 4
+        private const val MIN_WORD_DURATION_MS = 45L
+        private const val WORD_GAP_MS = 12L
     }
 }
