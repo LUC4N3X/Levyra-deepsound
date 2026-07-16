@@ -19,7 +19,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         OfflineDownloadTaskEntity::class,
         LyricsCacheEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -189,6 +189,131 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE favorite_tracks RENAME TO favorite_tracks_old")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS favorite_tracks (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        album TEXT NOT NULL,
+                        durationMs INTEGER NOT NULL,
+                        streamUrl TEXT NOT NULL,
+                        videoUrl TEXT NOT NULL,
+                        thumbnailUrl TEXT NOT NULL,
+                        largeThumbnailUrl TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        moodTags TEXT NOT NULL,
+                        energy INTEGER NOT NULL,
+                        vocal INTEGER NOT NULL,
+                        replayScore INTEGER NOT NULL,
+                        cacheScore INTEGER NOT NULL,
+                        accentStart INTEGER NOT NULL,
+                        accentEnd INTEGER NOT NULL,
+                        youtubeLoudnessDb REAL,
+                        youtubePerceptualLoudnessDb REAL,
+                        isrc TEXT NOT NULL,
+                        upc TEXT NOT NULL,
+                        releaseDate TEXT NOT NULL,
+                        year TEXT NOT NULL,
+                        trackNumber INTEGER NOT NULL,
+                        discNumber INTEGER NOT NULL,
+                        explicit INTEGER NOT NULL,
+                        albumBrowseId TEXT NOT NULL,
+                        artistBrowseIds TEXT NOT NULL,
+                        counterpartVideoId TEXT NOT NULL,
+                        videoType TEXT NOT NULL,
+                        metadataProvider TEXT NOT NULL,
+                        metadataConfidence INTEGER NOT NULL,
+                        canonicalAlbumUrl TEXT NOT NULL,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO favorite_tracks (
+                        id, title, artist, album, durationMs, streamUrl, videoUrl,
+                        thumbnailUrl, largeThumbnailUrl, source, moodTags, energy,
+                        vocal, replayScore, cacheScore, accentStart, accentEnd,
+                        youtubeLoudnessDb, youtubePerceptualLoudnessDb, isrc, upc,
+                        releaseDate, year, trackNumber, discNumber, explicit,
+                        albumBrowseId, artistBrowseIds, counterpartVideoId, videoType,
+                        metadataProvider, metadataConfidence, canonicalAlbumUrl, createdAt
+                    )
+                    SELECT
+                        id, title, artist, album, durationMs, streamUrl, videoUrl,
+                        thumbnailUrl, largeThumbnailUrl, source, moodTags, energy,
+                        vocal, replayScore, cacheScore, accentStart, accentEnd,
+                        NULL, NULL, '', '', '', '', 0, 0, 0, '', '', '', '', '', 0, '', createdAt
+                    FROM favorite_tracks_old
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE favorite_tracks_old")
+                db.execSQL("ALTER TABLE playlist_tracks RENAME TO playlist_tracks_old")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS playlist_tracks (
+                        playlistId TEXT NOT NULL,
+                        trackId TEXT NOT NULL,
+                        position INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        album TEXT NOT NULL,
+                        durationMs INTEGER NOT NULL,
+                        videoUrl TEXT NOT NULL,
+                        thumbnailUrl TEXT NOT NULL,
+                        largeThumbnailUrl TEXT NOT NULL,
+                        source TEXT NOT NULL,
+                        accentStart INTEGER NOT NULL,
+                        accentEnd INTEGER NOT NULL,
+                        youtubeLoudnessDb REAL,
+                        youtubePerceptualLoudnessDb REAL,
+                        isrc TEXT NOT NULL,
+                        upc TEXT NOT NULL,
+                        releaseDate TEXT NOT NULL,
+                        year TEXT NOT NULL,
+                        trackNumber INTEGER NOT NULL,
+                        discNumber INTEGER NOT NULL,
+                        explicit INTEGER NOT NULL,
+                        albumBrowseId TEXT NOT NULL,
+                        artistBrowseIds TEXT NOT NULL,
+                        counterpartVideoId TEXT NOT NULL,
+                        videoType TEXT NOT NULL,
+                        metadataProvider TEXT NOT NULL,
+                        metadataConfidence INTEGER NOT NULL,
+                        canonicalAlbumUrl TEXT NOT NULL,
+                        addedAt INTEGER NOT NULL,
+                        PRIMARY KEY(playlistId, trackId),
+                        FOREIGN KEY(playlistId) REFERENCES playlists(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO playlist_tracks (
+                        playlistId, trackId, position, title, artist, album, durationMs,
+                        videoUrl, thumbnailUrl, largeThumbnailUrl, source, accentStart,
+                        accentEnd, youtubeLoudnessDb, youtubePerceptualLoudnessDb, isrc,
+                        upc, releaseDate, year, trackNumber, discNumber, explicit,
+                        albumBrowseId, artistBrowseIds, counterpartVideoId, videoType,
+                        metadataProvider, metadataConfidence, canonicalAlbumUrl, addedAt
+                    )
+                    SELECT
+                        playlistId, trackId, position, title, artist, album, durationMs,
+                        videoUrl, thumbnailUrl, largeThumbnailUrl, source, accentStart,
+                        accentEnd, NULL, NULL, '', '', '', '', 0, 0, 0, '', '', '', '', '', 0, '', addedAt
+                    FROM playlist_tracks_old
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE playlist_tracks_old")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_playlist_tracks_playlistId ON playlist_tracks(playlistId)")
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -197,7 +322,7 @@ abstract class LevyraDatabase : RoomDatabase() {
                     "levyra.db"
                 )
                     // Migrazioni versionate: i dati utente sopravvivono agli aggiornamenti.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build()
                     .also { instance = it }
             }
