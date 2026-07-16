@@ -612,7 +612,7 @@ class LevyraStrings private constructor(
         fun supportedCodes(): Set<String> = values.keys
 
         private fun enEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Welcome",
+            "welcomeBadge" to "Welcome",
             "welcomeTitle" to "Let's start.",
             "languageQuestion" to "Your language?",
             "nameQuestion" to "What is your name?",
@@ -846,7 +846,7 @@ class LevyraStrings private constructor(
             "showLess" to "Show less",
             "playing" to "Playing",
             "artistProfileUnavailable" to "Artist profile unavailable",
-            "popularTracks" to "🔥 Popular tracks",
+            "popularTracks" to "Popular tracks",
             "showAll" to "Show all",
             "versionLabel" to "Version",
             "generalImprovements" to "General improvements and bug fixes.",
@@ -963,7 +963,7 @@ class LevyraStrings private constructor(
         )
 
         private fun itEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Benvenuto",
+            "welcomeBadge" to "Benvenuto",
             "welcomeTitle" to "Iniziamo.",
             "languageQuestion" to "Che lingua vuoi usare?",
             "nameQuestion" to "Come ti chiami?",
@@ -1197,7 +1197,7 @@ class LevyraStrings private constructor(
             "showLess" to "Mostra meno",
             "playing" to "In riproduzione",
             "artistProfileUnavailable" to "Profilo artista non disponibile",
-            "popularTracks" to "🔥 Brani popolari",
+            "popularTracks" to "Brani popolari",
             "showAll" to "Mostra tutto",
             "versionLabel" to "Versione",
             "generalImprovements" to "Miglioramenti generali e correzioni di bug.",
@@ -1314,7 +1314,7 @@ class LevyraStrings private constructor(
         )
 
         private fun esEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Bienvenido",
+            "welcomeBadge" to "Bienvenido",
             "welcomeTitle" to "Empecemos.",
             "languageQuestion" to "¿Qué idioma quieres usar?",
             "nameQuestion" to "¿Cómo te llamas?",
@@ -1548,7 +1548,7 @@ class LevyraStrings private constructor(
             "showLess" to "Mostrar menos",
             "playing" to "Reproduciendo",
             "artistProfileUnavailable" to "Perfil del artista no disponible",
-            "popularTracks" to "🔥 Canciones populares",
+            "popularTracks" to "Canciones populares",
             "showAll" to "Mostrar todo",
             "versionLabel" to "Versión",
             "generalImprovements" to "Mejoras generales y correcciones de errores.",
@@ -1665,7 +1665,7 @@ class LevyraStrings private constructor(
         )
 
         private fun frEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Bienvenue",
+            "welcomeBadge" to "Bienvenue",
             "welcomeTitle" to "Commençons.",
             "languageQuestion" to "Quelle langue veux-tu utiliser ?",
             "nameQuestion" to "Comment tu t'appelles ?",
@@ -1899,7 +1899,7 @@ class LevyraStrings private constructor(
             "showLess" to "Afficher moins",
             "playing" to "En cours de lecture",
             "artistProfileUnavailable" to "Profil de l'artiste indisponible",
-            "popularTracks" to "🔥 Titres populaires",
+            "popularTracks" to "Titres populaires",
             "showAll" to "Tout afficher",
             "versionLabel" to "Version",
             "generalImprovements" to "Améliorations générales et corrections de bugs.",
@@ -2016,7 +2016,7 @@ class LevyraStrings private constructor(
         )
 
         private fun deEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Willkommen",
+            "welcomeBadge" to "Willkommen",
             "welcomeTitle" to "Los geht's.",
             "languageQuestion" to "Welche Sprache möchtest du verwenden?",
             "nameQuestion" to "Wie heißt du?",
@@ -2250,7 +2250,7 @@ class LevyraStrings private constructor(
             "showLess" to "Weniger anzeigen",
             "playing" to "Wird abgespielt",
             "artistProfileUnavailable" to "Künstlerprofil nicht verfügbar",
-            "popularTracks" to "🔥 Beliebte Titel",
+            "popularTracks" to "Beliebte Titel",
             "showAll" to "Alle anzeigen",
             "versionLabel" to "Version",
             "generalImprovements" to "Allgemeine Verbesserungen und Fehlerbehebungen.",
@@ -2367,7 +2367,7 @@ class LevyraStrings private constructor(
         )
 
         private fun ptEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Bem-vindo",
+            "welcomeBadge" to "Bem-vindo",
             "welcomeTitle" to "Vamos começar.",
             "languageQuestion" to "Que idioma queres usar?",
             "nameQuestion" to "Como te chamas?",
@@ -2601,7 +2601,7 @@ class LevyraStrings private constructor(
             "showLess" to "Mostrar menos",
             "playing" to "A reproduzir",
             "artistProfileUnavailable" to "Perfil do artista indisponível",
-            "popularTracks" to "🔥 Músicas populares",
+            "popularTracks" to "Músicas populares",
             "showAll" to "Mostrar tudo",
             "versionLabel" to "Versão",
             "generalImprovements" to "Melhorias gerais e correções de erros.",
@@ -2718,7 +2718,7 @@ class LevyraStrings private constructor(
         )
 
         private fun nlEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Welkom",
+            "welcomeBadge" to "Welkom",
             "welcomeTitle" to "Laten we beginnen.",
             "languageQuestion" to "Welke taal wil je gebruiken?",
             "nameQuestion" to "Hoe heet je?",
@@ -2952,7 +2952,7 @@ class LevyraStrings private constructor(
             "showLess" to "Minder tonen",
             "playing" to "Wordt afgespeeld",
             "artistProfileUnavailable" to "Artiestenprofiel niet beschikbaar",
-            "popularTracks" to "🔥 Populaire nummers",
+            "popularTracks" to "Populaire nummers",
             "showAll" to "Alles tonen",
             "versionLabel" to "Versie",
             "generalImprovements" to "Algemene verbeteringen en bugfixes.",
@@ -3069,7 +3069,7 @@ class LevyraStrings private constructor(
         )
 
         private fun plEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Witaj",
+            "welcomeBadge" to "Witaj",
             "welcomeTitle" to "Zaczynamy.",
             "languageQuestion" to "Jakiego języka chcesz używać?",
             "nameQuestion" to "Jak masz na imię?",
@@ -3303,7 +3303,7 @@ class LevyraStrings private constructor(
             "showLess" to "Pokaż mniej",
             "playing" to "Odtwarzanie",
             "artistProfileUnavailable" to "Profil artysty jest niedostępny",
-            "popularTracks" to "🔥 Popularne utwory",
+            "popularTracks" to "Popularne utwory",
             "showAll" to "Pokaż wszystko",
             "versionLabel" to "Wersja",
             "generalImprovements" to "Ogólne ulepszenia i poprawki błędów.",
@@ -3420,7 +3420,7 @@ class LevyraStrings private constructor(
         )
 
         private fun roEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Bun venit",
+            "welcomeBadge" to "Bun venit",
             "welcomeTitle" to "Să începem.",
             "languageQuestion" to "Ce limbă vrei să folosești?",
             "nameQuestion" to "Cum te cheamă?",
@@ -3654,7 +3654,7 @@ class LevyraStrings private constructor(
             "showLess" to "Afișează mai puțin",
             "playing" to "Se redă",
             "artistProfileUnavailable" to "Profilul artistului nu este disponibil",
-            "popularTracks" to "🔥 Piese populare",
+            "popularTracks" to "Piese populare",
             "showAll" to "Afișează tot",
             "versionLabel" to "Versiune",
             "generalImprovements" to "Îmbunătățiri generale și remedieri de erori.",
@@ -3771,7 +3771,7 @@ class LevyraStrings private constructor(
         )
 
         private fun elEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Καλώς ήρθες",
+            "welcomeBadge" to "Καλώς ήρθες",
             "welcomeTitle" to "Ας ξεκινήσουμε.",
             "languageQuestion" to "Ποια γλώσσα θέλεις να χρησιμοποιήσεις;",
             "nameQuestion" to "Πώς σε λένε;",
@@ -4005,7 +4005,7 @@ class LevyraStrings private constructor(
             "showLess" to "Εμφάνιση λιγότερων",
             "playing" to "Αναπαραγωγή",
             "artistProfileUnavailable" to "Το προφίλ του καλλιτέχνη δεν είναι διαθέσιμο",
-            "popularTracks" to "🔥 Δημοφιλή κομμάτια",
+            "popularTracks" to "Δημοφιλή κομμάτια",
             "showAll" to "Εμφάνιση όλων",
             "versionLabel" to "Έκδοση",
             "generalImprovements" to "Γενικές βελτιώσεις και διορθώσεις σφαλμάτων.",
@@ -4122,7 +4122,7 @@ class LevyraStrings private constructor(
         )
 
         private fun svEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Välkommen",
+            "welcomeBadge" to "Välkommen",
             "welcomeTitle" to "Nu börjar vi.",
             "languageQuestion" to "Vilket språk vill du använda?",
             "nameQuestion" to "Vad heter du?",
@@ -4356,7 +4356,7 @@ class LevyraStrings private constructor(
             "showLess" to "Visa mindre",
             "playing" to "Spelas",
             "artistProfileUnavailable" to "Artistprofilen är inte tillgänglig",
-            "popularTracks" to "🔥 Populära låtar",
+            "popularTracks" to "Populära låtar",
             "showAll" to "Visa alla",
             "versionLabel" to "Version",
             "generalImprovements" to "Allmänna förbättringar och felrättningar.",
@@ -4473,7 +4473,7 @@ class LevyraStrings private constructor(
         )
 
         private fun daEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Velkommen",
+            "welcomeBadge" to "Velkommen",
             "welcomeTitle" to "Lad os starte.",
             "languageQuestion" to "Hvilket sprog vil du bruge?",
             "nameQuestion" to "Hvad hedder du?",
@@ -4707,7 +4707,7 @@ class LevyraStrings private constructor(
             "showLess" to "Vis mindre",
             "playing" to "Afspilles",
             "artistProfileUnavailable" to "Kunstnerprofilen er ikke tilgængelig",
-            "popularTracks" to "🔥 Populære sange",
+            "popularTracks" to "Populære sange",
             "showAll" to "Vis alle",
             "versionLabel" to "Version",
             "generalImprovements" to "Generelle forbedringer og fejlrettelser.",
@@ -4824,7 +4824,7 @@ class LevyraStrings private constructor(
         )
 
         private fun csEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Vítej",
+            "welcomeBadge" to "Vítej",
             "welcomeTitle" to "Začínáme.",
             "languageQuestion" to "Jaký jazyk chceš používat?",
             "nameQuestion" to "Jak se jmenuješ?",
@@ -5058,7 +5058,7 @@ class LevyraStrings private constructor(
             "showLess" to "Zobrazit méně",
             "playing" to "Přehrává se",
             "artistProfileUnavailable" to "Profil interpreta není dostupný",
-            "popularTracks" to "🔥 Oblíbené skladby",
+            "popularTracks" to "Oblíbené skladby",
             "showAll" to "Zobrazit vše",
             "versionLabel" to "Verze",
             "generalImprovements" to "Obecná vylepšení a opravy chyb.",
@@ -5175,7 +5175,7 @@ class LevyraStrings private constructor(
         )
 
         private fun ukEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Вітаємо",
+            "welcomeBadge" to "Вітаємо",
             "welcomeTitle" to "Почнімо.",
             "languageQuestion" to "Яку мову хочеш використовувати?",
             "nameQuestion" to "Як тебе звати?",
@@ -5409,7 +5409,7 @@ class LevyraStrings private constructor(
             "showLess" to "Показати менше",
             "playing" to "Відтворюється",
             "artistProfileUnavailable" to "Профіль артиста недоступний",
-            "popularTracks" to "🔥 Популярні треки",
+            "popularTracks" to "Популярні треки",
             "showAll" to "Показати все",
             "versionLabel" to "Версія",
             "generalImprovements" to "Загальні покращення та виправлення помилок.",
@@ -5526,7 +5526,7 @@ class LevyraStrings private constructor(
         )
 
         private fun ruEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Добро пожаловать",
+            "welcomeBadge" to "Добро пожаловать",
             "welcomeTitle" to "Начнём.",
             "languageQuestion" to "Какой язык ты хочешь использовать?",
             "nameQuestion" to "Как тебя зовут?",
@@ -5760,7 +5760,7 @@ class LevyraStrings private constructor(
             "showLess" to "Показать меньше",
             "playing" to "Воспроизводится",
             "artistProfileUnavailable" to "Профиль исполнителя недоступен",
-            "popularTracks" to "🔥 Популярные треки",
+            "popularTracks" to "Популярные треки",
             "showAll" to "Показать все",
             "versionLabel" to "Версия",
             "generalImprovements" to "Общие улучшения и исправления ошибок.",
@@ -5877,7 +5877,7 @@ class LevyraStrings private constructor(
         )
 
         private fun trEntries(): Map<String, String> = mapOf(
-            "welcomeBadge" to "🎵 Hoş geldin",
+            "welcomeBadge" to "Hoş geldin",
             "welcomeTitle" to "Başlayalım.",
             "languageQuestion" to "Hangi dili kullanmak istiyorsun?",
             "nameQuestion" to "Adın ne?",
@@ -6111,7 +6111,7 @@ class LevyraStrings private constructor(
             "showLess" to "Daha az göster",
             "playing" to "Oynatılıyor",
             "artistProfileUnavailable" to "Sanatçı profili kullanılamıyor",
-            "popularTracks" to "🔥 Popüler şarkılar",
+            "popularTracks" to "Popüler şarkılar",
             "showAll" to "Tümünü göster",
             "versionLabel" to "Sürüm",
             "generalImprovements" to "Genel iyileştirmeler ve hata düzeltmeleri.",
