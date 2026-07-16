@@ -80,7 +80,7 @@ Every track you download is fully parsed, tagged, and structured as a clean M4A 
  
 <p align="center">
   <a href="docs/assets/inside_levyra_banner.png">
-    <img src="docs/assets/inside_levyra_banner.png" alt="Inside Levyra Showcase" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);" />
+    <img src="docs/assets/levyra_ad.png" alt="Inside Levyra Showcase" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);" />
   </a>
 </p>
  
