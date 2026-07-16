@@ -328,6 +328,13 @@ class LevyraPreferences(context: Context) {
                     .put("query", album.query)
                     .put("browseId", album.browseId)
                     .put("artistBrowseId", album.artistBrowseId)
+                    .put("audioPlaylistId", album.audioPlaylistId)
+                    .put("explicit", album.explicit)
+                    .put("releaseDate", album.releaseDate)
+                    .put("upc", album.upc)
+                    .put("canonicalUrl", album.canonicalUrl)
+                    .put("metadataProvider", album.metadataProvider)
+                    .put("metadataConfidence", album.metadataConfidence)
             )
         }
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
@@ -493,7 +500,14 @@ class LevyraPreferences(context: Context) {
                         thumbnailUrl = thumbnailUrl,
                         query = item.optString("query").trim().ifBlank { "$title $artist album" },
                         browseId = item.optString("browseId").trim(),
-                        artistBrowseId = item.optString("artistBrowseId").trim()
+                        artistBrowseId = item.optString("artistBrowseId").trim(),
+                        audioPlaylistId = item.optString("audioPlaylistId").trim(),
+                        explicit = item.optBoolean("explicit"),
+                        releaseDate = item.optString("releaseDate").trim(),
+                        upc = item.optString("upc").trim(),
+                        canonicalUrl = item.optString("canonicalUrl").trim(),
+                        metadataProvider = item.optString("metadataProvider").trim(),
+                        metadataConfidence = item.optInt("metadataConfidence").coerceIn(0, 100)
                     )
                 }
             }
