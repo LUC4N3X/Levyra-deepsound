@@ -82,6 +82,16 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun viewModelDoesNotStoreLocalizedArtistErrorCopy() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraViewModel.kt not found")
+
+        assertFalse(Files.readString(source).contains("Profilo artista non disponibile"))
+    }
+
+    @Test
     fun localizedFormattersUseSelectedLanguage() {
         val dutch = LevyraStrings.forCode("nl")
         val polish = LevyraStrings.forCode("pl")
