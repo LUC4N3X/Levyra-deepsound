@@ -8643,25 +8643,20 @@ private fun PlayerTimeline(
     var dragFraction by remember { mutableFloatStateOf(-1f) }
     val isDragging = dragFraction >= 0f
     val fraction = if (isDragging) dragFraction else progressOf(positionMs, durationMs)
-    val signalAmplitude by animateDpAsState(
-        targetValue = if (isDragging) 4.6.dp else 3.2.dp,
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-signal-amplitude"
+    val ribbonAmplitude by animateDpAsState(
+        targetValue = if (isDragging) 3.2.dp else 2.2.dp,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMedium),
+        label = "timeline-ribbon-amplitude"
     )
-    val signalStroke by animateDpAsState(
-        targetValue = if (isDragging) 4.8.dp else 3.4.dp,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-signal-stroke"
+    val ribbonStroke by animateDpAsState(
+        targetValue = if (isDragging) 3.6.dp else 2.8.dp,
+        animationSpec = spring(dampingRatio = 0.84f, stiffness = Spring.StiffnessMedium),
+        label = "timeline-ribbon-stroke"
     )
-    val nodeRadius by animateDpAsState(
-        targetValue = if (isDragging) 5.8.dp else 4.4.dp,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-node-radius"
-    )
-    val gateHalfHeight by animateDpAsState(
-        targetValue = if (isDragging) 11.dp else 8.dp,
+    val markerRadius by animateDpAsState(
+        targetValue = if (isDragging) 5.dp else 3.6.dp,
         animationSpec = spring(dampingRatio = 0.76f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-gate-height"
+        label = "timeline-marker-radius"
     )
 
     Column(
@@ -8672,11 +8667,11 @@ private fun PlayerTimeline(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(34.dp)
+                .height(30.dp)
                 .pointerInput(durationMs) {
                     if (durationMs > 0L) {
                         detectTapGestures { offset ->
-                            val inset = 10.dp.toPx()
+                            val inset = 8.dp.toPx()
                             val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                             onSeek(((offset.x - inset) / usable).coerceIn(0f, 1f))
                         }
@@ -8686,7 +8681,7 @@ private fun PlayerTimeline(
                     if (durationMs > 0L) {
                         detectHorizontalDragGestures(
                             onDragStart = { offset ->
-                                val inset = 10.dp.toPx()
+                                val inset = 8.dp.toPx()
                                 val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                                 dragFraction = ((offset.x - inset) / usable).coerceIn(0f, 1f)
                             },
@@ -8697,7 +8692,7 @@ private fun PlayerTimeline(
                             onDragCancel = { dragFraction = -1f },
                             onHorizontalDrag = { change, _ ->
                                 change.consume()
-                                val inset = 10.dp.toPx()
+                                val inset = 8.dp.toPx()
                                 val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                                 dragFraction = ((change.position.x - inset) / usable).coerceIn(0f, 1f)
                             }
@@ -8706,172 +8701,112 @@ private fun PlayerTimeline(
                 }
                 .drawBehind {
                     val centerY = size.height / 2f
-                    val inset = 10.dp.toPx()
+                    val inset = 8.dp.toPx()
                     val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                     val safeFraction = fraction.coerceIn(0f, 1f)
                     val playedX = inset + usable * safeFraction
-                    val railStart = (playedX + 9.dp.toPx()).coerceAtMost(inset + usable)
-                    val railStroke = 2.6.dp.toPx()
-                    val echoStroke = 1.15.dp.toPx()
-                    val amplitude = signalAmplitude.toPx()
-                    val mainStroke = signalStroke.toPx()
-                    val radius = nodeRadius.toPx()
-                    val gate = gateHalfHeight.toPx()
+                    val endX = inset + usable
+                    val futureStart = (playedX + 7.dp.toPx()).coerceAtMost(endX)
+                    val amplitude = ribbonAmplitude.toPx()
+                    val stroke = ribbonStroke.toPx()
+                    val marker = markerRadius.toPx()
 
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.10f),
-                        start = androidx.compose.ui.geometry.Offset(inset, centerY),
-                        end = androidx.compose.ui.geometry.Offset(inset + usable, centerY),
-                        strokeWidth = railStroke,
-                        cap = StrokeCap.Round
-                    )
-
-                    if (railStart < inset + usable) {
+                    if (futureStart < endX) {
                         drawLine(
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.20f),
-                                    Color.White.copy(alpha = 0.07f)
-                                ),
-                                startX = railStart,
-                                endX = inset + usable
-                            ),
-                            start = androidx.compose.ui.geometry.Offset(railStart, centerY),
-                            end = androidx.compose.ui.geometry.Offset(inset + usable, centerY),
-                            strokeWidth = railStroke,
-                            cap = StrokeCap.Round
-                        )
-                        drawLine(
-                            color = Color.White.copy(alpha = 0.045f),
-                            start = androidx.compose.ui.geometry.Offset(railStart, centerY + 4.dp.toPx()),
-                            end = androidx.compose.ui.geometry.Offset(inset + usable, centerY + 4.dp.toPx()),
-                            strokeWidth = echoStroke,
+                            color = Color.White.copy(alpha = 0.15f),
+                            start = androidx.compose.ui.geometry.Offset(futureStart, centerY),
+                            end = androidx.compose.ui.geometry.Offset(endX, centerY),
+                            strokeWidth = 2.2.dp.toPx(),
                             cap = StrokeCap.Round
                         )
                     }
 
                     val playedWidth = (playedX - inset).coerceAtLeast(0f)
                     if (playedWidth > 0.5f) {
-                        val preferredWave = 38.dp.toPx()
-                        val waveCount = kotlin.math.ceil(playedWidth / preferredWave)
+                        val path = Path().apply { moveTo(inset, centerY) }
+                        val preferredSegmentWidth = 46.dp.toPx()
+                        val segmentCount = kotlin.math.ceil(playedWidth / preferredSegmentWidth)
                             .toInt()
-                            .coerceIn(1, 7)
-                        val waveWidth = playedWidth / waveCount
-                        val edgeFadeDistance = 24.dp.toPx().coerceAtLeast(1f)
-                        val signalPath = Path().apply { moveTo(inset, centerY) }
-                        val echoPath = Path().apply { moveTo(inset, centerY) }
+                            .coerceIn(1, 6)
+                        val segmentWidth = playedWidth / segmentCount
+                        val amplitudePattern = floatArrayOf(0.74f, 1f, 0.82f, 0.64f, 0.9f, 0.7f)
 
-                        repeat(waveCount) { index ->
-                            val startX = inset + waveWidth * index
-                            val endX = if (index == waveCount - 1) playedX else startX + waveWidth
-                            val midpoint = (startX + endX) / 2f
-                            val leftFade = ((midpoint - inset) / edgeFadeDistance).coerceIn(0f, 1f)
-                            val rightFade = ((playedX - midpoint) / edgeFadeDistance).coerceIn(0f, 1f)
-                            val edgeFade = minOf(leftFade, rightFade).coerceAtLeast(0.20f)
+                        repeat(segmentCount) { index ->
+                            val startX = inset + segmentWidth * index
+                            val segmentEndX = if (index == segmentCount - 1) playedX else startX + segmentWidth
+                            val controlOneX = startX + (segmentEndX - startX) * 0.30f
+                            val controlTwoX = startX + (segmentEndX - startX) * 0.70f
                             val direction = if (index % 2 == 0) -1f else 1f
-                            val segmentAmplitude = amplitude * edgeFade
-                            val firstControlX = startX + (endX - startX) * 0.28f
-                            val secondControlX = startX + (endX - startX) * 0.72f
+                            val segmentAmplitude = amplitude * amplitudePattern[index % amplitudePattern.size]
 
-                            signalPath.cubicTo(
-                                firstControlX,
+                            path.cubicTo(
+                                controlOneX,
                                 centerY + segmentAmplitude * direction,
-                                secondControlX,
+                                controlTwoX,
                                 centerY - segmentAmplitude * direction,
-                                endX,
-                                centerY
-                            )
-                            echoPath.cubicTo(
-                                firstControlX,
-                                centerY - segmentAmplitude * direction * 0.42f,
-                                secondControlX,
-                                centerY + segmentAmplitude * direction * 0.42f,
-                                endX,
+                                segmentEndX,
                                 centerY
                             )
                         }
 
-                        val playedGradient = Brush.horizontalGradient(
-                            colors = listOf(
-                                activeColor.playerMix(Color.White, 0.12f),
-                                Color.White.copy(alpha = 0.96f),
-                                secondaryColor.playerMix(Color.White, 0.24f)
+                        drawPath(
+                            path = path,
+                            color = activeColor.playerMix(secondaryColor, 0.28f).copy(alpha = 0.24f),
+                            style = Stroke(width = stroke + 2.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                        drawPath(
+                            path = path,
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.88f),
+                                    Color.White,
+                                    secondaryColor.playerMix(Color.White, 0.58f)
+                                ),
+                                startX = inset,
+                                endX = playedX.coerceAtLeast(inset + 1f)
                             ),
-                            startX = inset,
-                            endX = playedX.coerceAtLeast(inset + 1f)
+                            style = Stroke(width = stroke, cap = StrokeCap.Round)
                         )
+                    }
 
-                        drawPath(
-                            path = signalPath,
-                            brush = playedGradient,
-                            style = Stroke(width = mainStroke * 2.7f, cap = StrokeCap.Round),
-                            alpha = if (isDragging) 0.18f else 0.10f
-                        )
-                        drawPath(
-                            path = echoPath,
-                            color = secondaryColor.copy(alpha = if (isDragging) 0.34f else 0.20f),
-                            style = Stroke(width = echoStroke, cap = StrokeCap.Round)
-                        )
-                        drawPath(
-                            path = signalPath,
-                            brush = playedGradient,
-                            style = Stroke(width = mainStroke, cap = StrokeCap.Round)
+                    if (isDragging) {
+                        drawLine(
+                            color = Color.White.copy(alpha = 0.40f),
+                            start = androidx.compose.ui.geometry.Offset(playedX, centerY - 9.dp.toPx()),
+                            end = androidx.compose.ui.geometry.Offset(playedX, centerY + 9.dp.toPx()),
+                            strokeWidth = 1.dp.toPx(),
+                            cap = StrokeCap.Round
                         )
                     }
 
                     drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                activeColor.copy(alpha = if (isDragging) 0.38f else 0.24f),
-                                Color.Transparent
-                            ),
-                            center = androidx.compose.ui.geometry.Offset(playedX, centerY),
-                            radius = radius * 3.4f
-                        ),
-                        radius = radius * 3.4f,
+                        color = activeColor.playerMix(secondaryColor, 0.34f).copy(alpha = 0.55f),
+                        radius = marker + 1.4.dp.toPx(),
                         center = androidx.compose.ui.geometry.Offset(playedX, centerY)
                     )
-                    drawLine(
-                        color = Color.White.copy(alpha = if (isDragging) 0.98f else 0.78f),
-                        start = androidx.compose.ui.geometry.Offset(playedX, centerY - gate),
-                        end = androidx.compose.ui.geometry.Offset(playedX, centerY + gate),
-                        strokeWidth = if (isDragging) 2.dp.toPx() else 1.5.dp.toPx(),
-                        cap = StrokeCap.Round
-                    )
-
-                    val diamond = Path().apply {
-                        moveTo(playedX, centerY - radius)
-                        lineTo(playedX + radius, centerY)
-                        lineTo(playedX, centerY + radius)
-                        lineTo(playedX - radius, centerY)
-                        close()
-                    }
-                    drawPath(
-                        path = diamond,
-                        brush = Brush.linearGradient(
-                            colors = listOf(Color.White, secondaryColor.playerMix(Color.White, 0.34f)),
-                            start = androidx.compose.ui.geometry.Offset(playedX - radius, centerY - radius),
-                            end = androidx.compose.ui.geometry.Offset(playedX + radius, centerY + radius)
-                        )
+                    drawCircle(
+                        color = Color.White,
+                        radius = marker,
+                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
                     )
                 }
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 5.dp),
+                .padding(horizontal = 3.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = formatDuration(if (isDragging) (durationMs * fraction).toLong() else positionMs),
-                color = if (isDragging) Color.White else Color.White.copy(alpha = 0.66f),
+                color = if (isDragging) Color.White else Color.White.copy(alpha = 0.64f),
                 fontSize = 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                fontWeight = if (isDragging) FontWeight.Bold else FontWeight.Medium
+                fontWeight = FontWeight.Medium
             )
             Text(
                 text = formatDuration(durationMs),
-                color = Color.White.copy(alpha = 0.56f),
+                color = Color.White.copy(alpha = 0.52f),
                 fontSize = 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
