@@ -2007,13 +2007,10 @@ private fun ArtistOverlay(
                             onClose = onClose
                         )
                     }
-                    if (profile.hasBio) {
-                        item { Box(modifier = Modifier.padding(horizontal = 18.dp)) { ArtistBio(profile.bio) } }
-                    }
                     if (profile.topSongs.isNotEmpty()) {
-                        item { Box(modifier = Modifier.padding(horizontal = 18.dp)) { SectionTitle(strings.popularTracks) } }
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.popularTracks) } }
                         items(profile.topSongs, key = { "artist-song-${it.id}" }) { track ->
-                            Box(modifier = Modifier.padding(horizontal = 18.dp)) {
+                            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                                 TrackRow(
                                     track = track,
                                     isCurrent = track.id == state.currentTrack?.id,
@@ -2031,21 +2028,36 @@ private fun ArtistOverlay(
                         }
                     }
                     if (profile.albums.isNotEmpty()) {
-                        item { Box(modifier = Modifier.padding(horizontal = 18.dp)) { SectionTitle(strings.albumsPlain) } }
-                        item { Box(modifier = Modifier.padding(start = 18.dp)) { ArtistReleaseRow(profile.albums, profile.name, onOpenRelease) } }
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.albumsPlain) } }
+                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(profile.albums, profile.name, onOpenRelease) } }
                     }
                     if (profile.singles.isNotEmpty()) {
-                        item { Box(modifier = Modifier.padding(horizontal = 18.dp)) { SectionTitle(strings.singlesAndEps) } }
-                        item { Box(modifier = Modifier.padding(start = 18.dp)) { ArtistReleaseRow(profile.singles, profile.name, onOpenRelease) } }
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.singlesAndEps) } }
+                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(profile.singles, profile.name, onOpenRelease) } }
+                    }
+                    if (profile.hasBio) {
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistBio(profile.bio) } }
                     }
                     if (profile.relatedArtists.isNotEmpty()) {
-                        item { Box(modifier = Modifier.padding(horizontal = 18.dp)) { SectionTitle(strings.similarArtists) } }
-                        item { Box(modifier = Modifier.padding(start = 18.dp)) { ArtistHitRow(profile.relatedArtists, onClick = onOpenArtist) } }
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.similarArtists) } }
+                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistHitRow(profile.relatedArtists, onClick = onOpenArtist) } }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun ArtistSectionTitle(title: String) {
+    Text(
+        text = title,
+        color = LevyraText,
+        fontSize = 24.sp,
+        lineHeight = 28.sp,
+        fontWeight = FontWeight.Black,
+        letterSpacing = (-0.55).sp
+    )
 }
 
 @Composable
@@ -2056,7 +2068,7 @@ private fun ArtistFollowButton(isFollowed: Boolean, onClick: () -> Unit) {
         color = if (isFollowed) Color.White.copy(alpha = 0.10f) else Color.White,
         shape = buttonShape,
         border = if (isFollowed) BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)) else null,
-        modifier = Modifier.height(52.dp).pressable(onClick = onClick)
+        modifier = Modifier.height(50.dp).pressable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 20.dp),
@@ -2080,6 +2092,25 @@ private fun ArtistFollowButton(isFollowed: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
+private fun ArtistPlayButton(onClick: () -> Unit) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = LevyraCyan,
+        shape = CircleShape,
+        modifier = Modifier.height(50.dp).pressable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 22.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(23.dp))
+            Text(strings.play, color = LevyraBlack, fontSize = 14.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
 private fun ArtistHeader(
     profile: ArtistProfile,
     isFollowed: Boolean,
@@ -2090,7 +2121,7 @@ private fun ArtistHeader(
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Box(modifier = Modifier.fillMaxWidth().height(510.dp).background(Brush.linearGradient(listOf(accentStart, accentEnd)))) {
+    Box(modifier = Modifier.fillMaxWidth().height(472.dp).background(Brush.linearGradient(listOf(accentStart, accentEnd)))) {
         val heroArtwork = profile.bannerUrl.ifBlank { profile.thumbnailUrl }
         if (heroArtwork.isNotBlank()) {
             AsyncImage(
@@ -2108,9 +2139,9 @@ private fun ArtistHeader(
                 .background(
                     Brush.verticalGradient(
                         colorStops = arrayOf(
-                            0f to Color.Black.copy(alpha = 0.28f),
-                            0.38f to Color.Transparent,
-                            0.68f to Color.Black.copy(alpha = 0.40f),
+                            0f to Color.Black.copy(alpha = 0.20f),
+                            0.42f to Color.Transparent,
+                            0.70f to Color.Black.copy(alpha = 0.56f),
                             1f to LevyraBlack
                         )
                     )
@@ -2128,22 +2159,18 @@ private fun ArtistHeader(
                 borderColor = Color.White.copy(alpha = 0.14f),
                 onClick = onClose
             )
-            Spacer(modifier = Modifier.weight(1f))
-            Surface(color = Color.Black.copy(alpha = 0.34f), shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))) {
-                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.padding(11.dp).size(22.dp))
-            }
         }
         Column(
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     profile.name,
                     color = Color.White,
-                    fontSize = 42.sp,
-                    lineHeight = 45.sp,
-                    letterSpacing = (-1.4).sp,
+                    fontSize = 40.sp,
+                    lineHeight = 43.sp,
+                    letterSpacing = (-1.25).sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -2153,17 +2180,18 @@ private fun ArtistHeader(
             }
             val metadata = listOf(profile.subscribers, profile.monthlyListeners).filter { it.isNotBlank() }
             if (metadata.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    metadata.take(2).forEach { value -> ArtistMetaChip(value) }
-                }
+                Text(
+                    text = metadata.take(2).joinToString("  ·  "),
+                    color = Color.White.copy(alpha = 0.76f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (onPlay != null) {
-                    Surface(color = LevyraCyan, shape = CircleShape, modifier = Modifier.size(52.dp).pressable(onClick = onPlay)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = strings.play, tint = LevyraBlack, modifier = Modifier.size(29.dp))
-                        }
-                    }
+                    ArtistPlayButton(onClick = onPlay)
                 }
                 ArtistFollowButton(isFollowed = isFollowed, onClick = onToggleFollow)
             }
@@ -2172,24 +2200,17 @@ private fun ArtistHeader(
 }
 
 @Composable
-private fun ArtistMetaChip(value: String) {
-    Surface(color = Color.Black.copy(alpha = 0.36f), shape = CircleShape, border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))) {
-        Text(value, color = Color.White.copy(alpha = 0.88f), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp))
-    }
-}
-
-@Composable
 private fun ArtistBio(bio: String) {
     val strings = LocalLevyraStrings.current
     var expanded by remember { mutableStateOf(false) }
     Surface(
-        color = LevyraAdaptiveCard,
+        color = Color.White.copy(alpha = 0.045f),
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(strings.biography, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.3).sp)
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(strings.biography, color = LevyraText, fontSize = 21.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp)
             Text(
                 bio,
                 color = LevyraMuted,
@@ -4143,7 +4164,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
 
         if (state.interfaceSettings.showNewReleases && state.releaseRadar.isNotEmpty()) {
             item(key = "sec-release-radar-header", contentType = "home-section-header") {
-                HomeSectionInset { SectionTitle("📡 ${strings.releaseRadar}") }
+                HomeSectionInset { SectionTitle(strings.releaseRadar) }
             }
             item(key = "sec-release-radar-row", contentType = "home-horizontal-row") {
                 ReleaseRadarRow(
@@ -4155,7 +4176,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         }
         if (state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
             item(key = "sec-similar-artists-header", contentType = "home-section-header") {
-                HomeSectionInset { SectionTitle("✨ ${strings.similarToFollowed}") }
+                HomeSectionInset { SectionTitle(strings.similarToFollowed) }
             }
             item(key = "sec-similar-artists-row", contentType = "home-horizontal-row") {
                 ArtistHitRow(
@@ -9241,63 +9262,87 @@ private fun trimSpeed(speed: Float): String {
 
 @Composable
 private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp)
+    Surface(
+        color = LevyraAdaptiveCardDeep,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(22.dp),
+        modifier = modifier.fillMaxWidth()
     ) {
-        items(LevyraLanguageCatalog.languages, key = { it.code }) { language ->
-            val selected = language.code == LevyraLanguageCatalog.normalize(selectedCode)
-            val scale by animateFloatAsState(
-                targetValue = if (selected) 1.02f else 1f,
-                animationSpec = spring(dampingRatio = 0.72f, stiffness = 380f)
-            )
-            val bgAlpha by animateFloatAsState(targetValue = if (selected) 0.16f else 0.045f)
-            val borderAlpha by animateFloatAsState(targetValue = if (selected) 0.72f else 0.09f)
-
-            Surface(
-                color = LevyraCyan.copy(alpha = bgAlpha),
-                border = BorderStroke(1.dp, LevyraCyan.copy(alpha = borderAlpha)),
-                shape = RoundedCornerShape(22.dp),
-                modifier = Modifier
-                    .width(146.dp)
-                    .height(92.dp)
-                    .graphicsLayer {
-                        this.scaleX = scale
-                        this.scaleY = scale
-                    }
-                    .pressable(onClick = { onSelect(language.code) })
-            ) {
+        Column(modifier = Modifier.padding(7.dp)) {
+            LevyraLanguageCatalog.languages.forEachIndexed { index, language ->
+                val selected = language.code == LevyraLanguageCatalog.normalize(selectedCode)
+                val rowColor by animateColorAsState(
+                    targetValue = if (selected) LevyraCyan.copy(alpha = 0.13f) else Color.Transparent,
+                    animationSpec = tween(180),
+                    label = "language-row"
+                )
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(68.dp)
+                        .background(rowColor, RoundedCornerShape(16.dp))
+                        .pressable(onClick = { onSelect(language.code) })
+                        .padding(horizontal = 13.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(11.dp)
+                    horizontalArrangement = Arrangement.spacedBy(13.dp)
                 ) {
-                    Text(
-                        text = language.flag,
-                        fontSize = 30.sp
-                    )
+                    Surface(
+                        color = if (selected) LevyraCyan else Color.White.copy(alpha = 0.065f),
+                        shape = CircleShape,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = language.code.uppercase(),
+                                color = if (selected) LevyraBlack else LevyraText,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = language.nativeName,
                             color = LevyraText,
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = language.englishName,
-                            color = if (selected) LevyraCyan else LevyraMuted,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        if (!language.englishName.equals(language.nativeName, ignoreCase = true)) {
+                            Text(
+                                text = language.englishName,
+                                color = if (selected) LevyraCyan else LevyraMuted,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
-                    if (selected) {
-                        Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(17.dp))
+                    Surface(
+                        color = if (selected) LevyraCyan else Color.White.copy(alpha = 0.055f),
+                        shape = CircleShape,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (selected) {
+                                Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(17.dp))
+                            } else {
+                                Box(modifier = Modifier.size(6.dp).background(Color.White.copy(alpha = 0.24f), CircleShape))
+                            }
+                        }
                     }
+                }
+                if (index != LevyraLanguageCatalog.languages.lastIndex) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 64.dp, end = 12.dp)
+                            .height(1.dp)
+                            .background(LevyraAdaptiveHairline.copy(alpha = 0.7f))
+                    )
                 }
             }
         }
@@ -9434,32 +9479,36 @@ private fun OnboardingTopBar(step: OnboardingStep, onBack: () -> Unit) {
 private fun OnboardingLanguageStage(strings: LevyraStrings, languageCode: String, onLanguage: (String) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 26.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         item {
-            Text(strings.welcomeBadge, color = LevyraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(strings.welcomeTitle, color = LevyraText, fontSize = 46.sp, lineHeight = 49.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.6).sp)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(strings.languageQuestion, color = LevyraMuted, fontSize = 18.sp, lineHeight = 25.sp, fontWeight = FontWeight.Medium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(modifier = Modifier.width(24.dp).height(2.dp).background(LevyraCyan, CircleShape))
+                Text(
+                    text = strings.welcomeBadge,
+                    color = LevyraCyan,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.8.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(strings.welcomeTitle, color = LevyraText, fontSize = 40.sp, lineHeight = 43.sp, fontWeight = FontWeight.Black, letterSpacing = (-1.25).sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(strings.languageQuestion, color = LevyraMuted, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal)
         }
         item {
-            Surface(
-                color = LevyraAdaptiveCardDeep,
-                border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-                shape = RoundedCornerShape(30.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(vertical = 22.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                    Icon(
-                        Icons.Rounded.Language,
-                        contentDescription = null,
-                        tint = LevyraCyan,
-                        modifier = Modifier.padding(horizontal = 20.dp).size(30.dp)
-                    )
-                    LanguageSelector(selectedCode = languageCode, onSelect = onLanguage)
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = strings.language,
+                    color = LevyraMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.4.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+                LanguageSelector(selectedCode = languageCode, onSelect = onLanguage)
             }
         }
     }
