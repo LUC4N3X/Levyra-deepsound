@@ -2145,7 +2145,7 @@ private fun ArtistHeader(
 ) {
     val strings = LocalLevyraStrings.current
     Box(modifier = Modifier.fillMaxWidth().height(472.dp).background(Brush.linearGradient(listOf(accentStart, accentEnd)))) {
-        val heroArtwork = profile.thumbnailUrl.ifBlank { profile.bannerUrl }
+        val heroArtwork = profile.bannerUrl.ifBlank { profile.thumbnailUrl }
         if (heroArtwork.isNotBlank()) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current).data(heroArtwork).crossfade(true).build(),
