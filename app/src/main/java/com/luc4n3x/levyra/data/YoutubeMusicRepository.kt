@@ -196,15 +196,19 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             val thumb = findBestThumbnail(renderer)
             when {
                 kind.startsWith("artist") || kind.startsWith("artista") || kind.startsWith("artiste") || kind.startsWith("künstler") || kind.startsWith("kunstler") || kind.startsWith("artiest") || kind.startsWith("artysta") -> {
-                    if (!artists.containsKey(title.lowercase())) {
+                    val artistReference = extractYoutubeMusicArtistReference(renderer, title)
+                    val resolvedName = artistReference?.name?.ifBlank { title }.orEmpty().ifBlank { title }
+                    val artistKey = resolvedName.lowercase()
+                    if (!artists.containsKey(artistKey)) {
                         val subs = subtitleTokens.firstOrNull { it.contains("scritt", ignoreCase = true) || it.contains("subscriber", ignoreCase = true) || it.contains("iscritt", ignoreCase = true) }.orEmpty()
-                        val seed = stableSeed(title)
-                        artists[title.lowercase()] = ArtistHit(
-                            name = title,
+                        val seed = stableSeed(resolvedName)
+                        artists[artistKey] = ArtistHit(
+                            name = resolvedName,
                             subscribers = subs,
                             thumbnailUrl = upgradeThumbnail(thumb),
                             accentStart = palette(seed).first,
-                            accentEnd = palette(seed).second
+                            accentEnd = palette(seed).second,
+                            browseId = artistReference?.browseId.orEmpty()
                         )
                     }
                 }
