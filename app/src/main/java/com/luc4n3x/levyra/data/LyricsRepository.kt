@@ -131,8 +131,9 @@ class LyricsRepository(context: Context? = null) {
         var current: LyricsResult? = null
         val cached = readCached(query)
         cached.result?.let { result ->
-            current = result.copy(cached = true)
-            send(current!!)
+            val cachedResult = result.copy(cached = true)
+            current = cachedResult
+            send(cachedResult)
         }
         if (cached.negative) return@channelFlow
         if (!cached.refreshRequired) return@channelFlow
@@ -155,8 +156,8 @@ class LyricsRepository(context: Context? = null) {
             memoryPut(query.key, stable, System.currentTimeMillis())
             persistPositive(query, stable)
             send(stable)
-        } else if (final != null && current != null) {
-            persistPositive(query, current!!.copy(cached = false))
+        } else if (final != null) {
+            current?.let { persistPositive(query, it.copy(cached = false)) }
         }
 
         if (current == null && outcome.attempted && !outcome.hadTransientFailure) {
@@ -540,9 +541,9 @@ class LyricsRepository(context: Context? = null) {
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(
                 object : Callback {
-                    override fun onFailure(call: Call, exception: IOException) {
+                    override fun onFailure(call: Call, e: IOException) {
                         if (continuation.isActive) {
-                            Timber.w(exception, "Lyrics request failed for %s", request.url.host)
+                            Timber.w(e, "Lyrics request failed for %s", request.url.host)
                             continuation.resume(HttpGetResult.Failure)
                         }
                     }
@@ -553,7 +554,7 @@ class LyricsRepository(context: Context? = null) {
                                 when {
                                     it.code == 404 -> HttpGetResult.NotFound
                                     !it.isSuccessful -> HttpGetResult.Failure
-                                    else -> it.body?.string()?.takeIf(String::isNotBlank)
+                                    else -> it.body.string().takeIf(String::isNotBlank)
                                         ?.let(HttpGetResult::Success)
                                         ?: HttpGetResult.Failure
                                 }

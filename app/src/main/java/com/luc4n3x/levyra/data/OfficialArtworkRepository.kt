@@ -158,7 +158,7 @@ class OfficialArtworkRepository(context: Context) {
         return runCatching {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@use null
-                val body = response.body?.string().orEmpty()
+                val body = response.body.string()
                 if (body.isBlank()) null else JSONObject(body)
             }
         }.getOrNull()

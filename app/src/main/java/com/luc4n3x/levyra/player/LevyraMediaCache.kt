@@ -2,13 +2,11 @@ package com.luc4n3x.levyra.player
 
 import android.app.ActivityManager
 import android.content.Context
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import java.io.File
 
-@OptIn(UnstableApi::class)
 object LevyraMediaCache {
     private const val LOW_RAM_MAX_BYTES = 160L * 1024L * 1024L
     private const val DEFAULT_MAX_BYTES = 384L * 1024L * 1024L

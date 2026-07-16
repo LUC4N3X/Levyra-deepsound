@@ -8,6 +8,7 @@ import java.nio.ByteOrder
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class NormalizationAudioProcessor : AudioProcessor {
 
     @Volatile
@@ -48,7 +49,7 @@ class NormalizationAudioProcessor : AudioProcessor {
     internal fun metadataGain(): Float? {
         val loudness = youtubePerceptualLoudnessDb ?: youtubeLoudnessDb ?: return null
         val attenuationDb = loudness.coerceAtLeast(0.0f)
-        return 10.0.pow((-attenuationDb / 20.0).toDouble()).toFloat().coerceIn(0.25f, 1.0f)
+        return 10.0.pow(-attenuationDb / 20.0).toFloat().coerceIn(0.25f, 1.0f)
     }
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {

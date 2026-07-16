@@ -1389,7 +1389,6 @@ private class YoutubeCipherWebRuntime private constructor(
                 run { webView.settings.allowFileAccessFromFileURLs = true }
                 webView.settings.blockNetworkLoads = true
                 webView.settings.domStorageEnabled = false
-                webView.settings.databaseEnabled = false
                 webView.addJavascriptInterface(bridge, JS_INTERFACE)
                 webView.webChromeClient = WebChromeClient()
                 webView.webViewClient = object : WebViewClient() {
@@ -1495,8 +1494,8 @@ private suspend fun OkHttpClient.awaitText(request: Request, maxBytes: Int): You
         val call = newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object : Callback {
-            override fun onFailure(call: Call, error: IOException) {
-                if (continuation.isActive) runCatching { continuation.resumeWithException(error) }
+            override fun onFailure(call: Call, e: IOException) {
+                if (continuation.isActive) runCatching { continuation.resumeWithException(e) }
             }
 
             override fun onResponse(call: Call, response: Response) {

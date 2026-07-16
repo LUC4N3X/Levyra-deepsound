@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import kotlin.math.roundToInt
 
+@Suppress("DEPRECATION")
 class PremiumAudioEffects {
     private var audioSessionId: Int = 0
     private var settings: LevyraAudioSettings = LevyraAudioSettings()

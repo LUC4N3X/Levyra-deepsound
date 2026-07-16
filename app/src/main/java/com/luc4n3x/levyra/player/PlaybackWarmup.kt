@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.player
 
 import android.content.Context
 import android.net.Uri
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
@@ -18,7 +17,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-@OptIn(UnstableApi::class)
 class PlaybackWarmup(context: Context) {
     private val appContext = context.applicationContext
     private val primeLocks = ConcurrentHashMap<String, Mutex>()

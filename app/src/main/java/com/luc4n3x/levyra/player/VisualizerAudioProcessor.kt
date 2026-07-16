@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+@Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
 class VisualizerAudioProcessor : AudioProcessor {
 
     companion object {

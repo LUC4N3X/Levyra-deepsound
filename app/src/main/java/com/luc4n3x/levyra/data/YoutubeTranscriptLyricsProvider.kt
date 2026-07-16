@@ -75,7 +75,7 @@ class YoutubeTranscriptLyricsProvider(context: Context) {
         GoogleApiKeyHeaders.applyTo(requestBuilder, appContext)
         return client.newCall(requestBuilder.build()).execute().use { response ->
             if (!response.isSuccessful) return null
-            response.body?.string()?.takeIf { it.isNotBlank() }?.let(::JSONObject)
+            response.body.string().takeIf { it.isNotBlank() }?.let(::JSONObject)
         }
     }
 
@@ -105,7 +105,7 @@ class YoutubeTranscriptLyricsProvider(context: Context) {
             .build()
         return client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return emptyList()
-            val root = response.body?.string()?.takeIf { it.isNotBlank() }?.let(::JSONObject) ?: return emptyList()
+            val root = response.body.string().takeIf { it.isNotBlank() }?.let(::JSONObject) ?: return emptyList()
             parseEvents(root.optJSONArray("events") ?: JSONArray())
         }
     }

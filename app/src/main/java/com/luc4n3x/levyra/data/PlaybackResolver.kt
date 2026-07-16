@@ -1266,12 +1266,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             mimeType = format?.mimeType.orEmpty(),
             codec = stream.codec.orEmpty(),
             width = stream.width,
-            height = stream.height.takeIf { it > 0 } ?: heightOf(stream.resolution),
+            height = stream.height.takeIf { it > 0 } ?: heightOf(stream.getResolution()),
             fps = stream.fps,
             bitrate = stream.bitrate,
             itag = stream.itag,
-            muxed = !stream.isVideoOnly,
-            label = stream.resolution
+            muxed = !stream.isVideoOnly(),
+            label = stream.getResolution()
         )
     }
 

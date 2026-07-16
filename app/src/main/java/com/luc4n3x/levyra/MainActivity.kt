@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
     private val pipMode = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         applyOrientationPolicy()
         configureFastImageLoader()
@@ -39,19 +41,12 @@ class MainActivity : ComponentActivity() {
         requestLegacyStoragePermission()
         val startPalette = LevyraThemes.byId(LevyraThemes.APPLE_MUSIC)
         LevyraThemeController.apply(startPalette.id)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
         window.setBackgroundDrawable(ColorDrawable(if (startPalette.isLight) Color.WHITE else Color.BLACK))
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = startPalette.isLight
             isAppearanceLightNavigationBars = startPalette.isLight
         }
         LevyraLaunchActions.consumeFrom(intent)
-        if (Build.VERSION.SDK_INT >= 29) {
-            window.isStatusBarContrastEnforced = false
-            window.isNavigationBarContrastEnforced = false
-        }
         if (Build.VERSION.SDK_INT >= 28) {
             val params = window.attributes
             params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -168,7 +163,7 @@ class MainActivity : ComponentActivity() {
 
     private fun requestHighRefreshRate() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            window.windowManager.defaultDisplay.supportedModes.maxByOrNull { it.refreshRate }?.let { mode ->
+            window.decorView.display?.supportedModes?.maxByOrNull { it.refreshRate }?.let { mode ->
                 val params = window.attributes
                 params.preferredDisplayModeId = mode.modeId
                 window.attributes = params

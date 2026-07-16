@@ -19,7 +19,7 @@ class AppUpdateRepository(context: Context) {
             .header("User-Agent", "LEVYRA/${BuildConfig.VERSION_NAME}")
             .build()
         client.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
+            val body = response.body.string()
             if (!response.isSuccessful) {
                 val message = when (response.code) {
                     404 -> "Nessuna release pubblicata per LEVYRA"
