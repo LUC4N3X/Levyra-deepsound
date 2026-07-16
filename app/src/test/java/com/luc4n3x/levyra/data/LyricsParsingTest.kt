@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import com.luc4n3x.levyra.domain.LyricLine
+import com.luc4n3x.levyra.domain.LyricSectionType
 import com.luc4n3x.levyra.domain.LyricVocalRole
 import com.luc4n3x.levyra.domain.LyricWord
 import org.junit.Assert.assertEquals
@@ -296,6 +297,111 @@ class LyricsParsingTest {
         val selected = LyricsProviderSelector.select(native, listOf(lrc), request)
 
         assertEquals("YouTube Music", selected?.provider)
+    }
+
+    @Test
+    fun sectionDetectorRemovesExplicitMarkersAndBuildsOrderedSections() {
+        val detection = LyricsSectionDetector.detect(
+            listOf(
+                LyricLine(0L, 500L, "[Verse 1]", ""),
+                LyricLine(500L, 1_500L, "First verse line", ""),
+                LyricLine(1_500L, 2_500L, "Second verse line", ""),
+                LyricLine(2_500L, 3_000L, "[Chorus]", ""),
+                LyricLine(3_000L, 4_000L, "This is the hook", ""),
+                LyricLine(4_000L, 5_000L, "Sing it again", "")
+            )
+        )
+
+        assertEquals(listOf("First verse line", "Second verse line", "This is the hook", "Sing it again"), detection.lines.map { it.text })
+        assertEquals(2, detection.sections.size)
+        assertEquals(LyricSectionType.VERSE, detection.sections[0].type)
+        assertEquals(0, detection.sections[0].startLineIndex)
+        assertEquals(1, detection.sections[0].endLineIndex)
+        assertEquals(LyricSectionType.CHORUS, detection.sections[1].type)
+        assertEquals(2, detection.sections[1].startLineIndex)
+        assertEquals(3_000L, detection.sections[1].startMs)
+    }
+
+    @Test
+    fun sectionDetectorFindsRepeatedChorusBlocksWithoutMarkers() {
+        val texts = listOf(
+            "Opening line one",
+            "Opening line two",
+            "Hook line alpha",
+            "Hook line beta",
+            "Middle line one",
+            "Middle line two",
+            "Middle line three",
+            "Hook line alpha",
+            "Hook line beta",
+            "Closing line"
+        )
+        val lines = texts.mapIndexed { index, text ->
+            LyricLine(index * 1_000L, (index + 1) * 1_000L, text, "")
+        }
+
+        val detection = LyricsSectionDetector.detect(lines)
+        val choruses = detection.sections.filter { it.type == LyricSectionType.CHORUS }
+
+        assertEquals(2, choruses.size)
+        assertEquals(2_000L, choruses[0].startMs)
+        assertEquals(7_000L, choruses[1].startMs)
+        assertTrue(choruses.all { it.confidence >= 80 })
+    }
+
+
+    @Test
+    fun sectionDetectorDoesNotTreatDelayedFirstLyricAsIntroOrInventAnOutro() {
+        val lines = (0 until 8).map { index ->
+            LyricLine(
+                startMs = 12_000L + index * 2_000L,
+                endMs = 13_800L + index * 2_000L,
+                text = "Unique verse line ${index + 1}"
+            )
+        }
+
+        val detection = LyricsSectionDetector.detect(lines)
+
+        assertEquals(1, detection.sections.size)
+        assertEquals(LyricSectionType.VERSE, detection.sections.single().type)
+        assertEquals(0, detection.sections.single().startLineIndex)
+        assertEquals(7, detection.sections.single().endLineIndex)
+    }
+
+    @Test
+    fun qualityEnginePrefersCompleteWordTimingOverNominalProviderConfidence() {
+        val request = LyricsRequest("Song", "Artist", 120L)
+        val timedLines = (0 until 12).map { index ->
+            val start = index * 10_000L
+            LyricLine(
+                startMs = start,
+                endMs = start + 8_000L,
+                text = "Timed lyric line $index",
+                translated = "",
+                words = listOf(
+                    LyricWord(start, start + 3_500L, "Timed"),
+                    LyricWord(start + 3_500L, start + 7_500L, "lyric line $index")
+                )
+            )
+        }
+        val plainLines = timedLines.map { it.copy(words = emptyList()) }
+        val timed = LyricsCandidate(
+            result = LyricsRepository.LyricsResult(true, timedLines, "LRCLIB Search", 78, false),
+            title = "Song",
+            artist = "Artist",
+            durationSec = 120L
+        )
+        val plain = LyricsCandidate(
+            result = LyricsRepository.LyricsResult(true, plainLines, "YouTube Music", 100, false),
+            title = "Song",
+            artist = "Artist",
+            durationSec = 120L
+        )
+
+        val best = LyricsResultRanker.best(listOf(plain, timed), request)
+
+        assertEquals("LRCLIB Search", best?.provider)
+        assertTrue((best?.confidence ?: 0) >= 85)
     }
 
     private fun candidate(provider: String, synced: Boolean): LyricsCandidate {
