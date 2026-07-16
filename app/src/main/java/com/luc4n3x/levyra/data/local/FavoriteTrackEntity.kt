@@ -23,6 +23,22 @@ data class FavoriteTrackEntity(
     val cacheScore: Int,
     val accentStart: Int,
     val accentEnd: Int,
+    val youtubeLoudnessDb: Float?,
+    val youtubePerceptualLoudnessDb: Float?,
+    val isrc: String,
+    val upc: String,
+    val releaseDate: String,
+    val year: String,
+    val trackNumber: Int,
+    val discNumber: Int,
+    val explicit: Boolean,
+    val albumBrowseId: String,
+    val artistBrowseIds: String,
+    val counterpartVideoId: String,
+    val videoType: String,
+    val metadataProvider: String,
+    val metadataConfidence: Int,
+    val canonicalAlbumUrl: String,
     val createdAt: Long
 )
 
@@ -43,7 +59,23 @@ fun FavoriteTrackEntity.toTrack(): Track = Track(
     replayScore = replayScore,
     cacheScore = cacheScore,
     accentStart = accentStart,
-    accentEnd = accentEnd
+    accentEnd = accentEnd,
+    youtubeLoudnessDb = youtubeLoudnessDb,
+    youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb,
+    isrc = isrc,
+    upc = upc,
+    releaseDate = releaseDate,
+    year = year,
+    trackNumber = trackNumber,
+    discNumber = discNumber,
+    explicit = explicit,
+    albumBrowseId = albumBrowseId,
+    artistBrowseIds = artistBrowseIds.split(TAG_SEPARATOR).filter(String::isNotBlank),
+    counterpartVideoId = counterpartVideoId,
+    videoType = videoType,
+    metadataProvider = metadataProvider,
+    metadataConfidence = metadataConfidence.coerceIn(0, 100),
+    canonicalAlbumUrl = canonicalAlbumUrl
 )
 
 fun Track.toFavoriteTrackEntity(createdAt: Long): FavoriteTrackEntity = FavoriteTrackEntity(
@@ -64,6 +96,22 @@ fun Track.toFavoriteTrackEntity(createdAt: Long): FavoriteTrackEntity = Favorite
     cacheScore = cacheScore,
     accentStart = accentStart,
     accentEnd = accentEnd,
+    youtubeLoudnessDb = youtubeLoudnessDb,
+    youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb,
+    isrc = isrc,
+    upc = upc,
+    releaseDate = releaseDate,
+    year = year,
+    trackNumber = trackNumber,
+    discNumber = discNumber,
+    explicit = explicit,
+    albumBrowseId = albumBrowseId,
+    artistBrowseIds = artistBrowseIds.joinToString(TAG_SEPARATOR),
+    counterpartVideoId = counterpartVideoId,
+    videoType = videoType,
+    metadataProvider = metadataProvider,
+    metadataConfidence = metadataConfidence.coerceIn(0, 100),
+    canonicalAlbumUrl = canonicalAlbumUrl,
     createdAt = createdAt
 )
 
