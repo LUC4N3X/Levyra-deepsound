@@ -350,13 +350,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val initial = requestMusicBrowseRoot(languageCode, browseId) ?: return@withContext null
         val tracks = LinkedHashMap<String, Track>()
         parsePlaylistTracks(initial, cleanPlaylistId).forEach { tracks.putIfAbsent(it.id, it) }
-        var continuation = findBrowseContinuation(initial)
+        var continuation = findPlaylistContinuation(initial)
         var page = 0
         while (tracks.size < boundedLimit && continuation.isNotBlank() && page < MAX_BROWSE_CONTINUATIONS) {
             val next = requestMusicBrowseRoot(languageCode, "", continuation = continuation) ?: break
             val before = tracks.size
             parsePlaylistTracks(next, cleanPlaylistId).forEach { tracks.putIfAbsent(it.id, it) }
-            continuation = findBrowseContinuation(next)
+            continuation = findPlaylistContinuation(next)
             page += 1
             if (tracks.size == before) break
         }
@@ -660,8 +660,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private fun parsePlaylistTracks(root: JSONObject, playlistId: String): List<Track> {
-        val renderers = mutableListOf<JSONObject>()
-        collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
+        val renderers = playlistShelfRenderers(root)
         return renderers.mapNotNull { renderer ->
             val track = parseMusicRenderer(renderer, "playlist $playlistId") ?: return@mapNotNull null
             val albumReference = extractYoutubeMusicAlbumReference(renderer)
@@ -704,11 +703,47 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun findBrowseContinuation(root: JSONObject): String {
+    private fun playlistShelfContainer(root: JSONObject): JSONObject? {
+        root.optJSONObject("continuationContents")
+            ?.optJSONObject("musicPlaylistShelfContinuation")
+            ?.let { return it }
+        val sectionContents = root.optJSONObject("contents")
+            ?.optJSONObject("singleColumnBrowseResultsRenderer")
+            ?.optJSONArray("tabs")
+            ?.optJSONObject(0)
+            ?.optJSONObject("tabRenderer")
+            ?.optJSONObject("content")
+            ?.optJSONObject("sectionListRenderer")
+            ?.optJSONArray("contents")
+        if (sectionContents != null) {
+            for (index in 0 until sectionContents.length()) {
+                sectionContents.optJSONObject(index)
+                    ?.optJSONObject("musicPlaylistShelfRenderer")
+                    ?.let { return it }
+            }
+        }
+        val shelves = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicPlaylistShelfRenderer", shelves)
+        return shelves.firstOrNull()
+    }
+
+    private fun playlistShelfRenderers(root: JSONObject): List<JSONObject> {
+        val contents = playlistShelfContainer(root)?.optJSONArray("contents") ?: return emptyList()
+        return buildList {
+            for (index in 0 until contents.length()) {
+                contents.optJSONObject(index)
+                    ?.optJSONObject("musicResponsiveListItemRenderer")
+                    ?.let(::add)
+            }
+        }
+    }
+
+    private fun findPlaylistContinuation(root: JSONObject): String {
+        val shelf = playlistShelfContainer(root) ?: return ""
         val keys = listOf("nextContinuationData", "reloadContinuationData", "continuationCommand")
         keys.forEach { key ->
             val nodes = mutableListOf<JSONObject>()
-            collectObjectsByKey(root, key, nodes)
+            collectObjectsByKey(shelf, key, nodes)
             nodes.forEach { node ->
                 node.optString("continuation").takeIf { it.isNotBlank() }?.let { return it }
                 node.optString("token").takeIf { it.isNotBlank() }?.let { return it }

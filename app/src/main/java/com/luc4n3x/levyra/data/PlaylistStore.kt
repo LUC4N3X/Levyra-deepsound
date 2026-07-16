@@ -75,6 +75,20 @@ class PlaylistStore(context: Context) {
         dao.replaceTracks(playlistId, entities)
     }
 
+    suspend fun updateTrackMetadata(playlists: List<Playlist>) = withContext(Dispatchers.IO) {
+        runCatching {
+            playlists.distinctBy { it.id }.forEach { playlist ->
+                val existing = dao.tracksOf(playlist.id).associateBy { it.trackId }
+                val updates = playlist.tracks.mapNotNull { track ->
+                    existing[track.id]?.let { stored ->
+                        track.toPlaylistTrackEntity(playlist.id, stored.position, stored.addedAt)
+                    }
+                }
+                if (updates.isNotEmpty()) dao.insertTracks(updates)
+            }
+        }.onFailure { Timber.w(it, "Playlist metadata update failed") }
+    }
+
     private fun PlaylistEntity.toPlaylist(tracks: List<Track>): Playlist =
         Playlist(id, name, coverUrl, tracks, createdAt, updatedAt)
 }

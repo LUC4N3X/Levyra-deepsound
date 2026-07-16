@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import timber.log.Timber
 
@@ -27,6 +28,10 @@ class FavoritesStore(context: Context) {
 
     fun save(tracks: List<Track>) {
         runBlocking(Dispatchers.IO) { saveInternal(tracks) }
+    }
+
+    suspend fun saveSuspending(tracks: List<Track>) = withContext(Dispatchers.IO) {
+        saveInternal(tracks)
     }
 
     private suspend fun saveInternal(tracks: List<Track>) {
