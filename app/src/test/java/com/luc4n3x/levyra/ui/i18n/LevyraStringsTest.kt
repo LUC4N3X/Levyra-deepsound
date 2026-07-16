@@ -95,7 +95,7 @@ class LevyraStringsTest {
     @Test
     fun onboardingAndArtistHeadingsDoNotUseDecorativeEmoji() {
         LevyraStrings.all().forEach { strings ->
-            listOf(strings.welcomeBadge, strings.popularTracks).forEach { heading ->
+            listOf(strings.welcomeBadge, strings.popularTracks, strings.singlesAndEps).forEach { heading ->
                 val hasDecorativeSymbol = heading.codePoints().anyMatch { codePoint ->
                     Character.getType(codePoint) == Character.OTHER_SYMBOL.toInt() ||
                         Character.getType(codePoint) == Character.MODIFIER_SYMBOL.toInt()
