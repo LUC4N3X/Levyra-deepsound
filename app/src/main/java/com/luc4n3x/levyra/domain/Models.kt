@@ -365,6 +365,14 @@ data class AlbumHit(
     val metadataConfidence: Int = 0
 )
 
+data class AlbumRecommendationSeed(
+    val query: String,
+    val artist: String = "",
+    val album: String = "",
+    val moodTags: Set<String> = emptySet(),
+    val weight: Int = 0
+)
+
 data class AlbumDetail(
     val album: AlbumHit,
     val description: String,
