@@ -2169,16 +2169,20 @@ private fun ArtistHeader(
             modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                profile.name,
-                color = Color.White,
-                fontSize = 40.sp,
-                lineHeight = 43.sp,
-                letterSpacing = (-1.25).sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    profile.name,
+                    color = Color.White,
+                    fontSize = 40.sp,
+                    lineHeight = 43.sp,
+                    letterSpacing = (-1.25).sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
+            }
             val metadata = listOf(profile.subscribers, profile.monthlyListeners).filter { it.isNotBlank() }
             if (metadata.isNotEmpty()) {
                 Text(
