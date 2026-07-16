@@ -63,8 +63,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 .getOrNull()
                 ?.let { fetched ->
                     fetched.copy(
-                        name = resolvedArtist.name.ifBlank { fetched.name },
-                        thumbnailUrl = resolvedArtist.thumbnailUrl.ifBlank { fetched.thumbnailUrl }
+                        name = fetched.name.ifBlank { resolvedArtist.name.ifBlank { clean } },
+                        thumbnailUrl = fetched.thumbnailUrl.ifBlank { resolvedArtist.thumbnailUrl }
                     )
                 }
         } else {
@@ -103,34 +103,59 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
 
     private suspend fun resolveArtist(query: String): ArtistHit? {
         val languageCode = contentLanguage()
-        val fullResults = music.searchEverything(query, languageCode).artists
+        val cleanQuery = query.trim()
+        if (cleanQuery.length < 2) return null
+
+        val primaryName = primaryArtistSegment(cleanQuery).ifBlank { cleanQuery }
+        val primaryKey = artistIdentityKey(primaryName)
+        val queryKey = artistIdentityKey(cleanQuery)
+
+        val fullResults = runCatching {
+            music.searchEverything(cleanQuery, languageCode).artists
+        }.getOrDefault(emptyList())
+
         fullResults
-            .filter { it.name.isNotBlank() }
-            .maxByOrNull { artistSearchMatchScore(query, it.name) }
-            ?.takeIf { it.browseId.isNotBlank() && artistSearchMatchScore(query, it.name) >= 10_000 }
+            .firstOrNull { hit ->
+                hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == queryKey
+            }
             ?.let { return it }
 
-        val primaryName = primaryArtistSegment(query).ifBlank { query }
-        val primaryResults = if (artistIdentityKey(primaryName) != artistIdentityKey(query)) {
-            music.searchEverything(primaryName, languageCode).artists
+        val primaryResults = if (primaryKey == queryKey) {
+            fullResults
         } else {
-            emptyList()
+            runCatching {
+                music.searchEverything(primaryName, languageCode).artists
+            }.getOrDefault(emptyList())
         }
-        val searchName = primaryName.takeIf { it.isNotBlank() } ?: query
-        val allSearchResults = (fullResults + primaryResults)
-            .filter { it.name.isNotBlank() }
-            .distinctBy { it.browseId.ifBlank { artistIdentityKey(it.name) } }
-        allSearchResults
-            .maxByOrNull { artistSearchMatchScore(query, it.name) }
-            ?.takeIf { it.browseId.isNotBlank() && artistSearchMatchScore(query, it.name) >= 700 }
+
+        primaryResults
+            .firstOrNull { hit ->
+                hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == primaryKey
+            }
             ?.let { return it }
 
-        val filteredResults = runCatching { extractArtistSearchHits(postSearch(searchName)) }.getOrDefault(emptyList())
-        return (allSearchResults + filteredResults)
-            .filter { it.name.isNotBlank() }
-            .distinctBy { it.browseId.ifBlank { artistIdentityKey(it.name) } }
-            .maxByOrNull { artistSearchMatchScore(query, it.name) }
-            ?.takeIf { artistSearchMatchScore(query, it.name) >= 300 }
+        val filteredResults = runCatching {
+            extractArtistSearchHits(postSearch(primaryName))
+        }.getOrDefault(emptyList())
+
+        val candidates = (fullResults + primaryResults + filteredResults)
+            .filter { it.name.isNotBlank() && it.browseId.isNotBlank() }
+            .distinctBy { it.browseId.lowercase(Locale.ROOT) }
+
+        candidates
+            .firstOrNull { artistIdentityKey(it.name) == queryKey }
+            ?.let { return it }
+
+        candidates
+            .firstOrNull { artistIdentityKey(it.name) == primaryKey }
+            ?.let { return it }
+
+        val best = candidates
+            .map { candidate -> candidate to artistSearchMatchScore(primaryName, candidate.name) }
+            .maxByOrNull { it.second }
+            ?: return null
+
+        return best.first.takeIf { best.second >= 900 }
     }
 
     private fun extractArtistSearchHits(root: JSONObject): List<ArtistHit> {
@@ -169,7 +194,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val inlineBio = extractBio(root)
         val subscribers = extractSubscribers(header)
         val monthly = extractMonthlyListeners(root)
-        val thumb = bestThumbnail(headerThumbnails(header))
+        val thumb = upgradeThumbnail(extractArtistThumbnail(header))
         val banner = extractBanner(header)
         val songsPointer = findSongsPointer(root)
         val albumPointer = findReleasePointer(root, "Album")
@@ -819,17 +844,36 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ""
     }
 
-    private fun headerThumbnails(header: JSONObject?): JSONArray {
+    private fun extractArtistThumbnail(header: JSONObject?): String {
         val arrays = mutableListOf<JSONArray>()
         collectArrays(header, "thumbnails", arrays)
-        return arrays.maxByOrNull { array ->
-            var best = 0
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                best = maxOf(best, item.optInt("width", 0) * item.optInt("height", 0))
+        var bestUrl = ""
+        var bestScore = Long.MIN_VALUE
+        arrays.forEach { array ->
+            for (index in 0 until array.length()) {
+                val item = array.optJSONObject(index) ?: continue
+                val url = item.optString("url").trim()
+                if (url.isBlank()) continue
+                val width = item.optInt("width", 0)
+                val height = item.optInt("height", 0)
+                val area = width.toLong() * height.toLong()
+                val shortest = minOf(width, height)
+                val longest = maxOf(width, height)
+                val squareRatio = if (longest > 0) shortest.toDouble() / longest.toDouble() else 0.0
+                val squareBonus = when {
+                    squareRatio >= 0.92 -> 4_000_000_000L
+                    squareRatio >= 0.80 -> 2_000_000_000L
+                    squareRatio >= 0.68 -> 500_000_000L
+                    else -> -4_000_000_000L
+                }
+                val score = squareBonus + area
+                if (score > bestScore) {
+                    bestScore = score
+                    bestUrl = url
+                }
             }
-            best
-        } ?: JSONArray()
+        }
+        return bestUrl
     }
 
     private fun thumbnailsOf(node: JSONObject): JSONArray {
