@@ -42,6 +42,7 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.ArtistHit
+import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreCatalog
@@ -83,6 +84,8 @@ import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -255,6 +258,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var artistJob: Job? = null
     private var albumJob: Job? = null
     private var homeAlbumsJob: Job? = null
+    private var homeArtistsJob: Job? = null
+    private var homeArtistsFingerprint: String = ""
     private var radarJob: Job? = null
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
@@ -411,12 +416,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 preferences.saveRecentSearches(repairedRecentSearches)
             }
         }
-        val fallbackQueue = (listOfNotNull(restoredTrack) + initialQueue)
-            .distinctBy { playbackIdentity(it) }
+        val fallbackQueue = restoredTrack
+            ?.let { track -> (listOf(track) + initialQueue).distinctBy { playbackIdentity(it) } }
+            .orEmpty()
         val fallbackIndex = restoredTrack
             ?.let { target -> fallbackQueue.indexOfFirst { samePlayableTrack(it, target) } }
             ?.takeIf { it >= 0 }
-            ?: fallbackQueue.indices.firstOrNull()
             ?: -1
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -447,7 +452,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         repeatMode = queueSnapshot.repeatMode,
                         shuffleEnabled = queueSnapshot.shuffleEnabled,
                         radioEnabled = queueSnapshot.radioEnabled,
-                        currentTrack = if (synchronizeCurrent) currentPersisted ?: current.currentTrack else current.currentTrack,
+                        currentTrack = if (synchronizeCurrent) currentPersisted else current.currentTrack,
                         positionMs = if (synchronizeCurrent) queueSnapshot.positionMs else current.positionMs,
                         durationMs = if (synchronizeCurrent) currentPersisted?.durationMs ?: current.durationMs else current.durationMs
                     )
@@ -615,6 +620,61 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             charts = snapshot.charts,
             personalOrbit = snapshot.personalOrbitTracks
         )
+    }
+
+    fun refreshHomeArtists() {
+        val snapshot = _state.value
+        val candidates = buildList {
+            addAll(snapshot.charts)
+            addAll(snapshot.homeSections.flatMap { it.tracks })
+            addAll(snapshot.tracks)
+            addAll(snapshot.favorites)
+        }
+            .asSequence()
+            .map { it.artist.trim() }
+            .filter { it.length >= 2 }
+            .filterNot { it.contains("unknown", ignoreCase = true) }
+            .filterNot { it.equals("YouTube", ignoreCase = true) || it.equals("YouTube Music", ignoreCase = true) }
+            .distinctBy(::artistIdentityKey)
+            .take(14)
+            .toList()
+        val fingerprint = buildString {
+            append(snapshot.languageCode)
+            append('|')
+            append(candidates.joinToString("|") { artistIdentityKey(it) })
+        }
+        if (fingerprint == homeArtistsFingerprint && (snapshot.homeArtists.isNotEmpty() || candidates.isEmpty())) return
+        homeArtistsFingerprint = fingerprint
+        homeArtistsJob?.cancel()
+        if (candidates.isEmpty()) {
+            _state.update { it.copy(homeArtists = emptyList()) }
+            return
+        }
+        homeArtistsJob = viewModelScope.launch {
+            awaitHomeUiIdle()
+            val semaphore = Semaphore(3)
+            val resolvedArtists = coroutineScope {
+                candidates.map { candidate ->
+                    async {
+                        semaphore.withPermit {
+                            runCatching { artistRepository.artistHitFor(candidate) }.getOrNull()
+                        }
+                    }
+                }.awaitAll()
+            }
+            if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
+            val artists = resolvedArtists
+                .filterNotNull()
+                .filter { it.name.isNotBlank() }
+                .distinctBy { hit ->
+                    hit.browseId.takeIf { it.isNotBlank() }?.lowercase() ?: artistIdentityKey(hit.name)
+                }
+                .take(10)
+            _state.update { current ->
+                if (homeArtistsFingerprint != fingerprint || current.homeArtists == artists) current
+                else current.copy(homeArtists = artists)
+            }
+        }
     }
 
     private fun loadReleaseRadar(deferUntilHomeIdle: Boolean = false) {
@@ -2387,7 +2447,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openArtistFromHit(hit: ArtistHit) {
-        openArtistByName(hit.name)
+        openArtistReference(
+            name = hit.name,
+            browseId = hit.browseId,
+            returnTarget = DetailReturnTarget.None
+        )
     }
 
     private fun recordPlaybackHistory(track: Track) {
@@ -3371,19 +3435,58 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun closePlayer() {
         loopCurrentQueueOnCompletion = false
         streamTransitionId++
+        playRequestId++
+        playJob?.cancel()
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
+        prefetchJob?.cancel()
+        crossfadeJob?.cancel()
+        lyricsJob?.cancel()
+        lyricsPrefetchJob?.cancel()
+        sponsorJob?.cancel()
+        radioJob?.cancel()
+        radioJob = null
+        sleepJob?.cancel()
+        sleepJob = null
+        sponsorSegments = emptyList()
+        cancelBackgroundWarmups(cancelList = true)
+        crossfadeInProgress = false
+        player.setVolume(1f)
+        pendingSeekMs = 0L
+        queueIndex = -1
+        flushListenSession()
         player.stop()
+        queueEngine.clear()
         _state.update {
             it.copy(
+                selectedTab = if (it.selectedTab == LevyraTab.Player) LevyraTab.Home else it.selectedTab,
                 currentTrack = null,
+                queue = emptyList(),
+                queueCurrentIndex = -1,
+                queueUndoAvailable = false,
+                queueHistoryCount = 0,
+                radioEnabled = false,
+                sleepTimerMinutes = 0,
                 isPlaying = false,
+                isResolving = false,
                 positionMs = 0L,
-                durationMs = 0L
+                durationMs = 0L,
+                showQueue = false,
+                showLyrics = false,
+                lyrics = emptyList(),
+                lyricsSections = emptyList(),
+                lyricsLoading = false,
+                lyricsSynced = false,
+                lyricsProvider = "",
+                activeLyric = null
             )
         }
-        saveLastPlaybackAsync(null, 0L)
+        lastPlaybackSaveJob?.cancel()
+        lastPlaybackSaveJob = viewModelScope.launch(Dispatchers.IO) {
+            preferences.saveLastPlayback(null, 0L)
+            queueEngine.flush()
+        }
         updateWidget()
     }
 
