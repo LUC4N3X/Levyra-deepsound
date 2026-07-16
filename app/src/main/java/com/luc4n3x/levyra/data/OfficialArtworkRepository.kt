@@ -3,23 +3,34 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
+import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.LinkedHashMap
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+import kotlin.coroutines.resume
 
 class OfficialArtworkRepository(context: Context) {
     private val client = LevyraHttpClientFactory.general(context.applicationContext)
@@ -31,28 +42,31 @@ class OfficialArtworkRepository(context: Context) {
         .followRedirects(true)
         .followSslRedirects(true)
         .build()
-    private val cache = ConcurrentHashMap<String, OfficialArtwork>()
-    private val misses = ConcurrentHashMap<String, Long>()
+    private val cacheGuard = Any()
+    private val cache = object : LinkedHashMap<String, OfficialArtwork>(CACHE_MAX_ENTRIES + 1, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, OfficialArtwork>): Boolean =
+            size > CACHE_MAX_ENTRIES
+    }
+    private val misses = object : LinkedHashMap<String, Long>(MISS_CACHE_MAX_ENTRIES + 1, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>): Boolean =
+            size > MISS_CACHE_MAX_ENTRIES
+    }
+    private var missSweepCounter = 0
     private val keyLocks = Array(32) { Mutex() }
     private val searchSlots = Semaphore(4)
 
     suspend fun find(track: Track, country: String): OfficialArtwork? {
         if (track.title.isBlank() || track.artist.isBlank()) return null
         val key = cacheKey(track, country)
-        cache[key]?.let { return it }
+        readCache(key)?.let { return it }
         val now = System.currentTimeMillis()
-        misses[key]?.let { if (now - it < MISS_TTL_MS) return null }
+        if (hasFreshMiss(key, now)) return null
         val keyLock = keyLocks[(key.hashCode() and Int.MAX_VALUE) % keyLocks.size]
         return keyLock.withLock {
-            cache[key]?.let { return@withLock it }
-            misses[key]?.let { if (System.currentTimeMillis() - it < MISS_TTL_MS) return@withLock null }
+            readCache(key)?.let { return@withLock it }
+            if (hasFreshMiss(key, System.currentTimeMillis())) return@withLock null
             val outcome = searchSlots.withPermit { search(track, country) }
-            if (outcome.artwork != null) {
-                cache[key] = outcome.artwork
-                misses.remove(key)
-            } else if (outcome.completedRequest) {
-                misses[key] = System.currentTimeMillis()
-            }
+            writeOutcome(key, outcome)
             outcome.artwork
         }
     }
@@ -60,23 +74,42 @@ class OfficialArtworkRepository(context: Context) {
     private suspend fun search(track: Track, country: String): SearchOutcome = withContext(Dispatchers.IO) {
         val normalizedCountry = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: "IT"
         coroutineScope {
-            val apple = async { fetchApple(track, primaryQuery(track), normalizedCountry) }
-            val deezer = async { fetchDeezer(track) }
-            val qobuz = async { fetchQobuz(track, normalizedCountry) }
-            val responses = listOf(apple.await(), deezer.await(), qobuz.await())
-            val best = responses
-                .flatMap { it.items }
-                .sortedWith(compareByDescending<OfficialArtwork> { it.score }.thenByDescending { metadataCompleteness(it) })
-                .firstOrNull()
-                ?.takeIf { it.score >= MIN_ACCEPTED_SCORE }
+            val apple = async {
+                fetchProvider(APPLE_TIMEOUT_MS) { fetchApple(track, primaryQuery(track), normalizedCountry) }
+            }
+            val deezer = async {
+                fetchProvider(DEEZER_TIMEOUT_MS) { fetchDeezer(track) }
+            }
+            val first = select<Pair<ProviderResponse, kotlinx.coroutines.Deferred<ProviderResponse>>> {
+                apple.onAwait { it to deezer }
+                deezer.onAwait { it to apple }
+            }
+            val firstBest = bestAccepted(first.first.items)
+            if (firstBest != null && isDecisiveMatch(track, firstBest)) {
+                first.second.cancel()
+                return@coroutineScope SearchOutcome(firstBest, first.first.completed)
+            }
+            val secondResponse = first.second.await()
+            val directResponses = listOf(first.first, secondResponse)
+            val directBest = bestAccepted(directResponses.flatMap { it.items })
+            if (directBest != null && isDecisiveMatch(track, directBest)) {
+                return@coroutineScope SearchOutcome(directBest, directResponses.any { it.completed })
+            }
+            if (!needsQobuzSupplement(directBest)) {
+                return@coroutineScope SearchOutcome(directBest, directResponses.any { it.completed })
+            }
+            val qobuzResponse = fetchProvider(QOBUZ_TIMEOUT_MS) {
+                fetchQobuz(track, normalizedCountry)
+            }
+            val qobuzBest = bestAccepted(qobuzResponse.items)
             SearchOutcome(
-                artwork = best,
-                completedRequest = responses.any { it.completed }
+                artwork = mergeArtwork(directBest, qobuzBest),
+                completedRequest = directResponses.any { it.completed } || qobuzResponse.completed
             )
         }
     }
 
-    private fun fetchApple(track: Track, query: String, country: String): ProviderResponse {
+    private suspend fun fetchApple(track: Track, query: String, country: String): ProviderResponse {
         val url = APPLE_SEARCH_URL.toHttpUrl().newBuilder()
             .addQueryParameter("term", query)
             .addQueryParameter("media", "music")
@@ -116,7 +149,7 @@ class OfficialArtworkRepository(context: Context) {
         return ProviderResponse(items, true)
     }
 
-    private fun fetchDeezer(track: Track): ProviderResponse {
+    private suspend fun fetchDeezer(track: Track): ProviderResponse {
         val preciseQuery = "track:\"${queryText(removeVersionText(track.title))}\" artist:\"${queryText(track.artist)}\""
         val url = DEEZER_SEARCH_URL.toHttpUrl().newBuilder()
             .addQueryParameter("q", preciseQuery)
@@ -135,12 +168,15 @@ class OfficialArtworkRepository(context: Context) {
             val score = matchScore(track, title, artist, album, durationMs, item.optString("isrc"))
             preliminary += item to score
         }
-        val albumDetails = HashMap<Long, JSONObject?>()
-        preliminary.sortedByDescending { it.second }.take(4).forEach { (item, _) ->
-            val albumId = item.optJSONObject("album")?.optLong("id", 0L) ?: 0L
-            if (albumId > 0L && !albumDetails.containsKey(albumId)) {
-                albumDetails[albumId] = requestJson("$DEEZER_ALBUM_URL/$albumId")
-            }
+        val albumIds = preliminary
+            .sortedByDescending { it.second }
+            .mapNotNull { (item, _) -> item.optJSONObject("album")?.optLong("id", 0L)?.takeIf { it > 0L } }
+            .distinct()
+            .take(DEEZER_MAX_ALBUM_DETAILS)
+        val albumDetails = coroutineScope {
+            albumIds.map { albumId ->
+                async { albumId to requestJson("$DEEZER_ALBUM_URL/$albumId") }
+            }.awaitAll().toMap()
         }
         val items = ArrayList<OfficialArtwork>(preliminary.size)
         preliminary.forEach { (item, score) ->
@@ -180,7 +216,7 @@ class OfficialArtworkRepository(context: Context) {
         return ProviderResponse(items, true)
     }
 
-    private fun fetchQobuz(track: Track, country: String): ProviderResponse {
+    private suspend fun fetchQobuz(track: Track, country: String): ProviderResponse {
         val locale = qobuzLocale(country)
         val encoded = URLEncoder.encode(primaryQuery(track), StandardCharsets.UTF_8.name()).replace("+", "%20")
         val searchUrl = "https://www.qobuz.com/$locale/search/albums/$encoded"
@@ -189,13 +225,21 @@ class OfficialArtworkRepository(context: Context) {
             .map { decodeHtml(it.groupValues[1]) }
             .filter { it.contains("/album/") }
             .distinct()
-            .take(8)
+            .take(QOBUZ_MAX_ALBUMS)
             .toList()
-        val items = albumLinks.mapNotNull { href ->
-            val absolute = if (href.startsWith("http")) href else "https://www.qobuz.com$href"
-            val id = extractQobuzAlbumId(absolute) ?: return@mapNotNull null
-            val html = requestText("https://www.qobuz.com/us-en/album/-/$id", HTML_ACCEPT, "en-US,en;q=0.9") ?: return@mapNotNull null
-            parseQobuzAlbum(html, id, track)
+        val items = coroutineScope {
+            albumLinks.map { href ->
+                async {
+                    val absolute = if (href.startsWith("http")) href else "https://www.qobuz.com$href"
+                    val id = extractQobuzAlbumId(absolute) ?: return@async null
+                    val html = requestText(
+                        "https://www.qobuz.com/us-en/album/-/$id",
+                        HTML_ACCEPT,
+                        "en-US,en;q=0.9"
+                    ) ?: return@async null
+                    parseQobuzAlbum(html, id, track)
+                }
+            }.awaitAll().filterNotNull()
         }
         return ProviderResponse(items, true)
     }
@@ -233,16 +277,17 @@ class OfficialArtworkRepository(context: Context) {
             provider = "Qobuz",
             canonicalAlbumUrl = "https://play.qobuz.com/album/$id",
             releaseDate = releaseDate,
-            year = releaseDate.take(4).takeIf { it.all(Char::isDigit) }.orEmpty()
+            year = releaseDate.take(4).takeIf { it.all(Char::isDigit) }.orEmpty(),
+            upc = extractQobuzUpc(html)
         )
     }
 
-    private fun requestJson(url: String): JSONObject? {
+    private suspend fun requestJson(url: String): JSONObject? {
         val body = requestText(url, JSON_ACCEPT) ?: return null
         return runCatching { JSONObject(body) }.getOrNull()
     }
 
-    private fun requestText(url: String, accept: String, acceptLanguage: String = DEFAULT_ACCEPT_LANGUAGE): String? {
+    private suspend fun requestText(url: String, accept: String, acceptLanguage: String = DEFAULT_ACCEPT_LANGUAGE): String? {
         val request = Request.Builder()
             .url(url)
             .header("Accept", accept)
@@ -250,12 +295,24 @@ class OfficialArtworkRepository(context: Context) {
             .header("User-Agent", USER_AGENT)
             .get()
             .build()
-        return runCatching {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                response.body?.string()?.takeIf { it.isNotBlank() }
-            }
-        }.getOrNull()
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    continuation.resume(null)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val value = runCatching {
+                        response.use {
+                            if (!it.isSuccessful) null else it.body?.string()?.takeIf(String::isNotBlank)
+                        }
+                    }.getOrNull()
+                    continuation.resume(value)
+                }
+            })
+        }
     }
 
     private fun parseQobuzTitleArtist(ogTitle: String, description: String): Pair<String, String>? {
@@ -296,6 +353,15 @@ class OfficialArtworkRepository(context: Context) {
         val candidateTitle = normalize(title)
         val candidateArtist = normalize(artist)
         val candidateAlbum = normalize(album)
+        val exactIsrc = track.isrc.isNotBlank() && isrc.isNotBlank() && track.isrc.equals(isrc, true)
+        val artistScore = when {
+            candidateArtist == targetArtist -> 125
+            candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist) -> 88
+            tokenCoverage(targetArtist, candidateArtist) >= 0.75 -> 68
+            tokenCoverage(targetArtist, candidateArtist) >= 0.5 -> 45
+            else -> 0
+        }
+        if (!exactIsrc && artistScore < MIN_ARTIST_MATCH_SCORE) return REJECTED_SCORE
         var score = 0
         score += when {
             candidateTitle == targetTitle -> 170
@@ -304,14 +370,8 @@ class OfficialArtworkRepository(context: Context) {
             tokenCoverage(targetTitle, candidateTitle) >= 0.65 -> 70
             else -> 0
         }
-        score += when {
-            candidateArtist == targetArtist -> 125
-            candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist) -> 88
-            tokenCoverage(targetArtist, candidateArtist) >= 0.75 -> 68
-            tokenCoverage(targetArtist, candidateArtist) >= 0.5 -> 45
-            else -> 0
-        }
-        if (track.isrc.isNotBlank() && isrc.isNotBlank()) score += if (track.isrc.equals(isrc, true)) 220 else -100
+        score += artistScore
+        if (track.isrc.isNotBlank() && isrc.isNotBlank()) score += if (exactIsrc) 220 else -100
         if (targetAlbum.isNotBlank() && candidateAlbum.isNotBlank()) {
             score += when {
                 candidateAlbum == targetAlbum -> 35
@@ -343,13 +403,15 @@ class OfficialArtworkRepository(context: Context) {
         val targetAlbum = normalize(track.album).takeUnless(::isGenericAlbum)
         val candidateAlbum = normalize(album)
         val targetTitle = normalize(track.title)
-        var score = when {
+        val artistScore = when {
             candidateArtist == targetArtist -> 150
             candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist) -> 105
             tokenCoverage(targetArtist, candidateArtist) >= 0.75 -> 80
             tokenCoverage(targetArtist, candidateArtist) >= 0.5 -> 50
             else -> 0
         }
+        if (artistScore < MIN_ALBUM_ARTIST_MATCH_SCORE) return REJECTED_SCORE
+        var score = artistScore
         score += if (!targetAlbum.isNullOrBlank()) {
             when {
                 candidateAlbum == targetAlbum -> 190
@@ -369,6 +431,90 @@ class OfficialArtworkRepository(context: Context) {
         val targetBlob = "$targetTitle ${targetAlbum.orEmpty()}"
         VERSION_TERMS.forEach { term -> if (candidateAlbum.contains(term) && !targetBlob.contains(term)) score -= 45 }
         return score
+    }
+
+    private suspend fun fetchProvider(
+        timeoutMs: Long,
+        block: suspend () -> ProviderResponse
+    ): ProviderResponse {
+        return try {
+            withTimeout(timeoutMs) { block() }
+        } catch (_: TimeoutCancellationException) {
+            ProviderResponse(emptyList(), false)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            ProviderResponse(emptyList(), false)
+        }
+    }
+
+    private fun bestAccepted(items: List<OfficialArtwork>): OfficialArtwork? = items
+        .asSequence()
+        .filter { it.score >= MIN_ACCEPTED_SCORE }
+        .sortedWith(compareByDescending<OfficialArtwork> { it.score }.thenByDescending { metadataCompleteness(it) })
+        .firstOrNull()
+
+    private fun isDecisiveMatch(track: Track, artwork: OfficialArtwork): Boolean {
+        val exactIsrc = track.isrc.isNotBlank() && artwork.isrc.isNotBlank() && track.isrc.equals(artwork.isrc, true)
+        return exactIsrc || artwork.score >= DECISIVE_MATCH_SCORE
+    }
+
+    private fun needsQobuzSupplement(artwork: OfficialArtwork?): Boolean {
+        return artwork == null ||
+            artwork.thumbnailUrl.isBlank() ||
+            artwork.largeThumbnailUrl.isBlank() ||
+            artwork.upc.isBlank() ||
+            artwork.releaseDate.isBlank() ||
+            artwork.canonicalAlbumUrl.isBlank()
+    }
+
+    private fun mergeArtwork(primary: OfficialArtwork?, supplement: OfficialArtwork?): OfficialArtwork? {
+        if (primary == null) return supplement
+        if (supplement == null) return primary
+        return primary.copy(
+            thumbnailUrl = primary.thumbnailUrl.ifBlank { supplement.thumbnailUrl },
+            largeThumbnailUrl = primary.largeThumbnailUrl.ifBlank { supplement.largeThumbnailUrl },
+            album = primary.album.ifBlank { supplement.album },
+            score = maxOf(primary.score, supplement.score),
+            canonicalAlbumUrl = primary.canonicalAlbumUrl.ifBlank { supplement.canonicalAlbumUrl },
+            releaseDate = primary.releaseDate.ifBlank { supplement.releaseDate },
+            year = primary.year.ifBlank { supplement.year },
+            explicit = primary.explicit || supplement.explicit,
+            upc = primary.upc.ifBlank { supplement.upc }
+        )
+    }
+
+    private fun extractQobuzUpc(html: String): String {
+        return QOBUZ_UPC_PATTERNS.firstNotNullOfOrNull { pattern ->
+            pattern.find(html)?.groupValues?.getOrNull(1)?.filter(Char::isDigit)?.takeIf { it.length in 8..14 }
+        }.orEmpty()
+    }
+
+    private fun readCache(key: String): OfficialArtwork? = synchronized(cacheGuard) { cache[key] }
+
+    private fun hasFreshMiss(key: String, now: Long): Boolean = synchronized(cacheGuard) {
+        missSweepCounter += 1
+        if (missSweepCounter >= MISS_SWEEP_INTERVAL) {
+            misses.entries.removeAll { now - it.value >= MISS_TTL_MS }
+            missSweepCounter = 0
+        }
+        val timestamp = misses[key] ?: return@synchronized false
+        if (now - timestamp < MISS_TTL_MS) true else {
+            misses.remove(key)
+            false
+        }
+    }
+
+    private fun writeOutcome(key: String, outcome: SearchOutcome) {
+        synchronized(cacheGuard) {
+            if (outcome.artwork != null) {
+                cache[key] = outcome.artwork
+                misses.remove(key)
+            } else if (outcome.completedRequest) {
+                misses[key] = System.currentTimeMillis()
+            }
+            Unit
+        }
     }
 
     private fun isGenericAlbum(value: String): Boolean {
@@ -479,6 +625,18 @@ class OfficialArtworkRepository(context: Context) {
         const val DEEZER_ALBUM_URL = "https://api.deezer.com/album"
         const val USER_AGENT = "Levyra/2.3.10 Android"
         const val MIN_ACCEPTED_SCORE = 200
+        const val DECISIVE_MATCH_SCORE = 350
+        const val MIN_ARTIST_MATCH_SCORE = 45
+        const val MIN_ALBUM_ARTIST_MATCH_SCORE = 50
+        const val REJECTED_SCORE = -1_000
+        const val APPLE_TIMEOUT_MS = 10_000L
+        const val DEEZER_TIMEOUT_MS = 12_000L
+        const val QOBUZ_TIMEOUT_MS = 8_000L
+        const val QOBUZ_MAX_ALBUMS = 3
+        const val DEEZER_MAX_ALBUM_DETAILS = 3
+        const val CACHE_MAX_ENTRIES = 384
+        const val MISS_CACHE_MAX_ENTRIES = 512
+        const val MISS_SWEEP_INTERVAL = 64
         const val MISS_TTL_MS = 10 * 60 * 1000L
         const val JSON_ACCEPT = "application/json"
         const val HTML_ACCEPT = "text/html,application/xhtml+xml"
@@ -490,6 +648,10 @@ class OfficialArtworkRepository(context: Context) {
         val QOBUZ_DESCRIPTION = Regex("download (.+) by (.+) in Hi-Res quality on Qobuz", RegexOption.IGNORE_CASE)
         val QOBUZ_TITLE_SUFFIX = Regex("\\s*-\\s*Qobuz\\s*$", RegexOption.IGNORE_CASE)
         val QOBUZ_DATE_PUBLISHED = Regex("\"datePublished\"\\s*:\\s*\"([^\"]+)\"", RegexOption.IGNORE_CASE)
+        val QOBUZ_UPC_PATTERNS = listOf(
+            Regex("\"(?:gtin13|gtin|upc|barcode)\"\\s*:\\s*\"?(\\d{8,14})", RegexOption.IGNORE_CASE),
+            Regex("(?:UPC|EAN|Barcode)\\s*[:\\-]\\s*(\\d{8,14})", RegexOption.IGNORE_CASE)
+        )
         val GENERIC_ALBUMS = setOf("album", "single", "unknown album", "music", "youtube music", "youtube")
     }
 }
