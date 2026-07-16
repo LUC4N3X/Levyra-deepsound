@@ -4,6 +4,7 @@ import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.AlbumHit
+import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.CacheReport
@@ -15,7 +16,10 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -25,6 +29,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.text.Normalizer
+import java.util.Locale
 import kotlin.math.absoluteValue
 
 data class YoutubeMusicMoodCategory(
@@ -58,6 +64,98 @@ data class YoutubeMusicPlaylistDetail(
     val tracks: List<Track>,
     val continuation: String = ""
 )
+
+private data class ScoredAlbumRecommendation(
+    val album: AlbumHit,
+    val score: Int
+)
+
+internal const val REJECTED_ALBUM_RECOMMENDATION_SCORE = Int.MIN_VALUE
+
+internal fun albumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {
+    val albumKey = recommendationTextKey(album.title)
+    val artistKey = recommendationTextKey(album.artist)
+    val seedAlbumKey = recommendationTextKey(seed.album)
+    val seedArtistKey = recommendationTextKey(seed.artist)
+    if (albumKey.isBlank() || artistKey.isBlank()) return REJECTED_ALBUM_RECOMMENDATION_SCORE
+
+    val seedArtistTokens = recommendationTokens(seedArtistKey)
+    val artistCompatibility = recommendationCompatibility(artistKey, seedArtistKey)
+    val artistScore = when {
+        seedArtistKey.isBlank() -> 0
+        artistKey == seedArtistKey -> 520
+        seedArtistTokens.size == 1 -> REJECTED_ALBUM_RECOMMENDATION_SCORE
+        artistCompatibility >= 0.75 -> 380
+        artistCompatibility >= 0.55 -> 240
+        else -> REJECTED_ALBUM_RECOMMENDATION_SCORE
+    }
+    if (artistScore == REJECTED_ALBUM_RECOMMENDATION_SCORE) return artistScore
+
+    if (seedAlbumKey.isNotBlank()) {
+        val titleScore = when {
+            albumKey == seedAlbumKey -> 640
+            recommendationCompatibility(albumKey, seedAlbumKey) >= 0.82 -> 460
+            else -> REJECTED_ALBUM_RECOMMENDATION_SCORE
+        }
+        if (titleScore == REJECTED_ALBUM_RECOMMENDATION_SCORE) return titleScore
+        if (seedArtistKey.isNotBlank() && artistScore < 240) return REJECTED_ALBUM_RECOMMENDATION_SCORE
+        return 900 + titleScore + artistScore
+    }
+
+    if (seedArtistKey.isNotBlank()) return 520 + artistScore
+
+    val moodKeys = seed.moodTags.map(::recommendationTextKey).filter { it.isNotBlank() }
+    if (moodKeys.isEmpty()) return REJECTED_ALBUM_RECOMMENDATION_SCORE
+    val searchable = "$albumKey $artistKey"
+    val moodMatches = moodKeys.count { mood ->
+        val tokens = recommendationTokens(mood)
+        tokens.isNotEmpty() && tokens.all { token -> searchable.split(' ').contains(token) }
+    }
+    return 160 + moodMatches * 90
+}
+
+internal fun recommendationAlbumKey(album: AlbumHit): String =
+    "${recommendationTextKey(album.title)}|${recommendationTextKey(album.artist)}"
+
+internal fun recommendationTextKey(value: String): String {
+    val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
+    return decomposed
+        .replace(Regex("\\p{M}+"), "")
+        .lowercase(Locale.ROOT)
+        .replace('&', ' ')
+        .replace(Regex("(?i)\\b(feat|featuring|ft|with|prod|official|audio|video|lyrics)\\b.*$"), " ")
+        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
+private fun recommendationCompatibility(left: String, right: String): Double {
+    if (left.isBlank() || right.isBlank()) return 0.0
+    if (left == right) return 1.0
+    val leftTokens = recommendationTokens(left)
+    val rightTokens = recommendationTokens(right)
+    if (leftTokens.isEmpty() || rightTokens.isEmpty()) return 0.0
+    val intersection = leftTokens.intersect(rightTokens.toSet()).size.toDouble()
+    val coverage = intersection / minOf(leftTokens.size, rightTokens.size).toDouble()
+    val union = leftTokens.union(rightTokens).size.toDouble()
+    val jaccard = if (union == 0.0) 0.0 else intersection / union
+    return coverage * 0.7 + jaccard * 0.3
+}
+
+private fun recommendationTokens(value: String): List<String> = recommendationTextKey(value)
+    .split(' ')
+    .filter { token -> token.isNotBlank() && token !in ALBUM_RECOMMENDATION_STOP_WORDS }
+
+private val ALBUM_RECOMMENDATION_STOP_WORDS = setOf(
+    "album", "the", "and", "con", "per", "una", "uno", "del", "della", "degli", "delle", "di", "da",
+    "music", "musica", "new", "nuovo", "nuova", "popular", "popolari", "italian", "italiano", "italiana"
+)
+
+private const val MAX_ALBUM_RECOMMENDATION_SEEDS = 12
+private const val ALBUM_RECOMMENDATION_CONCURRENCY = 3
+private const val ALBUM_RESULTS_PER_SEED = 5
+private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 4
+private const val ALBUM_RESULT_RANK_PENALTY = 18
 
 class YoutubeMusicRepository(private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
@@ -221,30 +319,68 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     suspend fun homeAlbums(
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
         limit: Int = 10,
-        seedQueries: List<String> = emptyList()
+        seeds: List<AlbumRecommendationSeed> = emptyList()
     ): List<AlbumHit> = withContext(Dispatchers.IO) {
-        val personalizedAlbums = seedQueries
+        val boundedLimit = limit.coerceIn(1, 24)
+        val normalizedSeeds = seeds
             .asSequence()
-            .map { it.trim() }
-            .filter { it.length >= 2 }
-            .distinct()
-            .take(8)
-            .flatMap { query -> runCatching { searchAlbumHits(query, languageCode, limit) }.getOrDefault(emptyList()).asSequence() }
+            .map { seed -> seed.copy(query = seed.query.trim(), weight = seed.weight.coerceIn(0, 2_000)) }
+            .filter { it.query.length >= 2 }
+            .distinctBy { seed ->
+                listOf(
+                    recommendationTextKey(seed.query),
+                    recommendationTextKey(seed.artist),
+                    recommendationTextKey(seed.album),
+                    seed.moodTags.map(::recommendationTextKey).sorted().joinToString("|")
+                ).joinToString("|")
+            }
+            .take(MAX_ALBUM_RECOMMENDATION_SEEDS)
             .toList()
-        val homeAlbums = if (personalizedAlbums.size >= limit) emptyList() else runCatching { homeAlbumFeedInnerTube(languageCode) }.getOrDefault(emptyList())
-        val fallbackAlbums = if ((personalizedAlbums + homeAlbums).size >= limit) {
-            emptyList()
-        } else {
+        if (normalizedSeeds.isNotEmpty()) {
+            val limiter = Semaphore(ALBUM_RECOMMENDATION_CONCURRENCY)
+            val personalized = coroutineScope {
+                normalizedSeeds.map { seed ->
+                    async {
+                        limiter.withPermit {
+                            runCatching {
+                                searchAlbumHits(seed.query, languageCode, ALBUM_RESULTS_PER_SEED)
+                                    .mapIndexedNotNull { index, album ->
+                                        val matchScore = albumRecommendationMatchScore(album, seed)
+                                        if (matchScore == REJECTED_ALBUM_RECOMMENDATION_SCORE) null
+                                        else ScoredAlbumRecommendation(
+                                            album = album,
+                                            score = seed.weight + matchScore - index * ALBUM_RESULT_RANK_PENALTY
+                                        )
+                                    }
+                            }.getOrDefault(emptyList())
+                        }
+                    }
+                }.awaitAll().flatten()
+            }
+            return@withContext personalized
+                .groupBy { recommendationAlbumKey(it.album) }
+                .values
+                .mapNotNull { group -> group.maxByOrNull { it.score } }
+                .sortedWith(
+                    compareByDescending<ScoredAlbumRecommendation> { it.score }
+                        .thenBy { recommendationTextKey(it.album.artist) }
+                        .thenBy { recommendationTextKey(it.album.title) }
+                )
+                .map { it.album }
+                .take(boundedLimit)
+        }
+        val homeAlbums = runCatching { homeAlbumFeedInnerTube(languageCode) }.getOrDefault(emptyList())
+        val fallbackAlbums = if (homeAlbums.size >= boundedLimit) emptyList() else {
             albumRecommendationQueries(languageCode).flatMap { query ->
-                runCatching { searchAlbumHits(query, languageCode, limit) }.getOrDefault(emptyList())
+                runCatching { searchAlbumHits(query, languageCode, ALBUM_RESULTS_PER_FALLBACK_QUERY) }.getOrDefault(emptyList())
             }
         }
-        (personalizedAlbums + homeAlbums + fallbackAlbums)
+        (homeAlbums + fallbackAlbums)
             .asSequence()
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }
             .filter { it.browseId.isNotBlank() || it.query.isNotBlank() }
-            .distinctBy { "${it.title.lowercase()}|${it.artist.lowercase()}" }
-            .take(limit)
+            .distinctBy(::recommendationAlbumKey)
+            .take(boundedLimit)
             .toList()
     }
 
