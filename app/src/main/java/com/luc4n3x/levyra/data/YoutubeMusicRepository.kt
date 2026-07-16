@@ -14,6 +14,8 @@ import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.LevyraLocalizedDiscovery
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.primaryArtistSegment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -804,12 +806,12 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return renderers.mapNotNull { renderer ->
             val track = parseMusicRenderer(renderer, "playlist $playlistId") ?: return@mapNotNull null
             val albumReference = extractYoutubeMusicAlbumReference(renderer)
-            val artistReference = extractYoutubeMusicArtistReference(renderer, track.artist)
+            val artistReferences = extractYoutubeMusicArtistReferences(renderer, track.artist)
             val trackNumber = extractPlaylistTrackNumber(renderer)
             track.copy(
                 album = albumReference.first.ifBlank { track.album },
                 albumBrowseId = albumReference.second,
-                artistBrowseIds = listOfNotNull(artistReference?.browseId?.takeIf { it.isNotBlank() }),
+                artistBrowseIds = artistReferences.map { it.browseId },
                 trackNumber = trackNumber,
                 explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
                 videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty()
@@ -1257,7 +1259,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .cleanAlbumArtistLabel()
             .ifBlank { fallbackArtist }
         val thumbnail = findBestThumbnail(renderer).ifBlank { album.thumbnailUrl }
-        val artistReference = extractYoutubeMusicArtistReference(renderer, artist)
+        val artistReferences = extractYoutubeMusicArtistReferences(renderer, artist)
         val trackNumber = renderer.optJSONArray("fixedColumns")
             ?.optJSONObject(0)
             ?.optJSONObject("musicResponsiveListItemFixedColumnRenderer")
@@ -1281,7 +1283,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             year = album.year,
             explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
             albumBrowseId = album.browseId,
-            artistBrowseIds = listOfNotNull(artistReference?.browseId?.takeIf { it.isNotBlank() }),
+            artistBrowseIds = artistReferences.map { it.browseId },
             videoType = findStringUnderKey(renderer, "musicVideoType").orEmpty(),
             trackNumber = trackNumber
         )
@@ -1304,54 +1306,98 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val browseId: String
     )
 
-    internal fun extractYoutubeMusicArtistReference(value: Any?, preferredName: String): YoutubeMusicArtistReference? {
-        val candidates = mutableListOf<YoutubeMusicArtistReference>()
+    internal fun extractYoutubeMusicArtistReferences(
+        value: Any?,
+        preferredName: String
+    ): List<YoutubeMusicArtistReference> {
+        val ordered = LinkedHashMap<String, YoutubeMusicArtistReference>()
 
-        fun collect(node: Any?) {
-            when (node) {
-                is JSONObject -> {
-                    val browseEndpoint = node.optJSONObject("navigationEndpoint")
-                        ?.optJSONObject("browseEndpoint")
-                    val browseId = browseEndpoint?.optString("browseId").orEmpty().trim()
-                    val pageType = browseEndpoint
-                        ?.optJSONObject("browseEndpointContextSupportedConfigs")
-                        ?.optJSONObject("browseEndpointContextMusicConfig")
-                        ?.optString("pageType")
-                        .orEmpty()
-                    val directText = (node.opt("text") as? String).orEmpty().cleanAlbumArtistLabel()
-                    val isArtist = browseId.isNotBlank() && (
-                        pageType.contains("ARTIST", ignoreCase = true) ||
-                            browseId.startsWith("UC", ignoreCase = true)
-                        )
-                    if (isArtist) {
-                        val candidateName = directText.ifBlank { preferredName.cleanAlbumArtistLabel() }
-                        candidates += YoutubeMusicArtistReference(candidateName, browseId)
-                    }
-                    val keys = node.keys()
-                    while (keys.hasNext()) collect(node.opt(keys.next()))
-                }
-                is JSONArray -> for (index in 0 until node.length()) collect(node.opt(index))
+        fun artistReferenceFromRun(run: JSONObject?): YoutubeMusicArtistReference? {
+            run ?: return null
+            val browseEndpoint = run.optJSONObject("navigationEndpoint")
+                ?.optJSONObject("browseEndpoint")
+                ?: return null
+            val browseId = browseEndpoint.optString("browseId").trim()
+            val pageType = browseEndpoint
+                .optJSONObject("browseEndpointContextSupportedConfigs")
+                ?.optJSONObject("browseEndpointContextMusicConfig")
+                ?.optString("pageType")
+                .orEmpty()
+            val isArtist = browseId.isNotBlank() && (
+                browseId.startsWith("UC", ignoreCase = true) ||
+                    pageType.contains("ARTIST", ignoreCase = true)
+                )
+            if (!isArtist) return null
+            val name = run.optString("text")
+                .cleanAlbumArtistLabel()
+                .ifBlank { preferredName.cleanAlbumArtistLabel() }
+            return YoutubeMusicArtistReference(name = name, browseId = browseId)
+        }
+
+        fun collectRuns(runs: JSONArray?) {
+            if (runs == null) return
+            for (index in 0 until runs.length()) {
+                val reference = artistReferenceFromRun(runs.optJSONObject(index)) ?: continue
+                ordered.putIfAbsent(reference.browseId.lowercase(Locale.ROOT), reference)
             }
         }
 
-        collect(value)
-        if (candidates.isEmpty()) return null
-
-        fun identityKey(input: String): String = input
-            .trim()
-            .lowercase()
-            .replace("&", "and")
-            .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
-            .trim()
-
-        val preferredKey = identityKey(preferredName.cleanAlbumArtistLabel())
-        return candidates.firstOrNull { preferredKey.isNotBlank() && identityKey(it.name) == preferredKey }
-            ?: candidates.firstOrNull { candidate ->
-                val candidateKey = identityKey(candidate.name)
-                preferredKey.isNotBlank() && candidateKey.isNotBlank() && (preferredKey.contains(candidateKey) || candidateKey.contains(preferredKey))
+        if (value is JSONObject) {
+            val flexColumns = value.optJSONArray("flexColumns")
+            if (flexColumns != null) {
+                for (index in 1 until flexColumns.length()) {
+                    collectRuns(
+                        flexColumns.optJSONObject(index)
+                            ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+                            ?.optJSONObject("text")
+                            ?.optJSONArray("runs")
+                    )
+                }
             }
-            ?: candidates.firstOrNull { it.name.isNotBlank() }
-            ?: candidates.first()
+            collectRuns(value.optJSONObject("subtitle")?.optJSONArray("runs"))
+        }
+
+        if (ordered.isEmpty()) {
+            fun collectFallback(node: Any?) {
+                when (node) {
+                    is JSONObject -> {
+                        artistReferenceFromRun(node)?.let { reference ->
+                            ordered.putIfAbsent(reference.browseId.lowercase(Locale.ROOT), reference)
+                        }
+                        val keys = node.keys()
+                        while (keys.hasNext()) collectFallback(node.opt(keys.next()))
+                    }
+                    is JSONArray -> {
+                        for (index in 0 until node.length()) collectFallback(node.opt(index))
+                    }
+                }
+            }
+            collectFallback(value)
+        }
+
+        if (ordered.isEmpty()) return emptyList()
+
+        val preferredKey = artistIdentityKey(preferredName)
+        val primaryKey = artistIdentityKey(primaryArtistSegment(preferredName))
+        return ordered.values
+            .mapIndexed { index, reference ->
+                val candidateKey = artistIdentityKey(reference.name)
+                val priority = when {
+                    preferredKey.isNotBlank() && candidateKey == preferredKey -> 0
+                    primaryKey.isNotBlank() && candidateKey == primaryKey -> 1
+                    else -> 2
+                }
+                Triple(priority, index, reference)
+            }
+            .sortedWith(compareBy<Triple<Int, Int, YoutubeMusicArtistReference>> { it.first }.thenBy { it.second })
+            .map { it.third }
+    }
+
+    internal fun extractYoutubeMusicArtistReference(
+        value: Any?,
+        preferredName: String
+    ): YoutubeMusicArtistReference? {
+        return extractYoutubeMusicArtistReferences(value, preferredName).firstOrNull()
     }
 
     private fun extractAlbumBrowseId(renderer: JSONObject): String {
@@ -1527,6 +1573,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         if (tokens.isNotEmpty() && tokens[0].lowercase() in excludedTypes) return null
         
         val artist = tokens.firstOrNull()?.takeIf { it.isNotBlank() && it.lowercase() !in typeLabels } ?: "YouTube Music"
+        val artistReferences = extractYoutubeMusicArtistReferences(two, artist)
         val thumbnail = findBestThumbnail(two)
         return buildTrack(
             id = videoId,
@@ -1538,7 +1585,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             largeThumbnailUrl = upgradeThumbnail(thumbnail),
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             query = "home",
-            source = "YouTube Music"
+            source = "YouTube Music",
+            artistBrowseIds = artistReferences.map { it.browseId }
         )
     }
 
@@ -1693,6 +1741,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val artist = tokens
             .firstOrNull { token -> token.isNotBlank() && !isTypeLabel(token) && !token.matches(Regex("\\d+:\\d{2}")) }
             ?: "YouTube Music"
+        val artistReferences = extractYoutubeMusicArtistReferences(renderer, artist)
         val thumbnail = findBestThumbnail(renderer)
         return buildTrack(
             id = videoId,
@@ -1704,7 +1753,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             largeThumbnailUrl = upgradeThumbnail(thumbnail),
             videoUrl = "https://www.youtube.com/watch?v=$videoId",
             query = query,
-            source = "YouTube Music"
+            source = "YouTube Music",
+            artistBrowseIds = artistReferences.map { it.browseId }
         )
     }
 
