@@ -11,6 +11,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import kotlin.io.path.createTempDirectory
 
 class YoutubeLocalDecoderTest {
     @Test
@@ -311,7 +312,7 @@ class YoutubeLocalDecoderTest {
 
     @Test
     fun atomicWriterReplacesFileWithoutLeavingTemporaryArtifacts() {
-        val directory = createTempDir(prefix = "levyra-decoder-")
+        val directory = createTempDirectory(prefix = "levyra-decoder-").toFile()
         try {
             val file = File(directory, "player.js")
             YoutubePlayerConfigStore.writeAtomic(file, "first")
