@@ -573,7 +573,6 @@ class PlaybackService : MediaLibraryService() {
     }
 }
 
-@UnstableApi
 private class LevyraMediaSourceFactory(
     private val delegate: DefaultMediaSourceFactory,
     private val dataSourceFactory: DataSource.Factory,
