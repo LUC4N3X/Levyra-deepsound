@@ -63,6 +63,7 @@ import com.luc4n3x.levyra.domain.LyricsEngine
 import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
+import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -81,6 +82,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,6 +99,7 @@ import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
@@ -266,6 +269,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val activeDownloadKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val activeDownloadTitles = ConcurrentHashMap<String, String>()
     private val activeDownloadTracks = ConcurrentHashMap<String, Track>()
+    private val officialMetadataSignal = Channel<Unit>(Channel.CONFLATED)
+    private val officialMetadataPending = ConcurrentHashMap<String, Track>()
+    private val officialMetadataInFlightKeys = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+    private val officialMetadataDeferUntilIdle = AtomicBoolean(false)
 
     private val homeInteractionGate = HomeInteractionGate()
 
@@ -436,6 +443,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeDownloads()
         observeDownloadTasks()
         loadPlaylists()
+        viewModelScope.launch { consumeOfficialMetadataQueue() }
         refreshListeningPulse(force = true)
         scheduleColdStartRefresh(initialTracks)
         LevyraWidgetBridge.onToggle = { togglePlay() }
@@ -2207,11 +2215,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun refreshOfficialOrbitArtwork(track: Track) {
-        viewModelScope.launch {
-            val languageCode = _state.value.languageCode
-            val enriched = resolveOfficialOrbitArtwork(track, languageCode) ?: return@launch
-            applyOfficialOrbitArtwork(enriched)
-        }
+        enqueueOfficialMetadata(listOf(track), 1, false)
     }
 
     private fun refreshOfficialMetadataBatch(
@@ -2219,69 +2223,98 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         limit: Int,
         deferUntilHomeIdle: Boolean = false
     ) {
-        val pending = tracks
-            .asSequence()
-            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-            .filter(::needsOfficialMetadata)
-            .distinctBy { LevyraPersonalOrbit.identityKey(it) }
-            .take(limit.coerceIn(1, 16))
-            .toList()
-        if (pending.isEmpty()) return
-        viewModelScope.launch {
-            if (deferUntilHomeIdle) awaitHomeUiIdle(homeStartupWorkPlan())
-            val enrichedTracks = Collections.synchronizedList(mutableListOf<Track>())
-            val semaphore = Semaphore(3)
-            coroutineScope {
-                pending.map { track ->
-                    launch {
-                        semaphore.withPermit {
-                            if (!isActive) return@withPermit
-                            val enriched = resolveOfficialOrbitArtwork(track, _state.value.languageCode) ?: return@withPermit
-                            enrichedTracks += enriched
-                        }
-                    }
-                }.forEach { it.join() }
-            }
-            if (enrichedTracks.isNotEmpty()) applyOfficialOrbitArtworkBatch(enrichedTracks.toList())
-        }
+        enqueueOfficialMetadata(tracks, limit, deferUntilHomeIdle)
     }
 
     private fun refreshMissingOfficialOrbitArtwork(tracks: List<Track>, deferUntilHomeIdle: Boolean = false) {
-        val pending = tracks
-            .asSequence()
-            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-            .filter(::needsOfficialMetadata)
-            .distinctBy { LevyraPersonalOrbit.identityKey(it) }
-            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-            .toList()
-        if (pending.isEmpty()) return
         orbitArtworkJob?.cancel()
         orbitArtworkJob = viewModelScope.launch {
             val startupPlan = homeStartupWorkPlan()
             delay(if (deferUntilHomeIdle) startupPlan.secondaryStartDelayMs else 250L)
             if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
-            val enrichedTracks = Collections.synchronizedList(mutableListOf<Track>())
-            val semaphore = Semaphore((startupPlan.chartEnrichmentConcurrency + 2).coerceIn(3, 4))
-            coroutineScope {
-                pending.map { track ->
-                    launch {
-                        semaphore.withPermit {
-                            if (!isActive) return@withPermit
-                            if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
-                            val key = LevyraPersonalOrbit.identityKey(track)
-                            val current = _state.value.personalOrbitTracks.firstOrNull {
-                                LevyraPersonalOrbit.identityKey(it) == key
-                            } ?: return@withPermit
-                            if (!needsOfficialMetadata(current)) return@withPermit
-                            val enriched = resolveOfficialOrbitArtwork(current, _state.value.languageCode) ?: return@withPermit
-                            enrichedTracks += enriched
-                        }
-                    }
-                }.forEach { it.join() }
+            enqueueOfficialMetadata(tracks, LevyraPersonalOrbit.DISPLAY_LIMIT, false)
+        }
+    }
+
+    private fun enqueueOfficialMetadata(
+        tracks: List<Track>,
+        limit: Int,
+        deferUntilHomeIdle: Boolean
+    ) {
+        val pending = tracks
+            .asSequence()
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            .filter(::needsOfficialMetadata)
+            .distinctBy { LevyraPersonalOrbit.identityKey(it) }
+            .take(limit.coerceIn(1, OFFICIAL_METADATA_MAX_BATCH_SIZE))
+            .toList()
+        if (pending.isEmpty()) return
+        pending.forEach { track ->
+            val key = LevyraPersonalOrbit.identityKey(track)
+            if (key !in officialMetadataInFlightKeys) {
+                officialMetadataPending.merge(key, track) { existing, incoming -> richerOfficialMetadataSeed(existing, incoming) }
             }
-            if (enrichedTracks.isEmpty()) return@launch
-            if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
-            applyOfficialOrbitArtworkBatch(enrichedTracks.toList())
+        }
+        if (officialMetadataPending.isEmpty()) return
+        if (deferUntilHomeIdle) officialMetadataDeferUntilIdle.set(true)
+        officialMetadataSignal.trySend(Unit)
+    }
+
+    private fun richerOfficialMetadataSeed(existing: Track, incoming: Track): Track {
+        return if (officialMetadataSeedScore(incoming) >= officialMetadataSeedScore(existing)) incoming else existing
+    }
+
+    private fun officialMetadataSeedScore(track: Track): Int {
+        return listOf(
+            track.album,
+            track.thumbnailUrl,
+            track.largeThumbnailUrl,
+            track.isrc,
+            track.upc,
+            track.releaseDate,
+            track.albumBrowseId,
+            track.canonicalAlbumUrl
+        ).count(String::isNotBlank) * 10 + track.metadataConfidence.coerceIn(0, 100)
+    }
+
+    private suspend fun consumeOfficialMetadataQueue() {
+        for (ignored in officialMetadataSignal) {
+            while (currentCoroutineContext().isActive) {
+                if (officialMetadataDeferUntilIdle.getAndSet(false)) {
+                    awaitHomeUiIdle(homeStartupWorkPlan())
+                }
+                val batch = officialMetadataPending.entries
+                    .asSequence()
+                    .mapNotNull { entry ->
+                        if (officialMetadataInFlightKeys.add(entry.key)) entry.key to entry.value else null
+                    }
+                    .take(OFFICIAL_METADATA_MAX_BATCH_SIZE)
+                    .toList()
+                if (batch.isEmpty()) break
+                batch.forEach { (key, track) -> officialMetadataPending.remove(key, track) }
+                val enrichedTracks = Collections.synchronizedList(mutableListOf<Track>())
+                val semaphore = Semaphore(OFFICIAL_METADATA_CONCURRENCY)
+                coroutineScope {
+                    batch.map { (key, track) ->
+                        launch {
+                            try {
+                                semaphore.withPermit {
+                                    if (!isActive) return@withPermit
+                                    val enriched = resolveOfficialOrbitArtwork(track, _state.value.languageCode)
+                                        ?: return@withPermit
+                                    enrichedTracks += enriched
+                                }
+                            } finally {
+                                officialMetadataInFlightKeys.remove(key)
+                            }
+                        }
+                    }.forEach { it.join() }
+                }
+                if (enrichedTracks.isNotEmpty()) {
+                    applyOfficialOrbitArtworkBatch(enrichedTracks.toList())
+                }
+                if (officialMetadataPending.isEmpty()) break
+            }
         }
     }
 
@@ -2336,10 +2369,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         return officialTrack.takeIf { LevyraPersonalOrbit.hasSquareAlbumArtwork(it) }
     }
 
-    private suspend fun applyOfficialOrbitArtwork(enriched: Track) {
-        applyOfficialOrbitArtworkBatch(listOf(enriched))
-    }
-
     private suspend fun applyOfficialOrbitArtworkBatch(enrichedTracks: List<Track>) {
         val enrichedByKey = enrichedTracks
             .distinctBy { LevyraPersonalOrbit.identityKey(it) }
@@ -2348,6 +2377,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         var persistedHistory: List<Track> = emptyList()
         var persistedOrbit: List<Track> = emptyList()
         var persistedHomeAlbums: List<AlbumHit> = emptyList()
+        var persistedFavorites: List<Track> = emptyList()
+        var persistedPlaylists: List<Playlist> = emptyList()
+        var shouldPersistFavorites = false
+        var shouldPersistPlaylists = false
         var languageCode = _state.value.languageCode
         _state.update { current ->
             fun withArtwork(item: Track): Track {
@@ -2380,7 +2413,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 val targetArtist = normalizedMetadataText(item.artist)
                 val enriched = enrichedByKey.values
                     .asSequence()
-                    .map { track ->
+                    .mapNotNull { track ->
                         val candidateAlbum = normalizedMetadataText(track.album)
                         val candidateArtist = normalizedMetadataText(track.artist)
                         val albumScore = when {
@@ -2395,9 +2428,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             targetArtist.contains(candidateArtist) || candidateArtist.contains(targetArtist) -> 1
                             else -> 0
                         }
-                        track to albumScore + artistScore
+                        val sameArtistBrowseId = item.artistBrowseId.isNotBlank() &&
+                            track.artistBrowseIds.any { it.equals(item.artistBrowseId, ignoreCase = true) }
+                        val sameAlbumBrowseId = item.browseId.isNotBlank() &&
+                            track.albumBrowseId.equals(item.browseId, ignoreCase = true)
+                        val sameUpc = item.upc.isNotBlank() && track.upc.isNotBlank() &&
+                            item.upc.equals(track.upc, ignoreCase = true)
+                        val strongIdentifier = sameArtistBrowseId || sameAlbumBrowseId || sameUpc
+                        val artistCompatible = artistScore > 0
+                        if (!artistCompatible && !strongIdentifier) return@mapNotNull null
+                        val score = albumScore + artistScore + if (strongIdentifier) 4 else 0
+                        (track to score).takeIf { score >= 5 }
                     }
-                    .filter { it.second >= 4 }
                     .maxWithOrNull(compareBy<Pair<Track, Int>> { it.second }.thenBy { it.first.metadataConfidence })
                     ?.first
                     ?: return item
@@ -2469,6 +2511,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             persistedHistory = recentSearches
             persistedOrbit = orbit
             persistedHomeAlbums = homeAlbums
+            persistedFavorites = favorites
+            persistedPlaylists = (playlists + listOfNotNull(openPlaylist)).distinctBy { it.id }
+            shouldPersistFavorites = current.favorites.any {
+                LevyraPersonalOrbit.identityKey(it) in enrichedByKey.keys
+            }
+            shouldPersistPlaylists = persistedPlaylists.any { playlist ->
+                playlist.tracks.any { LevyraPersonalOrbit.identityKey(it) in enrichedByKey.keys }
+            }
             languageCode = current.languageCode
             current.copy(
                 currentTrack = currentTrack,
@@ -2497,24 +2547,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val artworkTracks = persistedOrbit
             .filter { LevyraPersonalOrbit.identityKey(it) in enrichedByKey.keys }
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-        if (artworkTracks.isNotEmpty()) {
-            withContext(Dispatchers.IO) {
-                preferences.saveRecentSearches(persistedHistory)
-                preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
-                preferences.saveHomeAlbums(persistedHomeAlbums, languageCode)
+        withContext(Dispatchers.IO) {
+            preferences.saveRecentSearches(persistedHistory)
+            preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
+            preferences.saveHomeAlbums(persistedHomeAlbums, languageCode)
+            if (shouldPersistFavorites) favoritesStore.saveSuspending(persistedFavorites)
+            if (shouldPersistPlaylists) playlistStore.updateTrackMetadata(persistedPlaylists)
+            if (artworkTracks.isNotEmpty()) {
                 LevyraArtworkCache.cachePersistent(appContext, artworkTracks, artworkTracks.size)
             }
+        }
+        if (artworkTracks.isNotEmpty()) {
             LevyraArtworkCache.preloadPriority(
                 appContext,
                 artworkTracks,
                 artworkTracks.size
             )
-        } else {
-            withContext(Dispatchers.IO) {
-                preferences.saveRecentSearches(persistedHistory)
-                preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
-                preferences.saveHomeAlbums(persistedHomeAlbums, languageCode)
-            }
         }
     }
 
@@ -3582,6 +3630,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
+        private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 16
+        private const val OFFICIAL_METADATA_CONCURRENCY = 3
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
         const val PULSE_REFRESH_THROTTLE_MS = 5_000L
     }
@@ -3595,6 +3645,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         cancelBackgroundWarmups()
+        orbitArtworkJob?.cancel()
+        officialMetadataSignal.close()
         chartEnrichJob?.cancel()
         sleepJob?.cancel()
         lyricsJob?.cancel()
