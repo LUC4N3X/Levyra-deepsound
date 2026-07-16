@@ -1949,6 +1949,10 @@ private fun ArtistOverlay(
     val accentStart = profile?.let { Color(it.accentStart) } ?: LevyraCyan
     val accentEnd = profile?.let { Color(it.accentEnd) } ?: LevyraViolet
     val strings = LocalLevyraStrings.current
+    val showArtistError = shouldShowArtistError(
+        hasError = state.artistError != null,
+        hasProfile = profile != null
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1979,7 +1983,7 @@ private fun ArtistOverlay(
                         }
                     }
                 }
-                profile == null -> {
+                showArtistError -> {
                     item {
                         Column(
                             modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
@@ -1991,28 +1995,26 @@ private fun ArtistOverlay(
                                 background = Color.White.copy(alpha = 0.07f),
                                 onClick = onClose
                             )
-                            Text(state.artistError ?: strings.artistProfileUnavailable, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                            Text(strings.artistProfileUnavailable, color = LevyraMuted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
                 else -> {
+                    val artist = requireNotNull(profile) { "Artist profile required outside loading and error states" }
                     item {
                         ArtistHeader(
-                            profile = profile,
+                            profile = artist,
                             isFollowed = isFollowed,
                             accentStart = accentStart,
                             accentEnd = accentEnd,
-                            onPlay = profile.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
+                            onPlay = artist.topSongs.firstOrNull()?.let { track -> { onPlay(track) } },
                             onToggleFollow = onToggleFollow,
                             onClose = onClose
                         )
                     }
-                    if (profile.hasBio) {
-                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistBio(profile.bio) } }
-                    }
-                    if (profile.topSongs.isNotEmpty()) {
+                    if (artist.topSongs.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.popularTracks) } }
-                        items(profile.topSongs, key = { "artist-song-${it.id}" }) { track ->
+                        items(artist.topSongs, key = { "artist-song-${it.id}" }) { track ->
                             Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                                 TrackRow(
                                     track = track,
@@ -2030,17 +2032,20 @@ private fun ArtistOverlay(
                             }
                         }
                     }
-                    if (profile.albums.isNotEmpty()) {
+                    if (artist.albums.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.albumsPlain) } }
-                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(profile.albums, profile.name, onOpenRelease) } }
+                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(artist.albums, artist.name, onOpenRelease) } }
                     }
-                    if (profile.singles.isNotEmpty()) {
+                    if (artist.singles.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.singlesAndEps) } }
-                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(profile.singles, profile.name, onOpenRelease) } }
+                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(artist.singles, artist.name, onOpenRelease) } }
                     }
-                    if (profile.relatedArtists.isNotEmpty()) {
+                    if (artist.hasBio) {
+                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistBio(artist.bio) } }
+                    }
+                    if (artist.relatedArtists.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.similarArtists) } }
-                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistHitRow(profile.relatedArtists, onClick = onOpenArtist) } }
+                        item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistHitRow(artist.relatedArtists, onClick = onOpenArtist) } }
                     }
                 }
             }
@@ -2164,20 +2169,16 @@ private fun ArtistHeader(
             modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    profile.name,
-                    color = Color.White,
-                    fontSize = 40.sp,
-                    lineHeight = 43.sp,
-                    letterSpacing = (-1.25).sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
-            }
+            Text(
+                profile.name,
+                color = Color.White,
+                fontSize = 40.sp,
+                lineHeight = 43.sp,
+                letterSpacing = (-1.25).sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
             val metadata = listOf(profile.subscribers, profile.monthlyListeners).filter { it.isNotBlank() }
             if (metadata.isNotEmpty()) {
                 Text(
@@ -9393,7 +9394,7 @@ private fun OnboardingOverlay(tastes: List<Taste>, selectedLanguageCode: String,
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            OnboardingTopBar(step = step, onBack = { step = step.previous() })
+            OnboardingTopBar(step = step, backLabel = strings.back, onBack = { step = step.previous() })
             AnimatedContent(
                 targetState = step,
                 transitionSpec = {
@@ -9442,7 +9443,7 @@ private fun OnboardingOverlay(tastes: List<Taste>, selectedLanguageCode: String,
 }
 
 @Composable
-private fun OnboardingTopBar(step: OnboardingStep, onBack: () -> Unit) {
+private fun OnboardingTopBar(step: OnboardingStep, backLabel: String, onBack: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -9455,7 +9456,7 @@ private fun OnboardingTopBar(step: OnboardingStep, onBack: () -> Unit) {
                 icon = Icons.Rounded.ArrowBack,
                 tint = LevyraText,
                 background = Color.White.copy(alpha = 0.07f),
-                contentDescription = null,
+                contentDescription = backLabel,
                 onClick = onBack
             )
         }
@@ -9547,7 +9548,7 @@ private fun OnboardingProfileStage(
                 BasicTextField(
                     value = name,
                     onValueChange = { newName ->
-                        onName(newName.replaceFirstChar { char -> if (char.isLowerCase()) char.titlecase(locale) else char.toString() })
+                        onName(preserveProfileNameInput(newName))
                     },
                     singleLine = true,
                     textStyle = TextStyle(color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Bold),

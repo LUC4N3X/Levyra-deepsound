@@ -106,6 +106,8 @@ import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
+private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
+
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
     val safeCurrent = current?.coerceIn(1, 99) ?: 1
@@ -1890,7 +1892,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update {
                     it.copy(
                         artistLoading = false,
-                        artistError = "Profilo artista non disponibile",
+                        artistError = ARTIST_PROFILE_UNAVAILABLE_ERROR,
                         artistProfile = profile
                     )
                 }
