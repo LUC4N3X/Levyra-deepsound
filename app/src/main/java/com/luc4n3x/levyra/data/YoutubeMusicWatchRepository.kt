@@ -23,6 +23,13 @@ data class YoutubeMusicWatchArtist(
     val browseId: String
 )
 
+data class YoutubeMusicFeedbackTokens(
+    val add: String = "",
+    val remove: String = "",
+    val pin: String = "",
+    val unpin: String = ""
+)
+
 data class YoutubeMusicWatchTrack(
     val videoId: String,
     val title: String,
@@ -33,6 +40,11 @@ data class YoutubeMusicWatchTrack(
     val thumbnailUrl: String,
     val videoType: String,
     val explicit: Boolean,
+    val year: String = "",
+    val likeStatus: String = "INDIFFERENT",
+    val inLibrary: Boolean = false,
+    val pinnedToListenAgain: Boolean = false,
+    val feedbackTokens: YoutubeMusicFeedbackTokens = YoutubeMusicFeedbackTokens(),
     val counterpart: YoutubeMusicWatchTrack? = null
 )
 
@@ -41,7 +53,9 @@ data class YoutubeMusicWatchPlaylist(
     val playlistId: String,
     val lyricsBrowseId: String,
     val relatedBrowseId: String,
-    val continuation: String
+    val continuation: String,
+    val radio: Boolean = false,
+    val shuffled: Boolean = false
 )
 
 enum class YoutubeMusicRelatedType {
@@ -89,17 +103,41 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
         videoId: String,
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
         limit: Int = 25
+    ): YoutubeMusicWatchPlaylist = getWatchPlaylistAdvanced(
+        videoId = videoId,
+        playlistId = "",
+        languageCode = languageCode,
+        limit = limit,
+        radio = false,
+        shuffle = false
+    )
+
+    suspend fun getWatchPlaylistAdvanced(
+        videoId: String = "",
+        playlistId: String = "",
+        languageCode: String = LevyraLanguageCatalog.deviceDefault(),
+        limit: Int = 25,
+        radio: Boolean = false,
+        shuffle: Boolean = false
     ): YoutubeMusicWatchPlaylist = withContext(Dispatchers.IO) {
         val cleanVideoId = videoId.trim()
-        require(cleanVideoId.isNotBlank())
+        val cleanPlaylistId = playlistId.trim().removePrefix("VL")
+        require(cleanVideoId.isNotBlank() || cleanPlaylistId.isNotBlank())
+        require(!(radio && shuffle))
         val boundedLimit = limit.coerceIn(1, 100)
+        val effectivePlaylistId = cleanPlaylistId.ifBlank { "RDAMVM$cleanVideoId" }
         val requestBody = JSONObject()
             .put("enablePersistentPlaylistPanel", true)
             .put("isAudioOnly", true)
             .put("tunerSettingValue", "AUTOMIX_SETTING_NORMAL")
-            .put("videoId", cleanVideoId)
-            .put("playlistId", "RDAMVM$cleanVideoId")
-            .put(
+            .put("playlistId", effectivePlaylistId)
+        if (cleanVideoId.isNotBlank()) requestBody.put("videoId", cleanVideoId)
+        if (shuffle) {
+            requestBody.put("params", SHUFFLE_PARAMS)
+        } else if (radio) {
+            requestBody.put("params", RADIO_PARAMS)
+        } else {
+            requestBody.put(
                 "watchEndpointMusicSupportedConfigs",
                 JSONObject().put(
                     "watchEndpointMusicConfig",
@@ -108,7 +146,14 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
                         .put("musicVideoType", "MUSIC_VIDEO_TYPE_ATV")
                 )
             )
-        val cacheKey = "$cleanVideoId|${languageCode.lowercase(Locale.ROOT)}"
+        }
+        val cacheKey = listOf(
+            cleanVideoId,
+            effectivePlaylistId,
+            languageCode.lowercase(Locale.ROOT),
+            radio.toString(),
+            shuffle.toString()
+        ).joinToString("|")
         val cachedPlaylist = cached(watchCache, cacheKey, WATCH_CACHE_TTL_MS)
         if (cachedPlaylist != null && (cachedPlaylist.tracks.size >= boundedLimit || cachedPlaylist.continuation.isBlank())) {
             return@withContext cachedPlaylist.copy(tracks = cachedPlaylist.tracks.take(boundedLimit))
@@ -116,7 +161,7 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
 
         val parsedInitial = cachedPlaylist ?: YoutubeMusicWatchParser.parseWatchPlaylist(
             post("next", requestBody, languageCode, mobile = false)
-        )
+        ).copy(radio = radio, shuffled = shuffle)
         var parsed = parsedInitial
         val tracks = LinkedHashMap<String, YoutubeMusicWatchTrack>()
         parsed.tracks.forEach { track -> tracks.putIfAbsent(track.videoId, track) }
@@ -132,16 +177,24 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
             nextPage.tracks.forEach { track -> tracks.putIfAbsent(track.videoId, track) }
             continuation = nextPage.continuation
             parsed = parsed.copy(
-                playlistId = parsed.playlistId.ifBlank { nextPage.playlistId },
+                playlistId = parsed.playlistId.ifBlank { nextPage.playlistId.ifBlank { effectivePlaylistId } },
                 lyricsBrowseId = parsed.lyricsBrowseId.ifBlank { nextPage.lyricsBrowseId },
                 relatedBrowseId = parsed.relatedBrowseId.ifBlank { nextPage.relatedBrowseId },
-                continuation = continuation
+                continuation = continuation,
+                radio = radio,
+                shuffled = shuffle
             )
             requests += 1
             if (tracks.size == before) break
         }
 
-        val fullResult = parsed.copy(tracks = tracks.values.toList(), continuation = continuation)
+        val fullResult = parsed.copy(
+            tracks = tracks.values.toList(),
+            playlistId = parsed.playlistId.ifBlank { effectivePlaylistId },
+            continuation = continuation,
+            radio = radio,
+            shuffled = shuffle
+        )
         putCached(watchCache, cacheKey, fullResult, WATCH_CACHE_MAX_ENTRIES)
         fullResult.copy(tracks = fullResult.tracks.take(boundedLimit))
     }
@@ -280,6 +333,8 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
         private const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
         private const val MOBILE_USER_AGENT = "com.google.android.apps.youtube.music/7.21.50 (Linux; U; Android 15) gzip"
         private const val MAX_CONTINUATION_REQUESTS = 4
+        private const val RADIO_PARAMS = "wAEB"
+        private const val SHUFFLE_PARAMS = "wAEB8gECKAE%3D"
         private const val WATCH_CACHE_TTL_MS = 20L * 60L * 1000L
         private const val RELATED_CACHE_TTL_MS = 6L * 60L * 60L * 1000L
         private const val LYRICS_CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1000L
@@ -575,6 +630,10 @@ internal object YoutubeMusicWatchParser {
             ?.optJSONObject("watchEndpointMusicConfig")
             ?.optString("musicVideoType")
             .orEmpty()
+        val byline = bylineRuns.joinText()
+        val year = Regex("\\b(?:19|20)\\d{2}\\b").find(byline)?.value.orEmpty()
+        val menuData = parseSongMenuData(renderer)
+        val textBlob = renderer.toString()
         return YoutubeMusicWatchTrack(
             videoId = videoId,
             title = title,
@@ -584,9 +643,91 @@ internal object YoutubeMusicWatchParser {
             durationMs = length.durationToMs(),
             thumbnailUrl = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails").bestThumbnail(),
             videoType = videoType,
-            explicit = renderer.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT")
+            explicit = textBlob.contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+            year = year,
+            likeStatus = menuData.likeStatus,
+            inLibrary = menuData.inLibrary,
+            pinnedToListenAgain = menuData.pinnedToListenAgain,
+            feedbackTokens = menuData.feedbackTokens
         )
     }
+
+    private fun parseSongMenuData(renderer: JSONObject): SongMenuData {
+        val items = renderer.optJSONObject("menu")
+            ?.optJSONObject("menuRenderer")
+            ?.optJSONArray("items")
+            ?: JSONArray()
+        var likeStatus = "INDIFFERENT"
+        var inLibrary = false
+        var pinnedToListenAgain = false
+        var addToken = ""
+        var removeToken = ""
+        var pinToken = ""
+        var unpinToken = ""
+        for (index in 0 until items.length()) {
+            val item = items.optJSONObject(index) ?: continue
+            val toggle = item.optJSONObject("toggleMenuServiceItemRenderer")
+            val service = item.optJSONObject("menuServiceItemRenderer")
+            val menuItem = toggle ?: service ?: continue
+            val likeAction = menuItem.optJSONObject("defaultServiceEndpoint")
+                ?.optJSONObject("likeEndpoint")
+                ?.optString("status")
+                .orEmpty()
+            likeStatus = when (likeAction.uppercase(Locale.ROOT)) {
+                "LIKE" -> "INDIFFERENT"
+                "INDIFFERENT" -> "LIKE"
+                else -> likeStatus
+            }
+            val iconType = menuItem.optJSONObject("defaultIcon")
+                ?.optString("iconType")
+                .orEmpty()
+                .ifBlank { menuItem.optJSONObject("icon")?.optString("iconType").orEmpty() }
+            val defaultToken = feedbackToken(menuItem.optJSONObject("defaultServiceEndpoint"))
+            val toggledToken = feedbackToken(menuItem.optJSONObject("toggledServiceEndpoint"))
+            when (iconType) {
+                "KEEP" -> {
+                    pinToken = defaultToken
+                    unpinToken = toggledToken
+                }
+                "KEEP_OFF" -> {
+                    pinnedToListenAgain = true
+                    pinToken = toggledToken
+                    unpinToken = defaultToken
+                }
+                "BOOKMARK_BORDER" -> {
+                    addToken = defaultToken
+                    removeToken = toggledToken
+                }
+                "BOOKMARK" -> {
+                    inLibrary = true
+                    addToken = toggledToken
+                    removeToken = defaultToken
+                }
+            }
+        }
+        return SongMenuData(
+            likeStatus = likeStatus,
+            inLibrary = inLibrary,
+            pinnedToListenAgain = pinnedToListenAgain,
+            feedbackTokens = YoutubeMusicFeedbackTokens(
+                add = addToken,
+                remove = removeToken,
+                pin = pinToken,
+                unpin = unpinToken
+            )
+        )
+    }
+
+    private fun feedbackToken(endpoint: JSONObject?): String {
+        return endpoint?.optJSONObject("feedbackEndpoint")?.optString("feedbackToken").orEmpty()
+    }
+
+    private data class SongMenuData(
+        val likeStatus: String,
+        val inLibrary: Boolean,
+        val pinnedToListenAgain: Boolean,
+        val feedbackTokens: YoutubeMusicFeedbackTokens
+    )
 
     private fun extractTabBrowseIds(root: JSONObject): Map<String, String> {
         val result = LinkedHashMap<String, String>()
@@ -607,6 +748,8 @@ internal object YoutubeMusicWatchParser {
         }
         return result
     }
+
+
 
     private fun findPlaylistId(root: JSONObject): String {
         val endpoints = mutableListOf<JSONObject>()
