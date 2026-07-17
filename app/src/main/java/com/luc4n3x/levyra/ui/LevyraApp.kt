@@ -320,6 +320,7 @@ private val CinematicGlassDeep = Color(0xFF0B0A14)
 private val CinematicHairline = Color.White.copy(alpha = 0.105f)
 private val HomeHorizontalInset = 18.dp
 private val HomeHorizontalShelfEndPadding = 30.dp
+private const val HOME_ARTIST_SHELF_SIZE = 13
 
 private val LevyraIsLight: Boolean get() = LevyraActivePalette.isLight
 private val LevyraReadableOnArtwork: Color get() = Color.White
@@ -4142,17 +4143,27 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         state.recentListens,
         state.personalOrbitTracks,
         state.favorites,
+        state.tracks,
+        state.homeSections,
+        state.charts,
         state.languageCode
     ) {
         buildString {
             append(state.languageCode)
             append('|')
             append(
-                (state.recentListens + state.personalOrbitTracks + state.favorites)
+                (
+                    state.recentListens +
+                        state.personalOrbitTracks +
+                        state.favorites +
+                        state.tracks +
+                        state.homeSections.flatMap { it.tracks } +
+                        state.charts
+                )
                     .asSequence()
                     .filter { it.artistBrowseIds.firstOrNull().orEmpty().isNotBlank() }
                     .distinctBy { it.artistBrowseIds.first().lowercase() }
-                    .take(20)
+                    .take(48)
                     .joinToString(",") { track ->
                         "${track.artist}:${track.artistBrowseIds.first()}"
                     }
@@ -4354,14 +4365,11 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
             (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
         ) {
             item(key = "home-trending-artists", contentType = "home-shelf") {
-                if (state.homeArtists.isNotEmpty()) {
-                    TrendingArtistsShelf(
-                        artists = state.homeArtists,
-                        onArtistClick = viewModel::openArtistFromHit
-                    )
-                } else if (state.homeArtistsLoading) {
-                    TrendingArtistsLoadingShelf()
-                }
+                TrendingArtistsShelf(
+                    artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
+                    loadingSlots = (HOME_ARTIST_SHELF_SIZE - state.homeArtists.size).coerceAtLeast(0),
+                    onArtistClick = viewModel::openArtistFromHit
+                )
             }
         }
         otherSections.forEachIndexed { sectionIndex, section ->
@@ -4555,6 +4563,7 @@ private fun StableRemoteArtwork(
 @Composable
 private fun TrendingArtistsShelf(
     artists: List<ArtistHit>,
+    loadingSlots: Int,
     onArtistClick: (ArtistHit) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -4646,68 +4655,40 @@ private fun TrendingArtistsShelf(
                     )
                 }
             }
+            items(
+                count = loadingSlots,
+                key = { index -> "artist-loading-${artists.size + index}" },
+                contentType = { "trending-artist-loading" }
+            ) {
+                TrendingArtistLoadingItem()
+            }
         }
     }
 }
 
 
 @Composable
-private fun TrendingArtistsLoadingShelf() {
-    val strings = LocalLevyraStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(
-            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .height(22.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-            )
-            Text(
-                text = strings.artists,
-                color = LevyraText,
-                fontSize = 21.sp,
-                lineHeight = 23.sp,
-                letterSpacing = (-0.55).sp,
-                fontWeight = FontWeight.Black
-            )
-        }
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
-        ) {
-            items(
-                count = 4,
-                key = { index -> "artist-loading-$index" },
-                contentType = { "trending-artist-loading" }
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.width(86.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(84.dp)
-                            .clip(CircleShape)
-                            .shimmer()
-                            .background(CinematicGlassDeep)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(62.dp)
-                            .height(12.dp)
-                            .clip(RoundedCornerShape(99.dp))
-                            .shimmer()
-                            .background(CinematicGlassDeep)
-                    )
-                }
-            }
-        }
+private fun TrendingArtistLoadingItem() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(86.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .clip(CircleShape)
+                .shimmer()
+                .background(CinematicGlassDeep)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .width(62.dp)
+                .height(12.dp)
+                .clip(RoundedCornerShape(99.dp))
+                .shimmer()
+                .background(CinematicGlassDeep)
+        )
     }
 }
 
