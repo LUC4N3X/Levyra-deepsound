@@ -4018,143 +4018,46 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     return@drawBehind
                 }
 
+                // Sfondo nero speciale - gradiente ultra scuro con tocchi di blu abissale e nero assoluto
                 drawRect(
                     Brush.verticalGradient(
                         listOf(
-                            LevyraBlack,
-                            LevyraBlack.copy(alpha = 0.98f),
-                            Color(0xFF040406).copy(alpha = 0.95f),
-                            LevyraBlack
+                            Color(0xFF020204), // Slate-black abissale
+                            Color(0xFF000000)  // Nero assoluto
                         )
                     )
                 )
 
-                val topHaloCenter = androidx.compose.ui.geometry.Offset(width * 0.20f, height * 0.02f)
+                // Halo di illuminazione ambientale molto soffuso (top-left) basato sull'artwork
+                val topHaloCenter = androidx.compose.ui.geometry.Offset(width * 0.15f, -height * 0.05f)
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            primaryAccent.copy(alpha = 0.15f),
-                            primaryAccent.copy(alpha = 0.045f),
+                            primaryAccent.copy(alpha = 0.06f),
+                            primaryAccent.copy(alpha = 0.015f),
                             Color.Transparent
                         ),
                         center = topHaloCenter,
-                        radius = width * 0.95f
+                        radius = width * 1.2f
                     ),
-                    radius = width * 0.95f,
+                    radius = width * 1.2f,
                     center = topHaloCenter
                 )
 
-                val sideHaloCenter = androidx.compose.ui.geometry.Offset(width * 1.02f, height * 0.30f)
+                // Halo di illuminazione ambientale molto soffuso (center-right)
+                val rightHaloCenter = androidx.compose.ui.geometry.Offset(width * 0.9f, height * 0.4f)
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            secondaryAccent.copy(alpha = 0.095f),
-                            secondaryAccent.copy(alpha = 0.025f),
+                            secondaryAccent.copy(alpha = 0.04f),
+                            secondaryAccent.copy(alpha = 0.01f),
                             Color.Transparent
                         ),
-                        center = sideHaloCenter,
-                        radius = width * 0.72f
+                        center = rightHaloCenter,
+                        radius = width * 0.9f
                     ),
-                    radius = width * 0.72f,
-                    center = sideHaloCenter
-                )
-
-                val horizon = height * 0.22f
-                val vanishingPoint = androidx.compose.ui.geometry.Offset(width * 0.56f, horizon)
-                val beamPath = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(vanishingPoint.x, vanishingPoint.y)
-                    lineTo(width * 0.05f, height)
-                    lineTo(width * 0.96f, height)
-                    close()
-                }
-                drawPath(
-                    path = beamPath,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.035f),
-                            primaryAccent.copy(alpha = 0.018f),
-                            Color.Transparent
-                        ),
-                        startY = horizon,
-                        endY = height * 0.88f
-                    )
-                )
-
-                // Disegna le linee verticali prospettiche con effetto bagliore neon
-                for (index in -8..8) {
-                    val bottomX = width * 0.5f + index * width / 7.2f
-                    val lineOffset = androidx.compose.ui.geometry.Offset(bottomX, height)
-                    
-                    // Tratto di bagliore neon morbido e largo
-                    drawLine(
-                        color = primaryAccent.copy(alpha = 0.025f),
-                        start = vanishingPoint,
-                        end = lineOffset,
-                        strokeWidth = 2.0f
-                    )
-                    // Tratto centrale nitido e fine
-                    drawLine(
-                        color = primaryAccent.copy(alpha = 0.07f),
-                        start = vanishingPoint,
-                        end = lineOffset,
-                        strokeWidth = 0.8f
-                    )
-                }
-                // Disegna le linee orizzontali prospettiche con effetto bagliore neon
-                for (index in 1..14) {
-                    val progress = index / 14f
-                    val curvedProgress = progress * progress
-                    val y = horizon + (height - horizon) * curvedProgress
-                    val lineStart = androidx.compose.ui.geometry.Offset(0f, y)
-                    val lineEnd = androidx.compose.ui.geometry.Offset(width, y)
-                    val glowOpacity = 0.015f + progress * 0.025f
-                    
-                    // Tratto di bagliore neon morbido e largo
-                    drawLine(
-                        color = secondaryAccent.copy(alpha = glowOpacity * 0.4f),
-                        start = lineStart,
-                        end = lineEnd,
-                        strokeWidth = 2.0f
-                    )
-                    // Tratto centrale nitido e fine
-                    drawLine(
-                        color = secondaryAccent.copy(alpha = glowOpacity),
-                        start = lineStart,
-                        end = lineEnd,
-                        strokeWidth = 0.8f
-                    )
-                }
-
-                drawArc(
-                    brush = Brush.horizontalGradient(
-                        listOf(
-                            Color.Transparent,
-                            primaryAccent.copy(alpha = 0.16f),
-                            secondaryAccent.copy(alpha = 0.10f),
-                            Color.Transparent
-                        )
-                    ),
-                    startAngle = 198f,
-                    sweepAngle = 144f,
-                    useCenter = false,
-                    topLeft = androidx.compose.ui.geometry.Offset(-width * 0.18f, -height * 0.05f),
-                    size = androidx.compose.ui.geometry.Size(width * 1.36f, height * 0.47f),
-                    style = Stroke(width = 1.2f)
-                )
-
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.55f),
-                            Color.Black
-                        ),
-                        startY = height * 0.46f,
-                        endY = height
-                    ),
-                    topLeft = androidx.compose.ui.geometry.Offset(0f, height * 0.46f),
-                    size = androidx.compose.ui.geometry.Size(width, height * 0.54f)
+                    radius = width * 0.9f,
+                    center = rightHaloCenter
                 )
             }
     )
