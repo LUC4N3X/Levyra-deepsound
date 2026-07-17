@@ -155,37 +155,28 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
 
-    private fun isCanonicalArtistPage(
-        root: JSONObject,
-        header: JSONObject,
-        expectedName: String
-    ): Boolean {
-        val resolvedName = headerText(header).trim()
-        val expectedPrimary = primaryArtistSegment(expectedName).ifBlank { expectedName.trim() }
-        if (resolvedName.isBlank() || artistIdentityKey(resolvedName) != artistIdentityKey(expectedPrimary)) return false
-        val hasArtistHeader = header.optJSONObject("musicImmersiveHeaderRenderer") != null ||
+    private fun isArtistPageHeader(header: JSONObject): Boolean {
+        return header.optJSONObject("musicImmersiveHeaderRenderer") != null ||
             header.optJSONObject("musicVisualHeaderRenderer") != null ||
             header.optJSONObject("musicDetailHeaderRenderer") != null ||
-            header.optJSONObject("musicResponsiveHeaderRenderer") != null
-        if (!hasArtistHeader) return false
-        val shufflePlaylistId = findPlaylistIdByMarker(header, listOf("SHUFFLE"))
-            .ifBlank { findPlaylistId(header.optJSONObject("playButton")) }
-        val radioPlaylistId = findPlaylistIdByMarker(header, listOf("RADIO", "START_RADIO"))
-            .ifBlank { findPlaylistId(header.optJSONObject("startRadioButton")) }
-        if (shufflePlaylistId.isBlank() || radioPlaylistId.isBlank()) return false
-        val topSongs = extractTopSongs(root).take(12)
-        val ownedSongCount = topSongs.count { track ->
-            artistSearchMatchScore(expectedPrimary, track.artist) >= 700
-        }
-        if (ownedSongCount == 0) return false
-        val hasDiscography = findReleasePointer(root, "Album") != null ||
-            findReleasePointer(root, "Singol") != null
-        return hasDiscography && (findSongsPointer(root) != null || topSongs.isNotEmpty())
+            header.optJSONObject("musicResponsiveHeaderRenderer") != null ||
+            header.optJSONObject("musicHeaderRenderer") != null
+    }
+
+    private fun artistNameMatches(expectedName: String, resolvedName: String): Boolean {
+        val expected = primaryArtistSegment(expectedName)
+            .ifBlank { expectedName.trim() }
+            .cleanAlbumArtistLabel()
+        val resolved = resolvedName.cleanAlbumArtistLabel()
+        if (expected.isBlank() || resolved.isBlank()) return true
+        return artistIdentityKey(expected) == artistIdentityKey(resolved)
     }
 
     suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim()
-        val cleanName = fallbackName.trim()
+        val cleanName = primaryArtistSegment(fallbackName)
+            .ifBlank { fallbackName.trim() }
+            .cleanAlbumArtistLabel()
         if (cleanBrowseId.isBlank() || cleanName.length < 2) return@withContext null
         val browseCacheKey = "browse:${cleanBrowseId.lowercase(Locale.ROOT)}"
         artistHitMemory[browseCacheKey]?.let { return@withContext it }
@@ -203,10 +194,26 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 artistHitMemory[browseCacheKey] = hit
                 return@withContext hit
             }
-        val root = runCatching { postBrowse(cleanBrowseId) }.getOrNull() ?: return@withContext null
-        val header = root.optJSONObject("header") ?: return@withContext null
-        if (!isCanonicalArtistPage(root, header, cleanName)) return@withContext null
-        val resolvedName = headerText(header)
+
+        val exactSearchHit = runCatching {
+            music.searchEverything(cleanName, contentLanguage()).artists.firstOrNull { candidate ->
+                candidate.browseId.equals(cleanBrowseId, ignoreCase = true) &&
+                    artistNameMatches(cleanName, candidate.name) &&
+                    candidate.thumbnailUrl.isNotBlank()
+            }
+        }.getOrNull()
+        if (exactSearchHit != null) {
+            artistHitMemory[browseCacheKey] = exactSearchHit
+            artistHitMemory[artistIdentityKey(exactSearchHit.name)] = exactSearchHit
+            return@withContext exactSearchHit
+        }
+
+        val root = runCatching { postBrowse(cleanBrowseId) }.getOrNull()
+        val header = root?.optJSONObject("header")
+        if (header == null || !isArtistPageHeader(header)) return@withContext null
+        val headerName = headerText(header).trim()
+        val resolvedName = headerName.ifBlank { cleanName }
+        if (!artistNameMatches(cleanName, resolvedName)) return@withContext null
         val artwork = parseArtistHeaderArtwork(header)
         val portrait = upgradeThumbnail(artwork.portraitUrl)
         if (portrait.isBlank()) return@withContext null
@@ -220,6 +227,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             browseId = cleanBrowseId
         )
         artistHitMemory[browseCacheKey] = hit
+        artistHitMemory[artistIdentityKey(resolvedName)] = hit
         hit
     }
 
@@ -250,48 +258,19 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             music.searchEverything(cleanQuery, languageCode).artists
         }.getOrDefault(emptyList())
 
-        fullResults
-            .firstOrNull { hit ->
-                hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == queryKey
-            }
-            ?.let { return it }
+        fullResults.firstOrNull { hit ->
+            hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == queryKey
+        }?.let { return it }
 
-        val primaryResults = if (primaryKey == queryKey) {
-            fullResults
-        } else {
-            runCatching {
-                music.searchEverything(primaryName, languageCode).artists
-            }.getOrDefault(emptyList())
-        }
+        if (primaryKey == queryKey) return null
 
-        primaryResults
-            .firstOrNull { hit ->
-                hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == primaryKey
-            }
-            ?.let { return it }
-
-        val filteredResults = runCatching {
-            extractArtistSearchHits(postSearch(primaryName))
+        val primaryResults = runCatching {
+            music.searchEverything(primaryName, languageCode).artists
         }.getOrDefault(emptyList())
 
-        val candidates = (fullResults + primaryResults + filteredResults)
-            .filter { it.name.isNotBlank() && it.browseId.isNotBlank() }
-            .distinctBy { it.browseId.lowercase(Locale.ROOT) }
-
-        candidates
-            .firstOrNull { artistIdentityKey(it.name) == queryKey }
-            ?.let { return it }
-
-        candidates
-            .firstOrNull { artistIdentityKey(it.name) == primaryKey }
-            ?.let { return it }
-
-        val best = candidates
-            .map { candidate -> candidate to artistSearchMatchScore(primaryName, candidate.name) }
-            .maxByOrNull { it.second }
-            ?: return null
-
-        return best.first.takeIf { best.second >= 900 }
+        return primaryResults.firstOrNull { hit ->
+            hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == primaryKey
+        }
     }
 
     private fun extractArtistSearchHits(root: JSONObject): List<ArtistHit> {
@@ -326,13 +305,24 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private suspend fun fetchProfile(browseId: String, fallbackName: String): ArtistProfile? {
         val root = postBrowse(browseId)
         val header = root.optJSONObject("header") ?: return null
-        if (!isCanonicalArtistPage(root, header, fallbackName)) return null
-        val name = headerText(header)
+        if (!isArtistPageHeader(header)) return null
+        val name = headerText(header).ifBlank { fallbackName.trim() }
+        if (!artistNameMatches(fallbackName, name)) return null
         val inlineBio = extractArtistBiography(root)
         val subscribers = extractSubscribers(header)
         val monthly = extractMonthlyListeners(root)
         val artwork = parseArtistHeaderArtwork(header)
-        val thumb = upgradeThumbnail(artwork.portraitUrl)
+        val searchPortrait = if (artwork.portraitUrl.isBlank()) {
+            runCatching {
+                music.searchEverything(name, contentLanguage()).artists.firstOrNull { candidate ->
+                    candidate.browseId.equals(browseId, ignoreCase = true) &&
+                        artistNameMatches(name, candidate.name)
+                }?.thumbnailUrl.orEmpty()
+            }.getOrDefault("")
+        } else {
+            ""
+        }
+        val thumb = upgradeThumbnail(artwork.portraitUrl.ifBlank { searchPortrait })
         val banner = artwork.bannerUrl
         val songsPointer = findSongsPointer(root)
         val albumPointer = findReleasePointer(root, "Album")

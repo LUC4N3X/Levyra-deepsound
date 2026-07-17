@@ -27,7 +27,7 @@ class LevyraHomeSnapshotCache(context: Context) {
             val homeSections = parseHomeSections(rootJson.optJSONArray("homeSections") ?: JSONArray())
             val charts = parseTracks(rootJson.optJSONArray("charts") ?: JSONArray())
             val personalOrbit = parseTracks(rootJson.optJSONArray("personalOrbit") ?: JSONArray())
-            val homeArtists = if (schema >= 5) parseArtists(rootJson.optJSONArray("homeArtists") ?: JSONArray()) else emptyList()
+            val homeArtists = if (schema >= 6) parseArtists(rootJson.optJSONArray("homeArtists") ?: JSONArray()) else emptyList()
             if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty()) return null
             LevyraHomeSnapshot(
                 languageCode = storedLanguage,
@@ -164,7 +164,7 @@ class LevyraHomeSnapshotCache(context: Context) {
 
     private companion object {
         const val MIN_SUPPORTED_SCHEMA = 5
-        const val SCHEMA = 5
+        const val SCHEMA = 6
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
     }
 }
