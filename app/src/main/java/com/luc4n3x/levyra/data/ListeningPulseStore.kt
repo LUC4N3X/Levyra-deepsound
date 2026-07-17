@@ -7,6 +7,8 @@ import com.luc4n3x.levyra.data.local.toListenEventEntity
 import com.luc4n3x.levyra.data.local.toTrack
 import com.luc4n3x.levyra.domain.ListenEvent
 import com.luc4n3x.levyra.domain.ListeningPulseEngine
+import com.luc4n3x.levyra.domain.PersonalizedArtistCandidate
+import com.luc4n3x.levyra.domain.rankPersonalizedArtistCandidates
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -29,7 +31,13 @@ class ListeningPulseStore(context: Context) {
             writeLock.withLock {
                 runCatching {
                     val cleanTrack = track.copy(streamUrl = "", videoStreamUrl = "")
-                    val updated = dao.updateSession(cleanTrack.id, startedAt, cappedMs, if (completed) 1 else 0)
+                    val updated = dao.updateSession(
+                        trackId = cleanTrack.id,
+                        startedAt = startedAt,
+                        listenedMs = cappedMs,
+                        completed = if (completed) 1 else 0,
+                        artistBrowseIds = cleanTrack.artistBrowseIds.filter(String::isNotBlank).joinToString("\u001F")
+                    )
                     if (updated == 0) {
                         dao.insert(cleanTrack.toListenEventEntity(cappedMs, completed, startedAt))
                     }
@@ -64,6 +72,21 @@ class ListeningPulseStore(context: Context) {
             .getOrDefault(emptyList())
     }
 
+    suspend fun personalizedArtists(
+        days: Int = PERSONALIZED_ARTIST_DAYS,
+        limit: Int = PERSONALIZED_ARTIST_LIMIT
+    ): List<PersonalizedArtistCandidate> = withContext(Dispatchers.IO) {
+        val since = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.coerceAtLeast(1).toLong())
+        runCatching {
+            rankPersonalizedArtistCandidates(
+                events = dao.since(since).map { it.toListenEvent() },
+                limit = limit.coerceIn(1, 32)
+            )
+        }
+            .onFailure { Timber.w(it, "Personalized artists load failed") }
+            .getOrDefault(emptyList())
+    }
+
     suspend fun recentTracks(limit: Int = RECENT_LIMIT): List<Track> = withContext(Dispatchers.IO) {
         runCatching {
             dao.latest(limit * OVERSCAN)
@@ -83,6 +106,8 @@ class ListeningPulseStore(context: Context) {
     private companion object {
         const val RETENTION_DAYS = 365
         const val RECENT_LIMIT = 40
+        const val PERSONALIZED_ARTIST_DAYS = 180
+        const val PERSONALIZED_ARTIST_LIMIT = 16
         const val OVERSCAN = 4
         const val MAX_LOOPS = 6L
         val RETENTION_MS = TimeUnit.DAYS.toMillis(RETENTION_DAYS.toLong())

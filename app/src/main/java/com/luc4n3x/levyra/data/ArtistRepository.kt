@@ -8,6 +8,7 @@ import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.artistIdentityKey
 import com.luc4n3x.levyra.domain.artistSearchMatchScore
+import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -86,6 +87,30 @@ internal fun parseArtistHeaderArtwork(header: JSONObject?): ArtistHeaderArtwork 
         portraitUrl = portrait,
         bannerUrl = banner
     )
+}
+
+
+internal fun extractOfficialMonthlyListeners(header: JSONObject?): String {
+    fun textFrom(renderer: JSONObject?): String {
+        renderer ?: return ""
+        val count = renderer.optJSONObject("monthlyListenerCount") ?: return ""
+        val runs = count.optJSONArray("runs")
+        if (runs != null) {
+            val text = buildString {
+                for (index in 0 until runs.length()) append(runs.optJSONObject(index)?.optString("text").orEmpty())
+            }.trim()
+            if (text.isNotBlank()) return text
+        }
+        return count.optString("simpleText").trim()
+    }
+
+    return sequenceOf(
+        header?.optJSONObject("musicImmersiveHeaderRenderer"),
+        header?.optJSONObject("musicVisualHeaderRenderer"),
+        header?.optJSONObject("musicResponsiveHeaderRenderer"),
+        header?.optJSONObject("musicDetailHeaderRenderer"),
+        header?.optJSONObject("musicHeaderRenderer")
+    ).map(::textFrom).firstOrNull { it.isNotBlank() }.orEmpty()
 }
 
 class ArtistRepository(private val music: YoutubeMusicRepository, private val context: Context? = null) {
@@ -177,7 +202,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val cleanName = primaryArtistSegment(fallbackName)
             .ifBlank { fallbackName.trim() }
             .cleanAlbumArtistLabel()
-        if (cleanBrowseId.isBlank() || cleanName.length < 2) return@withContext null
+        if (cleanBrowseId.isBlank() || cleanName.length < 2 || !isArtistShelfNameEligible(cleanName)) return@withContext null
         val browseCacheKey = "browse:${cleanBrowseId.lowercase(Locale.ROOT)}"
         artistHitMemory[browseCacheKey]?.let { return@withContext it }
         memory[artistIdentityKey(cleanName)]
@@ -195,40 +220,32 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 return@withContext hit
             }
 
-        val exactSearchHit = runCatching {
-            music.searchEverything(cleanName, contentLanguage()).artists.firstOrNull { candidate ->
-                candidate.browseId.equals(cleanBrowseId, ignoreCase = true) &&
-                    artistNameMatches(cleanName, candidate.name) &&
-                    candidate.thumbnailUrl.isNotBlank()
+        val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull()
+        val header = root?.optJSONObject("header")
+        if (header != null && isArtistPageHeader(header)) {
+            val headerName = headerText(header).trim()
+            val resolvedName = headerName.ifBlank { cleanName }
+            if (artistNameMatches(cleanName, resolvedName) && isArtistShelfNameEligible(resolvedName)) {
+                val artwork = parseArtistHeaderArtwork(header)
+                val portrait = upgradeThumbnail(artwork.portraitUrl)
+                if (portrait.isNotBlank()) {
+                    val accent = palette(stableSeed(cleanBrowseId + resolvedName))
+                    val hit = ArtistHit(
+                        name = resolvedName,
+                        subscribers = extractSubscribers(header),
+                        thumbnailUrl = portrait,
+                        accentStart = accent.first,
+                        accentEnd = accent.second,
+                        browseId = cleanBrowseId
+                    )
+                    artistHitMemory[browseCacheKey] = hit
+                    artistHitMemory[artistIdentityKey(resolvedName)] = hit
+                    return@withContext hit
+                }
             }
-        }.getOrNull()
-        if (exactSearchHit != null) {
-            artistHitMemory[browseCacheKey] = exactSearchHit
-            artistHitMemory[artistIdentityKey(exactSearchHit.name)] = exactSearchHit
-            return@withContext exactSearchHit
         }
 
-        val root = runCatching { postBrowse(cleanBrowseId) }.getOrNull()
-        val header = root?.optJSONObject("header")
-        if (header == null || !isArtistPageHeader(header)) return@withContext null
-        val headerName = headerText(header).trim()
-        val resolvedName = headerName.ifBlank { cleanName }
-        if (!artistNameMatches(cleanName, resolvedName)) return@withContext null
-        val artwork = parseArtistHeaderArtwork(header)
-        val portrait = upgradeThumbnail(artwork.portraitUrl)
-        if (portrait.isBlank()) return@withContext null
-        val accent = palette(stableSeed(cleanBrowseId + resolvedName))
-        val hit = ArtistHit(
-            name = resolvedName,
-            subscribers = extractSubscribers(header),
-            thumbnailUrl = portrait,
-            accentStart = accent.first,
-            accentEnd = accent.second,
-            browseId = cleanBrowseId
-        )
-        artistHitMemory[browseCacheKey] = hit
-        artistHitMemory[artistIdentityKey(resolvedName)] = hit
-        hit
+        null
     }
 
     suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
@@ -310,7 +327,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         if (!artistNameMatches(fallbackName, name)) return null
         val inlineBio = extractArtistBiography(root)
         val subscribers = extractSubscribers(header)
-        val monthly = extractMonthlyListeners(root)
+        val monthly = extractOfficialMonthlyListeners(header)
         val artwork = parseArtistHeaderArtwork(header)
         val searchPortrait = if (artwork.portraitUrl.isBlank()) {
             runCatching {
@@ -620,16 +637,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             .orEmpty()
             .trim()
         return text
-    }
-
-    private fun extractMonthlyListeners(root: JSONObject): String {
-        val candidates = mutableListOf<JSONObject>()
-        collectByKey(root, "subscriberCountText", candidates)
-        candidates.forEach { node ->
-            val text = node.optJSONArray("runs")?.joinText().orEmpty()
-            if (text.contains("ascolt", ignoreCase = true) || text.contains("listener", ignoreCase = true)) return text.trim()
-        }
-        return ""
     }
 
 
@@ -956,6 +963,20 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return post(endpoint, payload.toString(), "https://music.youtube.com/")
     }
 
+    private fun postBrowseFast(browseId: String): JSONObject {
+        val endpoint = "https://music.youtube.com/youtubei/v1/browse?key=$apiKey&prettyPrint=false"
+        val payload = JSONObject()
+            .put("context", clientContext())
+            .put("browseId", browseId)
+        return post(
+            endpoint = endpoint,
+            body = payload.toString(),
+            referer = "https://music.youtube.com/",
+            connectTimeoutMs = 1_500,
+            readTimeoutMs = 2_200
+        )
+    }
+
     private fun contentLanguage(): String = preferences?.languageCode() ?: LevyraLanguageCatalog.deviceDefault()
 
     private fun clientContext(): JSONObject {
@@ -971,12 +992,18 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         )
     }
 
-    private fun post(endpoint: String, body: String, referer: String): JSONObject {
+    private fun post(
+        endpoint: String,
+        body: String,
+        referer: String,
+        connectTimeoutMs: Int = 15_000,
+        readTimeoutMs: Int = 20_000
+    ): JSONObject {
         val bytes = body.toByteArray(StandardCharsets.UTF_8)
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = 15000
-            readTimeout = 20000
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Accept", "application/json")
