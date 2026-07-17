@@ -695,6 +695,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
         viewModelScope.launch(Dispatchers.IO) {
             delay(playbackWarmPlan.delayMs)
+            awaitHomeUiIdle(startupPlan)
             resolver.warmNetwork()
             val hot = (orbitSeed.take(1) + initialTracks.take(playbackWarmPlan.trackCount))
                 .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
@@ -704,7 +705,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 tracks = hot,
                 concurrency = playbackWarmPlan.concurrency,
                 delayStepMs = playbackPlan.staggerMs,
-                prime = true
+                prime = true,
+                respectHomeScroll = true
             )
         }
 
@@ -719,11 +721,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         viewModelScope.launch {
-            delay(700L)
+            delay(900L)
             loadHomeFeed(deferUntilHomeIdle = true)
         }
         viewModelScope.launch {
-            delay(1_600L)
+            delay(2_200L)
             loadCharts(deferUntilHomeIdle = true)
         }
         viewModelScope.launch {
@@ -880,6 +882,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         current
                     }
                 }
+                delay(HOME_ARTIST_STARTUP_GRACE_MS)
+                awaitHomeUiIdle()
             }
 
             val visibleByBrowseId = visibleArtists.associateBy { it.browseId.lowercase() }
@@ -888,6 +892,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val semaphore = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
 
             for (batch in orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
+                awaitHomeUiIdle()
                 val hits = coroutineScope {
                     batch.map { candidate ->
                         async {
@@ -1437,6 +1442,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val initialState = _state.value
             val languageCode = initialState.languageCode
             val hasVisibleHome = initialState.homeSections.isNotEmpty() || initialState.tracks.isNotEmpty()
+            if (deferUntilHomeIdle) awaitHomeUiIdle()
+            if (!isActive || _state.value.languageCode != languageCode) return@launch
             _state.update { current ->
                 if (current.languageCode != languageCode) current
                 else current.copy(
@@ -1605,8 +1612,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     startupPlan.refreshedArtworkCount
                 )
             }
-            prefetchTop(visibleTracks, startupPlan.refreshedArtworkCount, respectHomeScroll = deferUntilHomeIdle)
-            refreshOfficialMetadataBatch(visibleTracks, 8, deferUntilHomeIdle)
+            prefetchTop(visibleTracks, HOME_STARTUP_STREAM_PREFETCH_COUNT, respectHomeScroll = deferUntilHomeIdle)
+            refreshOfficialMetadataBatch(visibleTracks, HOME_STARTUP_METADATA_REFRESH_COUNT, deferUntilHomeIdle)
             loadHomeAlbums(languageCode, deferUntilHomeIdle)
         }
     }
@@ -2235,6 +2242,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val initialState = _state.value
             val languageCode = initialState.languageCode
             val hasVisibleCharts = initialState.charts.isNotEmpty()
+            if (deferUntilHomeIdle) awaitHomeUiIdle()
+            if (!isActive || _state.value.languageCode != languageCode || _state.value.selectedChartId != regionId) return@launch
             _state.update { current ->
                 if (current.selectedChartId != regionId) current
                 else current.copy(isLoadingCharts = !hasVisibleCharts)
@@ -3856,7 +3865,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             delay(if (plan.lowRam) 450L else 250L)
             if (respectHomeScroll) awaitHomeUiIdle()
             resolver.warmNetwork()
-            val hotCount = if (plan.lowRam || plan.powerConstrained) 1 else 4
+            val hotCount = if (respectHomeScroll || plan.lowRam || plan.powerConstrained) 1 else 4
             val hot = candidates.take(hotCount)
             val warmOnly = candidates.drop(hotCount)
             warmTracks(hot, concurrency = plan.concurrency, delayStepMs = plan.staggerMs, prime = true, respectHomeScroll = respectHomeScroll)
@@ -4551,8 +4560,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_SHELF_SIZE = 13
         private const val HOME_ARTIST_HISTORY_LIMIT = 48
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
-        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 6
+        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 2
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
+        private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
+        private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
+        private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4
         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
         private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
         private const val HOME_ALBUM_SEED_LIMIT = 12
