@@ -16,8 +16,8 @@ class AlbumRecommendationPolicyTest {
         )
 
         assertEquals(
-            REJECTED_ALBUM_RECOMMENDATION_SCORE,
-            albumRecommendationMatchScore(album("Vera Baddie", "ANNA"), seed)
+            LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE,
+            levyraAlbumRecommendationMatchScore(album("Vera Baddie", "ANNA"), seed)
         )
     }
 
@@ -29,7 +29,7 @@ class AlbumRecommendationPolicyTest {
             weight = 400
         )
 
-        assertTrue(albumRecommendationMatchScore(album("Oro Blu", "Bresh"), seed) > 0)
+        assertTrue(levyraAlbumRecommendationMatchScore(album("Oro Blu", "Bresh"), seed) > 0)
     }
 
     @Test
@@ -42,8 +42,8 @@ class AlbumRecommendationPolicyTest {
         )
 
         assertEquals(
-            REJECTED_ALBUM_RECOMMENDATION_SCORE,
-            albumRecommendationMatchScore(album("Greatest Hits", "Other Artist"), seed)
+            LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE,
+            levyraAlbumRecommendationMatchScore(album("Greatest Hits", "Other Artist"), seed)
         )
     }
 
@@ -56,8 +56,8 @@ class AlbumRecommendationPolicyTest {
         )
 
         assertEquals(
-            REJECTED_ALBUM_RECOMMENDATION_SCORE,
-            albumRecommendationMatchScore(album("La ragazza dei tuoi sogni", "Anna Tatangelo"), seed)
+            LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE,
+            levyraAlbumRecommendationMatchScore(album("La ragazza dei tuoi sogni", "Anna Tatangelo"), seed)
         )
     }
 

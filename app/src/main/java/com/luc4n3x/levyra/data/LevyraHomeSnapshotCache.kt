@@ -1,7 +1,9 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.HomeSection
+import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
 import org.json.JSONArray
@@ -18,21 +20,41 @@ class LevyraHomeSnapshotCache(context: Context) {
         if (!file.isFile || file.length() <= 0L) return null
         return runCatching {
             val rootJson = JSONObject(file.readText())
-            if (rootJson.optInt("schema") != SCHEMA) return null
+            val schema = rootJson.optInt("schema")
+            if (schema !in MIN_SUPPORTED_SCHEMA..SCHEMA) return null
             val storedLanguage = LevyraLanguageCatalog.normalize(rootJson.optString("languageCode"))
             if (storedLanguage != normalized) return null
             val createdAt = rootJson.optLong("createdAt", 0L)
-            val homeSections = parseHomeSections(rootJson.optJSONArray("homeSections") ?: JSONArray())
-            val charts = parseTracks(rootJson.optJSONArray("charts") ?: JSONArray())
-            val personalOrbit = parseTracks(rootJson.optJSONArray("personalOrbit") ?: JSONArray())
-            if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty()) return null
-            LevyraHomeSnapshot(storedLanguage, createdAt, homeSections, charts, personalOrbit)
+            val parsedHomeSections = parseHomeSections(rootJson.optJSONArray("homeSections") ?: JSONArray())
+            val parsedCharts = parseTracks(rootJson.optJSONArray("charts") ?: JSONArray())
+            val parsedPersonalOrbit = parseTracks(rootJson.optJSONArray("personalOrbit") ?: JSONArray())
+            val homeSections = if (schema >= 7) parsedHomeSections else parsedHomeSections.map { section ->
+                section.copy(tracks = section.tracks.map { track -> track.copy(artistBrowseIds = emptyList()) })
+            }
+            val charts = if (schema >= 7) parsedCharts else parsedCharts.map { track -> track.copy(artistBrowseIds = emptyList()) }
+            val personalOrbit = if (schema >= 7) parsedPersonalOrbit else parsedPersonalOrbit.map { track -> track.copy(artistBrowseIds = emptyList()) }
+            val homeArtists = if (schema >= 8) parseArtists(rootJson.optJSONArray("homeArtists") ?: JSONArray()) else emptyList()
+            if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty()) return null
+            LevyraHomeSnapshot(
+                languageCode = storedLanguage,
+                createdAt = createdAt,
+                homeSections = homeSections,
+                charts = charts,
+                personalOrbit = personalOrbit,
+                homeArtists = homeArtists
+            )
         }.onFailure { Timber.w(it, "Home snapshot restore failed") }.getOrNull()
     }
 
-    fun save(languageCode: String, homeSections: List<HomeSection>, charts: List<Track>, personalOrbit: List<Track>) {
+    fun save(
+        languageCode: String,
+        homeSections: List<HomeSection>,
+        charts: List<Track>,
+        personalOrbit: List<Track>,
+        homeArtists: List<ArtistHit>
+    ) {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty()) return
+        if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty()) return
         runCatching {
             val json = JSONObject()
                 .put("schema", SCHEMA)
@@ -41,6 +63,7 @@ class LevyraHomeSnapshotCache(context: Context) {
                 .put("homeSections", homeSectionsToJson(homeSections.take(12)))
                 .put("charts", tracksToJson(charts.take(60)))
                 .put("personalOrbit", tracksToJson(personalOrbit.take(40)))
+                .put("homeArtists", artistsToJson(homeArtists.take(HOME_ARTIST_LIMIT)))
             val target = fileFor(normalized)
             val tmp = File(target.parentFile, "${target.name}.tmp")
             tmp.writeText(json.toString())
@@ -78,6 +101,50 @@ class LevyraHomeSnapshotCache(context: Context) {
         return array
     }
 
+
+    private fun artistsToJson(artists: List<ArtistHit>): JSONArray {
+        val array = JSONArray()
+        artists
+            .asSequence()
+            .filter { it.name.isNotBlank() && it.browseId.isNotBlank() && it.thumbnailUrl.isNotBlank() && isArtistShelfNameEligible(it.name) }
+            .distinctBy { it.browseId.lowercase() }
+            .forEach { artist ->
+                array.put(
+                    JSONObject()
+                        .put("name", artist.name)
+                        .put("subscribers", artist.subscribers)
+                        .put("thumbnailUrl", artist.thumbnailUrl)
+                        .put("accentStart", artist.accentStart)
+                        .put("accentEnd", artist.accentEnd)
+                        .put("browseId", artist.browseId)
+                )
+            }
+        return array
+    }
+
+    private fun parseArtists(array: JSONArray): List<ArtistHit> {
+        val out = LinkedHashMap<String, ArtistHit>()
+        for (index in 0 until array.length()) {
+            val item = array.optJSONObject(index) ?: continue
+            val name = item.optString("name").trim()
+            val browseId = item.optString("browseId").trim()
+            val thumbnailUrl = item.optString("thumbnailUrl").trim()
+            if (name.isBlank() || browseId.isBlank() || thumbnailUrl.isBlank() || !isArtistShelfNameEligible(name)) continue
+            out.putIfAbsent(
+                browseId.lowercase(),
+                ArtistHit(
+                    name = name,
+                    subscribers = item.optString("subscribers").trim(),
+                    thumbnailUrl = thumbnailUrl,
+                    accentStart = item.optInt("accentStart"),
+                    accentEnd = item.optInt("accentEnd"),
+                    browseId = browseId
+                )
+            )
+        }
+        return out.values.toList()
+    }
+
     private fun parseHomeSections(array: JSONArray): List<HomeSection> {
         val out = ArrayList<HomeSection>()
         for (i in 0 until array.length()) {
@@ -102,7 +169,9 @@ class LevyraHomeSnapshotCache(context: Context) {
     private fun snapshotKey(track: Track): String = track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}|${track.title}" } }.trim().lowercase()
 
     private companion object {
-        const val SCHEMA = 2
+        const val HOME_ARTIST_LIMIT = 13
+        const val MIN_SUPPORTED_SCHEMA = 5
+        const val SCHEMA = 8
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
     }
 }
@@ -112,5 +181,6 @@ data class LevyraHomeSnapshot(
     val createdAt: Long,
     val homeSections: List<HomeSection>,
     val charts: List<Track>,
-    val personalOrbit: List<Track>
+    val personalOrbit: List<Track>,
+    val homeArtists: List<ArtistHit>
 )

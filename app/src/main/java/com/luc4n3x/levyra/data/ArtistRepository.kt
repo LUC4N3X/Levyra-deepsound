@@ -6,6 +6,10 @@ import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
+import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.artistSearchMatchScore
+import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
+import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
@@ -19,87 +23,355 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.absoluteValue
+
+internal data class ArtistHeaderArtwork(
+    val portraitUrl: String,
+    val bannerUrl: String
+)
+
+internal fun parseArtistHeaderArtwork(header: JSONObject?): ArtistHeaderArtwork {
+    fun bestThumbnail(array: JSONArray?): String {
+        if (array == null) return ""
+        var bestUrl = ""
+        var bestArea = -1L
+        for (index in 0 until array.length()) {
+            val item = array.optJSONObject(index) ?: continue
+            val url = item.optString("url").trim()
+            if (url.isBlank()) continue
+            val width = item.optLong("width", 0L)
+            val height = item.optLong("height", 0L)
+            val area = width * height
+            if (area >= bestArea) {
+                bestArea = area
+                bestUrl = url
+            }
+        }
+        return bestUrl
+    }
+
+    fun thumbnailFrom(container: JSONObject?): String {
+        container ?: return ""
+        val renderer = container.optJSONObject("musicThumbnailRenderer")
+            ?: container.optJSONObject("croppedSquareThumbnailRenderer")
+            ?: container
+        val thumbnails = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+            ?: renderer.optJSONArray("thumbnails")
+        return bestThumbnail(thumbnails)
+    }
+
+    val immersive = header?.optJSONObject("musicImmersiveHeaderRenderer")
+    val visual = header?.optJSONObject("musicVisualHeaderRenderer")
+    val detail = header?.optJSONObject("musicDetailHeaderRenderer")
+    val responsive = header?.optJSONObject("musicResponsiveHeaderRenderer")
+
+    val portrait = sequenceOf(
+        thumbnailFrom(immersive?.optJSONObject("thumbnail")),
+        thumbnailFrom(visual?.optJSONObject("foregroundThumbnail")),
+        thumbnailFrom(detail?.optJSONObject("thumbnail")),
+        thumbnailFrom(responsive?.optJSONObject("thumbnail"))
+    ).firstOrNull { it.isNotBlank() }.orEmpty()
+
+    val banner = sequenceOf(
+        thumbnailFrom(immersive?.optJSONObject("backgroundThumbnail")),
+        thumbnailFrom(visual?.optJSONObject("backgroundThumbnail")),
+        thumbnailFrom(responsive?.optJSONObject("backgroundThumbnail"))
+    ).firstOrNull { it.isNotBlank() }.orEmpty()
+
+    return ArtistHeaderArtwork(
+        portraitUrl = portrait,
+        bannerUrl = banner
+    )
+}
+
+
+internal fun extractOfficialMonthlyListeners(header: JSONObject?): String {
+    fun textFrom(renderer: JSONObject?): String {
+        renderer ?: return ""
+        val count = renderer.optJSONObject("monthlyListenerCount") ?: return ""
+        val runs = count.optJSONArray("runs")
+        if (runs != null) {
+            val text = buildString {
+                for (index in 0 until runs.length()) append(runs.optJSONObject(index)?.optString("text").orEmpty())
+            }.trim()
+            if (text.isNotBlank()) return text
+        }
+        return count.optString("simpleText").trim()
+    }
+
+    return sequenceOf(
+        header?.optJSONObject("musicImmersiveHeaderRenderer"),
+        header?.optJSONObject("musicVisualHeaderRenderer"),
+        header?.optJSONObject("musicResponsiveHeaderRenderer"),
+        header?.optJSONObject("musicDetailHeaderRenderer"),
+        header?.optJSONObject("musicHeaderRenderer")
+    ).map(::textFrom).firstOrNull { it.isNotBlank() }.orEmpty()
+}
 
 class ArtistRepository(private val music: YoutubeMusicRepository, private val context: Context? = null) {
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
     private val clientVersion = "1.20260423.01.00"
     private val preferences = context?.applicationContext?.let { LevyraPreferences(it) }
-    private val memory = LinkedHashMap<String, ArtistProfile>()
+    private val memory = ConcurrentHashMap<String, ArtistProfile>()
+    private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
+
+    private fun profileBrowseKey(browseId: String): String = "browse:${browseId.trim().lowercase(Locale.ROOT)}"
 
     private companion object {
         const val MAX_RELEASE_PAGES = 8
         val ALBUM_SECTION_WORDS = setOf("album", "albums", "álbum", "álbumes", "alben", "albumi", "альбом", "альбомы", "アルバム", "앨범")
         val SINGLE_SECTION_WORDS = setOf("single", "singles", "singol", "singoli", "sencillo", "sencillos", "ep", "eps")
         val VIDEO_SECTION_WORDS = setOf("video", "videos", "vídeo", "vídeos", "clip", "clips", "videoclip", "music video")
+        val BIOGRAPHY_MUSIC_TERMS = setOf(
+            "singer", "rapper", "musician", "songwriter", "composer", "record producer", "disc jockey", "music group", "musical group", "band", "duo",
+            "cantante", "rapper", "musicista", "cantautore", "cantautrice", "compositore", "compositrice", "produttore discografico", "produttrice discografica", "disc jockey", "gruppo musicale", "duo musicale",
+            "chanteur", "chanteuse", "rappeur", "rappeuse", "musicien", "musicienne", "auteur-compositeur", "compositeur", "compositrice", "producteur de musique", "productrice de musique", "groupe musical",
+            "sänger", "sängerin", "rapper", "rapperin", "musiker", "musikerin", "songwriter", "komponist", "komponistin", "musikproduzent", "musikproduzentin", "musikgruppe", "band",
+            "cantor", "cantora", "rapero", "rapera", "músico", "música", "compositor", "compositora", "productor musical", "productora musical", "grupo musical", "banda"
+        )
+        val BIOGRAPHY_TITLE_TERMS = setOf(
+            "rapper", "singer", "musician", "band", "music group", "dj", "cantante", "musicista", "gruppo musicale", "chanteur", "chanteuse", "musicien", "musicienne", "sänger", "sängerin", "musiker", "musikerin", "rapero", "rapera", "cantor", "cantora"
+        )
+        val BIOGRAPHY_NON_ARTIST_TITLE_TERMS = setOf(
+            "album", "song", "single", "ep", "film", "soundtrack", "brano", "canzone", "singolo", "disco", "pellicola", "chanson", "titre", "lied", "álbum", "canción", "sencillo"
+        )
     }
 
     suspend fun profileFor(artistName: String): ArtistProfile? = withContext(Dispatchers.IO) {
         val clean = artistName.trim()
         if (clean.length < 2) return@withContext null
-        memory[clean.lowercase()]?.let { return@withContext it }
-        val browseId = runCatching { resolveBrowseId(clean) }.getOrNull()
-        val profile = if (!browseId.isNullOrBlank()) {
-            runCatching { fetchProfile(browseId, clean) }.getOrNull()
+        memory[artistIdentityKey(clean)]?.let { return@withContext it }
+        val resolvedArtist = runCatching { artistHitFor(clean) }.getOrNull()
+        val profile = if (resolvedArtist != null && resolvedArtist.browseId.isNotBlank()) {
+            runCatching { fetchProfile(resolvedArtist.browseId, resolvedArtist.name.ifBlank { clean }) }
+                .getOrNull()
+                ?.let { fetched ->
+                    fetched.copy(
+                        name = fetched.name.ifBlank { resolvedArtist.name.ifBlank { clean } },
+                        thumbnailUrl = fetched.thumbnailUrl.ifBlank { resolvedArtist.thumbnailUrl }
+                    )
+                }
         } else {
             null
         }
-        val resolved = profile ?: runCatching { fallbackProfile(clean) }.getOrNull()
-        resolved?.also { memory[clean.lowercase()] = it }
+        val resolved = profile ?: runCatching { fallbackProfile(clean, resolvedArtist) }.getOrNull()
+        resolved?.also { profile ->
+            memory[artistIdentityKey(clean)] = profile
+            memory[artistIdentityKey(profile.name)] = profile
+            if (profile.browseId.isNotBlank()) memory[profileBrowseKey(profile.browseId)] = profile
+        }
+    }
+
+    suspend fun artistHitFor(artistName: String): ArtistHit? = withContext(Dispatchers.IO) {
+        val clean = artistName.trim()
+        if (clean.length < 2) return@withContext null
+        val cacheKey = artistIdentityKey(clean)
+        artistHitMemory[cacheKey]?.let { return@withContext it }
+        val resolved = runCatching { resolveArtist(clean) }.getOrNull()
+        resolved?.also { hit ->
+            artistHitMemory[cacheKey] = hit
+            artistHitMemory[artistIdentityKey(hit.name)] = hit
+        }
+    }
+
+
+    suspend fun relatedArtistHits(
+        browseId: String,
+        fallbackName: String,
+        limit: Int = 13
+    ): List<ArtistHit> = withContext(Dispatchers.IO) {
+        val cleanBrowseId = browseId.trim()
+        val cleanName = primaryArtistSegment(fallbackName)
+            .ifBlank { fallbackName.trim() }
+            .cleanAlbumArtistLabel()
+        if (cleanBrowseId.isBlank() || cleanName.length < 2 || !isArtistShelfNameEligible(cleanName)) {
+            return@withContext emptyList()
+        }
+        val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull() ?: return@withContext emptyList()
+        val header = root.optJSONObject("header") ?: return@withContext emptyList()
+        if (!isArtistPageHeader(header)) return@withContext emptyList()
+        val resolvedName = headerText(header).ifBlank { cleanName }
+        if (!artistNameMatches(cleanName, resolvedName)) return@withContext emptyList()
+        extractRelatedArtists(root, resolvedName)
+            .asSequence()
+            .filter { hit ->
+                hit.name.isNotBlank() &&
+                    hit.thumbnailUrl.isNotBlank() &&
+                    hit.browseId.isNotBlank() &&
+                    isArtistShelfNameEligible(hit.name)
+            }
+            .distinctBy { it.browseId.lowercase(Locale.ROOT) }
+            .take(limit.coerceIn(1, 24))
+            .toList()
+    }
+
+
+    private fun isArtistPageHeader(header: JSONObject): Boolean {
+        return header.optJSONObject("musicImmersiveHeaderRenderer") != null ||
+            header.optJSONObject("musicVisualHeaderRenderer") != null ||
+            header.optJSONObject("musicDetailHeaderRenderer") != null ||
+            header.optJSONObject("musicResponsiveHeaderRenderer") != null ||
+            header.optJSONObject("musicHeaderRenderer") != null
+    }
+
+    private fun artistNameMatches(expectedName: String, resolvedName: String): Boolean {
+        val expected = primaryArtistSegment(expectedName)
+            .ifBlank { expectedName.trim() }
+            .cleanAlbumArtistLabel()
+        val resolved = resolvedName.cleanAlbumArtistLabel()
+        if (expected.isBlank() || resolved.isBlank()) return true
+        return artistIdentityKey(expected) == artistIdentityKey(resolved)
+    }
+
+    suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
+        val cleanBrowseId = browseId.trim()
+        val cleanName = primaryArtistSegment(fallbackName)
+            .ifBlank { fallbackName.trim() }
+            .cleanAlbumArtistLabel()
+        if (cleanBrowseId.isBlank() || cleanName.length < 2 || !isArtistShelfNameEligible(cleanName)) return@withContext null
+        val browseCacheKey = "browse:${cleanBrowseId.lowercase(Locale.ROOT)}"
+        artistHitMemory[browseCacheKey]?.let { return@withContext it }
+        memory[artistIdentityKey(cleanName)]
+            ?.takeIf { it.browseId.equals(cleanBrowseId, ignoreCase = true) && it.thumbnailUrl.isNotBlank() }
+            ?.let { profile ->
+                val hit = ArtistHit(
+                    name = profile.name,
+                    subscribers = profile.subscribers,
+                    thumbnailUrl = profile.thumbnailUrl,
+                    accentStart = profile.accentStart,
+                    accentEnd = profile.accentEnd,
+                    browseId = profile.browseId
+                )
+                artistHitMemory[browseCacheKey] = hit
+                return@withContext hit
+            }
+
+        val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull()
+        val header = root?.optJSONObject("header")
+        if (header != null && isArtistPageHeader(header)) {
+            val headerName = headerText(header).trim()
+            val resolvedName = headerName.ifBlank { cleanName }
+            if (artistNameMatches(cleanName, resolvedName) && isArtistShelfNameEligible(resolvedName)) {
+                val artwork = parseArtistHeaderArtwork(header)
+                val portrait = upgradeThumbnail(artwork.portraitUrl)
+                if (portrait.isNotBlank()) {
+                    val accent = palette(stableSeed(cleanBrowseId + resolvedName))
+                    val hit = ArtistHit(
+                        name = resolvedName,
+                        subscribers = extractSubscribers(header),
+                        thumbnailUrl = portrait,
+                        accentStart = accent.first,
+                        accentEnd = accent.second,
+                        browseId = cleanBrowseId
+                    )
+                    artistHitMemory[browseCacheKey] = hit
+                    artistHitMemory[artistIdentityKey(resolvedName)] = hit
+                    return@withContext hit
+                }
+            }
+        }
+
+        null
     }
 
     suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
         if (browseId.isBlank()) return@withContext profileFor(fallbackName)
-        runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
-            ?: runCatching { fallbackProfile(fallbackName) }.getOrNull()
+        val browseKey = profileBrowseKey(browseId)
+        memory[browseKey]?.let { return@withContext it }
+        val cacheKey = artistIdentityKey(fallbackName)
+        memory[cacheKey]?.takeIf { it.browseId.equals(browseId, ignoreCase = true) }?.let { return@withContext it }
+        val resolved = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
+        resolved?.also { profile ->
+            memory[browseKey] = profile
+            memory[cacheKey] = profile
+            memory[artistIdentityKey(profile.name)] = profile
+        }
     }
 
-    private fun resolveBrowseId(query: String): String {
-        val root = postSearch(query)
+    private suspend fun resolveArtist(query: String): ArtistHit? {
+        val languageCode = contentLanguage()
+        val cleanQuery = query.trim()
+        if (cleanQuery.length < 2) return null
+
+        val primaryName = primaryArtistSegment(cleanQuery).ifBlank { cleanQuery }
+        val primaryKey = artistIdentityKey(primaryName)
+        val queryKey = artistIdentityKey(cleanQuery)
+
+        val fullResults = runCatching {
+            music.searchEverything(cleanQuery, languageCode).artists
+        }.getOrDefault(emptyList())
+
+        fullResults.firstOrNull { hit ->
+            hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == queryKey
+        }?.let { return it }
+
+        if (primaryKey == queryKey) return null
+
+        val primaryResults = runCatching {
+            music.searchEverything(primaryName, languageCode).artists
+        }.getOrDefault(emptyList())
+
+        return primaryResults.firstOrNull { hit ->
+            hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == primaryKey
+        }
+    }
+
+    private fun extractArtistSearchHits(root: JSONObject): List<ArtistHit> {
         val renderers = mutableListOf<JSONObject>()
         collectByKey(root, "musicResponsiveListItemRenderer", renderers)
+        val hits = LinkedHashMap<String, ArtistHit>()
         renderers.forEach { renderer ->
-            val browseId = findArtistBrowseId(renderer)
-            if (browseId.isNotBlank()) return browseId
+            val name = flexLines(renderer).firstOrNull().orEmpty().trim()
+            if (name.isBlank()) return@forEach
+            val reference = music.extractYoutubeMusicArtistReference(renderer, name) ?: return@forEach
+            val resolvedName = reference.name.ifBlank { name }
+            val browseId = reference.browseId
+            val subtitle = flexLines(renderer).drop(1).joinToString(" · ")
+            val seed = stableSeed(browseId + resolvedName)
+            val accent = palette(seed)
+            val key = browseId.ifBlank { artistIdentityKey(resolvedName) }
+            hits.putIfAbsent(
+                key,
+                ArtistHit(
+                    name = resolvedName,
+                    subscribers = subtitle,
+                    thumbnailUrl = upgradeThumbnail(bestThumbnail(thumbnailsOf(renderer))),
+                    accentStart = accent.first,
+                    accentEnd = accent.second,
+                    browseId = browseId
+                )
+            )
         }
-        val endpoints = mutableListOf<JSONObject>()
-        collectByKey(root, "browseEndpoint", endpoints)
-        endpoints.forEach { endpoint ->
-            val id = endpoint.optString("browseId")
-            val type = endpoint.optJSONObject("browseEndpointContextSupportedConfigs")
-                ?.optJSONObject("browseEndpointContextMusicConfig")
-                ?.optString("pageType")
-                .orEmpty()
-            if (id.startsWith("UC") || type.contains("ARTIST", ignoreCase = true)) return id
-        }
-        return ""
-    }
-
-    private fun findArtistBrowseId(renderer: JSONObject): String {
-        val endpoints = mutableListOf<JSONObject>()
-        collectByKey(renderer, "browseEndpoint", endpoints)
-        endpoints.forEach { endpoint ->
-            val id = endpoint.optString("browseId")
-            val type = endpoint.optJSONObject("browseEndpointContextSupportedConfigs")
-                ?.optJSONObject("browseEndpointContextMusicConfig")
-                ?.optString("pageType")
-                .orEmpty()
-            if (type.contains("ARTIST", ignoreCase = true) || id.startsWith("UC")) return id
-        }
-        return ""
+        return hits.values.toList()
     }
 
     private suspend fun fetchProfile(browseId: String, fallbackName: String): ArtistProfile? {
         val root = postBrowse(browseId)
-        val header = root.optJSONObject("header")
-        val name = headerText(header).ifBlank { fallbackName }
-        val bio = extractBio(root)
+        val header = root.optJSONObject("header") ?: return null
+        if (!isArtistPageHeader(header)) return null
+        val name = headerText(header).ifBlank { fallbackName.trim() }
+        if (!artistNameMatches(fallbackName, name)) return null
+        val inlineBio = extractArtistBiography(root)
         val subscribers = extractSubscribers(header)
-        val monthly = extractMonthlyListeners(root)
-        val thumb = bestThumbnail(headerThumbnails(header))
-        val banner = extractBanner(header)
+        val monthly = extractOfficialMonthlyListeners(header)
+        val artwork = parseArtistHeaderArtwork(header)
+        val searchPortrait = if (artwork.portraitUrl.isBlank()) {
+            runCatching {
+                music.searchEverything(name, contentLanguage()).artists.firstOrNull { candidate ->
+                    candidate.browseId.equals(browseId, ignoreCase = true) &&
+                        artistNameMatches(name, candidate.name)
+                }?.thumbnailUrl.orEmpty()
+            }.getOrDefault("")
+        } else {
+            ""
+        }
+        val thumb = upgradeThumbnail(artwork.portraitUrl.ifBlank { searchPortrait })
+        val banner = artwork.bannerUrl
         val songsPointer = findSongsPointer(root)
         val albumPointer = findReleasePointer(root, "Album")
         val singlePointer = findReleasePointer(root, "Singol")
@@ -110,11 +382,13 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             val albumsJob = async { albumPointer?.let(::fetchReleases).orEmpty() }
             val singlesJob = async { singlePointer?.let(::fetchReleases).orEmpty() }
             val videosJob = async { videoPointer?.let { fetchVideos(it, name) }.orEmpty() }
+            val bioJob = async { inlineBio.ifBlank { fetchExternalBiography(name) } }
             ArtistExpandedSections(
                 songs = songsJob.await(),
                 albums = albumsJob.await(),
                 singles = singlesJob.await(),
-                videos = videosJob.await()
+                videos = videosJob.await(),
+                bio = bioJob.await()
             )
         }
         val songs = (initialSongs + expanded.songs).distinctBy { it.id }.take(100)
@@ -128,7 +402,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ArtistProfile(
             browseId = browseId,
             name = name,
-            bio = bio,
+            bio = expanded.bio,
             subscribers = subscribers,
             monthlyListeners = monthly,
             thumbnailUrl = thumb,
@@ -187,22 +461,23 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return out.values.take(12).toList()
     }
 
-    private suspend fun fallbackProfile(name: String): ArtistProfile {
+    private suspend fun fallbackProfile(requestedName: String, resolvedArtist: ArtistHit?): ArtistProfile {
         val languageCode = contentLanguage()
-        val songs = music.search(name, 18, languageCode).filter { it.artist.contains(name, ignoreCase = true) }.ifEmpty {
-            music.search(name, 12, languageCode)
-        }
-        val seed = stableSeed(name)
+        val resolvedName = resolvedArtist?.name?.trim().orEmpty().ifBlank { requestedName.trim() }
+        val songs = music.search(resolvedName, 18, languageCode)
+            .filter { it.artist.contains(resolvedName, ignoreCase = true) }
+            .ifEmpty { music.search(resolvedName, 12, languageCode) }
+        val seed = stableSeed(resolvedArtist?.browseId.orEmpty() + resolvedName)
         val accent = palette(seed)
-        val cover = songs.firstOrNull()?.largeThumbnailUrl.orEmpty()
+        val portrait = resolvedArtist?.thumbnailUrl.orEmpty()
         return ArtistProfile(
-            browseId = "",
-            name = name,
-            bio = "",
-            subscribers = "",
+            browseId = resolvedArtist?.browseId.orEmpty(),
+            name = resolvedName,
+            bio = fetchExternalBiography(resolvedName),
+            subscribers = resolvedArtist?.subscribers.orEmpty(),
             monthlyListeners = "",
-            thumbnailUrl = cover,
-            bannerUrl = cover,
+            thumbnailUrl = portrait,
+            bannerUrl = portrait,
             topSongs = songs.take(12),
             albums = emptyList(),
             singles = emptyList(),
@@ -211,20 +486,177 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         )
     }
 
-    private fun extractBio(root: JSONObject): String {
-        val sections = mutableListOf<JSONObject>()
-        collectByKey(root, "musicDescriptionShelfRenderer", sections)
-        sections.forEach { shelf ->
-            val text = shelf.optJSONObject("description")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-            if (text.length > 24) return text
+    internal fun extractArtistBiography(root: JSONObject): String {
+        fun descriptionFromSectionList(sectionList: JSONObject?): String {
+            val contents = sectionList?.optJSONArray("contents") ?: return ""
+            for (index in 0 until contents.length()) {
+                val shelf = contents.optJSONObject(index)
+                    ?.optJSONObject("musicDescriptionShelfRenderer")
+                    ?: continue
+                val text = shelf.optJSONObject("description")
+                    ?.optJSONArray("runs")
+                    ?.joinText()
+                    .orEmpty()
+                    .trim()
+                if (text.length > 24) return text
+            }
+            return ""
         }
-        val descriptions = mutableListOf<JSONObject>()
-        collectByKey(root, "description", descriptions)
-        descriptions.forEach { node ->
-            val text = node.optJSONArray("runs")?.joinText().orEmpty().trim()
-            if (text.length > 80) return text
+
+        val contents = root.optJSONObject("contents")
+        val direct = descriptionFromSectionList(contents?.optJSONObject("sectionListRenderer"))
+        if (direct.isNotBlank()) return direct
+
+        val singleColumnTabs = contents
+            ?.optJSONObject("singleColumnBrowseResultsRenderer")
+            ?.optJSONArray("tabs")
+        if (singleColumnTabs != null) {
+            for (index in 0 until singleColumnTabs.length()) {
+                val sectionList = singleColumnTabs.optJSONObject(index)
+                    ?.optJSONObject("tabRenderer")
+                    ?.optJSONObject("content")
+                    ?.optJSONObject("sectionListRenderer")
+                val text = descriptionFromSectionList(sectionList)
+                if (text.isNotBlank()) return text
+            }
         }
-        return ""
+
+        val twoColumn = contents?.optJSONObject("twoColumnBrowseResultsRenderer")
+        val twoColumnTabs = twoColumn?.optJSONArray("tabs")
+        if (twoColumnTabs != null) {
+            for (index in 0 until twoColumnTabs.length()) {
+                val sectionList = twoColumnTabs.optJSONObject(index)
+                    ?.optJSONObject("tabRenderer")
+                    ?.optJSONObject("content")
+                    ?.optJSONObject("sectionListRenderer")
+                val text = descriptionFromSectionList(sectionList)
+                if (text.isNotBlank()) return text
+            }
+        }
+
+        val secondary = descriptionFromSectionList(
+            twoColumn?.optJSONObject("secondaryContents")
+                ?.optJSONObject("sectionListRenderer")
+        )
+        if (secondary.isNotBlank()) return secondary
+
+        val header = root.optJSONObject("header")
+        val headerText = sequenceOf(
+            header?.optJSONObject("musicImmersiveHeaderRenderer")?.optJSONObject("description"),
+            header?.optJSONObject("musicVisualHeaderRenderer")?.optJSONObject("description"),
+            header?.optJSONObject("musicDetailHeaderRenderer")?.optJSONObject("description"),
+            header?.optJSONObject("musicResponsiveHeaderRenderer")?.optJSONObject("description")
+        ).mapNotNull { description ->
+            description?.optJSONArray("runs")?.joinText()?.trim()?.takeIf { it.length > 24 }
+        }.firstOrNull()
+        return headerText.orEmpty()
+    }
+
+    private suspend fun fetchExternalBiography(artistName: String): String = coroutineScope {
+        val cleanName = artistName.trim()
+        if (cleanName.length < 2) return@coroutineScope ""
+        val languages = linkedSetOf(wikipediaLanguage(contentLanguage()), "en")
+        val biographies = languages.map { language ->
+            async(Dispatchers.IO) { fetchWikipediaBiography(cleanName, language) }
+        }.map { it.await() }
+        biographies.firstOrNull { it.isNotBlank() }.orEmpty()
+    }
+
+    private fun fetchWikipediaBiography(artistName: String, language: String): String {
+        val query = URLEncoder.encode("$artistName music artist", StandardCharsets.UTF_8.name())
+        val endpoint = "https://$language.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=$query&gsrnamespace=0&gsrlimit=6&prop=extracts&exintro=1&explaintext=1&redirects=1&format=json&formatversion=2"
+        val root = runCatching { getJson(endpoint) }.getOrNull() ?: return ""
+        val pages = root.optJSONObject("query")?.optJSONArray("pages") ?: return ""
+        return selectWikipediaBiography(artistName, pages)
+    }
+
+    internal fun selectWikipediaBiography(artistName: String, pages: JSONArray): String {
+        var bestText = ""
+        var bestScore = Int.MIN_VALUE
+        for (index in 0 until pages.length()) {
+            val page = pages.optJSONObject(index) ?: continue
+            val title = page.optString("title").trim()
+            val extract = cleanBiography(page.optString("extract"))
+            if (title.isBlank() || extract.length < 80 || isDisambiguationBiography(extract)) continue
+            val baseTitle = title.substringBefore(" (").trim()
+            if (artistIdentityKey(baseTitle) != artistIdentityKey(artistName)) continue
+            val normalizedExtract = extract.lowercase(Locale.ROOT)
+            val normalizedIntro = normalizedExtract.take(600)
+            val normalizedTitle = title.lowercase(Locale.ROOT)
+            val parenthetical = title.substringAfter("(", "").substringBeforeLast(")", "").lowercase(Locale.ROOT)
+            if (BIOGRAPHY_NON_ARTIST_TITLE_TERMS.any { term -> parenthetical.contains(term) }) continue
+            val hasMusicRole = BIOGRAPHY_MUSIC_TERMS.any { term -> normalizedIntro.contains(term) } ||
+                BIOGRAPHY_TITLE_TERMS.any { term -> normalizedTitle.contains(term) }
+            if (!hasMusicRole) continue
+            var score = 1_000
+            if (BIOGRAPHY_TITLE_TERMS.any { term -> parenthetical.contains(term) }) score += 300
+            if (normalizedIntro.startsWith(artistName.lowercase(Locale.ROOT))) score += 200
+            if (score > bestScore) {
+                bestScore = score
+                bestText = extract
+            }
+        }
+        return bestText.takeIf { bestScore >= 1_000 }.orEmpty()
+    }
+
+    private fun getJson(endpoint: String): JSONObject {
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 5_000
+            readTimeout = 7_000
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Accept-Language", contentLanguage())
+            setRequestProperty("User-Agent", "Levyra/${BuildConfig.VERSION_NAME} Android music client")
+        }
+        return try {
+            val code = connection.responseCode
+            if (code !in 200..299) return JSONObject()
+            val response = BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
+            JSONObject(response)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun cleanBiography(value: String): String {
+        val normalized = value
+            .replace(Regex("\\s*\n+\\s*"), " ")
+            .replace(Regex("\\s{2,}"), " ")
+            .trim()
+        if (normalized.length <= 3_200) return normalized
+        val cut = normalized.lastIndexOf('.', 3_200).takeIf { it >= 1_800 } ?: 3_200
+        return normalized.substring(0, cut + if (cut < normalized.length && normalized[cut] == '.') 1 else 0).trim()
+    }
+
+    private fun isDisambiguationBiography(value: String): Boolean {
+        val normalized = value.lowercase(Locale.ROOT)
+        return normalized.contains("may refer to") ||
+            normalized.contains("può riferirsi") ||
+            normalized.contains("peut faire référence") ||
+            normalized.contains("kann sich beziehen") ||
+            normalized.contains("puede referirse")
+    }
+
+    private fun wikipediaLanguage(languageCode: String): String {
+        return when (LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')) {
+            "zh" -> "zh"
+            "pt" -> "pt"
+            "uk" -> "uk"
+            "ru" -> "ru"
+            "tr" -> "tr"
+            "el" -> "el"
+            "sv" -> "sv"
+            "da" -> "da"
+            "cs" -> "cs"
+            "pl" -> "pl"
+            "ro" -> "ro"
+            "nl" -> "nl"
+            "de" -> "de"
+            "fr" -> "fr"
+            "es" -> "es"
+            "it" -> "it"
+            else -> "en"
+        }
     }
 
     private fun extractSubscribers(header: JSONObject?): String {
@@ -238,34 +670,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return text
     }
 
-    private fun extractMonthlyListeners(root: JSONObject): String {
-        val candidates = mutableListOf<JSONObject>()
-        collectByKey(root, "subscriberCountText", candidates)
-        candidates.forEach { node ->
-            val text = node.optJSONArray("runs")?.joinText().orEmpty()
-            if (text.contains("ascolt", ignoreCase = true) || text.contains("listener", ignoreCase = true)) return text.trim()
-        }
-        return ""
-    }
-
-    private fun extractBanner(header: JSONObject?): String {
-        val arrays = mutableListOf<JSONArray>()
-        collectArrays(header, "thumbnails", arrays)
-        var best = ""
-        var bestScore = -1
-        arrays.forEach { array ->
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                val score = item.optInt("width", 0) * item.optInt("height", 0)
-                val isWide = item.optInt("width", 0) > item.optInt("height", 0)
-                if (isWide && score > bestScore && item.optString("url").isNotBlank()) {
-                    best = item.optString("url")
-                    bestScore = score
-                }
-            }
-        }
-        return best
-    }
 
     private fun extractTopSongs(root: JSONObject): List<Track> {
         val renderers = mutableListOf<JSONObject>()
@@ -353,7 +757,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val songs: List<Track>,
         val albums: List<ArtistRelease>,
         val singles: List<ArtistRelease>,
-        val videos: List<Track>
+        val videos: List<Track>,
+        val bio: String
     )
 
     private fun findSongsPointer(root: JSONObject): ArtistSectionPointer? {
@@ -589,6 +994,20 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return post(endpoint, payload.toString(), "https://music.youtube.com/")
     }
 
+    private fun postBrowseFast(browseId: String): JSONObject {
+        val endpoint = "https://music.youtube.com/youtubei/v1/browse?key=$apiKey&prettyPrint=false"
+        val payload = JSONObject()
+            .put("context", clientContext())
+            .put("browseId", browseId)
+        return post(
+            endpoint = endpoint,
+            body = payload.toString(),
+            referer = "https://music.youtube.com/",
+            connectTimeoutMs = 1_500,
+            readTimeoutMs = 2_200
+        )
+    }
+
     private fun contentLanguage(): String = preferences?.languageCode() ?: LevyraLanguageCatalog.deviceDefault()
 
     private fun clientContext(): JSONObject {
@@ -604,12 +1023,18 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         )
     }
 
-    private fun post(endpoint: String, body: String, referer: String): JSONObject {
+    private fun post(
+        endpoint: String,
+        body: String,
+        referer: String,
+        connectTimeoutMs: Int = 15_000,
+        readTimeoutMs: Int = 20_000
+    ): JSONObject {
         val bytes = body.toByteArray(StandardCharsets.UTF_8)
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
-            connectTimeout = 15000
-            readTimeout = 20000
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
             setRequestProperty("Accept", "application/json")
@@ -631,29 +1056,23 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
 
     private fun headerText(header: JSONObject?): String {
         header ?: return ""
-        val direct = header.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-        if (direct.isNotBlank()) return direct
-        val titles = mutableListOf<JSONObject>()
-        collectByKey(header, "title", titles)
-        titles.forEach { node ->
-            val text = node.optJSONArray("runs")?.joinText().orEmpty().trim()
-            if (text.isNotBlank()) return text
+
+        fun titleOf(renderer: JSONObject?): String {
+            return renderer
+                ?.optJSONObject("title")
+                ?.optJSONArray("runs")
+                ?.joinText()
+                .orEmpty()
+                .trim()
         }
-        return ""
+
+        return sequenceOf(
+            titleOf(header.optJSONObject("musicImmersiveHeaderRenderer")),
+            titleOf(header.optJSONObject("musicVisualHeaderRenderer")),
+            titleOf(header.optJSONObject("musicHeaderRenderer"))
+        ).firstOrNull { it.isNotBlank() }.orEmpty()
     }
 
-    private fun headerThumbnails(header: JSONObject?): JSONArray {
-        val arrays = mutableListOf<JSONArray>()
-        collectArrays(header, "thumbnails", arrays)
-        return arrays.maxByOrNull { array ->
-            var best = 0
-            for (i in 0 until array.length()) {
-                val item = array.optJSONObject(i) ?: continue
-                best = maxOf(best, item.optInt("width", 0) * item.optInt("height", 0))
-            }
-            best
-        } ?: JSONArray()
-    }
 
     private fun thumbnailsOf(node: JSONObject): JSONArray {
         val arrays = mutableListOf<JSONArray>()
