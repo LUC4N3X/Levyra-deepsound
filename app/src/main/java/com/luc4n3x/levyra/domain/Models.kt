@@ -347,7 +347,8 @@ data class ArtistHit(
     val thumbnailUrl: String,
     val accentStart: Int,
     val accentEnd: Int,
-    val browseId: String = ""
+    val browseId: String = "",
+    val officialArtwork: Boolean = false
 )
 
 data class AlbumHit(
