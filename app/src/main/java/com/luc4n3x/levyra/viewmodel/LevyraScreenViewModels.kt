@@ -64,6 +64,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
     fun openSettings() = root.openSettings()
     fun playAlbumRecommendations(albums: List<AlbumHit>) = root.playAlbumRecommendations(albums)
+    fun refreshHomeArtists() = root.refreshHomeArtists()
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun searchNow() = root.searchNow()
@@ -169,6 +170,7 @@ private data class HomeProjection(
     val favoriteIds: Set<String>,
     val favorites: List<Track>,
     val homeAlbums: List<AlbumHit>,
+    val homeArtists: List<ArtistHit>,
     val homeAlbumsLoading: Boolean,
     val homeSections: List<HomeSection>,
     val isLoadingCharts: Boolean,
@@ -195,6 +197,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     favoriteIds = state.favoriteIds,
     favorites = state.favorites,
     homeAlbums = state.homeAlbums,
+    homeArtists = state.homeArtists,
     homeAlbumsLoading = state.homeAlbumsLoading,
     homeSections = state.homeSections,
     isLoadingCharts = state.isLoadingCharts,

@@ -60,6 +60,24 @@ class PersistentQueueEngine private constructor(context: Context) {
         return snapshot
     }
 
+    fun clear(): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
+        undoRemoval = null
+        PlaybackQueueSnapshot(
+            tracks = emptyList(),
+            currentIndex = -1,
+            positionMs = 0L,
+            shuffleEnabled = false,
+            shuffleOrder = emptyList(),
+            shuffleCursor = -1,
+            history = emptyList(),
+            repeatMode = RepeatMode.Off,
+            radioEnabled = false,
+            generation = current.generation + 1L,
+            updatedAt = System.currentTimeMillis(),
+            undoAvailable = false
+        )
+    }
+
     fun replace(
         tracks: List<Track>,
         currentIndex: Int,

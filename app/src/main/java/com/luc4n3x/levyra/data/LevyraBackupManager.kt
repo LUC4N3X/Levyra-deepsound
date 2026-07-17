@@ -350,6 +350,7 @@ class LevyraBackupManager(private val context: Context) {
         .put("thumbnailUrl", value.thumbnailUrl)
         .put("largeThumbnailUrl", value.largeThumbnailUrl)
         .put("source", value.source)
+        .put("artistBrowseIds", value.artistBrowseIds)
         .put("listenedMs", value.listenedMs)
         .put("completed", value.completed)
         .put("startedAt", value.startedAt)
@@ -361,7 +362,7 @@ class LevyraBackupManager(private val context: Context) {
                 val json = array.optJSONObject(index) ?: continue
                 val trackId = json.optString("trackId")
                 if (trackId.isBlank()) continue
-                add(ListenEventEntity(trackId = trackId, title = json.optString("title"), artist = json.optString("artist"), album = json.optString("album"), durationMs = json.optLong("durationMs"), videoUrl = json.optString("videoUrl"), thumbnailUrl = json.optString("thumbnailUrl"), largeThumbnailUrl = json.optString("largeThumbnailUrl"), source = json.optString("source"), listenedMs = json.optLong("listenedMs"), completed = json.optBoolean("completed"), startedAt = json.optLong("startedAt")))
+                add(ListenEventEntity(trackId = trackId, title = json.optString("title"), artist = json.optString("artist"), album = json.optString("album"), durationMs = json.optLong("durationMs"), videoUrl = json.optString("videoUrl"), thumbnailUrl = json.optString("thumbnailUrl"), largeThumbnailUrl = json.optString("largeThumbnailUrl"), source = json.optString("source"), artistBrowseIds = json.optString("artistBrowseIds"), listenedMs = json.optLong("listenedMs"), completed = json.optBoolean("completed"), startedAt = json.optLong("startedAt")))
             }
         }
     }
