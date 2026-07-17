@@ -4056,13 +4056,27 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         buildString {
             append(state.languageCode)
             append('|')
-            append(state.charts.take(14).joinToString(",") { it.artist })
+            append(state.charts.take(14).joinToString(",") { track ->
+                "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
+            })
             append('|')
-            append(state.homeSections.flatMap { it.tracks }.take(20).joinToString(",") { it.artist })
+            append(
+                state.homeSections
+                    .asSequence()
+                    .flatMap { section -> section.tracks.asSequence() }
+                    .take(20)
+                    .joinToString(",") { track ->
+                        "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
+                    }
+            )
             append('|')
-            append(state.tracks.take(14).joinToString(",") { it.artist })
+            append(state.tracks.take(14).joinToString(",") { track ->
+                "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
+            })
             append('|')
-            append(state.favorites.take(14).joinToString(",") { it.artist })
+            append(state.favorites.take(14).joinToString(",") { track ->
+                "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
+            })
         }
     }
     LaunchedEffect(homeArtistFingerprint) {
@@ -4078,7 +4092,11 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         state.homeSections.firstOrNull { isVerifiedReleaseSectionTitle(it.title) }
     }
     val otherSections = remember(state.homeSections) {
-        state.homeSections.filter { !isVerifiedReleaseSectionTitle(it.title) && !isQuickPicksSectionTitle(it.title) }
+        state.homeSections.filter {
+            !isVerifiedReleaseSectionTitle(it.title) &&
+                !isQuickPicksSectionTitle(it.title) &&
+                !isPersonalOrbitSectionTitle(it.title)
+        }
     }
     val chartChunks = remember(state.charts) { state.charts.chunked(4) }
     val homeContent = remember(
@@ -4251,12 +4269,16 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 }
             }
         }
-        if (state.interfaceSettings.showTrendingArtists && state.homeArtists.isNotEmpty()) {
+        if (state.interfaceSettings.showTrendingArtists) {
             item(key = "home-trending-artists", contentType = "home-shelf") {
-                TrendingArtistsShelf(
-                    artists = state.homeArtists,
-                    onArtistClick = viewModel::openArtistFromHit
-                )
+                if (state.homeArtists.isNotEmpty()) {
+                    TrendingArtistsShelf(
+                        artists = state.homeArtists,
+                        onArtistClick = viewModel::openArtistFromHit
+                    )
+                } else {
+                    TrendingArtistsLoadingShelf()
+                }
             }
         }
         otherSections.forEachIndexed { sectionIndex, section ->
@@ -4538,6 +4560,67 @@ private fun TrendingArtistsShelf(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun TrendingArtistsLoadingShelf() {
+    val strings = LocalLevyraStrings.current
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .height(22.dp)
+                    .width(4.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
+            )
+            Text(
+                text = strings.artists,
+                color = LevyraText,
+                fontSize = 21.sp,
+                lineHeight = 23.sp,
+                letterSpacing = (-0.55).sp,
+                fontWeight = FontWeight.Black
+            )
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
+        ) {
+            items(
+                count = 4,
+                key = { index -> "artist-loading-$index" },
+                contentType = { "trending-artist-loading" }
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.width(86.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(84.dp)
+                            .clip(CircleShape)
+                            .shimmer()
+                            .background(CinematicGlassDeep)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(62.dp)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(99.dp))
+                            .shimmer()
+                            .background(CinematicGlassDeep)
                     )
                 }
             }
@@ -5041,6 +5124,20 @@ private fun PersonalListeningCard(
             )
         }
     }
+}
+
+
+private fun isPersonalOrbitSectionTitle(title: String): Boolean {
+    val normalized = title.lowercase(Locale.ROOT)
+    return normalized.contains("nella tua orbita") ||
+        normalized.contains("la tua orbita") ||
+        normalized.contains("your orbit") ||
+        normalized.contains("in your orbit") ||
+        normalized.contains("tu órbita") ||
+        normalized.contains("ton orbite") ||
+        normalized.contains("deine umlaufbahn") ||
+        normalized.contains("jouw baan") ||
+        normalized.contains("twoja orbita")
 }
 
 private fun isQuickPicksSectionTitle(title: String): Boolean {
