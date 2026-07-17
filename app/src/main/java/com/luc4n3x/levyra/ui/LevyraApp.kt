@@ -4129,11 +4129,11 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    val homeArtistFingerprint = remember(state.tracks, state.homeSections, state.charts, state.favorites, state.languageCode) {
+    val homeArtistFingerprint = remember(state.homeSections, state.charts, state.languageCode) {
         buildString {
             append(state.languageCode)
             append('|')
-            append(state.charts.take(14).joinToString(",") { track ->
+            append(state.charts.take(16).joinToString(",") { track ->
                 "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
             })
             append('|')
@@ -4141,19 +4141,11 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 state.homeSections
                     .asSequence()
                     .flatMap { section -> section.tracks.asSequence() }
-                    .take(20)
+                    .take(32)
                     .joinToString(",") { track ->
                         "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
                     }
             )
-            append('|')
-            append(state.tracks.take(14).joinToString(",") { track ->
-                "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
-            })
-            append('|')
-            append(state.favorites.take(14).joinToString(",") { track ->
-                "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
-            })
         }
     }
     LaunchedEffect(homeArtistFingerprint) {
