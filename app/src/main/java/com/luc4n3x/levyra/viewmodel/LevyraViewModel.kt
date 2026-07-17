@@ -102,6 +102,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -116,6 +117,19 @@ private data class HomeArtistCandidate(
     val name: String,
     val browseId: String
 )
+
+private fun isEligibleHomeArtistName(value: String): Boolean {
+    val key = artistIdentityKey(value)
+    if (key.isBlank()) return false
+    return !key.startsWith("topsify ") &&
+        !key.endsWith(" mix") &&
+        !key.contains(" playlist") &&
+        !key.startsWith("top 50 ") &&
+        !key.startsWith("top 100 ") &&
+        !key.startsWith("classifica ") &&
+        !key.endsWith(" chart") &&
+        !key.endsWith(" charts")
+}
 
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
@@ -646,34 +660,40 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
             .asSequence()
             .map { track ->
+                val primaryName = primaryArtistSegment(track.artist)
+                    .ifBlank { track.artist.trim() }
                 HomeArtistCandidate(
-                    name = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() },
+                    name = primaryName,
                     browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
                 )
             }
             .filter { it.name.length >= 2 }
-            .filter { it.browseId.isNotBlank() }
+            .filter { isEligibleHomeArtistName(it.name) }
             .filterNot { it.name.contains("unknown", ignoreCase = true) }
             .filterNot {
                 it.name.equals("YouTube", ignoreCase = true) ||
                     it.name.equals("YouTube Music", ignoreCase = true)
             }
-            .distinctBy { it.browseId.lowercase() }
-            .take(12)
+            .sortedByDescending { candidate -> candidate.browseId.isNotBlank() }
+            .distinctBy { candidate ->
+                candidate.browseId.takeIf { it.isNotBlank() }?.lowercase() ?: artistIdentityKey(candidate.name)
+            }
+            .take(14)
             .toList()
 
         val fingerprint = buildString {
             append(snapshot.languageCode)
             append('|')
-            append(candidates.joinToString("|") { it.browseId.lowercase() })
+            append(candidates.joinToString("|") { candidate ->
+                candidate.browseId.ifBlank { artistIdentityKey(candidate.name) }.lowercase()
+            })
         }
 
         if (candidates.isEmpty()) {
             homeArtistsFingerprint = fingerprint
             homeArtistsJob?.cancel()
             _state.update { current ->
-                val loading = current.homeArtists.isEmpty()
-                if (current.homeArtistsLoading == loading) current else current.copy(homeArtistsLoading = loading)
+                if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
             }
             return
         }
@@ -687,43 +707,80 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             if (hadCachedArtists || current.homeArtistsLoading) current else current.copy(homeArtistsLoading = true)
         }
 
-        homeArtistsJob = viewModelScope.launch(Dispatchers.Default) {
+        homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
             if (hadCachedArtists) awaitHomeUiIdle()
-            val semaphore = Semaphore(2)
-            val resolvedArtists = coroutineScope {
-                candidates.map { candidate ->
+            val semaphore = Semaphore(4)
+
+            suspend fun resolve(batch: List<HomeArtistCandidate>): List<ArtistHit> = coroutineScope {
+                batch.map { candidate ->
                     async {
                         semaphore.withPermit {
-                            awaitHomeUiIdle()
-                            runCatching {
-                                artistRepository.artistHit(candidate.browseId, candidate.name)
-                            }.getOrNull()
+                            withTimeoutOrNull(5_500L) {
+                                runCatching {
+                                    if (candidate.browseId.isNotBlank()) {
+                                        artistRepository.artistHit(candidate.browseId, candidate.name)
+                                            ?: artistRepository.artistHitFor(candidate.name)
+                                    } else {
+                                        artistRepository.artistHitFor(candidate.name)
+                                    }
+                                }.getOrNull()
+                            }
                         }
                     }
                 }.awaitAll()
+                    .filterNotNull()
+                    .filter { hit ->
+                        hit.name.isNotBlank() &&
+                            hit.thumbnailUrl.isNotBlank() &&
+                            hit.browseId.isNotBlank()
+                    }
+                    .distinctBy { hit -> hit.browseId.lowercase() }
+            }
+
+            val primaryArtists = resolve(candidates.take(8)).take(10)
+            if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
+
+            if (!hadCachedArtists && primaryArtists.isNotEmpty()) {
+                var primaryChanged = false
+                _state.update { current ->
+                    if (homeArtistsFingerprint != fingerprint) {
+                        current
+                    } else if (current.homeArtists == primaryArtists && !current.homeArtistsLoading) {
+                        current
+                    } else {
+                        primaryChanged = true
+                        current.copy(homeArtists = primaryArtists, homeArtistsLoading = false)
+                    }
+                }
+                if (primaryChanged) persistHomeSnapshot()
+            }
+
+            val remainingCandidates = candidates.drop(8)
+            val extraArtists = if (primaryArtists.size < 10 && remainingCandidates.isNotEmpty()) {
+                resolve(remainingCandidates)
+            } else {
+                emptyList()
             }
 
             if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
 
-            val artists = resolvedArtists
-                .filterNotNull()
-                .filter { it.name.isNotBlank() && it.thumbnailUrl.isNotBlank() && it.browseId.isNotBlank() }
-                .distinctBy { it.browseId.lowercase() }
+            val finalArtists = (primaryArtists + extraArtists + snapshot.homeArtists)
+                .distinctBy { hit -> hit.browseId.lowercase() }
                 .take(10)
 
-            awaitHomeUiIdle()
+            if (primaryArtists.isNotEmpty() && finalArtists != primaryArtists) awaitHomeUiIdle()
+
             var changed = false
             _state.update { current ->
                 if (homeArtistsFingerprint != fingerprint) {
                     current
-                } else if (artists.isEmpty()) {
-                    val loading = current.homeArtists.isEmpty()
-                    if (current.homeArtistsLoading == loading) current else current.copy(homeArtistsLoading = loading)
-                } else if (current.homeArtists == artists && !current.homeArtistsLoading) {
+                } else if (finalArtists.isEmpty()) {
+                    if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
+                } else if (current.homeArtists == finalArtists && !current.homeArtistsLoading) {
                     current
                 } else {
                     changed = true
-                    current.copy(homeArtists = artists, homeArtistsLoading = false)
+                    current.copy(homeArtists = finalArtists, homeArtistsLoading = false)
                 }
             }
             if (changed) persistHomeSnapshot()
