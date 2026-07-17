@@ -34,6 +34,11 @@ internal data class ArtistHeaderArtwork(
     val bannerUrl: String
 )
 
+internal fun chooseVerifiedArtistShelfThumbnail(
+    searchThumbnailUrl: String,
+    headerPortraitUrl: String
+): String = searchThumbnailUrl.trim().ifBlank { headerPortraitUrl.trim() }
+
 internal fun parseArtistHeaderArtwork(header: JSONObject?): ArtistHeaderArtwork {
     fun bestThumbnail(array: JSONArray?): String {
         if (array == null) return ""
@@ -238,33 +243,23 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         artistHitMemory[browseCacheKey]
             ?.takeIf { it.officialArtwork && artistNameMatches(requestedName, it.name) }
             ?.let { return@withContext it }
-        val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull()
-        val header = root?.optJSONObject("header")
-        if (header != null && isArtistPageHeader(header)) {
-            val headerName = headerText(header).trim()
-            val resolvedName = headerName.ifBlank { cleanName }
-            if (artistNameMatches(requestedName, resolvedName) && isArtistShelfNameEligible(resolvedName)) {
-                val artwork = parseArtistHeaderArtwork(header)
-                val portrait = upgradeThumbnail(artwork.portraitUrl)
-                if (portrait.isNotBlank()) {
-                    val accent = palette(stableSeed(cleanBrowseId + resolvedName))
-                    val hit = ArtistHit(
-                        name = resolvedName,
-                        subscribers = extractSubscribers(header),
-                        thumbnailUrl = portrait,
-                        accentStart = accent.first,
-                        accentEnd = accent.second,
-                        browseId = cleanBrowseId,
-                        officialArtwork = true
-                    )
-                    artistHitMemory[browseCacheKey] = hit
-                    artistHitMemory[artistIdentityKey(resolvedName)] = hit
-                    return@withContext hit
-                }
-            }
-        }
 
-        null
+        val searchCandidate = findArtistSearchCandidate(
+            query = requestedName,
+            expectedBrowseId = cleanBrowseId
+        )
+        val candidate = searchCandidate ?: ArtistHit(
+            name = cleanName,
+            subscribers = "",
+            thumbnailUrl = "",
+            accentStart = 0,
+            accentEnd = 0,
+            browseId = cleanBrowseId
+        )
+        val verified = verifyArtistCandidate(candidate, requestedName) ?: return@withContext null
+        artistHitMemory[browseCacheKey] = verified
+        artistHitMemory[artistIdentityKey(verified.name)] = verified
+        verified
     }
 
     suspend fun officialArtistHits(candidates: List<ArtistHit>, limit: Int = 12): List<ArtistHit> = withContext(Dispatchers.IO) {
@@ -281,7 +276,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             val official = coroutineScope {
                 batch.map { candidate ->
                     async {
-                        runCatching { artistHit(candidate.browseId, candidate.name) }
+                        runCatching { verifyArtistCandidate(candidate, candidate.name) }
                             .getOrNull()
                             ?.takeIf { it.officialArtwork && artistNameMatches(candidate.name, it.name) }
                     }
@@ -315,27 +310,88 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             artistIdentityKey(cleanQuery),
             artistIdentityKey(primaryName)
         ).filter { it.isNotBlank() }.toSet()
-        val queries = linkedSetOf(cleanQuery, primaryName)
-        val candidates = LinkedHashMap<String, ArtistHit>()
+        val candidates = findArtistSearchCandidates(cleanQuery)
 
-        queries.forEach { searchQuery ->
-            val root = runCatching { postSearchFast(searchQuery) }.getOrNull() ?: return@forEach
-            extractArtistSearchHits(root)
-                .asSequence()
-                .filter { hit ->
-                    hit.browseId.isNotBlank() &&
-                        artistIdentityKey(hit.name) in acceptedKeys
-                }
-                .forEach { hit -> candidates.putIfAbsent(hit.browseId.lowercase(Locale.ROOT), hit) }
-        }
-
-        candidates.values.forEach { candidate ->
-            val official = runCatching { artistHit(candidate.browseId, candidate.name) }.getOrNull()
+        candidates.forEach { candidate ->
+            val official = runCatching { verifyArtistCandidate(candidate, cleanQuery) }.getOrNull()
             if (official != null && official.officialArtwork && artistIdentityKey(official.name) in acceptedKeys) {
                 return official
             }
         }
         return null
+    }
+
+    private suspend fun findArtistSearchCandidate(
+        query: String,
+        expectedBrowseId: String = ""
+    ): ArtistHit? {
+        val expectedId = expectedBrowseId.trim()
+        return findArtistSearchCandidates(query)
+            .firstOrNull { candidate ->
+                expectedId.isBlank() || candidate.browseId.equals(expectedId, ignoreCase = true)
+            }
+    }
+
+    private suspend fun findArtistSearchCandidates(query: String): List<ArtistHit> {
+        val cleanQuery = query.trim()
+        if (cleanQuery.length < 2) return emptyList()
+        val primaryName = primaryArtistSegment(cleanQuery).ifBlank { cleanQuery }
+        val acceptedKeys = linkedSetOf(
+            artistIdentityKey(cleanQuery),
+            artistIdentityKey(primaryName)
+        ).filter { it.isNotBlank() }.toSet()
+        val candidates = LinkedHashMap<String, ArtistHit>()
+
+        linkedSetOf(cleanQuery, primaryName).forEach { searchQuery ->
+            val root = runCatching { postSearchFast(searchQuery) }.getOrNull() ?: return@forEach
+            extractArtistSearchHits(root)
+                .asSequence()
+                .filter { candidate ->
+                    candidate.browseId.isNotBlank() &&
+                        artistIdentityKey(candidate.name) in acceptedKeys
+                }
+                .sortedByDescending { it.thumbnailUrl.isNotBlank() }
+                .forEach { candidate ->
+                    candidates.putIfAbsent(candidate.browseId.lowercase(Locale.ROOT), candidate)
+                }
+        }
+        return candidates.values.toList()
+    }
+
+    private suspend fun verifyArtistCandidate(
+        candidate: ArtistHit,
+        requestedName: String
+    ): ArtistHit? {
+        val browseId = candidate.browseId.trim()
+        if (browseId.isBlank()) return null
+        val root = runCatching { postBrowseFast(browseId) }.getOrNull() ?: return null
+        val header = root.optJSONObject("header") ?: return null
+        if (!isArtistPageHeader(header)) return null
+        val resolvedName = headerText(header).trim().ifBlank { candidate.name.trim() }
+        if (
+            resolvedName.isBlank() ||
+            !artistNameMatches(requestedName, resolvedName) ||
+            !isArtistShelfNameEligible(resolvedName)
+        ) return null
+
+        val headerArtwork = parseArtistHeaderArtwork(header)
+        val thumbnail = upgradeThumbnail(
+            chooseVerifiedArtistShelfThumbnail(
+                searchThumbnailUrl = candidate.thumbnailUrl,
+                headerPortraitUrl = headerArtwork.portraitUrl
+            )
+        )
+        if (thumbnail.isBlank()) return null
+        val accent = palette(stableSeed(browseId + resolvedName))
+        return ArtistHit(
+            name = resolvedName,
+            subscribers = extractSubscribers(header).ifBlank { candidate.subscribers },
+            thumbnailUrl = thumbnail,
+            accentStart = accent.first,
+            accentEnd = accent.second,
+            browseId = browseId,
+            officialArtwork = true
+        )
     }
 
     private fun extractArtistSearchHits(root: JSONObject): List<ArtistHit> {
@@ -377,17 +433,23 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val subscribers = extractSubscribers(header)
         val monthly = extractOfficialMonthlyListeners(header)
         val artwork = parseArtistHeaderArtwork(header)
-        val searchPortrait = if (artwork.portraitUrl.isBlank()) {
-            runCatching {
-                music.searchEverything(name, contentLanguage()).artists.firstOrNull { candidate ->
-                    candidate.browseId.equals(browseId, ignoreCase = true) &&
-                        artistNameMatches(name, candidate.name)
-                }?.thumbnailUrl.orEmpty()
-            }.getOrDefault("")
-        } else {
-            ""
-        }
-        val thumb = upgradeThumbnail(artwork.portraitUrl.ifBlank { searchPortrait })
+        val searchPortrait = artistHitMemory["browse:${browseId.lowercase(Locale.ROOT)}"]
+            ?.thumbnailUrl
+            .orEmpty()
+            .ifBlank {
+                runCatching {
+                    music.searchEverything(name, contentLanguage()).artists.firstOrNull { candidate ->
+                        candidate.browseId.equals(browseId, ignoreCase = true) &&
+                            artistNameMatches(name, candidate.name)
+                    }?.thumbnailUrl.orEmpty()
+                }.getOrDefault("")
+            }
+        val thumb = upgradeThumbnail(
+            chooseVerifiedArtistShelfThumbnail(
+                searchThumbnailUrl = searchPortrait,
+                headerPortraitUrl = artwork.portraitUrl
+            )
+        )
         val banner = artwork.bannerUrl
         val songsPointer = findSongsPointer(root)
         val albumPointer = findReleasePointer(root, "Album")
