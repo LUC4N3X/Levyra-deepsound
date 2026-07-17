@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">مشغّل مصغّر، ومفضلة سريعة، وتدفق يومي، واستماع بلا إنترنت، وكلمات الأغاني</string>
+    <string name="widget_idle_subtitle">اضغط للاستماع</string>
+    <string name="widget_toggle">تشغيل/إيقاف مؤقت</string>
+    <string name="widget_next">التالي</string>
+    <string name="widget_previous">السابق</string>
+    <string name="widget_favorites">المفضلة</string>
+    <string name="widget_flow">التدفق اليومي</string>
+    <string name="widget_offline">مزيج بلا إنترنت</string>
+    <string name="widget_lyrics">كلمات الأغاني</string>
+    <string name="radar_channel_name">رادار الإصدارات</string>
+    <string name="radar_channel_description">إصدارات جديدة من الفنانين الذين تتابعهم</string>
+    <string name="radar_new_release_title">إصدار جديد من %1$s</string>
+</resources>

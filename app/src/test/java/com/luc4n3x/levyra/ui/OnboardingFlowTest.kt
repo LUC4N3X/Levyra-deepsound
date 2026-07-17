@@ -4,6 +4,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.file.Files
+import java.nio.file.Path
 
 class OnboardingFlowTest {
 
@@ -28,6 +30,19 @@ class OnboardingFlowTest {
         assertFalse(onboardingPrimaryEnabled(OnboardingStep.Taste, selectedTasteCount = 0))
         assertFalse(onboardingPrimaryEnabled(OnboardingStep.Taste, selectedTasteCount = 2))
         assertTrue(onboardingPrimaryEnabled(OnboardingStep.Taste, selectedTasteCount = 3))
+    }
+
+    @Test
+    fun `taste labels follow the selected onboarding language`() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraApp.kt not found")
+        val content = Files.readString(source)
+
+        assertTrue(content.contains("val tastes = remember(languageCode)"))
+        assertTrue(content.contains("moodEngine.tastesForLanguage(languageCode)"))
+        assertFalse(content.contains("OnboardingOverlay(tastes = state.tastes"))
     }
 
     @Test

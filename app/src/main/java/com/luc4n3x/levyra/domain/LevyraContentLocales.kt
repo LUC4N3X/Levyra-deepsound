@@ -36,6 +36,8 @@ object LevyraContentLocales {
             "uk" -> listOf("alyona alyona", "KALUSH", "Jerry Heil", "The Hardkiss", "українські хіти", "український реп", "нічна поїздка", "бас для тренувань")
             "ru" -> listOf("MiyaGi & Andy Panda", "Zivert", "Баста", "Клава Кока", "русские хиты", "русский рэп", "ночная поездка", "бас для тренировки")
             "tr" -> listOf("Tarkan", "Sefo", "Mabel Matiz", "Simge", "Türkçe hitler", "Türkçe rap", "gece sürüşü", "spor bas")
+            "ar" -> listOf("عمرو دياب", "نانسي عجرم", "ويجز", "مروان بابلو", "أغاني عربية 2026", "راب عربي", "موسيقى قيادة ليلية", "موسيقى حماس للتمرين")
+            "zh" -> listOf("周杰伦", "邓紫棋", "薛之谦", "林俊杰", "2026 华语热歌", "中文说唱", "夜间驾驶歌单", "健身音乐")
             else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "top hits", "rap hits", "night drive", "gym bass")
         }
     }
@@ -57,6 +59,8 @@ object LevyraContentLocales {
             "uk" -> listOf("alyona alyona", "KALUSH", "Jerry Heil", "The Hardkiss", "Monatik", "Dorofeeva", "Okean Elzy", "Wellboy", "Artem Pivovarov", "Kazka")
             "ru" -> listOf("MiyaGi & Andy Panda", "Zivert", "Баста", "Клава Кока", "JONY", "Мот", "ANNA ASTI", "MACAN", "Егор Крид", "Artik & Asti")
             "tr" -> listOf("Tarkan", "Sefo", "Mabel Matiz", "Simge", "Ezhel", "UZI", "Semicenk", "Edis", "Hadise", "Güneş")
+            "ar" -> listOf("عمرو دياب", "نانسي عجرم", "ويجز", "مروان بابلو", "شيرين", "تامر حسني", "إليسا", "بلقيس", "Saint Levant", "DYSTINCT")
+            "zh" -> listOf("周杰伦", "邓紫棋", "薛之谦", "林俊杰", "陈奕迅", "王菲", "毛不易", "张杰", "蔡依林", "告五人")
             else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "SZA", "Travis Scott", "Dua Lipa", "Post Malone", "Ariana Grande", "Kendrick Lamar")
         }
     }
@@ -78,6 +82,8 @@ object LevyraContentLocales {
             "uk" -> "Досліджуй артистів"
             "ru" -> "Открой для себя исполнителей"
             "tr" -> "Sanatçıları keşfet"
+            "ar" -> "استكشف الفنانين"
+            "zh" -> "探索歌手"
             else -> "Explore artists"
         }
     }
@@ -99,6 +105,8 @@ object LevyraContentLocales {
             "uk" -> "Пропозиції"
             "ru" -> "Рекомендации"
             "tr" -> "Öneriler"
+            "ar" -> "اقتراحات"
+            "zh" -> "推荐"
             else -> "Suggestions"
         }
     }
@@ -429,6 +437,36 @@ object LevyraContentLocales {
                 pop = "Türkçe pop 2026",
                 party = "Türkiye parti ve dans hitleri 2026",
                 sad = "hüzünlü Türkçe şarkılar"
+            )
+            "ar" -> compact(
+                languageCode = "ar",
+                hl = "ar",
+                gl = "SA",
+                chartRegionId = "sa",
+                chartCountry = "sa",
+                quick = "اختيارات سريعة",
+                local = "العالم العربي في مدارك",
+                energy = "طاقة فورية",
+                localMusic = "أغاني عربية جديدة 2026",
+                rap = "راب عربي جديد 2026",
+                pop = "بوب عربي 2026",
+                party = "أغاني حفلات عربية 2026",
+                sad = "أغاني عربية حزينة"
+            )
+            "zh" -> compact(
+                languageCode = "zh",
+                hl = "zh-CN",
+                gl = "CN",
+                chartRegionId = "cn",
+                chartCountry = "cn",
+                quick = "快捷精选",
+                local = "华语音乐进入你的星轨",
+                energy = "即刻能量",
+                localMusic = "2026 华语热歌",
+                rap = "2026 中文说唱",
+                pop = "2026 华语流行",
+                party = "2026 华语派对舞曲",
+                sad = "华语伤感歌曲"
             )
             else -> locale(
                 languageCode = "en",

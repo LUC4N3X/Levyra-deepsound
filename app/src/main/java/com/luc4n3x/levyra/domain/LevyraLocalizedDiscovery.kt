@@ -38,6 +38,8 @@ object LevyraLocalizedDiscovery {
             "da" -> listOf("danske hits 2026", "dansk rap ny", "træningsmusik", "night drive playlist", "dansk pop ny")
             "cs" -> listOf("české hity 2026", "český rap nový", "hudba do posilovny", "night drive playlist", "český pop nový")
             "uk" -> listOf("українські хіти 2026", "український реп новий", "музика для тренувань", "night drive playlist", "українська поп музика")
+            "ar" -> listOf("أغاني عربية جديدة 2026", "راب عربي جديد", "موسيقى للتمرين", "قائمة قيادة ليلية عربية", "بوب عربي جديد")
+            "zh" -> listOf("2026 华语新歌", "中文说唱新歌", "健身音乐", "夜间驾驶歌单", "华语流行新歌")
             else -> listOf("new music 2026", "top hits 2026", "gym music", "night drive playlist", "fresh pop hits")
         }.let { list ->
             if (query.isBlank()) list else list.map { item -> if (item.lowercase().contains(query)) item else "$query $item" }
