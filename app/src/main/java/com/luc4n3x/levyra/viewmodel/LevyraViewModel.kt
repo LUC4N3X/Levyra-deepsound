@@ -32,8 +32,8 @@ import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.albumRecommendationMatchScore
-import com.luc4n3x.levyra.data.recommendationAlbumKey
-import com.luc4n3x.levyra.data.recommendationTextKey
+import com.luc4n3x.levyra.data.albumRecommendationIdentityKey
+import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistProfile
@@ -1325,9 +1325,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 weight = seed.weight.coerceIn(0, 2_000)
             )
             val key = listOf(
-                recommendationTextKey(normalized.artist),
-                recommendationTextKey(normalized.album),
-                normalized.moodTags.map(::recommendationTextKey).sorted().joinToString("|")
+                albumRecommendationTextKey(normalized.artist),
+                albumRecommendationTextKey(normalized.album),
+                normalized.moodTags.map(::albumRecommendationTextKey).sorted().joinToString("|")
             ).joinToString("|")
             if (key.isBlank() || key == "||") return
             val existing = seeds[key]
@@ -1434,58 +1434,63 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val scoringSeeds = directSeeds.ifEmpty { allSeeds }
         if (scoringSeeds.isEmpty()) return candidates.take(limit)
 
-        val ranked = candidates.mapNotNull { album ->
-            val score = scoringSeeds.maxOfOrNull { seed ->
+        val ranked: List<Pair<AlbumHit, Int>> = candidates.mapNotNull { album: AlbumHit ->
+            val score: Int = scoringSeeds.maxOfOrNull { seed: AlbumRecommendationSeed ->
                 val match = albumRecommendationMatchScore(album, seed)
                 if (match == REJECTED_ALBUM_RECOMMENDATION_SCORE) REJECTED_ALBUM_RECOMMENDATION_SCORE
                 else seed.weight + match
             } ?: REJECTED_ALBUM_RECOMMENDATION_SCORE
-            if (score == REJECTED_ALBUM_RECOMMENDATION_SCORE) null else album to score
+            if (score == REJECTED_ALBUM_RECOMMENDATION_SCORE) null else Pair(album, score)
         }.sortedWith(
-            compareByDescending<Pair<AlbumHit, Int>> { it.second }
-                .thenByDescending { it.first.metadataConfidence }
-                .thenBy { recommendationTextKey(it.first.artist) }
-                .thenBy { recommendationTextKey(it.first.title) }
+            compareByDescending<Pair<AlbumHit, Int>> { scored -> scored.second }
+                .thenByDescending { scored -> scored.first.metadataConfidence }
+                .thenBy { scored -> albumRecommendationTextKey(scored.first.artist) }
+                .thenBy { scored -> albumRecommendationTextKey(scored.first.title) }
         )
         if (ranked.isEmpty()) return emptyList()
 
         val distinctSeedArtists = directSeeds
-            .map { recommendationTextKey(it.artist) }
+            .map { albumRecommendationTextKey(it.artist) }
             .filter { it.isNotBlank() }
             .distinct()
             .size
         val maxPerArtist = if (distinctSeedArtists <= 2) 4 else 2
         val artistCounts = HashMap<String, Int>()
         val selected = ArrayList<AlbumHit>(limit)
-        ranked.forEach { (album, _) ->
+        ranked.forEach { scored: Pair<AlbumHit, Int> ->
             if (selected.size >= limit) return@forEach
-            val artistKey = recommendationTextKey(album.artist)
+            val album: AlbumHit = scored.first
+            val artistKey = albumRecommendationTextKey(album.artist)
             val count = artistCounts[artistKey] ?: 0
             if (count < maxPerArtist) {
-                selected += album
+                selected.add(album)
                 artistCounts[artistKey] = count + 1
             }
         }
         if (selected.size < limit) {
             ranked.asSequence()
-                .map { it.first }
-                .filterNot { candidate -> selected.any { recommendationAlbumKey(it) == recommendationAlbumKey(candidate) } }
+                .map { scored: Pair<AlbumHit, Int> -> scored.first }
+                .filterNot { candidate: AlbumHit ->
+                    selected.any { selectedAlbum: AlbumHit ->
+                        albumRecommendationIdentityKey(selectedAlbum) == albumRecommendationIdentityKey(candidate)
+                    }
+                }
                 .take(limit - selected.size)
-                .forEach(selected::add)
+                .forEach { candidate: AlbumHit -> selected.add(candidate) }
         }
         return selected
     }
 
     private fun isUsefulRecommendationArtist(value: String): Boolean {
-        val key = recommendationTextKey(value)
+        val key = albumRecommendationTextKey(value)
         if (key.length < 2) return false
         return key !in setOf("youtube", "youtube music", "various artists", "artisti vari", "unknown artist")
     }
 
     private fun isUsefulRecommendationAlbum(album: String, trackTitle: String): Boolean {
-        val key = recommendationTextKey(album)
+        val key = albumRecommendationTextKey(album)
         if (key.length < 2) return false
-        if (key == recommendationTextKey(trackTitle) && trackTitle.isNotBlank()) return false
+        if (key == albumRecommendationTextKey(trackTitle) && trackTitle.isNotBlank()) return false
         if (key in setOf("youtube", "youtube music", "single", "singolo", "ep")) return false
         return !key.endsWith(" single") && !key.endsWith(" singolo") && !key.endsWith(" ep")
     }
@@ -4048,13 +4053,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun smartAlbumScore(albumTitle: String, artistName: String, profile: SmartMusicProfile): Int {
-        val album = recommendationTextKey(albumTitle)
-        val artist = recommendationTextKey(artistName)
+        val album = albumRecommendationTextKey(albumTitle)
+        val artist = albumRecommendationTextKey(artistName)
         val albumScore = profile.topAlbums.firstOrNull { seed ->
-            val label = recommendationTextKey(seed.label)
+            val label = albumRecommendationTextKey(seed.label)
             album.isNotBlank() && label.contains(album) && (artist.isBlank() || label.contains(artist))
         }?.weight ?: 0
-        val artistScore = profile.topArtists.firstOrNull { seed -> recommendationTextKey(seed.label) == artist }?.weight ?: 0
+        val artistScore = profile.topArtists.firstOrNull { seed -> albumRecommendationTextKey(seed.label) == artist }?.weight ?: 0
         return albumScore * 3 + artistScore * 2
     }
 
