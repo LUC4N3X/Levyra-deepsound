@@ -33,7 +33,7 @@ class LevyraHomeSnapshotCache(context: Context) {
             }
             val charts = if (schema >= 7) parsedCharts else parsedCharts.map { track -> track.copy(artistBrowseIds = emptyList()) }
             val personalOrbit = if (schema >= 7) parsedPersonalOrbit else parsedPersonalOrbit.map { track -> track.copy(artistBrowseIds = emptyList()) }
-            val homeArtists = if (schema >= 8) parseArtists(rootJson.optJSONArray("homeArtists") ?: JSONArray()) else emptyList()
+            val homeArtists = if (schema >= 11) parseArtists(rootJson.optJSONArray("homeArtists") ?: JSONArray()) else emptyList()
             if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty()) return null
             LevyraHomeSnapshot(
                 languageCode = storedLanguage,
@@ -106,7 +106,7 @@ class LevyraHomeSnapshotCache(context: Context) {
         val array = JSONArray()
         artists
             .asSequence()
-            .filter { it.name.isNotBlank() && it.browseId.isNotBlank() && it.thumbnailUrl.isNotBlank() && isArtistShelfNameEligible(it.name) }
+            .filter { it.name.isNotBlank() && it.browseId.isNotBlank() && it.thumbnailUrl.isNotBlank() && it.officialArtwork && isArtistShelfNameEligible(it.name) }
             .distinctBy { it.browseId.lowercase() }
             .forEach { artist ->
                 array.put(
@@ -117,6 +117,7 @@ class LevyraHomeSnapshotCache(context: Context) {
                         .put("accentStart", artist.accentStart)
                         .put("accentEnd", artist.accentEnd)
                         .put("browseId", artist.browseId)
+                        .put("officialArtwork", artist.officialArtwork)
                 )
             }
         return array
@@ -129,7 +130,8 @@ class LevyraHomeSnapshotCache(context: Context) {
             val name = item.optString("name").trim()
             val browseId = item.optString("browseId").trim()
             val thumbnailUrl = item.optString("thumbnailUrl").trim()
-            if (name.isBlank() || browseId.isBlank() || thumbnailUrl.isBlank() || !isArtistShelfNameEligible(name)) continue
+            val officialArtwork = item.optBoolean("officialArtwork", false)
+            if (name.isBlank() || browseId.isBlank() || thumbnailUrl.isBlank() || !officialArtwork || !isArtistShelfNameEligible(name)) continue
             out.putIfAbsent(
                 browseId.lowercase(),
                 ArtistHit(
@@ -138,7 +140,8 @@ class LevyraHomeSnapshotCache(context: Context) {
                     thumbnailUrl = thumbnailUrl,
                     accentStart = item.optInt("accentStart"),
                     accentEnd = item.optInt("accentEnd"),
-                    browseId = browseId
+                    browseId = browseId,
+                    officialArtwork = true
                 )
             )
         }
@@ -171,7 +174,7 @@ class LevyraHomeSnapshotCache(context: Context) {
     private companion object {
         const val HOME_ARTIST_LIMIT = 13
         const val MIN_SUPPORTED_SCHEMA = 5
-        const val SCHEMA = 8
+        const val SCHEMA = 11
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
     }
 }
