@@ -453,7 +453,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .filter { artist ->
                 artist.name.isNotBlank() &&
                     artist.browseId.isNotBlank() &&
-                    artist.thumbnailUrl.isNotBlank()
+                    artist.thumbnailUrl.isNotBlank() &&
+                    artist.officialArtwork
             }
             .distinctBy { it.browseId.lowercase() }
             .take(HOME_ARTIST_SHELF_SIZE)
@@ -854,6 +855,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     hit.name.isNotBlank() &&
                         hit.thumbnailUrl.isNotBlank() &&
                         hit.browseId.isNotBlank() &&
+                        hit.officialArtwork &&
                         identity in trustedArtistKeys &&
                         identity !in blockedItalianArtistKeys &&
                         isArtistShelfNameEligible(hit.name)
@@ -896,6 +898,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                                 ?: visibleByIdentity[identity]
                             cached?.takeIf { hit ->
                                 hit.thumbnailUrl.isNotBlank() &&
+                                    hit.officialArtwork &&
                                     artistIdentityKey(hit.name) == identity &&
                                     isArtistShelfNameEligible(hit.name)
                             } ?: semaphore.withPermit {
@@ -918,6 +921,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         hit.name.isNotBlank() &&
                         hit.thumbnailUrl.isNotBlank() &&
                         hit.browseId.isNotBlank() &&
+                        hit.officialArtwork &&
                         identity in trustedArtistKeys &&
                         identity !in blockedItalianArtistKeys &&
                         isArtistShelfNameEligible(hit.name)
@@ -2109,7 +2113,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .filter { artist ->
                 artist.name.isNotBlank() &&
                     artist.browseId.isNotBlank() &&
-                    artist.thumbnailUrl.isNotBlank()
+                    artist.thumbnailUrl.isNotBlank() &&
+                    artist.officialArtwork
             }
             .distinctBy { it.browseId.lowercase() }
             .take(HOME_ARTIST_SHELF_SIZE)
@@ -2894,7 +2899,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun runSearch(clean: String) {
         moveToTab(LevyraTab.Search, rememberCurrent = true)
         _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList(), searchFilter = SearchFilter.All) }
-        val result = runCatching { repository.searchEverything(clean, _state.value.languageCode) }
+        val result = runCatching {
+            val raw = repository.searchEverything(clean, _state.value.languageCode)
+            raw.copy(artists = artistRepository.officialArtistHits(raw.artists))
+        }
         result.onSuccess { data ->
             val tracks = data.songs
             val mood = _state.value.selectedMood
@@ -4544,7 +4552,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_HISTORY_LIMIT = 48
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 6
-        private const val HOME_ARTIST_FAST_TIMEOUT_MS = 1_900L
+        private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
         private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
         private const val HOME_ALBUM_SEED_LIMIT = 12
