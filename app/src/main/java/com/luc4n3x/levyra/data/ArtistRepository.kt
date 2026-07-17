@@ -634,12 +634,15 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             normalized.contains("può riferirsi") ||
             normalized.contains("peut faire référence") ||
             normalized.contains("kann sich beziehen") ||
-            normalized.contains("puede referirse")
+            normalized.contains("puede referirse") ||
+            normalized.contains("قد يشير إلى") ||
+            normalized.contains("可能指")
     }
 
     private fun wikipediaLanguage(languageCode: String): String {
         return when (LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')) {
             "zh" -> "zh"
+            "ar" -> "ar"
             "pt" -> "pt"
             "uk" -> "uk"
             "ru" -> "ru"
