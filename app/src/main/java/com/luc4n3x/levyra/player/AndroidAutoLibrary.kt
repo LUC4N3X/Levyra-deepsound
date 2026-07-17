@@ -475,7 +475,7 @@ class AndroidAutoLibrary(context: Context) {
     }
 
     private fun String.cleanQuery(): String = trim()
-        .replace(Regex("[^\\p{L}\\p{N} .,'’&+_-]+"), " ")
+        .replace(Regex("[^\\p{L}\\p{M}\\p{N} .,'’&+_-]+"), " ")
         .replace(Regex("\\s+"), " ")
         .take(90)
         .trim()

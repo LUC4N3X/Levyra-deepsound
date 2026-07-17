@@ -248,7 +248,7 @@ object LevyraPersonalOrbit {
             .replace(Regex("""\([^)]*\)|\[[^]]*]"""), " ")
             .replace(Regex("""feat\.?|featuring|ft\.?"""), " ")
             .replace(Regex("""official audio|official video|lyrics?|visuali[sz]er|music video"""), " ")
-            .replace(Regex("""[^\p{L}\p{N}\s]"""), " ")
+            .replace(Regex("""[^\p{L}\p{M}\p{N}\s]"""), " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
     }
