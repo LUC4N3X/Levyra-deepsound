@@ -248,7 +248,7 @@ object LevyraPersonalOrbit {
             .replace(Regex("""\([^)]*\)|\[[^]]*]"""), " ")
             .replace(Regex("""feat\.?|featuring|ft\.?"""), " ")
             .replace(Regex("""official audio|official video|lyrics?|visuali[sz]er|music video"""), " ")
-            .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
+            .replace(Regex("""[^\p{L}\p{M}\p{N}\s]"""), " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
     }
@@ -317,6 +317,8 @@ object LevyraPersonalOrbit {
             "da" -> listOf("dansk", "danmark", "gilli", "tobias rahim", "mø", "medina")
             "cs" -> listOf("česk", "cesk", "calin", "ewa farna", "ben cristovao", "viktor sheen")
             "uk" -> listOf("україн", "ukrain", "alyona alyona", "kalush", "jerry heil", "okean elzy")
+            "ar" -> listOf("عربي", "عربية", "عمرو دياب", "نانسي عجرم", "ويجز", "مروان بابلو", "شيرين", "تامر حسني", "إليسا", "بلقيس")
+            "zh" -> listOf("华语", "中文", "国语", "周杰伦", "邓紫棋", "薛之谦", "林俊杰", "陈奕迅", "王菲", "毛不易")
             else -> emptyList()
         }
     }

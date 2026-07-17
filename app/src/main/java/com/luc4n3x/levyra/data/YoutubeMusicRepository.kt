@@ -637,7 +637,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     private fun normalizeSearchText(value: String): String = value
         .lowercase()
-        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), " ")
         .replace(Regex("\\s+"), " ")
         .trim()
 
@@ -1037,7 +1037,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private val excludedTypes = setOf(
         "album", "playlist", "artist", "ep", "podcast", "episode", "channel", "profile", "mix",
         "artista", "canale", "profilo", "canción", "cancion", "artiste", "künstler", "kunstler",
-        "álbum", "albumo", "artiest", "artysta", "artis", "canal", "chaîne", "kanal"
+        "álbum", "albumo", "artiest", "artysta", "artis", "canal", "chaîne", "kanal",
+        "فنان", "قناة", "ملف شخصي", "ألبوم", "قائمة تشغيل", "歌手", "频道", "个人资料", "专辑", "播放列表"
     )
 
     private fun albumRecommendationQueries(languageCode: String): List<String> {
@@ -1053,6 +1054,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             "fr" -> listOf("nouveaux albums", "albums populaires", "albums pop", "albums rap")
             "de" -> listOf("neue alben", "beliebte alben", "pop alben", "rap alben")
             "pt" -> listOf("novos álbuns", "álbuns populares", "álbuns pop", "álbuns rap")
+            "ar" -> listOf("ألبومات عربية جديدة", "ألبومات عربية رائجة", "ألبومات بوب عربية", "ألبومات راب عربية")
+            "zh" -> listOf("华语新专辑", "华语热门专辑", "华语流行专辑", "中文说唱专辑")
             else -> listOf("new albums", "popular albums", "pop albums", "rap albums", "indie albums")
         }
     }
@@ -2091,7 +2094,7 @@ internal fun String.cleanAlbumArtistLabel(): String {
     if (cleaned.isBlank() || cleaned.looksLikeSerializedJson()) return ""
     val normalized = cleaned.lowercase()
         .replace('\u2019', '\'')
-        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), " ")
         .trim()
     if (normalized in ALBUM_ARTIST_ACTION_LABELS) return ""
     return cleaned
