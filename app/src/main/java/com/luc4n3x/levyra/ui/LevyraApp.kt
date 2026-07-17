@@ -171,7 +171,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -180,6 +179,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -234,7 +234,6 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.luc4n3x.levyra.data.ArtworkRequestSource
-import com.luc4n3x.levyra.data.HomeContentAvailability
 import com.luc4n3x.levyra.data.HomeLoadingPolicy
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
@@ -766,7 +765,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
     val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
     val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val currentStrings = LevyraStrings.forCode(state.languageCode)
     LaunchedEffect(state.isVideoMode, state.isPlaying) {
         val currentPipState = LevyraPipBridge.current()
@@ -909,23 +908,23 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (tab) {
                         LevyraTab.Home -> {
-                            val screenState by homeViewModel.state.collectAsState()
+                            val screenState by homeViewModel.state.collectAsStateWithLifecycle()
                             HomeScreen(homeViewModel, screenState)
                         }
                         LevyraTab.Search -> {
-                            val screenState by searchViewModel.state.collectAsState()
+                            val screenState by searchViewModel.state.collectAsStateWithLifecycle()
                             SearchScreen(searchViewModel, screenState)
                         }
                         LevyraTab.Explore -> {
-                            val screenState by exploreViewModel.state.collectAsState()
+                            val screenState by exploreViewModel.state.collectAsStateWithLifecycle()
                             ExploreScreen(exploreViewModel, screenState)
                         }
                         LevyraTab.Library -> {
-                            val screenState by libraryViewModel.state.collectAsState()
+                            val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
                             LibraryScreen(libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true })
                         }
                         LevyraTab.Player -> {
-                            val screenState by playerViewModel.state.collectAsState()
+                            val screenState by playerViewModel.state.collectAsStateWithLifecycle()
                             PlayerScreen(playerViewModel, screenState)
                         }
                     }
@@ -2401,8 +2400,8 @@ private fun ReleaseRadarRow(
                     contentAlignment = Alignment.Center
                 ) {
                     if (entry.release.thumbnailUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(entry.release.thumbnailUrl).crossfade(false).build(),
+                        StableRemoteArtwork(
+                            url = entry.release.thumbnailUrl,
                             contentDescription = entry.release.title,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.matchParentSize()
@@ -4131,7 +4130,7 @@ internal fun homeSectionLazyKey(
     title: String,
     trackIds: List<String>
 ): String {
-    return "$position|${title.trim().lowercase(Locale.ROOT)}|${trackIds.take(3).joinToString(".")}"
+    return "$position|${title.trim().lowercase(Locale.ROOT)}"
 }
 
 @Composable
@@ -4139,101 +4138,19 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    val homeArtistFingerprint = remember(
-        state.recentListens,
-        state.personalOrbitTracks,
-        state.favorites,
-        state.tracks,
-        state.homeSections,
-        state.charts,
-        state.languageCode
-    ) {
-        buildString {
-            append(state.languageCode)
-            append('|')
-            append(
-                (
-                    state.recentListens +
-                        state.personalOrbitTracks +
-                        state.favorites +
-                        state.tracks +
-                        state.homeSections.flatMap { it.tracks } +
-                        state.charts
-                )
-                    .asSequence()
-                    .filter { it.artistBrowseIds.firstOrNull().orEmpty().isNotBlank() }
-                    .distinctBy { it.artistBrowseIds.first().lowercase() }
-                    .take(48)
-                    .joinToString(",") { track ->
-                        "${track.artist}:${track.artistBrowseIds.first()}"
-                    }
-            )
-        }
-    }
-    LaunchedEffect(homeArtistFingerprint) {
+    val homeDerivedState by viewModel.derivedState.collectAsStateWithLifecycle()
+    LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
         viewModel.refreshHomeArtists()
     }
     val personalTracks = remember(state.personalOrbitTracks) {
         state.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
-    val resonanceTracks = remember(state.currentTrack, state.recentSearches, state.favorites, state.tracks, state.homeSections, state.charts) {
-        buildResonanceTracks(state)
-    }
-    val newReleases = remember(state.homeSections) {
-        state.homeSections.firstOrNull { isVerifiedReleaseSectionTitle(it.title) }
-    }
-    val otherSections = remember(state.homeSections) {
-        state.homeSections.filter {
-            !isVerifiedReleaseSectionTitle(it.title) &&
-                !isQuickPicksSectionTitle(it.title) &&
-                !isPersonalOrbitSectionTitle(it.title)
-        }
-    }
-    val chartChunks = remember(state.charts) { state.charts.chunked(4) }
-    val homeContent = remember(
-        state.tracks,
-        state.homeSections,
-        state.homeAlbums,
-        state.charts,
-        state.personalOrbitTracks,
-        state.releaseRadar,
-        state.similarArtists,
-        state.currentTrack
-    ) {
-        HomeContentAvailability(
-            trackCount = state.tracks.size,
-            homeSectionCount = state.homeSections.size,
-            homeSectionTrackCount = state.homeSections.sumOf { it.tracks.size },
-            albumCount = state.homeAlbums.size,
-            chartCount = state.charts.size,
-            personalOrbitCount = state.personalOrbitTracks.size,
-            releaseRadarCount = state.releaseRadar.size,
-            similarArtistCount = state.similarArtists.size,
-            hasCurrentTrack = state.currentTrack != null
-        )
-    }
-    val homeFingerprint = remember(
-        state.tracks,
-        state.homeSections,
-        state.homeAlbums,
-        state.charts,
-        state.personalOrbitTracks,
-        state.releaseRadar,
-        state.similarArtists,
-        state.currentTrack
-    ) {
-        buildString {
-            append(homeContent.fingerprint())
-            append('|')
-            append(state.tracks.take(12).joinToString(",") { it.id })
-            append('|')
-            append(state.homeSections.joinToString(",") { section -> "${section.title}:${section.tracks.take(4).joinToString(".") { it.id }}" })
-            append('|')
-            append(state.homeAlbums.take(10).joinToString(",") { it.browseId.ifBlank { "${it.title}:${it.artist}" } })
-            append('|')
-            append(state.charts.take(12).joinToString(",") { it.id })
-        }
-    }
+    val resonanceTracks = homeDerivedState.resonanceTracks
+    val newReleases = homeDerivedState.newReleases
+    val otherSections = homeDerivedState.otherSections
+    val chartChunks = homeDerivedState.chartChunks
+    val homeContent = homeDerivedState.contentAvailability
+    val homeFingerprint = homeDerivedState.contentFingerprint
     val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
     val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
     val homeListState = rememberLazyListState()
@@ -4245,12 +4162,18 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
         if (showChartShimmer) LevyraArtworkStartupMetrics.recordShimmer(homeContent.hasUsableContent)
     }
     LaunchedEffect(homeListState) {
-        snapshotFlow { homeListState.isScrollInProgress }
+        snapshotFlow {
+            val atTop = homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0
+            homeListState.isScrollInProgress to atTop
+        }
             .distinctUntilChanged()
-            .collect { viewModel.setHomeScrollInProgress(it) }
+            .collect { (scrollInProgress, atTop) ->
+                viewModel.setHomeViewport(scrollInProgress, atTop)
+            }
     }
     DisposableEffect(viewModel) {
-        onDispose { viewModel.setHomeScrollInProgress(false) }
+        viewModel.onHomeEntered()
+        onDispose { viewModel.onHomeLeft() }
     }
     LaunchedEffect(Unit) {
         delay(5_000L)
@@ -4261,8 +4184,8 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(top = 10.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
-        verticalArrangement = Arrangement.spacedBy(if (state.interfaceSettings.compactHome) 14.dp else 24.dp)
+        contentPadding = PaddingValues(top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
+        verticalArrangement = Arrangement.spacedBy(if (state.interfaceSettings.compactHome) 12.dp else 22.dp)
     ) {
         item(key = "home-top", contentType = "home-header") {
             HomeSectionInset {
@@ -4367,7 +4290,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
             item(key = "home-trending-artists", contentType = "home-shelf") {
                 TrendingArtistsShelf(
                     artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
-                    loadingSlots = (HOME_ARTIST_SHELF_SIZE - state.homeArtists.size).coerceAtLeast(0),
+                    loadingSlots = if (state.homeArtists.isEmpty() && state.homeArtistsLoading) HOME_ARTIST_SHELF_SIZE else 0,
                     onArtistClick = viewModel::openArtistFromHit
                 )
             }
@@ -4424,7 +4347,7 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                     ) {
                         itemsIndexed(
                             items = chartChunks,
-                            key = { chunkIndex, chunk -> "chart-column-$chunkIndex-${chunk.joinToString("-") { it.id }}" },
+                            key = { chunkIndex, _ -> "chart-column-$chunkIndex" },
                             contentType = { _, _ -> "chart-column" }
                         ) { chunkIndex, chunk ->
                             Column(modifier = Modifier.width(320.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -4478,7 +4401,7 @@ private fun HomeContinueListeningCard(
     isPlaying: Boolean,
     isResolving: Boolean
 ) {
-    val playbackProgress by viewModel.playbackProgress.collectAsState()
+    val playbackProgress by viewModel.playbackProgress.collectAsStateWithLifecycle()
     HomeSectionInset {
         ContinueListeningCard(
             track = track,
@@ -4690,23 +4613,6 @@ private fun TrendingArtistLoadingItem() {
                 .background(CinematicGlassDeep)
         )
     }
-}
-
-private fun buildResonanceTracks(state: LevyraUiState): List<Track> {
-    return buildList {
-        addAll(state.charts)
-        addAll(state.homeSections.flatMap { it.tracks })
-        addAll(state.favorites)
-        addAll(state.tracks)
-        state.currentTrack?.let { add(it) }
-    }
-        .asSequence()
-        .filter { it.id.length == 11 && isReliableMusicUpdateCandidate(it) }
-        .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-        .distinctBy { it.id }
-        .sortedWith(compareByDescending<Track> { it.replayScore + it.vocal + it.cacheScore / 2 }.thenBy { it.title })
-        .take(8)
-        .toList()
 }
 
 @Composable
