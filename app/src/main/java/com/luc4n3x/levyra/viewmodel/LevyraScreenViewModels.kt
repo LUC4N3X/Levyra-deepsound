@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -55,8 +55,8 @@ data class HomePlaybackProgress(
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
     internal val renderState: StateFlow<HomeRenderSnapshot> = state
-        .mapLatest { snapshot ->
-            withContext(Dispatchers.Default) { buildHomeRenderSnapshot(snapshot) }
+        .scan(buildHomeRenderSnapshot(root.state.value)) { previous, snapshot ->
+            withContext(Dispatchers.Default) { buildHomeRenderSnapshot(snapshot, previous) }
         }
         .distinctUntilChanged()
         .stateIn(
@@ -216,6 +216,32 @@ internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
         state = state,
         derived = buildHomeDerivedState(state.toHomeDerivedInput())
     )
+}
+
+internal fun buildHomeRenderSnapshot(
+    state: LevyraUiState,
+    previous: HomeRenderSnapshot
+): HomeRenderSnapshot {
+    val derived = if (sameHomeDerivedInputs(previous.state, state)) {
+        previous.derived
+    } else {
+        buildHomeDerivedState(state.toHomeDerivedInput())
+    }
+    return HomeRenderSnapshot(state = state, derived = derived)
+}
+
+private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiState): Boolean {
+    return previous.languageCode == current.languageCode &&
+        previous.currentTrack === current.currentTrack &&
+        previous.recentListens === current.recentListens &&
+        previous.personalOrbitTracks === current.personalOrbitTracks &&
+        previous.favorites === current.favorites &&
+        previous.tracks === current.tracks &&
+        previous.homeSections === current.homeSections &&
+        previous.homeAlbums === current.homeAlbums &&
+        previous.charts === current.charts &&
+        previous.releaseRadar === current.releaseRadar &&
+        previous.similarArtists === current.similarArtists
 }
 
 private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
