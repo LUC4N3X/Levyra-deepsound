@@ -876,14 +876,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     if (current.languageCode == languageCode) {
                         current.copy(
                             homeArtists = visibleArtists,
-                            homeArtistsLoading = visibleArtists.isEmpty()
+                            homeArtistsLoading = visibleArtists.size < HOME_ARTIST_SHELF_SIZE
                         )
                     } else {
                         current
                     }
                 }
                 delay(HOME_ARTIST_STARTUP_GRACE_MS)
-                awaitHomeUiIdle()
             }
 
             val visibleByBrowseId = visibleArtists.associateBy { it.browseId.lowercase() }
@@ -892,7 +891,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val semaphore = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
 
             for (batch in orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
-                awaitHomeUiIdle()
+                if (freezeVisibleShelf || homeScrollInProgress) awaitHomeUiIdle()
                 val hits = coroutineScope {
                     batch.map { candidate ->
                         async {
@@ -909,11 +908,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             } ?: semaphore.withPermit {
                                 withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
                                     runCatching {
-                                        if (candidate.browseId.isNotBlank()) {
-                                            artistRepository.artistHit(candidate.browseId, candidate.name)
-                                        } else {
-                                            artistRepository.artistHitFor(candidate.name)
-                                        }
+                                        artistRepository.artistShelfHit(
+                                            browseId = candidate.browseId,
+                                            artistName = candidate.name
+                                        )
                                     }.getOrNull()
                                 }
                             }
@@ -932,6 +930,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         isArtistShelfNameEligible(hit.name)
                     ) {
                         resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+                    }
+                }
+                if (!freezeVisibleShelf && resolved.isNotEmpty() && canApplyHomeStructuralChanges()) {
+                    val partialArtists = resolved.values.take(HOME_ARTIST_SHELF_SIZE)
+                    _state.update { current ->
+                        if (current.languageCode == languageCode) {
+                            current.copy(
+                                homeArtists = partialArtists,
+                                homeArtistsLoading = partialArtists.size < HOME_ARTIST_SHELF_SIZE
+                            )
+                        } else {
+                            current
+                        }
                     }
                 }
                 if (resolved.size >= HOME_ARTIST_SHELF_SIZE) break
@@ -957,6 +968,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { current ->
                     if (current.languageCode == languageCode) current.copy(homeArtistsLoading = false) else current
                 }
+                return@launch
+            }
+
+            if (!canApplyHomeStructuralChanges() && finalArtists.isNotEmpty()) {
+                deferredHomeArtistsSnapshot.set(finalArtists)
+                persistHomeSnapshotSync(languageCode)
+                scheduleDeferredHomeSnapshotApply()
                 return@launch
             }
 
@@ -4560,9 +4578,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_SHELF_SIZE = 13
         private const val HOME_ARTIST_HISTORY_LIMIT = 48
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
-        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 2
-        private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
-        private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
+        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 3
+        private const val HOME_ARTIST_FAST_TIMEOUT_MS = 3_800L
+        private const val HOME_ARTIST_STARTUP_GRACE_MS = 80L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
         private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4
         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
