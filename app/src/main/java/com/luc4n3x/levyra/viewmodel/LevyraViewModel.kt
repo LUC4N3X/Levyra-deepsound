@@ -869,72 +869,74 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeArtistsFingerprint = fingerprint
 
             val freezeVisibleShelf = visibleArtists.size >= HOME_ARTIST_SHELF_SIZE
-            if (freezeVisibleShelf) {
-                awaitHomeUiIdle()
-            } else {
-                _state.update { current ->
-                    if (current.languageCode == languageCode) {
-                        current.copy(
-                            homeArtists = visibleArtists,
-                            homeArtistsLoading = visibleArtists.isEmpty()
-                        )
-                    } else {
-                        current
-                    }
-                }
-                delay(HOME_ARTIST_STARTUP_GRACE_MS)
-                awaitHomeUiIdle()
-            }
-
             val visibleByBrowseId = visibleArtists.associateBy { it.browseId.lowercase() }
             val visibleByIdentity = visibleArtists.associateBy { artistIdentityKey(it.name) }
             val resolved = LinkedHashMap<String, ArtistHit>()
             val semaphore = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
 
-            for (batch in orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
-                awaitHomeUiIdle()
-                val hits = coroutineScope {
-                    batch.map { candidate ->
-                        async {
-                            val identity = artistIdentityKey(candidate.name)
-                            val cached = candidate.browseId
-                                .takeIf { it.isNotBlank() }
-                                ?.let { visibleByBrowseId[it.lowercase()] }
-                                ?: visibleByIdentity[identity]
-                            cached?.takeIf { hit ->
-                                hit.thumbnailUrl.isNotBlank() &&
-                                    hit.officialArtwork &&
-                                    artistIdentityKey(hit.name) == identity &&
-                                    isArtistShelfNameEligible(hit.name)
-                            } ?: semaphore.withPermit {
-                                withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
-                                    runCatching {
-                                        if (candidate.browseId.isNotBlank()) {
-                                            artistRepository.artistHit(candidate.browseId, candidate.name)
-                                        } else {
-                                            artistRepository.artistHitFor(candidate.name)
-                                        }
-                                    }.getOrNull()
+            withTimeoutOrNull(HOME_ARTIST_TOTAL_TIMEOUT_MS) {
+                if (freezeVisibleShelf) {
+                    awaitHomeUiIdle()
+                } else {
+                    _state.update { current ->
+                        if (current.languageCode == languageCode) {
+                            current.copy(
+                                homeArtists = visibleArtists,
+                                homeArtistsLoading = visibleArtists.isEmpty()
+                            )
+                        } else {
+                            current
+                        }
+                    }
+                    delay(HOME_ARTIST_STARTUP_GRACE_MS)
+                    awaitHomeUiIdle()
+                }
+
+                for (batch in orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
+                    awaitHomeUiIdle()
+                    val hits = coroutineScope {
+                        batch.map { candidate ->
+                            async {
+                                val identity = artistIdentityKey(candidate.name)
+                                val cached = candidate.browseId
+                                    .takeIf { it.isNotBlank() }
+                                    ?.let { visibleByBrowseId[it.lowercase()] }
+                                    ?: visibleByIdentity[identity]
+                                cached?.takeIf { hit ->
+                                    hit.thumbnailUrl.isNotBlank() &&
+                                        hit.officialArtwork &&
+                                        artistIdentityKey(hit.name) == identity &&
+                                        isArtistShelfNameEligible(hit.name)
+                                } ?: semaphore.withPermit {
+                                    withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
+                                        runCatching {
+                                            if (candidate.browseId.isNotBlank()) {
+                                                artistRepository.artistHit(candidate.browseId, candidate.name)
+                                            } else {
+                                                artistRepository.artistHitFor(candidate.name)
+                                            }
+                                        }.getOrNull()
+                                    }
                                 }
                             }
-                        }
-                    }.awaitAll()
-                }
-                hits.filterNotNull().forEach { hit ->
-                    val identity = artistIdentityKey(hit.name)
-                    if (
-                        hit.name.isNotBlank() &&
-                        hit.thumbnailUrl.isNotBlank() &&
-                        hit.browseId.isNotBlank() &&
-                        hit.officialArtwork &&
-                        identity in trustedArtistKeys &&
-                        identity !in blockedItalianArtistKeys &&
-                        isArtistShelfNameEligible(hit.name)
-                    ) {
-                        resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+                        }.awaitAll()
                     }
+                    hits.filterNotNull().forEach { hit ->
+                        val identity = artistIdentityKey(hit.name)
+                        if (
+                            hit.name.isNotBlank() &&
+                            hit.thumbnailUrl.isNotBlank() &&
+                            hit.browseId.isNotBlank() &&
+                            hit.officialArtwork &&
+                            identity in trustedArtistKeys &&
+                            identity !in blockedItalianArtistKeys &&
+                            isArtistShelfNameEligible(hit.name)
+                        ) {
+                            resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+                        }
+                    }
+                    if (resolved.size >= HOME_ARTIST_SHELF_SIZE) break
                 }
-                if (resolved.size >= HOME_ARTIST_SHELF_SIZE) break
             }
 
             visibleArtists.forEach { hit ->
@@ -4562,6 +4564,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
         private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 2
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
+        private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 9_000L
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
         private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4
