@@ -117,6 +117,21 @@ private data class HomeArtistCandidate(
     val browseId: String
 )
 
+private fun artistProfileMatchesCandidate(
+    profile: com.luc4n3x.levyra.domain.ArtistProfile,
+    candidate: HomeArtistCandidate
+): Boolean {
+    val expected = artistIdentityKey(candidate.name)
+    val actual = artistIdentityKey(profile.name)
+    if (expected.isBlank() || actual != expected) return false
+    if (profile.topSongs.isEmpty()) return true
+    return profile.topSongs.any { track ->
+        val trackArtist = artistIdentityKey(primaryArtistSegment(track.artist).ifBlank { track.artist })
+        trackArtist == expected ||
+            artistIdentityKey(track.artist).split(' ').containsAll(expected.split(' ').filter { it.isNotBlank() })
+    }
+}
+
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
     val safeCurrent = current?.coerceIn(1, 99) ?: 1
@@ -633,23 +648,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val candidates = buildList {
             addAll(snapshot.charts)
             addAll(snapshot.homeSections.flatMap { it.tracks })
-            addAll(snapshot.tracks)
-            addAll(snapshot.favorites)
         }
             .asSequence()
             .map { track ->
-                val browseIds = track.artistBrowseIds.filter { it.isNotBlank() }
-                val displayName = if (browseIds.size == 1) {
-                    track.artist.trim()
-                } else {
-                    primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
-                }
                 HomeArtistCandidate(
-                    name = displayName,
-                    browseId = browseIds.firstOrNull().orEmpty().trim()
+                    name = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() },
+                    browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
                 )
             }
             .filter { it.name.length >= 2 }
+            .filter { it.browseId.isNotBlank() }
             .filterNot { it.name.contains("unknown", ignoreCase = true) }
             .filterNot {
                 it.name.equals("YouTube", ignoreCase = true) ||
@@ -690,27 +698,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 candidates.map { candidate ->
                     async {
                         semaphore.withPermit {
-                            if (candidate.browseId.isNotBlank()) {
-                                val profile = runCatching {
-                                    artistRepository.profile(candidate.browseId, candidate.name)
-                                }.getOrNull()
-                                profile?.let { resolvedProfile ->
+                            val profile = runCatching {
+                                artistRepository.profile(candidate.browseId, candidate.name)
+                            }.getOrNull()
+                            profile
+                                ?.takeIf { artistProfileMatchesCandidate(it, candidate) }
+                                ?.let { resolvedProfile ->
                                     ArtistHit(
-                                        name = resolvedProfile.name,
+                                        name = candidate.name,
                                         subscribers = resolvedProfile.subscribers,
                                         thumbnailUrl = resolvedProfile.thumbnailUrl,
                                         accentStart = resolvedProfile.accentStart,
                                         accentEnd = resolvedProfile.accentEnd,
                                         browseId = resolvedProfile.browseId
                                     )
-                                } ?: runCatching {
-                                    artistRepository.artistHitFor(candidate.name)
-                                }.getOrNull()
-                            } else {
-                                runCatching {
-                                    artistRepository.artistHitFor(candidate.name)
-                                }.getOrNull()
-                            }
+                                }
                         }
                     }
                 }.awaitAll()
@@ -1942,7 +1944,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openArtist(track: Track) {
-        openArtistByName(track.artist)
+        val artistName = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
+        val browseId = track.artistBrowseIds.firstOrNull().orEmpty()
+        if (browseId.isNotBlank()) {
+            openArtistReference(
+                name = artistName,
+                browseId = browseId,
+                returnTarget = DetailReturnTarget.None
+            )
+        } else {
+            openArtistByName(artistName)
+        }
     }
 
     fun openArtistFromAlbum() {
