@@ -11,7 +11,8 @@ data class ListenEvent(
     val listenedMs: Long,
     val trackDurationMs: Long,
     val completed: Boolean,
-    val startedAt: Long
+    val startedAt: Long,
+    val artistBrowseIds: List<String> = emptyList()
 )
 
 data class PulseTrack(
