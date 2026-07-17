@@ -1,8 +1,10 @@
 package com.luc4n3x.levyra.viewmodel
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.luc4n3x.levyra.data.HomeContentAvailability
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartRegion
@@ -22,11 +24,15 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 abstract class LevyraScreenViewModel(
     protected val root: LevyraViewModel,
@@ -48,6 +54,46 @@ data class HomePlaybackProgress(
 )
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
+    internal val derivedState: StateFlow<HomeDerivedState> = state
+        .map { state ->
+            HomeDerivedInput(
+                languageCode = state.languageCode,
+                recentListens = state.recentListens,
+                personalOrbitTracks = state.personalOrbitTracks,
+                favorites = state.favorites,
+                tracks = state.tracks,
+                homeSections = state.homeSections,
+                homeAlbums = state.homeAlbums,
+                charts = state.charts,
+                releaseRadar = state.releaseRadar,
+                similarArtists = state.similarArtists,
+                currentTrack = state.currentTrack
+            )
+        }
+        .distinctUntilChanged()
+        .mapLatest { input ->
+            withContext(Dispatchers.Default) { buildHomeDerivedState(input) }
+        }
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = buildHomeDerivedState(
+                HomeDerivedInput(
+                    languageCode = root.state.value.languageCode,
+                    recentListens = root.state.value.recentListens,
+                    personalOrbitTracks = root.state.value.personalOrbitTracks,
+                    favorites = root.state.value.favorites,
+                    tracks = root.state.value.tracks,
+                    homeSections = root.state.value.homeSections,
+                    homeAlbums = root.state.value.homeAlbums,
+                    charts = root.state.value.charts,
+                    releaseRadar = root.state.value.releaseRadar,
+                    similarArtists = root.state.value.similarArtists,
+                    currentTrack = root.state.value.currentTrack
+                )
+            )
+        )
     val playbackProgress: StateFlow<HomePlaybackProgress> = root.state
         .map { HomePlaybackProgress(it.positionMs, it.durationMs) }
         .distinctUntilChanged()
@@ -73,7 +119,9 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun selectMood(mood: Mood) = root.selectMood(mood)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
-    fun setHomeScrollInProgress(value: Boolean) = root.setHomeScrollInProgress(value)
+    fun onHomeEntered() = root.onHomeEntered()
+    fun onHomeLeft() = root.onHomeLeft()
+    fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) = root.setHomeViewport(scrollInProgress, atTop)
 }
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
@@ -162,6 +210,191 @@ class LevyraScreenViewModelFactory(
     }
 }
 
+@Immutable
+internal data class HomeDerivedState(
+    val resonanceTracks: List<Track>,
+    val artistRefreshFingerprint: String,
+    val newReleases: HomeSection?,
+    val otherSections: List<HomeSection>,
+    val chartChunks: List<List<Track>>,
+    val contentAvailability: HomeContentAvailability,
+    val contentFingerprint: String
+)
+
+private data class HomeDerivedInput(
+    val languageCode: String,
+    val recentListens: List<Track>,
+    val personalOrbitTracks: List<Track>,
+    val favorites: List<Track>,
+    val tracks: List<Track>,
+    val homeSections: List<HomeSection>,
+    val homeAlbums: List<AlbumHit>,
+    val charts: List<Track>,
+    val releaseRadar: List<ReleaseRadarEntry>,
+    val similarArtists: List<ArtistHit>,
+    val currentTrack: Track?
+)
+
+private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
+    val newReleases = input.homeSections.firstOrNull { isVerifiedHomeReleaseSectionTitle(it.title) }
+    val otherSections = input.homeSections.filter {
+        !isVerifiedHomeReleaseSectionTitle(it.title) &&
+            !isHomeQuickPicksSectionTitle(it.title) &&
+            !isHomePersonalOrbitSectionTitle(it.title)
+    }
+    val contentAvailability = HomeContentAvailability(
+        trackCount = input.tracks.size,
+        homeSectionCount = input.homeSections.size,
+        homeSectionTrackCount = input.homeSections.sumOf { it.tracks.size },
+        albumCount = input.homeAlbums.size,
+        chartCount = input.charts.size,
+        personalOrbitCount = input.personalOrbitTracks.size,
+        releaseRadarCount = input.releaseRadar.size,
+        similarArtistCount = input.similarArtists.size,
+        hasCurrentTrack = input.currentTrack != null
+    )
+    return HomeDerivedState(
+        resonanceTracks = buildHomeResonanceTracks(input),
+        artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
+        newReleases = newReleases,
+        otherSections = otherSections,
+        chartChunks = input.charts.chunked(4),
+        contentAvailability = contentAvailability,
+        contentFingerprint = buildHomeContentFingerprint(input, contentAvailability)
+    )
+}
+
+private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
+    return buildList {
+        addAll(input.charts)
+        input.homeSections.forEach { section -> addAll(section.tracks) }
+        addAll(input.favorites)
+        addAll(input.tracks)
+        input.currentTrack?.let(::add)
+    }
+        .asSequence()
+        .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+        .distinctBy { it.id }
+        .sortedWith(
+            compareByDescending<Track> { it.replayScore + it.vocal + it.cacheScore / 2 }
+                .thenBy { it.title }
+        )
+        .take(8)
+        .toList()
+}
+
+private fun buildHomeArtistRefreshFingerprint(input: HomeDerivedInput): String {
+    val tracks = sequence {
+        yieldAll(input.recentListens)
+        yieldAll(input.personalOrbitTracks)
+        yieldAll(input.favorites)
+        yieldAll(input.tracks)
+        input.homeSections.forEach { section -> yieldAll(section.tracks) }
+        yieldAll(input.charts)
+    }
+    return buildString {
+        append(input.languageCode)
+        append('|')
+        append(
+            tracks
+                .filter { it.artistBrowseIds.firstOrNull().orEmpty().isNotBlank() }
+                .distinctBy { it.artistBrowseIds.first().lowercase() }
+                .take(48)
+                .joinToString(",") { track ->
+                    "${track.artist}:${track.artistBrowseIds.first()}"
+                }
+        )
+    }
+}
+
+private fun buildHomeContentFingerprint(
+    input: HomeDerivedInput,
+    availability: HomeContentAvailability
+): String {
+    return buildString {
+        append(availability.fingerprint())
+        append('|')
+        append(input.tracks.take(12).joinToString(",") { it.id })
+        append('|')
+        append(
+            input.homeSections.joinToString(",") { section ->
+                "${section.title}:${section.tracks.take(4).joinToString(".") { it.id }}"
+            }
+        )
+        append('|')
+        append(input.homeAlbums.take(10).joinToString(",") { it.browseId.ifBlank { "${it.title}:${it.artist}" } })
+        append('|')
+        append(input.charts.take(12).joinToString(",") { it.id })
+    }
+}
+
+private fun isReliableHomeMusicCandidate(track: Track): Boolean {
+    val title = track.title.trim()
+    val artist = track.artist.trim()
+    if (title.length < 2 || artist.length < 2) return false
+    if (artist.equals("YouTube Music", ignoreCase = true) || artist.equals("YouTube", ignoreCase = true)) return false
+    return !isLikelyHomePlaylistOrCompilation(track)
+}
+
+private fun isVerifiedHomeReleaseSectionTitle(title: String): Boolean {
+    val normalized = title.lowercase(Locale.ROOT)
+    return normalized.contains("novità") ||
+        normalized.contains("nuove uscite") ||
+        normalized.contains("appena usciti") ||
+        normalized.contains("ultime uscite") ||
+        normalized.contains("nuovi album") ||
+        normalized.contains("nuovi singoli") ||
+        normalized.contains("new releases") ||
+        normalized.contains("new release") ||
+        normalized.contains("latest releases") ||
+        normalized.contains("latest release") ||
+        normalized.contains("new albums") ||
+        normalized.contains("new singles")
+}
+
+private fun isHomeQuickPicksSectionTitle(title: String): Boolean {
+    val normalized = title.lowercase(Locale.ROOT)
+    return normalized.contains("scelte rapide") ||
+        normalized.contains("quick picks") ||
+        normalized.contains("quick pick") ||
+        normalized.contains("scelte per te")
+}
+
+private fun isHomePersonalOrbitSectionTitle(title: String): Boolean {
+    val normalized = title.lowercase(Locale.ROOT)
+    return normalized.contains("nella tua orbita") ||
+        normalized.contains("la tua orbita") ||
+        normalized.contains("your orbit") ||
+        normalized.contains("in your orbit") ||
+        normalized.contains("tu órbita") ||
+        normalized.contains("ton orbite") ||
+        normalized.contains("deine umlaufbahn") ||
+        normalized.contains("jouw baan") ||
+        normalized.contains("twoja orbita")
+}
+
+private fun isLikelyHomePlaylistOrCompilation(track: Track): Boolean {
+    val combined = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+    return listOf(
+        "playlist",
+        "mix",
+        "top hit",
+        "top hits",
+        "hit italiane",
+        "canzoni italiane",
+        "musica italiana",
+        "estate mix",
+        "summer mix",
+        "best of",
+        "compilation",
+        "classifica",
+        "radio edit",
+        "sped up",
+        "slowed",
+        "nightcore"
+    ).any(combined::contains)
+}
+
 private data class HomeProjection(
     val animationsEnabled: Boolean,
     val chartRegions: List<ChartRegion>,
@@ -171,18 +404,23 @@ private data class HomeProjection(
     val favorites: List<Track>,
     val homeAlbums: List<AlbumHit>,
     val homeArtists: List<ArtistHit>,
+    val homeArtistsLoading: Boolean,
     val homeAlbumsLoading: Boolean,
     val homeSections: List<HomeSection>,
     val isLoadingCharts: Boolean,
     val isPlaying: Boolean,
     val isResolving: Boolean,
+    val languageCode: String,
     val moods: List<Mood>,
     val personalOrbitTracks: List<Track>,
     val playlists: List<Playlist>,
+    val recentListens: List<Track>,
     val recentSearches: List<Track>,
     val releaseRadar: List<ReleaseRadarEntry>,
     val selectedChartId: String,
     val selectedMood: Mood?,
+    val searchError: String?,
+    val playerError: String?,
     val similarArtists: List<ArtistHit>,
     val tracks: List<Track>,
     val userName: String,
@@ -198,18 +436,23 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     favorites = state.favorites,
     homeAlbums = state.homeAlbums,
     homeArtists = state.homeArtists,
+    homeArtistsLoading = state.homeArtistsLoading,
     homeAlbumsLoading = state.homeAlbumsLoading,
     homeSections = state.homeSections,
     isLoadingCharts = state.isLoadingCharts,
     isPlaying = state.isPlaying,
     isResolving = state.isResolving,
+    languageCode = state.languageCode,
     moods = state.moods,
     personalOrbitTracks = state.personalOrbitTracks,
     playlists = state.playlists,
+    recentListens = state.recentListens,
     recentSearches = state.recentSearches,
     releaseRadar = state.releaseRadar,
     selectedChartId = state.selectedChartId,
     selectedMood = state.selectedMood,
+    searchError = state.searchError,
+    playerError = state.playerError,
     similarArtists = state.similarArtists,
     tracks = state.tracks,
     userName = state.userName,
