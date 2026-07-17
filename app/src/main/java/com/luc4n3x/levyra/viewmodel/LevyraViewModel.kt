@@ -275,8 +275,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var chartsJob: Job? = null
     private var homeSnapshotJob: Job? = null
     private var homeArtistsFingerprint: String = ""
-    @Volatile private var deferredHomeArtistsSnapshot: List<ArtistHit>? = null
-    @Volatile private var deferredHomeSectionsSnapshot: List<com.luc4n3x.levyra.domain.HomeSection>? = null
+    private val deferredHomeArtistsSnapshot = AtomicReference<List<ArtistHit>?>(null)
     private var radarJob: Job? = null
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
@@ -309,8 +308,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val homeAlbumsRequestGeneration = AtomicLong(0L)
     private val chartsRequestGeneration = AtomicLong(0L)
     private val pendingHomeSectionsSnapshot = AtomicReference<List<com.luc4n3x.levyra.domain.HomeSection>?>(null)
+    private val deferredHomeSnapshotApplyScheduled = AtomicBoolean(false)
     @Volatile private var homeScreenActive = false
     @Volatile private var homeAtTop = true
+    @Volatile private var homeScrollInProgress = false
 
     private fun homeStartupWorkPlan(): HomeStartupWorkPlan {
         val playbackPlan = adaptivePlaybackPolicy.current(videoMode = false)
@@ -322,49 +323,107 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) {
         homeAtTop = atTop
+        homeScrollInProgress = scrollInProgress
         homeInteractionGate.update(scrollInProgress)
+        if (homeScreenActive && atTop && !scrollInProgress) {
+            scheduleDeferredHomeSnapshotApply()
+        }
     }
 
     fun onHomeEntered() {
         homeScreenActive = true
         homeAtTop = true
-        val pendingSections = pendingHomeSectionsSnapshot.getAndSet(null)
-        val pendingArtists = deferredHomeArtistsSnapshot
-        deferredHomeSectionsSnapshot = null
-        deferredHomeArtistsSnapshot = null
-        val snapshot = _state.value
-        val sectionResult = pendingSections?.let { sections ->
-            HomeRefreshStability.mergeSections(
-                previous = snapshot.homeSections,
-                incoming = sections,
-                allowStructuralChanges = true
-            )
-        }
-        val nextSections = sectionResult?.visible ?: snapshot.homeSections
-        val nextArtists = pendingArtists?.takeIf { it.isNotEmpty() } ?: snapshot.homeArtists
-        val flat = if (sectionResult?.changed == true) {
-            nextSections.flatMap { it.tracks }.distinctBy { it.id }
-        } else {
-            emptyList()
-        }
-        val changed = sectionResult?.changed == true || nextArtists != snapshot.homeArtists
-        if (!changed) return
-        _state.update { current ->
-            current.copy(
-                homeSections = nextSections,
-                homeArtists = nextArtists,
-                homeArtistsLoading = false,
-                tracks = flat.ifEmpty { current.tracks },
-                searchResults = flat.take(12).ifEmpty { current.searchResults }
-            )
-        }
-        persistHomeSnapshot()
+        homeScrollInProgress = false
+        homeInteractionGate.update(false)
+        scheduleDeferredHomeSnapshotApply(waitForIdle = false)
     }
 
     fun onHomeLeft() {
         homeScreenActive = false
         homeAtTop = true
+        homeScrollInProgress = false
         homeInteractionGate.update(false)
+    }
+
+    private fun canApplyHomeStructuralChanges(): Boolean {
+        return !homeScreenActive || (homeAtTop && !homeScrollInProgress)
+    }
+
+    private fun hasDeferredHomeSnapshots(): Boolean {
+        return pendingHomeSectionsSnapshot.get() != null || deferredHomeArtistsSnapshot.get() != null
+    }
+
+    private fun scheduleDeferredHomeSnapshotApply(waitForIdle: Boolean = true) {
+        if (!homeScreenActive || !homeAtTop || homeScrollInProgress || !hasDeferredHomeSnapshots()) return
+        if (!deferredHomeSnapshotApplyScheduled.compareAndSet(false, true)) return
+        viewModelScope.launch {
+            try {
+                if (waitForIdle) awaitHomeUiIdle()
+                if (homeScreenActive && homeAtTop && !homeScrollInProgress) {
+                    applyDeferredHomeSnapshots()
+                }
+            } finally {
+                deferredHomeSnapshotApplyScheduled.set(false)
+                if (homeScreenActive && homeAtTop && !homeScrollInProgress && hasDeferredHomeSnapshots()) {
+                    scheduleDeferredHomeSnapshotApply()
+                }
+            }
+        }
+    }
+
+    private suspend fun applyDeferredHomeSnapshots() {
+        val pendingSections = pendingHomeSectionsSnapshot.getAndSet(null)
+        val pendingArtists = deferredHomeArtistsSnapshot.getAndSet(null)
+        if (pendingSections == null && pendingArtists == null) return
+        if (!homeScreenActive || !homeAtTop || homeScrollInProgress) {
+            pendingSections?.let { pendingHomeSectionsSnapshot.compareAndSet(null, it) }
+            pendingArtists?.let { deferredHomeArtistsSnapshot.compareAndSet(null, it) }
+            return
+        }
+
+        var applied = false
+        while (true) {
+            val current = _state.value
+            val updated = withContext(Dispatchers.Default) {
+                val sectionResult = pendingSections?.let { sections ->
+                    HomeRefreshStability.mergeSections(
+                        previous = current.homeSections,
+                        incoming = sections,
+                        allowStructuralChanges = true
+                    )
+                }
+                val nextSections = sectionResult?.visible ?: current.homeSections
+                val nextArtists = pendingArtists?.takeIf { it.isNotEmpty() } ?: current.homeArtists
+                val sectionsChanged = sectionResult?.changed == true
+                val artistsChanged = nextArtists != current.homeArtists
+                if (!sectionsChanged && !artistsChanged) {
+                    current
+                } else {
+                    val nextTracks = if (sectionsChanged) {
+                        nextSections.flatMap { it.tracks }.distinctBy { it.id }.ifEmpty { current.tracks }
+                    } else {
+                        current.tracks
+                    }
+                    current.copy(
+                        homeSections = nextSections,
+                        homeArtists = nextArtists,
+                        homeArtistsLoading = if (pendingArtists != null) false else current.homeArtistsLoading,
+                        tracks = nextTracks
+                    )
+                }
+            }
+            if (updated === current) break
+            if (!homeScreenActive || !homeAtTop || homeScrollInProgress) {
+                pendingSections?.let { pendingHomeSectionsSnapshot.compareAndSet(null, it) }
+                pendingArtists?.let { deferredHomeArtistsSnapshot.compareAndSet(null, it) }
+                return
+            }
+            if (_state.compareAndSet(current, updated)) {
+                applied = true
+                break
+            }
+        }
+        if (applied) persistHomeSnapshot()
     }
 
     private suspend fun awaitHomeUiIdle(plan: HomeStartupWorkPlan = homeStartupWorkPlan()) {
@@ -693,10 +752,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val snapshot = _state.value
         homeSnapshotCache.save(
             languageCode = languageCode,
-            homeSections = deferredHomeSectionsSnapshot ?: snapshot.homeSections,
+            homeSections = pendingHomeSectionsSnapshot.get() ?: snapshot.homeSections,
             charts = snapshot.charts,
             personalOrbit = snapshot.personalOrbitTracks,
-            homeArtists = deferredHomeArtistsSnapshot ?: snapshot.homeArtists
+            homeArtists = deferredHomeArtistsSnapshot.get() ?: snapshot.homeArtists
         )
     }
 
@@ -856,14 +915,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
             if (freezeVisibleShelf) {
                 if (complete) {
-                    deferredHomeArtistsSnapshot = finalArtists
+                    deferredHomeArtistsSnapshot.set(finalArtists)
+                    scheduleDeferredHomeSnapshotApply()
                     persistHomeSnapshotSync(startupSnapshot.languageCode)
                 }
                 _state.update { current -> current.copy(homeArtistsLoading = false) }
                 return@launch
             }
 
-            deferredHomeArtistsSnapshot = null
+            deferredHomeArtistsSnapshot.set(null)
             _state.update { current ->
                 current.copy(
                     homeArtists = finalArtists,
@@ -1344,8 +1404,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { current ->
                 if (current.languageCode != languageCode) current
                 else current.copy(
-                    isSearching = !hasVisibleHome,
-                    searchError = if (hasVisibleHome) current.searchError else null
+                    isLoadingHome = true,
+                    homeError = null
                 )
             }
 
@@ -1371,8 +1431,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 loadHomeAlbums(languageCode, deferUntilHomeIdle)
                 if (hasVisibleHome) {
                     _state.update { current ->
-                        if (current.languageCode == languageCode && current.isSearching) {
-                            current.copy(isSearching = false)
+                        if (current.languageCode == languageCode && current.isLoadingHome) {
+                            current.copy(isLoadingHome = false)
                         } else {
                             current
                         }
@@ -1391,13 +1451,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 HomeRefreshStability.mergeSections(
                     previous = _state.value.homeSections,
                     incoming = sanitizedSections,
-                    allowStructuralChanges = !homeScreenActive
+                    allowStructuralChanges = canApplyHomeStructuralChanges()
                 )
             }
             withContext(Dispatchers.IO) {
                 preferences.saveHomeSections(sanitizedSections, languageCode)
             }
-            if (previewMerge.changed && (deferUntilHomeIdle || (homeScreenActive && !homeAtTop))) {
+            if (previewMerge.changed && (deferUntilHomeIdle || (homeScreenActive && (!homeAtTop || homeScrollInProgress)))) {
                 awaitHomeUiIdle()
             }
             if (
@@ -1411,7 +1471,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 HomeRefreshStability.mergeSections(
                     previous = mergeBaseSections,
                     incoming = sanitizedSections,
-                    allowStructuralChanges = !homeScreenActive
+                    allowStructuralChanges = canApplyHomeStructuralChanges()
                 )
             }
             if (_state.value.homeSections != mergeBaseSections) {
@@ -1420,7 +1480,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     HomeRefreshStability.mergeSections(
                         previous = mergeBaseSections,
                         incoming = sanitizedSections,
-                        allowStructuralChanges = !homeScreenActive
+                        allowStructuralChanges = canApplyHomeStructuralChanges()
                     )
                 }
             }
@@ -1429,7 +1489,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             if (visibleTracks.isEmpty()) {
                 _state.update { current ->
-                    if (current.languageCode == languageCode) current.copy(isSearching = false) else current
+                    if (current.languageCode == languageCode) {
+                        current.copy(
+                            isLoadingHome = false,
+                            homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
+                                "Home non disponibile"
+                            } else {
+                                current.homeError
+                            }
+                        )
+                    } else {
+                        current
+                    }
                 }
                 return@launch
             }
@@ -1452,13 +1523,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     current.languageCode != languageCode ||
                     current.homeSections != mergeBaseSections
                 ) break
-                val nextSearchResults = visibleTracks.take(12)
                 val updated = if (
                     !mergeResult.changed &&
                     current.homeAlbums == instantAlbums &&
                     current.tracks == visibleTracks &&
-                    current.searchResults == nextSearchResults &&
-                    !current.isSearching
+                    !current.isLoadingHome &&
+                    current.homeError == null
                 ) {
                     current
                 } else {
@@ -1467,22 +1537,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         homeAlbums = instantAlbums,
                         homeAlbumsLoading = instantAlbums.isEmpty(),
                         tracks = visibleTracks,
-                        searchResults = nextSearchResults,
-                        isSearching = false,
-                        cacheReport = repository.cacheReport(),
-                        searchError = null
+                        isLoadingHome = false,
+                        homeError = null,
+                        cacheReport = repository.cacheReport()
                     )
                 }
                 published = updated === current || _state.compareAndSet(current, updated)
             }
             if (!published) {
                 _state.update { current ->
-                    if (current.languageCode == languageCode && current.isSearching) current.copy(isSearching = false) else current
+                    if (current.languageCode == languageCode && current.isLoadingHome) {
+                        current.copy(isLoadingHome = false)
+                    } else {
+                        current
+                    }
                 }
                 return@launch
             }
             pendingHomeSectionsSnapshot.set(mergeResult.deferredStructural)
-            deferredHomeSectionsSnapshot = mergeResult.deferredStructural
+            if (mergeResult.deferredStructural != null) {
+                scheduleDeferredHomeSnapshotApply()
+            }
 
             persistHomeSnapshot()
             val startupPlan = homeStartupWorkPlan()
@@ -1960,8 +2035,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
         pendingHomeSectionsSnapshot.set(null)
-        deferredHomeSectionsSnapshot = null
-        deferredHomeArtistsSnapshot = null
+        deferredHomeArtistsSnapshot.set(null)
         homeArtistsFingerprint = ""
         homeArtistsJob?.cancel()
         val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(languageCode)
@@ -2005,7 +2079,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             state = recommendationState,
             limit = HOME_ALBUM_RECOMMENDATION_LIMIT
         ).ifEmpty { localAlbums }
-        val queue = moodEngine.buildQueue(selectedMood, allTracks)
         exploreCache.clear()
         exploreVideosLoaded = false
         _state.update {
@@ -2018,10 +2091,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeSections = homeSections,
                 homeAlbums = instantAlbums,
                 homeAlbumsLoading = instantAlbums.isEmpty() && refreshRemote,
+                isLoadingHome = refreshRemote && homeSections.isEmpty() && allTracks.isEmpty(),
+                homeError = null,
                 charts = chartTracks,
                 personalOrbitTracks = orbit,
                 tracks = allTracks,
-                searchResults = allTracks.take(12),
+                searchResults = emptyList(),
                 searchSuggestions = emptyList(),
                 searchData = SearchResults(),
                 searchError = null,
@@ -3961,8 +4036,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { current ->
                 if (current.languageCode != languageCode) current
                 else current.copy(
-                    isSearching = false,
-                    searchError = "Home remota vuota: prova una ricerca"
+                    isLoadingHome = false,
+                    homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
+                        "Home remota vuota: prova una ricerca"
+                    } else {
+                        current.homeError
+                    }
                 )
             }
             return
@@ -3985,11 +4064,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             else current.copy(
                 homeSections = if (shouldPublishSection) listOf(fallbackSection) else current.homeSections,
                 tracks = tracks,
-                searchResults = tracks.take(12),
-                isSearching = false,
+                isLoadingHome = false,
+                homeError = null,
                 smartScore = calculateSmartScore(moodEngine.buildQueue(current.selectedMood, tracks)),
-                cacheReport = repository.cacheReport(),
-                searchError = null
+                cacheReport = repository.cacheReport()
             )
         }
         withContext(Dispatchers.IO) {

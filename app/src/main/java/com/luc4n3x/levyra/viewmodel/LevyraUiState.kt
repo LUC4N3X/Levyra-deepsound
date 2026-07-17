@@ -68,6 +68,8 @@ data class LevyraUiState(
     val homeArtists: List<ArtistHit> = emptyList(),
     val homeArtistsLoading: Boolean = false,
     val homeAlbumsLoading: Boolean = false,
+    val isLoadingHome: Boolean = false,
+    val homeError: String? = null,
     val showAlbum: Boolean = false,
     val albumLoading: Boolean = false,
     val albumError: String? = null,
