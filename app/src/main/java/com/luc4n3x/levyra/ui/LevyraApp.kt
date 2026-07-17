@@ -176,6 +176,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -890,6 +891,9 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
         ) {
             LevyraBackground(accent?.accentStart, accent?.accentEnd)
 
+            val homeListState = rememberLazyListState()
+            val libraryListState = rememberLazyListState()
+
             AnimatedContent(
                 targetState = state.selectedTab,
                 transitionSpec = {
@@ -914,7 +918,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     when (tab) {
                         LevyraTab.Home -> {
                             val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
-                            HomeScreen(homeViewModel, renderSnapshot)
+                            HomeScreen(homeViewModel, renderSnapshot, homeListState)
                         }
                         LevyraTab.Search -> {
                             val screenState by searchViewModel.state.collectAsStateWithLifecycle()
@@ -926,7 +930,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         }
                         LevyraTab.Library -> {
                             val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
-                            LibraryScreen(libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true })
+                            LibraryScreen(libraryViewModel, screenState, libraryListState, onOpenDownloads = { showDownloadsFolder = true })
                         }
                         LevyraTab.Player -> {
                             val screenState by playerViewModel.state.collectAsStateWithLifecycle()
@@ -4139,7 +4143,7 @@ internal fun homeSectionLazyKey(
 }
 
 @Composable
-private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnapshot) {
+private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnapshot, homeListState: LazyListState) {
     val state = renderSnapshot.state
     val homeDerivedState = renderSnapshot.derived
     val strings = LocalLevyraStrings.current
@@ -4159,7 +4163,6 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     val homeFingerprint = homeDerivedState.contentFingerprint
     val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
     val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
-    val homeListState = rememberLazyListState()
     LaunchedEffect(homeFingerprint) {
         LevyraArtworkStartupMetrics.recordHomeEmission(homeFingerprint, homeContent.hasUsableContent)
     }
@@ -6789,20 +6792,28 @@ private fun DownloadsFolderOverlay(
 private fun LibraryScreen(
     viewModel: LibraryViewModel,
     state: LevyraUiState,
+    listState: LazyListState,
     onOpenDownloads: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var filter by rememberSaveable { mutableStateOf(LibraryFilter.All) }
+    val showPlaylists = filter == LibraryFilter.All || filter == LibraryFilter.Playlists
+    val showDownloads = filter == LibraryFilter.All || filter == LibraryFilter.Downloads
+    val showSongs = filter == LibraryFilter.All || filter == LibraryFilter.Songs
+    val showArtists = filter == LibraryFilter.All || filter == LibraryFilter.Artists
+    val showPulse = filter == LibraryFilter.All
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = if (state.currentTrack != null) 194.dp else 108.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            item {
+            item(key = "lib-header", contentType = "lib-header") {
                 LibraryHeader(
                     title = strings.libraryTitle,
                     subtitle = strings.librarySubtitle,
@@ -6812,103 +6823,120 @@ private fun LibraryScreen(
                 )
             }
 
-            item {
-                LibrarySectionHeader(
-                    title = cleanLibraryLabel(strings.playlists),
-                    detail = LocalLevyraStrings.current.personalPlaylists,
-                    count = state.playlists.size,
-                    icon = Icons.Rounded.QueueMusic,
-                    accent = LevyraViolet,
-                    actionLabel = strings.newItem,
-                    onAction = { showCreate = true }
+            item(key = "lib-filters", contentType = "lib-filters") {
+                LibraryFilterChips(
+                    selected = filter,
+                    playlistCount = state.playlists.size,
+                    songCount = state.favorites.size + state.recentListens.size,
+                    artistCount = state.followedArtists.size,
+                    downloadCount = state.downloads.size,
+                    onSelect = { filter = it }
                 )
             }
-            if (state.playlists.isEmpty()) {
-                item {
-                    LibraryEmptyState(
+
+            if (showPlaylists) {
+                item(key = "lib-playlists-header", contentType = "lib-section-header") {
+                    LibrarySectionHeader(
+                        title = cleanLibraryLabel(strings.playlists),
+                        detail = strings.personalPlaylists,
+                        count = state.playlists.size,
                         icon = Icons.Rounded.QueueMusic,
-                        title = strings.createFirstPlaylist,
-                        detail = strings.createFirstPlaylistSubtitle,
                         accent = LevyraViolet,
                         actionLabel = strings.newItem,
                         onAction = { showCreate = true }
                     )
                 }
-            } else {
-                items(state.playlists, key = { "pl-${it.id}" }) { playlist ->
-                    PlaylistRow(
-                        playlist = playlist,
-                        onOpen = { viewModel.openPlaylist(playlist.id) },
-                        onPlay = { viewModel.playPlaylist(playlist.id) },
-                        onDelete = { viewModel.deletePlaylist(playlist.id) }
-                    )
+                if (state.playlists.isEmpty()) {
+                    item(key = "lib-playlists-empty", contentType = "lib-empty") {
+                        LibraryEmptyState(
+                            icon = Icons.Rounded.QueueMusic,
+                            title = strings.createFirstPlaylist,
+                            detail = strings.createFirstPlaylistSubtitle,
+                            accent = LevyraViolet,
+                            actionLabel = strings.newItem,
+                            onAction = { showCreate = true }
+                        )
+                    }
+                } else {
+                    items(state.playlists, key = { "pl-${it.id}" }, contentType = { "lib-playlist" }) { playlist ->
+                        PlaylistRow(
+                            playlist = playlist,
+                            onOpen = { viewModel.openPlaylist(playlist.id) },
+                            onPlay = { viewModel.playPlaylist(playlist.id) },
+                            onDelete = { viewModel.deletePlaylist(playlist.id) }
+                        )
+                    }
                 }
             }
 
-            item {
-                LibrarySectionHeader(
-                    title = cleanLibraryLabel(strings.downloads),
-                    detail = LocalLevyraStrings.current.offline,
-                    count = state.downloads.size,
-                    icon = Icons.Rounded.DownloadDone,
-                    accent = LevyraCyan
-                )
-            }
-            if (state.downloads.isEmpty()) {
-                item {
-                    LibraryEmptyState(
-                        icon = Icons.Rounded.Download,
-                        title = LocalLevyraStrings.current.noOfflineDownloads,
-                        detail = strings.downloadTrackHint,
+            if (showDownloads) {
+                item(key = "lib-downloads-header", contentType = "lib-section-header") {
+                    LibrarySectionHeader(
+                        title = cleanLibraryLabel(strings.downloads),
+                        detail = strings.offline,
+                        count = state.downloads.size,
+                        icon = Icons.Rounded.DownloadDone,
                         accent = LevyraCyan
                     )
                 }
-            } else {
-                item {
-                    DownloadsFolderCard(
-                        count = state.downloads.size,
-                        onClick = onOpenDownloads
-                    )
+                if (state.downloads.isEmpty()) {
+                    item(key = "lib-downloads-empty", contentType = "lib-empty") {
+                        LibraryEmptyState(
+                            icon = Icons.Rounded.Download,
+                            title = strings.noOfflineDownloads,
+                            detail = strings.downloadTrackHint,
+                            accent = LevyraCyan
+                        )
+                    }
+                } else {
+                    item(key = "lib-downloads-card", contentType = "lib-downloads-card") {
+                        DownloadsFolderCard(
+                            count = state.downloads.size,
+                            onClick = onOpenDownloads
+                        )
+                    }
                 }
             }
 
-            item {
-                LibrarySectionHeader(
-                    title = cleanLibraryLabel(strings.favorites),
-                    detail = strings.savedTracks,
-                    count = state.favorites.size,
-                    icon = Icons.Rounded.Favorite,
-                    accent = LevyraPink
-                )
-            }
-            if (state.favorites.isEmpty()) {
-                item {
-                    LibraryEmptyState(
-                        icon = Icons.Rounded.FavoriteBorder,
-                        title = strings.favoritesEmpty,
-                        detail = LocalLevyraStrings.current.tapHeartToAdd,
+            if (showSongs) {
+                item(key = "lib-favorites-header", contentType = "lib-section-header") {
+                    LibrarySectionHeader(
+                        title = cleanLibraryLabel(strings.favorites),
+                        detail = strings.savedTracks,
+                        count = state.favorites.size,
+                        icon = Icons.Rounded.Favorite,
                         accent = LevyraPink
                     )
                 }
-            } else {
-                item {
-                    RowCarousel(
-                        tracks = state.favorites,
-                        currentId = state.currentTrack?.id,
-                        isPlaying = state.isPlaying,
-                        isResolving = state.isResolving,
-                        favoriteIds = state.favoriteIds,
-                        onPlay = { viewModel.playFrom(state.favorites, it) },
-                        onFavorite = { viewModel.toggleFavorite(it) },
-                        onAddToPlaylist = { addTarget = it },
-                        onAddToQueue = { viewModel.addToQueue(it) },
-                        onDownload = { viewModel.exportTrack(it) }
-                    )
+                if (state.favorites.isEmpty()) {
+                    item(key = "lib-favorites-empty", contentType = "lib-empty") {
+                        LibraryEmptyState(
+                            icon = Icons.Rounded.FavoriteBorder,
+                            title = strings.favoritesEmpty,
+                            detail = strings.tapHeartToAdd,
+                            accent = LevyraPink
+                        )
+                    }
+                } else {
+                    item(key = "lib-favorites-carousel", contentType = "lib-carousel") {
+                        RowCarousel(
+                            tracks = state.favorites,
+                            currentId = state.currentTrack?.id,
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving,
+                            favoriteIds = state.favoriteIds,
+                            onPlay = { viewModel.playFrom(state.favorites, it) },
+                            onFavorite = { viewModel.toggleFavorite(it) },
+                            onAddToPlaylist = { addTarget = it },
+                            onAddToQueue = { viewModel.addToQueue(it) },
+                            onDownload = { viewModel.exportTrack(it) }
+                        )
+                    }
                 }
             }
 
-            if (state.followedArtists.isNotEmpty()) {
-                item {
+            if (showArtists && state.followedArtists.isNotEmpty()) {
+                item(key = "lib-artists-header", contentType = "lib-section-header") {
                     LibrarySectionHeader(
                         title = strings.followedArtistsTitle,
                         detail = strings.followedArtistsSubtitle,
@@ -6917,7 +6945,7 @@ private fun LibraryScreen(
                         accent = CinematicGold
                     )
                 }
-                item {
+                item(key = "lib-artists-row", contentType = "lib-artists-row") {
                     FollowedArtistsRow(
                         artists = state.followedArtists,
                         onOpen = { viewModel.openArtistByName(it.name) }
@@ -6925,58 +6953,72 @@ private fun LibraryScreen(
                 }
             }
 
-            item {
-                LibrarySectionDivider(label = strings.pulseSectionBand)
-            }
-
-            item {
-                LibrarySectionHeader(
-                    title = strings.pulseTitle,
-                    detail = strings.pulseSubtitle,
-                    count = state.listeningPulse.plays,
-                    icon = Icons.Rounded.Insights,
-                    accent = LevyraCyan
-                )
-            }
-            item {
-                ListeningPulseCard(pulse = state.listeningPulse, strings = strings)
-            }
-
-            item {
-                LibrarySectionHeader(
-                    title = strings.listeningHistory,
-                    detail = strings.listeningHistorySubtitle,
-                    count = state.recentListens.size,
-                    icon = Icons.Rounded.History,
-                    accent = LevyraViolet
-                )
-            }
-            if (state.recentListens.isEmpty()) {
-                item {
+            if (showArtists && state.followedArtists.isEmpty() && filter == LibraryFilter.Artists) {
+                item(key = "lib-artists-empty", contentType = "lib-empty") {
                     LibraryEmptyState(
+                        icon = Icons.Rounded.Person,
+                        title = strings.followedArtistsTitle,
+                        detail = strings.followedArtistsSubtitle,
+                        accent = CinematicGold
+                    )
+                }
+            }
+
+            if (showPulse) {
+                item(key = "lib-pulse-divider", contentType = "lib-divider") {
+                    LibrarySectionDivider(label = strings.pulseSectionBand)
+                }
+                item(key = "lib-pulse-header", contentType = "lib-section-header") {
+                    LibrarySectionHeader(
+                        title = strings.pulseTitle,
+                        detail = strings.pulseSubtitle,
+                        count = state.listeningPulse.plays,
+                        icon = Icons.Rounded.Insights,
+                        accent = LevyraCyan
+                    )
+                }
+                item(key = "lib-pulse-card", contentType = "lib-pulse-card") {
+                    ListeningPulseCard(pulse = state.listeningPulse, strings = strings)
+                }
+            }
+
+            if (showSongs) {
+                item(key = "lib-history-header", contentType = "lib-section-header") {
+                    LibrarySectionHeader(
+                        title = strings.listeningHistory,
+                        detail = strings.listeningHistorySubtitle,
+                        count = state.recentListens.size,
                         icon = Icons.Rounded.History,
-                        title = strings.listeningHistoryEmptyTitle,
-                        detail = strings.listeningHistoryEmptyDetail,
                         accent = LevyraViolet
                     )
                 }
-            } else {
-                items(state.recentListens, key = { "hist-${it.id}" }) { track ->
-                    TrackRow(
-                        track = track,
-                        isCurrent = track.id == state.currentTrack?.id,
-                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                        isFavorite = track.id in state.favoriteIds,
-                        onClick = { viewModel.playFrom(state.recentListens, track) },
-                        onFavorite = { viewModel.toggleFavorite(track) },
-                        isDownloading = track.id in state.downloadingTrackIds,
-                        isDownloaded = track.id in state.downloadedTrackIds,
-                        downloadProgress = state.downloadProgressByTrackId[track.id],
-                        onDownload = { viewModel.exportTrack(track) },
-                        onArtist = { viewModel.openArtist(track) },
-                        onAddToPlaylist = { addTarget = track }
-                    )
+                if (state.recentListens.isEmpty()) {
+                    item(key = "lib-history-empty", contentType = "lib-empty") {
+                        LibraryEmptyState(
+                            icon = Icons.Rounded.History,
+                            title = strings.listeningHistoryEmptyTitle,
+                            detail = strings.listeningHistoryEmptyDetail,
+                            accent = LevyraViolet
+                        )
+                    }
+                } else {
+                    items(state.recentListens, key = { "hist-${it.id}" }, contentType = { "lib-track" }) { track ->
+                        TrackRow(
+                            track = track,
+                            isCurrent = track.id == state.currentTrack?.id,
+                            isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                            isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                            isFavorite = track.id in state.favoriteIds,
+                            onClick = { viewModel.playFrom(state.recentListens, track) },
+                            onFavorite = { viewModel.toggleFavorite(track) },
+                            isDownloading = track.id in state.downloadingTrackIds,
+                            isDownloaded = track.id in state.downloadedTrackIds,
+                            downloadProgress = state.downloadProgressByTrackId[track.id],
+                            onDownload = { viewModel.exportTrack(track) },
+                            onArtist = { viewModel.openArtist(track) },
+                            onAddToPlaylist = { addTarget = track }
+                        )
+                    }
                 }
             }
         }
@@ -7005,6 +7047,64 @@ private fun LibraryScreen(
                     addTarget = null
                 }
             )
+        }
+    }
+}
+
+private enum class LibraryFilter { All, Playlists, Songs, Artists, Downloads }
+
+@Composable
+private fun LibraryFilterChips(
+    selected: LibraryFilter,
+    playlistCount: Int,
+    songCount: Int,
+    artistCount: Int,
+    downloadCount: Int,
+    onSelect: (LibraryFilter) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        LibraryFilterChip(strings.all, Icons.Rounded.LibraryMusic, LevyraCyan, null, selected == LibraryFilter.All) { onSelect(LibraryFilter.All) }
+        LibraryFilterChip(cleanLibraryLabel(strings.playlists), Icons.Rounded.QueueMusic, LevyraViolet, playlistCount, selected == LibraryFilter.Playlists) { onSelect(LibraryFilter.Playlists) }
+        LibraryFilterChip(cleanLibraryLabel(strings.songs), Icons.Rounded.MusicNote, LevyraPink, songCount, selected == LibraryFilter.Songs) { onSelect(LibraryFilter.Songs) }
+        LibraryFilterChip(cleanLibraryLabel(strings.artists), Icons.Rounded.Person, CinematicGold, artistCount, selected == LibraryFilter.Artists) { onSelect(LibraryFilter.Artists) }
+        LibraryFilterChip(cleanLibraryLabel(strings.downloads), Icons.Rounded.DownloadDone, LevyraCyan, downloadCount, selected == LibraryFilter.Downloads) { onSelect(LibraryFilter.Downloads) }
+    }
+}
+
+@Composable
+private fun LibraryFilterChip(
+    label: String,
+    icon: ImageVector,
+    accent: Color,
+    count: Int?,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val background = if (selected) accent.copy(alpha = 0.18f) else CinematicGlass.copy(alpha = 0.5f)
+    val borderColor = if (selected) accent.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.08f)
+    val contentColor = if (selected) LevyraText else LevyraMuted
+    Surface(
+        color = background,
+        border = BorderStroke(1.dp, borderColor),
+        shape = RoundedCornerShape(999.dp),
+        modifier = Modifier.pressable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Icon(icon, null, tint = if (selected) accent else LevyraMuted, modifier = Modifier.size(16.dp))
+            Text(label, color = contentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            if (count != null && count > 0) {
+                Text(count.toString(), color = if (selected) accent else LevyraMuted.copy(alpha = 0.75f), fontSize = 12.sp, fontWeight = FontWeight.Black)
+            }
         }
     }
 }
