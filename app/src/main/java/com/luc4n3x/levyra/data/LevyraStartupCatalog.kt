@@ -81,7 +81,7 @@ object LevyraStartupCatalog {
 
     private fun seedTitleKey(value: String): String {
         return value.lowercase()
-            .replace(Regex("""[^a-z0-9àèéìòóùçñäöüß\s]"""), " ")
+            .replace(Regex("""[^\p{L}\p{N}\s]"""), " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
     }
@@ -191,6 +191,22 @@ object LevyraStartupCatalog {
                 track("Dumka", "Jerry Heil", "YouTube Music", "", setOf("pop", "local", "mood"), 72, 82, 86),
                 track("Ой у лузі червона калина", "Andriy Khlyvnyuk", "YouTube Music", "", setOf("local", "classic", "vocal"), 64, 88, 86),
                 track("Місто весни", "Океан Ельзи", "YouTube Music", "", setOf("rock", "local", "mood"), 74, 84, 88)
+            )
+            "ar" -> listOf(
+                track("تملي معاك", "عمرو دياب", "YouTube Music", "", setOf("pop", "local", "classic"), 72, 84, 94),
+                track("آه ونص", "نانسي عجرم", "YouTube Music", "", setOf("pop", "local", "hit"), 82, 78, 91),
+                track("البخت", "ويجز", "YouTube Music", "", setOf("rap", "local", "hit"), 78, 76, 90),
+                track("غابة", "مروان بابلو", "YouTube Music", "", setOf("rap", "local", "energy"), 88, 68, 87),
+                track("3 دقات", "أبو ويسرا", "YouTube Music", "", setOf("pop", "local", "chill"), 70, 82, 89),
+                track("مشاعر", "شيرين", "YouTube Music", "", setOf("pop", "local", "mood"), 62, 90, 91)
+            )
+            "zh" -> listOf(
+                track("晴天", "周杰伦", "YouTube Music", "", setOf("pop", "local", "classic"), 68, 86, 95),
+                track("光年之外", "邓紫棋", "YouTube Music", "", setOf("pop", "local", "vocal"), 80, 84, 93),
+                track("演员", "薛之谦", "YouTube Music", "", setOf("pop", "local", "mood"), 62, 90, 92),
+                track("江南", "林俊杰", "YouTube Music", "", setOf("pop", "local", "classic"), 72, 86, 91),
+                track("平凡之路", "朴树", "YouTube Music", "", setOf("rock", "local", "drive"), 70, 82, 90),
+                track("小幸运", "田馥甄", "YouTube Music", "", setOf("pop", "local", "chill"), 66, 88, 92)
             )
             else -> listOf(
                 track("As It Was", "Harry Styles", "Harry's House", "H5v3kku4y6Q", setOf("pop", "hit", "local"), 82, 78, 94),
