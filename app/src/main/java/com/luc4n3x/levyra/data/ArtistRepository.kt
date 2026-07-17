@@ -824,7 +824,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private fun releaseKindMatches(text: String, kindHint: String): Boolean {
         if (kindHint.isBlank()) return true
         val normalized = text.lowercase()
-        val tokens = normalized.split(Regex("[^\\p{L}\\p{N}]+"))
+        val tokens = normalized.split(Regex("[^\\p{L}\\p{M}\\p{N}]+"))
             .filter(String::isNotBlank)
             .toSet()
         val words = if (kindHint.startsWith("Singol", ignoreCase = true)) SINGLE_SECTION_WORDS else ALBUM_SECTION_WORDS

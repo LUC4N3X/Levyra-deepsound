@@ -395,7 +395,7 @@ class LevyraStrings private constructor(
                 value == 0 -> "لا مقاطع"
                 value == 1 -> "مقطع واحد"
                 value == 2 -> "مقطعان"
-                value in 3..10 -> "$value مقاطع"
+                value % 100 in 3..10 -> "$value مقاطع"
                 else -> "$value مقطعًا"
             }
             "zh" -> "$value 首歌曲"
@@ -463,7 +463,7 @@ class LevyraStrings private constructor(
                 value == 0 -> "لم يتم تنزيل أي مقاطع"
                 value == 1 -> "تم تنزيل مقطع واحد"
                 value == 2 -> "تم تنزيل مقطعين"
-                value in 3..10 -> "تم تنزيل $value مقاطع"
+                value % 100 in 3..10 -> "تم تنزيل $value مقاطع"
                 else -> "تم تنزيل $value مقطعًا"
             }
             "zh" -> "已下载 $value 首歌曲"
@@ -493,7 +493,7 @@ class LevyraStrings private constructor(
                 value == 0 -> "لا توجد مقاطع محفوظة"
                 value == 1 -> "تم حفظ مقطع واحد"
                 value == 2 -> "تم حفظ مقطعين"
-                value in 3..10 -> "تم حفظ $value مقاطع"
+                value % 100 in 3..10 -> "تم حفظ $value مقاطع"
                 else -> "تم حفظ $value مقطعًا"
             }
             "zh" -> "已保存 $value 首歌曲"
@@ -540,7 +540,7 @@ class LevyraStrings private constructor(
                 value == 0 -> "لا نتائج"
                 value == 1 -> "نتيجة واحدة"
                 value == 2 -> "نتيجتان"
-                value in 3..10 -> "$value نتائج"
+                value % 100 in 3..10 -> "$value نتائج"
                 else -> "$value نتيجة"
             }
             "zh" -> "$value 个结果"
