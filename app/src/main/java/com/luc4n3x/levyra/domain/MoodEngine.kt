@@ -143,6 +143,8 @@ class MoodEngine {
             "da" -> "🇩🇰"
             "cs" -> "🇨🇿"
             "uk" -> "🇺🇦"
+            "ar" -> "🇸🇦"
+            "zh" -> "🇨🇳"
             else -> "🇬🇧"
         }
     }
@@ -199,6 +201,26 @@ class MoodEngine {
                 "drive" to ("No carro" to "música para viagem"),
                 "sad" to ("Melancolia" to "emoções lentas")
             )
+            "ar" -> mapOf(
+                "hits" to ("الأكثر رواجًا" to "الأكثر استماعًا الآن"),
+                "gym" to ("التمرين" to "طاقة وقوة"),
+                "chill" to ("استرخاء" to "هادئ وناعم"),
+                "focus" to ("تركيز" to "دراسة وتركيز"),
+                "local" to ("العالم العربي" to "أفضل الموسيقى العربية"),
+                "party" to ("حفلة" to "ارفع مستوى الصوت"),
+                "drive" to ("قيادة" to "موسيقى للطريق"),
+                "sad" to ("مشاعر" to "أغانٍ هادئة وحزينة")
+            )
+            "zh" -> mapOf(
+                "hits" to ("热门歌曲" to "此刻播放最多"),
+                "gym" to ("健身" to "能量与力量"),
+                "chill" to ("放松" to "轻柔而平静"),
+                "focus" to ("专注" to "学习与集中注意力"),
+                "local" to ("华语" to "精选华语音乐"),
+                "party" to ("派对" to "把音量调高"),
+                "drive" to ("驾车" to "公路旅程音乐"),
+                "sad" to ("伤感" to "缓慢流淌的情绪")
+            )
             else -> mapOf(
                 "hits" to ("Trending hits" to "most played now"),
                 "gym" to ("Gym" to "power and energy"),
@@ -219,6 +241,8 @@ class MoodEngine {
             "fr" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Française", "pop" to "Pop", "gym" to "Sport", "chill" to "Relax", "focus" to "Focus", "sad" to "Mélancolie", "party" to "Fête", "rock" to "Rock", "electro" to "Électronique", "rnb" to "R&B")
             "de" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Deutsch", "pop" to "Pop", "gym" to "Gym", "chill" to "Relax", "focus" to "Focus", "sad" to "Melancholie", "party" to "Party", "rock" to "Rock", "electro" to "Elektronisch", "rnb" to "R&B")
             "pt" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Brasileira", "pop" to "Pop", "gym" to "Academia", "chill" to "Relax", "focus" to "Foco", "sad" to "Melancolia", "party" to "Festa", "rock" to "Rock", "electro" to "Eletrônica", "rnb" to "R&B")
+            "ar" -> mapOf("hits" to "الأكثر رواجًا", "rap" to "راب وتراب", "local" to "عربية", "pop" to "بوب", "gym" to "تمرين", "chill" to "استرخاء", "focus" to "تركيز", "sad" to "حزينة", "party" to "حفلة", "rock" to "روك", "electro" to "إلكترونية", "rnb" to "R&B")
+            "zh" -> mapOf("hits" to "热门", "rap" to "说唱与 Trap", "local" to "华语", "pop" to "流行", "gym" to "健身", "chill" to "放松", "focus" to "专注", "sad" to "伤感", "party" to "派对", "rock" to "摇滚", "electro" to "电子", "rnb" to "R&B")
             else -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Local", "pop" to "Pop", "gym" to "Gym", "chill" to "Chill", "focus" to "Focus", "sad" to "Melancholy", "party" to "Party", "rock" to "Rock", "electro" to "Electronic", "rnb" to "R&B")
         }
     }

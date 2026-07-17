@@ -92,6 +92,8 @@ object ChartsCatalog {
         ChartRegion("dk", "Danmark", "🇩🇰", "dk"),
         ChartRegion("cz", "Česko", "🇨🇿", "cz"),
         ChartRegion("ua", "Україна", "🇺🇦", "ua"),
+        ChartRegion("sa", "السعودية", "🇸🇦", "sa"),
+        ChartRegion("cn", "中国", "🇨🇳", "cn"),
         ChartRegion("jp", "日本", "🇯🇵", "jp")
     )
 
