@@ -274,53 +274,28 @@ object LevyraPersonalOrbit {
     }
 
     private fun languageMarkers(languageCode: String): List<String> {
-        return when (LevyraLanguageCatalog.normalize(languageCode)) {
-            "it" -> listOf(
-                "italia",
-                "italian",
-                "sfera ebbasta",
-                "lazza",
-                "geolier",
-                "marracash",
-                "ultimo",
-                "annalisa",
-                "tedua",
-                "ghali",
-                "madame",
-                "capo plaza",
-                "mahmood",
-                "fred de palma",
-                "ernia",
-                "pinguini tattici nucleari",
-                "gue",
-                "guè",
-                "salmo",
-                "elodie",
-                "irama",
-                "thasup",
-                "massimo pericolo",
-                "fabri fibra",
-                "shiva",
-                "tony effe",
-                "rose villain",
-                "angelina mango"
-            )
-            "es" -> listOf("españa", "espanol", "español", "latino", "reggaeton", "bad bunny", "rosalía", "karol g", "rauw alejandro")
-            "fr" -> listOf("france", "français", "francaise", "française", "gazo", "aya nakamura", "ninho", "stromae", "sch")
-            "de" -> listOf("deutsch", "deutschland", "apache 207", "raf camora", "luciano", "ufo361", "bonez mc")
-            "pt" -> listOf("brasil", "brasileiro", "brasileira", "funk", "sertanejo", "anitta", "matuê", "luísa sonza")
-            "nl" -> listOf("nederland", "nederlands", "frenna", "antoon", "boef", "ronnie flex")
-            "pl" -> listOf("polsk", "sanah", "taco hemingway", "dawid podsiadło", "quebonafide")
-            "ro" -> listOf("românia", "romania", "românesc", "inna", "the motans", "delia", "carla's dreams")
-            "el" -> listOf("ελλην", "greek", "snik", "eleni foureira", "helena paparizou", "sakis rouvas")
-            "sv" -> listOf("svensk", "sverige", "zara larsson", "veronica maggio", "hov1", "avicii")
-            "da" -> listOf("dansk", "danmark", "gilli", "tobias rahim", "mø", "medina")
-            "cs" -> listOf("česk", "cesk", "calin", "ewa farna", "ben cristovao", "viktor sheen")
-            "uk" -> listOf("україн", "ukrain", "alyona alyona", "kalush", "jerry heil", "okean elzy")
-            "ar" -> listOf("عربي", "عربية", "عمرو دياب", "نانسي عجرم", "ويجز", "مروان بابلو", "شيرين", "تامر حسني", "إليسا", "بلقيس")
-            "zh" -> listOf("华语", "中文", "国语", "周杰伦", "邓紫棋", "薛之谦", "林俊杰", "陈奕迅", "王菲", "毛不易")
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        val localeMarkers = when (normalized) {
+            "it" -> listOf("italia", "italian", "italiano", "italiana")
+            "es" -> listOf("españa", "espanol", "español", "latino", "reggaeton")
+            "fr" -> listOf("france", "français", "francaise", "française")
+            "de" -> listOf("deutsch", "deutschland", "deutschrap")
+            "pt" -> listOf("portugal", "brasil", "brasileiro", "brasileira", "funk", "sertanejo")
+            "nl" -> listOf("nederland", "nederlands")
+            "pl" -> listOf("polsk", "polska")
+            "ro" -> listOf("românia", "romania", "românesc")
+            "el" -> listOf("ελλην", "greek")
+            "sv" -> listOf("svensk", "sverige")
+            "da" -> listOf("dansk", "danmark")
+            "cs" -> listOf("česk", "cesk", "česko")
+            "uk" -> listOf("україн", "ukrain")
+            "ru" -> listOf("русск", "россия", "russian")
+            "tr" -> listOf("türk", "turk", "türkiye")
+            "ar" -> listOf("عربي", "عربية", "العالم العربي")
+            "zh" -> listOf("华语", "中文", "国语", "华人")
             else -> emptyList()
         }
+        return (localeMarkers + LevyraContentLocales.artistSuggestions(normalized).map { it.lowercase() }).distinct()
     }
 
     private val globalEnglishMarkers = listOf(
