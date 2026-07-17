@@ -292,6 +292,9 @@ import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
+import com.luc4n3x.levyra.ui.theme.glowShadow
+import com.luc4n3x.levyra.ui.theme.LevyraBlack
+import com.luc4n3x.levyra.ui.theme.LevyraPanel
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
@@ -330,8 +333,8 @@ private val LevyraReadableOnArtwork: Color get() = Color.White
 private val LevyraReadableMutedOnArtwork: Color get() = Color.White.copy(alpha = 0.78f)
 private val LevyraAdaptiveHairline: Color get() = if (LevyraIsLight) Color(0x26101322) else Color.White.copy(alpha = 0.105f)
 private val LevyraAdaptiveSoftHairline: Color get() = if (LevyraIsLight) Color(0x16101322) else Color.White.copy(alpha = 0.08f)
-private val LevyraAdaptiveCard: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else CinematicGlass.copy(alpha = 0.66f)
-private val LevyraAdaptiveCardDeep: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.86f) else CinematicGlassDeep.copy(alpha = 0.74f)
+private val LevyraAdaptiveCard: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.74f) else LevyraPanel.copy(alpha = 0.85f)
+private val LevyraAdaptiveCardDeep: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.86f) else LevyraPanelSoft.copy(alpha = 0.90f)
 private val LevyraAdaptiveChip: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.06f)
 private val LevyraAdaptiveChipSelected: Color get() = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.12f)
 private val LevyraAdaptiveTrack: Color get() = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.08f)
@@ -362,8 +365,8 @@ private fun cinematicGlassBrush(
         Brush.linearGradient(
             listOf(
                 accentStart.copy(alpha = 0.13f * intensity),
-                CinematicGlass.copy(alpha = 0.96f),
-                CinematicGlassDeep.copy(alpha = 0.98f),
+                LevyraPanel.copy(alpha = 0.96f),
+                LevyraBlack.copy(alpha = 0.98f),
                 accentEnd.copy(alpha = 0.10f * intensity)
             )
         )
@@ -4018,10 +4021,10 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                 drawRect(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xFF010102),
-                            Color(0xFF050609),
-                            Color(0xFF020204),
-                            Color.Black
+                            LevyraBlack,
+                            LevyraBlack.copy(alpha = 0.98f),
+                            Color(0xFF040406).copy(alpha = 0.95f),
+                            LevyraBlack
                         )
                     )
                 )
@@ -4077,25 +4080,48 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     )
                 )
 
-                val gridColor = Color.White.copy(alpha = 0.026f)
+                // Disegna le linee verticali prospettiche con effetto bagliore neon
                 for (index in -8..8) {
                     val bottomX = width * 0.5f + index * width / 7.2f
+                    val lineOffset = androidx.compose.ui.geometry.Offset(bottomX, height)
+                    
+                    // Tratto di bagliore neon morbido e largo
                     drawLine(
-                        color = gridColor,
+                        color = primaryAccent.copy(alpha = 0.025f),
                         start = vanishingPoint,
-                        end = androidx.compose.ui.geometry.Offset(bottomX, height),
-                        strokeWidth = 0.7f
+                        end = lineOffset,
+                        strokeWidth = 2.0f
+                    )
+                    // Tratto centrale nitido e fine
+                    drawLine(
+                        color = primaryAccent.copy(alpha = 0.07f),
+                        start = vanishingPoint,
+                        end = lineOffset,
+                        strokeWidth = 0.8f
                     )
                 }
+                // Disegna le linee orizzontali prospettiche con effetto bagliore neon
                 for (index in 1..14) {
                     val progress = index / 14f
                     val curvedProgress = progress * progress
                     val y = horizon + (height - horizon) * curvedProgress
+                    val lineStart = androidx.compose.ui.geometry.Offset(0f, y)
+                    val lineEnd = androidx.compose.ui.geometry.Offset(width, y)
+                    val glowOpacity = 0.015f + progress * 0.025f
+                    
+                    // Tratto di bagliore neon morbido e largo
                     drawLine(
-                        color = Color.White.copy(alpha = 0.012f + progress * 0.018f),
-                        start = androidx.compose.ui.geometry.Offset(0f, y),
-                        end = androidx.compose.ui.geometry.Offset(width, y),
-                        strokeWidth = 0.7f
+                        color = secondaryAccent.copy(alpha = glowOpacity * 0.4f),
+                        start = lineStart,
+                        end = lineEnd,
+                        strokeWidth = 2.0f
+                    )
+                    // Tratto centrale nitido e fine
+                    drawLine(
+                        color = secondaryAccent.copy(alpha = glowOpacity),
+                        start = lineStart,
+                        end = lineEnd,
+                        strokeWidth = 0.8f
                     )
                 }
 
@@ -4724,7 +4750,7 @@ private fun ResonanceCard(
     val pulseWidth = ((score % 72) + 24) / 100f
     val shape = RoundedCornerShape(18.dp)
     Surface(
-        color = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color(0xFF101114),
+        color = LevyraAdaptiveCard,
         border = BorderStroke(
             width = if (active) 1.5.dp else Dp.Hairline,
             color = if (active) LevyraCyan.copy(alpha = 0.80f) else LevyraAdaptiveSoftHairline
@@ -4733,6 +4759,12 @@ private fun ResonanceCard(
         modifier = Modifier
             .width(282.dp)
             .height(112.dp)
+            .glowShadow(
+                color = if (active) LevyraCyan else accentStart,
+                borderRadius = 18.dp,
+                blurRadius = 14.dp,
+                alpha = if (active) 0.14f else 0.08f
+            )
             .pressable(onClick = onClick)
     ) {
         Row(
@@ -5541,6 +5573,12 @@ private fun ContinueListeningCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(cardHeight)
+            .glowShadow(
+                color = accentStart,
+                borderRadius = 20.dp,
+                blurRadius = 16.dp,
+                alpha = 0.10f
+            )
             .pressable(onClick = onResume)
     ) {
         Box(
@@ -10425,7 +10463,14 @@ private fun ThemePresetCard(preset: LevyraPalette, selected: Boolean, onClick: (
         color = preset.black,
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) LevyraCyan else if (preset.isLight) Color(0x2211131F) else Color.White.copy(alpha = 0.14f)),
-        modifier = Modifier.pressable(onClick = onClick)
+        modifier = Modifier
+            .glowShadow(
+                color = if (selected) preset.cyan else Color.Transparent,
+                borderRadius = 16.dp,
+                blurRadius = if (selected) 12.dp else 0.dp,
+                alpha = if (selected) 0.15f else 0f
+            )
+            .pressable(onClick = onClick)
     ) {
         Column(
             modifier = Modifier
@@ -10761,7 +10806,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
             }
         }
         Surface(
-            color = if (LevyraIsLight) Color.White.copy(alpha = 0.90f) else Color(0xFF0C0D10),
+            color = if (LevyraIsLight) Color.White.copy(alpha = 0.90f) else LevyraPanel,
             border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
             shape = RoundedCornerShape(15.dp),
             modifier = Modifier

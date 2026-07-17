@@ -38,6 +38,11 @@ object LevyraThemes {
     const val APPLE_MUSIC = "apple_music"
     const val COVER_FLOW = "cover_flow"
     const val MOOD_FLOW = "mood_flow"
+    const val VERCEL_OBSIDIAN = "vercel_obsidian"
+    const val LINEAR_ECLIPSE = "linear_eclipse"
+    const val RESEND_AMBER = "resend_amber"
+    const val SUPABASE_EMERALD = "supabase_emerald"
+
 
     val cosmic = LevyraPalette(
         id = COSMIC,
@@ -153,11 +158,86 @@ object LevyraThemes {
         followsMood = true
     )
 
-    val presets: List<LevyraPalette> = listOf(appleMusic, cosmic, amoled, neonCyan, purpleGlass, minimalWhite, coverFlow, moodFlow)
+    val vercelObsidian = cosmic.copy(
+        id = VERCEL_OBSIDIAN,
+        label = "Vercel Obsidian",
+        emoji = "⚫",
+        black = Color(0xFF000000),
+        ink = Color(0xFF000000),
+        panel = Color(0xFF0D0D0D),
+        panelSoft = Color(0xFF161616),
+        cyan = Color(0xFFFFFFFF),
+        blue = Color(0xFFE5E5E5),
+        violet = Color(0xFF888888),
+        pink = Color(0xFF333333),
+        orange = Color(0xFFFFA500),
+        text = Color(0xFFFFFFFF),
+        muted = Color(0xFF888888),
+        outline = Color(0x33FFFFFF)
+    )
+
+    val linearEclipse = cosmic.copy(
+        id = LINEAR_ECLIPSE,
+        label = "Linear Eclipse",
+        emoji = "🪐",
+        black = Color(0xFF000000),
+        ink = Color(0xFF000000),
+        panel = Color(0xFF0D0E11),
+        panelSoft = Color(0xFF16171B),
+        cyan = Color(0xFF5E6AD2),
+        blue = Color(0xFF828FFF),
+        violet = Color(0xFFB4BCFF),
+        pink = Color(0xFFEC4899),
+        orange = Color(0xFFF58E3E),
+        text = Color(0xFFF7F8F8),
+        muted = Color(0xFF8A8F98),
+        outline = Color(0x4D5E6AD2)
+    )
+
+    val resendAmber = cosmic.copy(
+        id = RESEND_AMBER,
+        label = "Resend Amber",
+        emoji = "🔥",
+        black = Color(0xFF000000),
+        ink = Color(0xFF000000),
+        panel = Color(0xFF0A0A0C),
+        panelSoft = Color(0xFF121214),
+        cyan = Color(0xFFFFA000),
+        blue = Color(0xFFFFB300),
+        violet = Color(0xFFFFCC00),
+        pink = Color(0xFFFF2047),
+        orange = Color(0xFFFFA000),
+        text = Color(0xFFFCFDFF),
+        muted = Color(0xFF888E90),
+        outline = Color(0x22FFA000)
+    )
+
+    val supabaseEmerald = cosmic.copy(
+        id = SUPABASE_EMERALD,
+        label = "Supabase Emerald",
+        emoji = "⚡",
+        black = Color(0xFF000000),
+        ink = Color(0xFF000000),
+        panel = Color(0xFF141414),
+        panelSoft = Color(0xFF1F1F1F),
+        cyan = Color(0xFF3ECF8E),
+        blue = Color(0xFF24B47E),
+        violet = Color(0xFF6BEBA4),
+        pink = Color(0xFF10B981),
+        orange = Color(0xFFF58E3E),
+        text = Color(0xFFEDEDED),
+        muted = Color(0xFF707070),
+        outline = Color(0x4D3ECF8E)
+    )
+
+    val presets: List<LevyraPalette> = listOf(
+        appleMusic, cosmic, amoled, vercelObsidian, linearEclipse, resendAmber, supabaseEmerald, neonCyan, purpleGlass, minimalWhite, coverFlow, moodFlow
+    )
 
     fun byId(id: String): LevyraPalette = presets.firstOrNull { it.id == id } ?: appleMusic
 
     fun normalize(id: String): String = byId(id).id
+
 }
 
 private val activePaletteState = mutableStateOf(LevyraThemes.cosmic)
