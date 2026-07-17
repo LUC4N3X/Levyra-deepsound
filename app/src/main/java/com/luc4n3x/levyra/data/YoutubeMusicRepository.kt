@@ -1313,9 +1313,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val ordered = LinkedHashMap<String, YoutubeMusicArtistReference>()
 
         fun isSeparator(text: String): Boolean {
-            val normalized = text
-                .replace('\u00A0', ' ')
-                .trim()
+            val normalized = text.replace('\u00A0', ' ').trim()
             return normalized == "•" || normalized == "·" || normalized == "|"
         }
 
@@ -1330,56 +1328,41 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 ?.optJSONObject("browseEndpointContextMusicConfig")
                 ?.optString("pageType")
                 .orEmpty()
-            val isArtist = browseId.startsWith("UC", ignoreCase = true) ||
-                pageType.contains("ARTIST", ignoreCase = true)
-            if (!isArtist) return null
-            val name = run.optString("text")
-                .cleanAlbumArtistLabel()
-                .ifBlank { preferredName.cleanAlbumArtistLabel() }
+            if (browseId.isBlank() || !pageType.contains("ARTIST", ignoreCase = true)) return null
+            val name = run.optString("text").cleanAlbumArtistLabel().trim()
             if (name.isBlank()) return null
             return YoutubeMusicArtistReference(name = name, browseId = browseId)
         }
 
-        fun parseRuns(runs: JSONArray?) {
+        fun parseArtistRuns(runs: JSONArray?) {
             if (runs == null || runs.length() == 0) return
-            val sections = mutableListOf<MutableList<JSONObject>>()
+            val groups = mutableListOf<MutableList<JSONObject>>()
             var current = mutableListOf<JSONObject>()
             for (index in 0 until runs.length()) {
                 val run = runs.optJSONObject(index) ?: continue
                 if (isSeparator(run.optString("text"))) {
-                    if (current.isNotEmpty()) sections += current
+                    if (current.isNotEmpty()) groups += current
                     current = mutableListOf()
                 } else {
                     current += run
                 }
             }
-            if (current.isNotEmpty()) sections += current
-
-            sections.forEach { section ->
-                val linkedArtists = section.mapNotNull(::referenceFromRun)
-                if (linkedArtists.isEmpty()) return@forEach
-                linkedArtists.forEach { reference ->
-                    ordered.putIfAbsent(reference.browseId.lowercase(Locale.ROOT), reference)
-                }
+            if (current.isNotEmpty()) groups += current
+            val artistGroup = groups.firstOrNull { group -> group.any { referenceFromRun(it) != null } } ?: return
+            artistGroup.mapNotNull(::referenceFromRun).forEach { reference ->
+                ordered.putIfAbsent(reference.browseId.lowercase(Locale.ROOT), reference)
             }
         }
 
         fun parseRenderer(renderer: JSONObject) {
-            val flexColumns = renderer.optJSONArray("flexColumns")
-            if (flexColumns != null) {
-                for (index in 1 until flexColumns.length()) {
-                    parseRuns(
-                        flexColumns.optJSONObject(index)
-                            ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
-                            ?.optJSONObject("text")
-                            ?.optJSONArray("runs")
-                    )
-                }
-            }
-            parseRuns(renderer.optJSONObject("subtitle")?.optJSONArray("runs"))
-            parseRuns(renderer.optJSONObject("secondSubtitle")?.optJSONArray("runs"))
-            parseRuns(renderer.optJSONObject("straplineTextOne")?.optJSONArray("runs"))
-            parseRuns(renderer.optJSONObject("ownerText")?.optJSONArray("runs"))
+            parseArtistRuns(
+                renderer.optJSONArray("flexColumns")
+                    ?.optJSONObject(1)
+                    ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
+                    ?.optJSONObject("text")
+                    ?.optJSONArray("runs")
+            )
+            parseArtistRuns(renderer.optJSONObject("subtitle")?.optJSONArray("runs"))
         }
 
         when (value) {
@@ -1387,11 +1370,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 parseRenderer(value)
                 listOf(
                     "musicResponsiveListItemRenderer",
-                    "musicTwoRowItemRenderer",
-                    "musicResponsiveHeaderRenderer",
-                    "musicDetailHeaderRenderer",
-                    "musicImmersiveHeaderRenderer",
-                    "musicVisualHeaderRenderer"
+                    "musicTwoRowItemRenderer"
                 ).forEach { key ->
                     value.optJSONObject(key)?.let(::parseRenderer)
                 }
@@ -1403,7 +1382,10 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             }
         }
 
-        return ordered.values.toList()
+        if (ordered.isNotEmpty()) return ordered.values.toList()
+        val normalizedPreferred = preferredName.cleanAlbumArtistLabel().trim()
+        if (normalizedPreferred.isBlank()) return emptyList()
+        return emptyList()
     }
 
     internal fun extractYoutubeMusicArtistReference(
@@ -1420,9 +1402,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 ?.optJSONObject("browseEndpointContextMusicConfig")
                 ?.optString("pageType")
                 .orEmpty()
-            val isArtist = browseId.startsWith("UC", ignoreCase = true) ||
-                pageType.contains("ARTIST", ignoreCase = true)
-            if (!isArtist) return null
+            if (browseId.isBlank() || !pageType.contains("ARTIST", ignoreCase = true)) return null
             val title = renderer.optJSONObject("title")
                 ?.optJSONArray("runs")
                 ?.joinText()

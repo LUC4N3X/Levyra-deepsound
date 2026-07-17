@@ -95,6 +95,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val memory = ConcurrentHashMap<String, ArtistProfile>()
     private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
 
+    private fun profileBrowseKey(browseId: String): String = "browse:${browseId.trim().lowercase(Locale.ROOT)}"
+
     private companion object {
         const val MAX_RELEASE_PAGES = 8
         val ALBUM_SECTION_WORDS = setOf("album", "albums", "álbum", "álbumes", "alben", "albumi", "альбом", "альбомы", "アルバム", "앨범")
@@ -109,6 +111,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         )
         val BIOGRAPHY_TITLE_TERMS = setOf(
             "rapper", "singer", "musician", "band", "music group", "dj", "cantante", "musicista", "gruppo musicale", "chanteur", "chanteuse", "musicien", "musicienne", "sänger", "sängerin", "musiker", "musikerin", "rapero", "rapera", "cantor", "cantora"
+        )
+        val BIOGRAPHY_NON_ARTIST_TITLE_TERMS = setOf(
+            "album", "song", "single", "ep", "film", "soundtrack", "brano", "canzone", "singolo", "disco", "pellicola", "chanson", "titre", "lied", "álbum", "canción", "sencillo"
         )
     }
 
@@ -133,6 +138,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         resolved?.also { profile ->
             memory[artistIdentityKey(clean)] = profile
             memory[artistIdentityKey(profile.name)] = profile
+            if (profile.browseId.isNotBlank()) memory[profileBrowseKey(profile.browseId)] = profile
         }
     }
 
@@ -146,6 +152,35 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             artistHitMemory[cacheKey] = hit
             artistHitMemory[artistIdentityKey(hit.name)] = hit
         }
+    }
+
+
+    private fun isCanonicalArtistPage(
+        root: JSONObject,
+        header: JSONObject,
+        expectedName: String
+    ): Boolean {
+        val resolvedName = headerText(header).trim()
+        val expectedPrimary = primaryArtistSegment(expectedName).ifBlank { expectedName.trim() }
+        if (resolvedName.isBlank() || artistIdentityKey(resolvedName) != artistIdentityKey(expectedPrimary)) return false
+        val hasArtistHeader = header.optJSONObject("musicImmersiveHeaderRenderer") != null ||
+            header.optJSONObject("musicVisualHeaderRenderer") != null ||
+            header.optJSONObject("musicDetailHeaderRenderer") != null ||
+            header.optJSONObject("musicResponsiveHeaderRenderer") != null
+        if (!hasArtistHeader) return false
+        val shufflePlaylistId = findPlaylistIdByMarker(header, listOf("SHUFFLE"))
+            .ifBlank { findPlaylistId(header.optJSONObject("playButton")) }
+        val radioPlaylistId = findPlaylistIdByMarker(header, listOf("RADIO", "START_RADIO"))
+            .ifBlank { findPlaylistId(header.optJSONObject("startRadioButton")) }
+        if (shufflePlaylistId.isBlank() || radioPlaylistId.isBlank()) return false
+        val topSongs = extractTopSongs(root).take(12)
+        val ownedSongCount = topSongs.count { track ->
+            artistSearchMatchScore(expectedPrimary, track.artist) >= 700
+        }
+        if (ownedSongCount == 0) return false
+        val hasDiscography = findReleasePointer(root, "Album") != null ||
+            findReleasePointer(root, "Singol") != null
+        return hasDiscography && (findSongsPointer(root) != null || topSongs.isNotEmpty())
     }
 
     suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
@@ -170,8 +205,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             }
         val root = runCatching { postBrowse(cleanBrowseId) }.getOrNull() ?: return@withContext null
         val header = root.optJSONObject("header") ?: return@withContext null
+        if (!isCanonicalArtistPage(root, header, cleanName)) return@withContext null
         val resolvedName = headerText(header)
-        if (resolvedName.isBlank() || artistIdentityKey(resolvedName) != artistIdentityKey(cleanName)) return@withContext null
         val artwork = parseArtistHeaderArtwork(header)
         val portrait = upgradeThumbnail(artwork.portraitUrl)
         if (portrait.isBlank()) return@withContext null
@@ -190,10 +225,13 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
 
     suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
         if (browseId.isBlank()) return@withContext profileFor(fallbackName)
+        val browseKey = profileBrowseKey(browseId)
+        memory[browseKey]?.let { return@withContext it }
         val cacheKey = artistIdentityKey(fallbackName)
         memory[cacheKey]?.takeIf { it.browseId.equals(browseId, ignoreCase = true) }?.let { return@withContext it }
         val resolved = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
         resolved?.also { profile ->
+            memory[browseKey] = profile
             memory[cacheKey] = profile
             memory[artistIdentityKey(profile.name)] = profile
         }
@@ -287,10 +325,10 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
 
     private suspend fun fetchProfile(browseId: String, fallbackName: String): ArtistProfile? {
         val root = postBrowse(browseId)
-        val header = root.optJSONObject("header")
+        val header = root.optJSONObject("header") ?: return null
+        if (!isCanonicalArtistPage(root, header, fallbackName)) return null
         val name = headerText(header)
-        if (name.isBlank()) return null
-        val inlineBio = extractBio(root)
+        val inlineBio = extractArtistBiography(root)
         val subscribers = extractSubscribers(header)
         val monthly = extractMonthlyListeners(root)
         val artwork = parseArtistHeaderArtwork(header)
@@ -410,20 +448,70 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         )
     }
 
-    private fun extractBio(root: JSONObject): String {
-        val sections = mutableListOf<JSONObject>()
-        collectByKey(root, "musicDescriptionShelfRenderer", sections)
-        sections.forEach { shelf ->
-            val text = shelf.optJSONObject("description")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-            if (text.length > 24) return text
+    internal fun extractArtistBiography(root: JSONObject): String {
+        fun descriptionFromSectionList(sectionList: JSONObject?): String {
+            val contents = sectionList?.optJSONArray("contents") ?: return ""
+            for (index in 0 until contents.length()) {
+                val shelf = contents.optJSONObject(index)
+                    ?.optJSONObject("musicDescriptionShelfRenderer")
+                    ?: continue
+                val text = shelf.optJSONObject("description")
+                    ?.optJSONArray("runs")
+                    ?.joinText()
+                    .orEmpty()
+                    .trim()
+                if (text.length > 24) return text
+            }
+            return ""
         }
-        val descriptions = mutableListOf<JSONObject>()
-        collectByKey(root, "description", descriptions)
-        descriptions.forEach { node ->
-            val text = node.optJSONArray("runs")?.joinText().orEmpty().trim()
-            if (text.length > 80) return text
+
+        val contents = root.optJSONObject("contents")
+        val direct = descriptionFromSectionList(contents?.optJSONObject("sectionListRenderer"))
+        if (direct.isNotBlank()) return direct
+
+        val singleColumnTabs = contents
+            ?.optJSONObject("singleColumnBrowseResultsRenderer")
+            ?.optJSONArray("tabs")
+        if (singleColumnTabs != null) {
+            for (index in 0 until singleColumnTabs.length()) {
+                val sectionList = singleColumnTabs.optJSONObject(index)
+                    ?.optJSONObject("tabRenderer")
+                    ?.optJSONObject("content")
+                    ?.optJSONObject("sectionListRenderer")
+                val text = descriptionFromSectionList(sectionList)
+                if (text.isNotBlank()) return text
+            }
         }
-        return ""
+
+        val twoColumn = contents?.optJSONObject("twoColumnBrowseResultsRenderer")
+        val twoColumnTabs = twoColumn?.optJSONArray("tabs")
+        if (twoColumnTabs != null) {
+            for (index in 0 until twoColumnTabs.length()) {
+                val sectionList = twoColumnTabs.optJSONObject(index)
+                    ?.optJSONObject("tabRenderer")
+                    ?.optJSONObject("content")
+                    ?.optJSONObject("sectionListRenderer")
+                val text = descriptionFromSectionList(sectionList)
+                if (text.isNotBlank()) return text
+            }
+        }
+
+        val secondary = descriptionFromSectionList(
+            twoColumn?.optJSONObject("secondaryContents")
+                ?.optJSONObject("sectionListRenderer")
+        )
+        if (secondary.isNotBlank()) return secondary
+
+        val header = root.optJSONObject("header")
+        val headerText = sequenceOf(
+            header?.optJSONObject("musicImmersiveHeaderRenderer")?.optJSONObject("description"),
+            header?.optJSONObject("musicVisualHeaderRenderer")?.optJSONObject("description"),
+            header?.optJSONObject("musicDetailHeaderRenderer")?.optJSONObject("description"),
+            header?.optJSONObject("musicResponsiveHeaderRenderer")?.optJSONObject("description")
+        ).mapNotNull { description ->
+            description?.optJSONArray("runs")?.joinText()?.trim()?.takeIf { it.length > 24 }
+        }.firstOrNull()
+        return headerText.orEmpty()
     }
 
     private suspend fun fetchExternalBiography(artistName: String): String = coroutineScope {
@@ -441,6 +529,10 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val endpoint = "https://$language.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=$query&gsrnamespace=0&gsrlimit=6&prop=extracts&exintro=1&explaintext=1&redirects=1&format=json&formatversion=2"
         val root = runCatching { getJson(endpoint) }.getOrNull() ?: return ""
         val pages = root.optJSONObject("query")?.optJSONArray("pages") ?: return ""
+        return selectWikipediaBiography(artistName, pages)
+    }
+
+    internal fun selectWikipediaBiography(artistName: String, pages: JSONArray): String {
         var bestText = ""
         var bestScore = Int.MIN_VALUE
         for (index in 0 until pages.length()) {
@@ -449,23 +541,24 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             val extract = cleanBiography(page.optString("extract"))
             if (title.isBlank() || extract.length < 80 || isDisambiguationBiography(extract)) continue
             val baseTitle = title.substringBefore(" (").trim()
-            var score = maxOf(
-                artistSearchMatchScore(artistName, title),
-                artistSearchMatchScore(artistName, baseTitle)
-            )
+            if (artistIdentityKey(baseTitle) != artistIdentityKey(artistName)) continue
             val normalizedExtract = extract.lowercase(Locale.ROOT)
+            val normalizedIntro = normalizedExtract.take(600)
             val normalizedTitle = title.lowercase(Locale.ROOT)
-            val hasMusicRole = BIOGRAPHY_MUSIC_TERMS.any(normalizedExtract::contains) ||
-                BIOGRAPHY_TITLE_TERMS.any(normalizedTitle::contains)
+            val parenthetical = title.substringAfter("(", "").substringBeforeLast(")", "").lowercase(Locale.ROOT)
+            if (BIOGRAPHY_NON_ARTIST_TITLE_TERMS.any { term -> parenthetical.contains(term) }) continue
+            val hasMusicRole = BIOGRAPHY_MUSIC_TERMS.any { term -> normalizedIntro.contains(term) } ||
+                BIOGRAPHY_TITLE_TERMS.any { term -> normalizedTitle.contains(term) }
             if (!hasMusicRole) continue
-            score += 260
-            if (artistIdentityKey(baseTitle) == artistIdentityKey(artistName)) score += 300
+            var score = 1_000
+            if (BIOGRAPHY_TITLE_TERMS.any { term -> parenthetical.contains(term) }) score += 300
+            if (normalizedIntro.startsWith(artistName.lowercase(Locale.ROOT))) score += 200
             if (score > bestScore) {
                 bestScore = score
                 bestText = extract
             }
         }
-        return bestText.takeIf { bestScore >= 500 }.orEmpty()
+        return bestText.takeIf { bestScore >= 1_000 }.orEmpty()
     }
 
     private fun getJson(endpoint: String): JSONObject {
