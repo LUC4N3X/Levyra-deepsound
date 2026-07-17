@@ -637,7 +637,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     private fun normalizeSearchText(value: String): String = value
         .lowercase()
-        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), " ")
         .replace(Regex("\\s+"), " ")
         .trim()
 
@@ -2094,7 +2094,7 @@ internal fun String.cleanAlbumArtistLabel(): String {
     if (cleaned.isBlank() || cleaned.looksLikeSerializedJson()) return ""
     val normalized = cleaned.lowercase()
         .replace('\u2019', '\'')
-        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), " ")
         .trim()
     if (normalized in ALBUM_ARTIST_ACTION_LABELS) return ""
     return cleaned

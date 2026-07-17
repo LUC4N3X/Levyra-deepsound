@@ -81,7 +81,7 @@ object LevyraStartupCatalog {
 
     private fun seedTitleKey(value: String): String {
         return value.lowercase()
-            .replace(Regex("""[^\p{L}\p{N}\s]"""), " ")
+            .replace(Regex("""[^\p{L}\p{M}\p{N}\s]"""), " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
     }

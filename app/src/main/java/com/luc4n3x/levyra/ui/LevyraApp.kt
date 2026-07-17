@@ -267,6 +267,7 @@ import com.luc4n3x.levyra.domain.PulseArtist
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Mood
+import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
@@ -988,7 +989,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
 
             AnimatedVisibility(visible = state.showOnboarding, enter = overlayEnter, exit = overlayExit) {
                 if (state.showOnboarding) {
-                    OnboardingOverlay(tastes = state.tastes, selectedLanguageCode = state.languageCode, onDone = viewModel::completeOnboarding)
+                    OnboardingOverlay(selectedLanguageCode = state.languageCode, onDone = viewModel::completeOnboarding)
                 }
             }
 
@@ -9451,12 +9452,14 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 }
 
 @Composable
-private fun OnboardingOverlay(tastes: List<Taste>, selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
+private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
     val currentLocale = LocalLocale.current.platformLocale
     var selected by remember { mutableStateOf(setOf<String>()) }
     var name by remember { mutableStateOf("") }
     var step by remember { mutableStateOf(OnboardingStep.Language) }
     var languageCode by remember(selectedLanguageCode) { mutableStateOf(LevyraLanguageCatalog.normalize(selectedLanguageCode)) }
+    val moodEngine = remember { MoodEngine() }
+    val tastes = remember(languageCode) { moodEngine.tastesForLanguage(languageCode) }
     val strings = LevyraStrings.forCode(languageCode)
     val blocker = remember { MutableInteractionSource() }
     val primaryEnabled = onboardingPrimaryEnabled(step, selected.size)

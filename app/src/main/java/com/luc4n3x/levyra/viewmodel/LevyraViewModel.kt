@@ -3155,7 +3155,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
             fun normalizedMetadataText(value: String): String = value
                 .lowercase()
-                .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+                .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), " ")
                 .replace(Regex("\\s+"), " ")
                 .trim()
 
