@@ -117,21 +117,6 @@ private data class HomeArtistCandidate(
     val browseId: String
 )
 
-private fun artistProfileMatchesCandidate(
-    profile: com.luc4n3x.levyra.domain.ArtistProfile,
-    candidate: HomeArtistCandidate
-): Boolean {
-    val expected = artistIdentityKey(candidate.name)
-    val actual = artistIdentityKey(profile.name)
-    if (expected.isBlank() || actual != expected) return false
-    if (profile.topSongs.isEmpty()) return true
-    return profile.topSongs.any { track ->
-        val trackArtist = artistIdentityKey(primaryArtistSegment(track.artist).ifBlank { track.artist })
-        trackArtist == expected ||
-            artistIdentityKey(track.artist).split(' ').containsAll(expected.split(' ').filter { it.isNotBlank() })
-    }
-}
-
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
     val safeCurrent = current?.coerceIn(1, 99) ?: 1
@@ -344,6 +329,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             settings.languageCode
         )
         val startupHomeTracks = startupHomeSections.flatMap { it.tracks }.distinctBy { it.id }
+        val startupHomeArtists = instantSnapshot?.homeArtists
+            .orEmpty()
+            .filter { it.name.isNotBlank() && it.browseId.isNotBlank() && it.thumbnailUrl.isNotBlank() }
+            .distinctBy { it.browseId.lowercase() }
+            .take(10)
         val cachedCharts = instantSnapshot?.charts?.takeIf { it.isNotEmpty() } ?: preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
         val startupCharts = LevyraStartupCatalog.repairTracks(
             cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) },
@@ -404,6 +394,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 personalOrbitTracks = cachedOrbitTracks,
                 homeSections = startupHomeSections,
                 homeAlbums = startupAlbums,
+                homeArtists = startupHomeArtists,
+                homeArtistsLoading = startupHomeArtists.isEmpty(),
                 homeAlbumsLoading = startupAlbums.isEmpty(),
                 tracks = initialTracks,
                 queue = initialQueue,
@@ -496,7 +488,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeDownloads()
         observeDownloadTasks()
         loadPlaylists()
-        viewModelScope.launch { consumeOfficialMetadataQueue() }
+        viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
         refreshListeningPulse(force = true)
         scheduleColdStartRefresh(initialTracks)
         LevyraWidgetBridge.onToggle = { togglePlay() }
@@ -639,7 +631,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             languageCode = languageCode,
             homeSections = snapshot.homeSections,
             charts = snapshot.charts,
-            personalOrbit = snapshot.personalOrbitTracks
+            personalOrbit = snapshot.personalOrbitTracks,
+            homeArtists = snapshot.homeArtists
         )
     }
 
@@ -648,6 +641,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val candidates = buildList {
             addAll(snapshot.charts)
             addAll(snapshot.homeSections.flatMap { it.tracks })
+            addAll(snapshot.tracks)
+            addAll(snapshot.favorites)
         }
             .asSequence()
             .map { track ->
@@ -663,56 +658,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 it.name.equals("YouTube", ignoreCase = true) ||
                     it.name.equals("YouTube Music", ignoreCase = true)
             }
-            .distinctBy { candidate ->
-                candidate.browseId
-                    .takeIf { it.isNotBlank() }
-                    ?.lowercase()
-                    ?: artistIdentityKey(candidate.name)
-            }
-            .take(14)
+            .distinctBy { it.browseId.lowercase() }
+            .take(12)
             .toList()
 
         val fingerprint = buildString {
             append(snapshot.languageCode)
             append('|')
-            append(
-                candidates.joinToString("|") { candidate ->
-                    candidate.browseId.ifBlank { artistIdentityKey(candidate.name) }
-                }
-            )
+            append(candidates.joinToString("|") { it.browseId.lowercase() })
         }
 
-        if (fingerprint == homeArtistsFingerprint && (snapshot.homeArtists.isNotEmpty() || candidates.isEmpty())) return
-        homeArtistsFingerprint = fingerprint
-        homeArtistsJob?.cancel()
-
         if (candidates.isEmpty()) {
-            _state.update { it.copy(homeArtists = emptyList()) }
+            homeArtistsFingerprint = fingerprint
+            homeArtistsJob?.cancel()
+            _state.update { current ->
+                val loading = current.homeArtists.isEmpty()
+                if (current.homeArtistsLoading == loading) current else current.copy(homeArtistsLoading = loading)
+            }
             return
         }
 
-        homeArtistsJob = viewModelScope.launch {
-            awaitHomeUiIdle()
-            val semaphore = Semaphore(3)
+        if (fingerprint == homeArtistsFingerprint && snapshot.homeArtists.isNotEmpty()) return
+        homeArtistsFingerprint = fingerprint
+        homeArtistsJob?.cancel()
+
+        val hadCachedArtists = snapshot.homeArtists.isNotEmpty()
+        _state.update { current ->
+            if (hadCachedArtists || current.homeArtistsLoading) current else current.copy(homeArtistsLoading = true)
+        }
+
+        homeArtistsJob = viewModelScope.launch(Dispatchers.Default) {
+            if (hadCachedArtists) awaitHomeUiIdle()
+            val semaphore = Semaphore(2)
             val resolvedArtists = coroutineScope {
                 candidates.map { candidate ->
                     async {
                         semaphore.withPermit {
-                            val profile = runCatching {
-                                artistRepository.profile(candidate.browseId, candidate.name)
+                            awaitHomeUiIdle()
+                            runCatching {
+                                artistRepository.artistHit(candidate.browseId, candidate.name)
                             }.getOrNull()
-                            profile
-                                ?.takeIf { artistProfileMatchesCandidate(it, candidate) }
-                                ?.let { resolvedProfile ->
-                                    ArtistHit(
-                                        name = candidate.name,
-                                        subscribers = resolvedProfile.subscribers,
-                                        thumbnailUrl = resolvedProfile.thumbnailUrl,
-                                        accentStart = resolvedProfile.accentStart,
-                                        accentEnd = resolvedProfile.accentEnd,
-                                        browseId = resolvedProfile.browseId
-                                    )
-                                }
                         }
                     }
                 }.awaitAll()
@@ -722,22 +707,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
             val artists = resolvedArtists
                 .filterNotNull()
-                .filter { it.name.isNotBlank() && it.thumbnailUrl.isNotBlank() }
-                .distinctBy { hit ->
-                    hit.browseId
-                        .takeIf { it.isNotBlank() }
-                        ?.lowercase()
-                        ?: artistIdentityKey(hit.name)
-                }
+                .filter { it.name.isNotBlank() && it.thumbnailUrl.isNotBlank() && it.browseId.isNotBlank() }
+                .distinctBy { it.browseId.lowercase() }
                 .take(10)
 
+            awaitHomeUiIdle()
+            var changed = false
             _state.update { current ->
-                if (homeArtistsFingerprint != fingerprint || current.homeArtists == artists) {
+                if (homeArtistsFingerprint != fingerprint) {
+                    current
+                } else if (artists.isEmpty()) {
+                    val loading = current.homeArtists.isEmpty()
+                    if (current.homeArtistsLoading == loading) current else current.copy(homeArtistsLoading = loading)
+                } else if (current.homeArtists == artists && !current.homeArtistsLoading) {
                     current
                 } else {
-                    current.copy(homeArtists = artists)
+                    changed = true
+                    current.copy(homeArtists = artists, homeArtistsLoading = false)
                 }
             }
+            if (changed) persistHomeSnapshot()
         }
     }
 
@@ -2657,6 +2646,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             try {
                                 semaphore.withPermit {
                                     if (!isActive) return@withPermit
+                                    awaitHomeUiIdle()
                                     val enriched = resolveOfficialOrbitArtwork(track, _state.value.languageCode)
                                         ?: return@withPermit
                                     enrichedTracks += enriched
@@ -2668,6 +2658,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }.forEach { it.join() }
                 }
                 if (enrichedTracks.isNotEmpty()) {
+                    awaitHomeUiIdle()
                     applyOfficialOrbitArtworkBatch(enrichedTracks.toList())
                 }
                 if (officialMetadataPending.isEmpty()) break
@@ -3414,8 +3405,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val hotCount = if (plan.lowRam || plan.powerConstrained) 1 else 4
             val hot = candidates.take(hotCount)
             val warmOnly = candidates.drop(hotCount)
-            warmTracks(hot, concurrency = plan.concurrency, delayStepMs = plan.staggerMs, prime = true)
-            warmTracks(warmOnly, concurrency = 1, delayStepMs = plan.staggerMs.coerceAtLeast(80L), prime = false)
+            warmTracks(hot, concurrency = plan.concurrency, delayStepMs = plan.staggerMs, prime = true, respectHomeScroll = respectHomeScroll)
+            warmTracks(warmOnly, concurrency = 1, delayStepMs = plan.staggerMs.coerceAtLeast(80L), prime = false, respectHomeScroll = respectHomeScroll)
         }
     }
 
@@ -3431,12 +3422,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private suspend fun warmTracks(tracks: List<Track>, concurrency: Int, delayStepMs: Long, prime: Boolean) = coroutineScope {
+    private suspend fun warmTracks(
+        tracks: List<Track>,
+        concurrency: Int,
+        delayStepMs: Long,
+        prime: Boolean,
+        respectHomeScroll: Boolean = false
+    ) = coroutineScope {
         val semaphore = Semaphore(concurrency.coerceAtLeast(1))
         tracks.distinctBy { youtubePlayableTrack(it)?.id ?: it.id }.forEachIndexed { index, track ->
             launch {
                 if (index > 0 && delayStepMs > 0L) delay(index * delayStepMs)
-                semaphore.withPermit { warmTrack(track, prime) }
+                if (respectHomeScroll) awaitHomeUiIdle()
+                semaphore.withPermit {
+                    if (respectHomeScroll) awaitHomeUiIdle()
+                    warmTrack(track, prime)
+                }
             }
         }
     }
@@ -4064,8 +4065,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
         private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
         private const val HOME_ALBUM_SEED_LIMIT = 12
-        private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 16
-        private const val OFFICIAL_METADATA_CONCURRENCY = 3
+        private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 8
+        private const val OFFICIAL_METADATA_CONCURRENCY = 2
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
         const val PULSE_REFRESH_THROTTLE_MS = 5_000L
     }
