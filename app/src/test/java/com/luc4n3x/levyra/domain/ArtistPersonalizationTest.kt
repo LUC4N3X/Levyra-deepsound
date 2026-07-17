@@ -58,6 +58,25 @@ class ArtistPersonalizationTest {
         assertEquals("Shiva", ranked.first().name)
     }
 
+    @Test
+    fun returnsThirteenDistinctArtistsWhenEnoughListeningSignalsExist() {
+        val now = 2_000_000_000_000L
+        val events = (1..20).map { index ->
+            event(
+                browseId = "UC_ARTIST_$index",
+                artist = "Artist $index",
+                startedAt = now - index * 60_000L,
+                listenedMs = 120_000L + index,
+                completed = index % 2 == 0
+            )
+        }
+
+        val ranked = rankPersonalizedArtistCandidates(events, nowMs = now, limit = 13)
+
+        assertEquals(13, ranked.size)
+        assertEquals(13, ranked.map { it.browseId }.distinct().size)
+    }
+
     private fun event(
         browseId: String,
         artist: String,
