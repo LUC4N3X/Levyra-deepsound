@@ -337,7 +337,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             .orEmpty()
             .filter { it.name.isNotBlank() && it.browseId.isNotBlank() && it.thumbnailUrl.isNotBlank() }
             .distinctBy { it.browseId.lowercase() }
-            .take(10)
+            .take(HOME_ARTIST_SHELF_SIZE)
         val cachedCharts = instantSnapshot?.charts?.takeIf { it.isNotEmpty() } ?: preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
         val startupCharts = LevyraStartupCatalog.repairTracks(
             cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) },
@@ -399,7 +399,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeSections = startupHomeSections,
                 homeAlbums = startupAlbums,
                 homeArtists = startupHomeArtists,
-                homeArtistsLoading = startupHomeArtists.isEmpty(),
+                homeArtistsLoading = startupHomeArtists.size < HOME_ARTIST_SHELF_SIZE,
                 homeAlbumsLoading = startupAlbums.isEmpty(),
                 tracks = initialTracks,
                 queue = initialQueue,
@@ -644,31 +644,33 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val startupSnapshot = _state.value
         homeArtistsJob?.cancel()
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
-            val rankedHistory = listeningPulseStore.personalizedArtists(limit = 16)
+            val rankedHistory = listeningPulseStore.personalizedArtists(limit = HOME_ARTIST_HISTORY_LIMIT)
             val candidates = LinkedHashMap<String, HomeArtistCandidate>()
 
-            rankedHistory.forEach { ranked ->
-                val browseId = ranked.browseId.trim()
-                val name = primaryArtistSegment(ranked.name).ifBlank { ranked.name.trim() }
-                if (browseId.isNotBlank() && name.length >= 2 && isArtistShelfNameEligible(name)) {
-                    candidates.putIfAbsent(browseId.lowercase(), HomeArtistCandidate(name, browseId))
-                }
+            fun addCandidate(nameValue: String, browseIdValue: String) {
+                val browseId = browseIdValue.trim()
+                val name = primaryArtistSegment(nameValue).ifBlank { nameValue.trim() }
+                if (browseId.isBlank() || name.length < 2 || !isArtistShelfNameEligible(name)) return
+                candidates.putIfAbsent(browseId.lowercase(), HomeArtistCandidate(name, browseId))
             }
 
-            val localSignals = buildList {
+            rankedHistory.forEach { ranked -> addCandidate(ranked.name, ranked.browseId) }
+
+            buildList {
                 addAll(startupSnapshot.recentListens)
                 addAll(startupSnapshot.personalOrbitTracks)
                 addAll(startupSnapshot.favorites)
-            }
-            localSignals.forEach { track ->
-                val browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
-                val name = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
-                if (browseId.isNotBlank() && name.length >= 2 && isArtistShelfNameEligible(name)) {
-                    candidates.putIfAbsent(browseId.lowercase(), HomeArtistCandidate(name, browseId))
-                }
+                startupSnapshot.currentTrack?.let(::add)
+                addAll(startupSnapshot.tracks)
+                addAll(startupSnapshot.homeSections.flatMap { it.tracks })
+                addAll(startupSnapshot.charts)
+            }.forEach { track ->
+                addCandidate(track.artist, track.artistBrowseIds.firstOrNull().orEmpty())
             }
 
-            val orderedCandidates = candidates.values.take(10)
+            startupSnapshot.homeArtists.forEach { artist -> addCandidate(artist.name, artist.browseId) }
+
+            val orderedCandidates = candidates.values.take(HOME_ARTIST_CANDIDATE_LIMIT)
             val fingerprint = buildString {
                 append(startupSnapshot.languageCode)
                 append('|')
@@ -676,90 +678,137 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     "${candidate.browseId.lowercase()}:${artistIdentityKey(candidate.name)}"
                 })
             }
-
-            if (orderedCandidates.isEmpty()) {
-                homeArtistsFingerprint = fingerprint
-                _state.update { current ->
-                    if (current.homeArtists.isNotEmpty() || !current.homeArtistsLoading) current
-                    else current.copy(homeArtistsLoading = false)
-                }
-                return@launch
-            }
-
             val visibleArtists = startupSnapshot.homeArtists
-            val visibleIds = visibleArtists.map { it.browseId.lowercase() }
-            val candidateIds = orderedCandidates.map { it.browseId.lowercase() }
-            if (fingerprint == homeArtistsFingerprint && visibleArtists.isNotEmpty()) return@launch
-            homeArtistsFingerprint = fingerprint
-
-            if (visibleArtists.isNotEmpty() && visibleIds == candidateIds.take(visibleIds.size)) {
-                _state.update { current ->
-                    if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
-                }
-                return@launch
-            }
-
-            val freezeVisibleShelf = visibleArtists.isNotEmpty()
-            if (!freezeVisibleShelf) {
-                _state.update { current ->
-                    if (current.homeArtistsLoading) current else current.copy(homeArtistsLoading = true)
-                }
-            } else {
-                awaitHomeUiIdle()
-            }
-
-            val visibleByBrowseId = visibleArtists.associateBy { it.browseId.lowercase() }
-            val semaphore = Semaphore(4)
-            val resolvedArtists = coroutineScope {
-                orderedCandidates.map { candidate ->
-                    async {
-                        val cached = visibleByBrowseId[candidate.browseId.lowercase()]
-                            ?.takeIf { hit ->
-                                hit.thumbnailUrl.isNotBlank() &&
-                                    hit.browseId.equals(candidate.browseId, ignoreCase = true) &&
-                                    artistIdentityKey(hit.name) == artistIdentityKey(candidate.name) &&
-                                    isArtistShelfNameEligible(hit.name)
-                            }
-                        cached ?: semaphore.withPermit {
-                            withTimeoutOrNull(2_000L) {
-                                runCatching {
-                                    artistRepository.artistHit(candidate.browseId, candidate.name)
-                                }.getOrNull()
-                            }
-                        }
-                    }
-                }.awaitAll()
-            }
-                .filterNotNull()
                 .filter { hit ->
                     hit.name.isNotBlank() &&
                         hit.thumbnailUrl.isNotBlank() &&
                         hit.browseId.isNotBlank() &&
                         isArtistShelfNameEligible(hit.name)
                 }
-                .distinctBy { hit -> hit.browseId.lowercase() }
-                .take(8)
+                .distinctBy { it.browseId.lowercase() }
+                .take(HOME_ARTIST_SHELF_SIZE)
 
-            if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
-            if (resolvedArtists.isEmpty()) {
+            if (fingerprint == homeArtistsFingerprint && visibleArtists.size >= HOME_ARTIST_SHELF_SIZE) return@launch
+            homeArtistsFingerprint = fingerprint
+
+            if (orderedCandidates.isEmpty()) {
                 _state.update { current ->
-                    if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
+                    current.copy(
+                        homeArtists = visibleArtists,
+                        homeArtistsLoading = visibleArtists.size < HOME_ARTIST_SHELF_SIZE
+                    )
                 }
                 return@launch
             }
 
+            val freezeVisibleShelf = visibleArtists.size >= HOME_ARTIST_SHELF_SIZE
             if (freezeVisibleShelf) {
-                deferredHomeArtistsSnapshot = resolvedArtists
-                persistHomeSnapshotSync(startupSnapshot.languageCode)
+                awaitHomeUiIdle()
+            } else {
                 _state.update { current ->
-                    if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
+                    current.copy(
+                        homeArtists = visibleArtists,
+                        homeArtistsLoading = true
+                    )
                 }
+            }
+
+            val visibleByBrowseId = visibleArtists.associateBy { it.browseId.lowercase() }
+            val resolved = LinkedHashMap<String, ArtistHit>()
+            val semaphore = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
+
+            for (batch in orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
+                val hits = coroutineScope {
+                    batch.map { candidate ->
+                        async {
+                            val cached = visibleByBrowseId[candidate.browseId.lowercase()]
+                                ?.takeIf { hit ->
+                                    hit.thumbnailUrl.isNotBlank() &&
+                                        hit.browseId.equals(candidate.browseId, ignoreCase = true) &&
+                                        artistIdentityKey(hit.name) == artistIdentityKey(candidate.name) &&
+                                        isArtistShelfNameEligible(hit.name)
+                                }
+                            cached ?: semaphore.withPermit {
+                                withTimeoutOrNull(HOME_ARTIST_FAST_TIMEOUT_MS) {
+                                    runCatching {
+                                        artistRepository.artistHit(candidate.browseId, candidate.name)
+                                    }.getOrNull()
+                                }
+                            }
+                        }
+                    }.awaitAll()
+                }
+                hits.filterNotNull().forEach { hit ->
+                    if (
+                        hit.name.isNotBlank() &&
+                        hit.thumbnailUrl.isNotBlank() &&
+                        hit.browseId.isNotBlank() &&
+                        isArtistShelfNameEligible(hit.name)
+                    ) {
+                        resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+                    }
+                }
+                if (resolved.size >= HOME_ARTIST_SHELF_SIZE) break
+            }
+
+            if (resolved.size < HOME_ARTIST_SHELF_SIZE) {
+                val seedArtists = (resolved.values + visibleArtists)
+                    .distinctBy { it.browseId.lowercase() }
+                    .take(HOME_ARTIST_RELATED_SEED_LIMIT)
+                val related = coroutineScope {
+                    seedArtists.map { seed ->
+                        async {
+                            withTimeoutOrNull(HOME_ARTIST_RELATED_TIMEOUT_MS) {
+                                runCatching {
+                                    artistRepository.relatedArtistHits(
+                                        browseId = seed.browseId,
+                                        fallbackName = seed.name,
+                                        limit = HOME_ARTIST_SHELF_SIZE
+                                    )
+                                }.getOrDefault(emptyList())
+                            }.orEmpty()
+                        }
+                    }.awaitAll().flatten()
+                }
+                related.forEach { hit ->
+                    if (
+                        resolved.size < HOME_ARTIST_SHELF_SIZE &&
+                        hit.name.isNotBlank() &&
+                        hit.thumbnailUrl.isNotBlank() &&
+                        hit.browseId.isNotBlank() &&
+                        isArtistShelfNameEligible(hit.name)
+                    ) {
+                        resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+                    }
+                }
+            }
+
+            visibleArtists.forEach { hit ->
+                if (resolved.size < HOME_ARTIST_SHELF_SIZE) {
+                    resolved.putIfAbsent(hit.browseId.lowercase(), hit)
+                }
+            }
+
+            if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
+
+            val finalArtists = resolved.values.take(HOME_ARTIST_SHELF_SIZE)
+            val complete = finalArtists.size >= HOME_ARTIST_SHELF_SIZE
+
+            if (freezeVisibleShelf) {
+                if (complete) {
+                    deferredHomeArtistsSnapshot = finalArtists
+                    persistHomeSnapshotSync(startupSnapshot.languageCode)
+                }
+                _state.update { current -> current.copy(homeArtistsLoading = false) }
                 return@launch
             }
 
             deferredHomeArtistsSnapshot = null
             _state.update { current ->
-                current.copy(homeArtists = resolvedArtists, homeArtistsLoading = false)
+                current.copy(
+                    homeArtists = finalArtists,
+                    homeArtistsLoading = !complete
+                )
             }
             persistHomeSnapshotSync(startupSnapshot.languageCode)
         }
@@ -4102,6 +4151,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
+        private const val HOME_ARTIST_SHELF_SIZE = 13
+        private const val HOME_ARTIST_HISTORY_LIMIT = 48
+        private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
+        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 6
+        private const val HOME_ARTIST_RELATED_SEED_LIMIT = 3
+        private const val HOME_ARTIST_FAST_TIMEOUT_MS = 1_900L
+        private const val HOME_ARTIST_RELATED_TIMEOUT_MS = 2_600L
         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
         private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
         private const val HOME_ALBUM_SEED_LIMIT = 12
