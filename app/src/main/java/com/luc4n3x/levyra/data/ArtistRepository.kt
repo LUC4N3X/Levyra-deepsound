@@ -634,12 +634,15 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             normalized.contains("può riferirsi") ||
             normalized.contains("peut faire référence") ||
             normalized.contains("kann sich beziehen") ||
-            normalized.contains("puede referirse")
+            normalized.contains("puede referirse") ||
+            normalized.contains("قد يشير إلى") ||
+            normalized.contains("可能指")
     }
 
     private fun wikipediaLanguage(languageCode: String): String {
         return when (LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')) {
             "zh" -> "zh"
+            "ar" -> "ar"
             "pt" -> "pt"
             "uk" -> "uk"
             "ru" -> "ru"
@@ -821,7 +824,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private fun releaseKindMatches(text: String, kindHint: String): Boolean {
         if (kindHint.isBlank()) return true
         val normalized = text.lowercase()
-        val tokens = normalized.split(Regex("[^\\p{L}\\p{N}]+"))
+        val tokens = normalized.split(Regex("[^\\p{L}\\p{M}\\p{N}]+"))
             .filter(String::isNotBlank)
             .toSet()
         val words = if (kindHint.startsWith("Singol", ignoreCase = true)) SINGLE_SECTION_WORDS else ALBUM_SECTION_WORDS

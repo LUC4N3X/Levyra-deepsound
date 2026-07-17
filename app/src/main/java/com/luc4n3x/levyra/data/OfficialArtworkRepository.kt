@@ -623,7 +623,7 @@ class OfficialArtworkRepository(context: Context) {
         const val APPLE_SEARCH_URL = "https://itunes.apple.com/search"
         const val DEEZER_SEARCH_URL = "https://api.deezer.com/search/track"
         const val DEEZER_ALBUM_URL = "https://api.deezer.com/album"
-        const val USER_AGENT = "Levyra/2.3.10 Android"
+        const val USER_AGENT = "Levyra/2.3.11 Android"
         const val MIN_ACCEPTED_SCORE = 200
         const val DECISIVE_MATCH_SCORE = 350
         const val MIN_ARTIST_MATCH_SCORE = 45
