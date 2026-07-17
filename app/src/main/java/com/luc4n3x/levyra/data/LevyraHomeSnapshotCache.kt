@@ -102,7 +102,7 @@ class LevyraHomeSnapshotCache(context: Context) {
     private fun snapshotKey(track: Track): String = track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}|${track.title}" } }.trim().lowercase()
 
     private companion object {
-        const val SCHEMA = 2
+        const val SCHEMA = 3
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
     }
 }

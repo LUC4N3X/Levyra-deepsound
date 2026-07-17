@@ -291,8 +291,7 @@ class LevyraPreferences(context: Context) {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         return read(emptyList()) { preferences ->
             val localized = preferences[homeSectionsKey(normalized)].orEmpty()
-            val legacy = if (normalized == "it") preferences[KEY_HOME_SECTIONS].orEmpty() else ""
-            parseHomeSections(localized.ifBlank { legacy })
+            parseHomeSections(localized)
         }
     }
 
@@ -346,8 +345,7 @@ class LevyraPreferences(context: Context) {
         val chartRegion = regionId.ifBlank { com.luc4n3x.levyra.domain.ChartsCatalog.defaultRegionForLanguage(normalized).id }
         return read(emptyList()) { preferences ->
             val localized = preferences[chartTracksKey(normalized, chartRegion)].orEmpty()
-            val legacy = if (normalized == "it" && chartRegion == "it") preferences[KEY_CHART_TRACKS].orEmpty() else ""
-            parseTrackList(localized.ifBlank { legacy })
+            parseTrackList(localized)
         }
     }
 
@@ -445,11 +443,11 @@ class LevyraPreferences(context: Context) {
         maxConcurrentDownloads = preferences[KEY_DOWNLOAD_CONCURRENCY] ?: 2
     ).normalized()
 
-    private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_${LevyraLanguageCatalog.normalize(languageCode)}")
+    private fun homeSectionsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_sections_v2_${LevyraLanguageCatalog.normalize(languageCode)}")
 
     private fun homeAlbumsKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("home_albums_${LevyraLanguageCatalog.normalize(languageCode)}")
 
-    private fun chartTracksKey(languageCode: String, regionId: String): Preferences.Key<String> = stringPreferencesKey("chart_tracks_${LevyraLanguageCatalog.normalize(languageCode)}_${regionId.lowercase()}")
+    private fun chartTracksKey(languageCode: String, regionId: String): Preferences.Key<String> = stringPreferencesKey("chart_tracks_v2_${LevyraLanguageCatalog.normalize(languageCode)}_${regionId.lowercase()}")
 
     private fun personalOrbitTracksKey(languageCode: String): Preferences.Key<String> = stringPreferencesKey("personal_orbit_tracks_${LevyraLanguageCatalog.normalize(languageCode)}")
 

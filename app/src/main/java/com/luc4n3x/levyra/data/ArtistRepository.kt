@@ -152,17 +152,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         if (browseId.isBlank()) return@withContext profileFor(fallbackName)
         val cacheKey = artistIdentityKey(fallbackName)
         memory[cacheKey]?.takeIf { it.browseId.equals(browseId, ignoreCase = true) }?.let { return@withContext it }
-        val fetched = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
-        val resolved = if (fetched != null && fetched.thumbnailUrl.isBlank()) {
-            val fallbackHit = runCatching { artistHitFor(fetched.name.ifBlank { fallbackName }) }.getOrNull()
-            fetched.copy(
-                name = fetched.name.ifBlank { fallbackHit?.name.orEmpty().ifBlank { fallbackName } },
-                thumbnailUrl = fallbackHit?.thumbnailUrl.orEmpty(),
-                bannerUrl = fetched.bannerUrl.ifBlank { fallbackHit?.thumbnailUrl.orEmpty() }
-            )
-        } else {
-            fetched ?: runCatching { profileFor(fallbackName) }.getOrNull()
-        }
+        val resolved = runCatching { fetchProfile(browseId, fallbackName) }.getOrNull()
         resolved?.also { profile ->
             memory[cacheKey] = profile
             memory[artistIdentityKey(profile.name)] = profile
@@ -258,7 +248,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private suspend fun fetchProfile(browseId: String, fallbackName: String): ArtistProfile? {
         val root = postBrowse(browseId)
         val header = root.optJSONObject("header")
-        val name = headerText(header).ifBlank { fallbackName }
+        val name = headerText(header)
+        if (name.isBlank()) return null
         val inlineBio = extractBio(root)
         val subscribers = extractSubscribers(header)
         val monthly = extractMonthlyListeners(root)
@@ -884,15 +875,21 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
 
     private fun headerText(header: JSONObject?): String {
         header ?: return ""
-        val direct = header.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-        if (direct.isNotBlank()) return direct
-        val titles = mutableListOf<JSONObject>()
-        collectByKey(header, "title", titles)
-        titles.forEach { node ->
-            val text = node.optJSONArray("runs")?.joinText().orEmpty().trim()
-            if (text.isNotBlank()) return text
+
+        fun titleOf(renderer: JSONObject?): String {
+            return renderer
+                ?.optJSONObject("title")
+                ?.optJSONArray("runs")
+                ?.joinText()
+                .orEmpty()
+                .trim()
         }
-        return ""
+
+        return sequenceOf(
+            titleOf(header.optJSONObject("musicImmersiveHeaderRenderer")),
+            titleOf(header.optJSONObject("musicVisualHeaderRenderer")),
+            titleOf(header.optJSONObject("musicHeaderRenderer"))
+        ).firstOrNull { it.isNotBlank() }.orEmpty()
     }
 
 
