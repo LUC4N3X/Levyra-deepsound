@@ -26,7 +26,9 @@ object LevyraLanguageCatalog {
         LevyraLanguageOption("cs", "🇨🇿", "Czech", "Čeština"),
         LevyraLanguageOption("uk", "🇺🇦", "Ukrainian", "Українська"),
         LevyraLanguageOption("ru", "🇷🇺", "Russian", "Русский"),
-        LevyraLanguageOption("tr", "🇹🇷", "Turkish", "Türkçe")
+        LevyraLanguageOption("tr", "🇹🇷", "Turkish", "Türkçe"),
+        LevyraLanguageOption("ar", "🇸🇦", "Arabic", "العربية"),
+        LevyraLanguageOption("zh", "🇨🇳", "Chinese (Simplified)", "简体中文")
     )
 
     private val supportedCodes = languages.map { it.code }.toSet()

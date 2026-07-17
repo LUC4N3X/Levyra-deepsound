@@ -209,6 +209,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -266,6 +267,7 @@ import com.luc4n3x.levyra.domain.PulseArtist
 import com.luc4n3x.levyra.domain.ExploreCatalog
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.Mood
+import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
@@ -768,6 +770,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
     val state by viewModel.state.collectAsStateWithLifecycle()
     val currentStrings = LevyraStrings.forCode(state.languageCode)
+    val layoutDirection = if (currentStrings.code == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
     LaunchedEffect(state.isVideoMode, state.isPlaying) {
         val currentPipState = LevyraPipBridge.current()
         LevyraPipBridge.updatePlayback(
@@ -877,7 +880,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     }
     CompositionLocalProvider(
         LocalAnimationsEnabled provides state.animationsEnabled,
-        LocalLevyraStrings provides LevyraStrings.forCode(state.languageCode)
+        LocalLevyraStrings provides currentStrings,
+        LocalLayoutDirection provides layoutDirection
     ) {
         Box(
             modifier = Modifier
@@ -985,7 +989,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
 
             AnimatedVisibility(visible = state.showOnboarding, enter = overlayEnter, exit = overlayExit) {
                 if (state.showOnboarding) {
-                    OnboardingOverlay(tastes = state.tastes, selectedLanguageCode = state.languageCode, onDone = viewModel::completeOnboarding)
+                    OnboardingOverlay(selectedLanguageCode = state.languageCode, onDone = viewModel::completeOnboarding)
                 }
             }
 
@@ -9448,21 +9452,25 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 }
 
 @Composable
-private fun OnboardingOverlay(tastes: List<Taste>, selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
+private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
     val currentLocale = LocalLocale.current.platformLocale
     var selected by remember { mutableStateOf(setOf<String>()) }
     var name by remember { mutableStateOf("") }
     var step by remember { mutableStateOf(OnboardingStep.Language) }
     var languageCode by remember(selectedLanguageCode) { mutableStateOf(LevyraLanguageCatalog.normalize(selectedLanguageCode)) }
+    val moodEngine = remember { MoodEngine() }
+    val tastes = remember(languageCode) { moodEngine.tastesForLanguage(languageCode) }
     val strings = LevyraStrings.forCode(languageCode)
     val blocker = remember { MutableInteractionSource() }
     val primaryEnabled = onboardingPrimaryEnabled(step, selected.size)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF030304))
-            .clickable(interactionSource = blocker, indication = null) {}
-    ) {
+    val layoutDirection = if (languageCode == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
+    CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF030304))
+                .clickable(interactionSource = blocker, indication = null) {}
+        ) {
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -9537,6 +9545,7 @@ private fun OnboardingOverlay(tastes: List<Taste>, selectedLanguageCode: String,
             )
         }
     }
+}
 }
 
 @Composable

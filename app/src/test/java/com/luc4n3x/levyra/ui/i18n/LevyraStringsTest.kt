@@ -103,6 +103,25 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun arabicFewPluralUsesModuloOneHundredAcrossFormatters() {
+        val strings = LevyraStrings.forCode("ar")
+        val cases = listOf(
+            3 to listOf("3 مقاطع", "تم تنزيل 3 مقاطع", "تم حفظ 3 مقاطع", "3 نتائج"),
+            10 to listOf("10 مقاطع", "تم تنزيل 10 مقاطع", "تم حفظ 10 مقاطع", "10 نتائج"),
+            11 to listOf("11 مقطعًا", "تم تنزيل 11 مقطعًا", "تم حفظ 11 مقطعًا", "11 نتيجة"),
+            103 to listOf("103 مقاطع", "تم تنزيل 103 مقاطع", "تم حفظ 103 مقاطع", "103 نتائج"),
+            111 to listOf("111 مقطعًا", "تم تنزيل 111 مقطعًا", "تم حفظ 111 مقطعًا", "111 نتيجة")
+        )
+
+        cases.forEach { (value, expected) ->
+            assertEquals(expected[0], strings.formatTrackCount(value))
+            assertEquals(expected[1], strings.formatDownloadedTrackCount(value))
+            assertEquals(expected[2], strings.formatSavedTrackCount(value))
+            assertEquals(expected[3], strings.formatSearchResults(value))
+        }
+    }
+
+    @Test
     fun onboardingAndArtistHeadingsDoNotUseDecorativeEmoji() {
         LevyraStrings.all().forEach { strings ->
             listOf(strings.welcomeBadge, strings.popularTracks, strings.singlesAndEps).forEach { heading ->
