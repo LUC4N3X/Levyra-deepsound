@@ -76,6 +76,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -435,7 +436,12 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         label = "tab-icon-tint"
     )
     val labelTint by animateColorAsState(
-        targetValue = if (selected) LevyraNavigationBlue else if (LevyraIsLight) LevyraMuted else Color(0xFF8B8B94),
+        targetValue = when {
+            selected && LevyraIsLight -> LevyraNavigationBlueDeep
+            selected -> LevyraNavigationBlue
+            LevyraIsLight -> LevyraMuted
+            else -> Color(0xFF8B8B94)
+        },
         animationSpec = tween(220),
         label = "tab-label-tint"
     )
@@ -1678,14 +1684,19 @@ private fun AlbumPrimaryPlayButton(
     val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
     val cornerRadius = if (isAppleStyle) 12.dp else 16.dp
     val buttonShape = RoundedCornerShape(cornerRadius)
+    val safeGradient = remember(accentStart, accentEnd) {
+        playerContrastGradient(accentStart, accentEnd, PlayerMinimumContrast)
+    }
+    val enabledContent = safeGradient.content
+    val disabledContent = LevyraMuted
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
-            .shadow(if (enabled) 16.dp else 0.dp, buttonShape, clip = false, spotColor = accentStart.copy(alpha = 0.6f))
+            .shadow(if (enabled) 16.dp else 0.dp, buttonShape, clip = false, spotColor = safeGradient.start.copy(alpha = 0.6f))
             .clip(buttonShape)
             .background(
-                if (enabled) Brush.horizontalGradient(listOf(accentStart, accentEnd))
+                if (enabled) Brush.horizontalGradient(listOf(safeGradient.start, safeGradient.end))
                 else Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f)))
             )
             .pressable(enabled = enabled && !isResolving, onClick = onClick),
@@ -1693,13 +1704,22 @@ private fun AlbumPrimaryPlayButton(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (isResolving) {
-                CircularProgressIndicator(color = LevyraBlack, strokeWidth = 2.5.dp, modifier = Modifier.size(22.dp))
+                CircularProgressIndicator(
+                    color = if (enabled) enabledContent else disabledContent,
+                    strokeWidth = 2.5.dp,
+                    modifier = Modifier.size(22.dp)
+                )
             } else {
-                Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = if (enabled) LevyraBlack else LevyraMuted, modifier = Modifier.size(26.dp))
+                Icon(
+                    if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    null,
+                    tint = if (enabled) enabledContent else disabledContent,
+                    modifier = Modifier.size(26.dp)
+                )
             }
             Text(
                 if (isPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play,
-                color = if (enabled) LevyraBlack else LevyraMuted,
+                color = if (enabled) enabledContent else disabledContent,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.3).sp
@@ -5598,24 +5618,18 @@ private fun ContinueListeningCard(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    val fontScale = LocalDensity.current.fontScale
-    val cardHeight = when {
-        fontScale >= 1.4f -> 116.dp
-        fontScale >= 1.15f -> 108.dp
-        else -> 100.dp
-    }
     Surface(
         color = Color.Transparent,
         shape = RoundedCornerShape(20.dp),
         border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
         modifier = Modifier
             .fillMaxWidth()
-            .height(cardHeight)
+            .heightIn(min = 100.dp)
             .pressable(onClick = onResume)
     ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .background(cinematicGlassBrush(accentStart, accentEnd, 0.24f))
         ) {
             Box(
@@ -5631,7 +5645,7 @@ private fun ContinueListeningCard(
             )
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -5645,9 +5659,7 @@ private fun ContinueListeningCard(
                     highRes = false
                 )
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
                 ) {
                     Row(
