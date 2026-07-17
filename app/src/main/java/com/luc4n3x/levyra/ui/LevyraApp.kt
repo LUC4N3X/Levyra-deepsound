@@ -291,6 +291,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
+import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
 import com.luc4n3x.levyra.viewmodel.LevyraScreenViewModelFactory
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
@@ -908,8 +909,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (tab) {
                         LevyraTab.Home -> {
-                            val screenState by homeViewModel.state.collectAsStateWithLifecycle()
-                            HomeScreen(homeViewModel, screenState)
+                            val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
+                            HomeScreen(homeViewModel, renderSnapshot)
                         }
                         LevyraTab.Search -> {
                             val screenState by searchViewModel.state.collectAsStateWithLifecycle()
@@ -4134,11 +4135,12 @@ internal fun homeSectionLazyKey(
 }
 
 @Composable
-private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
+private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnapshot) {
+    val state = renderSnapshot.state
+    val homeDerivedState = renderSnapshot.derived
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    val homeDerivedState by viewModel.derivedState.collectAsStateWithLifecycle()
     LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
         viewModel.refreshHomeArtists()
     }
@@ -12886,9 +12888,9 @@ private fun SearchSummary(state: LevyraUiState) {
 
 @Composable
 private fun StatusBlock(state: LevyraUiState) {
-    if (state.searchError != null || state.playerError != null) {
+    if (state.homeError != null || state.playerError != null) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            state.searchError?.let { GlassMessage(it, LevyraOrange) }
+            state.homeError?.let { GlassMessage(it, LevyraOrange) }
             state.playerError?.let { GlassMessage(it, LevyraOrange) }
         }
     }
