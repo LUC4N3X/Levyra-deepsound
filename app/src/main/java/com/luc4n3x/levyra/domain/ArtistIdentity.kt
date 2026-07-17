@@ -30,6 +30,38 @@ internal fun primaryArtistSegment(value: String): String {
     }
 }
 
+internal fun isArtistShelfNameEligible(value: String): Boolean {
+    val primary = primaryArtistSegment(value).ifBlank { value.trim() }
+    val key = artistIdentityKey(primary)
+    if (key.length < 2) return false
+    val blockedPhrases = listOf(
+        "youtube music",
+        "various artists",
+        "artisti vari",
+        "playlist",
+        "official playlist",
+        "music playlist",
+        "musica italiana",
+        "music italiana",
+        "canzoni sanremo",
+        "canzoni italiane",
+        "hit canzoni",
+        "top hits",
+        "top 50",
+        "top 100",
+        "classifica",
+        "compilation",
+        "karaoke",
+        "subscribe",
+        "radio station"
+    )
+    if (blockedPhrases.any(key::contains)) return false
+    if (key.startsWith("topsify ")) return false
+    if (key.endsWith(" mix") || key.endsWith(" playlist") || key.endsWith(" chart") || key.endsWith(" charts")) return false
+    if (Regex("\\b(?:19|20)\\d{2}\\b").containsMatchIn(key) && listOf("hit", "canzoni", "mix", "top", "classifica").any(key::contains)) return false
+    return true
+}
+
 internal fun artistSearchMatchScore(query: String, candidate: String): Int {
     val queryKey = artistIdentityKey(query)
     val candidateKey = artistIdentityKey(candidate)
