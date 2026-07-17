@@ -94,6 +94,31 @@ internal fun parseArtistHeaderArtwork(header: JSONObject?): ArtistHeaderArtwork 
 }
 
 
+internal fun selectExactArtistPortrait(root: JSONObject, artistName: String): String {
+    val data = root.optJSONArray("data") ?: return ""
+    val expectedIdentity = artistIdentityKey(artistName)
+    var bestUrl = ""
+    var bestFans = Long.MIN_VALUE
+    for (index in 0 until data.length()) {
+        val item = data.optJSONObject(index) ?: continue
+        val resolvedName = item.optString("name").trim()
+        if (artistIdentityKey(resolvedName) != expectedIdentity) continue
+        val url = sequenceOf(
+            item.optString("picture_xl"),
+            item.optString("picture_big"),
+            item.optString("picture_medium"),
+            item.optString("picture")
+        ).firstOrNull { it.startsWith("https://") }.orEmpty()
+        if (url.isBlank()) continue
+        val fans = item.optLong("nb_fan", 0L)
+        if (fans >= bestFans) {
+            bestFans = fans
+            bestUrl = url
+        }
+    }
+    return bestUrl
+}
+
 internal fun extractOfficialMonthlyListeners(header: JSONObject?): String {
     fun textFrom(renderer: JSONObject?): String {
         renderer ?: return ""
@@ -123,11 +148,17 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val preferences = context?.applicationContext?.let { LevyraPreferences(it) }
     private val memory = ConcurrentHashMap<String, ArtistProfile>()
     private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
+    private val artistPortraitMemory = ConcurrentHashMap<String, String>()
+    private val artistPortraitMissMemory = ConcurrentHashMap<String, Long>()
+    private val artistPortraitPreferences = context?.applicationContext
+        ?.getSharedPreferences("levyra_artist_portraits", Context.MODE_PRIVATE)
 
     private fun profileBrowseKey(browseId: String): String = "browse:${browseId.trim().lowercase(Locale.ROOT)}"
 
     private companion object {
         const val MAX_RELEASE_PAGES = 8
+        const val ARTIST_PORTRAIT_CACHE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
+        const val ARTIST_PORTRAIT_MISS_TTL_MS = 24L * 60L * 60L * 1_000L
         val ALBUM_SECTION_WORDS = setOf("album", "albums", "álbum", "álbumes", "alben", "albumi", "альбом", "альбомы", "アルバム", "앨범")
         val SINGLE_SECTION_WORDS = setOf("single", "singles", "singol", "singoli", "sencillo", "sencillos", "ep", "eps")
         val VIDEO_SECTION_WORDS = setOf("video", "videos", "vídeo", "vídeos", "clip", "clips", "videoclip", "music video")
@@ -180,6 +211,59 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         resolved?.also { hit ->
             artistHitMemory[cacheKey] = hit
             artistHitMemory[artistIdentityKey(hit.name)] = hit
+        }
+    }
+
+
+    suspend fun artistShelfHit(
+        browseId: String,
+        artistName: String
+    ): ArtistHit? = withContext(Dispatchers.IO) {
+        val requestedName = primaryArtistSegment(artistName)
+            .ifBlank { artistName.trim() }
+            .cleanAlbumArtistLabel()
+        if (requestedName.length < 2 || !isArtistShelfNameEligible(requestedName)) return@withContext null
+        val cacheKey = artistIdentityKey(requestedName)
+        val cachedPortrait = cachedVerifiedArtistPortrait(requestedName)
+        artistHitMemory[cacheKey]
+            ?.takeIf { it.officialArtwork && cachedPortrait.isNotBlank() }
+            ?.let { cached -> return@withContext cached.copy(thumbnailUrl = cachedPortrait) }
+
+        coroutineScope {
+            val portraitJob = async(Dispatchers.IO) {
+                resolveVerifiedArtistPortrait(requestedName, allowWikipedia = true)
+            }
+            val candidate = if (browseId.isNotBlank()) {
+                ArtistHit(
+                    name = requestedName,
+                    subscribers = "",
+                    thumbnailUrl = "",
+                    accentStart = 0,
+                    accentEnd = 0,
+                    browseId = browseId.trim()
+                )
+            } else {
+                findArtistSearchCandidate(requestedName)
+            } ?: return@coroutineScope null
+
+            if (!artistNameMatches(requestedName, candidate.name)) return@coroutineScope null
+            val portrait = portraitJob.await()
+            if (portrait.isBlank()) return@coroutineScope null
+            val resolvedName = candidate.name.ifBlank { requestedName }
+            val accent = palette(stableSeed(candidate.browseId + resolvedName))
+            ArtistHit(
+                name = resolvedName,
+                subscribers = candidate.subscribers,
+                thumbnailUrl = upgradeThumbnail(portrait),
+                accentStart = accent.first,
+                accentEnd = accent.second,
+                browseId = candidate.browseId,
+                officialArtwork = true
+            ).also { resolved ->
+                artistHitMemory[cacheKey] = resolved
+                artistHitMemory[artistIdentityKey(resolved.name)] = resolved
+                artistHitMemory["browse:${resolved.browseId.lowercase(Locale.ROOT)}"] = resolved
+            }
         }
     }
 
@@ -361,29 +445,36 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private suspend fun verifyArtistCandidate(
         candidate: ArtistHit,
         requestedName: String
-    ): ArtistHit? {
+    ): ArtistHit? = coroutineScope {
         val browseId = candidate.browseId.trim()
-        if (browseId.isBlank()) return null
-        val root = runCatching { postBrowseFast(browseId) }.getOrNull() ?: return null
-        val header = root.optJSONObject("header") ?: return null
-        if (!isArtistPageHeader(header)) return null
+        if (browseId.isBlank()) return@coroutineScope null
+        val portraitJob = async(Dispatchers.IO) {
+            resolveVerifiedArtistPortrait(requestedName, allowWikipedia = false)
+        }
+        val root = runCatching { postBrowseFast(browseId) }.getOrNull()
+            ?: return@coroutineScope null
+        val header = root.optJSONObject("header") ?: return@coroutineScope null
+        if (!isArtistPageHeader(header)) return@coroutineScope null
         val resolvedName = headerText(header).trim().ifBlank { candidate.name.trim() }
         if (
             resolvedName.isBlank() ||
             !artistNameMatches(requestedName, resolvedName) ||
             !isArtistShelfNameEligible(resolvedName)
-        ) return null
+        ) return@coroutineScope null
 
         val headerArtwork = parseArtistHeaderArtwork(header)
+        val verifiedPortrait = portraitJob.await()
         val thumbnail = upgradeThumbnail(
-            chooseVerifiedArtistShelfThumbnail(
-                searchThumbnailUrl = candidate.thumbnailUrl,
-                headerPortraitUrl = headerArtwork.portraitUrl
-            )
+            verifiedPortrait.ifBlank {
+                chooseVerifiedArtistShelfThumbnail(
+                    searchThumbnailUrl = candidate.thumbnailUrl,
+                    headerPortraitUrl = headerArtwork.portraitUrl
+                )
+            }
         )
-        if (thumbnail.isBlank()) return null
+        if (thumbnail.isBlank()) return@coroutineScope null
         val accent = palette(stableSeed(browseId + resolvedName))
-        return ArtistHit(
+        ArtistHit(
             name = resolvedName,
             subscribers = extractSubscribers(header).ifBlank { candidate.subscribers },
             thumbnailUrl = thumbnail,
@@ -444,32 +535,39 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                     }?.thumbnailUrl.orEmpty()
                 }.getOrDefault("")
             }
-        val thumb = upgradeThumbnail(
-            chooseVerifiedArtistShelfThumbnail(
-                searchThumbnailUrl = searchPortrait,
-                headerPortraitUrl = artwork.portraitUrl
-            )
-        )
-        val banner = artwork.bannerUrl
         val songsPointer = findSongsPointer(root)
         val albumPointer = findReleasePointer(root, "Album")
         val singlePointer = findReleasePointer(root, "Singol")
         val videoPointer = findVideoPointer(root)
         val initialSongs = extractTopSongs(root)
-        val expanded = coroutineScope {
+        val enriched = coroutineScope {
             val songsJob = async { songsPointer?.let(::fetchSongs).orEmpty() }
             val albumsJob = async { albumPointer?.let(::fetchReleases).orEmpty() }
             val singlesJob = async { singlePointer?.let(::fetchReleases).orEmpty() }
             val videosJob = async { videoPointer?.let { fetchVideos(it, name) }.orEmpty() }
             val bioJob = async { inlineBio.ifBlank { fetchExternalBiography(name) } }
+            val portraitJob = async {
+                resolveVerifiedArtistPortrait(name, allowWikipedia = true)
+            }
             ArtistExpandedSections(
                 songs = songsJob.await(),
                 albums = albumsJob.await(),
                 singles = singlesJob.await(),
                 videos = videosJob.await(),
                 bio = bioJob.await()
-            )
+            ) to portraitJob.await()
         }
+        val expanded = enriched.first
+        val verifiedPortrait = enriched.second
+        val thumb = upgradeThumbnail(
+            verifiedPortrait.ifBlank {
+                chooseVerifiedArtistShelfThumbnail(
+                    searchThumbnailUrl = searchPortrait,
+                    headerPortraitUrl = artwork.portraitUrl
+                )
+            }
+        )
+        val banner = verifiedPortrait.ifBlank { artwork.bannerUrl }
         val songs = (initialSongs + expanded.songs).distinctBy { it.id }.take(100)
         val albums = mergeReleases(extractReleases(root, "Album"), expanded.albums)
         val singles = mergeReleases(extractReleases(root, "Singol"), expanded.singles)
@@ -631,6 +729,139 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return headerText.orEmpty()
     }
 
+    private fun portraitKey(artistName: String): String {
+        return artistIdentityKey(artistName).ifBlank { artistName.trim().lowercase(Locale.ROOT) }
+    }
+
+    private fun portraitStorageKey(prefix: String, artistName: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(portraitKey(artistName).toByteArray(StandardCharsets.UTF_8))
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+        return "${prefix}_${digest.take(24)}"
+    }
+
+    private fun cachedVerifiedArtistPortrait(artistName: String): String {
+        val identity = portraitKey(artistName)
+        artistPortraitMemory[identity]?.let { return it }
+        val now = System.currentTimeMillis()
+        val missAt = artistPortraitMissMemory[identity]
+            ?: artistPortraitPreferences?.getLong(portraitStorageKey("miss", artistName), 0L)
+            ?: 0L
+        if (missAt > 0L && now - missAt < ARTIST_PORTRAIT_MISS_TTL_MS) return ""
+        val storedAt = artistPortraitPreferences
+            ?.getLong(portraitStorageKey("time", artistName), 0L)
+            ?: 0L
+        val storedUrl = artistPortraitPreferences
+            ?.getString(portraitStorageKey("url", artistName), null)
+            .orEmpty()
+            .trim()
+        if (storedUrl.isNotBlank() && now - storedAt < ARTIST_PORTRAIT_CACHE_TTL_MS) {
+            artistPortraitMemory[identity] = storedUrl
+            return storedUrl
+        }
+        return ""
+    }
+
+    private fun hasFreshPortraitMiss(artistName: String): Boolean {
+        val identity = portraitKey(artistName)
+        val now = System.currentTimeMillis()
+        val missAt = artistPortraitMissMemory[identity]
+            ?: artistPortraitPreferences?.getLong(portraitStorageKey("miss", artistName), 0L)
+            ?: 0L
+        if (missAt <= 0L || now - missAt >= ARTIST_PORTRAIT_MISS_TTL_MS) return false
+        artistPortraitMissMemory[identity] = missAt
+        return true
+    }
+
+    private fun storeVerifiedArtistPortrait(artistName: String, url: String) {
+        val identity = portraitKey(artistName)
+        val cleanUrl = url.trim()
+        val now = System.currentTimeMillis()
+        if (cleanUrl.isBlank()) {
+            artistPortraitMissMemory[identity] = now
+            artistPortraitPreferences?.edit()
+                ?.putLong(portraitStorageKey("miss", artistName), now)
+                ?.apply()
+            return
+        }
+        artistPortraitMemory[identity] = cleanUrl
+        artistPortraitMissMemory.remove(identity)
+        artistPortraitPreferences?.edit()
+            ?.putString(portraitStorageKey("url", artistName), cleanUrl)
+            ?.putLong(portraitStorageKey("time", artistName), now)
+            ?.remove(portraitStorageKey("miss", artistName))
+            ?.apply()
+    }
+
+    private suspend fun resolveVerifiedArtistPortrait(
+        artistName: String,
+        allowWikipedia: Boolean
+    ): String = withContext(Dispatchers.IO) {
+        val cleanName = artistName.trim()
+        if (cleanName.length < 2) return@withContext ""
+        cachedVerifiedArtistPortrait(cleanName).takeIf { it.isNotBlank() }?.let {
+            return@withContext it
+        }
+        if (hasFreshPortraitMiss(cleanName)) return@withContext ""
+        val deezerPortrait = runCatching { fetchDeezerArtistPortrait(cleanName) }.getOrDefault("")
+        val resolved = deezerPortrait.ifBlank {
+            if (allowWikipedia) {
+                runCatching { fetchWikipediaArtistPortrait(cleanName, wikipediaLanguage(contentLanguage())) }
+                    .getOrDefault("")
+                    .ifBlank {
+                        runCatching { fetchWikipediaArtistPortrait(cleanName, "en") }.getOrDefault("")
+                    }
+            } else {
+                ""
+            }
+        }
+        if (resolved.isNotBlank() || allowWikipedia) {
+            storeVerifiedArtistPortrait(cleanName, resolved)
+        }
+        resolved
+    }
+
+    private fun fetchDeezerArtistPortrait(artistName: String): String {
+        val query = URLEncoder.encode("artist:\"$artistName\"", StandardCharsets.UTF_8.name())
+        val endpoint = "https://api.deezer.com/search/artist?q=$query&limit=8"
+        val root = getJson(endpoint, connectTimeoutMs = 1_600, readTimeoutMs = 2_400)
+        return selectExactArtistPortrait(root, artistName)
+    }
+
+    private fun fetchWikipediaArtistPortrait(artistName: String, language: String): String {
+        val query = URLEncoder.encode("$artistName music artist", StandardCharsets.UTF_8.name())
+        val endpoint = "https://$language.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=$query&gsrnamespace=0&gsrlimit=6&prop=extracts%7Cpageimages&exintro=1&explaintext=1&piprop=original%7Cthumbnail&pithumbsize=1200&redirects=1&format=json&formatversion=2"
+        val root = getJson(endpoint, connectTimeoutMs = 1_800, readTimeoutMs = 2_800)
+        val pages = root.optJSONObject("query")?.optJSONArray("pages") ?: return ""
+        var bestUrl = ""
+        var bestScore = Int.MIN_VALUE
+        for (index in 0 until pages.length()) {
+            val page = pages.optJSONObject(index) ?: continue
+            val title = page.optString("title").trim()
+            val extract = cleanBiography(page.optString("extract"))
+            if (title.isBlank() || extract.length < 80 || isDisambiguationBiography(extract)) continue
+            val baseTitle = title.substringBefore(" (").trim()
+            if (artistIdentityKey(baseTitle) != artistIdentityKey(artistName)) continue
+            val normalizedIntro = extract.lowercase(Locale.ROOT).take(600)
+            val parenthetical = title.substringAfter("(", "").substringBeforeLast(")", "").lowercase(Locale.ROOT)
+            if (BIOGRAPHY_NON_ARTIST_TITLE_TERMS.any { term -> parenthetical.contains(term) }) continue
+            val hasMusicRole = BIOGRAPHY_MUSIC_TERMS.any { term -> normalizedIntro.contains(term) } ||
+                BIOGRAPHY_TITLE_TERMS.any { term -> title.lowercase(Locale.ROOT).contains(term) }
+            if (!hasMusicRole) continue
+            val url = page.optJSONObject("original")?.optString("source").orEmpty()
+                .ifBlank { page.optJSONObject("thumbnail")?.optString("source").orEmpty() }
+            if (url.isBlank()) continue
+            var score = 1_000
+            if (BIOGRAPHY_TITLE_TERMS.any { term -> parenthetical.contains(term) }) score += 300
+            if (normalizedIntro.startsWith(artistName.lowercase(Locale.ROOT))) score += 200
+            if (score > bestScore) {
+                bestScore = score
+                bestUrl = url
+            }
+        }
+        return bestUrl
+    }
+
     private suspend fun fetchExternalBiography(artistName: String): String = coroutineScope {
         val cleanName = artistName.trim()
         if (cleanName.length < 2) return@coroutineScope ""
@@ -678,11 +909,15 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return bestText.takeIf { bestScore >= 1_000 }.orEmpty()
     }
 
-    private fun getJson(endpoint: String): JSONObject {
+    private fun getJson(
+        endpoint: String,
+        connectTimeoutMs: Int = 5_000,
+        readTimeoutMs: Int = 7_000
+    ): JSONObject {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
-            connectTimeout = 5_000
-            readTimeout = 7_000
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Accept-Language", contentLanguage())
             setRequestProperty("User-Agent", "Levyra/${BuildConfig.VERSION_NAME} Android music client")
