@@ -148,6 +148,46 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         }
     }
 
+    suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
+        val cleanBrowseId = browseId.trim()
+        val cleanName = fallbackName.trim()
+        if (cleanBrowseId.isBlank() || cleanName.length < 2) return@withContext null
+        val browseCacheKey = "browse:${cleanBrowseId.lowercase(Locale.ROOT)}"
+        artistHitMemory[browseCacheKey]?.let { return@withContext it }
+        memory[artistIdentityKey(cleanName)]
+            ?.takeIf { it.browseId.equals(cleanBrowseId, ignoreCase = true) && it.thumbnailUrl.isNotBlank() }
+            ?.let { profile ->
+                val hit = ArtistHit(
+                    name = profile.name,
+                    subscribers = profile.subscribers,
+                    thumbnailUrl = profile.thumbnailUrl,
+                    accentStart = profile.accentStart,
+                    accentEnd = profile.accentEnd,
+                    browseId = profile.browseId
+                )
+                artistHitMemory[browseCacheKey] = hit
+                return@withContext hit
+            }
+        val root = runCatching { postBrowse(cleanBrowseId) }.getOrNull() ?: return@withContext null
+        val header = root.optJSONObject("header") ?: return@withContext null
+        val resolvedName = headerText(header)
+        if (resolvedName.isBlank() || artistIdentityKey(resolvedName) != artistIdentityKey(cleanName)) return@withContext null
+        val artwork = parseArtistHeaderArtwork(header)
+        val portrait = upgradeThumbnail(artwork.portraitUrl)
+        if (portrait.isBlank()) return@withContext null
+        val accent = palette(stableSeed(cleanBrowseId + resolvedName))
+        val hit = ArtistHit(
+            name = resolvedName,
+            subscribers = extractSubscribers(header),
+            thumbnailUrl = portrait,
+            accentStart = accent.first,
+            accentEnd = accent.second,
+            browseId = cleanBrowseId
+        )
+        artistHitMemory[browseCacheKey] = hit
+        hit
+    }
+
     suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
         if (browseId.isBlank()) return@withContext profileFor(fallbackName)
         val cacheKey = artistIdentityKey(fallbackName)
