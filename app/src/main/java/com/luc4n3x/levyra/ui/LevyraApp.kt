@@ -4346,14 +4346,17 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
                 }
             }
         }
-        if (state.interfaceSettings.showTrendingArtists) {
+        if (
+            state.interfaceSettings.showTrendingArtists &&
+            (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
+        ) {
             item(key = "home-trending-artists", contentType = "home-shelf") {
                 if (state.homeArtists.isNotEmpty()) {
                     TrendingArtistsShelf(
                         artists = state.homeArtists,
                         onArtistClick = viewModel::openArtistFromHit
                     )
-                } else {
+                } else if (state.homeArtistsLoading) {
                     TrendingArtistsLoadingShelf()
                 }
             }
