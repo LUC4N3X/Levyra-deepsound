@@ -4369,11 +4369,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             item(key = "home-trending-artists", contentType = "home-shelf") {
                 TrendingArtistsShelf(
                     artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
-                    loadingSlots = if (state.homeArtistsLoading) {
-                        (HOME_ARTIST_SHELF_SIZE - state.homeArtists.size).coerceAtLeast(0)
-                    } else {
-                        0
-                    },
+                    loadingSlots = if (state.homeArtists.isEmpty() && state.homeArtistsLoading) HOME_ARTIST_SHELF_SIZE else 0,
                     onArtistClick = viewModel::openArtistFromHit
                 )
             }
