@@ -22,7 +22,7 @@ class HomeSectionLazyKeyTest {
     }
 
     @Test
-    fun keyUsesOnlyTheLeadingThreeTrackIds() {
+    fun contentRefreshDoesNotChangeSectionKey() {
         val first = homeSectionLazyKey(
             position = 2,
             title = "For You",
@@ -31,7 +31,7 @@ class HomeSectionLazyKeyTest {
         val second = homeSectionLazyKey(
             position = 2,
             title = "For You",
-            trackIds = listOf("a", "b", "c", "e")
+            trackIds = listOf("x", "y", "z", "w")
         )
 
         assertEquals(first, second)
