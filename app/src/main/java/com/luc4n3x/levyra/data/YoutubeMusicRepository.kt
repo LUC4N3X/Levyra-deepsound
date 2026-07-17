@@ -72,42 +72,42 @@ private data class ScoredAlbumRecommendation(
     val score: Int
 )
 
-internal const val REJECTED_ALBUM_RECOMMENDATION_SCORE = Int.MIN_VALUE
+internal const val LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE = Int.MIN_VALUE
 
-internal fun albumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {
+internal fun levyraAlbumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {
     val albumKey = albumRecommendationTextKey(album.title)
     val artistKey = albumRecommendationTextKey(album.artist)
     val seedAlbumKey = albumRecommendationTextKey(seed.album)
     val seedArtistKey = albumRecommendationTextKey(seed.artist)
-    if (albumKey.isBlank() || artistKey.isBlank()) return REJECTED_ALBUM_RECOMMENDATION_SCORE
+    if (albumKey.isBlank() || artistKey.isBlank()) return LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 
     val seedArtistTokens = recommendationTokens(seedArtistKey)
     val artistCompatibility = recommendationCompatibility(artistKey, seedArtistKey)
     val artistScore = when {
         seedArtistKey.isBlank() -> 0
         artistKey == seedArtistKey -> 520
-        seedArtistTokens.size == 1 -> REJECTED_ALBUM_RECOMMENDATION_SCORE
+        seedArtistTokens.size == 1 -> LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
         artistCompatibility >= 0.75 -> 380
         artistCompatibility >= 0.55 -> 240
-        else -> REJECTED_ALBUM_RECOMMENDATION_SCORE
+        else -> LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
     }
-    if (artistScore == REJECTED_ALBUM_RECOMMENDATION_SCORE) return artistScore
+    if (artistScore == LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE) return artistScore
 
     if (seedAlbumKey.isNotBlank()) {
         val titleScore = when {
             albumKey == seedAlbumKey -> 640
             recommendationCompatibility(albumKey, seedAlbumKey) >= 0.82 -> 460
-            else -> REJECTED_ALBUM_RECOMMENDATION_SCORE
+            else -> LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
         }
-        if (titleScore == REJECTED_ALBUM_RECOMMENDATION_SCORE) return titleScore
-        if (seedArtistKey.isNotBlank() && artistScore < 240) return REJECTED_ALBUM_RECOMMENDATION_SCORE
+        if (titleScore == LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE) return titleScore
+        if (seedArtistKey.isNotBlank() && artistScore < 240) return LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
         return 900 + titleScore + artistScore
     }
 
     if (seedArtistKey.isNotBlank()) return 520 + artistScore
 
     val moodKeys = seed.moodTags.map(::albumRecommendationTextKey).filter { it.isNotBlank() }
-    if (moodKeys.isEmpty()) return REJECTED_ALBUM_RECOMMENDATION_SCORE
+    if (moodKeys.isEmpty()) return LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
     val searchable = "$albumKey $artistKey"
     val moodMatches = moodKeys.count { mood ->
         val tokens = recommendationTokens(mood)
@@ -351,8 +351,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                             runCatching {
                                 searchAlbumHits(seed.query, languageCode, ALBUM_RESULTS_PER_SEED)
                                     .mapIndexedNotNull { index, album ->
-                                        val matchScore = albumRecommendationMatchScore(album, seed)
-                                        if (matchScore == REJECTED_ALBUM_RECOMMENDATION_SCORE) null
+                                        val matchScore = levyraAlbumRecommendationMatchScore(album, seed)
+                                        if (matchScore == LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE) null
                                         else ScoredAlbumRecommendation(
                                             album = album,
                                             score = seed.weight + matchScore - index * ALBUM_RESULT_RANK_PENALTY
