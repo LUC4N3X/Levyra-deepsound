@@ -269,6 +269,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var homeAlbumsJob: Job? = null
     private var homeArtistsJob: Job? = null
     private var homeArtistsFingerprint: String = ""
+    @Volatile private var deferredHomeArtistsSnapshot: List<ArtistHit>? = null
     private var radarJob: Job? = null
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
@@ -635,67 +636,92 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeSections = snapshot.homeSections,
             charts = snapshot.charts,
             personalOrbit = snapshot.personalOrbitTracks,
-            homeArtists = snapshot.homeArtists
+            homeArtists = deferredHomeArtistsSnapshot ?: snapshot.homeArtists
         )
     }
 
     fun refreshHomeArtists() {
-        val snapshot = _state.value
-        val candidates = buildList {
-            addAll(snapshot.charts)
-            addAll(snapshot.homeSections.flatMap { it.tracks })
-        }
-            .asSequence()
-            .mapNotNull { track ->
-                val browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
-                if (browseId.isBlank()) return@mapNotNull null
-                val primaryName = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
-                HomeArtistCandidate(name = primaryName, browseId = browseId)
-            }
-            .filter { it.name.length >= 2 && isArtistShelfNameEligible(it.name) }
-            .filterNot {
-                it.name.equals("YouTube", ignoreCase = true) ||
-                    it.name.equals("YouTube Music", ignoreCase = true)
-            }
-            .distinctBy { candidate -> candidate.browseId.lowercase() }
-            .take(8)
-            .toList()
-
-        val fingerprint = buildString {
-            append(snapshot.languageCode)
-            append('|')
-            append(candidates.joinToString("|") { candidate -> "${candidate.browseId.lowercase()}:${artistIdentityKey(candidate.name)}" })
-        }
-
-        if (candidates.isEmpty()) {
-            homeArtistsFingerprint = fingerprint
-            homeArtistsJob?.cancel()
-            _state.update { current ->
-                if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
-            }
-            return
-        }
-
-        if (fingerprint == homeArtistsFingerprint && snapshot.homeArtists.isNotEmpty()) return
-        homeArtistsFingerprint = fingerprint
+        val startupSnapshot = _state.value
         homeArtistsJob?.cancel()
-
-        val hadCachedArtists = snapshot.homeArtists.isNotEmpty()
-        if (!hadCachedArtists) {
-            _state.update { current ->
-                if (current.homeArtistsLoading) current else current.copy(homeArtistsLoading = true)
-            }
-        }
-
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(220L)
-            awaitHomeUiIdle()
-            val semaphore = Semaphore(3)
+            val rankedHistory = listeningPulseStore.personalizedArtists(limit = 16)
+            val candidates = LinkedHashMap<String, HomeArtistCandidate>()
+
+            rankedHistory.forEach { ranked ->
+                val browseId = ranked.browseId.trim()
+                val name = primaryArtistSegment(ranked.name).ifBlank { ranked.name.trim() }
+                if (browseId.isNotBlank() && name.length >= 2 && isArtistShelfNameEligible(name)) {
+                    candidates.putIfAbsent(browseId.lowercase(), HomeArtistCandidate(name, browseId))
+                }
+            }
+
+            val localSignals = buildList {
+                addAll(startupSnapshot.recentListens)
+                addAll(startupSnapshot.personalOrbitTracks)
+                addAll(startupSnapshot.favorites)
+            }
+            localSignals.forEach { track ->
+                val browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
+                val name = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
+                if (browseId.isNotBlank() && name.length >= 2 && isArtistShelfNameEligible(name)) {
+                    candidates.putIfAbsent(browseId.lowercase(), HomeArtistCandidate(name, browseId))
+                }
+            }
+
+            val orderedCandidates = candidates.values.take(10)
+            val fingerprint = buildString {
+                append(startupSnapshot.languageCode)
+                append('|')
+                append(orderedCandidates.joinToString("|") { candidate ->
+                    "${candidate.browseId.lowercase()}:${artistIdentityKey(candidate.name)}"
+                })
+            }
+
+            if (orderedCandidates.isEmpty()) {
+                homeArtistsFingerprint = fingerprint
+                _state.update { current ->
+                    if (current.homeArtists.isNotEmpty() || !current.homeArtistsLoading) current
+                    else current.copy(homeArtistsLoading = false)
+                }
+                return@launch
+            }
+
+            val visibleArtists = startupSnapshot.homeArtists
+            val visibleIds = visibleArtists.map { it.browseId.lowercase() }
+            val candidateIds = orderedCandidates.map { it.browseId.lowercase() }
+            if (fingerprint == homeArtistsFingerprint && visibleArtists.isNotEmpty()) return@launch
+            homeArtistsFingerprint = fingerprint
+
+            if (visibleArtists.isNotEmpty() && visibleIds == candidateIds.take(visibleIds.size)) {
+                _state.update { current ->
+                    if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
+                }
+                return@launch
+            }
+
+            val freezeVisibleShelf = visibleArtists.isNotEmpty()
+            if (!freezeVisibleShelf) {
+                _state.update { current ->
+                    if (current.homeArtistsLoading) current else current.copy(homeArtistsLoading = true)
+                }
+            } else {
+                awaitHomeUiIdle()
+            }
+
+            val visibleByBrowseId = visibleArtists.associateBy { it.browseId.lowercase() }
+            val semaphore = Semaphore(4)
             val resolvedArtists = coroutineScope {
-                candidates.map { candidate ->
+                orderedCandidates.map { candidate ->
                     async {
-                        semaphore.withPermit {
-                            withTimeoutOrNull(4_000L) {
+                        val cached = visibleByBrowseId[candidate.browseId.lowercase()]
+                            ?.takeIf { hit ->
+                                hit.thumbnailUrl.isNotBlank() &&
+                                    hit.browseId.equals(candidate.browseId, ignoreCase = true) &&
+                                    artistIdentityKey(hit.name) == artistIdentityKey(candidate.name) &&
+                                    isArtistShelfNameEligible(hit.name)
+                            }
+                        cached ?: semaphore.withPermit {
+                            withTimeoutOrNull(2_000L) {
                                 runCatching {
                                     artistRepository.artistHit(candidate.browseId, candidate.name)
                                 }.getOrNull()
@@ -715,22 +741,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .take(8)
 
             if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
-            awaitHomeUiIdle()
-
-            var changed = false
-            _state.update { current ->
-                if (homeArtistsFingerprint != fingerprint) {
-                    current
-                } else if (resolvedArtists.isEmpty()) {
+            if (resolvedArtists.isEmpty()) {
+                _state.update { current ->
                     if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
-                } else if (current.homeArtists == resolvedArtists && !current.homeArtistsLoading) {
-                    current
-                } else {
-                    changed = true
-                    current.copy(homeArtists = resolvedArtists, homeArtistsLoading = false)
                 }
+                return@launch
             }
-            if (changed) persistHomeSnapshot()
+
+            if (freezeVisibleShelf) {
+                deferredHomeArtistsSnapshot = resolvedArtists
+                persistHomeSnapshotSync(startupSnapshot.languageCode)
+                _state.update { current ->
+                    if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
+                }
+                return@launch
+            }
+
+            deferredHomeArtistsSnapshot = null
+            _state.update { current ->
+                current.copy(homeArtists = resolvedArtists, homeArtistsLoading = false)
+            }
+            persistHomeSnapshotSync(startupSnapshot.languageCode)
         }
     }
 
