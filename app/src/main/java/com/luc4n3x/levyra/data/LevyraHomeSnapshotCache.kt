@@ -63,7 +63,7 @@ class LevyraHomeSnapshotCache(context: Context) {
                 .put("homeSections", homeSectionsToJson(homeSections.take(12)))
                 .put("charts", tracksToJson(charts.take(60)))
                 .put("personalOrbit", tracksToJson(personalOrbit.take(40)))
-                .put("homeArtists", artistsToJson(homeArtists.take(12)))
+                .put("homeArtists", artistsToJson(homeArtists.take(HOME_ARTIST_LIMIT)))
             val target = fileFor(normalized)
             val tmp = File(target.parentFile, "${target.name}.tmp")
             tmp.writeText(json.toString())
@@ -169,6 +169,7 @@ class LevyraHomeSnapshotCache(context: Context) {
     private fun snapshotKey(track: Track): String = track.id.ifBlank { track.videoUrl.ifBlank { "${track.artist}|${track.title}" } }.trim().lowercase()
 
     private companion object {
+        const val HOME_ARTIST_LIMIT = 13
         const val MIN_SUPPORTED_SCHEMA = 5
         const val SCHEMA = 8
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
