@@ -54,45 +54,15 @@ data class HomePlaybackProgress(
 )
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
-    internal val derivedState: StateFlow<HomeDerivedState> = state
-        .map { state ->
-            HomeDerivedInput(
-                languageCode = state.languageCode,
-                recentListens = state.recentListens,
-                personalOrbitTracks = state.personalOrbitTracks,
-                favorites = state.favorites,
-                tracks = state.tracks,
-                homeSections = state.homeSections,
-                homeAlbums = state.homeAlbums,
-                charts = state.charts,
-                releaseRadar = state.releaseRadar,
-                similarArtists = state.similarArtists,
-                currentTrack = state.currentTrack
-            )
-        }
-        .distinctUntilChanged()
-        .mapLatest { input ->
-            withContext(Dispatchers.Default) { buildHomeDerivedState(input) }
+    internal val renderState: StateFlow<HomeRenderSnapshot> = state
+        .mapLatest { snapshot ->
+            withContext(Dispatchers.Default) { buildHomeRenderSnapshot(snapshot) }
         }
         .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = buildHomeDerivedState(
-                HomeDerivedInput(
-                    languageCode = root.state.value.languageCode,
-                    recentListens = root.state.value.recentListens,
-                    personalOrbitTracks = root.state.value.personalOrbitTracks,
-                    favorites = root.state.value.favorites,
-                    tracks = root.state.value.tracks,
-                    homeSections = root.state.value.homeSections,
-                    homeAlbums = root.state.value.homeAlbums,
-                    charts = root.state.value.charts,
-                    releaseRadar = root.state.value.releaseRadar,
-                    similarArtists = root.state.value.similarArtists,
-                    currentTrack = root.state.value.currentTrack
-                )
-            )
+            initialValue = buildHomeRenderSnapshot(root.state.value)
         )
     val playbackProgress: StateFlow<HomePlaybackProgress> = root.state
         .map { HomePlaybackProgress(it.positionMs, it.durationMs) }
@@ -211,6 +181,12 @@ class LevyraScreenViewModelFactory(
 }
 
 @Immutable
+internal data class HomeRenderSnapshot(
+    val state: LevyraUiState,
+    val derived: HomeDerivedState
+)
+
+@Immutable
 internal data class HomeDerivedState(
     val resonanceTracks: List<Track>,
     val artistRefreshFingerprint: String,
@@ -234,6 +210,29 @@ private data class HomeDerivedInput(
     val similarArtists: List<ArtistHit>,
     val currentTrack: Track?
 )
+
+internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
+    return HomeRenderSnapshot(
+        state = state,
+        derived = buildHomeDerivedState(state.toHomeDerivedInput())
+    )
+}
+
+private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
+    return HomeDerivedInput(
+        languageCode = languageCode,
+        recentListens = recentListens,
+        personalOrbitTracks = personalOrbitTracks,
+        favorites = favorites,
+        tracks = tracks,
+        homeSections = homeSections,
+        homeAlbums = homeAlbums,
+        charts = charts,
+        releaseRadar = releaseRadar,
+        similarArtists = similarArtists,
+        currentTrack = currentTrack
+    )
+}
 
 private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     val newReleases = input.homeSections.firstOrNull { isVerifiedHomeReleaseSectionTitle(it.title) }
@@ -408,6 +407,7 @@ private data class HomeProjection(
     val homeAlbumsLoading: Boolean,
     val homeSections: List<HomeSection>,
     val isLoadingCharts: Boolean,
+    val isLoadingHome: Boolean,
     val isPlaying: Boolean,
     val isResolving: Boolean,
     val languageCode: String,
@@ -419,7 +419,7 @@ private data class HomeProjection(
     val releaseRadar: List<ReleaseRadarEntry>,
     val selectedChartId: String,
     val selectedMood: Mood?,
-    val searchError: String?,
+    val homeError: String?,
     val playerError: String?,
     val similarArtists: List<ArtistHit>,
     val tracks: List<Track>,
@@ -440,6 +440,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     homeAlbumsLoading = state.homeAlbumsLoading,
     homeSections = state.homeSections,
     isLoadingCharts = state.isLoadingCharts,
+    isLoadingHome = state.isLoadingHome,
     isPlaying = state.isPlaying,
     isResolving = state.isResolving,
     languageCode = state.languageCode,
@@ -451,7 +452,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     releaseRadar = state.releaseRadar,
     selectedChartId = state.selectedChartId,
     selectedMood = state.selectedMood,
-    searchError = state.searchError,
+    homeError = state.homeError,
     playerError = state.playerError,
     similarArtists = state.similarArtists,
     tracks = state.tracks,
