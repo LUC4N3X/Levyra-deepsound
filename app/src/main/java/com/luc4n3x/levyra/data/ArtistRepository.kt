@@ -180,6 +180,37 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
 
+    suspend fun relatedArtistHits(
+        browseId: String,
+        fallbackName: String,
+        limit: Int = 13
+    ): List<ArtistHit> = withContext(Dispatchers.IO) {
+        val cleanBrowseId = browseId.trim()
+        val cleanName = primaryArtistSegment(fallbackName)
+            .ifBlank { fallbackName.trim() }
+            .cleanAlbumArtistLabel()
+        if (cleanBrowseId.isBlank() || cleanName.length < 2 || !isArtistShelfNameEligible(cleanName)) {
+            return@withContext emptyList()
+        }
+        val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull() ?: return@withContext emptyList()
+        val header = root.optJSONObject("header") ?: return@withContext emptyList()
+        if (!isArtistPageHeader(header)) return@withContext emptyList()
+        val resolvedName = headerText(header).ifBlank { cleanName }
+        if (!artistNameMatches(cleanName, resolvedName)) return@withContext emptyList()
+        extractRelatedArtists(root, resolvedName)
+            .asSequence()
+            .filter { hit ->
+                hit.name.isNotBlank() &&
+                    hit.thumbnailUrl.isNotBlank() &&
+                    hit.browseId.isNotBlank() &&
+                    isArtistShelfNameEligible(hit.name)
+            }
+            .distinctBy { it.browseId.lowercase(Locale.ROOT) }
+            .take(limit.coerceIn(1, 24))
+            .toList()
+    }
+
+
     private fun isArtistPageHeader(header: JSONObject): Boolean {
         return header.optJSONObject("musicImmersiveHeaderRenderer") != null ||
             header.optJSONObject("musicVisualHeaderRenderer") != null ||
