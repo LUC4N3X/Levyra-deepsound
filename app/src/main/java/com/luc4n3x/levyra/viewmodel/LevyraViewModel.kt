@@ -19,6 +19,7 @@ import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.LevyraHomeSnapshotCache
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.data.HomeInteractionGate
+import com.luc4n3x.levyra.data.HomeRefreshStability
 import com.luc4n3x.levyra.data.HomeStartupWorkPlan
 import com.luc4n3x.levyra.data.HomeStartupWorkPolicy
 import com.luc4n3x.levyra.data.StartupPlaybackWarmPolicy
@@ -111,6 +112,8 @@ import timber.log.Timber
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
 
@@ -266,10 +269,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var updateJob: Job? = null
     private var artistJob: Job? = null
     private var albumJob: Job? = null
+    private var homeFeedJob: Job? = null
     private var homeAlbumsJob: Job? = null
     private var homeArtistsJob: Job? = null
+    private var chartsJob: Job? = null
+    private var homeSnapshotJob: Job? = null
     private var homeArtistsFingerprint: String = ""
-    @Volatile private var deferredHomeArtistsSnapshot: List<ArtistHit>? = null
+    private val deferredHomeArtistsSnapshot = AtomicReference<List<ArtistHit>?>(null)
     private var radarJob: Job? = null
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
@@ -298,6 +304,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val officialMetadataDeferUntilIdle = AtomicBoolean(false)
 
     private val homeInteractionGate = HomeInteractionGate()
+    private val homeFeedRequestGeneration = AtomicLong(0L)
+    private val homeAlbumsRequestGeneration = AtomicLong(0L)
+    private val chartsRequestGeneration = AtomicLong(0L)
+    private val pendingHomeSectionsSnapshot = AtomicReference<List<com.luc4n3x.levyra.domain.HomeSection>?>(null)
+    private val deferredHomeSnapshotApplyScheduled = AtomicBoolean(false)
+    @Volatile private var homeScreenActive = false
+    @Volatile private var homeAtTop = true
+    @Volatile private var homeScrollInProgress = false
 
     private fun homeStartupWorkPlan(): HomeStartupWorkPlan {
         val playbackPlan = adaptivePlaybackPolicy.current(videoMode = false)
@@ -307,8 +321,109 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    fun setHomeScrollInProgress(value: Boolean) {
-        homeInteractionGate.update(value)
+    fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) {
+        homeAtTop = atTop
+        homeScrollInProgress = scrollInProgress
+        homeInteractionGate.update(scrollInProgress)
+        if (homeScreenActive && atTop && !scrollInProgress) {
+            scheduleDeferredHomeSnapshotApply()
+        }
+    }
+
+    fun onHomeEntered() {
+        homeScreenActive = true
+        homeAtTop = true
+        homeScrollInProgress = false
+        homeInteractionGate.update(false)
+        scheduleDeferredHomeSnapshotApply(waitForIdle = false)
+    }
+
+    fun onHomeLeft() {
+        homeScreenActive = false
+        homeAtTop = true
+        homeScrollInProgress = false
+        homeInteractionGate.update(false)
+    }
+
+    private fun canApplyHomeStructuralChanges(): Boolean {
+        return !homeScreenActive || (homeAtTop && !homeScrollInProgress)
+    }
+
+    private fun hasDeferredHomeSnapshots(): Boolean {
+        return pendingHomeSectionsSnapshot.get() != null || deferredHomeArtistsSnapshot.get() != null
+    }
+
+    private fun scheduleDeferredHomeSnapshotApply(waitForIdle: Boolean = true) {
+        if (!homeScreenActive || !homeAtTop || homeScrollInProgress || !hasDeferredHomeSnapshots()) return
+        if (!deferredHomeSnapshotApplyScheduled.compareAndSet(false, true)) return
+        viewModelScope.launch {
+            try {
+                if (waitForIdle) awaitHomeUiIdle()
+                if (homeScreenActive && homeAtTop && !homeScrollInProgress) {
+                    applyDeferredHomeSnapshots()
+                }
+            } finally {
+                deferredHomeSnapshotApplyScheduled.set(false)
+                if (homeScreenActive && homeAtTop && !homeScrollInProgress && hasDeferredHomeSnapshots()) {
+                    scheduleDeferredHomeSnapshotApply()
+                }
+            }
+        }
+    }
+
+    private suspend fun applyDeferredHomeSnapshots() {
+        val pendingSections = pendingHomeSectionsSnapshot.getAndSet(null)
+        val pendingArtists = deferredHomeArtistsSnapshot.getAndSet(null)
+        if (pendingSections == null && pendingArtists == null) return
+        if (!homeScreenActive || !homeAtTop || homeScrollInProgress) {
+            pendingSections?.let { pendingHomeSectionsSnapshot.compareAndSet(null, it) }
+            pendingArtists?.let { deferredHomeArtistsSnapshot.compareAndSet(null, it) }
+            return
+        }
+
+        var applied = false
+        while (true) {
+            val current = _state.value
+            val updated = withContext(Dispatchers.Default) {
+                val sectionResult = pendingSections?.let { sections ->
+                    HomeRefreshStability.mergeSections(
+                        previous = current.homeSections,
+                        incoming = sections,
+                        allowStructuralChanges = true
+                    )
+                }
+                val nextSections = sectionResult?.visible ?: current.homeSections
+                val nextArtists = pendingArtists?.takeIf { it.isNotEmpty() } ?: current.homeArtists
+                val sectionsChanged = sectionResult?.changed == true
+                val artistsChanged = nextArtists != current.homeArtists
+                if (!sectionsChanged && !artistsChanged) {
+                    current
+                } else {
+                    val nextTracks = if (sectionsChanged) {
+                        nextSections.flatMap { it.tracks }.distinctBy { it.id }.ifEmpty { current.tracks }
+                    } else {
+                        current.tracks
+                    }
+                    current.copy(
+                        homeSections = nextSections,
+                        homeArtists = nextArtists,
+                        homeArtistsLoading = if (pendingArtists != null) false else current.homeArtistsLoading,
+                        tracks = nextTracks
+                    )
+                }
+            }
+            if (updated === current) break
+            if (!homeScreenActive || !homeAtTop || homeScrollInProgress) {
+                pendingSections?.let { pendingHomeSectionsSnapshot.compareAndSet(null, it) }
+                pendingArtists?.let { deferredHomeArtistsSnapshot.compareAndSet(null, it) }
+                return
+            }
+            if (_state.compareAndSet(current, updated)) {
+                applied = true
+                break
+            }
+        }
+        if (applied) persistHomeSnapshot()
     }
 
     private suspend fun awaitHomeUiIdle(plan: HomeStartupWorkPlan = homeStartupWorkPlan()) {
@@ -399,7 +514,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeSections = startupHomeSections,
                 homeAlbums = startupAlbums,
                 homeArtists = startupHomeArtists,
-                homeArtistsLoading = startupHomeArtists.size < HOME_ARTIST_SHELF_SIZE,
+                homeArtistsLoading = startupHomeArtists.isEmpty(),
                 homeAlbumsLoading = startupAlbums.isEmpty(),
                 tracks = initialTracks,
                 queue = initialQueue,
@@ -626,17 +741,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun persistHomeSnapshot() {
         val languageCode = _state.value.languageCode
-        viewModelScope.launch(Dispatchers.IO) { persistHomeSnapshotSync(languageCode) }
+        homeSnapshotJob?.cancel()
+        homeSnapshotJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(280L)
+            if (_state.value.languageCode == languageCode) persistHomeSnapshotSync(languageCode)
+        }
     }
 
     private fun persistHomeSnapshotSync(languageCode: String) {
         val snapshot = _state.value
         homeSnapshotCache.save(
             languageCode = languageCode,
-            homeSections = snapshot.homeSections,
+            homeSections = pendingHomeSectionsSnapshot.get() ?: snapshot.homeSections,
             charts = snapshot.charts,
             personalOrbit = snapshot.personalOrbitTracks,
-            homeArtists = deferredHomeArtistsSnapshot ?: snapshot.homeArtists
+            homeArtists = deferredHomeArtistsSnapshot.get() ?: snapshot.homeArtists
         )
     }
 
@@ -695,7 +814,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { current ->
                     current.copy(
                         homeArtists = visibleArtists,
-                        homeArtistsLoading = visibleArtists.size < HOME_ARTIST_SHELF_SIZE
+                        homeArtistsLoading = visibleArtists.isEmpty()
                     )
                 }
                 return@launch
@@ -708,7 +827,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 _state.update { current ->
                     current.copy(
                         homeArtists = visibleArtists,
-                        homeArtistsLoading = true
+                        homeArtistsLoading = visibleArtists.isEmpty()
                     )
                 }
             }
@@ -796,18 +915,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
             if (freezeVisibleShelf) {
                 if (complete) {
-                    deferredHomeArtistsSnapshot = finalArtists
+                    deferredHomeArtistsSnapshot.set(finalArtists)
+                    scheduleDeferredHomeSnapshotApply()
                     persistHomeSnapshotSync(startupSnapshot.languageCode)
                 }
                 _state.update { current -> current.copy(homeArtistsLoading = false) }
                 return@launch
             }
 
-            deferredHomeArtistsSnapshot = null
+            deferredHomeArtistsSnapshot.set(null)
             _state.update { current ->
                 current.copy(
                     homeArtists = finalArtists,
-                    homeArtistsLoading = !complete
+                    homeArtistsLoading = finalArtists.isEmpty()
                 )
             }
             persistHomeSnapshotSync(startupSnapshot.languageCode)
@@ -855,8 +975,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .take(20)
             val similarArtists = similar.values.take(12).toList()
             _state.update { current ->
-                if (current.releaseRadar == sorted && current.similarArtists == similarArtists) current
-                else current.copy(releaseRadar = sorted, similarArtists = similarArtists)
+                val nextRadar = sorted.ifEmpty { current.releaseRadar }
+                val nextSimilarArtists = similarArtists.ifEmpty { current.similarArtists }
+                if (current.releaseRadar == nextRadar && current.similarArtists == nextSimilarArtists) current
+                else current.copy(releaseRadar = nextRadar, similarArtists = nextSimilarArtists)
             }
         }
     }
@@ -1272,92 +1394,210 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         applyLanguageContent(normalizedLanguage, refreshRemote = true)
     }
 
-    /** Loads the real YouTube Music home feed (sections), falling back to taste-based search. */
     private fun loadHomeFeed(deferUntilHomeIdle: Boolean = false) {
-        viewModelScope.launch {
-            val hasVisibleHome = _state.value.homeSections.isNotEmpty() || _state.value.tracks.isNotEmpty()
-            _state.update { it.copy(isSearching = !hasVisibleHome, searchError = null) }
-            val languageCode = _state.value.languageCode
-            val sections = runCatching { repository.homeFeed(languageCode) }.getOrDefault(emptyList())
-            if (_state.value.languageCode != languageCode) return@launch
-            if (sections.isEmpty()) {
-                loadHomeAlbums(languageCode, deferUntilHomeIdle)
-                if (deferUntilHomeIdle) awaitHomeUiIdle()
-                loadHome(preserveCurrent = hasVisibleHome)
-                return@launch
-            }
-            val flat = sections.flatMap { it.tracks }.distinctBy { it.id }
-            if (flat.isEmpty()) {
-                _state.update { it.copy(isSearching = false) }
-                return@launch
-            }
-            val instantAlbums = _state.value.homeAlbums.ifEmpty {
-                instantAlbumRecommendationsFromTracks(
-                    primary = _state.value.recentListens + _state.value.recentSearches + _state.value.favorites,
-                    secondary = _state.value.personalOrbitTracks + flat,
-                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT,
-                    profile = _state.value.smartProfile
+        val requestGeneration = homeFeedRequestGeneration.incrementAndGet()
+        homeFeedJob?.cancel()
+        homeFeedJob = viewModelScope.launch {
+            val initialState = _state.value
+            val languageCode = initialState.languageCode
+            val hasVisibleHome = initialState.homeSections.isNotEmpty() || initialState.tracks.isNotEmpty()
+            _state.update { current ->
+                if (current.languageCode != languageCode) current
+                else current.copy(
+                    isLoadingHome = true,
+                    homeError = null
                 )
             }
-            viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeSections(sections, languageCode) }
-            if (deferUntilHomeIdle) awaitHomeUiIdle()
-            _state.update { current ->
-                val nextSearchResults = flat.take(12)
+
+            val networkSections = try {
+                repository.homeFeed(languageCode)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "Home feed refresh failed")
+                emptyList()
+            }
+
+            if (
+                !isActive ||
+                homeFeedRequestGeneration.get() != requestGeneration ||
+                _state.value.languageCode != languageCode
+            ) return@launch
+
+            val sanitizedSections = withContext(Dispatchers.Default) {
+                HomeRefreshStability.sanitizeSections(networkSections)
+            }
+            if (sanitizedSections.isEmpty()) {
+                loadHomeAlbums(languageCode, deferUntilHomeIdle)
+                if (hasVisibleHome) {
+                    _state.update { current ->
+                        if (current.languageCode == languageCode && current.isLoadingHome) {
+                            current.copy(isLoadingHome = false)
+                        } else {
+                            current
+                        }
+                    }
+                } else {
+                    loadFallbackHome(
+                        languageCode = languageCode,
+                        requestGeneration = requestGeneration,
+                        deferUntilHomeIdle = deferUntilHomeIdle
+                    )
+                }
+                return@launch
+            }
+
+            val previewMerge = withContext(Dispatchers.Default) {
+                HomeRefreshStability.mergeSections(
+                    previous = _state.value.homeSections,
+                    incoming = sanitizedSections,
+                    allowStructuralChanges = canApplyHomeStructuralChanges()
+                )
+            }
+            withContext(Dispatchers.IO) {
+                preferences.saveHomeSections(sanitizedSections, languageCode)
+            }
+            if (previewMerge.changed && (deferUntilHomeIdle || (homeScreenActive && (!homeAtTop || homeScrollInProgress)))) {
+                awaitHomeUiIdle()
+            }
+            if (
+                !isActive ||
+                homeFeedRequestGeneration.get() != requestGeneration ||
+                _state.value.languageCode != languageCode
+            ) return@launch
+
+            var mergeBaseSections = _state.value.homeSections
+            var mergeResult = withContext(Dispatchers.Default) {
+                HomeRefreshStability.mergeSections(
+                    previous = mergeBaseSections,
+                    incoming = sanitizedSections,
+                    allowStructuralChanges = canApplyHomeStructuralChanges()
+                )
+            }
+            if (_state.value.homeSections != mergeBaseSections) {
+                mergeBaseSections = _state.value.homeSections
+                mergeResult = withContext(Dispatchers.Default) {
+                    HomeRefreshStability.mergeSections(
+                        previous = mergeBaseSections,
+                        incoming = sanitizedSections,
+                        allowStructuralChanges = canApplyHomeStructuralChanges()
+                    )
+                }
+            }
+            val visibleTracks = withContext(Dispatchers.Default) {
+                mergeResult.visible.flatMap { it.tracks }.distinctBy { it.id }
+            }
+            if (visibleTracks.isEmpty()) {
+                _state.update { current ->
+                    if (current.languageCode == languageCode) {
+                        current.copy(
+                            isLoadingHome = false,
+                            homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
+                                "Home non disponibile"
+                            } else {
+                                current.homeError
+                            }
+                        )
+                    } else {
+                        current
+                    }
+                }
+                return@launch
+            }
+
+            val latestState = _state.value
+            val instantAlbums = latestState.homeAlbums.ifEmpty {
+                withContext(Dispatchers.Default) {
+                    instantAlbumRecommendationsFromTracks(
+                        primary = latestState.recentListens + latestState.recentSearches + latestState.favorites,
+                        secondary = latestState.personalOrbitTracks + visibleTracks,
+                        limit = HOME_ALBUM_RECOMMENDATION_LIMIT,
+                        profile = latestState.smartProfile
+                    )
+                }
+            }
+            var published = false
+            while (!published) {
+                val current = _state.value
                 if (
-                    current.homeSections == sections &&
+                    current.languageCode != languageCode ||
+                    current.homeSections != mergeBaseSections
+                ) break
+                val updated = if (
+                    !mergeResult.changed &&
                     current.homeAlbums == instantAlbums &&
-                    current.tracks == flat &&
-                    current.searchResults == nextSearchResults &&
-                    !current.isSearching &&
-                    current.searchError == null
+                    current.tracks == visibleTracks &&
+                    !current.isLoadingHome &&
+                    current.homeError == null
                 ) {
                     current
                 } else {
                     current.copy(
-                        homeSections = sections,
+                        homeSections = if (mergeResult.changed) mergeResult.visible else current.homeSections,
                         homeAlbums = instantAlbums,
                         homeAlbumsLoading = instantAlbums.isEmpty(),
-                        tracks = flat,
-                        searchResults = nextSearchResults,
-                        isSearching = false,
-                        cacheReport = repository.cacheReport(),
-                        searchError = null
+                        tracks = visibleTracks,
+                        isLoadingHome = false,
+                        homeError = null,
+                        cacheReport = repository.cacheReport()
                     )
                 }
+                published = updated === current || _state.compareAndSet(current, updated)
             }
+            if (!published) {
+                _state.update { current ->
+                    if (current.languageCode == languageCode && current.isLoadingHome) {
+                        current.copy(isLoadingHome = false)
+                    } else {
+                        current
+                    }
+                }
+                return@launch
+            }
+            pendingHomeSectionsSnapshot.set(mergeResult.deferredStructural)
+            if (mergeResult.deferredStructural != null) {
+                scheduleDeferredHomeSnapshotApply()
+            }
+
             persistHomeSnapshot()
             val startupPlan = homeStartupWorkPlan()
             viewModelScope.launch(Dispatchers.IO) {
                 if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
                 LevyraArtworkCache.preloadHome(
                     getApplication<Application>().applicationContext,
-                    flat,
+                    visibleTracks,
                     startupPlan.refreshedArtworkCount
                 )
             }
-            prefetchTop(flat, startupPlan.refreshedArtworkCount, respectHomeScroll = deferUntilHomeIdle)
-            refreshOfficialMetadataBatch(flat, 8, deferUntilHomeIdle)
+            prefetchTop(visibleTracks, startupPlan.refreshedArtworkCount, respectHomeScroll = deferUntilHomeIdle)
+            refreshOfficialMetadataBatch(visibleTracks, 8, deferUntilHomeIdle)
             loadHomeAlbums(languageCode, deferUntilHomeIdle)
         }
     }
 
     private fun loadHomeAlbums(languageCode: String, deferUntilHomeIdle: Boolean = false) {
+        val requestGeneration = homeAlbumsRequestGeneration.incrementAndGet()
         homeAlbumsJob?.cancel()
         homeAlbumsJob = viewModelScope.launch {
             val initialState = _state.value
             if (initialState.languageCode != languageCode) return@launch
-            val instantAlbums = instantAlbumRecommendations(initialState)
-            val visibleAlbums = rankAlbumRecommendations(
-                remote = initialState.homeAlbums,
-                instant = instantAlbums,
-                state = initialState,
-                limit = HOME_ALBUM_RECOMMENDATION_LIMIT
-            ).ifEmpty { instantAlbums.take(HOME_ALBUM_RECOMMENDATION_LIMIT) }
-            _state.update { current ->
-                val shouldLoadVisibly = visibleAlbums.isEmpty()
-                if (current.homeAlbums == visibleAlbums && current.homeAlbumsLoading == shouldLoadVisibly) current
-                else current.copy(homeAlbums = visibleAlbums, homeAlbumsLoading = shouldLoadVisibly)
+
+            if (initialState.homeAlbums.isEmpty()) {
+                val instantAlbums = instantAlbumRecommendations(initialState)
+                    .take(HOME_ALBUM_RECOMMENDATION_LIMIT)
+                _state.update { current ->
+                    if (current.languageCode != languageCode || current.homeAlbums.isNotEmpty()) current
+                    else current.copy(
+                        homeAlbums = instantAlbums,
+                        homeAlbumsLoading = instantAlbums.isEmpty()
+                    )
+                }
+            } else if (initialState.homeAlbumsLoading) {
+                _state.update { current ->
+                    if (current.languageCode == languageCode) current.copy(homeAlbumsLoading = false) else current
+                }
             }
+
             val seeds = albumRecommendationSeeds(_state.value)
             val albums = try {
                 repository.homeAlbums(
@@ -1371,19 +1611,53 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 Timber.w(error, "Personalized home albums failed")
                 emptyList()
             }
-            if (_state.value.languageCode != languageCode) return@launch
+            if (
+                !isActive ||
+                homeAlbumsRequestGeneration.get() != requestGeneration ||
+                _state.value.languageCode != languageCode
+            ) return@launch
+            if (albums.isEmpty()) {
+                _state.update { current ->
+                    if (current.languageCode == languageCode && current.homeAlbumsLoading) {
+                        current.copy(homeAlbumsLoading = false)
+                    } else {
+                        current
+                    }
+                }
+                return@launch
+            }
+
             val latestState = _state.value
             val latestInstantAlbums = instantAlbumRecommendations(latestState)
-            val rankedAlbums = rankAlbumRecommendations(
-                remote = albums,
-                instant = latestInstantAlbums,
-                state = latestState,
-                limit = HOME_ALBUM_RECOMMENDATION_LIMIT
-            ).ifEmpty { latestInstantAlbums.take(HOME_ALBUM_RECOMMENDATION_LIMIT) }
-            if (rankedAlbums.isNotEmpty()) {
-                viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeAlbums(rankedAlbums, languageCode) }
+            val rankedAlbums = withContext(Dispatchers.Default) {
+                rankAlbumRecommendations(
+                    remote = albums,
+                    instant = latestInstantAlbums,
+                    state = latestState,
+                    limit = HOME_ALBUM_RECOMMENDATION_LIMIT
+                ).ifEmpty { latestInstantAlbums.take(HOME_ALBUM_RECOMMENDATION_LIMIT) }
             }
-            if (deferUntilHomeIdle) awaitHomeUiIdle()
+            if (rankedAlbums.isEmpty()) {
+                _state.update { current ->
+                    if (current.languageCode == languageCode && current.homeAlbumsLoading) {
+                        current.copy(homeAlbumsLoading = false)
+                    } else {
+                        current
+                    }
+                }
+                return@launch
+            }
+
+            withContext(Dispatchers.IO) {
+                preferences.saveHomeAlbums(rankedAlbums, languageCode)
+            }
+            if (deferUntilHomeIdle && _state.value.homeAlbums != rankedAlbums) awaitHomeUiIdle()
+            if (
+                !isActive ||
+                homeAlbumsRequestGeneration.get() != requestGeneration ||
+                _state.value.languageCode != languageCode
+            ) return@launch
+
             _state.update { current ->
                 if (current.languageCode != languageCode) current
                 else if (current.homeAlbums == rankedAlbums && !current.homeAlbumsLoading) current
@@ -1760,6 +2034,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun applyLanguageContent(languageCode: String, refreshRemote: Boolean) {
+        pendingHomeSectionsSnapshot.set(null)
+        deferredHomeArtistsSnapshot.set(null)
+        homeArtistsFingerprint = ""
+        homeArtistsJob?.cancel()
         val defaultChartRegion = ChartsCatalog.defaultRegionForLanguage(languageCode)
         val localizedMoods = moodEngine.moodsForLanguage(languageCode)
         val selectedMood = localizedMoods.firstOrNull { it.id == _state.value.selectedMood?.id } ?: localizedMoods.firstOrNull()
@@ -1801,7 +2079,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             state = recommendationState,
             limit = HOME_ALBUM_RECOMMENDATION_LIMIT
         ).ifEmpty { localAlbums }
-        val queue = moodEngine.buildQueue(selectedMood, allTracks)
         exploreCache.clear()
         exploreVideosLoaded = false
         _state.update {
@@ -1814,10 +2091,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeSections = homeSections,
                 homeAlbums = instantAlbums,
                 homeAlbumsLoading = instantAlbums.isEmpty() && refreshRemote,
+                isLoadingHome = refreshRemote && homeSections.isEmpty() && allTracks.isEmpty(),
+                homeError = null,
                 charts = chartTracks,
                 personalOrbitTracks = orbit,
                 tracks = allTracks,
-                searchResults = allTracks.take(12),
+                searchResults = emptyList(),
                 searchSuggestions = emptyList(),
                 searchData = SearchResults(),
                 searchError = null,
@@ -1902,22 +2181,54 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun loadCharts(regionId: String = _state.value.selectedChartId, deferUntilHomeIdle: Boolean = false) {
-        viewModelScope.launch {
-            val hasVisibleCharts = _state.value.charts.isNotEmpty()
-            _state.update { it.copy(isLoadingCharts = !hasVisibleCharts) }
-            val languageCode = _state.value.languageCode
+        val requestGeneration = chartsRequestGeneration.incrementAndGet()
+        chartsJob?.cancel()
+        chartsJob = viewModelScope.launch {
+            val initialState = _state.value
+            val languageCode = initialState.languageCode
+            val hasVisibleCharts = initialState.charts.isNotEmpty()
+            _state.update { current ->
+                if (current.selectedChartId != regionId) current
+                else current.copy(isLoadingCharts = !hasVisibleCharts)
+            }
+
             val region = ChartsCatalog.region(regionId)
-            val result = runCatching { chartsRepository.topSongs(region.country) }.getOrDefault(emptyList())
-            if (_state.value.languageCode != languageCode) return@launch
+            val result = try {
+                chartsRepository.topSongs(region.country)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Timber.w(error, "Charts refresh failed for %s", regionId)
+                emptyList()
+            }
+            if (
+                !isActive ||
+                chartsRequestGeneration.get() != requestGeneration ||
+                _state.value.languageCode != languageCode ||
+                _state.value.selectedChartId != regionId
+            ) return@launch
+
             if (result.isEmpty()) {
-                _state.update { if (it.selectedChartId == regionId) it.copy(isLoadingCharts = false) else it }
+                _state.update { current ->
+                    if (current.selectedChartId == regionId) current.copy(isLoadingCharts = false) else current
+                }
                 return@launch
             }
-            viewModelScope.launch(Dispatchers.IO) { preferences.saveChartTracks(result, languageCode, regionId) }
-            if (deferUntilHomeIdle) awaitHomeUiIdle()
+
+            withContext(Dispatchers.IO) {
+                preferences.saveChartTracks(result, languageCode, regionId)
+            }
+            if (deferUntilHomeIdle && _state.value.charts != result) awaitHomeUiIdle()
+            if (
+                !isActive ||
+                chartsRequestGeneration.get() != requestGeneration ||
+                _state.value.languageCode != languageCode ||
+                _state.value.selectedChartId != regionId
+            ) return@launch
+
             _state.update { current ->
-                if (current.selectedChartId != regionId) return@update current
-                if (current.charts == result && !current.isLoadingCharts) current
+                if (current.selectedChartId != regionId) current
+                else if (current.charts == result && !current.isLoadingCharts) current
                 else current.copy(charts = result, isLoadingCharts = false)
             }
             persistHomeSnapshot()
@@ -1941,10 +2252,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val startupPlan = homeStartupWorkPlan()
             val enrichmentCount = if (deferUntilHomeIdle) startupPlan.chartEnrichmentCount else 6
             val hot = charts.take(enrichmentCount)
-            coroutineScope {
-                val semaphore = Semaphore(if (deferUntilHomeIdle) startupPlan.chartEnrichmentConcurrency else 2)
-                hot.forEachIndexed { index, entry ->
-                    launch {
+            val semaphore = Semaphore(if (deferUntilHomeIdle) startupPlan.chartEnrichmentConcurrency else 2)
+            val replacements = coroutineScope {
+                hot.mapIndexed { index, entry ->
+                    async {
                         semaphore.withPermit {
                             enrichChartEntry(
                                 regionId = regionId,
@@ -1954,43 +2265,46 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             )
                         }
                     }
-                }
+                }.awaitAll().filterNotNull().toMap()
             }
+            if (replacements.isEmpty() || !isActive || _state.value.selectedChartId != regionId) return@launch
+            if (deferUntilHomeIdle) awaitHomeUiIdle()
+            _state.update { current ->
+                if (current.selectedChartId != regionId) return@update current
+                val updatedCharts = current.charts.map { chart -> replacements[chart.id] ?: chart }
+                if (updatedCharts == current.charts) current else current.copy(charts = updatedCharts)
+            }
+            persistHomeSnapshot()
         }
     }
 
-    private suspend fun enrichChartEntry(regionId: String, entry: Track, warm: Boolean, deferUntilHomeIdle: Boolean = false): Track? {
+    private suspend fun enrichChartEntry(
+        regionId: String,
+        entry: Track,
+        warm: Boolean,
+        deferUntilHomeIdle: Boolean = false
+    ): Pair<String, Track>? {
         if (!currentCoroutineContext().isActive || _state.value.selectedChartId != regionId) return null
         if (deferUntilHomeIdle) awaitHomeUiIdle()
         val match = if (entry.videoUrl.isNotBlank()) {
             entry
         } else {
-            runCatching { repository.searchOne("${entry.title} ${entry.artist}", _state.value.languageCode) }.getOrNull() ?: return null
+            runCatching {
+                repository.searchOne("${entry.title} ${entry.artist}", _state.value.languageCode)
+            }.getOrNull() ?: return null
         }
         if (!currentCoroutineContext().isActive || _state.value.selectedChartId != regionId) return null
-        if (deferUntilHomeIdle) awaitHomeUiIdle()
-        _state.update { st ->
-            if (st.selectedChartId != regionId) return@update st
-            st.copy(
-                charts = st.charts.map { c ->
-                    if (c.id == entry.id) {
-                        LevyraPersonalOrbit.preferAlbumArtwork(c, match).copy(
-                            id = match.id,
-                            videoUrl = match.videoUrl,
-                            durationMs = if (match.durationMs > 0L) match.durationMs else c.durationMs
-                        )
-                    } else {
-                        c
-                    }
-                }
-            )
-        }
+        val enriched = LevyraPersonalOrbit.preferAlbumArtwork(entry, match).copy(
+            id = match.id,
+            videoUrl = match.videoUrl,
+            durationMs = if (match.durationMs > 0L) match.durationMs else entry.durationMs
+        )
         if (warm) {
             if (deferUntilHomeIdle) awaitHomeUiIdle()
             val resolved = resolver.prefetch(match)
             if (resolved != null) runCatching { playbackWarmup.prime(resolved) }
         }
-        return match
+        return entry.id to enriched
     }
 
     fun removeRecentSearch(track: Track) {
@@ -3692,52 +4006,84 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(positionMs = target) }
     }
 
-    private fun loadHome(preserveCurrent: Boolean = false) {
-        viewModelScope.launch {
-            _state.update { it.copy(isSearching = !preserveCurrent, searchError = null) }
-            val languageCode = _state.value.languageCode
-            val tasteIds = preferences.tastes()
-            val queries = (LevyraLocalizedDiscovery.homeBoostQueries(languageCode, tasteIds) + moodEngine.queriesForTastes(tasteIds, languageCode)).distinct().take(12)
-            val result = runCatching { repository.home(queries, languageCode) }
-            result.onSuccess { tracks ->
-                if (_state.value.languageCode != languageCode) return@onSuccess
-                if (tracks.isEmpty()) {
-                    _state.update {
-                        it.copy(
-                            isSearching = false,
-                            searchError = if (preserveCurrent) null else "Home remota vuota: prova una ricerca"
-                        )
-                    }
-                    return@onSuccess
-                }
-                val selectedMood = _state.value.selectedMood
-                val queue = moodEngine.buildQueue(selectedMood, tracks)
-                _state.update {
-                    it.copy(
-                        tracks = tracks,
-                        searchResults = tracks.take(12),
-                        isSearching = false,
-                        smartScore = calculateSmartScore(queue),
-                        cacheReport = repository.cacheReport(),
-                        searchError = null
-                    )
-                }
-                val fallbackSection = com.luc4n3x.levyra.domain.HomeSection(LevyraContentLocales.forLanguage(languageCode).quickSectionTitle, tracks.take(20))
-                viewModelScope.launch(Dispatchers.IO) { preferences.saveHomeSections(listOf(fallbackSection), languageCode) }
-                _state.update { current -> if (current.homeSections.isEmpty()) current.copy(homeSections = listOf(fallbackSection)) else current }
-                    persistHomeSnapshot()
-                val startupPlan = adaptivePlaybackPolicy.current(videoMode = false)
-                LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, if (startupPlan.lowRam) 8 else 18)
-                prefetchTop(tracks, if (startupPlan.lowRam) 3 else 8)
-            }.onFailure { error ->
-                _state.update {
-                    it.copy(
-                        isSearching = false,
-                        searchError = if (preserveCurrent) null else error.message ?: "Home non caricata"
-                    )
-                }
-            }
+    private suspend fun loadFallbackHome(
+        languageCode: String,
+        requestGeneration: Long,
+        deferUntilHomeIdle: Boolean
+    ) {
+        val tasteIds = preferences.tastes()
+        val queries = withContext(Dispatchers.Default) {
+            (LevyraLocalizedDiscovery.homeBoostQueries(languageCode, tasteIds) +
+                moodEngine.queriesForTastes(tasteIds, languageCode))
+                .distinct()
+                .take(12)
         }
+        val tracks = try {
+            repository.home(queries, languageCode)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            Timber.w(error, "Fallback home refresh failed")
+            emptyList()
+        }
+        if (
+            !currentCoroutineContext().isActive ||
+            homeFeedRequestGeneration.get() != requestGeneration ||
+            _state.value.languageCode != languageCode
+        ) return
+
+        if (tracks.isEmpty()) {
+            _state.update { current ->
+                if (current.languageCode != languageCode) current
+                else current.copy(
+                    isLoadingHome = false,
+                    homeError = if (current.homeSections.isEmpty() && current.tracks.isEmpty()) {
+                        "Home remota vuota: prova una ricerca"
+                    } else {
+                        current.homeError
+                    }
+                )
+            }
+            return
+        }
+
+        val fallbackSection = com.luc4n3x.levyra.domain.HomeSection(
+            LevyraContentLocales.forLanguage(languageCode).quickSectionTitle,
+            tracks.take(20)
+        )
+        val shouldPublishSection = _state.value.homeSections.isEmpty()
+        if (deferUntilHomeIdle && shouldPublishSection) awaitHomeUiIdle()
+        if (
+            !currentCoroutineContext().isActive ||
+            homeFeedRequestGeneration.get() != requestGeneration ||
+            _state.value.languageCode != languageCode
+        ) return
+
+        _state.update { current ->
+            if (current.languageCode != languageCode) current
+            else current.copy(
+                homeSections = if (shouldPublishSection) listOf(fallbackSection) else current.homeSections,
+                tracks = tracks,
+                isLoadingHome = false,
+                homeError = null,
+                smartScore = calculateSmartScore(moodEngine.buildQueue(current.selectedMood, tracks)),
+                cacheReport = repository.cacheReport()
+            )
+        }
+        withContext(Dispatchers.IO) {
+            preferences.saveHomeSections(listOf(fallbackSection), languageCode)
+        }
+        persistHomeSnapshot()
+        val startupPlan = homeStartupWorkPlan()
+        viewModelScope.launch(Dispatchers.IO) {
+            if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
+            LevyraArtworkCache.preloadHome(
+                getApplication<Application>().applicationContext,
+                tracks,
+                startupPlan.refreshedArtworkCount
+            )
+        }
+        prefetchTop(tracks, startupPlan.refreshedArtworkCount, respectHomeScroll = deferUntilHomeIdle)
     }
 
     private fun searchMood(mood: Mood) {
@@ -4190,7 +4536,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         queueEngine.updatePosition(player.positionMs)
         player.release()
         searchJob?.cancel()
+        homeFeedJob?.cancel()
         homeAlbumsJob?.cancel()
+        homeArtistsJob?.cancel()
+        chartsJob?.cancel()
+        homeSnapshotJob?.cancel()
         super.onCleared()
     }
 }

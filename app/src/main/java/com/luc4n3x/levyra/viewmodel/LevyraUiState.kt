@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.viewmodel
 
+import androidx.compose.runtime.Immutable
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -35,6 +36,7 @@ enum class DetailReturnTarget {
     Artist
 }
 
+@Immutable
 data class LevyraUiState(
     val selectedTab: LevyraTab = LevyraTab.Home,
     val moods: List<Mood> = emptyList(),
@@ -66,6 +68,8 @@ data class LevyraUiState(
     val homeArtists: List<ArtistHit> = emptyList(),
     val homeArtistsLoading: Boolean = false,
     val homeAlbumsLoading: Boolean = false,
+    val isLoadingHome: Boolean = false,
+    val homeError: String? = null,
     val showAlbum: Boolean = false,
     val albumLoading: Boolean = false,
     val albumError: String? = null,
