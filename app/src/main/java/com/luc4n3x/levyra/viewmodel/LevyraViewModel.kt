@@ -874,26 +874,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val resolved = LinkedHashMap<String, ArtistHit>()
             val semaphore = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
 
-            withTimeoutOrNull(HOME_ARTIST_TOTAL_TIMEOUT_MS) {
-                if (freezeVisibleShelf) {
-                    awaitHomeUiIdle()
-                } else {
-                    _state.update { current ->
-                        if (current.languageCode == languageCode) {
-                            current.copy(
-                                homeArtists = visibleArtists,
-                                homeArtistsLoading = visibleArtists.isEmpty()
-                            )
-                        } else {
-                            current
-                        }
+            if (freezeVisibleShelf) {
+                awaitHomeUiIdle()
+            } else {
+                _state.update { current ->
+                    if (current.languageCode == languageCode) {
+                        current.copy(
+                            homeArtists = visibleArtists,
+                            homeArtistsLoading = visibleArtists.isEmpty()
+                        )
+                    } else {
+                        current
                     }
-                    delay(HOME_ARTIST_STARTUP_GRACE_MS)
-                    awaitHomeUiIdle()
                 }
+                delay(HOME_ARTIST_STARTUP_GRACE_MS)
+                awaitHomeUiIdle()
+            }
 
+            withTimeoutOrNull(HOME_ARTIST_TOTAL_TIMEOUT_MS) {
                 for (batch in orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
-                    awaitHomeUiIdle()
                     val hits = coroutineScope {
                         batch.map { candidate ->
                             async {
