@@ -2278,13 +2278,22 @@ private fun ArtistHeader(
                 )
                 Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
             }
-            val metadata = listOf(profile.subscribers, profile.monthlyListeners).filter { it.isNotBlank() }
-            if (metadata.isNotEmpty()) {
+            if (profile.monthlyListeners.isNotBlank()) {
                 Text(
-                    text = metadata.take(2).joinToString("  ·  "),
-                    color = Color.White.copy(alpha = 0.76f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    text = profile.monthlyListeners,
+                    color = Color.White.copy(alpha = 0.88f),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (profile.subscribers.isNotBlank()) {
+                Text(
+                    text = profile.subscribers,
+                    color = Color.White.copy(alpha = 0.66f),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -4129,21 +4138,23 @@ private fun HomeScreen(viewModel: HomeViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    val homeArtistFingerprint = remember(state.homeSections, state.charts, state.languageCode) {
+    val homeArtistFingerprint = remember(
+        state.recentListens,
+        state.personalOrbitTracks,
+        state.favorites,
+        state.languageCode
+    ) {
         buildString {
             append(state.languageCode)
             append('|')
-            append(state.charts.take(16).joinToString(",") { track ->
-                "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
-            })
-            append('|')
             append(
-                state.homeSections
+                (state.recentListens + state.personalOrbitTracks + state.favorites)
                     .asSequence()
-                    .flatMap { section -> section.tracks.asSequence() }
-                    .take(32)
+                    .filter { it.artistBrowseIds.firstOrNull().orEmpty().isNotBlank() }
+                    .distinctBy { it.artistBrowseIds.first().lowercase() }
+                    .take(20)
                     .joinToString(",") { track ->
-                        "${track.artist}:${track.artistBrowseIds.firstOrNull().orEmpty()}"
+                        "${track.artist}:${track.artistBrowseIds.first()}"
                     }
             )
         }
