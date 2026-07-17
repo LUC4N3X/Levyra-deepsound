@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.data
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class YoutubeMusicRepositoryTest {
@@ -315,6 +317,55 @@ class YoutubeMusicRepositoryTest {
         )
 
         assertEquals(emptyList<String>(), references.map { it.browseId })
+    }
+
+    @Test
+    fun artistBrowseEndpointAcceptsChannelIdentifiers() {
+        val repository = YoutubeMusicRepository()
+
+        assertTrue(repository.isArtistBrowseEndpoint("UC_DELIA", "MUSIC_PAGE_TYPE_ARTIST"))
+        assertTrue(repository.isArtistBrowseEndpoint("UCsRM0YB_dabtEPGPTLcaLQ", ""))
+        assertTrue(repository.isArtistBrowseEndpoint("UC_LAZZA", "MUSIC_PAGE_TYPE_USER_CHANNEL"))
+    }
+
+    @Test
+    fun artistBrowseEndpointRejectsAlbumPlaylistAndVideoIdentifiers() {
+        val repository = YoutubeMusicRepository()
+
+        assertFalse(repository.isArtistBrowseEndpoint("MPREb_9nqEki4ZDpP", "MUSIC_PAGE_TYPE_ALBUM"))
+        assertFalse(repository.isArtistBrowseEndpoint("MPREb_9nqEki4ZDpP", "MUSIC_PAGE_TYPE_ARTIST"))
+        assertFalse(repository.isArtistBrowseEndpoint("VLPLm0mRDwGnW3Q", "MUSIC_PAGE_TYPE_PLAYLIST"))
+        assertFalse(repository.isArtistBrowseEndpoint("OLAK5uy_kZbY", "MUSIC_PAGE_TYPE_ALBUM"))
+        assertFalse(repository.isArtistBrowseEndpoint("RDAMVMfJ9rUzIMcZQ", ""))
+        assertFalse(repository.isArtistBrowseEndpoint("fJ9rUzIMcZQ", ""))
+        assertFalse(repository.isArtistBrowseEndpoint("", "MUSIC_PAGE_TYPE_ARTIST"))
+    }
+
+    @Test
+    fun artistReferenceRejectsAlbumEndpointNestedInActionButton() {
+        val header = JSONObject(
+            """
+            {
+              "button": {
+                "text": {"runs": [{"text": "Vai all'album"}]},
+                "navigationEndpoint": {
+                  "browseEndpoint": {
+                    "browseId": "MPREb_9nqEki4ZDpP",
+                    "browseEndpointContextSupportedConfigs": {
+                      "browseEndpointContextMusicConfig": {
+                        "pageType": "MUSIC_PAGE_TYPE_ALBUM"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """.trimIndent()
+        )
+
+        val reference = YoutubeMusicRepository().extractYoutubeMusicArtistReference(header, "Lazza")
+
+        assertNull(reference)
     }
 
 }

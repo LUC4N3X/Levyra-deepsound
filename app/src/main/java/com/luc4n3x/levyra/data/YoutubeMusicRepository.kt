@@ -1328,7 +1328,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 ?.optJSONObject("browseEndpointContextMusicConfig")
                 ?.optString("pageType")
                 .orEmpty()
-            if (browseId.isBlank() || !pageType.contains("ARTIST", ignoreCase = true)) return null
+            if (!pageType.contains("ARTIST", ignoreCase = true)) return null
+            if (!isArtistBrowseEndpoint(browseId, pageType)) return null
             val name = run.optString("text").cleanAlbumArtistLabel().trim()
             if (name.isBlank()) return null
             return YoutubeMusicArtistReference(name = name, browseId = browseId)
@@ -1396,9 +1397,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 ?.optJSONObject("browseEndpointContextMusicConfig")
                 ?.optString("pageType")
                 .orEmpty()
-            val isArtistEndpoint = browseId.startsWith("UC", ignoreCase = true) ||
-                pageType.contains("ARTIST", ignoreCase = true)
-            if (browseId.isBlank() || !isArtistEndpoint) return null
+            if (!isArtistBrowseEndpoint(browseId, pageType)) return null
             val title = renderer.optJSONObject("title")
                 ?.optJSONArray("runs")
                 ?.joinText()
@@ -1439,7 +1438,41 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             }
         }
 
-        return extractYoutubeMusicArtistReferences(value, preferredName).firstOrNull()
+        extractYoutubeMusicArtistReferences(value, preferredName).firstOrNull()?.let { return it }
+
+        return nestedArtistReference(value, preferredName)
+    }
+
+    private fun nestedArtistReference(
+        value: Any?,
+        preferredName: String
+    ): YoutubeMusicArtistReference? {
+        val name = preferredName.cleanAlbumArtistLabel().trim()
+        if (name.isBlank()) return null
+        val endpoints = mutableListOf<JSONObject>()
+        collectObjectsByKey(value, "browseEndpoint", endpoints)
+        val browseId = endpoints.firstNotNullOfOrNull { endpoint ->
+            val id = endpoint.optString("browseId").trim()
+            val pageType = endpoint
+                .optJSONObject("browseEndpointContextSupportedConfigs")
+                ?.optJSONObject("browseEndpointContextMusicConfig")
+                ?.optString("pageType")
+                .orEmpty()
+            id.takeIf { isArtistBrowseEndpoint(it, pageType) }
+        }.orEmpty()
+        if (browseId.isBlank()) return null
+        return YoutubeMusicArtistReference(name = name, browseId = browseId)
+    }
+
+    internal fun isArtistBrowseEndpoint(browseId: String, pageType: String): Boolean {
+        val id = browseId.trim()
+        if (id.length < 2) return false
+        if (NON_ARTIST_BROWSE_PREFIXES.any { id.startsWith(it, ignoreCase = true) }) return false
+        val type = pageType.trim()
+        if (type.isNotBlank()) {
+            return type.contains("ARTIST", ignoreCase = true) || type.contains("USER_CHANNEL", ignoreCase = true)
+        }
+        return id.startsWith("UC", ignoreCase = true)
     }
 
     private fun extractAlbumBrowseId(renderer: JSONObject): String {
@@ -1917,6 +1950,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             discNumber = discNumber
         )
     }
+
+    private val NON_ARTIST_BROWSE_PREFIXES = listOf("MPRE", "MPSP", "MPLA", "MPAD", "MPTR", "OLAK", "VL", "PL", "RD")
 
     private fun collectObjectsByKey(value: Any?, key: String, out: MutableList<JSONObject>) {
         when (value) {
