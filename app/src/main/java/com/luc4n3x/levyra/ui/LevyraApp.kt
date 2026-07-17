@@ -1117,8 +1117,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 ArtistOverlay(
                     state = state,
                     onPlay = viewModel::playArtistSong,
-                    onFavorite = viewModel::toggleFavorite,
-                    onDownload = viewModel::exportTrack,
                     onToggleFollow = viewModel::toggleFollowArtist,
                     onOpenArtist = viewModel::openArtistFromHit,
                     onOpenRelease = viewModel::openArtistRelease,
@@ -1933,8 +1931,6 @@ private fun AlbumTrackItem(
 private fun ArtistOverlay(
     state: LevyraUiState,
     onPlay: (Track) -> Unit,
-    onFavorite: (Track) -> Unit,
-    onDownload: (Track) -> Unit,
     onToggleFollow: () -> Unit,
     onOpenArtist: (ArtistHit) -> Unit,
     onOpenRelease: (ArtistRelease, String) -> Unit,
@@ -2017,22 +2013,14 @@ private fun ArtistOverlay(
                     }
                     if (artist.topSongs.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.popularTracks) } }
-                        items(artist.topSongs, key = { "artist-song-${it.id}" }) { track ->
-                            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                                TrackRow(
-                                    track = track,
-                                    isCurrent = track.id == state.currentTrack?.id,
-                                    isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                    isResolving = state.isResolving && track.id == state.currentTrack?.id,
-                                    isFavorite = track.id in state.favoriteIds,
-                                    onClick = { onPlay(track) },
-                                    onFavorite = { onFavorite(track) },
-                                    isDownloading = track.id in state.downloadingTrackIds,
-                                    isDownloaded = track.id in state.downloadedTrackIds,
-                                    downloadProgress = state.downloadProgressByTrackId[track.id],
-                                    onDownload = { onDownload(track) }
-                                )
-                            }
+                        item {
+                            ArtistPopularTracksShelf(
+                                tracks = artist.topSongs,
+                                currentId = state.currentTrack?.id,
+                                isPlaying = state.isPlaying,
+                                isResolving = state.isResolving,
+                                onPlay = onPlay
+                            )
                         }
                     }
                     if (artist.albums.isNotEmpty()) {
@@ -2065,6 +2053,95 @@ private fun ArtistOverlay(
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.similarArtists) } }
                         item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistHitRow(artist.relatedArtists, onClick = onOpenArtist) } }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArtistPopularTracksShelf(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: (Track) -> Unit
+) {
+    val shelfTracks = remember(tracks) {
+        tracks.distinctBy { it.id.ifBlank { "${it.artist}|${it.title}" } }.take(18)
+    }
+    val pages = remember(shelfTracks) { shelfTracks.chunked(6) }
+    val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            pageSpacing = 14.dp
+        ) { pageIndex ->
+            val pageTracks = pages.getOrElse(pageIndex) { emptyList() }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                repeat(2) { rowIndex ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        repeat(3) { columnIndex ->
+                            val track = pageTracks.getOrNull(rowIndex * 3 + columnIndex)
+                            if (track != null) {
+                                PersonalListeningCard(
+                                    track = track,
+                                    active = track.id == currentId,
+                                    playing = isPlaying && track.id == currentId,
+                                    resolving = isResolving && track.id == currentId,
+                                    onClick = { onPlay(track) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            } else {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(34.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (pages.size > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                pages.indices.forEach { index ->
+                    val indicatorWidth by animateDpAsState(
+                        targetValue = if (pagerState.currentPage == index) 20.dp else 6.dp,
+                        animationSpec = tween(220, easing = FastOutSlowInEasing),
+                        label = "artist-popular-page-indicator-$index"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 3.dp)
+                            .height(5.dp)
+                            .width(indicatorWidth)
+                            .clip(CircleShape)
+                            .background(
+                                if (pagerState.currentPage == index) {
+                                    Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))
+                                } else {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            LevyraMuted.copy(alpha = 0.28f),
+                                            LevyraMuted.copy(alpha = 0.18f)
+                                        )
+                                    )
+                                }
+                            )
+                    )
                 }
             }
         }
