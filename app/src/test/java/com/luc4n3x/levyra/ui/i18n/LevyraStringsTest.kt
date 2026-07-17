@@ -82,6 +82,16 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun viewModelDoesNotStoreLocalizedArtistErrorCopy() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraViewModel.kt not found")
+
+        assertFalse(Files.readString(source).contains("Profilo artista non disponibile"))
+    }
+
+    @Test
     fun localizedFormattersUseSelectedLanguage() {
         val dutch = LevyraStrings.forCode("nl")
         val polish = LevyraStrings.forCode("pl")
@@ -90,5 +100,18 @@ class LevyraStringsTest {
         assertEquals("3 wyniki", polish.formatSearchResults(3))
         assertEquals("İndiriliyor", turkish.localizeDownloadState("RUNNING"))
         assertTrue(dutch.formatGreeting("Luca", 9).startsWith("Goedemorgen, Luca"))
+    }
+
+    @Test
+    fun onboardingAndArtistHeadingsDoNotUseDecorativeEmoji() {
+        LevyraStrings.all().forEach { strings ->
+            listOf(strings.welcomeBadge, strings.popularTracks, strings.singlesAndEps).forEach { heading ->
+                val hasDecorativeSymbol = heading.codePoints().anyMatch { codePoint ->
+                    Character.getType(codePoint) == Character.OTHER_SYMBOL.toInt() ||
+                        Character.getType(codePoint) == Character.MODIFIER_SYMBOL.toInt()
+                }
+                assertFalse("Decorative emoji found in ${strings.code}: $heading", hasDecorativeSymbol)
+            }
+        }
     }
 }

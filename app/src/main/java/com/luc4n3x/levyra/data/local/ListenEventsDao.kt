@@ -15,11 +15,21 @@ interface ListenEventsDao {
         """
         UPDATE listen_events
         SET listenedMs = CASE WHEN listenedMs > :listenedMs THEN listenedMs ELSE :listenedMs END,
-            completed = CASE WHEN completed = 1 OR :completed = 1 THEN 1 ELSE 0 END
+            completed = CASE WHEN completed = 1 OR :completed = 1 THEN 1 ELSE 0 END,
+            artistBrowseIds = CASE
+                WHEN artistBrowseIds = '' AND :artistBrowseIds != '' THEN :artistBrowseIds
+                ELSE artistBrowseIds
+            END
         WHERE trackId = :trackId AND startedAt = :startedAt
         """
     )
-    suspend fun updateSession(trackId: String, startedAt: Long, listenedMs: Long, completed: Int): Int
+    suspend fun updateSession(
+        trackId: String,
+        startedAt: Long,
+        listenedMs: Long,
+        completed: Int,
+        artistBrowseIds: String
+    ): Int
 
     @Query("SELECT * FROM listen_events WHERE startedAt >= :since ORDER BY startedAt DESC")
     suspend fun since(since: Long): List<ListenEventEntity>

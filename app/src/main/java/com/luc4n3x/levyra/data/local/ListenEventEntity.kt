@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -23,7 +24,8 @@ data class ListenEventEntity(
     val source: String,
     val listenedMs: Long,
     val completed: Boolean,
-    val startedAt: Long
+    val startedAt: Long,
+    @ColumnInfo(defaultValue = "''") val artistBrowseIds: String = ""
 )
 
 fun ListenEventEntity.toListenEvent(): ListenEvent = ListenEvent(
@@ -33,7 +35,8 @@ fun ListenEventEntity.toListenEvent(): ListenEvent = ListenEvent(
     listenedMs = listenedMs,
     trackDurationMs = durationMs,
     completed = completed,
-    startedAt = startedAt
+    startedAt = startedAt,
+    artistBrowseIds = artistBrowseIds.split(ARTIST_ID_SEPARATOR).filter(String::isNotBlank)
 )
 
 fun ListenEventEntity.toTrack(): Track = Track(
@@ -53,7 +56,8 @@ fun ListenEventEntity.toTrack(): Track = Track(
     replayScore = 60,
     cacheScore = 50,
     accentStart = 0,
-    accentEnd = 0
+    accentEnd = 0,
+    artistBrowseIds = artistBrowseIds.split(ARTIST_ID_SEPARATOR).filter(String::isNotBlank)
 )
 
 fun Track.toListenEventEntity(listenedMs: Long, completed: Boolean, startedAt: Long): ListenEventEntity = ListenEventEntity(
@@ -66,7 +70,10 @@ fun Track.toListenEventEntity(listenedMs: Long, completed: Boolean, startedAt: L
     thumbnailUrl = thumbnailUrl,
     largeThumbnailUrl = largeThumbnailUrl,
     source = source,
+    artistBrowseIds = artistBrowseIds.filter(String::isNotBlank).joinToString(ARTIST_ID_SEPARATOR),
     listenedMs = listenedMs,
     completed = completed,
     startedAt = startedAt
 )
+
+private const val ARTIST_ID_SEPARATOR = "\u001F"
