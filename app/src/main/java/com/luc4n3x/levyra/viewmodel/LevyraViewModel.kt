@@ -30,8 +30,8 @@ import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.SponsorBlockRepository
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
-import com.luc4n3x.levyra.data.REJECTED_ALBUM_RECOMMENDATION_SCORE
-import com.luc4n3x.levyra.data.albumRecommendationMatchScore
+import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
+import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationIdentityKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.local.DownloadEntity
@@ -1436,11 +1436,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
         val ranked: List<Pair<AlbumHit, Int>> = candidates.mapNotNull { album: AlbumHit ->
             val score: Int = scoringSeeds.maxOfOrNull { seed: AlbumRecommendationSeed ->
-                val match = albumRecommendationMatchScore(album, seed)
-                if (match == REJECTED_ALBUM_RECOMMENDATION_SCORE) REJECTED_ALBUM_RECOMMENDATION_SCORE
+                val match = levyraAlbumRecommendationMatchScore(album, seed)
+                if (match == LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE) LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
                 else seed.weight + match
-            } ?: REJECTED_ALBUM_RECOMMENDATION_SCORE
-            if (score == REJECTED_ALBUM_RECOMMENDATION_SCORE) null else Pair(album, score)
+            } ?: LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
+            if (score == LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE) null else Pair(album, score)
         }.sortedWith(
             compareByDescending<Pair<AlbumHit, Int>> { scored -> scored.second }
                 .thenByDescending { scored -> scored.first.metadataConfidence }
