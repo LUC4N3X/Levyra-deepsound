@@ -7,7 +7,6 @@ import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.artistIdentityKey
-import com.luc4n3x.levyra.domain.artistSearchMatchScore
 import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.LevyraContentLocales
@@ -220,43 +219,31 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
     private fun artistNameMatches(expectedName: String, resolvedName: String): Boolean {
-        val expected = primaryArtistSegment(expectedName)
-            .ifBlank { expectedName.trim() }
-            .cleanAlbumArtistLabel()
+        val expected = expectedName.trim().cleanAlbumArtistLabel()
+        val expectedPrimary = primaryArtistSegment(expected).ifBlank { expected }
         val resolved = resolvedName.cleanAlbumArtistLabel()
         if (expected.isBlank() || resolved.isBlank()) return true
-        return artistIdentityKey(expected) == artistIdentityKey(resolved)
+        val resolvedKey = artistIdentityKey(resolved)
+        return resolvedKey == artistIdentityKey(expected) || resolvedKey == artistIdentityKey(expectedPrimary)
     }
 
     suspend fun artistHit(browseId: String, fallbackName: String): ArtistHit? = withContext(Dispatchers.IO) {
         val cleanBrowseId = browseId.trim()
-        val cleanName = primaryArtistSegment(fallbackName)
-            .ifBlank { fallbackName.trim() }
+        val requestedName = fallbackName.trim().cleanAlbumArtistLabel()
+        val cleanName = primaryArtistSegment(requestedName)
+            .ifBlank { requestedName }
             .cleanAlbumArtistLabel()
-        if (cleanBrowseId.isBlank() || cleanName.length < 2 || !isArtistShelfNameEligible(cleanName)) return@withContext null
+        if (cleanBrowseId.isBlank() || cleanName.length < 2 || !isArtistShelfNameEligible(requestedName)) return@withContext null
         val browseCacheKey = "browse:${cleanBrowseId.lowercase(Locale.ROOT)}"
-        artistHitMemory[browseCacheKey]?.let { return@withContext it }
-        memory[artistIdentityKey(cleanName)]
-            ?.takeIf { it.browseId.equals(cleanBrowseId, ignoreCase = true) && it.thumbnailUrl.isNotBlank() }
-            ?.let { profile ->
-                val hit = ArtistHit(
-                    name = profile.name,
-                    subscribers = profile.subscribers,
-                    thumbnailUrl = profile.thumbnailUrl,
-                    accentStart = profile.accentStart,
-                    accentEnd = profile.accentEnd,
-                    browseId = profile.browseId
-                )
-                artistHitMemory[browseCacheKey] = hit
-                return@withContext hit
-            }
-
+        artistHitMemory[browseCacheKey]
+            ?.takeIf { it.officialArtwork && artistNameMatches(requestedName, it.name) }
+            ?.let { return@withContext it }
         val root = runCatching { postBrowseFast(cleanBrowseId) }.getOrNull()
         val header = root?.optJSONObject("header")
         if (header != null && isArtistPageHeader(header)) {
             val headerName = headerText(header).trim()
             val resolvedName = headerName.ifBlank { cleanName }
-            if (artistNameMatches(cleanName, resolvedName) && isArtistShelfNameEligible(resolvedName)) {
+            if (artistNameMatches(requestedName, resolvedName) && isArtistShelfNameEligible(resolvedName)) {
                 val artwork = parseArtistHeaderArtwork(header)
                 val portrait = upgradeThumbnail(artwork.portraitUrl)
                 if (portrait.isNotBlank()) {
@@ -267,7 +254,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                         thumbnailUrl = portrait,
                         accentStart = accent.first,
                         accentEnd = accent.second,
-                        browseId = cleanBrowseId
+                        browseId = cleanBrowseId,
+                        officialArtwork = true
                     )
                     artistHitMemory[browseCacheKey] = hit
                     artistHitMemory[artistIdentityKey(resolvedName)] = hit
@@ -277,6 +265,31 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         }
 
         null
+    }
+
+    suspend fun officialArtistHits(candidates: List<ArtistHit>, limit: Int = 12): List<ArtistHit> = withContext(Dispatchers.IO) {
+        val requested = candidates
+            .asSequence()
+            .filter { it.browseId.isNotBlank() && it.name.isNotBlank() }
+            .distinctBy { it.browseId.lowercase(Locale.ROOT) }
+            .take(limit.coerceIn(1, 24))
+            .toList()
+        if (requested.isEmpty()) return@withContext emptyList()
+
+        val resolved = ArrayList<ArtistHit>(requested.size)
+        requested.chunked(4).forEach { batch ->
+            val official = coroutineScope {
+                batch.map { candidate ->
+                    async {
+                        runCatching { artistHit(candidate.browseId, candidate.name) }
+                            .getOrNull()
+                            ?.takeIf { it.officialArtwork && artistNameMatches(candidate.name, it.name) }
+                    }
+                }.map { it.await() }
+            }
+            resolved += official.filterNotNull()
+        }
+        resolved.distinctBy { it.browseId.lowercase(Locale.ROOT) }
     }
 
     suspend fun profile(browseId: String, fallbackName: String): ArtistProfile? = withContext(Dispatchers.IO) {
@@ -294,31 +307,35 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
     private suspend fun resolveArtist(query: String): ArtistHit? {
-        val languageCode = contentLanguage()
         val cleanQuery = query.trim()
         if (cleanQuery.length < 2) return null
 
         val primaryName = primaryArtistSegment(cleanQuery).ifBlank { cleanQuery }
-        val primaryKey = artistIdentityKey(primaryName)
-        val queryKey = artistIdentityKey(cleanQuery)
+        val acceptedKeys = linkedSetOf(
+            artistIdentityKey(cleanQuery),
+            artistIdentityKey(primaryName)
+        ).filter { it.isNotBlank() }.toSet()
+        val queries = linkedSetOf(cleanQuery, primaryName)
+        val candidates = LinkedHashMap<String, ArtistHit>()
 
-        val fullResults = runCatching {
-            music.searchEverything(cleanQuery, languageCode).artists
-        }.getOrDefault(emptyList())
-
-        fullResults.firstOrNull { hit ->
-            hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == queryKey
-        }?.let { return it }
-
-        if (primaryKey == queryKey) return null
-
-        val primaryResults = runCatching {
-            music.searchEverything(primaryName, languageCode).artists
-        }.getOrDefault(emptyList())
-
-        return primaryResults.firstOrNull { hit ->
-            hit.browseId.isNotBlank() && artistIdentityKey(hit.name) == primaryKey
+        queries.forEach { searchQuery ->
+            val root = runCatching { postSearchFast(searchQuery) }.getOrNull() ?: return@forEach
+            extractArtistSearchHits(root)
+                .asSequence()
+                .filter { hit ->
+                    hit.browseId.isNotBlank() &&
+                        artistIdentityKey(hit.name) in acceptedKeys
+                }
+                .forEach { hit -> candidates.putIfAbsent(hit.browseId.lowercase(Locale.ROOT), hit) }
         }
+
+        candidates.values.forEach { candidate ->
+            val official = runCatching { artistHit(candidate.browseId, candidate.name) }.getOrNull()
+            if (official != null && official.officialArtwork && artistIdentityKey(official.name) in acceptedKeys) {
+                return official
+            }
+        }
+        return null
     }
 
     private fun extractArtistSearchHits(root: JSONObject): List<ArtistHit> {
@@ -978,14 +995,20 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ""
     }
 
-    private fun postSearch(query: String): JSONObject {
+    private fun postSearchFast(query: String): JSONObject {
         val endpoint = "https://music.youtube.com/youtubei/v1/search?key=$apiKey&prettyPrint=false"
         val body = JSONObject()
             .put("context", clientContext())
             .put("query", query)
             .put("params", "EgWKAQIgAWoMEAMQBBAJEAoQBRAV")
             .toString()
-        return post(endpoint, body, "https://music.youtube.com/search?q=${query.replace(" ", "+")}")
+        return post(
+            endpoint = endpoint,
+            body = body,
+            referer = "https://music.youtube.com/search?q=${query.replace(" ", "+")}",
+            connectTimeoutMs = 1_500,
+            readTimeoutMs = 2_200
+        )
     }
 
     private fun postBrowse(browseId: String, params: String = "", continuation: String = ""): JSONObject {
@@ -1072,6 +1095,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return sequenceOf(
             titleOf(header.optJSONObject("musicImmersiveHeaderRenderer")),
             titleOf(header.optJSONObject("musicVisualHeaderRenderer")),
+            titleOf(header.optJSONObject("musicDetailHeaderRenderer")),
+            titleOf(header.optJSONObject("musicResponsiveHeaderRenderer")),
             titleOf(header.optJSONObject("musicHeaderRenderer"))
         ).firstOrNull { it.isNotBlank() }.orEmpty()
     }
