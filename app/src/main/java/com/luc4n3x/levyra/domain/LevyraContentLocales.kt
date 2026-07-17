@@ -65,6 +65,17 @@ object LevyraContentLocales {
         }
     }
 
+    fun isArtistSuggestionForLanguage(artistName: String, code: String): Boolean {
+        val clean = artistName.trim()
+        val fullIdentity = artistIdentityKey(clean)
+        val primaryIdentity = artistIdentityKey(primaryArtistSegment(clean).ifBlank { clean })
+        if (fullIdentity.isBlank() && primaryIdentity.isBlank()) return false
+        return artistSuggestions(code).any { suggestion ->
+            val suggestionIdentity = artistIdentityKey(suggestion)
+            suggestionIdentity == fullIdentity || suggestionIdentity == primaryIdentity
+        }
+    }
+
     fun artistSuggestionsTitle(code: String): String {
         return when (forLanguage(code).languageCode) {
             "it" -> "Esplora artisti"
