@@ -226,4 +226,95 @@ class YoutubeMusicRepositoryTest {
         assertEquals("UC_ANNA_OFFICIAL", reference?.browseId)
     }
 
+    @Test
+    fun bareChannelBrowseIdIsNotAcceptedAsArtist() {
+        val renderer = JSONObject(
+            """
+            {
+              "flexColumns": [
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {"text": "Estate Mix"}
+                      ]
+                    }
+                  }
+                },
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {
+                          "text": "Estate Mix",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UC_CURATOR_CHANNEL"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val references = YoutubeMusicRepository().extractYoutubeMusicArtistReferences(
+            renderer,
+            "Estate Mix"
+        )
+
+        assertEquals(emptyList<String>(), references.map { it.browseId })
+    }
+
+    @Test
+    fun playableSongDoesNotPromoteBareUploaderChannelsToArtists() {
+        val renderer = JSONObject(
+            """
+            {
+              "playlistItemData": {
+                "videoId": "VIDEO_1"
+              },
+              "flexColumns": [
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {"text": "Take 5"}
+                      ]
+                    }
+                  }
+                },
+                {
+                  "musicResponsiveListItemFlexColumnRenderer": {
+                    "text": {
+                      "runs": [
+                        {
+                          "text": "HIT CANZONI SANREMO 2026",
+                          "navigationEndpoint": {
+                            "browseEndpoint": {
+                              "browseId": "UC_CURATOR_CHANNEL"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        val references = YoutubeMusicRepository().extractYoutubeMusicArtistReferences(
+            renderer,
+            "HIT CANZONI SANREMO 2026"
+        )
+
+        assertEquals(emptyList<String>(), references.map { it.browseId })
+    }
+
 }
