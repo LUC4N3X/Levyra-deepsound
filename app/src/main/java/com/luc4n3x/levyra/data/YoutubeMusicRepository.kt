@@ -75,10 +75,10 @@ private data class ScoredAlbumRecommendation(
 internal const val REJECTED_ALBUM_RECOMMENDATION_SCORE = Int.MIN_VALUE
 
 internal fun albumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {
-    val albumKey = recommendationTextKey(album.title)
-    val artistKey = recommendationTextKey(album.artist)
-    val seedAlbumKey = recommendationTextKey(seed.album)
-    val seedArtistKey = recommendationTextKey(seed.artist)
+    val albumKey = albumRecommendationTextKey(album.title)
+    val artistKey = albumRecommendationTextKey(album.artist)
+    val seedAlbumKey = albumRecommendationTextKey(seed.album)
+    val seedArtistKey = albumRecommendationTextKey(seed.artist)
     if (albumKey.isBlank() || artistKey.isBlank()) return REJECTED_ALBUM_RECOMMENDATION_SCORE
 
     val seedArtistTokens = recommendationTokens(seedArtistKey)
@@ -106,7 +106,7 @@ internal fun albumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommend
 
     if (seedArtistKey.isNotBlank()) return 520 + artistScore
 
-    val moodKeys = seed.moodTags.map(::recommendationTextKey).filter { it.isNotBlank() }
+    val moodKeys = seed.moodTags.map(::albumRecommendationTextKey).filter { it.isNotBlank() }
     if (moodKeys.isEmpty()) return REJECTED_ALBUM_RECOMMENDATION_SCORE
     val searchable = "$albumKey $artistKey"
     val moodMatches = moodKeys.count { mood ->
@@ -116,10 +116,10 @@ internal fun albumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommend
     return 160 + moodMatches * 90
 }
 
-internal fun recommendationAlbumKey(album: AlbumHit): String =
-    "${recommendationTextKey(album.title)}|${recommendationTextKey(album.artist)}"
+internal fun albumRecommendationIdentityKey(album: AlbumHit): String =
+    "${albumRecommendationTextKey(album.title)}|${albumRecommendationTextKey(album.artist)}"
 
-internal fun recommendationTextKey(value: String): String {
+internal fun albumRecommendationTextKey(value: String): String {
     val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
     return decomposed
         .replace(Regex("\\p{M}+"), "")
@@ -144,7 +144,7 @@ private fun recommendationCompatibility(left: String, right: String): Double {
     return coverage * 0.7 + jaccard * 0.3
 }
 
-private fun recommendationTokens(value: String): List<String> = recommendationTextKey(value)
+private fun recommendationTokens(value: String): List<String> = albumRecommendationTextKey(value)
     .split(' ')
     .filter { token -> token.isNotBlank() && token !in ALBUM_RECOMMENDATION_STOP_WORDS }
 
@@ -334,10 +334,10 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .filter { it.query.length >= 2 }
             .distinctBy { seed ->
                 listOf(
-                    recommendationTextKey(seed.query),
-                    recommendationTextKey(seed.artist),
-                    recommendationTextKey(seed.album),
-                    seed.moodTags.map(::recommendationTextKey).sorted().joinToString("|")
+                    albumRecommendationTextKey(seed.query),
+                    albumRecommendationTextKey(seed.artist),
+                    albumRecommendationTextKey(seed.album),
+                    seed.moodTags.map(::albumRecommendationTextKey).sorted().joinToString("|")
                 ).joinToString("|")
             }
             .take(MAX_ALBUM_RECOMMENDATION_SEEDS)
@@ -364,13 +364,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 }.awaitAll().flatten()
             }
             return@withContext personalized
-                .groupBy { recommendationAlbumKey(it.album) }
+                .groupBy { albumRecommendationIdentityKey(it.album) }
                 .values
                 .mapNotNull { group -> group.maxByOrNull { it.score } }
                 .sortedWith(
                     compareByDescending<ScoredAlbumRecommendation> { it.score }
-                        .thenBy { recommendationTextKey(it.album.artist) }
-                        .thenBy { recommendationTextKey(it.album.title) }
+                        .thenBy { albumRecommendationTextKey(it.album.artist) }
+                        .thenBy { albumRecommendationTextKey(it.album.title) }
                 )
                 .map { it.album }
                 .take(boundedLimit)
@@ -385,7 +385,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .asSequence()
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }
             .filter { it.browseId.isNotBlank() || it.query.isNotBlank() }
-            .distinctBy(::recommendationAlbumKey)
+            .distinctBy(::albumRecommendationIdentityKey)
             .take(boundedLimit)
             .toList()
     }
@@ -1317,47 +1317,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             return normalized == "•" || normalized == "·" || normalized == "|"
         }
 
-        fun hasPlayableSongEndpoint(renderer: JSONObject): Boolean {
-            if (renderer.optJSONObject("playlistItemData")?.optString("videoId").orEmpty().isNotBlank()) return true
-            if (renderer.optJSONObject("navigationEndpoint")
-                    ?.optJSONObject("watchEndpoint")
-                    ?.optString("videoId")
-                    .orEmpty()
-                    .isNotBlank()
-            ) return true
-            if (renderer.optJSONObject("overlay")
-                    ?.optJSONObject("musicItemThumbnailOverlayRenderer")
-                    ?.optJSONObject("content")
-                    ?.optJSONObject("musicPlayButtonRenderer")
-                    ?.optJSONObject("playNavigationEndpoint")
-                    ?.optJSONObject("watchEndpoint")
-                    ?.optString("videoId")
-                    .orEmpty()
-                    .isNotBlank()
-            ) return true
-            val titleRuns = renderer.optJSONArray("flexColumns")
-                ?.optJSONObject(0)
-                ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
-                ?.optJSONObject("text")
-                ?.optJSONArray("runs")
-            if (titleRuns != null) {
-                for (index in 0 until titleRuns.length()) {
-                    if (titleRuns.optJSONObject(index)
-                            ?.optJSONObject("navigationEndpoint")
-                            ?.optJSONObject("watchEndpoint")
-                            ?.optString("videoId")
-                            .orEmpty()
-                            .isNotBlank()
-                    ) return true
-                }
-            }
-            return renderer.optString("musicVideoType").isNotBlank()
-        }
-
-        fun referenceFromRun(
-            run: JSONObject?,
-            allowBareChannelId: Boolean
-        ): YoutubeMusicArtistReference? {
+        fun referenceFromRun(run: JSONObject?): YoutubeMusicArtistReference? {
             run ?: return null
             val browseEndpoint = run.optJSONObject("navigationEndpoint")
                 ?.optJSONObject("browseEndpoint")
@@ -1368,18 +1328,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 ?.optJSONObject("browseEndpointContextMusicConfig")
                 ?.optString("pageType")
                 .orEmpty()
-            val isArtistEndpoint = pageType.contains("ARTIST", ignoreCase = true) ||
-                (allowBareChannelId && browseId.startsWith("UC", ignoreCase = true))
-            if (browseId.isBlank() || !isArtistEndpoint) return null
+            if (browseId.isBlank() || !pageType.contains("ARTIST", ignoreCase = true)) return null
             val name = run.optString("text").cleanAlbumArtistLabel().trim()
             if (name.isBlank()) return null
             return YoutubeMusicArtistReference(name = name, browseId = browseId)
         }
 
-        fun parseArtistRuns(
-            runs: JSONArray?,
-            allowBareChannelId: Boolean
-        ) {
+        fun parseArtistRuns(runs: JSONArray?) {
             if (runs == null || runs.length() == 0) return
             val groups = mutableListOf<MutableList<JSONObject>>()
             var current = mutableListOf<JSONObject>()
@@ -1393,37 +1348,27 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 }
             }
             if (current.isNotEmpty()) groups += current
-            val artistGroup = groups.firstOrNull { group ->
-                group.any { referenceFromRun(it, allowBareChannelId) != null }
-            } ?: return
-            artistGroup.mapNotNull { referenceFromRun(it, allowBareChannelId) }.forEach { reference ->
+            val artistGroup = groups.firstOrNull { group -> group.any { referenceFromRun(it) != null } } ?: return
+            artistGroup.mapNotNull(::referenceFromRun).forEach { reference ->
                 ordered.putIfAbsent(reference.browseId.lowercase(Locale.ROOT), reference)
             }
         }
 
         fun parseRenderer(renderer: JSONObject) {
-            val allowBareChannelId = hasPlayableSongEndpoint(renderer)
             parseArtistRuns(
                 renderer.optJSONArray("flexColumns")
                     ?.optJSONObject(1)
                     ?.optJSONObject("musicResponsiveListItemFlexColumnRenderer")
                     ?.optJSONObject("text")
-                    ?.optJSONArray("runs"),
-                allowBareChannelId
+                    ?.optJSONArray("runs")
             )
-            parseArtistRuns(
-                renderer.optJSONObject("subtitle")?.optJSONArray("runs"),
-                allowBareChannelId
-            )
+            parseArtistRuns(renderer.optJSONObject("subtitle")?.optJSONArray("runs"))
         }
 
         when (value) {
             is JSONObject -> {
                 parseRenderer(value)
-                listOf(
-                    "musicResponsiveListItemRenderer",
-                    "musicTwoRowItemRenderer"
-                ).forEach { key ->
+                listOf("musicResponsiveListItemRenderer", "musicTwoRowItemRenderer").forEach { key ->
                     value.optJSONObject(key)?.let(::parseRenderer)
                 }
             }
@@ -1434,10 +1379,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             }
         }
 
-        if (ordered.isNotEmpty()) return ordered.values.toList()
-        val normalizedPreferred = preferredName.cleanAlbumArtistLabel().trim()
-        if (normalizedPreferred.isBlank()) return emptyList()
-        return emptyList()
+        return ordered.values.toList()
     }
 
     internal fun extractYoutubeMusicArtistReference(
