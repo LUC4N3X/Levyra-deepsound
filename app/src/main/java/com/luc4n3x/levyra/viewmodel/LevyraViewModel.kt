@@ -43,6 +43,7 @@ import com.luc4n3x.levyra.domain.AlbumRecommendationSeed
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.artistIdentityKey
+import com.luc4n3x.levyra.domain.isArtistShelfNameEligible
 import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.ChartsCatalog
 import com.luc4n3x.levyra.domain.DownloadedTrack
@@ -118,18 +119,6 @@ private data class HomeArtistCandidate(
     val browseId: String
 )
 
-private fun isEligibleHomeArtistName(value: String): Boolean {
-    val key = artistIdentityKey(value)
-    if (key.isBlank()) return false
-    return !key.startsWith("topsify ") &&
-        !key.endsWith(" mix") &&
-        !key.contains(" playlist") &&
-        !key.startsWith("top 50 ") &&
-        !key.startsWith("top 100 ") &&
-        !key.startsWith("classifica ") &&
-        !key.endsWith(" chart") &&
-        !key.endsWith(" charts")
-}
 
 internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
     val safeIncoming = incoming.coerceIn(1, 99)
@@ -655,38 +644,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val candidates = buildList {
             addAll(snapshot.charts)
             addAll(snapshot.homeSections.flatMap { it.tracks })
-            addAll(snapshot.tracks)
-            addAll(snapshot.favorites)
         }
             .asSequence()
-            .map { track ->
-                val primaryName = primaryArtistSegment(track.artist)
-                    .ifBlank { track.artist.trim() }
-                HomeArtistCandidate(
-                    name = primaryName,
-                    browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
-                )
+            .mapNotNull { track ->
+                val browseId = track.artistBrowseIds.firstOrNull().orEmpty().trim()
+                if (browseId.isBlank()) return@mapNotNull null
+                val primaryName = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
+                HomeArtistCandidate(name = primaryName, browseId = browseId)
             }
-            .filter { it.name.length >= 2 }
-            .filter { isEligibleHomeArtistName(it.name) }
-            .filterNot { it.name.contains("unknown", ignoreCase = true) }
+            .filter { it.name.length >= 2 && isArtistShelfNameEligible(it.name) }
             .filterNot {
                 it.name.equals("YouTube", ignoreCase = true) ||
                     it.name.equals("YouTube Music", ignoreCase = true)
             }
-            .sortedByDescending { candidate -> candidate.browseId.isNotBlank() }
-            .distinctBy { candidate ->
-                candidate.browseId.takeIf { it.isNotBlank() }?.lowercase() ?: artistIdentityKey(candidate.name)
-            }
-            .take(14)
+            .distinctBy { candidate -> candidate.browseId.lowercase() }
+            .take(8)
             .toList()
 
         val fingerprint = buildString {
             append(snapshot.languageCode)
             append('|')
-            append(candidates.joinToString("|") { candidate ->
-                candidate.browseId.ifBlank { artistIdentityKey(candidate.name) }.lowercase()
-            })
+            append(candidates.joinToString("|") { candidate -> "${candidate.browseId.lowercase()}:${artistIdentityKey(candidate.name)}" })
         }
 
         if (candidates.isEmpty()) {
@@ -703,84 +681,53 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeArtistsJob?.cancel()
 
         val hadCachedArtists = snapshot.homeArtists.isNotEmpty()
-        _state.update { current ->
-            if (hadCachedArtists || current.homeArtistsLoading) current else current.copy(homeArtistsLoading = true)
+        if (!hadCachedArtists) {
+            _state.update { current ->
+                if (current.homeArtistsLoading) current else current.copy(homeArtistsLoading = true)
+            }
         }
 
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
-            if (hadCachedArtists) awaitHomeUiIdle()
-            val semaphore = Semaphore(4)
-
-            suspend fun resolve(batch: List<HomeArtistCandidate>): List<ArtistHit> = coroutineScope {
-                batch.map { candidate ->
+            delay(220L)
+            awaitHomeUiIdle()
+            val semaphore = Semaphore(3)
+            val resolvedArtists = coroutineScope {
+                candidates.map { candidate ->
                     async {
                         semaphore.withPermit {
-                            withTimeoutOrNull(5_500L) {
+                            withTimeoutOrNull(4_000L) {
                                 runCatching {
-                                    if (candidate.browseId.isNotBlank()) {
-                                        artistRepository.artistHit(candidate.browseId, candidate.name)
-                                            ?: artistRepository.artistHitFor(candidate.name)
-                                    } else {
-                                        artistRepository.artistHitFor(candidate.name)
-                                    }
+                                    artistRepository.artistHit(candidate.browseId, candidate.name)
                                 }.getOrNull()
                             }
                         }
                     }
                 }.awaitAll()
-                    .filterNotNull()
-                    .filter { hit ->
-                        hit.name.isNotBlank() &&
-                            hit.thumbnailUrl.isNotBlank() &&
-                            hit.browseId.isNotBlank()
-                    }
-                    .distinctBy { hit -> hit.browseId.lowercase() }
             }
-
-            val primaryArtists = resolve(candidates.take(8)).take(10)
-            if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
-
-            if (!hadCachedArtists && primaryArtists.isNotEmpty()) {
-                var primaryChanged = false
-                _state.update { current ->
-                    if (homeArtistsFingerprint != fingerprint) {
-                        current
-                    } else if (current.homeArtists == primaryArtists && !current.homeArtistsLoading) {
-                        current
-                    } else {
-                        primaryChanged = true
-                        current.copy(homeArtists = primaryArtists, homeArtistsLoading = false)
-                    }
+                .filterNotNull()
+                .filter { hit ->
+                    hit.name.isNotBlank() &&
+                        hit.thumbnailUrl.isNotBlank() &&
+                        hit.browseId.isNotBlank() &&
+                        isArtistShelfNameEligible(hit.name)
                 }
-                if (primaryChanged) persistHomeSnapshot()
-            }
-
-            val remainingCandidates = candidates.drop(8)
-            val extraArtists = if (primaryArtists.size < 10 && remainingCandidates.isNotEmpty()) {
-                resolve(remainingCandidates)
-            } else {
-                emptyList()
-            }
+                .distinctBy { hit -> hit.browseId.lowercase() }
+                .take(8)
 
             if (!isActive || homeArtistsFingerprint != fingerprint) return@launch
-
-            val finalArtists = (primaryArtists + extraArtists + snapshot.homeArtists)
-                .distinctBy { hit -> hit.browseId.lowercase() }
-                .take(10)
-
-            if (primaryArtists.isNotEmpty() && finalArtists != primaryArtists) awaitHomeUiIdle()
+            awaitHomeUiIdle()
 
             var changed = false
             _state.update { current ->
                 if (homeArtistsFingerprint != fingerprint) {
                     current
-                } else if (finalArtists.isEmpty()) {
+                } else if (resolvedArtists.isEmpty()) {
                     if (!current.homeArtistsLoading) current else current.copy(homeArtistsLoading = false)
-                } else if (current.homeArtists == finalArtists && !current.homeArtistsLoading) {
+                } else if (current.homeArtists == resolvedArtists && !current.homeArtistsLoading) {
                     current
                 } else {
                     changed = true
-                    current.copy(homeArtists = finalArtists, homeArtistsLoading = false)
+                    current.copy(homeArtists = resolvedArtists, homeArtistsLoading = false)
                 }
             }
             if (changed) persistHomeSnapshot()
