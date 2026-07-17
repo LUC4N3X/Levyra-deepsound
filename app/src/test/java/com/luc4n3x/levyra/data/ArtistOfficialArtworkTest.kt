@@ -94,4 +94,25 @@ class ArtistOfficialArtworkTest {
 
         assertEquals("https://yt3.googleusercontent.com/annalisa-official", artwork.portraitUrl)
     }
+
+    @Test
+    fun prefersVerifiedArtistSearchThumbnailForHomeShelf() {
+        val result = chooseVerifiedArtistShelfThumbnail(
+            searchThumbnailUrl = "https://yt3.googleusercontent.com/madame-real-photo",
+            headerPortraitUrl = "https://yt3.googleusercontent.com/madame-logo"
+        )
+
+        assertEquals("https://yt3.googleusercontent.com/madame-real-photo", result)
+    }
+
+    @Test
+    fun fallsBackToOfficialHeaderWhenSearchThumbnailIsMissing() {
+        val result = chooseVerifiedArtistShelfThumbnail(
+            searchThumbnailUrl = "",
+            headerPortraitUrl = "https://yt3.googleusercontent.com/marracash-official"
+        )
+
+        assertEquals("https://yt3.googleusercontent.com/marracash-official", result)
+    }
+
 }
