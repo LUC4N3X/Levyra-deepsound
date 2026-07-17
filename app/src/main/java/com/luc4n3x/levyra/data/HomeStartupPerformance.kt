@@ -49,17 +49,17 @@ internal object HomeStartupWorkPolicy {
                 releasesPerArtist = 5
             )
             else -> HomeStartupWorkPlan(
-                idleWindowMs = 420L,
-                secondaryStartDelayMs = 550L,
-                priorityArtworkCount = 6,
-                refreshedArtworkCount = 10,
-                chartArtworkCount = 8,
-                persistentArtworkCount = 4,
-                chartEnrichmentCount = 6,
-                chartEnrichmentConcurrency = 2,
-                chartWarmCount = 2,
-                releaseRadarArtistCount = 6,
-                releasesPerArtist = 6
+                idleWindowMs = 520L,
+                secondaryStartDelayMs = 800L,
+                priorityArtworkCount = 4,
+                refreshedArtworkCount = 6,
+                chartArtworkCount = 5,
+                persistentArtworkCount = 2,
+                chartEnrichmentCount = 3,
+                chartEnrichmentConcurrency = 1,
+                chartWarmCount = 1,
+                releaseRadarArtistCount = 4,
+                releasesPerArtist = 5
             )
         }
     }
@@ -74,12 +74,12 @@ internal data class StartupPlaybackWarmPlan(
 internal object StartupPlaybackWarmPolicy {
     fun create(lowRam: Boolean, powerConstrained: Boolean, preferredConcurrency: Int): StartupPlaybackWarmPlan {
         return when {
-            lowRam -> StartupPlaybackWarmPlan(delayMs = 180L, trackCount = 1, concurrency = 1)
-            powerConstrained -> StartupPlaybackWarmPlan(delayMs = 140L, trackCount = 1, concurrency = 1)
+            lowRam -> StartupPlaybackWarmPlan(delayMs = 1_000L, trackCount = 1, concurrency = 1)
+            powerConstrained -> StartupPlaybackWarmPlan(delayMs = 900L, trackCount = 1, concurrency = 1)
             else -> StartupPlaybackWarmPlan(
-                delayMs = 100L,
-                trackCount = 3,
-                concurrency = preferredConcurrency.coerceIn(1, 2)
+                delayMs = 700L,
+                trackCount = 1,
+                concurrency = preferredConcurrency.coerceIn(1, 1)
             )
         }
     }
