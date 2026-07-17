@@ -524,6 +524,7 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         }
     }
 }
+
 @Composable
 private fun ActiveTrackEqualizer(
     modifier: Modifier = Modifier,
@@ -614,13 +615,22 @@ private fun SectionTitle(title: String) {
     ) {
         Box(
             modifier = Modifier
-                .width(3.5.dp)
-                .height(20.dp)
-                .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
+                .size(5.dp)
+                .background(LevyraCyan, CircleShape)
         )
-        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            text = title,
+            color = LevyraText,
+            fontSize = 23.sp,
+            lineHeight = 26.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.65).sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
+
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false, zoom: Float = 1f) {
     val context = LocalContext.current
@@ -1674,31 +1684,31 @@ private fun AlbumPrimaryPlayButton(
     accentEnd: Color,
     onClick: () -> Unit
 ) {
-    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
-    val cornerRadius = if (isAppleStyle) 12.dp else 16.dp
-    val buttonShape = RoundedCornerShape(cornerRadius)
+    val buttonShape = RoundedCornerShape(16.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
-            .shadow(if (enabled) 16.dp else 0.dp, buttonShape, clip = false, spotColor = accentStart.copy(alpha = 0.6f))
+            .shadow(if (enabled) 12.dp else 0.dp, buttonShape, clip = false, spotColor = accentStart.copy(alpha = 0.22f))
             .clip(buttonShape)
-            .background(
-                if (enabled) Brush.horizontalGradient(listOf(accentStart, accentEnd))
-                else Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.08f)))
-            )
+            .background(if (enabled) Color.White else Color.White.copy(alpha = 0.08f))
             .pressable(enabled = enabled && !isResolving, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (isResolving) {
-                CircularProgressIndicator(color = LevyraBlack, strokeWidth = 2.5.dp, modifier = Modifier.size(22.dp))
+                CircularProgressIndicator(color = Color.Black, strokeWidth = 2.5.dp, modifier = Modifier.size(22.dp))
             } else {
-                Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = if (enabled) LevyraBlack else LevyraMuted, modifier = Modifier.size(26.dp))
+                Icon(
+                    if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    null,
+                    tint = if (enabled) Color.Black else LevyraMuted,
+                    modifier = Modifier.size(26.dp)
+                )
             }
             Text(
                 if (isPlaying) LocalLevyraStrings.current.playing else LocalLevyraStrings.current.play,
-                color = if (enabled) LevyraBlack else LevyraMuted,
+                color = if (enabled) Color.Black else LevyraMuted,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = (-0.3).sp
@@ -2211,7 +2221,7 @@ private fun ArtistFollowButton(isFollowed: Boolean, onClick: () -> Unit) {
 private fun ArtistPlayButton(onClick: () -> Unit) {
     val strings = LocalLevyraStrings.current
     Surface(
-        color = LevyraCyan,
+        color = Color.White,
         shape = CircleShape,
         modifier = Modifier.height(50.dp).pressable(onClick = onClick)
     ) {
@@ -2220,8 +2230,8 @@ private fun ArtistPlayButton(onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(23.dp))
-            Text(strings.play, color = LevyraBlack, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(23.dp))
+            Text(strings.play, color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -2237,7 +2247,12 @@ private fun ArtistHeader(
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Box(modifier = Modifier.fillMaxWidth().height(472.dp).background(Brush.linearGradient(listOf(accentStart, accentEnd)))) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(458.dp)
+            .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
+    ) {
         val heroArtwork = profile.thumbnailUrl.ifBlank { profile.bannerUrl }
         if (heroArtwork.isNotBlank()) {
             AsyncImage(
@@ -2247,7 +2262,12 @@ private fun ArtistHeader(
                 modifier = Modifier.matchParentSize()
             )
         } else {
-            Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.74f), modifier = Modifier.align(Alignment.Center).size(94.dp))
+            Icon(
+                Icons.Rounded.Person,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.74f),
+                modifier = Modifier.align(Alignment.Center).size(94.dp)
+            )
         }
         Box(
             modifier = Modifier
@@ -2255,61 +2275,58 @@ private fun ArtistHeader(
                 .background(
                     Brush.verticalGradient(
                         colorStops = arrayOf(
-                            0f to Color.Black.copy(alpha = 0.20f),
-                            0.42f to Color.Transparent,
-                            0.70f to Color.Black.copy(alpha = 0.56f),
+                            0f to Color.Black.copy(alpha = 0.28f),
+                            0.38f to Color.Transparent,
+                            0.66f to Color.Black.copy(alpha = 0.52f),
                             1f to LevyraBlack
                         )
                     )
                 )
         )
         Row(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             PlayerRoundIconButton(
                 icon = Icons.Rounded.ArrowBack,
                 contentDescription = strings.back,
                 tint = Color.White,
-                background = Color.Black.copy(alpha = 0.34f),
+                background = Color.Black.copy(alpha = 0.38f),
                 borderColor = Color.White.copy(alpha = 0.14f),
                 onClick = onClose
             )
         }
         Column(
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     profile.name,
                     color = Color.White,
-                    fontSize = 40.sp,
-                    lineHeight = 43.sp,
-                    letterSpacing = (-1.25).sp,
+                    fontSize = 38.sp,
+                    lineHeight = 41.sp,
+                    letterSpacing = (-1.2).sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                Icon(Icons.Rounded.Verified, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(24.dp))
+                Icon(Icons.Rounded.Verified, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
             }
-            if (profile.monthlyListeners.isNotBlank()) {
+            val stats = listOf(profile.monthlyListeners, profile.subscribers).filter { it.isNotBlank() }.joinToString("  •  ")
+            if (stats.isNotBlank()) {
                 Text(
-                    text = profile.monthlyListeners,
-                    color = Color.White.copy(alpha = 0.88f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            if (profile.subscribers.isNotBlank()) {
-                Text(
-                    text = profile.subscribers,
-                    color = Color.White.copy(alpha = 0.66f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+                    text = stats,
+                    color = Color.White.copy(alpha = 0.74f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -2329,9 +2346,9 @@ private fun ArtistBio(bio: String) {
     val strings = LocalLevyraStrings.current
     var expanded by remember { mutableStateOf(false) }
     Surface(
-        color = Color.White.copy(alpha = 0.045f),
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(18.dp),
+        color = Color(0xFF0B0B0E),
+        border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2347,7 +2364,7 @@ private fun ArtistBio(bio: String) {
             )
             Text(
                 if (expanded) strings.showLess else strings.showAll,
-                color = LevyraCyan,
+                color = LevyraText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -4013,15 +4030,16 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                                 LevyraNavigationBlue.copy(alpha = 0.025f),
                                 Color.Transparent
                             ),
-                            center = androidx.compose.ui.geometry.Offset(width * 0.18f, height * 0.04f),
-                            radius = width * 0.92f
+                            center = androidx.compose.ui.geometry.Offset(width * 0.18f, height * 0.02f),
+                            radius = width * 0.88f
                         ),
-                        radius = width * 0.92f,
-                        center = androidx.compose.ui.geometry.Offset(width * 0.18f, height * 0.04f)
+                        radius = width * 0.88f,
+                        center = androidx.compose.ui.geometry.Offset(width * 0.18f, height * 0.02f)
                     )
                     return@drawBehind
                 }
 
+                drawRect(Color.Black)
                 drawRect(
                     Brush.verticalGradient(
                         listOf(
@@ -4544,30 +4562,12 @@ private fun TrendingArtistsShelf(
     onArtistClick: (ArtistHit) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(
-            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .height(22.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-            )
-            Text(
-                text = strings.artists,
-                color = LevyraText,
-                fontSize = 21.sp,
-                lineHeight = 23.sp,
-                letterSpacing = (-0.55).sp,
-                fontWeight = FontWeight.Black
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Box(modifier = Modifier.padding(horizontal = HomeHorizontalInset)) {
+            SectionTitle(strings.artists)
         }
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
             items(
@@ -4578,7 +4578,7 @@ private fun TrendingArtistsShelf(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .width(86.dp)
+                        .width(104.dp)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -4587,17 +4587,11 @@ private fun TrendingArtistsShelf(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(84.dp)
+                            .size(102.dp)
                             .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        LevyraCyan.copy(alpha = 0.62f),
-                                        LevyraViolet.copy(alpha = 0.56f)
-                                    )
-                                )
-                            )
-                            .padding(2.dp),
+                            .background(Color(0xFF0D0D10))
+                            .border(Dp.Hairline, Color.White.copy(alpha = 0.16f), CircleShape)
+                            .padding(3.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         if (artist.thumbnailUrl.isNotBlank()) {
@@ -4615,16 +4609,16 @@ private fun TrendingArtistsShelf(
                                 imageVector = Icons.Rounded.Person,
                                 contentDescription = artist.name,
                                 tint = LevyraText,
-                                modifier = Modifier.size(34.dp)
+                                modifier = Modifier.size(38.dp)
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(9.dp))
                     Text(
                         text = artist.name,
                         color = LevyraText,
-                        fontSize = 12.sp,
-                        lineHeight = 14.sp,
+                        fontSize = 13.sp,
+                        lineHeight = 15.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -4643,28 +4637,28 @@ private fun TrendingArtistsShelf(
     }
 }
 
-
 @Composable
 private fun TrendingArtistLoadingItem() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(86.dp)
+        modifier = Modifier.width(104.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(84.dp)
+                .size(102.dp)
                 .clip(CircleShape)
                 .shimmer()
-                .background(CinematicGlassDeep)
+                .background(Color(0xFF101014))
+                .border(Dp.Hairline, Color.White.copy(alpha = 0.08f), CircleShape)
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(9.dp))
         Box(
             modifier = Modifier
-                .width(62.dp)
+                .width(72.dp)
                 .height(12.dp)
                 .clip(RoundedCornerShape(99.dp))
                 .shimmer()
-                .background(CinematicGlassDeep)
+                .background(Color(0xFF101014))
         )
     }
 }
@@ -5576,13 +5570,13 @@ private fun ContinueListeningCard(
     val fontScale = LocalDensity.current.fontScale
     val cardHeight = when {
         fontScale >= 1.4f -> 116.dp
-        fontScale >= 1.15f -> 108.dp
-        else -> 100.dp
+        fontScale >= 1.15f -> 106.dp
+        else -> 96.dp
     }
     Surface(
-        color = Color.Transparent,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
+        color = Color(0xFF09090B),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.09f)),
         modifier = Modifier
             .fillMaxWidth()
             .height(cardHeight)
@@ -5591,66 +5585,52 @@ private fun ContinueListeningCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(cinematicGlassBrush(accentStart, accentEnd, 0.24f))
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(150.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 62.dp)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(accentEnd.copy(alpha = 0.16f), Color.Transparent)
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            accentStart.copy(alpha = 0.09f),
+                            Color(0xFF0B0B0E),
+                            Color(0xFF08080A),
+                            accentEnd.copy(alpha = 0.06f)
                         )
                     )
-            )
+                )
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    .padding(horizontal = 12.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 CoverImage(
                     track = track,
                     modifier = Modifier
-                        .size(58.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(Dp.Hairline, Color.White.copy(alpha = 0.13f), RoundedCornerShape(14.dp)),
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(Dp.Hairline, Color.White.copy(alpha = 0.12f), RoundedCornerShape(16.dp)),
                     highRes = false
                 )
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Headphones,
-                            contentDescription = null,
-                            tint = LevyraCyan,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = LocalLevyraStrings.current.continueListening,
-                            color = LevyraCyan,
-                            fontSize = 11.2.sp,
-                            lineHeight = 14.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    Text(
+                        text = LocalLevyraStrings.current.continueListening,
+                        color = LevyraMuted,
+                        fontSize = 11.5.sp,
+                        lineHeight = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Text(
                         text = track.title,
                         color = LevyraText,
                         fontSize = 16.sp,
                         lineHeight = 20.sp,
                         fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-0.3).sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -5665,29 +5645,28 @@ private fun ContinueListeningCard(
                     )
                 }
                 Surface(
-                    color = LevyraAdaptiveChip,
+                    color = Color.White,
                     shape = CircleShape,
-                    border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(42.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         when {
                             isResolving -> CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 1.8.dp,
-                                color = LevyraCyan
+                                modifier = Modifier.size(17.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.Black
                             )
                             isPlaying -> ActiveTrackEqualizer(
-                                color = LevyraCyan,
+                                color = Color.Black,
                                 isPlaying = true,
-                                width = 15.dp,
-                                height = 11.dp
+                                width = 16.dp,
+                                height = 12.dp
                             )
                             else -> Icon(
                                 imageVector = Icons.Rounded.PlayArrow,
                                 contentDescription = null,
-                                tint = LevyraText,
-                                modifier = Modifier.size(20.dp)
+                                tint = Color.Black,
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
@@ -5697,7 +5676,7 @@ private fun ContinueListeningCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(3.dp)
+                    .height(2.dp)
                     .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
             )
         }
@@ -10787,36 +10766,36 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.weight(1f)
         ) {
-            LevyraLogoMark(size = 56.dp)
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                LevyraWordmark(fontSize = 27.sp, dotSize = 5.dp)
+            LevyraLogoMark(size = 46.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                LevyraWordmark(fontSize = 26.sp, dotSize = 5.dp)
                 Text(
                     text = LocalLevyraStrings.current.formatGreeting(userName, java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)),
                     color = LevyraMuted,
                     fontSize = 12.5.sp,
                     lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.15.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.05.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
         }
         Surface(
-            color = if (LevyraIsLight) Color.White.copy(alpha = 0.90f) else Color(0xFF0C0D10),
+            color = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color(0xFF0C0C0F),
             border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
-            shape = RoundedCornerShape(15.dp),
+            shape = CircleShape,
             modifier = Modifier
-                .size(48.dp)
+                .size(44.dp)
                 .pressable(onClick = onSettings)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 if (isResolving) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(17.dp),
                         strokeWidth = 2.dp,
                         color = LevyraCyan
                     )
@@ -10825,7 +10804,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                         imageVector = Icons.Rounded.Settings,
                         contentDescription = LocalLevyraStrings.current.settings,
                         tint = LevyraText,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(21.dp)
                     )
                 }
             }
@@ -11172,7 +11151,7 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(
             items = moods,
@@ -11183,14 +11162,14 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
             Surface(
                 color = when {
                     selected && LevyraIsLight -> LevyraText
-                    selected -> Color(0xFFF4F4F6)
-                    LevyraIsLight -> Color.White.copy(alpha = 0.82f)
-                    else -> Color(0xFF0C0D10)
+                    selected -> LevyraCyan.copy(alpha = 0.16f)
+                    LevyraIsLight -> Color.White.copy(alpha = 0.86f)
+                    else -> Color(0xFF0C0C0F)
                 },
                 border = BorderStroke(
                     width = Dp.Hairline,
                     color = when {
-                        selected -> Color.Transparent
+                        selected -> LevyraCyan.copy(alpha = 0.30f)
                         else -> LevyraAdaptiveSoftHairline
                     }
                 ),
@@ -11201,13 +11180,12 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
                     text = mood.title,
                     color = when {
                         selected && LevyraIsLight -> Color.White
-                        selected -> Color(0xFF090A0C)
                         else -> LevyraText
                     },
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 17.dp, vertical = 11.dp)
+                    modifier = Modifier.padding(horizontal = 15.dp, vertical = 9.dp)
                 )
             }
         }
@@ -11224,40 +11202,37 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .height(22.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
+                    .size(5.dp)
+                    .background(LevyraCyan, CircleShape)
             )
             Text(
                 text = title,
                 color = LevyraText,
-                fontSize = 21.sp,
-                lineHeight = 23.sp,
-                letterSpacing = (-0.55).sp,
+                fontSize = 23.sp,
+                lineHeight = 26.sp,
+                letterSpacing = (-0.65).sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
         Surface(
-            color = LevyraAdaptiveChip,
-            border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
+            color = if (LevyraIsLight) LevyraText else Color.White,
             shape = CircleShape,
             modifier = Modifier
-                .size(36.dp)
+                .size(34.dp)
                 .pressable(onClick = onPlayAll)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Rounded.PlayArrow,
                     contentDescription = LocalLevyraStrings.current.play,
-                    tint = LevyraCyan,
-                    modifier = Modifier.size(18.dp)
+                    tint = if (LevyraIsLight) Color.White else Color.Black,
+                    modifier = Modifier.size(19.dp)
                 )
             }
         }
@@ -11305,17 +11280,17 @@ private fun HomeAlbumLoadingRow() {
 private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, onOpen: (AlbumHit) -> Unit) {
     if (albums.isEmpty()) return
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(15.dp),
         contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         itemsIndexed(
             items = albums,
             key = { _, album -> album.browseId.ifBlank { "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}" } },
             contentType = { _, _ -> "home-album-card" }
-        ) { index, album ->
+        ) { _, album ->
             var isPressed by remember { mutableStateOf(false) }
             val scale by animateFloatAsState(
-                targetValue = if (isPressed && animationsEnabled) 0.95f else 1f,
+                targetValue = if (isPressed && animationsEnabled) 0.96f else 1f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "homeAlbumScale"
             )
@@ -11327,7 +11302,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
             } else Modifier
             Column(
                 modifier = modifier
-                    .width(148.dp)
+                    .width(154.dp)
                     .pointerInput(album.title, album.artist) {
                         detectTapGestures(
                             onPress = {
@@ -11338,67 +11313,78 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                             onTap = { onOpen(album) }
                         )
                     },
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
-                Surface(
-                    color = CinematicGlass.copy(alpha = 0.3f),
-                    border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
-                    shape = RoundedCornerShape(18.dp),
-                    shadowElevation = 0.dp
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF0D0D10))
+                        .border(Dp.Hairline, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
                 ) {
+                    if (album.thumbnailUrl.isNotBlank()) {
+                        StableRemoteArtwork(
+                            url = album.thumbnailUrl,
+                            contentDescription = album.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize().background(Color(0xFF101014)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Rounded.Album, null, tint = LevyraMuted, modifier = Modifier.size(42.dp))
+                        }
+                    }
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                    ) {
-                        if (album.thumbnailUrl.isNotBlank()) {
-                            StableRemoteArtwork(
-                                url = album.thumbnailUrl,
-                                contentDescription = album.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(18.dp))
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0f to Color.Transparent,
+                                        0.62f to Color.Transparent,
+                                        1f to Color.Black.copy(alpha = 0.55f)
+                                    )
+                                )
                             )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(18.dp))
-                                    .background(Brush.linearGradient(listOf(LevyraPanel, LevyraInk))),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Rounded.Album, null, tint = LevyraCyan, modifier = Modifier.size(42.dp))
-                            }
-                        }
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.42f), Color.Black.copy(alpha = 0.76f))))
-                        )
-                        Surface(
-                            color = CinematicGlassDeep.copy(alpha = 0.52f),
-                            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.15f)),
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(10.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(Icons.Rounded.Album, null, tint = LevyraCyan, modifier = Modifier.size(12.dp))
-                                Text("${index + 1}", color = LevyraText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
+                    )
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.70f),
+                        border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.15f)),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(10.dp)
+                            .size(34.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.PlayArrow, null, tint = Color.White, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
-                Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(album.title, color = LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        album.title,
+                        color = LevyraText,
+                        fontSize = 14.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     val subtitle = listOf(LocalLevyraStrings.current.albumPlain, album.artist, album.year).filter { it.isNotBlank() }.joinToString(" • ")
-                    Text(subtitle, color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        subtitle,
+                        color = LevyraMuted,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
@@ -11409,20 +11395,20 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
 private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(15.dp),
         contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         itemsIndexed(
             items = tracks,
             key = { _, track -> track.id.ifBlank { "${track.title.trim().lowercase()}|${track.artist.trim().lowercase()}" } },
             contentType = { _, _ -> "album-card" }
-        ) { index, track ->
+        ) { _, track ->
             val isCurrent = track.id == currentId
             var isPressed by remember { mutableStateOf(false) }
             val scale by animateFloatAsState(
-                targetValue = if (isPressed && animationsEnabled) 0.95f else 1f,
+                targetValue = if (isPressed && animationsEnabled) 0.96f else 1f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
-                label = "scale"
+                label = "album-card-scale"
             )
             val modifier = if (animationsEnabled) {
                 Modifier.graphicsLayer {
@@ -11432,8 +11418,8 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
             } else Modifier
             Column(
                 modifier = modifier
-                    .width(148.dp)
-                    .pointerInput(Unit) {
+                    .width(154.dp)
+                    .pointerInput(track.id) {
                         detectTapGestures(
                             onPress = {
                                 isPressed = true
@@ -11443,55 +11429,78 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                             onTap = { onPlay(track) }
                         )
                     },
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
-                Surface(
-                    color = CinematicGlass.copy(alpha = 0.3f),
-                    border = BorderStroke(if (isCurrent) 1.dp else Dp.Hairline, if (isCurrent) LevyraCyan.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.12f)),
-                    shape = RoundedCornerShape(18.dp),
-                    shadowElevation = 0.dp
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF0D0D10))
+                        .border(
+                            width = if (isCurrent) 1.dp else Dp.Hairline,
+                            color = if (isCurrent) LevyraCyan.copy(alpha = 0.50f) else Color.White.copy(alpha = 0.10f),
+                            shape = RoundedCornerShape(20.dp)
+                        )
                 ) {
+                    CoverImage(
+                        track = track,
+                        modifier = Modifier.fillMaxSize(),
+                        highRes = false
+                    )
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0f to Color.Transparent,
+                                        0.62f to Color.Transparent,
+                                        1f to Color.Black.copy(alpha = 0.58f)
+                                    )
+                                )
+                            )
+                    )
+                    Surface(
+                        color = if (isCurrent) Color.White else Color.Black.copy(alpha = 0.70f),
+                        border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.15f)),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(10.dp)
+                            .size(34.dp)
                     ) {
-                        CoverImage(
-                            track = track,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(18.dp)),
-                            highRes = false
-                        )
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f), Color.Black.copy(alpha = 0.75f))))
-                        )
-                        Surface(
-                            color = CinematicGlassDeep.copy(alpha = 0.5f),
-                            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.15f)),
-                            shape = CircleShape,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(10.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(if (isCurrent) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow, null, tint = LevyraCyan, modifier = Modifier.size(12.dp))
-                                Text(if (isCurrent) LocalLevyraStrings.current.activeIndicator else "${index + 1}", color = LevyraText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                if (isCurrent) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+                                null,
+                                tint = if (isCurrent) Color.Black else Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                 }
-                Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(track.title, color = if (isCurrent) LevyraCyan else LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        track.title,
+                        color = if (isCurrent) LevyraCyan else LevyraText,
+                        fontSize = 14.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     val strings = LocalLevyraStrings.current
                     val kind = if (track.album.isNotBlank() && track.album != track.title && track.album != "YouTube Music") strings.albumPlain else strings.singlePlain
-                    Text("$kind • ${track.artist}", color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "$kind • ${track.artist}",
+                        color = LevyraMuted,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
@@ -12353,51 +12362,35 @@ private fun MiniPlayer(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    val accentCenter = accentStart.playerMix(accentEnd, 0.48f)
-    val rawMiniStart = accentStart.playerMix(Color.Black, 0.34f)
-    val rawMiniEnd = accentEnd.playerMix(Color.Black, 0.48f)
-    val miniGradient = remember(accentStart, accentEnd) {
-        PlayerContrastGradient(
-            start = rawMiniStart.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color,
-            end = rawMiniEnd.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color,
-            content = Color.White
-        )
-    }
-    val miniBackgrounds = remember(miniGradient) {
-        listOf(miniGradient.start, Color(0xFF111114), Color(0xFF09090C), miniGradient.end)
-    }
-    val miniPrimaryContent = miniGradient.content
-    val miniSecondaryContent = remember(miniGradient) {
-        miniPrimaryContent.playerMutedContentColor(miniBackgrounds)
-    }
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
         animationSpec = tween(420, easing = LinearOutSlowInEasing),
         label = "mini-progress"
     )
-    val containerShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    val containerShape = RoundedCornerShape(22.dp)
     Surface(
         color = Color.Transparent,
         shape = containerShape,
-        border = BorderStroke(1.dp, accentCenter.copy(alpha = 0.24f)),
+        border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
         modifier = Modifier
+            .padding(horizontal = 10.dp, vertical = 6.dp)
             .fillMaxWidth()
             .shadow(
                 elevation = 18.dp,
                 shape = containerShape,
                 clip = false,
-                ambientColor = accentStart.copy(alpha = 0.16f),
-                spotColor = Color.Black.copy(alpha = 0.82f)
+                ambientColor = accentStart.copy(alpha = 0.10f),
+                spotColor = Color.Black.copy(alpha = 0.88f)
             )
     ) {
         Column(
             modifier = Modifier.background(
                 Brush.linearGradient(
                     listOf(
-                        miniGradient.start,
+                        accentStart.copy(alpha = 0.12f),
                         Color(0xFF111114),
-                        Color(0xFF09090C),
-                        miniGradient.end
+                        Color(0xFF09090B),
+                        accentEnd.copy(alpha = 0.08f)
                     )
                 )
             )
@@ -12405,24 +12398,19 @@ private fun MiniPlayer(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(68.dp)
-                    .padding(start = 14.dp, end = 10.dp),
+                    .height(66.dp)
+                    .padding(start = 10.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(11.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .size(48.dp)
-                        .shadow(8.dp, RoundedCornerShape(15.dp), clip = false)
                         .clip(RoundedCornerShape(15.dp))
+                        .border(BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.14f)), RoundedCornerShape(15.dp))
                         .pressable(onClick = onOpen)
                 ) {
                     CoverImage(track, Modifier.fillMaxSize())
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)), RoundedCornerShape(15.dp))
-                    )
                 }
                 Column(
                     modifier = Modifier
@@ -12432,18 +12420,18 @@ private fun MiniPlayer(
                 ) {
                     Text(
                         text = track.title,
-                        color = miniPrimaryContent,
-                        fontSize = 15.sp,
+                        color = LevyraText,
+                        fontSize = 14.5.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.1).sp,
+                        letterSpacing = (-0.15).sp,
                         maxLines = 1,
                         modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 2400)
                     )
                     Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = track.artist,
-                        color = miniSecondaryContent,
-                        fontSize = 12.5.sp,
+                        color = LevyraMuted,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -12452,54 +12440,47 @@ private fun MiniPlayer(
                 MiniPlayerToggleButton(
                     isPlaying = isPlaying,
                     isResolving = isResolving,
-                    buttonColor = miniPrimaryContent,
+                    buttonColor = Color.White,
                     onToggle = onToggle
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.SkipNext,
                     contentDescription = LocalLevyraStrings.current.next,
-                    size = 38.dp,
-                    iconSize = 21.dp,
-                    tint = miniPrimaryContent,
-                    background = miniPrimaryContent.copy(alpha = 0.08f),
-                    borderColor = miniPrimaryContent.copy(alpha = 0.16f),
+                    size = 36.dp,
+                    iconSize = 20.dp,
+                    tint = LevyraText,
+                    background = Color.White.copy(alpha = 0.07f),
+                    borderColor = Color.White.copy(alpha = 0.10f),
                     onClick = onNext
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.Close,
                     contentDescription = LocalLevyraStrings.current.closePlayer,
-                    size = 38.dp,
-                    iconSize = 19.dp,
-                    tint = miniSecondaryContent,
-                    background = miniPrimaryContent.copy(alpha = 0.06f),
-                    borderColor = miniPrimaryContent.copy(alpha = 0.13f),
+                    size = 34.dp,
+                    iconSize = 18.dp,
+                    tint = LevyraMuted,
+                    background = Color.White.copy(alpha = 0.045f),
+                    borderColor = Color.White.copy(alpha = 0.08f),
                     onClick = onClose
                 )
             }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp)
-                    .height(3.dp)
+                    .padding(horizontal = 12.dp)
+                    .height(2.dp)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(miniPrimaryContent.copy(alpha = 0.12f))
+                    .background(Color.White.copy(alpha = 0.10f))
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(animatedProgress)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(99.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    accentStart.playerMix(Color.White, 0.16f),
-                                    accentEnd.playerMix(Color.White, 0.10f)
-                                )
-                            )
-                        )
+                        .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
                 )
             }
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(5.dp))
         }
     }
 }
@@ -12951,12 +12932,12 @@ private fun VideoGlassCard(
 @Composable
 private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
     val strings = LocalLevyraStrings.current
-    val surfaceColor = if (LevyraIsLight) Color.White.copy(alpha = 0.96f) else Color(0xF708080B)
-    val linePrimary = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.07f)
+    val surfaceColor = if (LevyraIsLight) Color.White.copy(alpha = 0.97f) else Color(0xFF050506)
+    val linePrimary = if (LevyraIsLight) Color(0x1811131F) else Color.White.copy(alpha = 0.065f)
     Surface(
         color = surfaceColor,
         shape = RoundedCornerShape(0.dp),
-        shadowElevation = if (LevyraIsLight) 6.dp else 10.dp,
+        shadowElevation = if (LevyraIsLight) 5.dp else 8.dp,
         modifier = Modifier
             .fillMaxWidth()
             .drawBehind {
@@ -12972,8 +12953,8 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(76.dp)
-                    .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 7.dp),
+                    .height(74.dp)
+                    .padding(start = 8.dp, end = 8.dp, top = 7.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -12987,7 +12968,6 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
         }
     }
 }
-
 
 @Composable
 private fun PageHeader(title: String, subtitle: String) {
