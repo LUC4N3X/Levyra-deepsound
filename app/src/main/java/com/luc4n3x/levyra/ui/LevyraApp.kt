@@ -324,6 +324,23 @@ private val CinematicHairline = Color.White.copy(alpha = 0.105f)
 private val HomeHorizontalInset = 18.dp
 private val HomeHorizontalShelfEndPadding = 30.dp
 private const val HOME_ARTIST_SHELF_SIZE = 13
+private val LevyraNavigationBlue = Color(0xFF0A84FF)
+private val LevyraNavigationBlueDeep = Color(0xFF0066E6)
+private val LevyraSignalNodes = listOf(
+    0.08f to 0.16f,
+    0.20f to 0.09f,
+    0.34f to 0.20f,
+    0.52f to 0.12f,
+    0.69f to 0.23f,
+    0.86f to 0.14f,
+    0.14f to 0.38f,
+    0.42f to 0.33f,
+    0.76f to 0.41f,
+    0.93f to 0.31f,
+    0.27f to 0.58f,
+    0.61f to 0.53f,
+    0.84f to 0.66f
+)
 
 private val LevyraIsLight: Boolean get() = LevyraActivePalette.isLight
 private val LevyraReadableOnArtwork: Color get() = Color.White
@@ -396,41 +413,32 @@ private fun cinematicTextBrush(): Brush {
 private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-
     val selectedProgress by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "tab-selected-progress"
     )
     val pillWidth by animateDpAsState(
-        targetValue = if (selected) 58.dp else 30.dp,
+        targetValue = if (selected) 56.dp else 34.dp,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow),
         label = "tab-pill-width"
     )
     val iconScale by animateFloatAsState(
-        targetValue = if (pressed) 0.86f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+        targetValue = if (pressed) 0.86f else if (selected) 1.04f else 1f,
+        animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium),
         label = "tab-icon-scale"
     )
-    val isAppleStyle = LevyraActivePalette.id == com.luc4n3x.levyra.ui.theme.LevyraThemes.APPLE_MUSIC
-    val tabActiveTint = if (isAppleStyle) LevyraCyan else if (LevyraIsLight) LevyraCyan else Color(0xFF9BDDFF)
-    val tabInactiveTint = if (LevyraIsLight) LevyraMuted else Color(0xFF7E7E86)
     val iconTint by animateColorAsState(
-        targetValue = if (selected) tabActiveTint else tabInactiveTint,
-        animationSpec = tween(240),
+        targetValue = if (selected) Color.White else if (LevyraIsLight) LevyraMuted else Color(0xFF85858D),
+        animationSpec = tween(220),
         label = "tab-icon-tint"
     )
     val labelTint by animateColorAsState(
-        targetValue = when {
-            selected && isAppleStyle -> LevyraCyan
-            selected && LevyraIsLight -> LevyraText
-            selected -> Color(0xFFEAF7FF)
-            LevyraIsLight -> LevyraMuted
-            else -> Color(0xFF8A8A92)
-        },
-        animationSpec = tween(240),
+        targetValue = if (selected) LevyraNavigationBlue else if (LevyraIsLight) LevyraMuted else Color(0xFF8B8B94),
+        animationSpec = tween(220),
         label = "tab-label-tint"
     )
+    val pillShape = RoundedCornerShape(18.dp)
 
     Box(
         modifier = Modifier
@@ -449,33 +457,39 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
         ) {
             Box(
                 modifier = Modifier
-                    .width(if (isAppleStyle) 30.dp else pillWidth)
-                    .height(32.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .width(pillWidth)
+                    .height(34.dp)
+                    .clip(pillShape)
                     .background(
-                        if (isAppleStyle) Color.Transparent
-                        else LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.16f else 0.14f) * selectedProgress)
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                LevyraNavigationBlue.copy(alpha = 0.92f * selectedProgress),
+                                LevyraNavigationBlueDeep.copy(alpha = 0.78f * selectedProgress)
+                            )
+                        ),
+                        shape = pillShape
                     )
-                    .then(
-                        if (isAppleStyle) Modifier
-                        else Modifier.border(
-                            width = 1.dp,
-                            color = LevyraCyan.copy(alpha = (if (LevyraIsLight) 0.26f else 0.22f) * selectedProgress),
-                            shape = RoundedCornerShape(16.dp)
-                        )
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFF79BDFF).copy(alpha = 0.48f * selectedProgress),
+                        shape = pillShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (isAppleStyle && selectedProgress > 0.01f) {
+                if (selectedProgress > 0.01f) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .graphicsLayer {
-                                scaleX = selectedProgress
-                                scaleY = selectedProgress
-                                alpha = selectedProgress * 0.14f
-                            }
-                            .background(LevyraCyan, CircleShape)
+                            .matchParentSize()
+                            .graphicsLayer { alpha = selectedProgress }
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.20f),
+                                        Color.Transparent
+                                    )
+                                ),
+                                pillShape
+                            )
                     )
                 }
                 Icon(
@@ -495,25 +509,18 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                 color = labelTint,
                 fontSize = 11.sp,
                 lineHeight = 12.sp,
-                letterSpacing = 0.1.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                letterSpacing = 0.05.sp,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (isAppleStyle) {
-                val indicatorWidth by animateDpAsState(
-                    targetValue = if (selected) 14.dp else 0.dp,
-                    animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
-                    label = "tab-apple-indicator-width"
-                )
-                Box(
-                    modifier = Modifier
-                        .width(indicatorWidth)
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(1.5.dp))
-                        .background(LevyraCyan)
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .width(18.dp * selectedProgress)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(LevyraNavigationBlue.copy(alpha = selectedProgress))
+            )
         }
     }
 }
@@ -3967,8 +3974,8 @@ private fun LyricsStatusRow(provider: String, synced: Boolean, cached: Boolean, 
 
 @Composable
 private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
-    val sourceStart = accentStart?.let { Color(it) } ?: LevyraCyan
-    val sourceEnd = accentEnd?.let { Color(it) } ?: LevyraViolet
+    val sourceStart = accentStart?.let { Color(it) } ?: LevyraNavigationBlue
+    val sourceEnd = accentEnd?.let { Color(it) } ?: LevyraNavigationBlueDeep
     val primaryAccent by animateColorAsState(
         targetValue = sourceStart,
         animationSpec = tween(900, easing = LinearOutSlowInEasing),
@@ -4002,8 +4009,8 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                primaryAccent.copy(alpha = 0.09f),
-                                primaryAccent.copy(alpha = 0.025f),
+                                LevyraNavigationBlue.copy(alpha = 0.09f),
+                                LevyraNavigationBlue.copy(alpha = 0.025f),
                                 Color.Transparent
                             ),
                             center = androidx.compose.ui.geometry.Offset(width * 0.18f, height * 0.04f),
@@ -4018,117 +4025,155 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                 drawRect(
                     Brush.verticalGradient(
                         listOf(
-                            Color(0xFF010102),
-                            Color(0xFF050609),
-                            Color(0xFF020204),
+                            Color.Black,
+                            Color(0xFF01040A),
+                            Color(0xFF02050B),
                             Color.Black
                         )
                     )
                 )
 
-                val topHaloCenter = androidx.compose.ui.geometry.Offset(width * 0.20f, height * 0.02f)
+                val topHalo = androidx.compose.ui.geometry.Offset(width * 0.18f, height * 0.02f)
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            primaryAccent.copy(alpha = 0.15f),
-                            primaryAccent.copy(alpha = 0.045f),
+                            LevyraNavigationBlue.copy(alpha = 0.17f),
+                            LevyraNavigationBlue.copy(alpha = 0.055f),
                             Color.Transparent
                         ),
-                        center = topHaloCenter,
-                        radius = width * 0.95f
+                        center = topHalo,
+                        radius = width * 0.88f
                     ),
-                    radius = width * 0.95f,
-                    center = topHaloCenter
+                    radius = width * 0.88f,
+                    center = topHalo
                 )
 
-                val sideHaloCenter = androidx.compose.ui.geometry.Offset(width * 1.02f, height * 0.30f)
+                val rightHalo = androidx.compose.ui.geometry.Offset(width * 1.04f, height * 0.34f)
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            secondaryAccent.copy(alpha = 0.095f),
-                            secondaryAccent.copy(alpha = 0.025f),
+                            LevyraNavigationBlueDeep.copy(alpha = 0.10f),
+                            primaryAccent.copy(alpha = 0.025f),
                             Color.Transparent
                         ),
-                        center = sideHaloCenter,
-                        radius = width * 0.72f
+                        center = rightHalo,
+                        radius = width * 0.76f
                     ),
-                    radius = width * 0.72f,
-                    center = sideHaloCenter
+                    radius = width * 0.76f,
+                    center = rightHalo
                 )
 
-                val horizon = height * 0.22f
-                val vanishingPoint = androidx.compose.ui.geometry.Offset(width * 0.56f, horizon)
-                val beamPath = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(vanishingPoint.x, vanishingPoint.y)
-                    lineTo(width * 0.05f, height)
-                    lineTo(width * 0.96f, height)
-                    close()
+                val signalPath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(-width * 0.10f, height * 0.27f)
+                    cubicTo(
+                        width * 0.18f,
+                        height * 0.17f,
+                        width * 0.34f,
+                        height * 0.39f,
+                        width * 0.56f,
+                        height * 0.25f
+                    )
+                    cubicTo(
+                        width * 0.72f,
+                        height * 0.15f,
+                        width * 0.88f,
+                        height * 0.32f,
+                        width * 1.10f,
+                        height * 0.20f
+                    )
                 }
                 drawPath(
-                    path = beamPath,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.035f),
-                            primaryAccent.copy(alpha = 0.018f),
-                            Color.Transparent
-                        ),
-                        startY = horizon,
-                        endY = height * 0.88f
-                    )
-                )
-
-                val gridColor = Color.White.copy(alpha = 0.026f)
-                for (index in -8..8) {
-                    val bottomX = width * 0.5f + index * width / 7.2f
-                    drawLine(
-                        color = gridColor,
-                        start = vanishingPoint,
-                        end = androidx.compose.ui.geometry.Offset(bottomX, height),
-                        strokeWidth = 0.7f
-                    )
-                }
-                for (index in 1..14) {
-                    val progress = index / 14f
-                    val curvedProgress = progress * progress
-                    val y = horizon + (height - horizon) * curvedProgress
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.012f + progress * 0.018f),
-                        start = androidx.compose.ui.geometry.Offset(0f, y),
-                        end = androidx.compose.ui.geometry.Offset(width, y),
-                        strokeWidth = 0.7f
-                    )
-                }
-
-                drawArc(
+                    path = signalPath,
                     brush = Brush.horizontalGradient(
                         listOf(
                             Color.Transparent,
-                            primaryAccent.copy(alpha = 0.16f),
-                            secondaryAccent.copy(alpha = 0.10f),
+                            LevyraNavigationBlue.copy(alpha = 0.04f),
+                            LevyraNavigationBlue.copy(alpha = 0.12f),
+                            LevyraNavigationBlueDeep.copy(alpha = 0.055f),
                             Color.Transparent
                         )
                     ),
-                    startAngle = 198f,
-                    sweepAngle = 144f,
-                    useCenter = false,
-                    topLeft = androidx.compose.ui.geometry.Offset(-width * 0.18f, -height * 0.05f),
-                    size = androidx.compose.ui.geometry.Size(width * 1.36f, height * 0.47f),
-                    style = Stroke(width = 1.2f)
+                    style = Stroke(width = 1.15.dp.toPx())
                 )
+
+                val echoPath = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(-width * 0.08f, height * 0.285f)
+                    cubicTo(
+                        width * 0.19f,
+                        height * 0.20f,
+                        width * 0.36f,
+                        height * 0.42f,
+                        width * 0.57f,
+                        height * 0.28f
+                    )
+                    cubicTo(
+                        width * 0.74f,
+                        height * 0.18f,
+                        width * 0.90f,
+                        height * 0.35f,
+                        width * 1.08f,
+                        height * 0.24f
+                    )
+                }
+                drawPath(
+                    path = echoPath,
+                    color = LevyraNavigationBlue.copy(alpha = 0.035f),
+                    style = Stroke(width = 0.75.dp.toPx())
+                )
+
+                drawArc(
+                    color = LevyraNavigationBlue.copy(alpha = 0.075f),
+                    startAngle = 202f,
+                    sweepAngle = 116f,
+                    useCenter = false,
+                    topLeft = androidx.compose.ui.geometry.Offset(width * 0.45f, -height * 0.075f),
+                    size = androidx.compose.ui.geometry.Size(width * 0.74f, height * 0.34f),
+                    style = Stroke(width = 0.9.dp.toPx())
+                )
+                drawArc(
+                    color = secondaryAccent.copy(alpha = 0.035f),
+                    startAngle = 196f,
+                    sweepAngle = 128f,
+                    useCenter = false,
+                    topLeft = androidx.compose.ui.geometry.Offset(width * 0.38f, -height * 0.105f),
+                    size = androidx.compose.ui.geometry.Size(width * 0.90f, height * 0.41f),
+                    style = Stroke(width = 0.65.dp.toPx())
+                )
+
+                LevyraSignalNodes.forEachIndexed { index, node ->
+                    val pulse = when (index % 3) {
+                        0 -> 0.13f
+                        1 -> 0.085f
+                        else -> 0.055f
+                    }
+                    val center = androidx.compose.ui.geometry.Offset(width * node.first, height * node.second)
+                    drawCircle(
+                        color = LevyraNavigationBlue.copy(alpha = pulse),
+                        radius = if (index % 4 == 0) 1.25.dp.toPx() else 0.75.dp.toPx(),
+                        center = center
+                    )
+                    if (index % 4 == 0) {
+                        drawCircle(
+                            color = LevyraNavigationBlue.copy(alpha = 0.025f),
+                            radius = 8.dp.toPx(),
+                            center = center
+                        )
+                    }
+                }
 
                 drawRect(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.55f),
+                            Color.Black.copy(alpha = 0.24f),
+                            Color.Black.copy(alpha = 0.88f),
                             Color.Black
                         ),
-                        startY = height * 0.46f,
+                        startY = height * 0.50f,
                         endY = height
                     ),
-                    topLeft = androidx.compose.ui.geometry.Offset(0f, height * 0.46f),
-                    size = androidx.compose.ui.geometry.Size(width, height * 0.54f)
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, height * 0.50f),
+                    size = androidx.compose.ui.geometry.Size(width, height * 0.50f)
                 )
             }
     )
