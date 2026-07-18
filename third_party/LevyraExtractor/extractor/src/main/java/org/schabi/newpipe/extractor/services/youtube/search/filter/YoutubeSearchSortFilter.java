@@ -13,6 +13,7 @@ import org.schabi.newpipe.extractor.services.youtube.search.filter.protobuf.Type
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -22,7 +23,6 @@ import static org.schabi.newpipe.extractor.NewPipe.getDownloader;
 
 public final class YoutubeSearchSortFilter {
 
-    private static final String UTF_8 = "UTF_8";
     private String searchParameter = "";
 
     public YoutubeSearchSortFilter() {
@@ -78,7 +78,7 @@ public final class YoutubeSearchSortFilter {
             final ByteString bs = new ByteString(protoBufEncoded);
             final String protoBufEncodedBase64 = bs.base64();
             this.searchParameter
-                    = URLEncoder.encode(protoBufEncodedBase64, UTF_8);
+                    = URLEncoder.encode(protoBufEncodedBase64, StandardCharsets.UTF_8.name());
         } catch (NoClassDefFoundError e){
             throw new RuntimeException("Base64 error. This shouldn't happen", e);
         }
@@ -92,7 +92,7 @@ public final class YoutubeSearchSortFilter {
     public SearchRequest decodeSp(final String urlEncodedBase64EncodedSearchParameter)
             throws IOException {
         final String urlDecodedBase64EncodedSearchParameter
-                = URLDecoder.decode(urlEncodedBase64EncodedSearchParameter, UTF_8);
+                = URLDecoder.decode(urlEncodedBase64EncodedSearchParameter, StandardCharsets.UTF_8.name());
         final byte[] decodedSearchParameter
                 = ByteString.decodeBase64(urlDecodedBase64EncodedSearchParameter).toByteArray();
         final SearchRequest decodedSearchRequest

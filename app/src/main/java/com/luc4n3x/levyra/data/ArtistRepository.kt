@@ -494,9 +494,9 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             relatedArtists = related,
             videos = videos,
             shufflePlaylistId = findPlaylistIdByMarker(root, listOf("SHUFFLE"))
-                .ifBlank { findPlaylistId(header?.optJSONObject("playButton")) },
+                .ifBlank { findPlaylistId(header.optJSONObject("playButton")) },
             radioPlaylistId = findPlaylistIdByMarker(root, listOf("RADIO", "START_RADIO"))
-                .ifBlank { findPlaylistId(header?.optJSONObject("startRadioButton")) },
+                .ifBlank { findPlaylistId(header.optJSONObject("startRadioButton")) },
             songsBrowseId = songsPointer?.browseId.orEmpty(),
             albumsBrowseId = albumPointer?.browseId.orEmpty(),
             albumsParams = albumPointer?.params.orEmpty(),

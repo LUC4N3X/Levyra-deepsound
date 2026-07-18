@@ -4,7 +4,7 @@ import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
 import com.grack.nanojson.JsonParser;
 import com.grack.nanojson.JsonParserException;
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.jsoup.parser.Parser;
 import org.schabi.newpipe.extractor.*;
 import org.schabi.newpipe.extractor.channel.StaffInfoItem;
 import org.schabi.newpipe.extractor.downloader.CancellableCall;
@@ -533,7 +533,7 @@ public class BillibiliStreamExtractor extends StreamExtractor {
         if (getStreamType() != StreamType.LIVE_STREAM && isPremiumContent != 1 && watch.getArray("pages").size() > 1) {
             title = "P" + page.getInt("page") + " " + page.getString("part") + " | " + title;
         }
-        return StringEscapeUtils.unescapeHtml4(title);
+        return Parser.unescapeEntities(title, false);
     }
 
     @Override

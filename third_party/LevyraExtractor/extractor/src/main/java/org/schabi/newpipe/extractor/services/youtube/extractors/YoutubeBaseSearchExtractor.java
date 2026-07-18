@@ -12,13 +12,11 @@ public abstract class YoutubeBaseSearchExtractor extends SearchExtractor {
         super(service, linkHandler);
     }
 
-    @SuppressWarnings("unchecked")
-    protected  <T extends FilterItem> T getSelectedContentFilterItem() {
+    protected <T extends FilterItem> T getSelectedContentFilterItem(final Class<T> filterType) {
         final FilterItem filterItem = getLinkHandler().getContentFilters().get(0);
-
-        if (filterItem != null) {
-            return (T) filterItem;
+        if (filterType.isInstance(filterItem)) {
+            return filterType.cast(filterItem);
         }
-        throw new RuntimeException("no content filter set");
+        throw new IllegalStateException("Unexpected content filter type");
     }
 }

@@ -6,7 +6,6 @@ import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getTextFromObject;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getValidJsonResponseBody;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.prepareDesktopJsonBuilder;
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 
 import org.schabi.newpipe.extractor.*;
@@ -32,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import javax.annotation.Nonnull;
+import java.nio.charset.StandardCharsets;
 
 public class YoutubeSearchExtractor extends YoutubeBaseSearchExtractor {
     private JsonObject initialData;
@@ -49,7 +49,7 @@ public class YoutubeSearchExtractor extends YoutubeBaseSearchExtractor {
 
         // Get the search parameter for the request
         final YoutubeFilters.YoutubeContentFilterItem contentFilterItem =
-                getSelectedContentFilterItem();
+                getSelectedContentFilterItem(YoutubeFilters.YoutubeContentFilterItem.class);
         final String params = contentFilterItem.getParams();
 
         final JsonBuilder<JsonObject> jsonBody = prepareDesktopJsonBuilder(localization,
@@ -59,7 +59,7 @@ public class YoutubeSearchExtractor extends YoutubeBaseSearchExtractor {
             jsonBody.value("params", params);
         }
 
-        final byte[] body = JsonWriter.string(jsonBody.done()).getBytes(UTF_8);
+        final byte[] body = JsonWriter.string(jsonBody.done()).getBytes(StandardCharsets.UTF_8);
 
         initialData = getJsonPostResponse("search", body, localization);
     }
@@ -152,7 +152,7 @@ public class YoutubeSearchExtractor extends YoutubeBaseSearchExtractor {
                 getExtractorContentCountry())
                 .value("continuation", page.getId())
                 .done())
-                .getBytes(UTF_8);
+                .getBytes(StandardCharsets.UTF_8);
         // @formatter:on
 
         final String responseBody = getValidJsonResponseBody(getDownloader().post(
