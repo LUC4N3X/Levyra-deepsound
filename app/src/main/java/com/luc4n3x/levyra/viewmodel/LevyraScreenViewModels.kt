@@ -25,8 +25,13 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
@@ -54,11 +59,22 @@ data class HomePlaybackProgress(
 )
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
-    internal val renderState: StateFlow<HomeRenderSnapshot> = state
-        .scan(buildHomeRenderSnapshot(root.state.value)) { previous, snapshot ->
-            withContext(Dispatchers.Default) { buildHomeRenderSnapshot(snapshot, previous) }
+    private val freezeHomeContent = MutableStateFlow(false)
+    private var homeRenderSettleJob: Job? = null
+
+    internal val renderState: StateFlow<HomeRenderSnapshot> = combine(state, freezeHomeContent) { snapshot, freeze ->
+        HomeRenderInput(snapshot, freeze)
+    }
+        .scan(buildHomeRenderSnapshot(root.state.value)) { previous, input ->
+            withContext(Dispatchers.Default) {
+                buildStableHomeRenderSnapshot(
+                    state = input.state,
+                    previous = previous,
+                    freezeContent = input.freezeContent
+                )
+            }
         }
-        .distinctUntilChanged()
+        .distinctUntilChanged(::sameHomeRenderSnapshot)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
@@ -89,9 +105,30 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun selectMood(mood: Mood) = root.selectMood(mood)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
-    fun onHomeEntered() = root.onHomeEntered()
-    fun onHomeLeft() = root.onHomeLeft()
-    fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) = root.setHomeViewport(scrollInProgress, atTop)
+    fun onHomeEntered(atTop: Boolean) {
+        homeRenderSettleJob?.cancel()
+        freezeHomeContent.value = shouldFreezeHomeStructure(scrollInProgress = false, atTop = atTop)
+        root.onHomeEntered(atTop)
+    }
+
+    fun onHomeLeft() {
+        homeRenderSettleJob?.cancel()
+        freezeHomeContent.value = false
+        root.onHomeLeft()
+    }
+
+    fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) {
+        root.setHomeViewport(scrollInProgress, atTop)
+        homeRenderSettleJob?.cancel()
+        if (shouldFreezeHomeStructure(scrollInProgress, atTop)) {
+            freezeHomeContent.value = true
+        } else {
+            homeRenderSettleJob = viewModelScope.launch {
+                delay(HOME_RENDER_SETTLE_MS)
+                freezeHomeContent.value = false
+            }
+        }
+    }
 }
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
@@ -180,6 +217,53 @@ class LevyraScreenViewModelFactory(
     }
 }
 
+
+private const val HOME_RENDER_SETTLE_MS = 360L
+
+internal fun shouldFreezeHomeStructure(scrollInProgress: Boolean, atTop: Boolean): Boolean {
+    return scrollInProgress || !atTop
+}
+
+private data class HomeRenderInput(
+    val state: LevyraUiState,
+    val freezeContent: Boolean
+)
+
+internal fun buildStableHomeRenderSnapshot(
+    state: LevyraUiState,
+    previous: HomeRenderSnapshot,
+    freezeContent: Boolean
+): HomeRenderSnapshot {
+    val visibleState = if (freezeContent) state.withFrozenHomeContent(previous.state) else state
+    return buildHomeRenderSnapshot(visibleState, previous)
+}
+
+private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
+    return copy(
+        tracks = previous.tracks,
+        recentSearches = previous.recentSearches,
+        recentListens = previous.recentListens,
+        personalOrbitTracks = previous.personalOrbitTracks,
+        favorites = previous.favorites,
+        charts = previous.charts,
+        isLoadingCharts = previous.isLoadingCharts,
+        homeSections = previous.homeSections,
+        homeAlbums = previous.homeAlbums,
+        homeArtists = previous.homeArtists,
+        homeResonanceTracks = previous.homeResonanceTracks,
+        homeArtistsLoading = previous.homeArtistsLoading,
+        homeAlbumsLoading = previous.homeAlbumsLoading,
+        isLoadingHome = previous.isLoadingHome,
+        homeError = previous.homeError,
+        releaseRadar = previous.releaseRadar,
+        similarArtists = previous.similarArtists
+    )
+}
+
+private fun sameHomeRenderSnapshot(previous: HomeRenderSnapshot, current: HomeRenderSnapshot): Boolean {
+    return homeProjection(previous.state) == homeProjection(current.state) && previous.derived == current.derived
+}
+
 @Immutable
 internal data class HomeRenderSnapshot(
     val state: LevyraUiState,
@@ -206,6 +290,7 @@ private data class HomeDerivedInput(
     val homeSections: List<HomeSection>,
     val homeAlbums: List<AlbumHit>,
     val charts: List<Track>,
+    val cachedResonanceTracks: List<Track>,
     val releaseRadar: List<ReleaseRadarEntry>,
     val similarArtists: List<ArtistHit>,
     val currentTrack: Track?
@@ -240,6 +325,7 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.homeSections === current.homeSections &&
         previous.homeAlbums === current.homeAlbums &&
         previous.charts === current.charts &&
+        previous.homeResonanceTracks === current.homeResonanceTracks &&
         previous.releaseRadar === current.releaseRadar &&
         previous.similarArtists === current.similarArtists
 }
@@ -254,6 +340,7 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         homeSections = homeSections,
         homeAlbums = homeAlbums,
         charts = charts,
+        cachedResonanceTracks = homeResonanceTracks,
         releaseRadar = releaseRadar,
         similarArtists = similarArtists,
         currentTrack = currentTrack
@@ -279,7 +366,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         hasCurrentTrack = input.currentTrack != null
     )
     return HomeDerivedState(
-        resonanceTracks = buildHomeResonanceTracks(input),
+        resonanceTracks = input.cachedResonanceTracks.ifEmpty { buildHomeResonanceTracks(input) },
         artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
         newReleases = newReleases,
         otherSections = otherSections,
@@ -306,6 +393,10 @@ private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
         )
         .take(8)
         .toList()
+}
+
+internal fun buildHomeResonanceTracks(state: LevyraUiState): List<Track> {
+    return buildHomeResonanceTracks(state.toHomeDerivedInput())
 }
 
 private fun buildHomeArtistRefreshFingerprint(input: HomeDerivedInput): String {
@@ -429,6 +520,7 @@ private data class HomeProjection(
     val favorites: List<Track>,
     val homeAlbums: List<AlbumHit>,
     val homeArtists: List<ArtistHit>,
+    val homeResonanceTracks: List<Track>,
     val homeArtistsLoading: Boolean,
     val homeAlbumsLoading: Boolean,
     val homeSections: List<HomeSection>,
@@ -462,6 +554,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     favorites = state.favorites,
     homeAlbums = state.homeAlbums,
     homeArtists = state.homeArtists,
+    homeResonanceTracks = state.homeResonanceTracks,
     homeArtistsLoading = state.homeArtistsLoading,
     homeAlbumsLoading = state.homeAlbumsLoading,
     homeSections = state.homeSections,
