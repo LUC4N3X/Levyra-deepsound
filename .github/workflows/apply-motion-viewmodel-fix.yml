@@ -16,6 +16,12 @@ jobs:
   apply:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,6 +32,22 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Prepare CI release signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
 
       - name: Apply guarded request generation
         shell: python
