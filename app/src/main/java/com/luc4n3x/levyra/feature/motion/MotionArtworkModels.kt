@@ -99,6 +99,18 @@ internal fun splitArtists(value: String): List<String> {
         .distinctBy(::normalizeMotionText)
 }
 
+internal fun artistAliases(values: List<String>): Set<String> = buildSet {
+    values.forEach { value ->
+        normalizeMotionText(value).takeIf { it.isNotBlank() }?.let(::add)
+        splitArtists(value).forEach { artist ->
+            normalizeMotionText(artist).takeIf { it.isNotBlank() }?.let(::add)
+        }
+    }
+}
+
+internal fun combinedArtistSignature(values: List<String>): String =
+    normalizeMotionText(values.joinToString(" "))
+
 internal fun normalizeMotionText(value: String): String = value
     .lowercase(Locale.ROOT)
     .replace(Regex("[’'`´]"), "")
