@@ -279,7 +279,7 @@ YoutubeParsingHelper {
     public static boolean isGoogleURL(final String url) {
         final String cachedUrl = extractCachedUrlIfNeeded(url);
         try {
-            final URL u = new URL(cachedUrl);
+            final URL u = Utils.stringToURL(cachedUrl);
             return GOOGLE_URLS.stream().anyMatch(item -> u.getHost().startsWith(item));
         } catch (final MalformedURLException e) {
             return false;
@@ -1188,7 +1188,7 @@ YoutubeParsingHelper {
         }
 
         // Check if the request was redirected to the error page.
-        final URL latestUrl = new URL(response.latestUrl());
+        final URL latestUrl = Utils.stringToURL(response.latestUrl());
         if (latestUrl.getHost().equalsIgnoreCase("www.youtube.com")) {
             final String path = latestUrl.getPath();
             if (path.equalsIgnoreCase("/oops") || path.equalsIgnoreCase("/error")) {
@@ -2153,7 +2153,7 @@ YoutubeParsingHelper {
             final String metaInfoLinkUrl = YoutubeParsingHelper.getUrlFromNavigationEndpoint(
                     infoPanelContentRenderer.getObject("sourceEndpoint"));
             try {
-                metaInfo.addUrl(new URL(Objects.requireNonNull(extractCachedUrlIfNeeded(
+                metaInfo.addUrl(Utils.stringToURL(Objects.requireNonNull(extractCachedUrlIfNeeded(
                         metaInfoLinkUrl))));
             } catch (final NullPointerException | MalformedURLException e) {
                 throw new ParsingException("Could not get metadata info URL", e);
@@ -2195,7 +2195,7 @@ YoutubeParsingHelper {
             try {
                 final String url = YoutubeParsingHelper.getUrlFromNavigationEndpoint(actionButton
                         .getObject("command"));
-                metaInfo.addUrl(new URL(Objects.requireNonNull(extractCachedUrlIfNeeded(url))));
+                metaInfo.addUrl(Utils.stringToURL(Objects.requireNonNull(extractCachedUrlIfNeeded(url))));
             } catch (final NullPointerException | MalformedURLException e) {
                 throw new ParsingException("Could not get metadata info URL", e);
             }
@@ -2215,7 +2215,7 @@ YoutubeParsingHelper {
             // Ignore Google URLs, because those point to a Google search about "Covid-19"
             if (url != null && !isGoogleURL(url)) {
                 try {
-                    metaInfo.addUrl(new URL(url));
+                    metaInfo.addUrl(Utils.stringToURL(url));
                     final String description = getTextFromObject(clarificationRenderer
                             .getObject("secondarySource"));
                     metaInfo.addUrlText(description == null ? url : description);

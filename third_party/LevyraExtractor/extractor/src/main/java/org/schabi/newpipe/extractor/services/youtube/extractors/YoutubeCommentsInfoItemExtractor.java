@@ -4,6 +4,7 @@ import com.grack.nanojson.JsonObject;
 
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.Page;
+import org.schabi.newpipe.extractor.comments.CommentsInfoItem;
 import org.schabi.newpipe.extractor.comments.CommentsInfoItemExtractor;
 import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.localization.DateWrapper;
@@ -133,9 +134,14 @@ public class YoutubeCommentsInfoItemExtractor implements CommentsInfoItemExtract
                 return 0;
             }
 
-            return Integer.parseInt(likeCount);
+            final long parsedLikeCount = Utils.parseNonNegativeLongOrDefault(
+                    likeCount, CommentsInfoItem.NO_LIKE_COUNT);
+            if (parsedLikeCount == CommentsInfoItem.NO_LIKE_COUNT) {
+                return CommentsInfoItem.NO_LIKE_COUNT;
+            }
+            return (int) Math.min(parsedLikeCount, Integer.MAX_VALUE);
         } catch (final Exception e) {
-            throw new ParsingException("Unexpected error while parsing like count as Integer", e);
+            throw new ParsingException("Unexpected error while parsing like count", e);
         }
     }
 

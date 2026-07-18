@@ -22,12 +22,12 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.function.IntUnaryOperator;
 
 import static org.schabi.newpipe.extractor.services.soundcloud.linkHandler.SoundcloudSearchQueryHandlerFactory.ITEMS_PER_PAGE;
 import static org.schabi.newpipe.extractor.utils.Utils.EMPTY_STRING;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
+import static org.schabi.newpipe.extractor.utils.Utils.stringToURL;
 
 public class SoundcloudSearchExtractor extends SearchExtractor {
     private JsonObject initialSearchObject;
@@ -140,7 +140,7 @@ public class SoundcloudSearchExtractor extends SearchExtractor {
 
     private int getOffsetFromUrl(final String url) throws ParsingException {
         try {
-            return Integer.parseInt(Parser.compatParseMap(new URL(url).getQuery()).get("offset"));
+            return Integer.parseInt(Parser.compatParseMap(stringToURL(url).getQuery()).get("offset"));
         } catch (MalformedURLException | UnsupportedEncodingException e) {
             throw new ParsingException("Could not get offset from page URL", e);
         }

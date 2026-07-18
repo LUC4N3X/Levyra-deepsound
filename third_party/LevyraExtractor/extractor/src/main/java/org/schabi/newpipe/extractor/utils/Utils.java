@@ -4,6 +4,7 @@ import org.schabi.newpipe.extractor.exceptions.ParsingException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -78,6 +79,24 @@ public final class Utils {
     @Nonnull
     public static String removeNonDigitCharacters(@Nonnull final String toRemove) {
         return toRemove.replaceAll("\\D+", "");
+    }
+
+    public static long parseNonNegativeLongOrDefault(@Nullable final String value,
+                                                     final long defaultValue) {
+        if (isBlank(value)) {
+            return defaultValue;
+        }
+
+        final String digits = removeNonDigitCharacters(value);
+        if (digits.isEmpty()) {
+            return defaultValue;
+        }
+
+        try {
+            return Long.parseLong(digits);
+        } catch (final NumberFormatException ignored) {
+            return defaultValue;
+        }
     }
 
     /**
@@ -204,14 +223,16 @@ public final class Utils {
     @Nonnull
     public static URL stringToURL(final String url) throws MalformedURLException {
         try {
-            return new URL(url);
-        } catch (final MalformedURLException e) {
-            // If no protocol is given try prepending "https://"
-            if (e.getMessage().equals("no protocol: " + url)) {
-                return new URL(HTTPS + url);
+            return URI.create(url).toURL();
+        } catch (final IllegalArgumentException e) {
+            try {
+                return URI.create(HTTPS + url).toURL();
+            } catch (final IllegalArgumentException fallbackError) {
+                final MalformedURLException malformedUrl =
+                        new MalformedURLException(fallbackError.getMessage());
+                malformedUrl.initCause(fallbackError);
+                throw malformedUrl;
             }
-
-            throw e;
         }
     }
 

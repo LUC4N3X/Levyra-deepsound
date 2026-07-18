@@ -34,7 +34,7 @@ public class NiconicoChannelTabExtractor extends ChannelTabExtractor {
         if(getLinkHandler().getContentFilters().get(0).getName() == ChannelTabs.VIDEOS) {
             NiconicoUserExtractor extractor = new NiconicoUserExtractor(getService(), getLinkHandler());
             extractor.onFetchPage(getDownloader());
-            return (InfoItemsPage<InfoItem>) (InfoItemsPage<?>) extractor.getInitialPage();
+            return widenPage(extractor.getInitialPage());
         }
         return getPage(new Page(getLinkHandler().getUrl()));
     }
@@ -43,7 +43,7 @@ public class NiconicoChannelTabExtractor extends ChannelTabExtractor {
     public InfoItemsPage<InfoItem> getPage(Page page) throws IOException, ExtractionException {
         if(getLinkHandler().getContentFilters().get(0).getName() == ChannelTabs.VIDEOS) {
             NiconicoUserExtractor extractor = new NiconicoUserExtractor(getService(), getLinkHandler());
-            return (InfoItemsPage<InfoItem>) (InfoItemsPage<?>) extractor.getPage(page);
+            return widenPage(extractor.getPage(page));
         }
         try {
             JsonObject data = JsonParser.object().from(getDownloader().get(page.getUrl(), NiconicoService.getMylistHeaders()).responseBody()).getObject("data");
@@ -92,4 +92,10 @@ public class NiconicoChannelTabExtractor extends ChannelTabExtractor {
             throw new RuntimeException(e);
         }
     }
+    private static InfoItemsPage<InfoItem> widenPage(
+            final InfoItemsPage<? extends InfoItem> page) {
+        return new InfoItemsPage<>(new java.util.ArrayList<>(page.getItems()),
+                page.getNextPage(), page.getErrors());
+    }
+
 }

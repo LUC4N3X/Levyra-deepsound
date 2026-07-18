@@ -2,8 +2,6 @@ package org.schabi.newpipe.extractor;
 
 import org.schabi.newpipe.extractor.exceptions.ExtractionException;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
-import org.schabi.newpipe.extractor.stream.StreamInfoItem;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,16 +45,16 @@ public abstract class ListExtractor<R extends InfoItem> extends Extractor {
     public abstract InfoItemsPage<R> getInitialPage() throws IOException, ExtractionException;
 
     @Nonnull
-    public InfoItemsPage<StreamInfoItem> getFullPage() throws IOException, ExtractionException{
-        InfoItemsPage<StreamInfoItem> currentPage = (InfoItemsPage<StreamInfoItem>) getInitialPage();
-        ArrayList<StreamInfoItem> itemArrayList = new ArrayList<>(currentPage.getItems());
-        ArrayList<Throwable> errors = new ArrayList<>(currentPage.getErrors());
-        while (currentPage.hasNextPage()){
-            currentPage = (InfoItemsPage<StreamInfoItem>) getPage(currentPage.getNextPage());
-            itemArrayList.addAll(currentPage.getItems());
+    public InfoItemsPage<R> getFullPage() throws IOException, ExtractionException {
+        InfoItemsPage<R> currentPage = getInitialPage();
+        final ArrayList<R> items = new ArrayList<>(currentPage.getItems());
+        final ArrayList<Throwable> errors = new ArrayList<>(currentPage.getErrors());
+        while (currentPage.hasNextPage()) {
+            currentPage = getPage(currentPage.getNextPage());
+            items.addAll(currentPage.getItems());
             errors.addAll(currentPage.getErrors());
         }
-        return new InfoItemsPage<>(itemArrayList, null, errors);
+        return new InfoItemsPage<>(items, null, errors);
     }
 
     /**
