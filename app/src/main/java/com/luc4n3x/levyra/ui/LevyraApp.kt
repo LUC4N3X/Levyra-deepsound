@@ -760,7 +760,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val currentStrings = LevyraStrings.forCode(state.languageCode)
-    val layoutDirection = if (currentStrings.code == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
+    val layoutDirection = if (LevyraLanguageCatalog.isRtl(currentStrings.code)) LayoutDirection.Rtl else LayoutDirection.Ltr
     LaunchedEffect(state.isVideoMode, state.isPlaying) {
         val currentPipState = LevyraPipBridge.current()
         LevyraPipBridge.updatePlayback(
@@ -9710,7 +9710,7 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
     val strings = LevyraStrings.forCode(languageCode)
     val blocker = remember { MutableInteractionSource() }
     val primaryEnabled = onboardingPrimaryEnabled(step, selected.size)
-    val layoutDirection = if (languageCode == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
+    val layoutDirection = if (LevyraLanguageCatalog.isRtl(languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Box(
             modifier = Modifier

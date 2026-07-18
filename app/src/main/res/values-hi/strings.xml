@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">मिनी प्लेयर, त्वरित पसंदीदा, डेली Flow, ऑफ़लाइन और बोल</string>
+    <string name="widget_idle_subtitle">सुनने के लिए टैप करें</string>
+    <string name="widget_toggle">चलाएँ/रोकें</string>
+    <string name="widget_next">अगला</string>
+    <string name="widget_previous">पिछला</string>
+    <string name="widget_favorites">पसंदीदा</string>
+    <string name="widget_flow">डेली Flow</string>
+    <string name="widget_offline">ऑफ़लाइन मिक्स</string>
+    <string name="widget_lyrics">बोल</string>
+    <string name="radar_channel_name">रिलीज़ रडार</string>
+    <string name="radar_channel_description">आपके फ़ॉलो किए कलाकारों की नई रिलीज़</string>
+    <string name="radar_new_release_title">%1$s की नई रिलीज़</string>
+</resources>
