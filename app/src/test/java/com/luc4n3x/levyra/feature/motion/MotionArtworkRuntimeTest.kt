@@ -25,16 +25,19 @@ class MotionArtworkRuntimeTest {
     @Test
     fun runtimeEpochChangesOnlyForARealConfigurationChange() {
         val initial = MotionArtworkRuntime.snapshot()
-        val changedOrder = initial.value.providerOrder.reversed().ifEmpty { listOf("tidal-video-cover") }
-        val changed = MotionArtworkRuntime.update(initial.value.copy(providerOrder = changedOrder))
-        val repeated = MotionArtworkRuntime.update(changed.value)
+        try {
+            val changedOrder = initial.value.providerOrder.reversed().ifEmpty { listOf("tidal-video-cover") }
+            val changed = MotionArtworkRuntime.update(initial.value.copy(providerOrder = changedOrder))
+            val repeated = MotionArtworkRuntime.update(changed.value)
 
-        if (changed.value == initial.value) {
-            assertEquals(initial.epoch, changed.epoch)
-        } else {
-            assertEquals(initial.epoch + 1L, changed.epoch)
+            if (changed.value == initial.value) {
+                assertEquals(initial.epoch, changed.epoch)
+            } else {
+                assertEquals(initial.epoch + 1L, changed.epoch)
+            }
+            assertEquals(changed.epoch, repeated.epoch)
+        } finally {
+            MotionArtworkRuntime.update(initial.value)
         }
-        assertEquals(changed.epoch, repeated.epoch)
-        MotionArtworkRuntime.update(initial.value)
     }
 }
