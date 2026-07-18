@@ -77,11 +77,41 @@ class CanonicalTrackMatcherTest {
         assertTrue(CanonicalTrackMatcher.match(reference, candidate).accepted)
     }
 
+
     @Test
     fun tidalArtistMatchingAcceptsUnsplitGroupNames() {
         assertTrue(
             tidalArtistsCompatible(
                 requested = listOf("Earth", "Wind", "Fire"),
+                returned = listOf("Earth, Wind & Fire")
+            )
+        )
+    }
+
+    @Test
+    fun featuredArtistAloneCannotReplacePrimaryArtist() {
+        val reference = MotionTrackIdentity(
+            title = "Brano",
+            artists = listOf("Main Artist", "Guest Artist"),
+            album = "Album",
+            durationMs = 200_000L,
+            isrc = "",
+            upc = "",
+            year = "",
+            trackId = "track",
+            albumId = "album"
+        )
+        val candidate = albumCandidate("Brano", "Guest Artist", "Album")
+
+        assertFalse(CanonicalTrackMatcher.match(reference, candidate).accepted)
+        assertFalse(tidalArtistsCompatible(reference.artists, candidate.identity.artists))
+    }
+
+    @Test
+    fun soloArtistDoesNotMatchLargerGroupBySharedAlias() {
+        assertFalse(
+            tidalArtistsCompatible(
+                requested = listOf("Earth"),
                 returned = listOf("Earth, Wind & Fire")
             )
         )
