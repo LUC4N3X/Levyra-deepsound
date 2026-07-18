@@ -5,11 +5,17 @@ import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
@@ -27,6 +33,7 @@ class MotionArtworkEngine(context: Context) {
     private var activeProviders: List<MotionArtworkProvider> = emptyList()
     private val inFlightMutex = Mutex()
     private val inFlight = mutableMapOf<String, CompletableDeferred<MotionArtwork?>>()
+    private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     suspend fun resolve(track: Track): MotionArtwork? {
         if (!networkPolicy.canResolveCurrent()) return null
@@ -39,26 +46,25 @@ class MotionArtworkEngine(context: Context) {
         }
 
         val requestKey = "${runtime.epoch}:$identityKey"
-        val (deferred, owner) = inFlightMutex.withLock {
-            val existing = inFlight[requestKey]
-            if (existing != null) {
-                existing to false
-            } else {
-                CompletableDeferred<MotionArtwork?>().also { inFlight[requestKey] = it } to true
-            }
-        }
-
-        if (owner) {
-            try {
-                deferred.complete(resolveFresh(track, identityKey, runtime.epoch, runtime.value))
-            } catch (error: CancellationException) {
-                deferred.completeExceptionally(error)
-                throw error
-            } catch (error: Throwable) {
-                Timber.d(error, "Motion artwork resolution failed")
-                deferred.complete(null)
-            } finally {
-                inFlightMutex.withLock { inFlight.remove(requestKey, deferred) }
+        val deferred = inFlightMutex.withLock {
+            inFlight[requestKey] ?: CompletableDeferred<MotionArtwork?>().also { shared ->
+                inFlight[requestKey] = shared
+                lookupScope.launch {
+                    try {
+                        shared.complete(resolveFresh(track, identityKey, runtime.epoch, runtime.value))
+                    } catch (error: CancellationException) {
+                        shared.completeExceptionally(error)
+                    } catch (error: Throwable) {
+                        Timber.d(error, "Motion artwork resolution failed")
+                        shared.complete(null)
+                    } finally {
+                        withContext(NonCancellable) {
+                            inFlightMutex.withLock {
+                                inFlight.remove(requestKey, shared)
+                            }
+                        }
+                    }
+                }
             }
         }
         return deferred.await()
@@ -83,19 +89,29 @@ class MotionArtworkEngine(context: Context) {
         val identity = MotionTrackIdentity.from(track)
         val providers = providersFor(configEpoch, config)
         val providerRanks = config.providerOrder.withIndex().associate { it.value to it.index }
-        val candidates = supervisorScope {
+        val outcomes = supervisorScope {
             providers.map { provider ->
                 async {
                     try {
-                        withTimeoutOrNull(config.requestTimeoutMs) { provider.find(identity) }.orEmpty()
+                        withTimeoutOrNull(config.requestTimeoutMs) {
+                            provider.find(identity)
+                        } ?: MotionArtworkProviderResult.Failed()
                     } catch (error: CancellationException) {
                         throw error
                     } catch (error: Throwable) {
                         Timber.d(error, "Motion provider %s failed", provider.id)
-                        emptyList()
+                        MotionArtworkProviderResult.Failed(error)
                     }
                 }
-            }.awaitAll().flatten()
+            }.awaitAll()
+        }
+        val providerFailed = providers.isEmpty() || outcomes.any { it is MotionArtworkProviderResult.Failed }
+        val candidates = outcomes.flatMap { outcome ->
+            when (outcome) {
+                is MotionArtworkProviderResult.Found -> outcome.candidates
+                MotionArtworkProviderResult.NoMatch,
+                is MotionArtworkProviderResult.Failed -> emptyList()
+            }
         }
 
         val ranked = candidates.mapNotNull { candidate ->
@@ -108,18 +124,27 @@ class MotionArtworkEngine(context: Context) {
         )
 
         var verified: RankedCandidate? = null
-        for (rankedCandidate in ranked.take(3)) {
-            if (urlVerifier.verify(rankedCandidate.candidate)) {
-                verified = rankedCandidate
-                break
+        var verifierFailed = false
+        val verificationCandidates = ranked.take(MAX_VERIFICATION_CANDIDATES)
+        for (rankedCandidate in verificationCandidates) {
+            when (urlVerifier.verify(rankedCandidate.candidate)) {
+                MotionArtworkVerificationResult.Verified -> {
+                    verified = rankedCandidate
+                    break
+                }
+                MotionArtworkVerificationResult.Invalid -> Unit
+                is MotionArtworkVerificationResult.Failed -> verifierFailed = true
             }
         }
         if (verified == null) {
-            repository.saveNegative(
-                identityKey = identityKey,
-                configEpoch = configEpoch,
-                expiresAt = System.currentTimeMillis() + config.negativeTtlMs
-            )
+            val conclusive = !providerFailed && !verifierFailed && ranked.size <= MAX_VERIFICATION_CANDIDATES
+            if (conclusive) {
+                repository.saveNegative(
+                    identityKey = identityKey,
+                    configEpoch = configEpoch,
+                    expiresAt = System.currentTimeMillis() + config.negativeTtlMs
+                )
+            }
             repository.cleanup(configEpoch)
             return null
         }
@@ -156,4 +181,8 @@ class MotionArtworkEngine(context: Context) {
         val confidence: Int,
         val providerRank: Int
     )
+
+    private companion object {
+        const val MAX_VERIFICATION_CANDIDATES = 3
+    }
 }
