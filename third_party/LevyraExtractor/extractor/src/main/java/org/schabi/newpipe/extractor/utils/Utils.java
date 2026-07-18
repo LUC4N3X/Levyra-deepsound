@@ -5,6 +5,7 @@ import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -37,6 +38,9 @@ public final class Utils {
     public static final String EMPTY_STRING = "";
     private static final Pattern M_PATTERN = Pattern.compile("(https?)?://m\\.");
     private static final Pattern WWW_PATTERN = Pattern.compile("(https?)?://www\\.");
+    private static final Pattern URL_SCHEME_PATTERN =
+            Pattern.compile("^[A-Za-z][A-Za-z0-9+.-]*:");
+    private static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
 
     private Utils() {
         // no instance
@@ -214,7 +218,7 @@ public final class Utils {
      * Convert a string to a {@link URL URL object}.
      *
      * <p>
-     * Defaults to HTTP if no protocol is given.
+     * Defaults to HTTPS if no protocol is given.
      * </p>
      *
      * @param url the string to be converted to a URL-Object
@@ -222,18 +226,125 @@ public final class Utils {
      */
     @Nonnull
     public static URL stringToURL(final String url) throws MalformedURLException {
+        if (url == null) {
+            throw new MalformedURLException("URL must not be null");
+        }
+
+        final String value = url.trim();
+        if (value.isEmpty()) {
+            throw new MalformedURLException("URL must not be empty");
+        }
+
+        final String candidate;
+        if (URL_SCHEME_PATTERN.matcher(value).find()) {
+            candidate = value;
+        } else if (value.startsWith("//")) {
+            candidate = "https:" + value;
+        } else {
+            candidate = HTTPS + value;
+        }
+
         try {
-            return URI.create(url).toURL();
-        } catch (final IllegalArgumentException e) {
+            return new URI(candidate).toURL();
+        } catch (final URISyntaxException e) {
             try {
-                return URI.create(HTTPS + url).toURL();
-            } catch (final IllegalArgumentException fallbackError) {
+                return new URI(encodeIllegalUriCharacters(candidate)).toURL();
+            } catch (final URISyntaxException fallbackError) {
                 final MalformedURLException malformedUrl =
                         new MalformedURLException(fallbackError.getMessage());
                 malformedUrl.initCause(fallbackError);
                 throw malformedUrl;
             }
         }
+    }
+
+    private static String encodeIllegalUriCharacters(final String value) {
+        final StringBuilder encoded = new StringBuilder(value.length());
+        final int authorityMarker = value.indexOf("://");
+        final int authorityStart = authorityMarker < 0 ? -1 : authorityMarker + 3;
+        int authorityEnd = value.length();
+        if (authorityStart >= 0) {
+            for (int i = authorityStart; i < value.length(); i++) {
+                final char c = value.charAt(i);
+                if (c == '/' || c == '?' || c == '#') {
+                    authorityEnd = i;
+                    break;
+                }
+            }
+        }
+
+        for (int offset = 0; offset < value.length();) {
+            final int codePoint = value.codePointAt(offset);
+            final int charCount = Character.charCount(codePoint);
+            if (codePoint < 128
+                    && isAllowedUriAscii((char) codePoint, value, offset,
+                    authorityStart, authorityEnd)) {
+                encoded.append((char) codePoint);
+            } else {
+                final byte[] bytes = new String(Character.toChars(codePoint))
+                        .getBytes(StandardCharsets.UTF_8);
+                for (final byte current : bytes) {
+                    final int unsigned = current & 0xFF;
+                    encoded.append('%');
+                    encoded.append(HEX_DIGITS[unsigned >>> 4]);
+                    encoded.append(HEX_DIGITS[unsigned & 0x0F]);
+                }
+            }
+            offset += charCount;
+        }
+
+        return encoded.toString();
+    }
+
+    private static boolean isAllowedUriAscii(final char value,
+                                             final String input,
+                                             final int index,
+                                             final int authorityStart,
+                                             final int authorityEnd) {
+        if (value >= 'a' && value <= 'z'
+                || value >= 'A' && value <= 'Z'
+                || value >= '0' && value <= '9') {
+            return true;
+        }
+
+        switch (value) {
+            case '-':
+            case '.':
+            case '_':
+            case '~':
+            case ':':
+            case '/':
+            case '?':
+            case '#':
+            case '@':
+            case '!':
+            case '$':
+            case '&':
+            case '\'':
+            case '(':
+            case ')':
+            case '*':
+            case '+':
+            case ',':
+            case ';':
+            case '=':
+                return true;
+            case '[':
+            case ']':
+                return authorityStart >= 0 && index >= authorityStart && index < authorityEnd;
+            case '%':
+                return index + 2 < input.length()
+                        && isHexDigit(input.charAt(index + 1))
+                        && isHexDigit(input.charAt(index + 2));
+            default:
+                return false;
+        }
+    }
+
+    private static boolean isHexDigit(final char value) {
+        return value >= '0' && value <= '9'
+                || value >= 'a' && value <= 'f'
+                || value >= 'A' && value <= 'F';
     }
 
     public static boolean isHTTP(@Nonnull final URL url) {
