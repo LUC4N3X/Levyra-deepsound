@@ -263,6 +263,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var orbitArtworkJob: Job? = null
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
+    private val motionArtworkRequestGeneration = AtomicLong(0L)
     private var motionArtworkPrefetchJob: Job? = null
     private var sleepJob: Job? = null
     private var crossfadeJob: Job? = null
@@ -2008,6 +2009,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (value) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
         } else {
+            motionArtworkRequestGeneration.incrementAndGet()
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             motionArtworkPrefetchJob?.cancel()
@@ -3484,6 +3486,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         youtubeEngagementJob?.cancel()
+        motionArtworkRequestGeneration.incrementAndGet()
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = null
         motionArtworkPrefetchJob?.cancel()
@@ -3832,6 +3835,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun refreshMotionArtworkAround(current: Track) {
         if (!_state.value.animationsEnabled) {
+            motionArtworkRequestGeneration.incrementAndGet()
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
@@ -3840,6 +3844,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val expectedKey = MotionArtworkIdentityKey.create(current)
         if (motionArtworkJob?.isActive == true && motionArtworkRequestKey == expectedKey) return
         motionArtworkJob?.cancel()
+        val requestGeneration = motionArtworkRequestGeneration.incrementAndGet()
         motionArtworkRequestKey = expectedKey
         motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -3850,18 +3855,34 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     .getOrNull()
                 if (!isActive) return@launch
-                val activeTrack = _state.value.currentTrack
-                if (activeTrack != null && MotionArtworkIdentityKey.create(activeTrack) == expectedKey) {
-                    _state.update {
-                        it.copy(
+                var published = false
+                _state.update { latest ->
+                    val activeTrack = latest.currentTrack
+                    val stillOwnsRequest = motionArtworkRequestGeneration.get() == requestGeneration &&
+                        motionArtworkRequestKey == expectedKey &&
+                        latest.animationsEnabled &&
+                        activeTrack != null &&
+                        MotionArtworkIdentityKey.create(activeTrack) == expectedKey
+                    published = stillOwnsRequest
+                    if (stillOwnsRequest) {
+                        latest.copy(
                             motionArtwork = resolved,
                             motionArtworkLoading = false
                         )
+                    } else {
+                        latest
                     }
                 }
-                prefetchNextMotionArtwork(current)
+                if (published && motionArtworkRequestGeneration.get() == requestGeneration) {
+                    prefetchNextMotionArtwork(current)
+                }
             } finally {
-                if (motionArtworkRequestKey == expectedKey) motionArtworkRequestKey = null
+                if (
+                    motionArtworkRequestGeneration.get() == requestGeneration &&
+                    motionArtworkRequestKey == expectedKey
+                ) {
+                    motionArtworkRequestKey = null
+                }
             }
         }
     }
@@ -4146,6 +4167,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         prefetchJob?.cancel()
+        motionArtworkRequestGeneration.incrementAndGet()
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = null
         motionArtworkPrefetchJob?.cancel()
