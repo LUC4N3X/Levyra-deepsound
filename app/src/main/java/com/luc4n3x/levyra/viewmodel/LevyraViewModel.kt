@@ -326,17 +326,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeAtTop = atTop
         homeScrollInProgress = scrollInProgress
         homeInteractionGate.update(scrollInProgress)
-        if (homeScreenActive && !scrollInProgress) {
+        if (homeScreenActive && canApplyHomeStructuralChanges()) {
             scheduleDeferredHomeSnapshotApply()
         }
     }
 
-    fun onHomeEntered() {
+    fun onHomeEntered(atTop: Boolean) {
         homeScreenActive = true
-        homeAtTop = true
+        homeAtTop = atTop
         homeScrollInProgress = false
         homeInteractionGate.update(false)
-        scheduleDeferredHomeSnapshotApply(waitForIdle = false)
+        if (canApplyHomeStructuralChanges()) {
+            scheduleDeferredHomeSnapshotApply(waitForIdle = false)
+        }
     }
 
     fun onHomeLeft() {
@@ -347,7 +349,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun canApplyHomeStructuralChanges(): Boolean {
-        return !homeScreenActive || !homeScrollInProgress
+        return !homeScreenActive || !shouldFreezeHomeStructure(homeScrollInProgress, homeAtTop)
     }
 
     private fun hasDeferredHomeSnapshots(): Boolean {
@@ -355,17 +357,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun scheduleDeferredHomeSnapshotApply(waitForIdle: Boolean = true) {
-        if (!homeScreenActive || homeScrollInProgress || !hasDeferredHomeSnapshots()) return
+        if (!homeScreenActive || !canApplyHomeStructuralChanges() || !hasDeferredHomeSnapshots()) return
         if (!deferredHomeSnapshotApplyScheduled.compareAndSet(false, true)) return
         viewModelScope.launch {
             try {
                 if (waitForIdle) awaitHomeUiIdle()
-                if (homeScreenActive && !homeScrollInProgress) {
+                if (homeScreenActive && canApplyHomeStructuralChanges()) {
                     applyDeferredHomeSnapshots()
                 }
             } finally {
                 deferredHomeSnapshotApplyScheduled.set(false)
-                if (homeScreenActive && !homeScrollInProgress && hasDeferredHomeSnapshots()) {
+                if (homeScreenActive && canApplyHomeStructuralChanges() && hasDeferredHomeSnapshots()) {
                     scheduleDeferredHomeSnapshotApply()
                 }
             }
@@ -376,7 +378,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val pendingSections = pendingHomeSectionsSnapshot.getAndSet(null)
         val pendingArtists = deferredHomeArtistsSnapshot.getAndSet(null)
         if (pendingSections == null && pendingArtists == null) return
-        if (!homeScreenActive || homeScrollInProgress) {
+        if (!homeScreenActive || !canApplyHomeStructuralChanges()) {
             pendingSections?.let { pendingHomeSectionsSnapshot.compareAndSet(null, it) }
             pendingArtists?.let { deferredHomeArtistsSnapshot.compareAndSet(null, it) }
             return
@@ -414,7 +416,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             if (updated === current) break
-            if (!homeScreenActive || homeScrollInProgress) {
+            if (!homeScreenActive || !canApplyHomeStructuralChanges()) {
                 pendingSections?.let { pendingHomeSectionsSnapshot.compareAndSet(null, it) }
                 pendingArtists?.let { deferredHomeArtistsSnapshot.compareAndSet(null, it) }
                 return
