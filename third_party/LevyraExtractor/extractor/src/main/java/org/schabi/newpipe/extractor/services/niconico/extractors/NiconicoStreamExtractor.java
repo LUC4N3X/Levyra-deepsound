@@ -3,7 +3,6 @@ package org.schabi.newpipe.extractor.services.niconico.extractors;
 import com.grack.nanojson.*;
 import org.json.JSONObject;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -32,13 +31,10 @@ import org.schabi.newpipe.extractor.utils.Utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.zip.GZIPInputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.zip.GZIPInputStream;
 import java.net.URI;
-import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -149,7 +145,11 @@ public class NiconicoStreamExtractor extends StreamExtractor {
             } else if (liveData.getObject("thumbnail").has("large")) {
                 return liveData.getObject("thumbnail").getString("large");
             } else {
-                return URLDecoder.decode((liveResponse.select("meta[property=og:image]").attr("content")));
+                try {
+                    return Utils.decodeUrlUtf8(liveResponse.select("meta[property=og:image]").attr("content"));
+                } catch (UnsupportedEncodingException e) {
+                    throw new ParsingException("Could not decode thumbnail URL", e);
+                }
             }
         }
         if (type == NiconicoWatchDataCache.WatchDataType.LOGIN) {
@@ -217,11 +217,11 @@ public class NiconicoStreamExtractor extends StreamExtractor {
 
     @Override
     public List<AudioStream> getAudioStreams() throws IOException, ExtractionException {
-        if (getStreamType() == StreamType.LIVE_STREAM) {
+        if (getStreamType() == StreamType.LIVE_STREAM || streamSources == null) {
             return Collections.emptyList();
         }
         final List<AudioStream> audioStreams = new ArrayList<>();
-        ArrayList<String> audios = (ArrayList<String>) streamSources.get("audio");
+        final List<String> audios = streamSources.getOrDefault("audio", Collections.emptyList());
         for (String audio : audios) {
             String id = RegexUtils.extract(audio, "audio-(.*?)-\\d+kbps");
             audioStreams.add(new AudioStream.Builder().setId("Niconico-" + getId() + "-audio")
@@ -286,11 +286,11 @@ public class NiconicoStreamExtractor extends StreamExtractor {
 
     @Override
     public List<VideoStream> getVideoOnlyStreams() throws IOException, ExtractionException {
-        if (getStreamType() == StreamType.LIVE_STREAM) {
+        if (getStreamType() == StreamType.LIVE_STREAM || streamSources == null) {
             return Collections.emptyList();
         }
         final List<VideoStream> videoStreams = new ArrayList<>();
-        ArrayList<String> videos = (ArrayList<String>) streamSources.get("video");
+        final List<String> videos = streamSources.getOrDefault("video", Collections.emptyList());
         if (Utils.isNullOrEmpty(videos)) {
             return Collections.emptyList();
         }

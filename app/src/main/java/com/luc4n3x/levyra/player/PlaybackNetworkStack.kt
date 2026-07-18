@@ -10,7 +10,6 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.TransferListener
 import androidx.media3.datasource.cronet.CronetDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import com.google.android.gms.net.CronetProviderInstaller
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import java.io.EOFException
 import java.io.InterruptedIOException
@@ -77,26 +76,18 @@ object PlaybackNetworkStack {
         val now = SystemClock.elapsedRealtime()
         if (now < nextInitializationAttemptMs.get()) return
         if (!initializationInFlight.compareAndSet(false, true)) return
-        CronetProviderInstaller.installProvider(context).addOnCompleteListener { task ->
-            if (!task.isSuccessful) {
-                initializationInFlight.set(false)
+        executor.execute {
+            runCatching { buildCronetEngine(context) }.onSuccess { engine ->
+                cronetEngine = engine
+                consecutiveFailures.set(0)
+                disabledUntilMs.set(0L)
+                nextInitializationAttemptMs.set(Long.MAX_VALUE)
+                Timber.i("Cronet playback transport ready")
+            }.onFailure { error ->
                 nextInitializationAttemptMs.set(SystemClock.elapsedRealtime() + INITIALIZATION_RETRY_MS)
-                Timber.w(task.exception, "Cronet provider unavailable; playback will use OkHttp")
-                return@addOnCompleteListener
+                Timber.w(error, "Cronet engine creation failed; playback will use OkHttp")
             }
-            executor.execute {
-                runCatching { buildCronetEngine(context) }.onSuccess { engine ->
-                    cronetEngine = engine
-                    consecutiveFailures.set(0)
-                    disabledUntilMs.set(0L)
-                    nextInitializationAttemptMs.set(Long.MAX_VALUE)
-                    Timber.i("Cronet playback transport ready")
-                }.onFailure { error ->
-                    nextInitializationAttemptMs.set(SystemClock.elapsedRealtime() + INITIALIZATION_RETRY_MS)
-                    Timber.w(error, "Cronet engine creation failed; playback will use OkHttp")
-                }
-                initializationInFlight.set(false)
-            }
+            initializationInFlight.set(false)
         }
     }
 

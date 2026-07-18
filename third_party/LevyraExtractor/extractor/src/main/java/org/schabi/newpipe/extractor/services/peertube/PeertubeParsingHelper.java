@@ -68,7 +68,8 @@ public final class PeertubeParsingHelper {
         }
     }
 
-    public static void collectStreamsFrom(final InfoItemsCollector collector,
+    public static void collectStreamsFrom(
+            final InfoItemsCollector<?, ? super PeertubeStreamInfoItemExtractor> collector,
                                           final JsonObject json,
                                           final String baseUrl) throws ParsingException {
         collectStreamsFrom(collector, json, baseUrl, false);
@@ -82,7 +83,8 @@ public final class PeertubeParsingHelper {
      * @param baseUrl   the base Url of the instance
      * @param sepia     if we should use PeertubeSepiaStreamInfoItemExtractor
      */
-    public static void collectStreamsFrom(final InfoItemsCollector collector,
+    public static void collectStreamsFrom(
+            final InfoItemsCollector<?, ? super PeertubeStreamInfoItemExtractor> collector,
                                           final JsonObject json,
                                           final String baseUrl,
                                           final boolean sepia) throws ParsingException {

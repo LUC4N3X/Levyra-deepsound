@@ -63,6 +63,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val inFlight = ConcurrentHashMap<String, Deferred<Track>>()
     private val clientHealth = ConcurrentHashMap<String, ClientHealth>()
     private val failedPlaybackUrls = ConcurrentHashMap<String, Long>()
+    private val youtubeEngagementCache = ConcurrentHashMap<String, CachedYoutubeEngagement>()
     private val videoSelector = LevyraVideoStreamSelector(context)
     private val youtubeHttpClient = LevyraHttpClientFactory.youtubePlayer()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -70,6 +71,9 @@ class PlaybackResolver private constructor(private val context: Context) {
     private val resilienceEngine = PlaybackResilienceEngine(context)
     private val fallbackTtlMs = 90L * 60L * 1000L
     private val maxTtlMs = 5L * 60L * 60L * 1000L
+    private val youtubeEngagementTtlMs = 12L * 60L * 60L * 1000L
+    private val youtubeEngagementNegativeTtlMs = 30L * 60L * 1000L
+    private val youtubeEngagementCacheMaxEntries = 192
     private val playbackResolveTimeoutMs = 30_000L
     private val offlineResolveTimeoutMs = 60_000L
     private val hedgeBudgetMs = LevyraResolverLatency.INNER_TUBE_HEDGE_BUDGET_MS
@@ -138,6 +142,33 @@ class PlaybackResolver private constructor(private val context: Context) {
                     response.close()
                 }
             })
+        }
+    }
+
+    suspend fun enrichYoutubeEngagement(track: Track): Track {
+        if (track.source.equals("Offline", ignoreCase = true)) return track
+        if (track.youtubeLikeCount >= 0L && track.youtubeViewCount >= 0L) return track
+        val videoId = extractVideoId(track.videoUrl).ifBlank { track.id.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty() }
+        if (videoId.isBlank()) return track
+        val now = System.currentTimeMillis()
+        youtubeEngagementCache[videoId]?.let { cached ->
+            if (now < cached.expiresAtMs) {
+                return track.withYoutubeEngagement(cached.likeCount, cached.viewCount)
+            }
+            youtubeEngagementCache.remove(videoId, cached)
+        }
+        val videoUrl = track.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" }
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                NewPipeRuntime.ensure()
+                val info = StreamInfo.getInfo(ServiceList.YouTube, videoUrl)
+                cacheYoutubeEngagement(videoId, info.likeCount, info.viewCount)
+                track.withYoutubeEngagement(info.likeCount, info.viewCount)
+            }.getOrElse { error ->
+                Timber.d(error, "youtube engagement unavailable for %s", videoId)
+                cacheYoutubeEngagement(videoId, -1L, -1L)
+                track
+            }
         }
     }
 
@@ -417,7 +448,9 @@ class PlaybackResolver private constructor(private val context: Context) {
                     videoStreamUrl = "",
                     source = "${resolved.source} · fallback ${candidate.id}",
                     youtubeLoudnessDb = resolved.youtubeLoudnessDb,
-                    youtubePerceptualLoudnessDb = resolved.youtubePerceptualLoudnessDb
+                    youtubePerceptualLoudnessDb = resolved.youtubePerceptualLoudnessDb,
+                    youtubeLikeCount = resolved.youtubeLikeCount,
+                    youtubeViewCount = resolved.youtubeViewCount
                 )
             }
             localErrors.firstOrNull()?.takeIf { it.isNotBlank() }?.let { errors += "Fallback ${candidate.id}: $it" }
@@ -1203,7 +1236,9 @@ class PlaybackResolver private constructor(private val context: Context) {
             } else {
                 "LevyraExtractor HLS"
             }
-        )
+        ).withYoutubeEngagement(info.likeCount, info.viewCount).also {
+            cacheYoutubeEngagement(extractVideoId(track.videoUrl).ifBlank { track.id }, info.likeCount, info.viewCount)
+        }
     }
 
     private fun resolveVideoWithLevyraExtractor(track: Track): Track {
@@ -1215,7 +1250,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         val artworkSafe = LevyraPersonalOrbit.preferAlbumArtwork(
             primary = track,
             donor = track.copy(thumbnailUrl = bestThumb, largeThumbnailUrl = bestThumb)
-        )
+        ).withYoutubeEngagement(info.likeCount, info.viewCount)
+        cacheYoutubeEngagement(extractVideoId(track.videoUrl).ifBlank { track.id }, info.likeCount, info.viewCount)
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
         val bestAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false)?.content
         val muxedCandidates = info.videoStreams
@@ -1259,19 +1295,48 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw IllegalStateException("Nessuno stream video compatibile per ${track.title}")
     }
 
+    private fun Track.withYoutubeEngagement(likeCount: Long, viewCount: Long): Track = copy(
+        youtubeLikeCount = likeCount.takeIf { it >= 0L } ?: youtubeLikeCount,
+        youtubeViewCount = viewCount.takeIf { it >= 0L } ?: youtubeViewCount
+    )
+
+    private fun cacheYoutubeEngagement(videoId: String, likeCount: Long, viewCount: Long) {
+        if (videoId.isBlank()) return
+        val now = System.currentTimeMillis()
+        if (youtubeEngagementCache.size >= youtubeEngagementCacheMaxEntries) {
+            youtubeEngagementCache.entries.removeIf { now >= it.value.expiresAtMs }
+            if (youtubeEngagementCache.size >= youtubeEngagementCacheMaxEntries) {
+                youtubeEngagementCache.entries
+                    .minByOrNull { it.value.expiresAtMs }
+                    ?.let { youtubeEngagementCache.remove(it.key, it.value) }
+            }
+        }
+        val ttlMs = if (likeCount >= 0L || viewCount >= 0L) {
+            youtubeEngagementTtlMs
+        } else {
+            youtubeEngagementNegativeTtlMs
+        }
+        youtubeEngagementCache[videoId] = CachedYoutubeEngagement(
+            likeCount = likeCount,
+            viewCount = viewCount,
+            expiresAtMs = now + ttlMs
+        )
+    }
+
     private fun extractorVideoCandidate(stream: VideoStream): LevyraVideoCandidate {
         val format = stream.getFormat()
+        val resolution = stream.getResolution()
         return LevyraVideoCandidate(
             url = stream.content,
             mimeType = format?.mimeType.orEmpty(),
             codec = stream.codec.orEmpty(),
             width = stream.width,
-            height = stream.height.takeIf { it > 0 } ?: heightOf(stream.resolution),
+            height = stream.height.takeIf { it > 0 } ?: heightOf(resolution),
             fps = stream.fps,
             bitrate = stream.bitrate,
             itag = stream.itag,
-            muxed = !stream.isVideoOnly,
-            label = stream.resolution
+            muxed = !stream.isVideoOnly(),
+            label = resolution.orEmpty()
         )
     }
 
@@ -1591,4 +1656,10 @@ private data class DirectStream(
 private data class CachedStream(
     val track: Track,
     val expiresAt: Long
+)
+
+private data class CachedYoutubeEngagement(
+    val likeCount: Long,
+    val viewCount: Long,
+    val expiresAtMs: Long
 )

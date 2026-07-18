@@ -32,6 +32,8 @@ object TrackJson {
         .put("metadataProvider", track.metadataProvider)
         .put("metadataConfidence", track.metadataConfidence)
         .put("canonicalAlbumUrl", track.canonicalAlbumUrl)
+        .put("youtubeLikeCount", track.youtubeLikeCount)
+        .put("youtubeViewCount", track.youtubeViewCount)
 
     fun fromJson(json: JSONObject): Track? {
         val id = json.optString("id").takeIf { it.isNotBlank() } ?: return null
@@ -69,7 +71,9 @@ object TrackJson {
             videoType = json.optString("videoType"),
             metadataProvider = json.optString("metadataProvider"),
             metadataConfidence = json.optInt("metadataConfidence").coerceIn(0, 100),
-            canonicalAlbumUrl = json.optString("canonicalAlbumUrl")
+            canonicalAlbumUrl = json.optString("canonicalAlbumUrl"),
+            youtubeLikeCount = json.optLong("youtubeLikeCount", -1L),
+            youtubeViewCount = json.optLong("youtubeViewCount", -1L)
         )
     }
 }

@@ -446,10 +446,7 @@ public class YoutubeStreamExtractor extends StreamExtractor {
                 return 0;
             }
 
-            return Integer.parseInt(Utils.removeNonDigitCharacters(likesString));
-        } catch (final NumberFormatException nfe) {
-            throw new ParsingException("Could not parse \"" + likesString + "\" as an Integer",
-                    nfe);
+            return Utils.parseNonNegativeLongOrDefault(likesString, -1L);
         } catch (final Exception e) {
             throw new ParsingException("Could not get like count", e);
         }

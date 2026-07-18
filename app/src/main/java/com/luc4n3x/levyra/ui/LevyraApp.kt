@@ -1,4 +1,4 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.core.spring
@@ -36,11 +36,8 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -112,13 +109,13 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragHandle
-import androidx.compose.material.icons.rounded.Undo
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Search
@@ -128,7 +125,7 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Person
@@ -137,7 +134,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.Notifications
@@ -146,7 +143,9 @@ import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.TaskAlt
-import androidx.compose.material.icons.rounded.Subject
+import androidx.compose.material.icons.rounded.ThumbUp
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.ViewCompact
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -159,8 +158,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.PlaylistPlay
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.LocalContentColor
@@ -532,6 +531,35 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
     }
 }
 @Composable
+private fun rememberEqualizerBar(
+    isPlaying: Boolean,
+    idleValue: Float,
+    minimumValue: Float,
+    maximumValue: Float,
+    durationMillis: Int
+): Float {
+    val bar = remember { Animatable(idleValue) }
+    LaunchedEffect(isPlaying, idleValue, minimumValue, maximumValue, durationMillis) {
+        if (!isPlaying) {
+            bar.snapTo(idleValue)
+            return@LaunchedEffect
+        }
+        bar.snapTo(minimumValue)
+        while (true) {
+            bar.animateTo(
+                targetValue = maximumValue,
+                animationSpec = tween(durationMillis = durationMillis, easing = LinearEasing)
+            )
+            bar.animateTo(
+                targetValue = minimumValue,
+                animationSpec = tween(durationMillis = durationMillis, easing = LinearEasing)
+            )
+        }
+    }
+    return bar.value
+}
+
+@Composable
 private fun ActiveTrackEqualizer(
     modifier: Modifier = Modifier,
     color: Color = LevyraCyan,
@@ -539,79 +567,31 @@ private fun ActiveTrackEqualizer(
     width: Dp = 18.dp,
     height: Dp = 14.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "equalizer-bars")
-
-    val height1 by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.2f,
-            targetValue = 1.0f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 550, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "eq-bar-1"
-        )
-    } else {
-        remember { mutableStateOf(0.4f) }
-    }
-
-    val height2 by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.3f,
-            targetValue = 0.9f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 380, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "eq-bar-2"
-        )
-    } else {
-        remember { mutableStateOf(0.6f) }
-    }
-
-    val height3 by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.15f,
-            targetValue = 0.95f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 460, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "eq-bar-3"
-        )
-    } else {
-        remember { mutableStateOf(0.3f) }
-    }
-
-    val height4 by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.25f,
-            targetValue = 0.85f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 620, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "eq-bar-4"
-        )
-    } else {
-        remember { mutableStateOf(0.5f) }
-    }
+    val height1 = rememberEqualizerBar(isPlaying, 0.4f, 0.2f, 1f, 550)
+    val height2 = rememberEqualizerBar(isPlaying, 0.6f, 0.3f, 0.9f, 380)
+    val height3 = rememberEqualizerBar(isPlaying, 0.3f, 0.15f, 0.95f, 460)
+    val height4 = rememberEqualizerBar(isPlaying, 0.5f, 0.25f, 0.85f, 620)
 
     Row(
         modifier = modifier.size(width = width, height = height),
         horizontalArrangement = Arrangement.spacedBy(1.5.dp),
         verticalAlignment = Alignment.Bottom
     ) {
-        val bars = listOf(height1, height2, height3, height4)
-        bars.forEach { barHeight ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(barHeight)
-                    .background(color, RoundedCornerShape(topStart = 1.dp, topEnd = 1.dp))
-            )
-        }
+        EqualizerBar(height1, color)
+        EqualizerBar(height2, color)
+        EqualizerBar(height3, color)
+        EqualizerBar(height4, color)
     }
+}
+
+@Composable
+private fun RowScope.EqualizerBar(height: Float, color: Color) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(height)
+            .background(color, RoundedCornerShape(topStart = 1.dp, topEnd = 1.dp))
+    )
 }
 @Composable
 private fun SectionTitle(title: String) {
@@ -778,11 +758,6 @@ private fun Modifier.pressable(
 @Composable
 fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
-    val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
-    val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
-    val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
-    val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
-    val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
     val state by viewModel.state.collectAsStateWithLifecycle()
     val currentStrings = LevyraStrings.forCode(state.languageCode)
     val layoutDirection = if (currentStrings.code == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -931,22 +906,27 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (tab) {
                         LevyraTab.Home -> {
+                            val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
                             val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
                             HomeScreen(homeViewModel, renderSnapshot, homeListState)
                         }
                         LevyraTab.Search -> {
+                            val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
                             val screenState by searchViewModel.state.collectAsStateWithLifecycle()
                             SearchScreen(searchViewModel, screenState)
                         }
                         LevyraTab.Explore -> {
+                            val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
                             val screenState by exploreViewModel.state.collectAsStateWithLifecycle()
                             ExploreScreen(exploreViewModel, screenState)
                         }
                         LevyraTab.Library -> {
+                            val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
                             val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
                             LibraryScreen(libraryViewModel, screenState, libraryListState, onOpenDownloads = { showDownloadsFolder = true })
                         }
                         LevyraTab.Player -> {
+                            val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
                             val screenState by playerViewModel.state.collectAsStateWithLifecycle()
                             PlayerScreen(playerViewModel, screenState)
                         }
@@ -1378,7 +1358,7 @@ private fun AlbumOverlay(
                         modifier = Modifier.size(44.dp).pressable(onClick = onClose)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.ArrowBack, contentDescription = strings.back, tint = LevyraText)
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = strings.back, tint = LevyraText)
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
@@ -1941,7 +1921,7 @@ private fun AlbumTrackItem(
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(text = { Text(if (isFavorite) strings.removeFromFavorites else strings.addToFavorites) }, leadingIcon = { Icon(if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, null) }, onClick = { expanded = false; onFavorite() })
-                    DropdownMenuItem(text = { Text(strings.addToPlaylist) }, leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) }, onClick = { expanded = false; onAddToPlaylist() })
+                    DropdownMenuItem(text = { Text(strings.addToPlaylist) }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) }, onClick = { expanded = false; onAddToPlaylist() })
                     DropdownMenuItem(text = { Text(if (isDownloaded) strings.alreadyOffline else strings.download) }, leadingIcon = { Icon(if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download, null) }, onClick = { expanded = false; if (!isDownloaded) onDownload() })
                     DropdownMenuItem(text = { Text(strings.openArtist) }, leadingIcon = { Icon(Icons.Rounded.Person, null) }, onClick = { expanded = false; onArtist() })
                     DropdownMenuItem(text = { Text(strings.share) }, leadingIcon = { Icon(Icons.Rounded.Share, null) }, onClick = {
@@ -2005,7 +1985,7 @@ private fun ArtistOverlay(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             PlayerRoundIconButton(
-                                icon = Icons.Rounded.ArrowBack,
+                                icon = Icons.AutoMirrored.Rounded.ArrowBack,
                                 contentDescription = strings.back,
                                 background = Color.White.copy(alpha = 0.07f),
                                 onClick = onClose
@@ -2023,7 +2003,7 @@ private fun ArtistOverlay(
                             verticalArrangement = Arrangement.spacedBy(80.dp)
                         ) {
                             PlayerRoundIconButton(
-                                icon = Icons.Rounded.ArrowBack,
+                                icon = Icons.AutoMirrored.Rounded.ArrowBack,
                                 contentDescription = strings.back,
                                 background = Color.White.copy(alpha = 0.07f),
                                 onClick = onClose
@@ -2289,7 +2269,7 @@ private fun ArtistHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             PlayerRoundIconButton(
-                icon = Icons.Rounded.ArrowBack,
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = strings.back,
                 tint = Color.White,
                 background = Color.Black.copy(alpha = 0.34f),
@@ -2791,7 +2771,7 @@ private fun QueueOverlay(
                         Switch(checked = state.radioEnabled, onCheckedChange = { onToggleRadio() })
                         if (state.queueUndoAvailable) {
                             IconButton(onClick = onUndo) {
-                                Icon(Icons.Rounded.Undo, strings.undoRemoval, tint = LevyraCyan)
+                                Icon(Icons.AutoMirrored.Rounded.Undo, strings.undoRemoval, tint = LevyraCyan)
                             }
                         }
                     }
@@ -3234,7 +3214,7 @@ private fun LyricsOverlay(
                         }
                         val modeIcon = when (viewMode) {
                             LyricsViewMode.CINEMA -> Icons.Rounded.GraphicEq
-                            LyricsViewMode.PAGE -> Icons.Rounded.Subject
+                            LyricsViewMode.PAGE -> Icons.AutoMirrored.Rounded.Subject
                             LyricsViewMode.COMPACT -> Icons.Rounded.ViewCompact
                         }
                         LyricsControlChip(
@@ -4750,7 +4730,7 @@ private fun ResonanceShelf(
                         letterSpacing = (-0.55).sp
                     )
                     Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowRight,
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = null,
                         tint = LevyraMuted,
                         modifier = Modifier.size(22.dp)
@@ -5005,7 +4985,7 @@ private fun PersonalListeningShelf(
                         letterSpacing = (-0.65).sp
                     )
                     Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowRight,
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = null,
                         tint = LevyraMuted,
                         modifier = Modifier.size(23.dp)
@@ -5621,11 +5601,11 @@ private fun ContinueListeningCard(
     val accentEnd = Color(track.accentEnd)
     Surface(
         color = Color.Transparent,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 100.dp)
+            .heightIn(min = 88.dp)
             .pressable(onClick = onResume)
     ) {
         Box(
@@ -5635,9 +5615,9 @@ private fun ContinueListeningCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(150.dp)
+                    .size(128.dp)
                     .align(Alignment.CenterEnd)
-                    .offset(x = 62.dp)
+                    .offset(x = 52.dp)
                     .background(
                         Brush.radialGradient(
                             listOf(accentEnd.copy(alpha = 0.16f), Color.Transparent)
@@ -5647,16 +5627,16 @@ private fun ContinueListeningCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    .padding(horizontal = 11.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 CoverImage(
                     track = track,
                     modifier = Modifier
-                        .size(58.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(Dp.Hairline, Color.White.copy(alpha = 0.13f), RoundedCornerShape(14.dp)),
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .border(Dp.Hairline, Color.White.copy(alpha = 0.13f), RoundedCornerShape(13.dp)),
                     highRes = false
                 )
                 Column(
@@ -5671,13 +5651,13 @@ private fun ContinueListeningCard(
                             imageVector = Icons.Rounded.Headphones,
                             contentDescription = null,
                             tint = LevyraCyan,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = LocalLevyraStrings.current.continueListening,
                             color = LevyraCyan,
-                            fontSize = 11.2.sp,
-                            lineHeight = 14.sp,
+                            fontSize = 10.8.sp,
+                            lineHeight = 13.sp,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -5686,8 +5666,8 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.title,
                         color = LevyraText,
-                        fontSize = 16.sp,
-                        lineHeight = 20.sp,
+                        fontSize = 15.5.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -5695,8 +5675,8 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.artist,
                         color = LevyraMuted,
-                        fontSize = 12.2.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 11.8.sp,
+                        lineHeight = 14.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -5706,26 +5686,26 @@ private fun ContinueListeningCard(
                     color = LevyraAdaptiveChip,
                     shape = CircleShape,
                     border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         when {
                             isResolving -> CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(15.dp),
                                 strokeWidth = 1.8.dp,
                                 color = LevyraCyan
                             )
                             isPlaying -> ActiveTrackEqualizer(
                                 color = LevyraCyan,
                                 isPlaying = true,
-                                width = 15.dp,
-                                height = 11.dp
+                                width = 14.dp,
+                                height = 10.dp
                             )
                             else -> Icon(
                                 imageVector = Icons.Rounded.PlayArrow,
                                 contentDescription = null,
                                 tint = LevyraText,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(19.dp)
                             )
                         }
                     }
@@ -5735,7 +5715,7 @@ private fun ContinueListeningCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(3.dp)
+                    .height(2.5.dp)
                     .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
             )
         }
@@ -6018,7 +5998,7 @@ private fun TrackOverflowMenu(
         ) {
             DropdownMenuItem(
                 text = { Text(strings.addToQueue) },
-                leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
                 onClick = {
                     expanded = false
                     onAddToQueue()
@@ -6354,7 +6334,7 @@ private fun SearchHeader(
             modifier = Modifier.size(40.dp)
         ) {
             Icon(
-                imageVector = Icons.Rounded.ArrowBack,
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = LocalLevyraStrings.current.back,
                 tint = LevyraText
             )
@@ -6547,7 +6527,7 @@ private fun RecentSearchesRow(
                                 )
                                 DropdownMenuItem(
                                     text = { Text(strings.playNext) },
-                                    leadingIcon = { Icon(Icons.Rounded.PlaylistPlay, null) },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, null) },
                                     onClick = {
                                         menuExpanded = false
                                         onPlayNext(track)
@@ -6555,7 +6535,7 @@ private fun RecentSearchesRow(
                                 )
                                 DropdownMenuItem(
                                     text = { Text(strings.addToQueue) },
-                                    leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
                                     onClick = {
                                         menuExpanded = false
                                         onAddToQueue(track)
@@ -6563,7 +6543,7 @@ private fun RecentSearchesRow(
                                 )
                                 DropdownMenuItem(
                                     text = { Text(strings.addToPlaylist) },
-                                    leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
                                     onClick = {
                                         menuExpanded = false
                                         onAddToPlaylist(track)
@@ -6723,7 +6703,7 @@ private fun SuggestionsList(
                             modifier = Modifier.weight(1f)
                         )
                         Icon(
-                            imageVector = Icons.Rounded.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = LocalLevyraStrings.current.complete,
                             tint = accent.copy(alpha = 0.78f),
                             modifier = Modifier
@@ -6801,7 +6781,7 @@ private fun DownloadsFolderCard(count: Int, onClick: () -> Unit) {
                 )
             }
             Icon(
-                imageVector = Icons.Rounded.KeyboardArrowRight,
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
                 tint = LevyraMuted,
                 modifier = Modifier.size(24.dp)
@@ -6835,7 +6815,7 @@ private fun DownloadsFolderOverlay(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
                     }
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -6923,7 +6903,7 @@ private fun LibraryScreen(
                         title = cleanLibraryLabel(strings.playlists),
                         detail = strings.personalPlaylists,
                         count = state.playlists.size,
-                        icon = Icons.Rounded.QueueMusic,
+                        icon = Icons.AutoMirrored.Rounded.QueueMusic,
                         accent = LevyraViolet,
                         actionLabel = strings.newItem,
                         onAction = { showCreate = true }
@@ -6932,7 +6912,7 @@ private fun LibraryScreen(
                 if (state.playlists.isEmpty()) {
                     item(key = "lib-playlists-empty", contentType = "lib-empty") {
                         LibraryEmptyState(
-                            icon = Icons.Rounded.QueueMusic,
+                            icon = Icons.AutoMirrored.Rounded.QueueMusic,
                             title = strings.createFirstPlaylist,
                             detail = strings.createFirstPlaylistSubtitle,
                             accent = LevyraViolet,
@@ -7153,7 +7133,7 @@ private fun LibraryFilterChips(
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         LibraryFilterChip(strings.all, Icons.Rounded.LibraryMusic, LevyraCyan, null, selected == LibraryFilter.All) { onSelect(LibraryFilter.All) }
-        LibraryFilterChip(cleanLibraryLabel(strings.playlists), Icons.Rounded.QueueMusic, LevyraViolet, playlistCount, selected == LibraryFilter.Playlists) { onSelect(LibraryFilter.Playlists) }
+        LibraryFilterChip(cleanLibraryLabel(strings.playlists), Icons.AutoMirrored.Rounded.QueueMusic, LevyraViolet, playlistCount, selected == LibraryFilter.Playlists) { onSelect(LibraryFilter.Playlists) }
         LibraryFilterChip(cleanLibraryLabel(strings.songs), Icons.Rounded.MusicNote, LevyraPink, songCount, selected == LibraryFilter.Songs) { onSelect(LibraryFilter.Songs) }
         LibraryFilterChip(cleanLibraryLabel(strings.artists), Icons.Rounded.Person, CinematicGold, artistCount, selected == LibraryFilter.Artists) { onSelect(LibraryFilter.Artists) }
         LibraryFilterChip(cleanLibraryLabel(strings.downloads), Icons.Rounded.DownloadDone, LevyraCyan, downloadCount, selected == LibraryFilter.Downloads) { onSelect(LibraryFilter.Downloads) }
@@ -7246,7 +7226,7 @@ private fun LibraryHeader(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            LibraryStatPill(Icons.Rounded.QueueMusic, playlistCount.toString(), strings.playlistsPlain, LevyraViolet)
+            LibraryStatPill(Icons.AutoMirrored.Rounded.QueueMusic, playlistCount.toString(), strings.playlistsPlain, LevyraViolet)
             LibraryStatPill(Icons.Rounded.DownloadDone, downloadCount.toString(), strings.offline, LevyraCyan)
             LibraryStatPill(Icons.Rounded.Favorite, favoriteCount.toString(), strings.favoritesPlain, LevyraPink)
         }
@@ -7737,7 +7717,7 @@ private fun PlaylistRow(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                Icon(Icons.Rounded.QueueMusic, null, tint = LevyraMuted, modifier = Modifier.size(26.dp))
+                Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraMuted, modifier = Modifier.size(26.dp))
             }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -7843,7 +7823,7 @@ private fun AddToPlaylistDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Rounded.QueueMusic, null, tint = LevyraMuted)
+                            Icon(Icons.AutoMirrored.Rounded.QueueMusic, null, tint = LevyraMuted)
                             Text(pl.name, color = LevyraText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -7881,7 +7861,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { viewModel.closePlaylist() }) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = LocalLevyraStrings.current.back, tint = LevyraText)
                     }
                     Spacer(Modifier.width(4.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -7893,7 +7873,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                             Icon(Icons.Rounded.DownloadDone, contentDescription = LocalLevyraStrings.current.downloadPlaylist, tint = LevyraViolet, modifier = Modifier.size(27.dp))
                         }
                         IconButton(onClick = { viewModel.playPlaylist(playlist.id) }) {
-                            Icon(Icons.Rounded.PlaylistPlay, contentDescription = LocalLevyraStrings.current.playAll, tint = LevyraCyan, modifier = Modifier.size(30.dp))
+                            Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = LocalLevyraStrings.current.playAll, tint = LevyraCyan, modifier = Modifier.size(30.dp))
                         }
                     }
                 }
@@ -8391,13 +8371,13 @@ private fun PlayerUtilityDock(
             verticalAlignment = Alignment.CenterVertically
         ) {
             PlayerDockAction(
-                icon = Icons.Rounded.QueueMusic,
+                icon = Icons.AutoMirrored.Rounded.QueueMusic,
                 label = strings.queue,
                 tint = Color.White.copy(alpha = 0.86f),
                 onClick = onQueue
             )
             PlayerDockAction(
-                icon = Icons.Rounded.Subject,
+                icon = Icons.AutoMirrored.Rounded.Subject,
                 label = strings.lyrics,
                 tint = if (lyricsAvailable) activeColor else Color.White.copy(alpha = 0.70f),
                 onClick = onLyrics
@@ -8453,6 +8433,98 @@ private fun RowScope.PlayerDockAction(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+private fun compactYoutubeCount(value: Long): String {
+    val absolute = kotlin.math.abs(value.toDouble())
+    val (scaled, suffix) = when {
+        absolute >= 1_000_000_000.0 -> value / 1_000_000_000.0 to "B"
+        absolute >= 1_000_000.0 -> value / 1_000_000.0 to "M"
+        absolute >= 1_000.0 -> value / 1_000.0 to "K"
+        else -> return value.toString()
+    }
+    val pattern = if (kotlin.math.abs(scaled) >= 100.0) "%.0f" else "%.1f"
+    return String.format(Locale.getDefault(), pattern, scaled)
+        .replace(Regex("[,.]0$"), "") + suffix
+}
+
+@Composable
+private fun PlayerYoutubeEngagementRow(
+    track: Track,
+    primary: Color,
+    secondary: Color
+) {
+    val hasLikes = track.youtubeLikeCount > 0L
+    val hasViews = track.youtubeViewCount > 0L
+    AnimatedVisibility(
+        visible = hasLikes || hasViews,
+        enter = fadeIn(animationSpec = tween(220)) + slideInVertically(initialOffsetY = { it / 3 }),
+        exit = fadeOut(animationSpec = tween(140))
+    ) {
+        Row(
+            modifier = Modifier.padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (hasLikes) {
+                PlayerYoutubeMetricChip(
+                    icon = Icons.Rounded.ThumbUp,
+                    value = compactYoutubeCount(track.youtubeLikeCount),
+                    tint = Color(0xFFFF6A7D),
+                    glow = primary
+                )
+            }
+            if (hasViews) {
+                PlayerYoutubeMetricChip(
+                    icon = Icons.Rounded.Visibility,
+                    value = compactYoutubeCount(track.youtubeViewCount),
+                    tint = Color.White.copy(alpha = 0.88f),
+                    glow = secondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerYoutubeMetricChip(
+    icon: ImageVector,
+    value: String,
+    tint: Color,
+    glow: Color
+) {
+    Surface(
+        color = Color.Black.copy(alpha = 0.24f),
+        shape = CircleShape,
+        border = BorderStroke(1.dp, glow.copy(alpha = 0.28f))
+    ) {
+        Row(
+            modifier = Modifier
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(glow.copy(alpha = 0.14f), Color.Transparent)
+                    )
+                )
+                .padding(horizontal = 11.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(15.dp)
+            )
+            Text(
+                text = value,
+                color = Color.White.copy(alpha = 0.92f),
+                fontSize = 12.5.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.1.sp
+            )
+        }
     }
 }
 
@@ -8865,6 +8937,11 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.clickable { viewModel.openArtist(track) }
                             )
+                            PlayerYoutubeEngagementRow(
+                                track = track,
+                                primary = primary,
+                                secondary = secondary
+                            )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         val isFavorite = track.id in state.favoriteIds
@@ -8954,11 +9031,11 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Rounded.Subject, null, tint = primaryContent, modifier = Modifier.size(19.dp))
+                                        Icon(Icons.AutoMirrored.Rounded.Subject, null, tint = primaryContent, modifier = Modifier.size(19.dp))
                                         Spacer(modifier = Modifier.width(9.dp))
                                         Text(strings.showLyrics, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
-                                    Icon(Icons.Rounded.KeyboardArrowRight, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(20.dp))
+                                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(20.dp))
                                 }
                             }
                         } else {
@@ -9742,7 +9819,7 @@ private fun OnboardingTopBar(step: OnboardingStep, backLabel: String, onBack: ()
             LevyraLogoMark(size = 42.dp)
         } else {
             CircleIconButton(
-                icon = Icons.Rounded.ArrowBack,
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
                 tint = LevyraText,
                 background = Color.White.copy(alpha = 0.07f),
                 contentDescription = backLabel,
@@ -9941,7 +10018,7 @@ private fun OnboardingFooter(
                     fontWeight = FontWeight.Black
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Rounded.KeyboardArrowRight, contentDescription = null, tint = if (enabled) LevyraBlack else LevyraMuted, modifier = Modifier.size(21.dp))
+                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = if (enabled) LevyraBlack else LevyraMuted, modifier = Modifier.size(21.dp))
             }
         }
         if (step == OnboardingStep.Taste && selectedTasteCount < 3) {
@@ -10228,7 +10305,7 @@ private fun SettingsOverlay(
             }
             item {
                 SettingsChoiceRow(
-                    icon = Icons.Rounded.QueueMusic,
+                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
                     title = strings.simultaneousDownloads,
                     subtitle = strings.simultaneousDownloadsSubtitle,
                     options = listOf("1" to "1", "2" to "2", "3" to "3", "4" to "4"),
@@ -10611,7 +10688,8 @@ private fun SettingsUpdateCard(
     onCheck: () -> Unit,
     onDownload: () -> Unit
 ) {
-    val hasUpdate = updateInfo?.isNewer == true
+    val availableUpdate = updateInfo?.takeIf { it.isNewer }
+    val hasUpdate = availableUpdate != null
     Surface(
         color = Color.Transparent,
         border = BorderStroke(1.dp, if (hasUpdate) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.1f)),
@@ -10659,7 +10737,7 @@ private fun SettingsUpdateCard(
                     Text(
                         text = when {
                             isChecking -> LocalLevyraStrings.current.checkingLatestVersion
-                            hasUpdate -> LocalLevyraStrings.current.formatLatestVersionReady(updateInfo?.latestVersionName.orEmpty())
+                            availableUpdate != null -> LocalLevyraStrings.current.formatLatestVersionReady(availableUpdate.latestVersionName)
                             updateInfo != null -> LocalLevyraStrings.current.latestInstalled
                             else -> LocalLevyraStrings.current.checkNewVersions
                         },
@@ -10669,7 +10747,7 @@ private fun SettingsUpdateCard(
                     )
                 }
             }
-            if (hasUpdate && updateInfo != null) {
+            availableUpdate?.let { info ->
                 Surface(
                     color = Color.Black.copy(alpha = 0.16f),
                     shape = RoundedCornerShape(14.dp),
@@ -10679,9 +10757,9 @@ private fun SettingsUpdateCard(
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text(updateInfo.releaseTitle.ifBlank { "LEVYRA ${updateInfo.latestVersionName}" }, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(info.releaseTitle.ifBlank { "LEVYRA ${info.latestVersionName}" }, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            text = if (updateInfo.directApk) LocalLevyraStrings.current.signedApkReady else LocalLevyraStrings.current.releasePageReady,
+                            text = if (info.directApk) LocalLevyraStrings.current.signedApkReady else LocalLevyraStrings.current.releasePageReady,
                             color = LevyraMuted,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
@@ -10986,7 +11064,7 @@ private fun MetroHeroDeck(
                         Text(hero.title, color = LevyraText, fontSize = 24.sp, lineHeight = 27.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(hero.artist, color = LevyraText.copy(alpha = 0.78f), fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            MetroStatPill(Icons.Rounded.QueueMusic, queueCount.coerceAtLeast(tracks.size).toString(), LocalLevyraStrings.current.queue)
+                            MetroStatPill(Icons.AutoMirrored.Rounded.QueueMusic, queueCount.coerceAtLeast(tracks.size).toString(), LocalLevyraStrings.current.queue)
                             MetroStatPill(Icons.Rounded.Favorite, favoritesCount.toString(), LocalLevyraStrings.current.saved)
                         }
                     }
@@ -11642,7 +11720,7 @@ private fun CompactRow(
                 )
                 DropdownMenuItem(
                     text = { Text(LocalLevyraStrings.current.addToPlaylist) },
-                    leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
                     onClick = {
                         expanded = false
                         onAddToPlaylist()
@@ -11650,7 +11728,7 @@ private fun CompactRow(
                 )
                 DropdownMenuItem(
                     text = { Text(LocalLevyraStrings.current.addToQueue) },
-                    leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
                     onClick = {
                         expanded = false
                         onAddToQueue()
@@ -11765,7 +11843,7 @@ private fun ChartRow(
                     )
                     DropdownMenuItem(
                         text = { Text(LocalLevyraStrings.current.addToQueue) },
-                        leadingIcon = { Icon(Icons.Rounded.QueueMusic, null) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, null) },
                         onClick = {
                             expanded = false
                             onAddToQueue()
@@ -11773,7 +11851,7 @@ private fun ChartRow(
                     )
                     DropdownMenuItem(
                         text = { Text(LocalLevyraStrings.current.addToPlaylist) },
-                        leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, null) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
                         onClick = {
                             expanded = false
                             onAddToPlaylist()
@@ -12095,7 +12173,7 @@ private fun TopResultCard(
                     }
                     Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onAddToPlaylist() }) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.PlaylistAdd, null, tint = LevyraText, modifier = Modifier.size(22.dp))
+                            Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null, tint = LevyraText, modifier = Modifier.size(22.dp))
                         }
                     }
                     Surface(color = Color.White.copy(alpha = 0.08f), shape = CircleShape, modifier = Modifier.size(46.dp).clickable { onFavorite() }) {
@@ -12177,7 +12255,7 @@ private fun SearchTrackCard(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(0.dp)) {
             DownloadButton(isDownloading = isDownloading, isDownloaded = isDownloaded, progress = downloadProgress, onDownload = onDownload)
             IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
             }
             IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
                 Icon(
@@ -12341,7 +12419,7 @@ private fun TrackRow(
             }
             if (onAddToPlaylist != null) {
                 IconButton(onClick = onAddToPlaylist, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
+                    Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = LocalLevyraStrings.current.addToPlaylist, tint = LevyraMuted, modifier = Modifier.size(24.dp))
                 }
             }
             IconButton(onClick = onFavorite, modifier = Modifier.size(36.dp)) {
@@ -13587,36 +13665,4 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60L
     val seconds = totalSeconds % 60L
     return "$minutes:${seconds.toString().padStart(2, '0')}"
-}
-
-private val LevyraUiState.offlineExportMessageCompat: String?
-    get() = null
-
-private val LevyraUiState.isOfflineExportingCompat: Boolean
-    get() = false
-
-private val LevyraUiState.embeddedMetadataWriterReadyCompat: Boolean
-    get() = false
-
-private val LevyraUiState.offlineExportMessage: String?
-    get() = null
-
-private val LevyraUiState.isOfflineExporting: Boolean
-    get() = false
-
-private val LevyraUiState.embeddedMetadataWriterReady: Boolean
-    get() = false
-
-private fun LevyraViewModel.clearOfflineExportMessage() = Unit
-
-private fun LevyraViewModel.addToQueue(track: Track) {
-    play(track)
-}
-
-private fun LevyraViewModel.exportTrack(track: Track) {
-    play(track)
-}
-
-private fun LevyraViewModel.exportCurrentTrack() {
-    selectTab(LevyraTab.Player)
 }
