@@ -143,8 +143,18 @@ class MoodEngine {
             "da" -> "🇩🇰"
             "cs" -> "🇨🇿"
             "uk" -> "🇺🇦"
+            "ru" -> "🇷🇺"
+            "tr" -> "🇹🇷"
             "ar" -> "🇸🇦"
             "zh" -> "🇨🇳"
+            "ja" -> "🇯🇵"
+            "ko" -> "🇰🇷"
+            "hi" -> "🇮🇳"
+            "id" -> "🇮🇩"
+            "vi" -> "🇻🇳"
+            "th" -> "🇹🇭"
+            "fil" -> "🇵🇭"
+            "he" -> "🇮🇱"
             else -> "🇬🇧"
         }
     }
@@ -221,6 +231,86 @@ class MoodEngine {
                 "drive" to ("驾车" to "公路旅程音乐"),
                 "sad" to ("伤感" to "缓慢流淌的情绪")
             )
+            "ja" -> mapOf(
+                "hits" to ("話題のヒット" to "今いちばん聴かれている曲"),
+                "gym" to ("ワークアウト" to "パワーとエネルギー"),
+                "chill" to ("チル" to "穏やかで心地よい音"),
+                "focus" to ("集中" to "勉強と作業のために"),
+                "local" to ("邦楽" to "選りすぐりの日本の音楽"),
+                "party" to ("パーティー" to "音量を上げよう"),
+                "drive" to ("ドライブ" to "旅に合う音楽"),
+                "sad" to ("切なさ" to "ゆっくり流れる感情")
+            )
+            "ko" -> mapOf(
+                "hits" to ("인기 히트곡" to "지금 가장 많이 듣는 음악"),
+                "gym" to ("운동" to "힘과 에너지"),
+                "chill" to ("칠" to "부드럽고 편안하게"),
+                "focus" to ("집중" to "공부와 몰입을 위한 음악"),
+                "local" to ("한국 음악" to "엄선한 국내 음악"),
+                "party" to ("파티" to "볼륨을 높여 보세요"),
+                "drive" to ("드라이브" to "도로 위의 음악"),
+                "sad" to ("감성" to "천천히 흐르는 감정")
+            )
+            "hi" -> mapOf(
+                "hits" to ("ट्रेंडिंग हिट्स" to "अभी सबसे ज़्यादा सुने जा रहे"),
+                "gym" to ("वर्कआउट" to "ताकत और ऊर्जा"),
+                "chill" to ("सुकून" to "नरम और शांत"),
+                "focus" to ("फ़ोकस" to "पढ़ाई और एकाग्रता"),
+                "local" to ("भारतीय" to "बेहतरीन भारतीय संगीत"),
+                "party" to ("पार्टी" to "आवाज़ बढ़ाएँ"),
+                "drive" to ("ड्राइव" to "सफ़र का संगीत"),
+                "sad" to ("जज़्बात" to "धीमी और भावुक धुनें")
+            )
+            "id" -> mapOf(
+                "hits" to ("Hit populer" to "yang paling banyak diputar sekarang"),
+                "gym" to ("Olahraga" to "tenaga dan energi"),
+                "chill" to ("Santai" to "lembut dan tenang"),
+                "focus" to ("Fokus" to "belajar dan berkonsentrasi"),
+                "local" to ("Indonesia" to "pilihan musik Indonesia"),
+                "party" to ("Pesta" to "naikkan volumenya"),
+                "drive" to ("Berkendara" to "musik untuk perjalanan"),
+                "sad" to ("Melankolis" to "emosi yang mengalun pelan")
+            )
+            "vi" -> mapOf(
+                "hits" to ("Hit thịnh hành" to "được nghe nhiều nhất lúc này"),
+                "gym" to ("Tập luyện" to "sức mạnh và năng lượng"),
+                "chill" to ("Thư giãn" to "nhẹ nhàng và bình yên"),
+                "focus" to ("Tập trung" to "học tập và làm việc"),
+                "local" to ("Nhạc Việt" to "tuyển chọn âm nhạc Việt Nam"),
+                "party" to ("Tiệc" to "tăng âm lượng lên"),
+                "drive" to ("Lái xe" to "âm nhạc cho hành trình"),
+                "sad" to ("Tâm trạng" to "cảm xúc chậm rãi")
+            )
+            "th" -> mapOf(
+                "hits" to ("เพลงฮิตมาแรง" to "เพลงที่มีคนฟังมากที่สุดตอนนี้"),
+                "gym" to ("ออกกำลังกาย" to "พลังและความแข็งแรง"),
+                "chill" to ("ชิลล์" to "นุ่มนวลและสงบ"),
+                "focus" to ("มีสมาธิ" to "สำหรับเรียนและทำงาน"),
+                "local" to ("เพลงไทย" to "คัดสรรเพลงไทยยอดนิยม"),
+                "party" to ("ปาร์ตี้" to "เพิ่มระดับเสียงให้สุด"),
+                "drive" to ("ขับรถ" to "เพลงสำหรับการเดินทาง"),
+                "sad" to ("อารมณ์เศร้า" to "ความรู้สึกที่ค่อย ๆ ไหล")
+            )
+            "fil" -> mapOf(
+                "hits" to ("Mga hit ngayon" to "pinakamadalas pakinggan ngayon"),
+                "gym" to ("Workout" to "lakas at enerhiya"),
+                "chill" to ("Chill" to "banayad at kalmado"),
+                "focus" to ("Pokus" to "para sa pag-aaral at trabaho"),
+                "local" to ("OPM" to "piniling musikang Pilipino"),
+                "party" to ("Party" to "lakasan ang volume"),
+                "drive" to ("Biyahe" to "musika para sa daan"),
+                "sad" to ("Hugot" to "mabagal at malalim na damdamin")
+            )
+            "he" -> mapOf(
+                "hits" to ("להיטים עכשיו" to "השירים המושמעים ביותר כרגע"),
+                "gym" to ("אימון" to "כוח ואנרגיה"),
+                "chill" to ("צ'יל" to "רך ורגוע"),
+                "focus" to ("ריכוז" to "ללימודים ולעבודה"),
+                "local" to ("ישראלי" to "מוזיקה ישראלית נבחרת"),
+                "party" to ("מסיבה" to "מגבירים את הווליום"),
+                "drive" to ("נסיעה" to "מוזיקה לדרך"),
+                "sad" to ("מלנכוליה" to "רגשות שזורמים לאט")
+            )
             else -> mapOf(
                 "hits" to ("Trending hits" to "most played now"),
                 "gym" to ("Gym" to "power and energy"),
@@ -243,6 +333,14 @@ class MoodEngine {
             "pt" -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Brasileira", "pop" to "Pop", "gym" to "Academia", "chill" to "Relax", "focus" to "Foco", "sad" to "Melancolia", "party" to "Festa", "rock" to "Rock", "electro" to "Eletrônica", "rnb" to "R&B")
             "ar" -> mapOf("hits" to "الأكثر رواجًا", "rap" to "راب وتراب", "local" to "عربية", "pop" to "بوب", "gym" to "تمرين", "chill" to "استرخاء", "focus" to "تركيز", "sad" to "حزينة", "party" to "حفلة", "rock" to "روك", "electro" to "إلكترونية", "rnb" to "R&B")
             "zh" -> mapOf("hits" to "热门", "rap" to "说唱与 Trap", "local" to "华语", "pop" to "流行", "gym" to "健身", "chill" to "放松", "focus" to "专注", "sad" to "伤感", "party" to "派对", "rock" to "摇滚", "electro" to "电子", "rnb" to "R&B")
+            "ja" -> mapOf("hits" to "ヒット", "rap" to "ラップ＆トラップ", "local" to "邦楽", "pop" to "ポップ", "gym" to "ワークアウト", "chill" to "チル", "focus" to "集中", "sad" to "切なさ", "party" to "パーティー", "rock" to "ロック", "electro" to "エレクトロニック", "rnb" to "R&B")
+            "ko" -> mapOf("hits" to "히트곡", "rap" to "랩 & 트랩", "local" to "한국 음악", "pop" to "팝", "gym" to "운동", "chill" to "칠", "focus" to "집중", "sad" to "감성", "party" to "파티", "rock" to "록", "electro" to "일렉트로닉", "rnb" to "R&B")
+            "hi" -> mapOf("hits" to "हिट्स", "rap" to "रैप और ट्रैप", "local" to "भारतीय", "pop" to "पॉप", "gym" to "वर्कआउट", "chill" to "सुकून", "focus" to "फ़ोकस", "sad" to "जज़्बात", "party" to "पार्टी", "rock" to "रॉक", "electro" to "इलेक्ट्रॉनिक", "rnb" to "R&B")
+            "id" -> mapOf("hits" to "Hit", "rap" to "Rap & Trap", "local" to "Indonesia", "pop" to "Pop", "gym" to "Olahraga", "chill" to "Santai", "focus" to "Fokus", "sad" to "Melankolis", "party" to "Pesta", "rock" to "Rock", "electro" to "Elektronik", "rnb" to "R&B")
+            "vi" -> mapOf("hits" to "Hit", "rap" to "Rap & Trap", "local" to "Nhạc Việt", "pop" to "Pop", "gym" to "Tập luyện", "chill" to "Thư giãn", "focus" to "Tập trung", "sad" to "Tâm trạng", "party" to "Tiệc", "rock" to "Rock", "electro" to "Điện tử", "rnb" to "R&B")
+            "th" -> mapOf("hits" to "เพลงฮิต", "rap" to "แรปและแทรป", "local" to "เพลงไทย", "pop" to "ป๊อป", "gym" to "ออกกำลังกาย", "chill" to "ชิลล์", "focus" to "มีสมาธิ", "sad" to "เพลงเศร้า", "party" to "ปาร์ตี้", "rock" to "ร็อก", "electro" to "อิเล็กทรอนิกส์", "rnb" to "R&B")
+            "fil" -> mapOf("hits" to "Mga hit", "rap" to "Rap at Trap", "local" to "OPM", "pop" to "Pop", "gym" to "Workout", "chill" to "Chill", "focus" to "Pokus", "sad" to "Hugot", "party" to "Party", "rock" to "Rock", "electro" to "Electronic", "rnb" to "R&B")
+            "he" -> mapOf("hits" to "להיטים", "rap" to "ראפ וטראפ", "local" to "ישראלי", "pop" to "פופ", "gym" to "אימון", "chill" to "צ'יל", "focus" to "ריכוז", "sad" to "מלנכוליה", "party" to "מסיבה", "rock" to "רוק", "electro" to "אלקטרוני", "rnb" to "R&B")
             else -> mapOf("hits" to "Hits", "rap" to "Rap & Trap", "local" to "Local", "pop" to "Pop", "gym" to "Gym", "chill" to "Chill", "focus" to "Focus", "sad" to "Melancholy", "party" to "Party", "rock" to "Rock", "electro" to "Electronic", "rnb" to "R&B")
         }
     }

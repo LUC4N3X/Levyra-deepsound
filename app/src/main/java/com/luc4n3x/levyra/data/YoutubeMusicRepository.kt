@@ -1038,7 +1038,14 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         "album", "playlist", "artist", "ep", "podcast", "episode", "channel", "profile", "mix",
         "artista", "canale", "profilo", "canción", "cancion", "artiste", "künstler", "kunstler",
         "álbum", "albumo", "artiest", "artysta", "artis", "canal", "chaîne", "kanal",
-        "فنان", "قناة", "ملف شخصي", "ألبوم", "قائمة تشغيل", "歌手", "频道", "个人资料", "专辑", "播放列表"
+        "فنان", "قناة", "ملف شخصي", "ألبوم", "قائمة تشغيل", "歌手", "频道", "个人资料", "专辑", "播放列表",
+        "アーティスト", "チャンネル", "プロフィール", "アルバム", "プレイリスト", "再生リスト",
+        "아티스트", "채널", "프로필", "앨범", "재생목록", "플레이리스트",
+        "कलाकार", "चैनल", "प्रोफ़ाइल", "एल्बम", "प्लेलिस्ट",
+        "saluran", "daftar putar", "nghệ sĩ", "kênh", "hồ sơ", "danh sách phát",
+        "ศิลปิน", "ช่อง", "โปรไฟล์", "อัลบั้ม", "เพลย์ลิสต์",
+        "mang-aawit", "talaan ng tugtugin",
+        "אמן", "אמנית", "ערוץ", "פרופיל", "אלבום", "פלייליסט", "רשימת השמעה"
     )
 
     private fun albumRecommendationQueries(languageCode: String): List<String> {
@@ -1056,6 +1063,14 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             "pt" -> listOf("novos álbuns", "álbuns populares", "álbuns pop", "álbuns rap")
             "ar" -> listOf("ألبومات عربية جديدة", "ألبومات عربية رائجة", "ألبومات بوب عربية", "ألبومات راب عربية")
             "zh" -> listOf("华语新专辑", "华语热门专辑", "华语流行专辑", "中文说唱专辑")
+            "ja" -> listOf("邦楽 新着アルバム", "人気 邦楽アルバム", "J-POP アルバム", "日本語ラップ アルバム")
+            "ko" -> listOf("국내 신작 앨범", "인기 한국 앨범", "K-POP 앨범", "한국 힙합 앨범")
+            "hi" -> listOf("नए भारतीय एल्बम", "लोकप्रिय हिंदी एल्बम", "हिंदी पॉप एल्बम", "भारतीय रैप एल्बम")
+            "id" -> listOf("album Indonesia terbaru", "album Indonesia populer", "album pop Indonesia", "album rap Indonesia")
+            "vi" -> listOf("album Việt mới", "album Việt phổ biến", "album V-pop", "album rap Việt")
+            "th" -> listOf("อัลบั้มไทยใหม่", "อัลบั้มไทยยอดนิยม", "อัลบั้มป๊อปไทย", "อัลบั้มแรปไทย")
+            "fil" -> listOf("mga bagong OPM album", "mga sikat na album sa Pilipinas", "mga P-pop album", "mga Pinoy rap album")
+            "he" -> listOf("אלבומים ישראליים חדשים", "אלבומים ישראליים פופולריים", "אלבומי פופ ישראלי", "אלבומי ראפ ישראלי")
             else -> listOf("new albums", "popular albums", "pop albums", "rap albums", "indie albums")
         }
     }

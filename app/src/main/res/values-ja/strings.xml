@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">ミニプレーヤー、クイックお気に入り、デイリーFlow、オフライン、歌詞</string>
+    <string name="widget_idle_subtitle">タップして聴く</string>
+    <string name="widget_toggle">再生／一時停止</string>
+    <string name="widget_next">次へ</string>
+    <string name="widget_previous">前へ</string>
+    <string name="widget_favorites">お気に入り</string>
+    <string name="widget_flow">デイリーFlow</string>
+    <string name="widget_offline">オフラインミックス</string>
+    <string name="widget_lyrics">歌詞</string>
+    <string name="radar_channel_name">リリースレーダー</string>
+    <string name="radar_channel_description">フォロー中のアーティストの新着リリース</string>
+    <string name="radar_new_release_title">%1$sの新着リリース</string>
+</resources>

@@ -208,6 +208,70 @@ object LevyraStartupCatalog {
                 track("平凡之路", "朴树", "YouTube Music", "", setOf("rock", "local", "drive"), 70, 82, 90),
                 track("小幸运", "田馥甄", "YouTube Music", "", setOf("pop", "local", "chill"), 66, 88, 92)
             )
+            "ja" -> listOf(
+                track("アイドル", "YOASOBI", "YouTube Music", "", setOf("pop", "local", "hit"), 88, 80, 95),
+                track("唱", "Ado", "YouTube Music", "", setOf("pop", "local", "energy"), 92, 78, 93),
+                track("Pretender", "Official髭男dism", "YouTube Music", "", setOf("pop", "local", "mood"), 72, 88, 94),
+                track("青と夏", "Mrs. GREEN APPLE", "YouTube Music", "", setOf("rock", "local", "hit"), 84, 82, 92),
+                track("Lemon", "米津玄師", "YouTube Music", "", setOf("pop", "local", "mood"), 66, 92, 96),
+                track("死ぬのがいいわ", "藤井風", "YouTube Music", "", setOf("rnb", "local", "chill"), 62, 90, 94)
+            )
+            "ko" -> listOf(
+                track("Dynamite", "BTS", "YouTube Music", "", setOf("pop", "local", "hit"), 90, 82, 98),
+                track("How You Like That", "BLACKPINK", "YouTube Music", "", setOf("pop", "local", "energy"), 92, 78, 96),
+                track("Super Shy", "NewJeans", "YouTube Music", "", setOf("pop", "local", "chill"), 82, 84, 94),
+                track("LOVE DIVE", "IVE", "YouTube Music", "", setOf("pop", "local", "hit"), 86, 80, 94),
+                track("Supernova", "aespa", "YouTube Music", "", setOf("electronic", "local", "energy"), 94, 76, 92),
+                track("Love wins all", "IU", "YouTube Music", "", setOf("pop", "local", "mood"), 62, 92, 93)
+            )
+            "hi" -> listOf(
+                track("Kesariya", "Arijit Singh", "YouTube Music", "", setOf("pop", "local", "hit"), 70, 88, 95),
+                track("Chaleya", "Arijit Singh & Shilpa Rao", "YouTube Music", "", setOf("pop", "local", "mood"), 68, 90, 94),
+                track("Heeriye", "Jasleen Royal & Arijit Singh", "YouTube Music", "", setOf("pop", "local", "chill"), 72, 86, 93),
+                track("Apna Bana Le", "Arijit Singh & Sachin-Jigar", "YouTube Music", "", setOf("pop", "local", "mood"), 72, 90, 95),
+                track("Naatu Naatu", "Rahul Sipligunj & Kaala Bhairava", "YouTube Music", "", setOf("party", "local", "energy"), 96, 82, 94),
+                track("Brown Munde", "AP Dhillon, Gurinder Gill & Shinda Kahlon", "YouTube Music", "", setOf("rap", "local", "hit"), 88, 76, 92)
+            )
+            "id" -> listOf(
+                track("Hati-Hati di Jalan", "Tulus", "YouTube Music", "", setOf("pop", "local", "mood"), 64, 92, 95),
+                track("Sial", "Mahalini", "YouTube Music", "", setOf("pop", "local", "mood"), 68, 90, 93),
+                track("Evaluasi", "Hindia", "YouTube Music", "", setOf("indie", "local", "mood"), 66, 88, 92),
+                track("High School in Jakarta", "NIKI", "YouTube Music", "", setOf("pop", "local", "chill"), 76, 86, 94),
+                track("Satu Bulan", "Bernadya", "YouTube Music", "", setOf("pop", "local", "mood"), 62, 90, 91),
+                track("Tak Segampang Itu", "Anggi Marito", "YouTube Music", "", setOf("pop", "local", "vocal"), 64, 92, 92)
+            )
+            "vi" -> listOf(
+                track("Chúng Ta Của Tương Lai", "Sơn Tùng M-TP", "YouTube Music", "", setOf("pop", "local", "hit"), 78, 88, 94),
+                track("Bật Tình Yêu Lên", "Tăng Duy Tân & Hòa Minzy", "YouTube Music", "", setOf("pop", "local", "party"), 86, 82, 92),
+                track("Nấu Ăn Cho Em", "Đen", "YouTube Music", "", setOf("rap", "local", "mood"), 68, 90, 93),
+                track("Không Thể Say", "HIEUTHUHAI", "YouTube Music", "", setOf("rap", "local", "hit"), 82, 78, 91),
+                track("See Tình", "Hoàng Thùy Linh", "YouTube Music", "", setOf("pop", "local", "dance"), 90, 80, 95),
+                track("Waiting For You", "MONO", "YouTube Music", "", setOf("pop", "local", "hit"), 78, 84, 93)
+            )
+            "th" -> listOf(
+                track("ลังเล", "PP Krit", "YouTube Music", "", setOf("pop", "local", "mood"), 68, 90, 92),
+                track("กีดกัน", "Billkin", "YouTube Music", "", setOf("pop", "local", "mood"), 64, 92, 93),
+                track("เพื่อนเล่น ไม่เล่นเพื่อน", "Tilly Birds", "YouTube Music", "", setOf("rock", "local", "hit"), 80, 86, 94),
+                track("ฝนตกไหม", "Three Man Down", "YouTube Music", "", setOf("rock", "local", "mood"), 70, 88, 92),
+                track("VROOM VROOM", "4EVE", "YouTube Music", "", setOf("pop", "local", "energy"), 94, 76, 91),
+                track("พักก่อน", "MILLI", "YouTube Music", "", setOf("rap", "local", "energy"), 90, 74, 91)
+            )
+            "fil" -> listOf(
+                track("Kalapastangan", "fitterkarma", "YouTube Music", "", setOf("rock", "local", "hit"), 82, 86, 97),
+                track("Multo", "Cup of Joe", "YouTube Music", "", setOf("pop", "local", "hit"), 74, 92, 97),
+                track("Since Day One", "Skusta Clee & Flow G", "YouTube Music", "", setOf("rap", "local", "hit"), 88, 78, 95),
+                track("Pag-Ibig ay Kanibalismo II", "fitterkarma", "YouTube Music", "", setOf("rock", "local", "mood"), 76, 88, 96),
+                track("Libu-Libong Buwan (Uuwian)", "Kyle Raphael", "YouTube Music", "", setOf("pop", "local", "mood"), 68, 92, 95),
+                track("Lifetime", "Ben&Ben", "YouTube Music", "", setOf("folk", "local", "mood"), 64, 94, 96)
+            )
+            "he" -> listOf(
+                track("שני משוגעים", "עומר אדם", "YouTube Music", "", setOf("pop", "local", "hit"), 82, 86, 95),
+                track("פנתרה", "נועה קירל", "YouTube Music", "", setOf("pop", "local", "energy"), 94, 78, 94),
+                track("תיק קטן", "נס וסטילה", "YouTube Music", "", setOf("rap", "local", "hit"), 90, 76, 94),
+                track("סחרחורת", "טונה", "YouTube Music", "", setOf("rap", "local", "mood"), 76, 90, 95),
+                track("לשוב הביתה", "ישי ריבו", "YouTube Music", "", setOf("pop", "local", "mood"), 62, 94, 96),
+                track("שמישהו יעצור אותי", "עדן חסון", "YouTube Music", "", setOf("pop", "local", "hit"), 78, 88, 94)
+            )
             else -> listOf(
                 track("As It Was", "Harry Styles", "Harry's House", "H5v3kku4y6Q", setOf("pop", "hit", "local"), 82, 78, 94),
                 track("Flowers", "Miley Cyrus", "Endless Summer Vacation", "G7KNmW9a75Y", setOf("pop", "hit", "local"), 80, 80, 94),
