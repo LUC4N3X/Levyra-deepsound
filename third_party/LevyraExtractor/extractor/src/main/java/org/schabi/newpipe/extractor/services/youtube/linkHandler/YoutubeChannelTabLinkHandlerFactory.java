@@ -16,8 +16,8 @@ import java.util.List;
 
 import javax.annotation.Nonnull;
 
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
+import java.nio.charset.StandardCharsets;
 
 public final class YoutubeChannelTabLinkHandlerFactory extends ListLinkHandlerFactory {
     public static final String SORT_LATEST = "latest";
@@ -167,7 +167,7 @@ public final class YoutubeChannelTabLinkHandlerFactory extends ListLinkHandlerFa
         }
 
         try {
-            return url + "?query=" + URLEncoder.encode(query, UTF_8).replace("+", "%20");
+            return url + "?query=" + URLEncoder.encode(query, StandardCharsets.UTF_8.name()).replace("+", "%20");
         } catch (final Exception e) {
             throw new ParsingException("Could not encode channel search query", e);
         }

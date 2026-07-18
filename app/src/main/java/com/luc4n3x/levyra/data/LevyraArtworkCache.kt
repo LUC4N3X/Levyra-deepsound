@@ -246,7 +246,7 @@ object LevyraArtworkCache {
                         .build()
                     LevyraHttpClientFactory.media().newCall(request).execute().use { response ->
                         if (!response.isSuccessful) return@use false
-                        val body = response.body ?: return@use false
+                        val body = response.body
                         val length = body.contentLength()
                         if (length > MAX_FILE_BYTES) return@use false
                         val bytes = body.bytes()
