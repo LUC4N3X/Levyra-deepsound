@@ -177,11 +177,12 @@ public final class Utils {
                 }
 
                 if (query.equals(parameterName)) {
+                    final String value = params.length > 1 ? params[1] : "";
                     try {
-                        return URLDecoder.decode(params[1], StandardCharsets.UTF_8.name());
+                        return URLDecoder.decode(value, StandardCharsets.UTF_8.name());
                     } catch (final UnsupportedEncodingException e) {
                         // Cannot decode string with UTF-8, using the string without decoding
-                        return params[1];
+                        return value;
                     }
                 }
             }
