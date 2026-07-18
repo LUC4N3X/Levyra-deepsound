@@ -10,6 +10,12 @@ import okhttp3.Request
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
+sealed interface MotionArtworkVerificationResult {
+    data object Verified : MotionArtworkVerificationResult
+    data object Invalid : MotionArtworkVerificationResult
+    data class Failed(val cause: Throwable? = null) : MotionArtworkVerificationResult
+}
+
 class MotionArtworkUrlVerifier(context: Context) {
     private val client: OkHttpClient = LevyraHttpClientFactory.media(context).newBuilder()
         .connectTimeout(3, TimeUnit.SECONDS)
@@ -19,8 +25,8 @@ class MotionArtworkUrlVerifier(context: Context) {
         .followSslRedirects(true)
         .build()
 
-    suspend fun verify(candidate: MotionArtworkCandidate): Boolean = withContext(Dispatchers.IO) {
-        if (!candidate.url.startsWith("https://")) return@withContext false
+    suspend fun verify(candidate: MotionArtworkCandidate): MotionArtworkVerificationResult = withContext(Dispatchers.IO) {
+        if (!candidate.url.startsWith("https://")) return@withContext MotionArtworkVerificationResult.Invalid
         try {
             val head = Request.Builder()
                 .url(candidate.url)
@@ -28,10 +34,18 @@ class MotionArtworkUrlVerifier(context: Context) {
                 .header("User-Agent", USER_AGENT)
                 .build()
             client.newCall(head).execute().use { response ->
-                if (response.isSuccessful && contentLooksPlayable(response.header("Content-Type"), candidate)) {
-                    return@withContext true
+                if (response.isSuccessful) {
+                    return@withContext if (contentLooksPlayable(response.header("Content-Type"), candidate)) {
+                        MotionArtworkVerificationResult.Verified
+                    } else {
+                        MotionArtworkVerificationResult.Invalid
+                    }
                 }
-                if (response.code !in setOf(400, 403, 405)) return@withContext false
+                when {
+                    response.code in setOf(400, 403, 405) -> Unit
+                    response.code == 404 || response.code == 410 -> return@withContext MotionArtworkVerificationResult.Invalid
+                    else -> return@withContext MotionArtworkVerificationResult.Failed()
+                }
             }
             val probe = Request.Builder()
                 .url(candidate.url)
@@ -40,22 +54,34 @@ class MotionArtworkUrlVerifier(context: Context) {
                 .header("User-Agent", USER_AGENT)
                 .build()
             client.newCall(probe).execute().use { response ->
-                (response.isSuccessful || response.code == 206) &&
-                    contentLooksPlayable(response.header("Content-Type"), candidate)
+                when {
+                    response.isSuccessful || response.code == 206 -> {
+                        if (contentLooksPlayable(response.header("Content-Type"), candidate)) {
+                            MotionArtworkVerificationResult.Verified
+                        } else {
+                            MotionArtworkVerificationResult.Invalid
+                        }
+                    }
+                    response.code == 404 || response.code == 410 -> MotionArtworkVerificationResult.Invalid
+                    else -> MotionArtworkVerificationResult.Failed()
+                }
             }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
             Timber.d(error, "Motion artwork verification failed")
-            false
+            MotionArtworkVerificationResult.Failed(error)
         }
     }
 
     private fun contentLooksPlayable(contentType: String?, candidate: MotionArtworkCandidate): Boolean {
-        val normalized = contentType.orEmpty().lowercase()
+        val normalized = contentType.orEmpty().substringBefore(';').trim().lowercase()
         if (normalized.startsWith("video/")) return true
-        if (normalized.contains("mpegurl") || normalized.contains("application/vnd.apple.mpegurl")) return true
-        return candidate.url.substringBefore('?').let { it.endsWith(".mp4", true) || it.endsWith(".m3u8", true) }
+        if (normalized.contains("mpegurl")) return true
+        if (normalized.isNotBlank() && normalized != "application/octet-stream") return false
+        return candidate.url.substringBefore('?').let {
+            it.endsWith(".mp4", true) || it.endsWith(".m3u8", true)
+        }
     }
 
     private companion object {
