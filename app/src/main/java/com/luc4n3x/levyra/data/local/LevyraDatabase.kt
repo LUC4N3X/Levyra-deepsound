@@ -17,9 +17,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaybackQueueItemEntity::class,
         PlaybackQueueStateEntity::class,
         OfflineDownloadTaskEntity::class,
-        LyricsCacheEntity::class
+        LyricsCacheEntity::class,
+        MotionArtworkEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -30,6 +31,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun playbackQueueDao(): PlaybackQueueDao
     abstract fun offlineDownloadTasksDao(): OfflineDownloadTasksDao
     abstract fun lyricsCacheDao(): LyricsCacheDao
+    abstract fun motionArtworkDao(): MotionArtworkDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -322,6 +324,30 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS motion_artwork (
+                        identityKey TEXT NOT NULL PRIMARY KEY,
+                        provider TEXT,
+                        url TEXT,
+                        mimeType TEXT,
+                        width INTEGER,
+                        height INTEGER,
+                        confidence INTEGER NOT NULL,
+                        expiresAt INTEGER NOT NULL,
+                        lastVerifiedAt INTEGER NOT NULL,
+                        configEpoch INTEGER NOT NULL,
+                        negative INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_motion_artwork_expiresAt ON motion_artwork(expiresAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_motion_artwork_lastVerifiedAt ON motion_artwork(lastVerifiedAt)")
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -330,7 +356,7 @@ abstract class LevyraDatabase : RoomDatabase() {
                     "levyra.db"
                 )
                     // Migrazioni versionate: i dati utente sopravvivono agli aggiornamenti.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     .build()
                     .also { instance = it }
             }
