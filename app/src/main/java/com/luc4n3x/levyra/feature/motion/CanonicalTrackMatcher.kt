@@ -103,19 +103,17 @@ object CanonicalTrackMatcher {
         scope: MotionArtworkScope
     ): Boolean {
         if (reference.isEmpty() || candidate.isEmpty()) return false
-        val returned = artistAliases(candidate)
         val combinedMatches = combinedArtistSignature(reference) == combinedArtistSignature(candidate)
-        val primaryMatches = combinedMatches || normalizeMotionText(reference.first()) in returned
-        if (!primaryMatches) return false
-        return scope == MotionArtworkScope.ALBUM ||
-            combinedMatches ||
-            reference.all { normalizeMotionText(it) in returned }
+        if (!primaryMotionArtistMatches(reference, candidate)) return false
+        if (scope == MotionArtworkScope.ALBUM || combinedMatches) return true
+        val returned = candidate.map(::normalizeMotionText).toSet()
+        return reference.all { normalizeMotionText(it) in returned }
     }
 
     private fun artistCoverage(reference: List<String>, candidate: List<String>): Double {
         if (reference.isEmpty()) return 0.0
         if (combinedArtistSignature(reference) == combinedArtistSignature(candidate)) return 1.0
-        val returned = artistAliases(candidate)
+        val returned = candidate.map(::normalizeMotionText).toSet()
         return reference.count { normalizeMotionText(it) in returned }.toDouble() / reference.size.toDouble()
     }
 

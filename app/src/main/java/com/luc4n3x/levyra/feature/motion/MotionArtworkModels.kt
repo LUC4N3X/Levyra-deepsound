@@ -111,6 +111,13 @@ internal fun artistAliases(values: List<String>): Set<String> = buildSet {
 internal fun combinedArtistSignature(values: List<String>): String =
     normalizeMotionText(values.joinToString(" "))
 
+internal fun primaryMotionArtistMatches(requested: List<String>, returned: List<String>): Boolean {
+    if (requested.isEmpty() || returned.isEmpty()) return false
+    if (combinedArtistSignature(requested) == combinedArtistSignature(returned)) return true
+    val requestedPrimary = normalizeMotionText(requested.first())
+    return requestedPrimary.isNotBlank() && returned.any { normalizeMotionText(it) == requestedPrimary }
+}
+
 internal fun normalizeMotionText(value: String): String = value
     .lowercase(Locale.ROOT)
     .replace(Regex("[’'`´]"), "")

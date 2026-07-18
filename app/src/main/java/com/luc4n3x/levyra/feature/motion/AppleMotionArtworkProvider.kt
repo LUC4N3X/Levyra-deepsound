@@ -117,9 +117,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 null
             } ?: continue
 
+            val scope = MotionArtworkScope.ALBUM
             output += MotionArtworkCandidate(
                 provider = id,
-                scope = MotionArtworkScope.ALBUM,
+                scope = scope,
                 identity = MotionTrackIdentity(
                     title = identity.title,
                     artists = splitArtists(if (resolved.albumArtist.isNotBlank()) resolved.albumArtist else result.artist),
@@ -275,12 +276,8 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         return BLACKLIST.any { motionTextContainsTerm(value, it) }
     }
 
-    private fun artistMatches(requested: List<String>, returned: List<String>): Boolean {
-        if (requested.isEmpty() || returned.isEmpty()) return false
-        val normalizedReturned = artistAliases(returned)
-        return combinedArtistSignature(requested) == combinedArtistSignature(returned) ||
-            normalizeMotionText(requested.first()) in normalizedReturned
-    }
+    private fun artistMatches(requested: List<String>, returned: List<String>): Boolean =
+        primaryMotionArtistMatches(requested, returned)
 
     private fun similarity(first: String, second: String): Double {
         val left = normalizeMotionText(first).split(' ').filter { it.isNotBlank() }.toSet()
