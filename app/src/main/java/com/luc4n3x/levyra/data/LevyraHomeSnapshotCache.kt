@@ -28,20 +28,23 @@ class LevyraHomeSnapshotCache(context: Context) {
             val parsedHomeSections = parseHomeSections(rootJson.optJSONArray("homeSections") ?: JSONArray())
             val parsedCharts = parseTracks(rootJson.optJSONArray("charts") ?: JSONArray())
             val parsedPersonalOrbit = parseTracks(rootJson.optJSONArray("personalOrbit") ?: JSONArray())
+            val parsedResonance = if (schema >= 12) parseTracks(rootJson.optJSONArray("resonanceTracks") ?: JSONArray()) else emptyList()
             val homeSections = if (schema >= 7) parsedHomeSections else parsedHomeSections.map { section ->
                 section.copy(tracks = section.tracks.map { track -> track.copy(artistBrowseIds = emptyList()) })
             }
             val charts = if (schema >= 7) parsedCharts else parsedCharts.map { track -> track.copy(artistBrowseIds = emptyList()) }
             val personalOrbit = if (schema >= 7) parsedPersonalOrbit else parsedPersonalOrbit.map { track -> track.copy(artistBrowseIds = emptyList()) }
             val homeArtists = if (schema >= 11) parseArtists(rootJson.optJSONArray("homeArtists") ?: JSONArray()) else emptyList()
-            if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty()) return null
+            if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty() && parsedResonance.isEmpty()) return null
             LevyraHomeSnapshot(
                 languageCode = storedLanguage,
                 createdAt = createdAt,
                 homeSections = homeSections,
                 charts = charts,
                 personalOrbit = personalOrbit,
-                homeArtists = homeArtists
+                homeArtists = homeArtists,
+                resonanceTracks = parsedResonance,
+                resonanceUpdatedAt = if (schema >= 12) rootJson.optLong("resonanceUpdatedAt", 0L) else 0L
             )
         }.onFailure { Timber.w(it, "Home snapshot restore failed") }.getOrNull()
     }
@@ -51,10 +54,12 @@ class LevyraHomeSnapshotCache(context: Context) {
         homeSections: List<HomeSection>,
         charts: List<Track>,
         personalOrbit: List<Track>,
-        homeArtists: List<ArtistHit>
+        homeArtists: List<ArtistHit>,
+        resonanceTracks: List<Track>,
+        resonanceUpdatedAt: Long
     ) {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
-        if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty()) return
+        if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty() && resonanceTracks.isEmpty()) return
         runCatching {
             val json = JSONObject()
                 .put("schema", SCHEMA)
@@ -64,6 +69,8 @@ class LevyraHomeSnapshotCache(context: Context) {
                 .put("charts", tracksToJson(charts.take(60)))
                 .put("personalOrbit", tracksToJson(personalOrbit.take(40)))
                 .put("homeArtists", artistsToJson(homeArtists.take(HOME_ARTIST_LIMIT)))
+                .put("resonanceTracks", tracksToJson(resonanceTracks.take(RESONANCE_TRACK_LIMIT)))
+                .put("resonanceUpdatedAt", resonanceUpdatedAt)
             val target = fileFor(normalized)
             val tmp = File(target.parentFile, "${target.name}.tmp")
             tmp.writeText(json.toString())
@@ -173,8 +180,9 @@ class LevyraHomeSnapshotCache(context: Context) {
 
     private companion object {
         const val HOME_ARTIST_LIMIT = 13
+        const val RESONANCE_TRACK_LIMIT = 8
         const val MIN_SUPPORTED_SCHEMA = 5
-        const val SCHEMA = 11
+        const val SCHEMA = 12
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
     }
 }
@@ -185,5 +193,7 @@ data class LevyraHomeSnapshot(
     val homeSections: List<HomeSection>,
     val charts: List<Track>,
     val personalOrbit: List<Track>,
-    val homeArtists: List<ArtistHit>
+    val homeArtists: List<ArtistHit>,
+    val resonanceTracks: List<Track>,
+    val resonanceUpdatedAt: Long
 )

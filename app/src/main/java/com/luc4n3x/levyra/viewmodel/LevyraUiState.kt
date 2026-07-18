@@ -66,6 +66,8 @@ data class LevyraUiState(
     val homeSections: List<HomeSection> = emptyList(),
     val homeAlbums: List<AlbumHit> = emptyList(),
     val homeArtists: List<ArtistHit> = emptyList(),
+    val homeResonanceTracks: List<Track> = emptyList(),
+    val homeResonanceUpdatedAt: Long = 0L,
     val homeArtistsLoading: Boolean = false,
     val homeAlbumsLoading: Boolean = false,
     val isLoadingHome: Boolean = false,

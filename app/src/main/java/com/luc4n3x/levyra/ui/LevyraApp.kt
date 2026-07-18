@@ -4270,8 +4270,9 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 viewModel.setHomeViewport(scrollInProgress, atTop)
             }
     }
-    DisposableEffect(viewModel) {
-        viewModel.onHomeEntered()
+    DisposableEffect(viewModel, homeListState) {
+        val atTop = homeListState.firstVisibleItemIndex == 0 && homeListState.firstVisibleItemScrollOffset == 0
+        viewModel.onHomeEntered(atTop)
         onDispose { viewModel.onHomeLeft() }
     }
     LaunchedEffect(Unit) {
