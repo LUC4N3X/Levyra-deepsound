@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.doOnAttach
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.player.LevyraPipBridge
@@ -161,7 +162,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestHighRefreshRate() {
-        window.decorView.display?.supportedModes?.maxByOrNull { it.refreshRate }?.let { mode ->
+        window.decorView.doOnAttach { decorView ->
+            val mode = decorView.display?.supportedModes?.maxByOrNull { it.refreshRate } ?: return@doOnAttach
             val params = window.attributes
             params.preferredDisplayModeId = mode.modeId
             window.attributes = params

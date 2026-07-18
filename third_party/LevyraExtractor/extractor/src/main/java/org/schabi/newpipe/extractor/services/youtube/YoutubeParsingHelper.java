@@ -942,9 +942,13 @@ YoutubeParsingHelper {
                 internUrl = internUrl.substring(10);
                 final String[] params = internUrl.split("&");
                 for (final String param : params) {
-                    if (param.split("=")[0].equals("q")) {
+                    final String[] keyValue = param.split("=", 2);
+                    if (keyValue[0].equals("q")) {
+                        if (keyValue.length < 2) {
+                            return "";
+                        }
                         try {
-                            return URLDecoder.decode(param.split("=")[1], StandardCharsets.UTF_8.name());
+                            return URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8.name());
                         } catch (final UnsupportedEncodingException e) {
                             return null;
                         }

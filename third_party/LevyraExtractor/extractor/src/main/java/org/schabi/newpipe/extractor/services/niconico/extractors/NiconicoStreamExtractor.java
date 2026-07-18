@@ -217,7 +217,7 @@ public class NiconicoStreamExtractor extends StreamExtractor {
 
     @Override
     public List<AudioStream> getAudioStreams() throws IOException, ExtractionException {
-        if (getStreamType() == StreamType.LIVE_STREAM) {
+        if (getStreamType() == StreamType.LIVE_STREAM || streamSources == null) {
             return Collections.emptyList();
         }
         final List<AudioStream> audioStreams = new ArrayList<>();
@@ -286,7 +286,7 @@ public class NiconicoStreamExtractor extends StreamExtractor {
 
     @Override
     public List<VideoStream> getVideoOnlyStreams() throws IOException, ExtractionException {
-        if (getStreamType() == StreamType.LIVE_STREAM) {
+        if (getStreamType() == StreamType.LIVE_STREAM || streamSources == null) {
             return Collections.emptyList();
         }
         final List<VideoStream> videoStreams = new ArrayList<>();
