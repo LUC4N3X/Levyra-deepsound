@@ -1798,13 +1798,14 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private val typeLabels = setOf(
-        "song", "video", "album", "playlist", "artist", "single", "ep", "episode", "podcast",
-        "brano", "canzone", "video musicale", "video ufficiale", "artista", "singolo", "episodio",
-        "canción", "cancion", "artiste", "chanson", "titre", "künstler", "kunstler", "lied", "nummer",
+        "song", "video", "single",
+        "brano", "canzone", "video musicale", "video ufficiale", "singolo", "episodio",
+        "canción", "cancion", "chanson", "titre", "lied", "nummer",
         "utwór", "piosenka", "melodie", "τραγούδι", "låt", "sang", "píseň", "skladba", "пісня"
-    )
+    ) + excludedTypes
 
-    private fun isTypeLabel(token: String): Boolean = token.trim().lowercase() in typeLabels
+    private fun isTypeLabel(token: String): Boolean =
+        token.trim().lowercase(Locale.ROOT) in typeLabels
 
     private fun parseMusicRenderer(renderer: JSONObject, query: String): Track? {
         val lines = extractFlexLines(renderer)
