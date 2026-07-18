@@ -4,8 +4,7 @@ import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
 import com.grack.nanojson.JsonParser;
 import com.grack.nanojson.JsonParserException;
-
-import org.apache.commons.lang3.StringEscapeUtils;
+import com.grack.nanojson.JsonWriter;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.comments.CommentsExtractor;
@@ -116,7 +115,7 @@ public class BilibiliCommentExtractor extends CommentsExtractor {
             put("oid", url.split("oid=")[1].split("&")[0]);
             put("type", "1");
             put("mode", "3");
-            put("pagination_str", "{\"offset\":\"" + StringEscapeUtils.escapeJson(offset) + "\"}");
+            put("pagination_str", JsonWriter.string().object().value("offset", offset).end().done());
             put("plat", "1");
             put("web_location", "1315875");
         }};
