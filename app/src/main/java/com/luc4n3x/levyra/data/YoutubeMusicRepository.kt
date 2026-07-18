@@ -74,6 +74,28 @@ private data class ScoredAlbumRecommendation(
 
 internal const val LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE = Int.MIN_VALUE
 
+internal val LEVYRA_LOCALIZED_ALBUM_LABELS = setOf(
+    "album",
+    "álbum",
+    "albumo",
+    "άλμπουμ",
+    "albüm",
+    "альбом",
+    "албум",
+    "ألبوم",
+    "专辑",
+    "專輯",
+    "アルバム",
+    "앨범",
+    "एल्बम",
+    "อัลบั้ม",
+    "אלבום"
+)
+
+internal fun levyraIsAlbumLabel(token: String): Boolean {
+    return token.trim().lowercase(Locale.ROOT) in LEVYRA_LOCALIZED_ALBUM_LABELS
+}
+
 internal fun levyraAlbumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {
     val albumKey = albumRecommendationTextKey(album.title)
     val artistKey = albumRecommendationTextKey(album.artist)
@@ -1035,11 +1057,18 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private val excludedTypes = setOf(
-        "album", "playlist", "artist", "ep", "podcast", "episode", "channel", "profile", "mix",
+        "playlist", "artist", "ep", "podcast", "episode", "channel", "profile", "mix",
         "artista", "canale", "profilo", "canción", "cancion", "artiste", "künstler", "kunstler",
-        "álbum", "albumo", "artiest", "artysta", "artis", "canal", "chaîne", "kanal",
-        "فنان", "قناة", "ملف شخصي", "ألبوم", "قائمة تشغيل", "歌手", "频道", "个人资料", "专辑", "播放列表"
-    )
+        "artiest", "artysta", "artis", "canal", "chaîne", "kanal",
+        "فنان", "قناة", "ملف شخصي", "قائمة تشغيل", "歌手", "频道", "个人资料", "播放列表",
+        "アーティスト", "チャンネル", "プロフィール", "プレイリスト", "再生リスト",
+        "아티스트", "채널", "프로필", "재생목록", "플레이리스트",
+        "कलाकार", "चैनल", "प्रोफ़ाइल", "प्लेलिस्ट",
+        "saluran", "daftar putar", "nghệ sĩ", "kênh", "hồ sơ", "danh sách phát",
+        "ศิลปิน", "ช่อง", "โปรไฟล์", "เพลย์ลิสต์",
+        "mang-aawit", "talaan ng tugtugin",
+        "אמן", "אמנית", "ערוץ", "פרופיל", "פלייליסט", "רשימת השמעה"
+    ) + LEVYRA_LOCALIZED_ALBUM_LABELS
 
     private fun albumRecommendationQueries(languageCode: String): List<String> {
         return when (LevyraLanguageCatalog.normalize(languageCode)) {
@@ -1056,6 +1085,14 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             "pt" -> listOf("novos álbuns", "álbuns populares", "álbuns pop", "álbuns rap")
             "ar" -> listOf("ألبومات عربية جديدة", "ألبومات عربية رائجة", "ألبومات بوب عربية", "ألبومات راب عربية")
             "zh" -> listOf("华语新专辑", "华语热门专辑", "华语流行专辑", "中文说唱专辑")
+            "ja" -> listOf("邦楽 新着アルバム", "人気 邦楽アルバム", "J-POP アルバム", "日本語ラップ アルバム")
+            "ko" -> listOf("국내 신작 앨범", "인기 한국 앨범", "K-POP 앨범", "한국 힙합 앨범")
+            "hi" -> listOf("नए भारतीय एल्बम", "लोकप्रिय हिंदी एल्बम", "हिंदी पॉप एल्बम", "भारतीय रैप एल्बम")
+            "id" -> listOf("album Indonesia terbaru", "album Indonesia populer", "album pop Indonesia", "album rap Indonesia")
+            "vi" -> listOf("album Việt mới", "album Việt phổ biến", "album V-pop", "album rap Việt")
+            "th" -> listOf("อัลบั้มไทยใหม่", "อัลบั้มไทยยอดนิยม", "อัลบั้มป๊อปไทย", "อัลบั้มแรปไทย")
+            "fil" -> listOf("mga bagong OPM album", "mga sikat na album sa Pilipinas", "mga P-pop album", "mga Pinoy rap album")
+            "he" -> listOf("אלבומים ישראליים חדשים", "אלבומים ישראליים פופולריים", "אלבומי פופ ישראלי", "אלבומי ראפ ישראלי")
             else -> listOf("new albums", "popular albums", "pop albums", "rap albums", "indie albums")
         }
     }
@@ -1133,10 +1170,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun isAlbumLabel(token: String): Boolean {
-        val normalized = token.trim().lowercase()
-        return normalized == "album" || normalized == "álbum" || normalized == "albumo"
-    }
+    private fun isAlbumLabel(token: String): Boolean = levyraIsAlbumLabel(token)
 
     private fun isAlbumArtistToken(token: String): Boolean {
         val normalized = token.cleanAlbumArtistLabel().lowercase()
@@ -1764,13 +1798,14 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private val typeLabels = setOf(
-        "song", "video", "album", "playlist", "artist", "single", "ep", "episode", "podcast",
-        "brano", "canzone", "video musicale", "video ufficiale", "artista", "singolo", "episodio",
-        "canción", "cancion", "artiste", "chanson", "titre", "künstler", "kunstler", "lied", "nummer",
+        "song", "video", "single",
+        "brano", "canzone", "video musicale", "video ufficiale", "singolo", "episodio",
+        "canción", "cancion", "chanson", "titre", "lied", "nummer",
         "utwór", "piosenka", "melodie", "τραγούδι", "låt", "sang", "píseň", "skladba", "пісня"
-    )
+    ) + excludedTypes
 
-    private fun isTypeLabel(token: String): Boolean = token.trim().lowercase() in typeLabels
+    private fun isTypeLabel(token: String): Boolean =
+        token.trim().lowercase(Locale.ROOT) in typeLabels
 
     private fun parseMusicRenderer(renderer: JSONObject, query: String): Track? {
         val lines = extractFlexLines(renderer)
