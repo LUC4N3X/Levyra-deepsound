@@ -75,6 +75,8 @@ import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.motion.MotionArtworkEngine
+import com.luc4n3x.levyra.feature.motion.MotionArtworkIdentityKey
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
@@ -204,6 +206,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
     private val chartsRepository = ChartsRepository()
     private val officialArtworkRepository = OfficialArtworkRepository(application.applicationContext)
+    private val motionArtworkEngine = MotionArtworkEngine(application.applicationContext)
     private val database = LevyraDatabase.get(application.applicationContext)
     private val downloadedTracksDao = database.downloadedTracksDao()
     private val offlineDownloadTasksDao = database.offlineDownloadTasksDao()
@@ -258,6 +261,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var prefetchJob: Job? = null
     private var chartEnrichJob: Job? = null
     private var orbitArtworkJob: Job? = null
+    private var motionArtworkJob: Job? = null
+    @Volatile private var motionArtworkRequestKey: String? = null
+    private val motionArtworkRequestGeneration = AtomicLong(0L)
+    private var motionArtworkPrefetchJob: Job? = null
     private var sleepJob: Job? = null
     private var crossfadeJob: Job? = null
     private var crossfadeInProgress = false
@@ -1992,7 +1999,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setAnimationsEnabled(value: Boolean) {
         preferences.setAnimationsEnabled(value)
-        _state.update { it.copy(animationsEnabled = value) }
+        _state.update {
+            it.copy(
+                animationsEnabled = value,
+                motionArtwork = if (value) it.motionArtwork else null,
+                motionArtworkLoading = if (value) it.motionArtworkLoading else false
+            )
+        }
+        if (value) {
+            _state.value.currentTrack?.let(::refreshMotionArtworkAround)
+        } else {
+            motionArtworkRequestGeneration.incrementAndGet()
+            motionArtworkJob?.cancel()
+            motionArtworkRequestKey = null
+            motionArtworkPrefetchJob?.cancel()
+        }
     }
 
     fun setDynamicColor(value: Boolean) {
@@ -2634,6 +2655,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         moveToTab(LevyraTab.Player, rememberCurrent = true)
+        _state.value.currentTrack?.let(::refreshMotionArtworkAround)
     }
 
     fun playAlbumSong(track: Track) {
@@ -3464,6 +3486,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         youtubeEngagementJob?.cancel()
+        motionArtworkRequestGeneration.incrementAndGet()
+        motionArtworkJob?.cancel()
+        motionArtworkRequestKey = null
+        motionArtworkPrefetchJob?.cancel()
         if (!preserveCrossfade) {
             crossfadeJob?.cancel()
             crossfadeInProgress = false
@@ -3480,11 +3506,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 currentTrack = track.copy(streamUrl = ""),
                 isPlaying = false,
                 positionMs = 0L,
-                durationMs = track.durationMs
+                durationMs = track.durationMs,
+                motionArtwork = null,
+                motionArtworkLoading = it.animationsEnabled
             )
         }
         fetchLyrics(track)
         prefetchLyricsAround(track)
+        refreshMotionArtworkAround(track)
 
         val playableTrack = youtubePlayableTrack(track) ?: track
         playJob = viewModelScope.launch {
@@ -3800,7 +3829,83 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         PlaybackService.clearPreparedQueueNext()
         val current = _state.value.currentTrack
         if (current != null) prefetchLyricsAround(current)
+        if (current != null) prefetchNextMotionArtwork(current)
         if (_state.value.isPlaying && current != null && current.streamUrl.isNotBlank()) prefetchAround(current)
+    }
+
+    private fun refreshMotionArtworkAround(current: Track) {
+        if (!_state.value.animationsEnabled) {
+            motionArtworkRequestGeneration.incrementAndGet()
+            motionArtworkJob?.cancel()
+            motionArtworkRequestKey = null
+            _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
+            return
+        }
+        val expectedKey = MotionArtworkIdentityKey.create(current)
+        if (motionArtworkJob?.isActive == true && motionArtworkRequestKey == expectedKey) return
+        motionArtworkJob?.cancel()
+        val requestGeneration = motionArtworkRequestGeneration.incrementAndGet()
+        motionArtworkRequestKey = expectedKey
+        motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val resolved = runCatching { motionArtworkEngine.resolve(current) }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        Timber.d(error, "Motion artwork resolve failed for %s", current.id)
+                    }
+                    .getOrNull()
+                if (!isActive) return@launch
+                var published = false
+                _state.update { latest ->
+                    val activeTrack = latest.currentTrack
+                    val stillOwnsRequest = motionArtworkRequestGeneration.get() == requestGeneration &&
+                        motionArtworkRequestKey == expectedKey &&
+                        latest.animationsEnabled &&
+                        activeTrack != null &&
+                        MotionArtworkIdentityKey.create(activeTrack) == expectedKey
+                    published = stillOwnsRequest
+                    if (stillOwnsRequest) {
+                        latest.copy(
+                            motionArtwork = resolved,
+                            motionArtworkLoading = false
+                        )
+                    } else {
+                        latest
+                    }
+                }
+                if (published && motionArtworkRequestGeneration.get() == requestGeneration) {
+                    prefetchNextMotionArtwork(current)
+                }
+            } finally {
+                if (
+                    motionArtworkRequestGeneration.get() == requestGeneration &&
+                    motionArtworkRequestKey == expectedKey
+                ) {
+                    motionArtworkRequestKey = null
+                }
+            }
+        }
+    }
+
+    private fun prefetchNextMotionArtwork(current: Track) {
+        motionArtworkPrefetchJob?.cancel()
+        if (!_state.value.animationsEnabled) return
+        val generation = queueEngine.state.value.generation
+        val currentKey = MotionArtworkIdentityKey.create(current)
+        val next = queueEngine.upcoming(2)
+            .firstOrNull { !samePlayableTrack(it, current) }
+            ?: return
+        motionArtworkPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(450L)
+            if (!isActive || queueEngine.state.value.generation != generation) return@launch
+            val active = _state.value.currentTrack ?: return@launch
+            if (MotionArtworkIdentityKey.create(active) != currentKey) return@launch
+            runCatching { motionArtworkEngine.prefetchNext(next) }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    Timber.d(error, "Motion artwork prefetch failed for %s", next.id)
+                }
+        }
     }
 
     private fun prefetchLyricsAround(current: Track) {
@@ -4062,6 +4167,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         prefetchJob?.cancel()
+        motionArtworkRequestGeneration.incrementAndGet()
+        motionArtworkJob?.cancel()
+        motionArtworkRequestKey = null
+        motionArtworkPrefetchJob?.cancel()
         crossfadeJob?.cancel()
         lyricsJob?.cancel()
         lyricsPrefetchJob?.cancel()
@@ -4093,6 +4202,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isResolving = false,
                 positionMs = 0L,
                 durationMs = 0L,
+                motionArtwork = null,
+                motionArtworkLoading = false,
                 showQueue = false,
                 showLyrics = false,
                 lyrics = emptyList(),
