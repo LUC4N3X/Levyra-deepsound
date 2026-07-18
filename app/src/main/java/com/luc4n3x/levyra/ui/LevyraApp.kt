@@ -8704,9 +8704,9 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     )
                             )
                         } else {
-                            PlayerArtworkCanvas(
-                                track = track,
-                                artworkUrl = artworkUrl,
+                            MotionArtworkLayer(
+                                artwork = state.motionArtwork,
+                                enabled = state.animationsEnabled && !state.isVideoMode,
                                 isPlaying = state.isPlaying,
                                 cornerRadius = artCorner,
                                 modifier = Modifier
@@ -8716,7 +8716,15 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                         scaleX = artScale
                                         scaleY = artScale
                                     }
-                            )
+                            ) {
+                                PlayerArtworkCanvas(
+                                    track = track,
+                                    artworkUrl = artworkUrl,
+                                    isPlaying = state.isPlaying,
+                                    cornerRadius = artCorner,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
 
                         if (state.interfaceSettings.playerGesturesEnabled) {
