@@ -356,8 +356,9 @@ Licensed under the **GNU General Public License v3.0** — see the [LICENSE](LIC
 
 <div align="center">
 
-**Made with ❤️ by one developer who just wanted a music app worth keeping.**
+**Built independently. Engineered with purpose. Refined for listeners who expect more.**
 
-⭐ **Star this repo if Levyra powers your soundtrack — it's the only fuel this project runs on.**
+⭐ **If Levyra has earned a place in your daily listening, support its development by starring the repository.**
 
 </div>
+
