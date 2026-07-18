@@ -2,7 +2,7 @@ package org.schabi.newpipe.extractor.services.bilibili.extractors;
 
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.jsoup.parser.Parser;
 import org.schabi.newpipe.extractor.Image;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.comments.CommentsInfoItemExtractor;
@@ -54,7 +54,7 @@ public class BilibiliCommentsInfoItemExtractor implements CommentsInfoItemExtrac
 
     @Override
     public String getCommentText() throws ParsingException {
-        String result = StringEscapeUtils.unescapeHtml4((data.getObject("content").getString("message")));
+        String result = Parser.unescapeEntities(data.getObject("content").getString("message"), false);
         try {
             if (result.endsWith("...") && data.getObject("content").getObject("jump_url") != null && data.getObject("content").getObject("jump_url").keySet().size() > 0) {
                 result += "\n\n" + new ArrayList<>(data.getObject("content").getObject("jump_url").keySet()).stream().filter(x -> x.startsWith("https://")).collect(Collectors.toList()).get(0);
