@@ -36,7 +36,17 @@ class LevyraApplication : Application() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) YoutubeLocalDecoder.trimMemory()
+        if (shouldReleaseMemory(level)) YoutubeLocalDecoder.trimMemory()
+    }
+
+    private fun shouldReleaseMemory(level: Int): Boolean =
+        level == RUNNING_LOW_LEVEL ||
+            level == RUNNING_CRITICAL_LEVEL ||
+            level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
+
+    private companion object {
+        const val RUNNING_LOW_LEVEL = 10
+        const val RUNNING_CRITICAL_LEVEL = 15
     }
 
     private fun warmPlaybackPipeline() {

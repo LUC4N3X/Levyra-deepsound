@@ -69,6 +69,8 @@ class PlaybackService : MediaLibraryService() {
     private var servicePrefetchJob: Job? = null
 
     companion object {
+        private const val RUNNING_LOW_LEVEL = 10
+        private const val RUNNING_CRITICAL_LEVEL = 15
         const val EXTRA_VIDEO_URL = "levyra.videoUrl"
         const val EXTRA_VIDEO_CACHE_KEY = "levyra.videoCacheKey"
         const val EXTRA_VIDEO_MIME_TYPE = "levyra.videoMimeType"
@@ -494,10 +496,15 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+        if (shouldCancelPrefetchForMemoryPressure(level)) {
             servicePrefetchJob?.cancel()
         }
     }
+
+    private fun shouldCancelPrefetchForMemoryPressure(level: Int): Boolean =
+        level == RUNNING_LOW_LEVEL ||
+            level == RUNNING_CRITICAL_LEVEL ||
+            level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
