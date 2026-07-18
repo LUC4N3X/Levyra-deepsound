@@ -11,6 +11,7 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -23,11 +24,27 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
         .callTimeout(8, TimeUnit.SECONDS)
         .build()
 
-    override suspend fun find(identity: MotionTrackIdentity): List<MotionArtworkCandidate> {
-        val fromTracks = search(identity, "TRACKS")
-        if (fromTracks.isNotEmpty()) return fromTracks
-        if (identity.album.isBlank()) return emptyList()
-        return search(identity, "ALBUMS")
+    override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
+        return try {
+            val fromTracks = search(identity, "TRACKS")
+            if (fromTracks.isNotEmpty()) {
+                MotionArtworkProviderResult.Found(fromTracks)
+            } else if (identity.album.isBlank()) {
+                MotionArtworkProviderResult.NoMatch
+            } else {
+                val fromAlbums = search(identity, "ALBUMS")
+                if (fromAlbums.isNotEmpty()) {
+                    MotionArtworkProviderResult.Found(fromAlbums)
+                } else {
+                    MotionArtworkProviderResult.NoMatch
+                }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.d(error, "Tidal motion provider failed")
+            MotionArtworkProviderResult.Failed(error)
+        }
     }
 
     private suspend fun search(identity: MotionTrackIdentity, type: String): List<MotionArtworkCandidate> {
@@ -50,7 +67,7 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
                 .header("X-Tidal-Token", TIDAL_EMBED_TOKEN)
                 .header("User-Agent", USER_AGENT)
                 .build()
-        ) ?: return emptyList()
+        )
         val items = findItems(root, type.lowercase(Locale.ROOT)) ?: return emptyList()
         val candidates = ArrayList<MotionArtworkCandidate>()
         for (index in 0 until items.length()) {
@@ -127,7 +144,7 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
                 .header("X-Tidal-Token", TIDAL_EMBED_TOKEN)
                 .header("User-Agent", USER_AGENT)
                 .build()
-        ) ?: return null
+        )
         val artists = root.optJSONArray("artists").toStringList("name")
             .ifEmpty {
                 listOfNotNull(
@@ -146,17 +163,22 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
         )
     }
 
-    private suspend fun executeJson(request: Request): JSONObject? = withContext(Dispatchers.IO) {
+    private suspend fun executeJson(request: Request): JSONObject = withContext(Dispatchers.IO) {
         try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext null
-                runCatching { JSONObject(response.body.string()) }.getOrNull()
+                if (!response.isSuccessful) {
+                    throw TidalRequestException("Tidal HTTP ${response.code}")
+                }
+                val content = response.body.string()
+                runCatching { JSONObject(content) }
+                    .getOrElse { throw TidalRequestException("Invalid Tidal response", it) }
             }
         } catch (error: CancellationException) {
             throw error
+        } catch (error: TidalRequestException) {
+            throw error
         } catch (error: Exception) {
-            Timber.d(error, "Tidal motion request failed")
-            null
+            throw TidalRequestException("Tidal motion request failed", error)
         }
     }
 
@@ -190,11 +212,8 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
         .takeIf { it.length == 2 }
         ?: "US"
 
-    private fun artistsCompatible(requested: List<String>, returned: List<String>): Boolean {
-        if (requested.isEmpty() || returned.isEmpty()) return false
-        val normalized = returned.map(::normalizeMotionText).toSet()
-        return normalizeMotionText(requested.first()) in normalized
-    }
+    private fun artistsCompatible(requested: List<String>, returned: List<String>): Boolean =
+        tidalArtistsCompatible(requested, returned)
 
     private fun isUnsafeResult(album: String): Boolean {
         val normalized = normalizeMotionText(album)
@@ -216,6 +235,14 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
         val BLACKLIST = setOf("playlist", "set list", "essentials", "dj mix", "mixed", "session")
     }
 }
+
+internal fun tidalArtistsCompatible(requested: List<String>, returned: List<String>): Boolean {
+    if (requested.isEmpty() || returned.isEmpty()) return false
+    if (combinedArtistSignature(requested) == combinedArtistSignature(returned)) return true
+    return artistAliases(requested).intersect(artistAliases(returned)).isNotEmpty()
+}
+
+private class TidalRequestException(message: String, cause: Throwable? = null) : IOException(message, cause)
 
 private fun JSONArray?.toStringList(key: String): List<String> {
     if (this == null) return emptyList()
