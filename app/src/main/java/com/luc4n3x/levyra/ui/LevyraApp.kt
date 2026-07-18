@@ -36,11 +36,8 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -146,6 +143,8 @@ import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.TaskAlt
+import androidx.compose.material.icons.rounded.ThumbUp
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.ViewCompact
 import androidx.compose.material3.CircularProgressIndicator
@@ -532,6 +531,35 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
     }
 }
 @Composable
+private fun rememberEqualizerBar(
+    isPlaying: Boolean,
+    idleValue: Float,
+    minimumValue: Float,
+    maximumValue: Float,
+    durationMillis: Int
+): Float {
+    val bar = remember { Animatable(idleValue) }
+    LaunchedEffect(isPlaying, idleValue, minimumValue, maximumValue, durationMillis) {
+        if (!isPlaying) {
+            bar.snapTo(idleValue)
+            return@LaunchedEffect
+        }
+        bar.snapTo(minimumValue)
+        while (true) {
+            bar.animateTo(
+                targetValue = maximumValue,
+                animationSpec = tween(durationMillis = durationMillis, easing = LinearEasing)
+            )
+            bar.animateTo(
+                targetValue = minimumValue,
+                animationSpec = tween(durationMillis = durationMillis, easing = LinearEasing)
+            )
+        }
+    }
+    return bar.value
+}
+
+@Composable
 private fun ActiveTrackEqualizer(
     modifier: Modifier = Modifier,
     color: Color = LevyraCyan,
@@ -539,79 +567,31 @@ private fun ActiveTrackEqualizer(
     width: Dp = 18.dp,
     height: Dp = 14.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "equalizer-bars")
-
-    val height1 by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.2f,
-            targetValue = 1.0f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 550, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "eq-bar-1"
-        )
-    } else {
-        remember { mutableStateOf(0.4f) }
-    }
-
-    val height2 by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.3f,
-            targetValue = 0.9f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 380, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "eq-bar-2"
-        )
-    } else {
-        remember { mutableStateOf(0.6f) }
-    }
-
-    val height3 by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.15f,
-            targetValue = 0.95f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 460, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "eq-bar-3"
-        )
-    } else {
-        remember { mutableStateOf(0.3f) }
-    }
-
-    val height4 by if (isPlaying) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.25f,
-            targetValue = 0.85f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 620, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "eq-bar-4"
-        )
-    } else {
-        remember { mutableStateOf(0.5f) }
-    }
+    val height1 = rememberEqualizerBar(isPlaying, 0.4f, 0.2f, 1f, 550)
+    val height2 = rememberEqualizerBar(isPlaying, 0.6f, 0.3f, 0.9f, 380)
+    val height3 = rememberEqualizerBar(isPlaying, 0.3f, 0.15f, 0.95f, 460)
+    val height4 = rememberEqualizerBar(isPlaying, 0.5f, 0.25f, 0.85f, 620)
 
     Row(
         modifier = modifier.size(width = width, height = height),
         horizontalArrangement = Arrangement.spacedBy(1.5.dp),
         verticalAlignment = Alignment.Bottom
     ) {
-        val bars = listOf(height1, height2, height3, height4)
-        bars.forEach { barHeight ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(barHeight)
-                    .background(color, RoundedCornerShape(topStart = 1.dp, topEnd = 1.dp))
-            )
-        }
+        EqualizerBar(height1, color)
+        EqualizerBar(height2, color)
+        EqualizerBar(height3, color)
+        EqualizerBar(height4, color)
     }
+}
+
+@Composable
+private fun RowScope.EqualizerBar(height: Float, color: Color) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(height)
+            .background(color, RoundedCornerShape(topStart = 1.dp, topEnd = 1.dp))
+    )
 }
 @Composable
 private fun SectionTitle(title: String) {
@@ -778,11 +758,6 @@ private fun Modifier.pressable(
 @Composable
 fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
-    val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
-    val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
-    val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
-    val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
-    val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
     val state by viewModel.state.collectAsStateWithLifecycle()
     val currentStrings = LevyraStrings.forCode(state.languageCode)
     val layoutDirection = if (currentStrings.code == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr
@@ -931,22 +906,27 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (tab) {
                         LevyraTab.Home -> {
+                            val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
                             val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
                             HomeScreen(homeViewModel, renderSnapshot, homeListState)
                         }
                         LevyraTab.Search -> {
+                            val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
                             val screenState by searchViewModel.state.collectAsStateWithLifecycle()
                             SearchScreen(searchViewModel, screenState)
                         }
                         LevyraTab.Explore -> {
+                            val exploreViewModel: ExploreViewModel = composeViewModel(key = "levyra-explore", factory = screenViewModelFactory)
                             val screenState by exploreViewModel.state.collectAsStateWithLifecycle()
                             ExploreScreen(exploreViewModel, screenState)
                         }
                         LevyraTab.Library -> {
+                            val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
                             val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
                             LibraryScreen(libraryViewModel, screenState, libraryListState, onOpenDownloads = { showDownloadsFolder = true })
                         }
                         LevyraTab.Player -> {
+                            val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
                             val screenState by playerViewModel.state.collectAsStateWithLifecycle()
                             PlayerScreen(playerViewModel, screenState)
                         }
@@ -5621,11 +5601,11 @@ private fun ContinueListeningCard(
     val accentEnd = Color(track.accentEnd)
     Surface(
         color = Color.Transparent,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 100.dp)
+            .heightIn(min = 88.dp)
             .pressable(onClick = onResume)
     ) {
         Box(
@@ -5635,9 +5615,9 @@ private fun ContinueListeningCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(150.dp)
+                    .size(128.dp)
                     .align(Alignment.CenterEnd)
-                    .offset(x = 62.dp)
+                    .offset(x = 52.dp)
                     .background(
                         Brush.radialGradient(
                             listOf(accentEnd.copy(alpha = 0.16f), Color.Transparent)
@@ -5647,16 +5627,16 @@ private fun ContinueListeningCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    .padding(horizontal = 11.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 CoverImage(
                     track = track,
                     modifier = Modifier
-                        .size(58.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(Dp.Hairline, Color.White.copy(alpha = 0.13f), RoundedCornerShape(14.dp)),
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .border(Dp.Hairline, Color.White.copy(alpha = 0.13f), RoundedCornerShape(13.dp)),
                     highRes = false
                 )
                 Column(
@@ -5671,13 +5651,13 @@ private fun ContinueListeningCard(
                             imageVector = Icons.Rounded.Headphones,
                             contentDescription = null,
                             tint = LevyraCyan,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                         Text(
                             text = LocalLevyraStrings.current.continueListening,
                             color = LevyraCyan,
-                            fontSize = 11.2.sp,
-                            lineHeight = 14.sp,
+                            fontSize = 10.8.sp,
+                            lineHeight = 13.sp,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -5686,8 +5666,8 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.title,
                         color = LevyraText,
-                        fontSize = 16.sp,
-                        lineHeight = 20.sp,
+                        fontSize = 15.5.sp,
+                        lineHeight = 18.sp,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -5695,8 +5675,8 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.artist,
                         color = LevyraMuted,
-                        fontSize = 12.2.sp,
-                        lineHeight = 16.sp,
+                        fontSize = 11.8.sp,
+                        lineHeight = 14.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -5706,26 +5686,26 @@ private fun ContinueListeningCard(
                     color = LevyraAdaptiveChip,
                     shape = CircleShape,
                     border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         when {
                             isResolving -> CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(15.dp),
                                 strokeWidth = 1.8.dp,
                                 color = LevyraCyan
                             )
                             isPlaying -> ActiveTrackEqualizer(
                                 color = LevyraCyan,
                                 isPlaying = true,
-                                width = 15.dp,
-                                height = 11.dp
+                                width = 14.dp,
+                                height = 10.dp
                             )
                             else -> Icon(
                                 imageVector = Icons.Rounded.PlayArrow,
                                 contentDescription = null,
                                 tint = LevyraText,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(19.dp)
                             )
                         }
                     }
@@ -5735,7 +5715,7 @@ private fun ContinueListeningCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(3.dp)
+                    .height(2.5.dp)
                     .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
             )
         }
@@ -8456,6 +8436,98 @@ private fun RowScope.PlayerDockAction(
     }
 }
 
+private fun compactYoutubeCount(value: Long): String {
+    val absolute = kotlin.math.abs(value.toDouble())
+    val (scaled, suffix) = when {
+        absolute >= 1_000_000_000.0 -> value / 1_000_000_000.0 to "B"
+        absolute >= 1_000_000.0 -> value / 1_000_000.0 to "M"
+        absolute >= 1_000.0 -> value / 1_000.0 to "K"
+        else -> return value.toString()
+    }
+    val pattern = if (kotlin.math.abs(scaled) >= 100.0) "%.0f" else "%.1f"
+    return String.format(Locale.getDefault(), pattern, scaled)
+        .replace(Regex("[,.]0$"), "") + suffix
+}
+
+@Composable
+private fun PlayerYoutubeEngagementRow(
+    track: Track,
+    primary: Color,
+    secondary: Color
+) {
+    val hasLikes = track.youtubeLikeCount > 0L
+    val hasViews = track.youtubeViewCount > 0L
+    AnimatedVisibility(
+        visible = hasLikes || hasViews,
+        enter = fadeIn(animationSpec = tween(220)) + slideInVertically(initialOffsetY = { it / 3 }),
+        exit = fadeOut(animationSpec = tween(140))
+    ) {
+        Row(
+            modifier = Modifier.padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (hasLikes) {
+                PlayerYoutubeMetricChip(
+                    icon = Icons.Rounded.ThumbUp,
+                    value = compactYoutubeCount(track.youtubeLikeCount),
+                    tint = Color(0xFFFF6A7D),
+                    glow = primary
+                )
+            }
+            if (hasViews) {
+                PlayerYoutubeMetricChip(
+                    icon = Icons.Rounded.Visibility,
+                    value = compactYoutubeCount(track.youtubeViewCount),
+                    tint = Color.White.copy(alpha = 0.88f),
+                    glow = secondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerYoutubeMetricChip(
+    icon: ImageVector,
+    value: String,
+    tint: Color,
+    glow: Color
+) {
+    Surface(
+        color = Color.Black.copy(alpha = 0.24f),
+        shape = CircleShape,
+        border = BorderStroke(1.dp, glow.copy(alpha = 0.28f))
+    ) {
+        Row(
+            modifier = Modifier
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(glow.copy(alpha = 0.14f), Color.Transparent)
+                    )
+                )
+                .padding(horizontal = 11.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(15.dp)
+            )
+            Text(
+                text = value,
+                color = Color.White.copy(alpha = 0.92f),
+                fontSize = 12.5.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.1.sp
+            )
+        }
+    }
+}
+
 @Composable
 private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
@@ -8864,6 +8936,11 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.clickable { viewModel.openArtist(track) }
+                            )
+                            PlayerYoutubeEngagementRow(
+                                track = track,
+                                primary = primary,
+                                secondary = secondary
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
