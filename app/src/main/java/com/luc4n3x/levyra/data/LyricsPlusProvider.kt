@@ -380,9 +380,9 @@ internal class LyricsPlusProvider(private val client: OkHttpClient) {
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(
                 object : Callback {
-                    override fun onFailure(call: Call, exception: IOException) {
+                    override fun onFailure(call: Call, e: IOException) {
                         if (continuation.isActive) {
-                            Timber.d(exception, "LyricsPlus request failed for %s", request.url.host)
+                            Timber.d(e, "LyricsPlus request failed for %s", request.url.host)
                             continuation.resume(HttpOutcome.Failure)
                         }
                     }
@@ -393,7 +393,7 @@ internal class LyricsPlusProvider(private val client: OkHttpClient) {
                                 when {
                                     it.code == 404 -> HttpOutcome.NotFound
                                     !it.isSuccessful -> HttpOutcome.Failure
-                                    else -> it.body?.string()?.takeIf(String::isNotBlank)
+                                    else -> it.body.string().takeIf(String::isNotBlank)
                                         ?.let(HttpOutcome::Success)
                                         ?: HttpOutcome.Failure
                                 }

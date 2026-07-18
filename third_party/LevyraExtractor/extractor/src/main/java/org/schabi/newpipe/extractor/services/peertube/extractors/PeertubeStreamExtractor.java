@@ -1,6 +1,5 @@
 package org.schabi.newpipe.extractor.services.peertube.extractors;
 
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 
 import com.grack.nanojson.JsonArray;
@@ -47,6 +46,7 @@ import javax.annotation.Nullable;
 
 import static org.schabi.newpipe.extractor.stream.AudioStream.UNKNOWN_BITRATE;
 import static org.schabi.newpipe.extractor.utils.Utils.EMPTY_STRING;
+import java.nio.charset.StandardCharsets;
 
 public class PeertubeStreamExtractor extends StreamExtractor {
     private static final String ACCOUNT_HOST = "account.host";
@@ -331,7 +331,7 @@ public class PeertubeStreamExtractor extends StreamExtractor {
         params.append("start=0&count=8&sort=-createdAt");
         for (final String tag : tags) {
             params.append("&tagsOneOf=");
-            params.append(URLEncoder.encode(tag, UTF_8));
+            params.append(URLEncoder.encode(tag, StandardCharsets.UTF_8.name()));
         }
         return url + "?" + params;
     }

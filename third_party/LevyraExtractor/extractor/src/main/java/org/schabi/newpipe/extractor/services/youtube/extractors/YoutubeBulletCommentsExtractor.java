@@ -2,7 +2,6 @@ package org.schabi.newpipe.extractor.services.youtube.extractors;
 
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getJsonPostResponse;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.prepareDesktopJsonBuilder;
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
@@ -31,6 +30,7 @@ import java.util.concurrent.*;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nonnull;
+import java.nio.charset.StandardCharsets;
 
 public class YoutubeBulletCommentsExtractor extends BulletCommentsExtractor {
     private final boolean shoudldBeLive;
@@ -107,7 +107,7 @@ public class YoutubeBulletCommentsExtractor extends BulletCommentsExtractor {
                             .value("playerOffsetMs", String.valueOf(currentPlayPosition))
                             .end()
                             .done())
-                    .getBytes(UTF_8);
+                    .getBytes(StandardCharsets.UTF_8);
             JsonObject result;
             try{
                 result = getJsonPostResponse("live_chat/" +

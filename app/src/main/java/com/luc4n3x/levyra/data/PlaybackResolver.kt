@@ -1261,17 +1261,18 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     private fun extractorVideoCandidate(stream: VideoStream): LevyraVideoCandidate {
         val format = stream.getFormat()
+        val resolution = stream.getResolution()
         return LevyraVideoCandidate(
             url = stream.content,
             mimeType = format?.mimeType.orEmpty(),
             codec = stream.codec.orEmpty(),
             width = stream.width,
-            height = stream.height.takeIf { it > 0 } ?: heightOf(stream.resolution),
+            height = stream.height.takeIf { it > 0 } ?: heightOf(resolution),
             fps = stream.fps,
             bitrate = stream.bitrate,
             itag = stream.itag,
-            muxed = !stream.isVideoOnly,
-            label = stream.resolution
+            muxed = !stream.isVideoOnly(),
+            label = resolution
         )
     }
 

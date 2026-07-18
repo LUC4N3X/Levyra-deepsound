@@ -276,7 +276,7 @@ class YoutubeMusicWatchRepository(private val context: Context? = null) {
             .header("X-Youtube-Client-Version", if (mobile) ANDROID_MUSIC_CLIENT_VERSION else WEB_REMIX_CLIENT_VERSION)
         GoogleApiKeyHeaders.applyTo(requestBuilder, context)
         return client.newCall(requestBuilder.build()).execute().use { response ->
-            val responseBody = response.body?.string().orEmpty()
+            val responseBody = response.body.string()
             if (!response.isSuccessful || responseBody.isBlank()) {
                 throw YoutubeMusicRequestException(endpoint, response.code, responseBody.take(512))
             }

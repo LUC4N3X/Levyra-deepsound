@@ -306,7 +306,7 @@ class OfficialArtworkRepository(context: Context) {
                 override fun onResponse(call: Call, response: Response) {
                     val value = runCatching {
                         response.use {
-                            if (!it.isSuccessful) null else it.body?.string()?.takeIf(String::isNotBlank)
+                            if (!it.isSuccessful) null else it.body.string().takeIf(String::isNotBlank)
                         }
                     }.getOrNull()
                     continuation.resume(value)

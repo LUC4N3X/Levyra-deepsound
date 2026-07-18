@@ -14,8 +14,8 @@ import com.grack.nanojson.JsonParserException;
 import com.grack.nanojson.JsonWriter;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
+import java.nio.charset.StandardCharsets;
 
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 
 public class NiconicoCommentsCache {
     String id;
@@ -35,7 +35,7 @@ public class NiconicoCommentsCache {
         headers.put("x-frontend-id", Collections.singletonList("6"));
         final String commentResponse;
         try {
-            commentResponse = downloader.post(url, headers, JsonWriter.string(nvComment).getBytes(UTF_8)).responseBody();
+            commentResponse = downloader.post(url, headers, JsonWriter.string(nvComment).getBytes(StandardCharsets.UTF_8)).responseBody();
         } catch (IllegalArgumentException | IOException e) {
             throw new ExtractionException(
                     "Could not get comments. Url: "
