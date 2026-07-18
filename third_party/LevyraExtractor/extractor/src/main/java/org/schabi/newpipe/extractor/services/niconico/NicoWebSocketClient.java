@@ -53,7 +53,9 @@ public class NicoWebSocketClient  {
                             && !data.getObject("chat").getString("content").startsWith("/nicoad")
                             && !data.getObject("chat").getString("content").startsWith("/info")
                             && ! data.getObject("chat").getString("content").startsWith("/gift")) {
-                        messages.add(data.getObject("chat"));
+                        synchronized (messages) {
+                            messages.add(data.getObject("chat"));
+                        }
                     }else if(data.has("type")){
                         if(data.getString("type").equals("stream")){
                             url = data.getObject("data").getString("uri");
@@ -103,9 +105,11 @@ public class NicoWebSocketClient  {
         webSocketClient.connect();
     }
     public ArrayList<JsonObject> getMessages() {
-        ArrayList<JsonObject> temp = (ArrayList<JsonObject>) messages.clone();
-        messages.clear();
-        return temp;
+        synchronized (messages) {
+            ArrayList<JsonObject> temp = new ArrayList<>(messages);
+            messages.clear();
+            return temp;
+        }
     }
     public void disconnect(){
         webSocketClient.closeConnection(-1, "Scheduled terminate");

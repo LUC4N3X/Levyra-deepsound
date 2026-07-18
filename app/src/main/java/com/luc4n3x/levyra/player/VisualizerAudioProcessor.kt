@@ -112,16 +112,20 @@ class VisualizerAudioProcessor : AudioProcessor {
 
     override fun isEnded(): Boolean = inputEnded && !outputBuffer.hasRemaining()
 
-    override fun flush() {
-        outputBuffer = AudioProcessor.EMPTY_BUFFER
-        inputEnded = false
+    override fun flush(streamMetadata: AudioProcessor.StreamMetadata) {
+        clearBufferedState()
     }
 
     override fun reset() {
-        flush()
+        clearBufferedState()
         isActive = false
         inputAudioFormat = AudioFormat.NOT_SET
         outputAudioFormat = AudioFormat.NOT_SET
         _waveformState.value = FloatArray(0)
+    }
+
+    private fun clearBufferedState() {
+        outputBuffer = AudioProcessor.EMPTY_BUFFER
+        inputEnded = false
     }
 }

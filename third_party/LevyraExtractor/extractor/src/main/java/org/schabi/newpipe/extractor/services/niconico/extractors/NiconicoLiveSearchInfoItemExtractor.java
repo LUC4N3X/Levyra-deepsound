@@ -6,9 +6,10 @@ import org.schabi.newpipe.extractor.localization.DateWrapper;
 import org.schabi.newpipe.extractor.services.niconico.NiconicoService;
 import org.schabi.newpipe.extractor.stream.StreamInfoItemExtractor;
 import org.schabi.newpipe.extractor.stream.StreamType;
+import org.schabi.newpipe.extractor.utils.Utils;
 
 import javax.annotation.Nullable;
-import java.net.URLDecoder;
+import java.io.UnsupportedEncodingException;
 
 public class NiconicoLiveSearchInfoItemExtractor implements StreamInfoItemExtractor {
     Element data;
@@ -28,7 +29,11 @@ public class NiconicoLiveSearchInfoItemExtractor implements StreamInfoItemExtrac
 
     @Override
     public String getThumbnailUrl() throws ParsingException {
-        return URLDecoder.decode(data.select("img[class*=___program-card-thumbnail-image___]").attr("src"));
+        try {
+            return Utils.decodeUrlUtf8(data.select("img[class*=___program-card-thumbnail-image___]").attr("src"));
+        } catch (UnsupportedEncodingException e) {
+            throw new ParsingException("Could not decode thumbnail URL", e);
+        }
     }
 
     @Override

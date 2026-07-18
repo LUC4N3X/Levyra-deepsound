@@ -1,5 +1,6 @@
 package org.schabi.newpipe.extractor.kiosk;
 
+import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.Page;
 import org.schabi.newpipe.extractor.StreamingService;
@@ -20,7 +21,7 @@ import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 public class KioskList {
 
     public interface KioskExtractorFactory {
-        KioskExtractor createNewKiosk(StreamingService streamingService,
+        KioskExtractor<? extends InfoItem> createNewKiosk(StreamingService streamingService,
                                       String url,
                                       String kioskId)
                 throws ExtractionException, IOException;
@@ -63,17 +64,17 @@ public class KioskList {
         defaultKiosk = kioskType;
     }
 
-    public KioskExtractor getDefaultKioskExtractor()
+    public KioskExtractor<? extends InfoItem> getDefaultKioskExtractor()
             throws ExtractionException, IOException {
         return getDefaultKioskExtractor(null);
     }
 
-    public KioskExtractor getDefaultKioskExtractor(final Page nextPage)
+    public KioskExtractor<? extends InfoItem> getDefaultKioskExtractor(final Page nextPage)
             throws ExtractionException, IOException {
         return getDefaultKioskExtractor(nextPage, NewPipe.getPreferredLocalization());
     }
 
-    public KioskExtractor getDefaultKioskExtractor(final Page nextPage,
+    public KioskExtractor<? extends InfoItem> getDefaultKioskExtractor(final Page nextPage,
                                                    final Localization localization)
             throws ExtractionException, IOException {
         if (!isNullOrEmpty(defaultKiosk)) {
@@ -93,12 +94,12 @@ public class KioskList {
         return defaultKiosk;
     }
 
-    public KioskExtractor getExtractorById(final String kioskId, final Page nextPage)
+    public KioskExtractor<? extends InfoItem> getExtractorById(final String kioskId, final Page nextPage)
             throws ExtractionException, IOException {
         return getExtractorById(kioskId, nextPage, NewPipe.getPreferredLocalization());
     }
 
-    public KioskExtractor getExtractorById(final String kioskId,
+    public KioskExtractor<? extends InfoItem> getExtractorById(final String kioskId,
                                            final Page nextPage,
                                            final Localization localization)
             throws ExtractionException, IOException {
@@ -106,7 +107,8 @@ public class KioskList {
         if (ke == null) {
             throw new ExtractionException("No kiosk found with the type: " + kioskId);
         } else {
-            final KioskExtractor kioskExtractor = ke.extractorFactory.createNewKiosk(service,
+            final KioskExtractor<? extends InfoItem> kioskExtractor =
+                    ke.extractorFactory.createNewKiosk(service,
                     ke.handlerFactory.fromId(kioskId).getUrl(), kioskId);
 
             if (forcedLocalization != null) {
@@ -124,12 +126,12 @@ public class KioskList {
         return kioskList.keySet();
     }
 
-    public KioskExtractor getExtractorByUrl(final String url, final Page nextPage)
+    public KioskExtractor<? extends InfoItem> getExtractorByUrl(final String url, final Page nextPage)
             throws ExtractionException, IOException {
         return getExtractorByUrl(url, nextPage, NewPipe.getPreferredLocalization());
     }
 
-    public KioskExtractor getExtractorByUrl(final String url,
+    public KioskExtractor<? extends InfoItem> getExtractorByUrl(final String url,
                                             final Page nextPage,
                                             final Localization localization)
             throws ExtractionException, IOException {
