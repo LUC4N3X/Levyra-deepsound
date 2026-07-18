@@ -274,6 +274,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var homeArtistsJob: Job? = null
     private var chartsJob: Job? = null
     private var homeSnapshotJob: Job? = null
+    private var homeResonanceJob: Job? = null
     private var homeArtistsFingerprint: String = ""
     private val deferredHomeArtistsSnapshot = AtomicReference<List<ArtistHit>?>(null)
     private var radarJob: Job? = null
@@ -463,6 +464,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) },
             settings.languageCode
         )
+        val startupResonanceTracks = instantSnapshot?.resonanceTracks.orEmpty()
+        val startupResonanceUpdatedAt = instantSnapshot?.resonanceUpdatedAt ?: 0L
         val rawCachedOrbitTracks = LevyraStartupCatalog.repairTracks(
             settings.personalOrbitTracks
                 .ifEmpty { instantSnapshot?.personalOrbit.orEmpty() }
@@ -519,6 +522,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeSections = startupHomeSections,
                 homeAlbums = startupAlbums,
                 homeArtists = startupHomeArtists,
+                homeResonanceTracks = startupResonanceTracks,
+                homeResonanceUpdatedAt = startupResonanceUpdatedAt,
                 homeArtistsLoading = startupHomeArtists.isEmpty(),
                 homeAlbumsLoading = startupAlbums.isEmpty(),
                 tracks = initialTracks,
@@ -720,13 +725,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
+        loadCharts(deferUntilHomeIdle = true)
         viewModelScope.launch {
-            delay(900L)
+            delay(350L)
             loadHomeFeed(deferUntilHomeIdle = true)
         }
         viewModelScope.launch {
-            delay(2_200L)
-            loadCharts(deferUntilHomeIdle = true)
+            delay(1_200L)
+            refreshHomeResonanceIfStale()
         }
         viewModelScope.launch {
             delay(3_200L)
@@ -764,8 +770,43 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             homeSections = pendingHomeSectionsSnapshot.get() ?: snapshot.homeSections,
             charts = snapshot.charts,
             personalOrbit = snapshot.personalOrbitTracks,
-            homeArtists = deferredHomeArtistsSnapshot.get() ?: snapshot.homeArtists
+            homeArtists = deferredHomeArtistsSnapshot.get() ?: snapshot.homeArtists,
+            resonanceTracks = snapshot.homeResonanceTracks,
+            resonanceUpdatedAt = snapshot.homeResonanceUpdatedAt
         )
+    }
+
+    private fun refreshHomeResonanceIfStale() {
+        val initial = _state.value
+        if (isHomeResonanceFresh(initial, System.currentTimeMillis())) return
+        if (homeResonanceJob?.isActive == true) return
+        val languageCode = initial.languageCode
+        homeResonanceJob = viewModelScope.launch(Dispatchers.Default) {
+            val source = _state.value
+            if (source.languageCode != languageCode) return@launch
+            val resolved = buildHomeResonanceTracks(source)
+            if (resolved.isEmpty()) return@launch
+            val updatedAt = System.currentTimeMillis()
+            var changed = false
+            _state.update { current ->
+                if (current.languageCode != languageCode || isHomeResonanceFresh(current, updatedAt)) {
+                    current
+                } else {
+                    changed = current.homeResonanceTracks != resolved || current.homeResonanceUpdatedAt != updatedAt
+                    current.copy(
+                        homeResonanceTracks = resolved,
+                        homeResonanceUpdatedAt = updatedAt
+                    )
+                }
+            }
+            if (changed) persistHomeSnapshot()
+        }
+    }
+
+    private fun isHomeResonanceFresh(state: LevyraUiState, now: Long): Boolean {
+        return state.homeResonanceTracks.isNotEmpty() &&
+            state.homeResonanceUpdatedAt > 0L &&
+            now - state.homeResonanceUpdatedAt < HOME_RESONANCE_REFRESH_INTERVAL_MS
     }
 
     fun refreshHomeArtists() {
@@ -1443,12 +1484,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val initialState = _state.value
             val languageCode = initialState.languageCode
             val hasVisibleHome = initialState.homeSections.isNotEmpty() || initialState.tracks.isNotEmpty()
-            if (deferUntilHomeIdle) awaitHomeUiIdle()
             if (!isActive || _state.value.languageCode != languageCode) return@launch
             _state.update { current ->
                 if (current.languageCode != languageCode) current
                 else current.copy(
-                    isLoadingHome = true,
+                    isLoadingHome = !hasVisibleHome,
                     homeError = null
                 )
             }
@@ -1616,6 +1656,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             prefetchTop(visibleTracks, HOME_STARTUP_STREAM_PREFETCH_COUNT, respectHomeScroll = deferUntilHomeIdle)
             refreshOfficialMetadataBatch(visibleTracks, HOME_STARTUP_METADATA_REFRESH_COUNT, deferUntilHomeIdle)
             loadHomeAlbums(languageCode, deferUntilHomeIdle)
+            refreshHomeResonanceIfStale()
         }
     }
 
@@ -2116,7 +2157,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             personalOrbitTracks = orbit,
             tracks = allTracks
         )
-        val localizedCachedArtists = homeSnapshotCache.load(languageCode)?.homeArtists
+        val localizedSnapshot = homeSnapshotCache.load(languageCode)
+        val localizedCachedArtists = localizedSnapshot?.homeArtists
             .orEmpty()
             .filter { artist ->
                 artist.name.isNotBlank() &&
@@ -2145,6 +2187,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeSections = homeSections,
                 homeAlbums = instantAlbums,
                 homeArtists = localizedCachedArtists,
+                homeResonanceTracks = localizedSnapshot?.resonanceTracks.orEmpty(),
+                homeResonanceUpdatedAt = localizedSnapshot?.resonanceUpdatedAt ?: 0L,
                 homeArtistsLoading = localizedCachedArtists.isEmpty() && refreshRemote,
                 homeAlbumsLoading = instantAlbums.isEmpty() && refreshRemote,
                 isLoadingHome = refreshRemote && homeSections.isEmpty() && allTracks.isEmpty(),
@@ -2243,7 +2287,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val initialState = _state.value
             val languageCode = initialState.languageCode
             val hasVisibleCharts = initialState.charts.isNotEmpty()
-            if (deferUntilHomeIdle) awaitHomeUiIdle()
             if (!isActive || _state.value.languageCode != languageCode || _state.value.selectedChartId != regionId) return@launch
             _state.update { current ->
                 if (current.selectedChartId != regionId) current
@@ -2290,6 +2333,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 else current.copy(charts = result, isLoadingCharts = false)
             }
             persistHomeSnapshot()
+            refreshHomeResonanceIfStale()
             val startupPlan = homeStartupWorkPlan()
             viewModelScope.launch(Dispatchers.IO) {
                 if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
@@ -4567,6 +4611,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
         private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4
+        private const val HOME_RESONANCE_REFRESH_INTERVAL_MS = 12L * 60L * 60L * 1000L
         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
         private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
         private const val HOME_ALBUM_SEED_LIMIT = 12
@@ -4602,6 +4647,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeFeedJob?.cancel()
         homeAlbumsJob?.cancel()
         homeArtistsJob?.cancel()
+        homeResonanceJob?.cancel()
         chartsJob?.cancel()
         homeSnapshotJob?.cancel()
         super.onCleared()
