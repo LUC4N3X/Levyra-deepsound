@@ -21,6 +21,13 @@ class LevyraStringsTest {
         assertEquals("nl", LevyraStrings.forCode("nl-NL").code)
         assertEquals("pt", LevyraStrings.forCode("pt_BR").code)
         assertEquals("uk", LevyraStrings.forCode("uk-UA").code)
+        assertEquals("ja", LevyraStrings.forCode("ja-JP").code)
+        assertEquals("ko", LevyraStrings.forCode("ko_KR").code)
+        assertEquals("id", LevyraStrings.forCode("in-ID").code)
+        assertEquals("fil", LevyraStrings.forCode("fil-PH").code)
+        assertEquals("fil", LevyraStrings.forCode("tl_PH").code)
+        assertEquals("he", LevyraStrings.forCode("he-IL").code)
+        assertEquals("he", LevyraStrings.forCode("iw_IL").code)
         assertEquals("en", LevyraStrings.forCode("xx-YY").code)
     }
 
@@ -45,6 +52,75 @@ class LevyraStringsTest {
         assertEquals("Son aramalar", turkish.recentSearches)
         assertEquals("Все", russian.all)
         assertEquals("Tümü", turkish.all)
+    }
+
+
+    @Test
+    fun majorAsianBundlesContainNativeCoreCopy() {
+        val japanese = LevyraStrings.forCode("ja")
+        val korean = LevyraStrings.forCode("ko")
+        val hindi = LevyraStrings.forCode("hi")
+        val indonesian = LevyraStrings.forCode("id")
+        val vietnamese = LevyraStrings.forCode("vi")
+        val thai = LevyraStrings.forCode("th")
+        val filipino = LevyraStrings.forCode("fil")
+        val hebrew = LevyraStrings.forCode("he")
+
+        assertEquals("最近の検索", japanese.recentSearches)
+        assertEquals("재생 대기열에 추가", korean.addToQueue)
+        assertEquals("वॉइस सर्च समर्थित नहीं है", hindi.voiceSearchUnsupported)
+        assertEquals("Jelajahi", indonesian.explore)
+        assertEquals("Lời bài hát", vietnamese.lyrics)
+        assertEquals("รายการโปรด", thai.favoritesPlain)
+        assertEquals("Mga kamakailang paghahanap", filipino.recentSearches)
+        assertEquals("Idagdag sa queue", filipino.addToQueue)
+        assertEquals("חיפושים אחרונים", hebrew.recentSearches)
+        assertEquals("הוספה לתור", hebrew.addToQueue)
+    }
+
+    @Test
+    fun majorAsianFormattersUseSelectedLanguage() {
+        assertEquals("3 曲", LevyraStrings.forCode("ja").formatTrackCount(3))
+        assertEquals("결과 4개", LevyraStrings.forCode("ko").formatSearchResults(4))
+        assertEquals("5 ट्रैक डाउनलोड किए गए", LevyraStrings.forCode("hi").formatDownloadedTrackCount(5))
+        assertEquals("Mengunduh 67%", LevyraStrings.forCode("id").formatDownloadProgress(67))
+        assertEquals("Đã lưu 2 bài hát", LevyraStrings.forCode("vi").formatSavedTrackCount(2))
+        assertEquals("กำลังดาวน์โหลด", LevyraStrings.forCode("th").localizeDownloadState("RUNNING"))
+        assertEquals("3 kanta ang na-download", LevyraStrings.forCode("fil").formatDownloadedTrackCount(3))
+        assertEquals("Nagda-download", LevyraStrings.forCode("fil").localizeDownloadState("RUNNING"))
+        assertEquals("הורדו 3 שירים", LevyraStrings.forCode("he").formatDownloadedTrackCount(3))
+        assertEquals("מוריד", LevyraStrings.forCode("iw-IL").localizeDownloadState("RUNNING"))
+    }
+
+    @Test
+    fun newAndroidResourceBundlesMatchTheBaseTranslatableKeys() {
+        val resourceRoot = sequenceOf(
+            Path.of("app/src/main/res"),
+            Path.of("src/main/res")
+        ).firstOrNull(Files::exists) ?: error("Android resources not found")
+        val expected = setOf(
+            "widget_description",
+            "widget_idle_subtitle",
+            "widget_toggle",
+            "widget_next",
+            "widget_previous",
+            "widget_favorites",
+            "widget_flow",
+            "widget_offline",
+            "widget_lyrics",
+            "radar_channel_name",
+            "radar_channel_description",
+            "radar_new_release_title"
+        )
+        val qualifiers = listOf("values-ja", "values-ko", "values-hi", "values-b+id", "values-vi", "values-th", "values-b+fil", "values-b+he")
+        val namePattern = Regex("""<string name="([^"]+)"""")
+
+        qualifiers.forEach { qualifier ->
+            val file = resourceRoot.resolve(qualifier).resolve("strings.xml")
+            assertTrue("Missing resource bundle: $qualifier", Files.exists(file))
+            val names = namePattern.findAll(Files.readString(file)).map { it.groupValues[1] }.toSet()
+            assertEquals("Invalid resource keys in $qualifier", expected, names)
+        }
     }
 
     @Test
@@ -100,6 +176,33 @@ class LevyraStringsTest {
         assertEquals("3 wyniki", polish.formatSearchResults(3))
         assertEquals("İndiriliyor", turkish.localizeDownloadState("RUNNING"))
         assertTrue(dutch.formatGreeting("Luca", 9).startsWith("Goedemorgen, Luca"))
+    }
+
+    @Test
+    fun rtlLanguagesResolveThroughTheCatalog() {
+        assertTrue(LevyraLanguageCatalog.isRtl("ar-SA"))
+        assertTrue(LevyraLanguageCatalog.isRtl("he-IL"))
+        assertTrue(LevyraLanguageCatalog.isRtl("iw_IL"))
+        assertFalse(LevyraLanguageCatalog.isRtl("en-US"))
+    }
+
+    @Test
+    fun hebrewDynamicLatinTextUsesBidiIsolation() {
+        val strings = LevyraStrings.forCode("he")
+        assertTrue(strings.formatGreeting("Luca", 9).contains("\u2068Luca\u2069"))
+        assertTrue(strings.formatArtists("The Weeknd").contains("\u2068The Weeknd\u2069"))
+        assertTrue(strings.formatInstalledVersion("2.3.11").contains("\u20682.3.11\u2069"))
+    }
+
+    @Test
+    fun appAndOnboardingUseTheSharedRtlResolver() {
+        val source = sequenceOf(
+            Path.of("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"),
+            Path.of("src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+        ).firstOrNull(Files::exists) ?: error("LevyraApp.kt not found")
+        val content = Files.readString(source)
+        assertTrue(Regex("LevyraLanguageCatalog\\.isRtl").findAll(content).count() >= 2)
+        assertFalse(content.contains("== \"ar\") LayoutDirection.Rtl"))
     }
 
     @Test

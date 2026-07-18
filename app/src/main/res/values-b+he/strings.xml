@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">נגן קטן, מועדפים מהירים, Flow יומי, אופליין ומילות שירים</string>
+    <string name="widget_idle_subtitle">הקישו כדי להאזין</string>
+    <string name="widget_toggle">הפעלה/השהיה</string>
+    <string name="widget_next">הבא</string>
+    <string name="widget_previous">הקודם</string>
+    <string name="widget_favorites">מועדפים</string>
+    <string name="widget_flow">Flow יומי</string>
+    <string name="widget_offline">מיקס אופליין</string>
+    <string name="widget_lyrics">מילות השיר</string>
+    <string name="radar_channel_name">רדאר ההשקות</string>
+    <string name="radar_channel_description">השקות חדשות מאמנים שבמעקב שלך</string>
+    <string name="radar_new_release_title">השקה חדשה מאת %1$s</string>
+</resources>

@@ -8,6 +8,10 @@ class LevyraStrings private constructor(
     private val entries: Map<String, String>
 ) {
     private fun value(key: String): String = entries.getValue(key)
+    private fun directionalValue(value: String): String {
+        val clean = value.trim()
+        return if (code == "he" && clean.isNotBlank()) "\u2068$clean\u2069" else clean
+    }
 
     val welcomeBadge: String get() = value("welcomeBadge")
     val welcomeTitle: String get() = value("welcomeTitle")
@@ -399,25 +403,37 @@ class LevyraStrings private constructor(
                 else -> "$value مقطعًا"
             }
             "zh" -> "$value 首歌曲"
+            "ja" -> "$value 曲"
+            "ko" -> "${value}곡"
+            "hi" -> "$value ट्रैक"
+            "id" -> "$value lagu"
+            "vi" -> "$value bài hát"
+            "th" -> "$value เพลง"
+            "fil" -> "$value kanta"
+            "he" -> if (value == 1) "שיר אחד" else "$value שירים"
             else -> if (value == 1) "$value track" else "$value tracks"
         }
     }
 
-    fun formatArtists(value: String): String = "$artistsLabelPlural: $value"
+    fun formatArtists(value: String): String = "$artistsLabelPlural: ${directionalValue(value)}"
 
-    fun formatAlbumMood(value: String): String = "$albumMood: $value"
+    fun formatAlbumMood(value: String): String = "$albumMood: ${directionalValue(value)}"
 
-    fun formatPlayingFrom(source: String): String = "$playingFrom $source"
+    fun formatPlayingFrom(source: String): String = "$playingFrom ${directionalValue(source)}"
 
     fun formatQueueSummary(queueSize: Int, historyCount: Int): String = "${formatTrackCount(queueSize)} · ${historyCount.coerceAtLeast(0)} $historyLabel"
 
     fun formatLyricsAnalysis(lineCount: Int, wordCount: Int): String = "$linesLabel: ${lineCount.coerceAtLeast(0)} · $wordsLabel: ${wordCount.coerceAtLeast(0)} · $localAnalysis"
 
-    fun formatCancelDownload(title: String): String = "$cancelDownload $title"
+    fun formatCancelDownload(title: String): String = "$cancelDownload ${directionalValue(title)}"
 
-    fun formatLatestVersionReady(version: String): String = "LEVYRA $version $latestVersionReady"
+    fun formatLatestVersionReady(version: String): String = if (code == "he") {
+        "${directionalValue("LEVYRA $version")} $latestVersionReady"
+    } else {
+        "LEVYRA $version $latestVersionReady"
+    }
 
-    fun formatInstalledVersion(version: String): String = "$installedVersion: $version"
+    fun formatInstalledVersion(version: String): String = "$installedVersion: ${directionalValue(version)}"
 
     fun formatDownloadProgress(progress: Int): String {
         val value = progress.coerceIn(0, 100)
@@ -437,6 +453,14 @@ class LevyraStrings private constructor(
             "tr" -> "İndiriliyor $value%"
             "ar" -> "جارٍ التنزيل $value%"
             "zh" -> "正在下载 $value%"
+            "ja" -> "ダウンロード中 $value%"
+            "ko" -> "다운로드 중 $value%"
+            "hi" -> "डाउनलोड हो रहा है $value%"
+            "id" -> "Mengunduh $value%"
+            "vi" -> "Đang tải xuống $value%"
+            "th" -> "กำลังดาวน์โหลด $value%"
+            "fil" -> "Nagda-download $value%"
+            "he" -> "מוריד $value%"
             else -> "Download $value%"
         }
     }
@@ -467,6 +491,14 @@ class LevyraStrings private constructor(
                 else -> "تم تنزيل $value مقطعًا"
             }
             "zh" -> "已下载 $value 首歌曲"
+            "ja" -> "$value 曲をダウンロード済み"
+            "ko" -> "${value}곡 다운로드됨"
+            "hi" -> "$value ट्रैक डाउनलोड किए गए"
+            "id" -> "$value lagu diunduh"
+            "vi" -> "Đã tải xuống $value bài hát"
+            "th" -> "ดาวน์โหลดแล้ว $value เพลง"
+            "fil" -> if (value == 1) "1 kanta ang na-download" else "$value kanta ang na-download"
+            "he" -> if (value == 1) "שיר אחד הורד" else "הורדו $value שירים"
             else -> if (value == 1) "1 track downloaded" else "$value tracks downloaded"
         }
     }
@@ -497,6 +529,14 @@ class LevyraStrings private constructor(
                 else -> "تم حفظ $value مقطعًا"
             }
             "zh" -> "已保存 $value 首歌曲"
+            "ja" -> "$value 曲を保存済み"
+            "ko" -> "${value}곡 저장됨"
+            "hi" -> "$value ट्रैक सहेजे गए"
+            "id" -> "$value lagu disimpan"
+            "vi" -> "Đã lưu $value bài hát"
+            "th" -> "บันทึกแล้ว $value เพลง"
+            "fil" -> if (value == 1) "1 kanta ang na-save" else "$value kanta ang na-save"
+            "he" -> if (value == 1) "שיר אחד נשמר" else "נשמרו $value שירים"
             else -> if (value == 1) "1 track saved" else "$value tracks saved"
         }
     }
@@ -544,6 +584,14 @@ class LevyraStrings private constructor(
                 else -> "$value نتيجة"
             }
             "zh" -> "$value 个结果"
+            "ja" -> "$value 件の結果"
+            "ko" -> "결과 ${value}개"
+            "hi" -> "$value परिणाम"
+            "id" -> "$value hasil"
+            "vi" -> "$value kết quả"
+            "th" -> "$value ผลลัพธ์"
+            "fil" -> "$value resulta"
+            "he" -> if (value == 1) "תוצאה אחת" else "$value תוצאות"
             else -> if (value == 1) "$value result" else "$value results"
         }
     }
@@ -568,13 +616,24 @@ class LevyraStrings private constructor(
             "tr" -> when (normalizedHour) { in 5..11 -> "Günaydın" to "☀️"; in 12..17 -> "İyi günler" to "🎶"; in 18..22 -> "İyi akşamlar" to "🌙"; else -> "İyi geceler" to "🌌" }
             "ar" -> when (normalizedHour) { in 5..11 -> "صباح الخير" to "☀️"; in 12..17 -> "طاب مساؤك" to "🎶"; in 18..22 -> "مساء الخير" to "🌙"; else -> "تصبح على خير" to "🌌" }
             "zh" -> when (normalizedHour) { in 5..11 -> "早上好" to "☀️"; in 12..17 -> "下午好" to "🎶"; in 18..22 -> "晚上好" to "🌙"; else -> "晚安" to "🌌" }
+            "ja" -> when (normalizedHour) { in 5..11 -> "おはようございます" to "☀️"; in 12..17 -> "こんにちは" to "🎶"; in 18..22 -> "こんばんは" to "🌙"; else -> "おやすみなさい" to "🌌" }
+            "ko" -> when (normalizedHour) { in 5..11 -> "좋은 아침이에요" to "☀️"; in 12..17 -> "좋은 오후예요" to "🎶"; in 18..22 -> "좋은 저녁이에요" to "🌙"; else -> "편안한 밤 되세요" to "🌌" }
+            "hi" -> when (normalizedHour) { in 5..11 -> "सुप्रभात" to "☀️"; in 12..17 -> "नमस्कार" to "🎶"; in 18..22 -> "शुभ संध्या" to "🌙"; else -> "शुभ रात्रि" to "🌌" }
+            "id" -> when (normalizedHour) { in 5..11 -> "Selamat pagi" to "☀️"; in 12..17 -> "Selamat siang" to "🎶"; in 18..22 -> "Selamat malam" to "🌙"; else -> "Selamat beristirahat" to "🌌" }
+            "vi" -> when (normalizedHour) { in 5..11 -> "Chào buổi sáng" to "☀️"; in 12..17 -> "Chào buổi chiều" to "🎶"; in 18..22 -> "Chào buổi tối" to "🌙"; else -> "Chúc ngủ ngon" to "🌌" }
+            "th" -> when (normalizedHour) { in 5..11 -> "สวัสดีตอนเช้า" to "☀️"; in 12..17 -> "สวัสดีตอนบ่าย" to "🎶"; in 18..22 -> "สวัสดีตอนเย็น" to "🌙"; else -> "ราตรีสวัสดิ์" to "🌌" }
+            "fil" -> when (normalizedHour) { in 5..11 -> "Magandang umaga" to "☀️"; in 12..17 -> "Magandang hapon" to "🎶"; in 18..22 -> "Magandang gabi" to "🌙"; else -> "Magandang gabi" to "🌌" }
+            "he" -> when (normalizedHour) { in 5..11 -> "בוקר טוב" to "☀️"; in 12..17 -> "צהריים טובים" to "🎶"; in 18..22 -> "ערב טוב" to "🌙"; else -> "לילה טוב" to "🌌" }
             else -> when (normalizedHour) { in 5..11 -> "Good morning" to "☀️"; in 12..17 -> "Good afternoon" to "🎶"; in 18..22 -> "Good evening" to "🌙"; else -> "Good night" to "🌌" }
         }
         val name = userName.trim()
         return when {
             name.isBlank() -> "${dayPart.first} ${dayPart.second}"
             code == "ar" -> "${dayPart.first}، $name ${dayPart.second}"
+            code == "he" -> "${dayPart.first}, ${directionalValue(name)} ${dayPart.second}"
             code == "zh" -> "${dayPart.first}，$name ${dayPart.second}"
+            code == "ja" -> "$name、${dayPart.first} ${dayPart.second}"
+            code == "ko" -> "${name}님, ${dayPart.first} ${dayPart.second}"
             else -> "${dayPart.first}, $name ${dayPart.second}"
         }
     }
@@ -608,14 +667,22 @@ class LevyraStrings private constructor(
             "tr" -> mapOf("queued" to "Sırada", "downloading" to "İndiriliyor", "paused" to "Duraklatıldı", "failed" to "Başarısız", "completed" to "Tamamlandı", "cancelled" to "İptal edildi")
             "ar" -> mapOf("queued" to "في قائمة الانتظار", "downloading" to "جارٍ التنزيل", "paused" to "متوقف مؤقتًا", "failed" to "فشل", "completed" to "مكتمل", "cancelled" to "ملغى")
             "zh" -> mapOf("queued" to "排队中", "downloading" to "正在下载", "paused" to "已暂停", "failed" to "失败", "completed" to "已完成", "cancelled" to "已取消")
+            "ja" -> mapOf("queued" to "待機中", "downloading" to "ダウンロード中", "paused" to "一時停止中", "failed" to "失敗", "completed" to "完了", "cancelled" to "キャンセル済み")
+            "ko" -> mapOf("queued" to "대기 중", "downloading" to "다운로드 중", "paused" to "일시 중지됨", "failed" to "실패", "completed" to "완료", "cancelled" to "취소됨")
+            "hi" -> mapOf("queued" to "कतार में", "downloading" to "डाउनलोड हो रहा है", "paused" to "रुका हुआ", "failed" to "विफल", "completed" to "पूरा", "cancelled" to "रद्द")
+            "id" -> mapOf("queued" to "Dalam antrean", "downloading" to "Mengunduh", "paused" to "Dijeda", "failed" to "Gagal", "completed" to "Selesai", "cancelled" to "Dibatalkan")
+            "vi" -> mapOf("queued" to "Đang chờ", "downloading" to "Đang tải xuống", "paused" to "Đã tạm dừng", "failed" to "Thất bại", "completed" to "Hoàn tất", "cancelled" to "Đã hủy")
+            "th" -> mapOf("queued" to "อยู่ในคิว", "downloading" to "กำลังดาวน์โหลด", "paused" to "หยุดชั่วคราว", "failed" to "ล้มเหลว", "completed" to "เสร็จสิ้น", "cancelled" to "ยกเลิกแล้ว")
+            "fil" -> mapOf("queued" to "Nasa queue", "downloading" to "Nagda-download", "paused" to "Naka-pause", "failed" to "Nabigo", "completed" to "Kumpleto", "cancelled" to "Kinansela")
+            "he" -> mapOf("queued" to "בתור", "downloading" to "מוריד", "paused" to "מושהה", "failed" to "נכשל", "completed" to "הושלם", "cancelled" to "בוטל")
             else -> mapOf("queued" to "Queued", "downloading" to "Downloading", "paused" to "Paused", "failed" to "Failed", "completed" to "Completed", "cancelled" to "Cancelled")
         }
         return translations[key] ?: key
     }
 
-    fun formatResumeDownload(title: String): String = "$resumeDownload $title"
+    fun formatResumeDownload(title: String): String = "$resumeDownload ${directionalValue(title)}"
 
-    fun formatPauseDownload(title: String): String = "$pauseDownload $title"
+    fun formatPauseDownload(title: String): String = "$pauseDownload ${directionalValue(title)}"
 
     companion object {
         private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreZones", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator")
@@ -639,7 +706,15 @@ class LevyraStrings private constructor(
                 "ru" to bundle("ru", ruEntries()),
                 "tr" to bundle("tr", trEntries()),
                 "ar" to bundle("ar", arEntries()),
-                "zh" to bundle("zh", zhEntries())
+                "zh" to bundle("zh", zhEntries()),
+                "ja" to bundle("ja", jaLocalizationEntries()),
+                "ko" to bundle("ko", koLocalizationEntries()),
+                "hi" to bundle("hi", hiLocalizationEntries()),
+                "id" to bundle("id", idLocalizationEntries()),
+                "vi" to bundle("vi", viLocalizationEntries()),
+                "th" to bundle("th", thLocalizationEntries()),
+                "fil" to bundle("fil", filLocalizationEntries()),
+                "he" to bundle("he", heLocalizationEntries())
             )
         }
 
