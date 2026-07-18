@@ -35,8 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.nio.charset.StandardCharsets;
 
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 
 /**
  * Avoid using regex !!!
@@ -140,7 +140,7 @@ public final class Parser {
         for (final String arg : input.split("&")) {
             final String[] splitArg = arg.split("=");
             if (splitArg.length > 1) {
-                map.put(splitArg[0], URLDecoder.decode(splitArg[1], UTF_8));
+                map.put(splitArg[0], URLDecoder.decode(splitArg[1], StandardCharsets.UTF_8.name()));
             } else {
                 map.put(splitArg[0], "");
             }

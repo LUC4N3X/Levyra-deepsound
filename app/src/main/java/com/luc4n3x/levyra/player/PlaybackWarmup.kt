@@ -18,7 +18,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-@OptIn(UnstableApi::class)
+@UnstableApi
 class PlaybackWarmup(context: Context) {
     private val appContext = context.applicationContext
     private val primeLocks = ConcurrentHashMap<String, Mutex>()

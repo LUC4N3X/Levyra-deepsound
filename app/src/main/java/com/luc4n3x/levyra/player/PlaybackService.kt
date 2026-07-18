@@ -55,7 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-@OptIn(UnstableApi::class)
+@UnstableApi
 class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private lateinit var autoLibrary: AndroidAutoLibrary
@@ -69,6 +69,8 @@ class PlaybackService : MediaLibraryService() {
     private var servicePrefetchJob: Job? = null
 
     companion object {
+        private const val RUNNING_LOW_LEVEL = 10
+        private const val RUNNING_CRITICAL_LEVEL = 15
         const val EXTRA_VIDEO_URL = "levyra.videoUrl"
         const val EXTRA_VIDEO_CACHE_KEY = "levyra.videoCacheKey"
         const val EXTRA_VIDEO_MIME_TYPE = "levyra.videoMimeType"
@@ -104,11 +106,14 @@ class PlaybackService : MediaLibraryService() {
         fun consumePreparedQueueNext(trackId: String) = Unit
 
         val normalizationProcessor = NormalizationAudioProcessor()
+        val spatialAudioProcessor = StereoSpatialAudioProcessor()
         val visualizerProcessor = VisualizerAudioProcessor()
         val premiumAudioEffects = PremiumAudioEffects()
 
         fun applyPremiumAudioSettings(settings: LevyraAudioSettings) {
-            premiumAudioEffects.apply(settings)
+            val normalized = settings.normalized()
+            spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
+            premiumAudioEffects.apply(normalized)
         }
     }
 
@@ -166,8 +171,8 @@ class PlaybackService : MediaLibraryService() {
             ): AudioSink {
                 return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(enableFloatOutput)
-                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                    .setAudioProcessors(arrayOf(normalizationProcessor, visualizerProcessor))
+                    .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(normalizationProcessor, spatialAudioProcessor, visualizerProcessor))
                     .build()
             }
         }
@@ -491,10 +496,15 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+        if (shouldCancelPrefetchForMemoryPressure(level)) {
             servicePrefetchJob?.cancel()
         }
     }
+
+    private fun shouldCancelPrefetchForMemoryPressure(level: Int): Boolean =
+        level == RUNNING_LOW_LEVEL ||
+            level == RUNNING_CRITICAL_LEVEL ||
+            level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 

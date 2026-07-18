@@ -22,7 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-@OptIn(UnstableApi::class)
+@UnstableApi
 class LevyraPlayer(context: Context) {
     var onCompletion: (() -> Unit)? = null
     var onError: ((String) -> Unit)? = null

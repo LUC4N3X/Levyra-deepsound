@@ -48,7 +48,7 @@ class NormalizationAudioProcessor : AudioProcessor {
     internal fun metadataGain(): Float? {
         val loudness = youtubePerceptualLoudnessDb ?: youtubeLoudnessDb ?: return null
         val attenuationDb = loudness.coerceAtLeast(0.0f)
-        return 10.0.pow((-attenuationDb / 20.0).toDouble()).toFloat().coerceIn(0.25f, 1.0f)
+        return 10.0.pow(-attenuationDb / 20.0).toFloat().coerceIn(0.25f, 1.0f)
     }
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
@@ -139,17 +139,21 @@ class NormalizationAudioProcessor : AudioProcessor {
 
     override fun isEnded(): Boolean = inputEnded && !outputBuffer.hasRemaining()
 
-    override fun flush() {
-        outputBuffer = AudioProcessor.EMPTY_BUFFER
-        inputEnded = false
-        resetGain()
+    override fun flush(streamMetadata: AudioProcessor.StreamMetadata) {
+        clearBufferedState()
     }
 
     override fun reset() {
-        flush()
+        clearBufferedState()
         isActive = false
         inputAudioFormat = AudioFormat.NOT_SET
         outputAudioFormat = AudioFormat.NOT_SET
+    }
+
+    private fun clearBufferedState() {
+        outputBuffer = AudioProcessor.EMPTY_BUFFER
+        inputEnded = false
+        resetGain()
     }
 
     private fun resetGain() {

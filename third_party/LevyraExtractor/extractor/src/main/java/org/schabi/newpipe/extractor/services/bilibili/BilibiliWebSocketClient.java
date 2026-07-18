@@ -113,7 +113,9 @@ public class BilibiliWebSocketClient {
                 JsonObject result = null;
                 try{
                     result = JsonParser.object().from(group);
-                    messages.add(result);
+                    synchronized (messages) {
+                        messages.add(result);
+                    }
                 } catch (JsonParserException ignored) {
 
                 }
@@ -162,9 +164,11 @@ public class BilibiliWebSocketClient {
         webSocketClient.connectBlocking();
     }
     public ArrayList<JsonObject> getMessages() {
-        ArrayList<JsonObject> temp = (ArrayList<JsonObject>) messages.clone();
-        messages.clear();
-        return temp;
+        synchronized (messages) {
+            ArrayList<JsonObject> temp = new ArrayList<>(messages);
+            messages.clear();
+            return temp;
+        }
     }
     public void disconnect(){
         shouldStop.set(true);

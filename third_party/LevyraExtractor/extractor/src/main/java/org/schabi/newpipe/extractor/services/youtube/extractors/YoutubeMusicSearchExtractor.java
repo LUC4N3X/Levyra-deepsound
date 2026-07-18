@@ -7,7 +7,6 @@ import static org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeS
 import static org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS;
 import static org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_VIDEOS;
 import static org.schabi.newpipe.extractor.utils.Utils.EMPTY_STRING;
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 
 import org.schabi.newpipe.extractor.services.youtube.search.filter.YoutubeFilters;
@@ -52,7 +51,7 @@ public class YoutubeMusicSearchExtractor extends YoutubeBaseSearchExtractor {
 
     private String getSearchType() {
         final YoutubeFilters.MusicYoutubeContentFilterItem contentFilterItem =
-                getSelectedContentFilterItem();
+                getSelectedContentFilterItem(YoutubeFilters.MusicYoutubeContentFilterItem.class);
         if (contentFilterItem.getName() != null) {
             return contentFilterItem.getName();
         }
@@ -66,7 +65,7 @@ public class YoutubeMusicSearchExtractor extends YoutubeBaseSearchExtractor {
                 + DISABLE_PRETTY_PRINT_PARAMETER;
 
         final YoutubeFilters.MusicYoutubeContentFilterItem contentFilterItem =
-            getSelectedContentFilterItem();
+            getSelectedContentFilterItem(YoutubeFilters.MusicYoutubeContentFilterItem.class);
         // if params be null (which never should happen), JsonWriter.string() can handle it
         final String params = contentFilterItem.getParams();
 

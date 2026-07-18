@@ -9,8 +9,10 @@ import org.schabi.newpipe.extractor.stream.StreamExtractor;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class ExtractorHelper {
     private ExtractorHelper() {
@@ -51,8 +53,7 @@ public final class ExtractorHelper {
             }
             info.addAllErrors(collector.getErrors());
 
-            //noinspection unchecked
-            return (List<InfoItem>) collector.getItems();
+            return new ArrayList<>(collector.getItems());
         } catch (final Exception e) {
             info.addError(e);
             return Collections.emptyList();
@@ -68,8 +69,10 @@ public final class ExtractorHelper {
             }
             info.addAllErrors(collector.getErrors());
 
-            //noinspection unchecked
-            return (List<StreamInfoItem>) collector.getItems();
+            return collector.getItems().stream()
+                    .filter(StreamInfoItem.class::isInstance)
+                    .map(StreamInfoItem.class::cast)
+                    .collect(Collectors.toList());
         } catch (final Exception e) {
             info.addError(e);
             return Collections.emptyList();

@@ -20,6 +20,7 @@ package org.schabi.newpipe.extractor.kiosk;
  * along with NewPipe.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import org.schabi.newpipe.extractor.InfoItem;
 import org.schabi.newpipe.extractor.ListExtractor;
 import org.schabi.newpipe.extractor.ListInfo;
 import org.schabi.newpipe.extractor.NewPipe;
@@ -28,9 +29,10 @@ import org.schabi.newpipe.extractor.StreamingService;
 import org.schabi.newpipe.extractor.exceptions.ExtractionException;
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler;
 import org.schabi.newpipe.extractor.stream.StreamInfoItem;
-import org.schabi.newpipe.extractor.utils.ExtractorHelper;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public final class KioskInfo extends ListInfo<StreamInfoItem> {
     private KioskInfo(final int serviceId, final ListLinkHandler linkHandler, final String name) {
@@ -40,7 +42,7 @@ public final class KioskInfo extends ListInfo<StreamInfoItem> {
     public static ListExtractor.InfoItemsPage<StreamInfoItem> getMoreItems(
             final StreamingService service, final String url, final Page page)
             throws IOException, ExtractionException {
-        return service.getKioskList().getExtractorByUrl(url, page).getPage(page);
+        return toStreamPage(service.getKioskList().getExtractorByUrl(url, page).getPage(page));
     }
 
     public static KioskInfo getInfo(final String url) throws IOException, ExtractionException {
@@ -49,7 +51,8 @@ public final class KioskInfo extends ListInfo<StreamInfoItem> {
 
     public static KioskInfo getInfo(final StreamingService service, final String url)
             throws IOException, ExtractionException {
-        final KioskExtractor extractor = service.getKioskList().getExtractorByUrl(url, null);
+        final KioskExtractor<? extends InfoItem> extractor =
+                service.getKioskList().getExtractorByUrl(url, null);
         extractor.fetchPage();
         return getInfo(extractor);
     }
@@ -59,17 +62,28 @@ public final class KioskInfo extends ListInfo<StreamInfoItem> {
      *
      * @param extractor an extractor where fetchPage() was already got called on.
      */
-    public static KioskInfo getInfo(final KioskExtractor extractor) throws ExtractionException {
-
+    public static KioskInfo getInfo(final KioskExtractor<? extends InfoItem> extractor)
+            throws ExtractionException {
         final KioskInfo info = new KioskInfo(extractor.getServiceId(),
-                extractor.getLinkHandler(),
-                extractor.getName());
-
-        final ListExtractor.InfoItemsPage<StreamInfoItem> itemsPage
-                = ExtractorHelper.getItemsPageOrLogError(info, extractor);
-        info.setRelatedItems(itemsPage.getItems());
-        info.setNextPage(itemsPage.getNextPage());
-
+                extractor.getLinkHandler(), extractor.getName());
+        try {
+            final ListExtractor.InfoItemsPage<StreamInfoItem> itemsPage =
+                    toStreamPage(extractor.getInitialPage());
+            info.addAllErrors(itemsPage.getErrors());
+            info.setRelatedItems(itemsPage.getItems());
+            info.setNextPage(itemsPage.getNextPage());
+        } catch (final Exception e) {
+            info.addError(e);
+        }
         return info;
+    }
+
+    private static ListExtractor.InfoItemsPage<StreamInfoItem> toStreamPage(
+            final ListExtractor.InfoItemsPage<? extends InfoItem> page) {
+        final List<StreamInfoItem> items = page.getItems().stream()
+                .filter(StreamInfoItem.class::isInstance)
+                .map(StreamInfoItem.class::cast)
+                .collect(Collectors.toList());
+        return new ListExtractor.InfoItemsPage<>(items, page.getNextPage(), page.getErrors());
     }
 }
