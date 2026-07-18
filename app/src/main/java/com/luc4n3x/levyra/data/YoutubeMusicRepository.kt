@@ -74,6 +74,28 @@ private data class ScoredAlbumRecommendation(
 
 internal const val LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE = Int.MIN_VALUE
 
+internal val LEVYRA_LOCALIZED_ALBUM_LABELS = setOf(
+    "album",
+    "álbum",
+    "albumo",
+    "άλμπουμ",
+    "albüm",
+    "альбом",
+    "албум",
+    "ألبوم",
+    "专辑",
+    "專輯",
+    "アルバム",
+    "앨범",
+    "एल्बम",
+    "อัลบั้ม",
+    "אלבום"
+)
+
+internal fun levyraIsAlbumLabel(token: String): Boolean {
+    return token.trim().lowercase(Locale.ROOT) in LEVYRA_LOCALIZED_ALBUM_LABELS
+}
+
 internal fun levyraAlbumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {
     val albumKey = albumRecommendationTextKey(album.title)
     val artistKey = albumRecommendationTextKey(album.artist)
@@ -1035,18 +1057,18 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private val excludedTypes = setOf(
-        "album", "playlist", "artist", "ep", "podcast", "episode", "channel", "profile", "mix",
+        "playlist", "artist", "ep", "podcast", "episode", "channel", "profile", "mix",
         "artista", "canale", "profilo", "canción", "cancion", "artiste", "künstler", "kunstler",
-        "álbum", "albumo", "artiest", "artysta", "artis", "canal", "chaîne", "kanal",
-        "فنان", "قناة", "ملف شخصي", "ألبوم", "قائمة تشغيل", "歌手", "频道", "个人资料", "专辑", "播放列表",
-        "アーティスト", "チャンネル", "プロフィール", "アルバム", "プレイリスト", "再生リスト",
-        "아티스트", "채널", "프로필", "앨범", "재생목록", "플레이리스트",
-        "कलाकार", "चैनल", "प्रोफ़ाइल", "एल्बम", "प्लेलिस्ट",
+        "artiest", "artysta", "artis", "canal", "chaîne", "kanal",
+        "فنان", "قناة", "ملف شخصي", "قائمة تشغيل", "歌手", "频道", "个人资料", "播放列表",
+        "アーティスト", "チャンネル", "プロフィール", "プレイリスト", "再生リスト",
+        "아티스트", "채널", "프로필", "재생목록", "플레이리스트",
+        "कलाकार", "चैनल", "प्रोफ़ाइल", "प्लेलिस्ट",
         "saluran", "daftar putar", "nghệ sĩ", "kênh", "hồ sơ", "danh sách phát",
-        "ศิลปิน", "ช่อง", "โปรไฟล์", "อัลบั้ม", "เพลย์ลิสต์",
+        "ศิลปิน", "ช่อง", "โปรไฟล์", "เพลย์ลิสต์",
         "mang-aawit", "talaan ng tugtugin",
-        "אמן", "אמנית", "ערוץ", "פרופיל", "אלבום", "פלייליסט", "רשימת השמעה"
-    )
+        "אמן", "אמנית", "ערוץ", "פרופיל", "פלייליסט", "רשימת השמעה"
+    ) + LEVYRA_LOCALIZED_ALBUM_LABELS
 
     private fun albumRecommendationQueries(languageCode: String): List<String> {
         return when (LevyraLanguageCatalog.normalize(languageCode)) {
@@ -1148,10 +1170,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun isAlbumLabel(token: String): Boolean {
-        val normalized = token.trim().lowercase()
-        return normalized == "album" || normalized == "álbum" || normalized == "albumo"
-    }
+    private fun isAlbumLabel(token: String): Boolean = levyraIsAlbumLabel(token)
 
     private fun isAlbumArtistToken(token: String): Boolean {
         val normalized = token.cleanAlbumArtistLabel().lowercase()
