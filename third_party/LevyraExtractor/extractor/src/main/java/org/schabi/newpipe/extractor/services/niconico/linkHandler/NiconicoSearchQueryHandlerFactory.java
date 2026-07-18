@@ -1,6 +1,5 @@
 package org.schabi.newpipe.extractor.services.niconico.linkHandler;
 
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 
 import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.linkhandler.SearchQueryHandlerFactory;
@@ -12,6 +11,7 @@ import org.schabi.newpipe.extractor.services.niconico.search.filter.NiconicoFilt
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.List;
+import java.nio.charset.StandardCharsets;
 
 public class NiconicoSearchQueryHandlerFactory extends SearchQueryHandlerFactory {
     public static final int ITEMS_PER_PAGE = 10;
@@ -32,16 +32,16 @@ public class NiconicoSearchQueryHandlerFactory extends SearchQueryHandlerFactory
 
         try {
             if(selectedContentFilter.get(0).getName().equals("lives")){
-                return NiconicoService.LIVE_SEARCH_URL + "?keyword=" + URLEncoder.encode(id, UTF_8) + "&page=1";
+                return NiconicoService.LIVE_SEARCH_URL + "?keyword=" + URLEncoder.encode(id, StandardCharsets.UTF_8.name()) + "&page=1";
             } else if(selectedContentFilter.get(0).getName().equals("playlists")){
-                return NiconicoService.PLAYLIST_SEARCH_API_URL + "&keyword=" + URLEncoder.encode(id, UTF_8) + filterQuery + "&types=mylist&pageSize=10&page=1";
+                return NiconicoService.PLAYLIST_SEARCH_API_URL + "&keyword=" + URLEncoder.encode(id, StandardCharsets.UTF_8.name()) + filterQuery + "&types=mylist&pageSize=10&page=1";
             } else {
                 if(filterQuery.length() > 0) {
                     filterQuery = "?" + filterQuery.substring(1);
                 } else {
                     filterQuery = "?sort=h&order=d";
                 }
-                return NiconicoService.SEARCH_URL + URLEncoder.encode(id, UTF_8) + filterQuery + "&page=1";
+                return NiconicoService.SEARCH_URL + URLEncoder.encode(id, StandardCharsets.UTF_8.name()) + filterQuery + "&page=1";
             }
         } catch (final UnsupportedEncodingException e) {
             throw new ParsingException("could not encode query.");

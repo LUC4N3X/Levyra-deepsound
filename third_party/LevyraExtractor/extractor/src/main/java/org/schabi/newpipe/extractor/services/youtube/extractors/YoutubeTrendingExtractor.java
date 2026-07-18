@@ -43,8 +43,8 @@ import javax.annotation.Nonnull;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getJsonPostResponse;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.getTextAtKey;
 import static org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper.prepareDesktopJsonBuilder;
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
+import java.nio.charset.StandardCharsets;
 
 public class YoutubeTrendingExtractor extends KioskExtractor<StreamInfoItem> {
     private JsonObject initialData;
@@ -63,7 +63,7 @@ public class YoutubeTrendingExtractor extends KioskExtractor<StreamInfoItem> {
                         getExtractorContentCountry())
                 .value("browseId", "UC4R8DWoMoI7CAwX8_LjQHig")
                 .done())
-                .getBytes(UTF_8);
+                .getBytes(StandardCharsets.UTF_8);
         // @formatter:on
 
         initialData = getJsonPostResponse("browse", body, getExtractorLocalization());

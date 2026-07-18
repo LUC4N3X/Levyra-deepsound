@@ -72,7 +72,6 @@ import static org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeSt
 import static org.schabi.newpipe.extractor.services.youtube.extractors.YoutubeStreamExtractor.isPlayerResponseNotValid;
 import static org.schabi.newpipe.extractor.utils.Utils.HTTP;
 import static org.schabi.newpipe.extractor.utils.Utils.HTTPS;
-import static org.schabi.newpipe.extractor.utils.Utils.UTF_8;
 import static org.schabi.newpipe.extractor.utils.Utils.getStringResultFromRegexArray;
 import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 
@@ -945,7 +944,7 @@ YoutubeParsingHelper {
                 for (final String param : params) {
                     if (param.split("=")[0].equals("q")) {
                         try {
-                            return URLDecoder.decode(param.split("=")[1], UTF_8);
+                            return URLDecoder.decode(param.split("=")[1], StandardCharsets.UTF_8.name());
                         } catch (final UnsupportedEncodingException e) {
                             return null;
                         }
@@ -2298,7 +2297,7 @@ YoutubeParsingHelper {
                             Localization.DEFAULT, ContentCountry.DEFAULT)
                             .value("url", "https://www.youtube.com/" + idOrPath)
                             .done())
-                    .getBytes(UTF_8);
+                    .getBytes(StandardCharsets.UTF_8);
 
             final JsonObject jsonResponse = getJsonPostResponse("navigation/resolve_url",
                     body, Localization.DEFAULT);
@@ -2375,7 +2374,7 @@ YoutubeParsingHelper {
             }
 
             final byte[] body = JsonWriter.string(bodyBuilder.done())
-                    .getBytes(UTF_8);
+                    .getBytes(StandardCharsets.UTF_8);
 
             final JsonObject jsonResponse = getJsonPostResponse("browse", body, loc);
 

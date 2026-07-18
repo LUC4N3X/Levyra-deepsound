@@ -221,7 +221,7 @@ public class NiconicoStreamExtractor extends StreamExtractor {
             return Collections.emptyList();
         }
         final List<AudioStream> audioStreams = new ArrayList<>();
-        ArrayList<String> audios = (ArrayList<String>) streamSources.get("audio");
+        final List<String> audios = streamSources.getOrDefault("audio", Collections.emptyList());
         for (String audio : audios) {
             String id = RegexUtils.extract(audio, "audio-(.*?)-\\d+kbps");
             audioStreams.add(new AudioStream.Builder().setId("Niconico-" + getId() + "-audio")
@@ -290,7 +290,7 @@ public class NiconicoStreamExtractor extends StreamExtractor {
             return Collections.emptyList();
         }
         final List<VideoStream> videoStreams = new ArrayList<>();
-        ArrayList<String> videos = (ArrayList<String>) streamSources.get("video");
+        final List<String> videos = streamSources.getOrDefault("video", Collections.emptyList());
         if (Utils.isNullOrEmpty(videos)) {
             return Collections.emptyList();
         }

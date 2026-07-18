@@ -103,7 +103,7 @@ public class NicoWebSocketClient  {
         webSocketClient.connect();
     }
     public ArrayList<JsonObject> getMessages() {
-        ArrayList<JsonObject> temp = (ArrayList<JsonObject>) messages.clone();
+        ArrayList<JsonObject> temp = new ArrayList<>(messages);
         messages.clear();
         return temp;
     }

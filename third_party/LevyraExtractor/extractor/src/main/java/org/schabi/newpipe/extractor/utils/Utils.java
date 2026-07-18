@@ -48,7 +48,7 @@ public final class Utils {
      * @return The encoded URL.
      */
     public static String encodeUrlUtf8(final String string) throws UnsupportedEncodingException {
-        return URLEncoder.encode(string, UTF_8);
+        return URLEncoder.encode(string, StandardCharsets.UTF_8.name());
     }
 
     /**
@@ -57,7 +57,7 @@ public final class Utils {
      * @return The decoded URL.
      */
     public static String decodeUrlUtf8(final String url) throws UnsupportedEncodingException {
-        return URLDecoder.decode(url, UTF_8);
+        return URLDecoder.decode(url, StandardCharsets.UTF_8.name());
     }
 
     /**
@@ -170,7 +170,7 @@ public final class Utils {
 
                 String query;
                 try {
-                    query = URLDecoder.decode(params[0], UTF_8);
+                    query = URLDecoder.decode(params[0], StandardCharsets.UTF_8.name());
                 } catch (final UnsupportedEncodingException e) {
                     // Cannot decode string with UTF-8, using the string without decoding
                     query = params[0];
@@ -178,7 +178,7 @@ public final class Utils {
 
                 if (query.equals(parameterName)) {
                     try {
-                        return URLDecoder.decode(params[1], UTF_8);
+                        return URLDecoder.decode(params[1], StandardCharsets.UTF_8.name());
                     } catch (final UnsupportedEncodingException e) {
                         // Cannot decode string with UTF-8, using the string without decoding
                         return params[1];
@@ -277,7 +277,7 @@ public final class Utils {
         try {
             final URL decoded = Utils.stringToURL(url);
             if (decoded.getHost().contains("google") && decoded.getPath().equals("/url")) {
-                return URLDecoder.decode(Parser.matchGroup1("&url=([^&]+)(?:&|$)", url), UTF_8);
+                return URLDecoder.decode(Parser.matchGroup1("&url=([^&]+)(?:&|$)", url), StandardCharsets.UTF_8.name());
             }
         } catch (final Exception ignored) {
         }

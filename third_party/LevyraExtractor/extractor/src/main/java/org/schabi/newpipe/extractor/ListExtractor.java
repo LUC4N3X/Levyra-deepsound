@@ -84,9 +84,6 @@ public abstract class ListExtractor<R extends InfoItem> extends Extractor {
      * @param <T> the info item type that this page is supposed to store and provide
      */
     public static class InfoItemsPage<T extends InfoItem> {
-        private static final InfoItemsPage<InfoItem> EMPTY =
-                new InfoItemsPage<>(Collections.emptyList(), null, Collections.emptyList());
-
         /**
          * A convenient method that returns a representation of an empty page.
          *
@@ -94,8 +91,7 @@ public abstract class ListExtractor<R extends InfoItem> extends Extractor {
          *         {@code null}.
          */
         public static <T extends InfoItem> InfoItemsPage<T> emptyPage() {
-            //noinspection unchecked
-            return (InfoItemsPage<T>) EMPTY;
+            return new InfoItemsPage<>(Collections.emptyList(), null, Collections.emptyList());
         }
 
         /**

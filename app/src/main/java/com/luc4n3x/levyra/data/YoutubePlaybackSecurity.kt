@@ -347,7 +347,6 @@ internal class YoutubePoTokenRuntime private constructor(
         webView.settings.javaScriptCanOpenWindowsAutomatically = false
         webView.settings.setSupportMultipleWindows(false)
         webView.settings.domStorageEnabled = false
-        webView.settings.databaseEnabled = false
         webView.addJavascriptInterface(this, JS_INTERFACE)
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {

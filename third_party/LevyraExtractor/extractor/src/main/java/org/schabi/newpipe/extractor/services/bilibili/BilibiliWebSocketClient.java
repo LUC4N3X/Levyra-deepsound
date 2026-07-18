@@ -162,7 +162,7 @@ public class BilibiliWebSocketClient {
         webSocketClient.connectBlocking();
     }
     public ArrayList<JsonObject> getMessages() {
-        ArrayList<JsonObject> temp = (ArrayList<JsonObject>) messages.clone();
+        ArrayList<JsonObject> temp = new ArrayList<>(messages);
         messages.clear();
         return temp;
     }
