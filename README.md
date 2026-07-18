@@ -2,7 +2,7 @@
 
 <img src="https://i.ibb.co/mr2N5fv5/Levyra-Git-Hub-Banner-PRO.png" alt="Levyra Logo" width="490" />
 
-# Levyra
+# 🎶
 
 ### Stream everything. Keep what you love. Own every note.
 
