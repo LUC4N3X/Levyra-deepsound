@@ -25,8 +25,13 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
@@ -54,11 +59,22 @@ data class HomePlaybackProgress(
 )
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
-    internal val renderState: StateFlow<HomeRenderSnapshot> = state
-        .scan(buildHomeRenderSnapshot(root.state.value)) { previous, snapshot ->
-            withContext(Dispatchers.Default) { buildHomeRenderSnapshot(snapshot, previous) }
+    private val freezeHomeContent = MutableStateFlow(false)
+    private var homeRenderSettleJob: Job? = null
+
+    internal val renderState: StateFlow<HomeRenderSnapshot> = combine(state, freezeHomeContent) { snapshot, freeze ->
+        HomeRenderInput(snapshot, freeze)
+    }
+        .scan(buildHomeRenderSnapshot(root.state.value)) { previous, input ->
+            withContext(Dispatchers.Default) {
+                buildStableHomeRenderSnapshot(
+                    state = input.state,
+                    previous = previous,
+                    freezeContent = input.freezeContent
+                )
+            }
         }
-        .distinctUntilChanged()
+        .distinctUntilChanged(::sameHomeRenderSnapshot)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000L),
@@ -89,9 +105,30 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun selectMood(mood: Mood) = root.selectMood(mood)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
-    fun onHomeEntered() = root.onHomeEntered()
-    fun onHomeLeft() = root.onHomeLeft()
-    fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) = root.setHomeViewport(scrollInProgress, atTop)
+    fun onHomeEntered() {
+        homeRenderSettleJob?.cancel()
+        freezeHomeContent.value = false
+        root.onHomeEntered()
+    }
+
+    fun onHomeLeft() {
+        homeRenderSettleJob?.cancel()
+        freezeHomeContent.value = false
+        root.onHomeLeft()
+    }
+
+    fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) {
+        root.setHomeViewport(scrollInProgress, atTop)
+        homeRenderSettleJob?.cancel()
+        if (scrollInProgress) {
+            freezeHomeContent.value = true
+        } else {
+            homeRenderSettleJob = viewModelScope.launch {
+                delay(HOME_RENDER_SETTLE_MS)
+                freezeHomeContent.value = false
+            }
+        }
+    }
 }
 
 class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::searchProjection) {
@@ -178,6 +215,48 @@ class LevyraScreenViewModelFactory(
             else -> throw IllegalArgumentException("Unsupported screen ViewModel: ${modelClass.name}")
         } as T
     }
+}
+
+
+private const val HOME_RENDER_SETTLE_MS = 220L
+
+private data class HomeRenderInput(
+    val state: LevyraUiState,
+    val freezeContent: Boolean
+)
+
+internal fun buildStableHomeRenderSnapshot(
+    state: LevyraUiState,
+    previous: HomeRenderSnapshot,
+    freezeContent: Boolean
+): HomeRenderSnapshot {
+    val visibleState = if (freezeContent) state.withFrozenHomeContent(previous.state) else state
+    return buildHomeRenderSnapshot(visibleState, previous)
+}
+
+private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
+    return copy(
+        tracks = previous.tracks,
+        recentSearches = previous.recentSearches,
+        recentListens = previous.recentListens,
+        personalOrbitTracks = previous.personalOrbitTracks,
+        favorites = previous.favorites,
+        charts = previous.charts,
+        isLoadingCharts = previous.isLoadingCharts,
+        homeSections = previous.homeSections,
+        homeAlbums = previous.homeAlbums,
+        homeArtists = previous.homeArtists,
+        homeArtistsLoading = previous.homeArtistsLoading,
+        homeAlbumsLoading = previous.homeAlbumsLoading,
+        isLoadingHome = previous.isLoadingHome,
+        homeError = previous.homeError,
+        releaseRadar = previous.releaseRadar,
+        similarArtists = previous.similarArtists
+    )
+}
+
+private fun sameHomeRenderSnapshot(previous: HomeRenderSnapshot, current: HomeRenderSnapshot): Boolean {
+    return homeProjection(previous.state) == homeProjection(current.state) && previous.derived == current.derived
 }
 
 @Immutable
