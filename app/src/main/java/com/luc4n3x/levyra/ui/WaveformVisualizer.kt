@@ -45,7 +45,7 @@ fun WaveformVisualizer(
             
             // Draw upper curve
             val targetY = centerY - magnitude / 2f
-            path.quadraticBezierTo(controlX, targetY, nextX, targetY)
+            path.quadraticTo(controlX, targetY, nextX, targetY)
             
             startX = nextX
         }
@@ -57,7 +57,7 @@ fun WaveformVisualizer(
             val controlX = startX - barWidth / 2f
             
             val targetY = centerY + magnitude / 2f
-            path.quadraticBezierTo(controlX, targetY, nextX, targetY)
+            path.quadraticTo(controlX, targetY, nextX, targetY)
             
             startX = nextX
         }
