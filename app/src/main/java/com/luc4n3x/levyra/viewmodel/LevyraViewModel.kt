@@ -254,6 +254,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var modeSwitchJob: Job? = null
     private var streamRecoveryJob: Job? = null
     private var alternateModePrefetchJob: Job? = null
+    private var youtubeEngagementJob: Job? = null
     private var prefetchJob: Job? = null
     private var chartEnrichJob: Job? = null
     private var orbitArtworkJob: Job? = null
@@ -2855,6 +2856,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectTab(tab: LevyraTab) {
         moveToTab(tab, rememberCurrent = true)
+        if (tab == LevyraTab.Player) {
+            _state.value.currentTrack?.let(::refreshYoutubeEngagement)
+        }
     }
 
     fun navigateBack(): Boolean {
@@ -3459,6 +3463,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
+        youtubeEngagementJob?.cancel()
         if (!preserveCrossfade) {
             crossfadeJob?.cancel()
             crossfadeInProgress = false
@@ -3641,7 +3646,38 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         recordSmartPlayback(playable)
         fetchSponsorSegments(playable)
         prefetchAlternateMode(playable, _state.value.isVideoMode)
+        if (_state.value.selectedTab == LevyraTab.Player) {
+            refreshYoutubeEngagement(playable)
+        }
         updateWidget()
+    }
+
+    private fun refreshYoutubeEngagement(track: Track) {
+        youtubeEngagementJob?.cancel()
+        if (track.source.equals("Offline", ignoreCase = true)) return
+        if (track.youtubeLikeCount >= 0L && track.youtubeViewCount >= 0L) return
+        val requestId = playRequestId
+        youtubeEngagementJob = viewModelScope.launch {
+            val enriched = resolver.enrichYoutubeEngagement(track)
+            if (!isActive || requestId != playRequestId) return@launch
+            val current = _state.value.currentTrack ?: return@launch
+            if (!samePlayableTrack(current, enriched)) return@launch
+            val merged = current.copy(
+                youtubeLikeCount = enriched.youtubeLikeCount.takeIf { it >= 0L } ?: current.youtubeLikeCount,
+                youtubeViewCount = enriched.youtubeViewCount.takeIf { it >= 0L } ?: current.youtubeViewCount
+            )
+            if (merged.youtubeLikeCount == current.youtubeLikeCount && merged.youtubeViewCount == current.youtubeViewCount) return@launch
+            val selectedIndex = queueEngine.state.value.currentIndex
+            if (selectedIndex >= 0) queueEngine.updateTrackAt(selectedIndex, merged)
+            repository.replace(merged)
+            _state.update {
+                it.copy(
+                    currentTrack = merged,
+                    tracks = mergeTracks(it.tracks, listOf(merged)),
+                    searchResults = mergeTracks(it.searchResults, listOf(merged))
+                )
+            }
+        }
     }
 
     private fun fetchSponsorSegments(track: Track) {
@@ -4631,6 +4667,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
+        youtubeEngagementJob?.cancel()
         cancelBackgroundWarmups()
         orbitArtworkJob?.cancel()
         officialMetadataSignal.close()

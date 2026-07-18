@@ -35,7 +35,9 @@ object TrackPayloadCodec {
         accentStart = accentStart,
         accentEnd = accentEnd,
         youtubeLoudnessDb = youtubeLoudnessDb,
-        youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb
+        youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb,
+        youtubeLikeCount = youtubeLikeCount,
+        youtubeViewCount = youtubeViewCount
     )
 }
 
@@ -59,7 +61,9 @@ private data class TrackPayload(
     val accentStart: Int = 0xFF20E7FF.toInt(),
     val accentEnd: Int = 0xFF8E57FF.toInt(),
     val youtubeLoudnessDb: Float? = null,
-    val youtubePerceptualLoudnessDb: Float? = null
+    val youtubePerceptualLoudnessDb: Float? = null,
+    val youtubeLikeCount: Long = -1L,
+    val youtubeViewCount: Long = -1L
 ) {
     fun toTrack(): Track? {
         if (id.isBlank() || title.isBlank()) return null
@@ -82,7 +86,9 @@ private data class TrackPayload(
             accentStart = accentStart,
             accentEnd = accentEnd,
             youtubeLoudnessDb = youtubeLoudnessDb,
-            youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb
+            youtubePerceptualLoudnessDb = youtubePerceptualLoudnessDb,
+            youtubeLikeCount = youtubeLikeCount,
+            youtubeViewCount = youtubeViewCount
         )
     }
 }
