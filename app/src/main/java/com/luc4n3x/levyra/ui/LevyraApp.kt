@@ -8462,68 +8462,52 @@ private fun PlayerYoutubeEngagementRow(
         enter = fadeIn(animationSpec = tween(220)) + slideInVertically(initialOffsetY = { it / 3 }),
         exit = fadeOut(animationSpec = tween(140))
     ) {
-        Row(
+        Surface(
             modifier = Modifier.padding(top = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            color = Color.White.copy(alpha = 0.08f),
+            shape = CircleShape
         ) {
-            if (hasLikes) {
-                PlayerYoutubeMetricChip(
-                    icon = Icons.Rounded.ThumbUp,
-                    value = compactYoutubeCount(track.youtubeLikeCount),
-                    tint = Color(0xFFFF6A7D),
-                    glow = primary
-                )
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (hasLikes) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("👍", fontSize = 11.sp)
+                        Text(
+                            text = compactYoutubeCount(track.youtubeLikeCount),
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.2.sp
+                        )
+                    }
+                }
+                
+                if (hasLikes && hasViews) {
+                    Box(modifier = Modifier.size(3.dp).background(Color.White.copy(alpha = 0.3f), CircleShape))
+                }
+                
+                if (hasViews) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("🎧", fontSize = 11.sp)
+                        Text(
+                            text = compactYoutubeCount(track.youtubeViewCount),
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.2.sp
+                        )
+                    }
+                }
             }
-            if (hasViews) {
-                PlayerYoutubeMetricChip(
-                    icon = Icons.Rounded.Visibility,
-                    value = compactYoutubeCount(track.youtubeViewCount),
-                    tint = Color.White.copy(alpha = 0.88f),
-                    glow = secondary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayerYoutubeMetricChip(
-    icon: ImageVector,
-    value: String,
-    tint: Color,
-    glow: Color
-) {
-    Surface(
-        color = Color.Black.copy(alpha = 0.24f),
-        shape = CircleShape,
-        border = BorderStroke(1.dp, glow.copy(alpha = 0.28f))
-    ) {
-        Row(
-            modifier = Modifier
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(glow.copy(alpha = 0.14f), Color.Transparent)
-                    )
-                )
-                .padding(horizontal = 11.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.size(15.dp)
-            )
-            Text(
-                text = value,
-                color = Color.White.copy(alpha = 0.92f),
-                fontSize = 12.5.sp,
-                lineHeight = 14.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.1.sp
-            )
         }
     }
 }
@@ -9624,50 +9608,59 @@ private fun trimSpeed(speed: Float): String {
 
 @Composable
 private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
-    Surface(
-        color = LevyraAdaptiveCardDeep,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(22.dp),
-        modifier = modifier.fillMaxWidth()
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(modifier = Modifier.padding(7.dp)) {
-            LevyraLanguageCatalog.languages.forEachIndexed { index, language ->
-                val selected = language.code == LevyraLanguageCatalog.normalize(selectedCode)
-                val rowColor by animateColorAsState(
-                    targetValue = if (selected) LevyraCyan.copy(alpha = 0.13f) else Color.Transparent,
-                    animationSpec = tween(180),
-                    label = "language-row"
-                )
+        LevyraLanguageCatalog.languages.forEach { language ->
+            val selected = language.code == LevyraLanguageCatalog.normalize(selectedCode)
+            val scale by animateFloatAsState(
+                targetValue = if (selected) 1.02f else 1f,
+                animationSpec = spring(dampingRatio = 0.6f, stiffness = 300f),
+                label = "scale"
+            )
+            val rowColor by animateColorAsState(
+                targetValue = if (selected) LevyraCyan else LevyraAdaptiveCardDeep,
+                animationSpec = tween(200),
+                label = "language-row"
+            )
+            
+            Surface(
+                color = rowColor,
+                shape = RoundedCornerShape(22.dp),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (selected) LevyraCyan else LevyraAdaptiveHairline
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .scale(scale)
+                    .pressable(onClick = { onSelect(language.code) })
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(68.dp)
-                        .background(rowColor, RoundedCornerShape(16.dp))
-                        .pressable(onClick = { onSelect(language.code) })
-                        .padding(horizontal = 13.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(13.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Surface(
-                        color = if (selected) LevyraCyan else Color.White.copy(alpha = 0.065f),
+                        color = if (selected) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
                         shape = CircleShape,
-                        modifier = Modifier.size(38.dp)
+                        modifier = Modifier.size(42.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text = language.code.uppercase(),
-                                color = if (selected) LevyraBlack else LevyraText,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 0.5.sp
+                                text = language.flag,
+                                fontSize = 18.sp
                             )
                         }
                     }
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = language.nativeName,
-                            color = LevyraText,
-                            fontSize = 15.sp,
+                            color = if (selected) LevyraBlack else LevyraText,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -9675,36 +9668,30 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
                         if (!language.englishName.equals(language.nativeName, ignoreCase = true)) {
                             Text(
                                 text = language.englishName,
-                                color = if (selected) LevyraCyan else LevyraMuted,
-                                fontSize = 12.sp,
+                                color = if (selected) LevyraBlack.copy(alpha = 0.6f) else LevyraMuted,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
-                    Surface(
-                        color = if (selected) LevyraCyan else Color.White.copy(alpha = 0.055f),
-                        shape = CircleShape,
-                        modifier = Modifier.size(28.dp)
+                    
+                    AnimatedVisibility(
+                        visible = selected,
+                        enter = scaleIn(spring(dampingRatio = 0.5f, stiffness = 400f)) + fadeIn(),
+                        exit = scaleOut() + fadeOut()
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            if (selected) {
-                                Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraBlack, modifier = Modifier.size(17.dp))
-                            } else {
-                                Box(modifier = Modifier.size(6.dp).background(Color.White.copy(alpha = 0.24f), CircleShape))
+                        Surface(
+                            color = LevyraBlack,
+                            shape = CircleShape,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
-                }
-                if (index != LevyraLanguageCatalog.languages.lastIndex) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 64.dp, end = 12.dp)
-                            .height(1.dp)
-                            .background(LevyraAdaptiveHairline.copy(alpha = 0.7f))
-                    )
                 }
             }
         }
