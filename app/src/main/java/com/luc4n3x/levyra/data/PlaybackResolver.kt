@@ -1272,7 +1272,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             bitrate = stream.bitrate,
             itag = stream.itag,
             muxed = !stream.isVideoOnly(),
-            label = resolution
+            label = resolution.orEmpty()
         )
     }
 
