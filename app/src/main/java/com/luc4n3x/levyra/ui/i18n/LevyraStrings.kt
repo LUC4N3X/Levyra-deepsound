@@ -10,7 +10,7 @@ class LevyraStrings private constructor(
     private fun value(key: String): String = entries.getValue(key)
     private fun directionalValue(value: String): String {
         val clean = value.trim()
-        return if (code == "he" && clean.isNotBlank()) "\u2068$clean\u2069" else clean
+        return if (LevyraLanguageCatalog.isRtl(code) && clean.isNotBlank()) "\u2068$clean\u2069" else clean
     }
 
     val welcomeBadge: String get() = value("welcomeBadge")
@@ -427,11 +427,7 @@ class LevyraStrings private constructor(
 
     fun formatCancelDownload(title: String): String = "$cancelDownload ${directionalValue(title)}"
 
-    fun formatLatestVersionReady(version: String): String = if (code == "he") {
-        "${directionalValue("LEVYRA $version")} $latestVersionReady"
-    } else {
-        "LEVYRA $version $latestVersionReady"
-    }
+    fun formatLatestVersionReady(version: String): String = "${directionalValue("LEVYRA $version")} $latestVersionReady"
 
     fun formatInstalledVersion(version: String): String = "$installedVersion: ${directionalValue(version)}"
 
@@ -627,14 +623,15 @@ class LevyraStrings private constructor(
             else -> when (normalizedHour) { in 5..11 -> "Good morning" to "☀️"; in 12..17 -> "Good afternoon" to "🎶"; in 18..22 -> "Good evening" to "🌙"; else -> "Good night" to "🌌" }
         }
         val name = userName.trim()
-        return when {
-            name.isBlank() -> "${dayPart.first} ${dayPart.second}"
-            code == "ar" -> "${dayPart.first}، $name ${dayPart.second}"
-            code == "he" -> "${dayPart.first}, ${directionalValue(name)} ${dayPart.second}"
-            code == "zh" -> "${dayPart.first}，$name ${dayPart.second}"
-            code == "ja" -> "$name、${dayPart.first} ${dayPart.second}"
-            code == "ko" -> "${name}님, ${dayPart.first} ${dayPart.second}"
-            else -> "${dayPart.first}, $name ${dayPart.second}"
+        if (name.isBlank()) return "${dayPart.first} ${dayPart.second}"
+        val directionalName = directionalValue(name)
+        return when (code) {
+            "ar" -> "${dayPart.first}، $directionalName ${dayPart.second}"
+            "he" -> "${dayPart.first}, $directionalName ${dayPart.second}"
+            "zh" -> "${dayPart.first}，$directionalName ${dayPart.second}"
+            "ja" -> "$directionalName、${dayPart.first} ${dayPart.second}"
+            "ko" -> "${directionalName}님, ${dayPart.first} ${dayPart.second}"
+            else -> "${dayPart.first}, $directionalName ${dayPart.second}"
         }
     }
 
