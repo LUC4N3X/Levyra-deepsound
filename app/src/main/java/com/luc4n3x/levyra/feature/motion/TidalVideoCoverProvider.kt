@@ -236,11 +236,8 @@ class TidalVideoCoverProvider(context: Context) : MotionArtworkProvider {
     }
 }
 
-internal fun tidalArtistsCompatible(requested: List<String>, returned: List<String>): Boolean {
-    if (requested.isEmpty() || returned.isEmpty()) return false
-    if (combinedArtistSignature(requested) == combinedArtistSignature(returned)) return true
-    return artistAliases(requested).intersect(artistAliases(returned)).isNotEmpty()
-}
+internal fun tidalArtistsCompatible(requested: List<String>, returned: List<String>): Boolean =
+    primaryMotionArtistMatches(requested, returned)
 
 private class TidalRequestException(message: String, cause: Throwable? = null) : IOException(message, cause)
 
