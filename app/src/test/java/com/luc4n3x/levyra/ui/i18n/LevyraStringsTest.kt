@@ -187,11 +187,14 @@ class LevyraStringsTest {
     }
 
     @Test
-    fun hebrewDynamicLatinTextUsesBidiIsolation() {
-        val strings = LevyraStrings.forCode("he")
-        assertTrue(strings.formatGreeting("Luca", 9).contains("\u2068Luca\u2069"))
-        assertTrue(strings.formatArtists("The Weeknd").contains("\u2068The Weeknd\u2069"))
-        assertTrue(strings.formatInstalledVersion("2.3.11").contains("\u20682.3.11\u2069"))
+    fun rtlDynamicLatinTextUsesBidiIsolation() {
+        listOf("he", "ar").forEach { code ->
+            val strings = LevyraStrings.forCode(code)
+            assertTrue(strings.formatGreeting("Luca 96", 9).contains("\u2068Luca 96\u2069"))
+            assertTrue(strings.formatArtists("The Weeknd").contains("\u2068The Weeknd\u2069"))
+            assertTrue(strings.formatInstalledVersion("2.3.11").contains("\u20682.3.11\u2069"))
+            assertTrue(strings.formatLatestVersionReady("2.3.11").contains("\u2068LEVYRA 2.3.11\u2069"))
+        }
     }
 
     @Test
