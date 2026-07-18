@@ -38,6 +38,14 @@ object LevyraContentLocales {
             "tr" -> listOf("Tarkan", "Sefo", "Mabel Matiz", "Simge", "Türkçe hitler", "Türkçe rap", "gece sürüşü", "spor bas")
             "ar" -> listOf("عمرو دياب", "نانسي عجرم", "ويجز", "مروان بابلو", "أغاني عربية 2026", "راب عربي", "موسيقى قيادة ليلية", "موسيقى حماس للتمرين")
             "zh" -> listOf("周杰伦", "邓紫棋", "薛之谦", "林俊杰", "2026 华语热歌", "中文说唱", "夜间驾驶歌单", "健身音乐")
+            "ja" -> listOf("YOASOBI", "Ado", "Official髭男dism", "Mrs. GREEN APPLE", "2026 邦楽ヒット", "日本語ラップ", "夜のドライブ", "ワークアウト音楽")
+            "ko" -> listOf("BTS", "BLACKPINK", "NewJeans", "IVE", "2026 국내 인기곡", "한국 힙합", "야간 드라이브", "운동 음악")
+            "hi" -> listOf("Arijit Singh", "Shreya Ghoshal", "Diljit Dosanjh", "A.R. Rahman", "2026 भारतीय हिट", "हिंदी रैप", "नाइट ड्राइव", "वर्कआउट संगीत")
+            "id" -> listOf("Tulus", "Mahalini", "Hindia", "NIKI", "lagu Indonesia 2026", "rap Indonesia", "musik berkendara malam", "musik olahraga")
+            "vi" -> listOf("Sơn Tùng M-TP", "Mỹ Tâm", "Đen Vâu", "HIEUTHUHAI", "nhạc Việt 2026", "rap Việt", "nhạc lái xe ban đêm", "nhạc tập luyện")
+            "th" -> listOf("พีพี กฤษฏ์", "บิวกิ้น", "Tilly Birds", "Three Man Down", "เพลงไทย 2026", "แรปไทย", "เพลงขับรถกลางคืน", "เพลงออกกำลังกาย")
+            "fil" -> listOf("Cup of Joe", "BINI", "SB19", "Ben&Ben", "OPM hits 2026", "Pinoy rap", "kantang pang-night drive", "musikang pang-workout")
+            "he" -> listOf("עומר אדם", "נועה קירל", "אושר כהן", "עדן חסון", "להיטים ישראליים 2026", "היפ הופ ישראלי", "מוזיקה לנסיעה בלילה", "מוזיקה לאימון")
             else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "top hits", "rap hits", "night drive", "gym bass")
         }
     }
@@ -61,6 +69,14 @@ object LevyraContentLocales {
             "tr" -> listOf("Tarkan", "Sefo", "Mabel Matiz", "Simge", "Ezhel", "UZI", "Semicenk", "Edis", "Hadise", "Güneş")
             "ar" -> listOf("عمرو دياب", "نانسي عجرم", "ويجز", "مروان بابلو", "شيرين", "تامر حسني", "إليسا", "بلقيس", "Saint Levant", "DYSTINCT")
             "zh" -> listOf("周杰伦", "邓紫棋", "薛之谦", "林俊杰", "陈奕迅", "王菲", "毛不易", "张杰", "蔡依林", "告五人")
+            "ja" -> listOf("YOASOBI", "Ado", "Official髭男dism", "Mrs. GREEN APPLE", "Vaundy", "米津玄師", "King Gnu", "藤井風", "back number", "あいみょん")
+            "ko" -> listOf("BTS", "BLACKPINK", "NewJeans", "IVE", "aespa", "Stray Kids", "SEVENTEEN", "IU", "LE SSERAFIM", "(G)I-DLE")
+            "hi" -> listOf("Arijit Singh", "Shreya Ghoshal", "A.R. Rahman", "Pritam", "Diljit Dosanjh", "Badshah", "Neha Kakkar", "Jubin Nautiyal", "Vishal-Shekhar", "AP Dhillon")
+            "id" -> listOf("Tulus", "Mahalini", "Hindia", "NIKI", "Tiara Andini", "Bernadya", "Juicy Luicy", "Denny Caknan", "Pamungkas", "Lyodra")
+            "vi" -> listOf("Sơn Tùng M-TP", "Mỹ Tâm", "Đen Vâu", "HIEUTHUHAI", "Hoàng Thùy Linh", "MONO", "Bích Phương", "tlinh", "Vũ.", "SOOBIN")
+            "th" -> listOf("พีพี กฤษฏ์", "บิวกิ้น", "Tilly Birds", "Three Man Down", "4EVE", "MILLI", "Jeff Satur", "NONT TANONT", "Ink Waruntorn", "Slot Machine")
+            "fil" -> listOf("Cup of Joe", "BINI", "SB19", "Ben&Ben", "Arthur Nery", "Dionela", "TJ Monterde", "December Avenue", "fitterkarma", "Earl Agustin")
+            "he" -> listOf("עומר אדם", "נועה קירל", "אושר כהן", "עדן חסון", "נס וסטילה", "טונה", "רביב כנר", "ישי ריבו", "אנה זק", "פאר טסי")
             else -> listOf("The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "SZA", "Travis Scott", "Dua Lipa", "Post Malone", "Ariana Grande", "Kendrick Lamar")
         }
     }
@@ -95,6 +111,14 @@ object LevyraContentLocales {
             "tr" -> "Sanatçıları keşfet"
             "ar" -> "استكشف الفنانين"
             "zh" -> "探索歌手"
+            "ja" -> "アーティストを探す"
+            "ko" -> "아티스트 둘러보기"
+            "hi" -> "कलाकार खोजें"
+            "id" -> "Jelajahi artis"
+            "vi" -> "Khám phá nghệ sĩ"
+            "th" -> "สำรวจศิลปิน"
+            "fil" -> "Tuklasin ang mga artist"
+            "he" -> "גילוי אמנים"
             else -> "Explore artists"
         }
     }
@@ -118,6 +142,14 @@ object LevyraContentLocales {
             "tr" -> "Öneriler"
             "ar" -> "اقتراحات"
             "zh" -> "推荐"
+            "ja" -> "候補"
+            "ko" -> "추천"
+            "hi" -> "सुझाव"
+            "id" -> "Saran"
+            "vi" -> "Gợi ý"
+            "th" -> "คำแนะนำ"
+            "fil" -> "Mga mungkahi"
+            "he" -> "הצעות"
             else -> "Suggestions"
         }
     }
@@ -478,6 +510,126 @@ object LevyraContentLocales {
                 pop = "2026 华语流行",
                 party = "2026 华语派对舞曲",
                 sad = "华语伤感歌曲"
+            )
+            "ja" -> compact(
+                languageCode = "ja",
+                hl = "ja",
+                gl = "JP",
+                chartRegionId = "jp",
+                chartCountry = "jp",
+                quick = "クイックピック",
+                local = "あなたのオービットにある日本の音楽",
+                energy = "即効エネルギー",
+                localMusic = "2026 邦楽ヒット",
+                rap = "2026 日本語ラップ",
+                pop = "2026 J-POP ヒット",
+                party = "2026 日本のパーティーソング",
+                sad = "日本の切ない曲"
+            )
+            "ko" -> compact(
+                languageCode = "ko",
+                hl = "ko",
+                gl = "KR",
+                chartRegionId = "kr",
+                chartCountry = "kr",
+                quick = "빠른 추천",
+                local = "나의 오빗 속 한국 음악",
+                energy = "즉시 충전",
+                localMusic = "2026 국내 인기곡",
+                rap = "2026 한국 힙합",
+                pop = "2026 K-POP 인기곡",
+                party = "2026 한국 파티 음악",
+                sad = "한국 발라드 슬픈 노래"
+            )
+            "hi" -> compact(
+                languageCode = "hi",
+                hl = "hi",
+                gl = "IN",
+                chartRegionId = "in",
+                chartCountry = "in",
+                quick = "त्वरित सुझाव",
+                local = "आपकी ऑर्बिट में भारत",
+                energy = "तुरंत ऊर्जा",
+                localMusic = "2026 भारतीय हिट गाने",
+                rap = "2026 हिंदी रैप",
+                pop = "2026 हिंदी पॉप",
+                party = "2026 भारतीय पार्टी गाने",
+                sad = "दुख भरे हिंदी गाने"
+            )
+            "id" -> compact(
+                languageCode = "id",
+                hl = "id",
+                gl = "ID",
+                chartRegionId = "id",
+                chartCountry = "id",
+                quick = "Pilihan cepat",
+                local = "Indonesia di orbit Anda",
+                energy = "Energi instan",
+                localMusic = "lagu Indonesia terbaru 2026",
+                rap = "rap Indonesia 2026",
+                pop = "pop Indonesia 2026",
+                party = "lagu pesta Indonesia 2026",
+                sad = "lagu Indonesia sedih"
+            )
+            "vi" -> compact(
+                languageCode = "vi",
+                hl = "vi",
+                gl = "VN",
+                chartRegionId = "vn",
+                chartCountry = "vn",
+                quick = "Gợi ý nhanh",
+                local = "Việt Nam trong quỹ đạo của bạn",
+                energy = "Năng lượng tức thì",
+                localMusic = "nhạc Việt mới 2026",
+                rap = "rap Việt 2026",
+                pop = "V-pop 2026",
+                party = "nhạc tiệc Việt Nam 2026",
+                sad = "nhạc Việt buồn"
+            )
+            "th" -> compact(
+                languageCode = "th",
+                hl = "th",
+                gl = "TH",
+                chartRegionId = "th",
+                chartCountry = "th",
+                quick = "ตัวเลือกด่วน",
+                local = "ประเทศไทยในวงโคจรของคุณ",
+                energy = "พลังงานทันที",
+                localMusic = "เพลงไทยใหม่ 2026",
+                rap = "แรปไทย 2026",
+                pop = "เพลงป๊อปไทย 2026",
+                party = "เพลงปาร์ตี้ไทย 2026",
+                sad = "เพลงไทยเศร้า"
+            )
+            "fil" -> compact(
+                languageCode = "fil",
+                hl = "fil",
+                gl = "PH",
+                chartRegionId = "ph",
+                chartCountry = "ph",
+                quick = "Mabilis na pili",
+                local = "Pilipinas sa orbit mo",
+                energy = "Agarang enerhiya",
+                localMusic = "mga bagong OPM hit 2026",
+                rap = "Pinoy rap 2026",
+                pop = "P-pop at OPM pop 2026",
+                party = "mga kantang Pinoy para sa party 2026",
+                sad = "mga malungkot na kantang OPM"
+            )
+            "he" -> compact(
+                languageCode = "he",
+                hl = "he",
+                gl = "IL",
+                chartRegionId = "il",
+                chartCountry = "il",
+                quick = "בחירות מהירות",
+                local = "ישראל במסלול שלך",
+                energy = "אנרגיה מיידית",
+                localMusic = "להיטים ישראליים חדשים 2026",
+                rap = "ראפ והיפ הופ ישראלי 2026",
+                pop = "פופ ישראלי 2026",
+                party = "מוזיקה ישראלית למסיבה 2026",
+                sad = "שירים ישראליים עצובים"
             )
             else -> locale(
                 languageCode = "en",

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Pemutar mini, favorit cepat, Flow harian, offline, dan lirik</string>
+    <string name="widget_idle_subtitle">Ketuk untuk mendengarkan</string>
+    <string name="widget_toggle">Putar/Jeda</string>
+    <string name="widget_next">Berikutnya</string>
+    <string name="widget_previous">Sebelumnya</string>
+    <string name="widget_favorites">Favorit</string>
+    <string name="widget_flow">Flow harian</string>
+    <string name="widget_offline">Mix offline</string>
+    <string name="widget_lyrics">Lirik</string>
+    <string name="radar_channel_name">Radar Rilisan</string>
+    <string name="radar_channel_description">Rilisan baru dari artis yang Anda ikuti</string>
+    <string name="radar_new_release_title">Rilisan baru dari %1$s</string>
+</resources>

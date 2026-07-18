@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">미니 플레이어, 빠른 즐겨찾기, 데일리 Flow, 오프라인 및 가사</string>
+    <string name="widget_idle_subtitle">탭하여 듣기</string>
+    <string name="widget_toggle">재생/일시 중지</string>
+    <string name="widget_next">다음</string>
+    <string name="widget_previous">이전</string>
+    <string name="widget_favorites">즐겨찾기</string>
+    <string name="widget_flow">데일리 Flow</string>
+    <string name="widget_offline">오프라인 믹스</string>
+    <string name="widget_lyrics">가사</string>
+    <string name="radar_channel_name">릴리스 레이더</string>
+    <string name="radar_channel_description">팔로우한 아티스트의 신곡</string>
+    <string name="radar_new_release_title">%1$s의 신곡</string>
+</resources>
