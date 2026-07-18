@@ -595,6 +595,32 @@ class YoutubeMusicWatchParserTest {
     }
 
     @Test
+    fun albumTrackArtistRejectsLocalizedEntityTypeLabels() {
+        val repository = YoutubeMusicRepository()
+        val labels = listOf(
+            "فنان",
+            "歌手",
+            "アーティスト",
+            "아티스트",
+            "कलाकार",
+            "artis",
+            "nghệ sĩ",
+            "ศิลปิน",
+            "mang-aawit",
+            "אמן"
+        )
+
+        labels.forEach { label ->
+            val artist = repository.selectAlbumTrackArtist(
+                tokens = listOf(label, "4:44"),
+                fallbackArtist = "Fallback Artist"
+            )
+
+            assertEquals(label, "Fallback Artist", artist)
+        }
+    }
+
+    @Test
     fun albumTrackArtistKeepsRealArtistBeforePlayCount() {
         val repository = YoutubeMusicRepository()
 
