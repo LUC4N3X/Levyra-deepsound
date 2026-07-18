@@ -25,43 +25,28 @@
 
 ## 🎶 About Levyra
 
-<table width="100%">
-<tr>
-<td width="62%" valign="top">
-
-✦ **Levyra** isn't another website wearing an app icon. It's a native Android music client, written from the ground up in 100% Kotlin, for people who are tired of renting their own music library. It streams instantly, plays flawlessly in the background, and when you hit download it gives you something almost no app dares to anymore: a **real M4A file**, tagged and covered, sitting in `Music/Levyra` where it belongs. Yours. In any player. Forever.
-
-Every screen, every animation, every retry-on-bad-wifi was built by one developer who actually uses this app every day — and it shows.
-
-> **🎶 Press play once. You'll get it.**
-
-</td>
-<td width="38%" valign="top">
-
-🛡️ **Privacy by Default**
-Listening stats live in a local database on your phone. No trackers, no telemetry, no analytics SDKs.
-
----
-
-📥 **Real Files, Really Yours**
-Downloads are exported as tagged M4A files with embedded artwork — not cache blobs locked inside the app.
-
----
-
-⚡ **Native Audio Engine**
-AndroidX Media3/ExoPlayer foreground service. Screen off, phone in pocket, music never stops.
-
-</td>
-</tr>
-</table>
-
----
-
-## 📸 A Look Inside
-
 <div align="center">
 
-<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI Preview" width="88%" />
+✦ **Levyra** isn't another website wearing an app icon. It's a native Android music client,<br>
+written from the ground up in 100% Kotlin, for people who are tired of renting their own music library.
+
+It streams instantly, plays flawlessly in the background, and when you hit download it gives you<br>
+something almost no app dares to anymore: a **real M4A file**, tagged and covered, sitting in<br>
+`Music/Levyra` where it belongs. **Yours. In any player. Forever.**
+
+<sub>*Every screen, every animation, every retry-on-bad-wifi was built by one developer who actually uses this app every day — and it shows.*</sub>
+
+<br>
+
+🛡️ &nbsp;**Privacy by Default** &nbsp;—&nbsp; <sub>Listening stats stay in a local database. No trackers, no telemetry, no analytics.</sub>
+
+📥 &nbsp;**Real Files, Really Yours** &nbsp;—&nbsp; <sub>Tagged M4A exports with embedded artwork, not cache blobs locked inside the app.</sub>
+
+⚡ &nbsp;**Native Audio Engine** &nbsp;—&nbsp; <sub>Media3 / ExoPlayer foreground service. Screen off, pocket, music never stops.</sub>
+
+<br>
+
+`100% Kotlin` &nbsp;·&nbsp; `Jetpack Compose` &nbsp;·&nbsp; `Material 3`
 
 </div>
 
@@ -135,6 +120,22 @@ AndroidX Media3/ExoPlayer foreground service. Screen off, phone in pocket, music
 </td>
 </tr>
 </table>
+
+---
+
+## 📸 A Look Inside
+
+<div align="center">
+
+<br>
+
+<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI Preview" width="89%" />
+
+<sub>*Home · Top 50 charts · L'Abisso genre zones · Artist pages — dark-first, OLED-true.*</sub>
+
+<br>
+
+</div>
 
 ---
 
