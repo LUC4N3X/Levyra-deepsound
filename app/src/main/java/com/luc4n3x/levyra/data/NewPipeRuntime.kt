@@ -91,7 +91,7 @@ private class OkHttpNewPipeDownloader : Downloader() {
     }
 
     private fun toExtractorResponse(response: okhttp3.Response): Response {
-        val responseBytes = response.body?.bytes() ?: ByteArray(0)
+        val responseBytes = response.body.bytes()
         val responseText = responseBytes.toString(StandardCharsets.UTF_8)
         if (response.code == 429) {
             throw IOException("YouTube ha limitato temporaneamente le richieste")

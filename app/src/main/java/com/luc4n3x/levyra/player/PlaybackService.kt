@@ -55,7 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-@OptIn(UnstableApi::class)
+@UnstableApi
 class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private lateinit var autoLibrary: AndroidAutoLibrary
@@ -104,11 +104,14 @@ class PlaybackService : MediaLibraryService() {
         fun consumePreparedQueueNext(trackId: String) = Unit
 
         val normalizationProcessor = NormalizationAudioProcessor()
+        val spatialAudioProcessor = StereoSpatialAudioProcessor()
         val visualizerProcessor = VisualizerAudioProcessor()
         val premiumAudioEffects = PremiumAudioEffects()
 
         fun applyPremiumAudioSettings(settings: LevyraAudioSettings) {
-            premiumAudioEffects.apply(settings)
+            val normalized = settings.normalized()
+            spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
+            premiumAudioEffects.apply(normalized)
         }
     }
 
@@ -166,8 +169,8 @@ class PlaybackService : MediaLibraryService() {
             ): AudioSink {
                 return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(enableFloatOutput)
-                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                    .setAudioProcessors(arrayOf(normalizationProcessor, visualizerProcessor))
+                    .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(normalizationProcessor, spatialAudioProcessor, visualizerProcessor))
                     .build()
             }
         }
@@ -491,7 +494,7 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
             servicePrefetchJob?.cancel()
         }
     }

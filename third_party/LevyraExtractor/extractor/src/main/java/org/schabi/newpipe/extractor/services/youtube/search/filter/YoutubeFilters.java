@@ -13,12 +13,12 @@ import org.schabi.newpipe.extractor.services.youtube.search.filter.protobuf.Type
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 
 public final class YoutubeFilters extends SearchFiltersBase {
-    public static final String UTF_8 = "UTF-8";
 
     /**
      * 'ALL' this is the default search content filter.
@@ -111,7 +111,7 @@ public final class YoutubeFilters extends SearchFiltersBase {
                             (MusicYoutubeContentFilterItem) filterItem;
                     try {
                         return realFilterItem.searchUrl
-                                + URLEncoder.encode(searchString, UTF_8);
+                                + URLEncoder.encode(searchString, StandardCharsets.UTF_8.name());
                     } catch (final UnsupportedEncodingException e) {
                         throw new RuntimeException(e);
                     }
@@ -121,7 +121,7 @@ public final class YoutubeFilters extends SearchFiltersBase {
                     try {
                         realFilterItem.setParams(sp);
                         return realFilterItem.searchUrl
-                                + URLEncoder.encode(searchString, UTF_8)
+                                + URLEncoder.encode(searchString, StandardCharsets.UTF_8.name())
                                 + "&sp=" + sp;
                     } catch (final UnsupportedEncodingException e) {
                         throw new RuntimeException(e);

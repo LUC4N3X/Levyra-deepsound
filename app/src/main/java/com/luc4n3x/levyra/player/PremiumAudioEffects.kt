@@ -3,7 +3,6 @@ package com.luc4n3x.levyra.player
 import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
-import android.media.audiofx.Virtualizer
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import kotlin.math.roundToInt
@@ -13,7 +12,6 @@ class PremiumAudioEffects {
     private var settings: LevyraAudioSettings = LevyraAudioSettings()
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
-    private var virtualizer: Virtualizer? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
 
     fun bind(sessionId: Int) {
@@ -25,7 +23,6 @@ class PremiumAudioEffects {
         audioSessionId = sessionId
         equalizer = runCatching { Equalizer(0, sessionId) }.getOrNull()
         bassBoost = runCatching { BassBoost(0, sessionId) }.getOrNull()
-        virtualizer = runCatching { Virtualizer(0, sessionId) }.getOrNull()
         loudnessEnhancer = runCatching { LoudnessEnhancer(sessionId) }.getOrNull()
         apply(settings)
     }
@@ -34,7 +31,6 @@ class PremiumAudioEffects {
         settings = next.normalized()
         applyEqualizer(settings)
         applyBassBoost(settings)
-        applyVirtualizer(settings)
         applyLoudness(settings)
     }
 
@@ -75,14 +71,6 @@ class PremiumAudioEffects {
         }
     }
 
-    private fun applyVirtualizer(current: LevyraAudioSettings) {
-        val effect = virtualizer ?: return
-        runCatching {
-            effect.enabled = current.equalizerEnabled && current.virtualizer > 0
-            if (effect.enabled) effect.setStrength((current.virtualizer * 10).coerceIn(0, 1000).toShort())
-        }
-    }
-
     private fun applyLoudness(current: LevyraAudioSettings) {
         val effect = loudnessEnhancer ?: return
         runCatching {
@@ -94,11 +82,9 @@ class PremiumAudioEffects {
     private fun releaseEffects() {
         runCatching { equalizer?.release() }
         runCatching { bassBoost?.release() }
-        runCatching { virtualizer?.release() }
         runCatching { loudnessEnhancer?.release() }
         equalizer = null
         bassBoost = null
-        virtualizer = null
         loudnessEnhancer = null
     }
 }

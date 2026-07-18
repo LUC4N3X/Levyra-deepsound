@@ -16,11 +16,11 @@ public final class PeertubeHelpers {
         return sepiaFilter;
     }
 
-    public static Optional<FilterItem> getSpecificFilter(final List<FilterItem> selectedFilters, final Class clazz) {
-        final Optional<FilterItem> sepiaFilter = selectedFilters.stream()
-                .filter(filterItem -> filterItem.getClass().isInstance(clazz))
+    public static Optional<FilterItem> getSpecificFilter(
+            final List<FilterItem> selectedFilters,
+            final Class<? extends FilterItem> filterClass) {
+        return selectedFilters.stream()
+                .filter(filterClass::isInstance)
                 .findFirst();
-
-        return sepiaFilter;
     }
 }
