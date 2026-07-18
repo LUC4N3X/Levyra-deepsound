@@ -14,6 +14,7 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -29,12 +30,27 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
     private var cachedToken: String? = null
     private var tokenExpiresAt: Long = 0L
 
-    override suspend fun find(identity: MotionTrackIdentity): List<MotionArtworkCandidate> {
-        val token = developerToken() ?: return emptyList()
-        val storefront = Locale.getDefault().country.lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "us"
-        val songCandidates = search(identity, storefront, token, "songs")
-        if (songCandidates.isNotEmpty()) return songCandidates
-        return search(identity, storefront, token, "albums")
+    override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
+        return try {
+            val token = developerToken()
+            val storefront = Locale.getDefault().country.lowercase(Locale.ROOT).takeIf { it.length == 2 } ?: "us"
+            val songCandidates = search(identity, storefront, token, "songs")
+            if (songCandidates.isNotEmpty()) {
+                MotionArtworkProviderResult.Found(songCandidates)
+            } else {
+                val albumCandidates = search(identity, storefront, token, "albums")
+                if (albumCandidates.isNotEmpty()) {
+                    MotionArtworkProviderResult.Found(albumCandidates)
+                } else {
+                    MotionArtworkProviderResult.NoMatch
+                }
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            Timber.d(error, "Apple motion provider failed")
+            MotionArtworkProviderResult.Failed(error)
+        }
     }
 
     private suspend fun search(
@@ -55,7 +71,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             .addQueryParameter("extend", "editorialVideo")
             .addQueryParameter("include", "albums")
             .build()
-        val root = requestJson(url.toString(), token) ?: return emptyList()
+        val root = requestJson(url.toString(), token)
         val data = root.optJSONObject("results")
             ?.optJSONObject(type)
             ?.optJSONArray("data")
@@ -101,10 +117,9 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 null
             } ?: continue
 
-            val scope = MotionArtworkScope.ALBUM
             output += MotionArtworkCandidate(
                 provider = id,
-                scope = scope,
+                scope = MotionArtworkScope.ALBUM,
                 identity = MotionTrackIdentity(
                     title = identity.title,
                     artists = splitArtists(if (resolved.albumArtist.isNotBlank()) resolved.albumArtist else result.artist),
@@ -134,7 +149,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val url = "$AMP_BASE_URL/v1/catalog/$storefront/albums/$albumId".toHttpUrl().newBuilder()
             .addQueryParameter("extend", "editorialVideo")
             .build()
-        val root = requestJson(url.toString(), token) ?: return null
+        val root = requestJson(url.toString(), token)
         val attributes = root.optJSONArray("data")?.optJSONObject(0)?.optJSONObject("attributes") ?: return null
         val albumName = attributes.optString("name").trim()
         if (isUnsafeResult(albumName, albumName)) return null
@@ -148,18 +163,26 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         )
     }
 
-    private suspend fun developerToken(): String? = tokenMutex.withLock {
+    private suspend fun developerToken(): String = tokenMutex.withLock {
         val now = System.currentTimeMillis()
         cachedToken?.takeIf { tokenExpiresAt > now + TOKEN_EXPIRY_MARGIN_MS }?.let { return@withLock it }
-        val html = requestText(APPLE_BROWSE_URL) ?: return@withLock null
+        val html = requestText(APPLE_BROWSE_URL)
         val scripts = SCRIPT_REGEX.findAll(html)
             .map { it.groupValues[1] }
             .map { path -> if (path.startsWith("http")) path else "https://music.apple.com${if (path.startsWith('/')) path else "/$path"}" }
             .distinct()
             .take(5)
             .toList()
+        var lastFailure: Throwable? = null
         for (script in scripts) {
-            val source = requestText(script) ?: continue
+            val source = try {
+                requestText(script)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                lastFailure = error
+                continue
+            }
             for (match in JWT_REGEX.findAll(source)) {
                 val token = match.value
                 val expiration = jwtExpiration(token) ?: continue
@@ -170,10 +193,10 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
                 }
             }
         }
-        null
+        throw MotionProviderException("Apple Music developer token unavailable", lastFailure)
     }
 
-    private suspend fun requestJson(url: String, token: String): JSONObject? {
+    private suspend fun requestJson(url: String, token: String): JSONObject {
         val request = Request.Builder()
             .url(url)
             .header("Authorization", "Bearer $token")
@@ -181,10 +204,12 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
             .header("Referer", "https://music.apple.com/")
             .header("User-Agent", USER_AGENT)
             .build()
-        return executeText(request)?.let { runCatching { JSONObject(it) }.getOrNull() }
+        val content = executeText(request)
+        return runCatching { JSONObject(content) }
+            .getOrElse { throw MotionProviderException("Invalid Apple Music response", it) }
     }
 
-    private suspend fun requestText(url: String): String? {
+    private suspend fun requestText(url: String): String {
         val request = Request.Builder()
             .url(url)
             .header("User-Agent", USER_AGENT)
@@ -192,17 +217,21 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         return executeText(request)
     }
 
-    private suspend fun executeText(request: Request): String? = withContext(Dispatchers.IO) {
+    private suspend fun executeText(request: Request): String = withContext(Dispatchers.IO) {
         try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext null
+                if (!response.isSuccessful) {
+                    throw MotionProviderException("Apple Music HTTP ${response.code}")
+                }
                 response.body.string().takeIf { it.isNotBlank() }
+                    ?: throw MotionProviderException("Empty Apple Music response")
             }
         } catch (error: CancellationException) {
             throw error
+        } catch (error: MotionProviderException) {
+            throw error
         } catch (error: Exception) {
-            Timber.d(error, "Apple motion request failed")
-            null
+            throw MotionProviderException("Apple motion request failed", error)
         }
     }
 
@@ -248,8 +277,9 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
 
     private fun artistMatches(requested: List<String>, returned: List<String>): Boolean {
         if (requested.isEmpty() || returned.isEmpty()) return false
-        val normalizedReturned = returned.map(::normalizeMotionText).toSet()
-        return normalizeMotionText(requested.first()) in normalizedReturned
+        val normalizedReturned = artistAliases(returned)
+        return combinedArtistSignature(requested) == combinedArtistSignature(returned) ||
+            normalizeMotionText(requested.first()) in normalizedReturned
     }
 
     private fun similarity(first: String, second: String): Double {
@@ -287,5 +317,7 @@ class AppleMotionArtworkProvider(context: Context) : MotionArtworkProvider {
         val BLACKLIST = setOf("playlist", "set list", "essentials", "dj mix", "apple music", "todays hits", "session")
     }
 }
+
+private class MotionProviderException(message: String, cause: Throwable? = null) : IOException(message, cause)
 
 private fun JSONArray.optJSONObject(index: Int): JSONObject? = if (index in 0 until length()) opt(index) as? JSONObject else null
