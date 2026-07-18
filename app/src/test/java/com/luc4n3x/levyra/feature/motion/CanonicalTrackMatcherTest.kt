@@ -50,6 +50,44 @@ class CanonicalTrackMatcherTest {
     }
 
     @Test
+    fun groupedArtistNameWithCommasAndAmpersandIsAccepted() {
+        val reference = MotionTrackIdentity(
+            title = "September",
+            artists = listOf("Earth", "Wind", "Fire"),
+            album = "The Best of Earth, Wind & Fire, Vol. 1",
+            durationMs = 215_000L,
+            isrc = "",
+            upc = "",
+            year = "1978",
+            trackId = "track",
+            albumId = "album"
+        )
+        val candidate = MotionArtworkCandidate(
+            provider = "tidal-video-cover",
+            scope = MotionArtworkScope.TRACK,
+            identity = reference.copy(
+                artists = listOf("Earth, Wind & Fire"),
+                trackId = "tidal-track"
+            ),
+            url = "https://resources.tidal.com/videos/aa/bb/cc/dd/ee/1280x1280.mp4",
+            mimeType = "video/mp4",
+            expiresAtMs = Long.MAX_VALUE
+        )
+
+        assertTrue(CanonicalTrackMatcher.match(reference, candidate).accepted)
+    }
+
+    @Test
+    fun tidalArtistMatchingAcceptsUnsplitGroupNames() {
+        assertTrue(
+            tidalArtistsCompatible(
+                requested = listOf("Earth", "Wind", "Fire"),
+                returned = listOf("Earth, Wind & Fire")
+            )
+        )
+    }
+
+    @Test
     fun ordinaryWordContainingCoverIsNotRejected() {
         val reference = identity("Discover", "Artist", "Discover")
         val candidate = albumCandidate("Discover", "Artist", "Discover")
