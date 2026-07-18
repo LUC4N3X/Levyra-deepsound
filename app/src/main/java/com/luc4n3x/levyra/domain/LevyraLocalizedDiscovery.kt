@@ -40,6 +40,14 @@ object LevyraLocalizedDiscovery {
             "uk" -> listOf("українські хіти 2026", "український реп новий", "музика для тренувань", "night drive playlist", "українська поп музика")
             "ar" -> listOf("أغاني عربية جديدة 2026", "راب عربي جديد", "موسيقى للتمرين", "قائمة قيادة ليلية عربية", "بوب عربي جديد")
             "zh" -> listOf("2026 华语新歌", "中文说唱新歌", "健身音乐", "夜间驾驶歌单", "华语流行新歌")
+            "ja" -> listOf("2026 邦楽新曲", "日本語ラップ新曲", "ワークアウト音楽", "夜のドライブプレイリスト", "最新 J-POP")
+            "ko" -> listOf("2026 국내 신곡", "한국 힙합 신곡", "운동 음악", "야간 드라이브 플레이리스트", "최신 K-POP")
+            "hi" -> listOf("2026 नए हिंदी गाने", "नया हिंदी रैप", "वर्कआउट संगीत", "नाइट ड्राइव प्लेलिस्ट", "नया हिंदी पॉप")
+            "id" -> listOf("lagu Indonesia terbaru 2026", "rap Indonesia terbaru", "musik olahraga", "playlist berkendara malam", "pop Indonesia terbaru")
+            "vi" -> listOf("nhạc Việt mới 2026", "rap Việt mới", "nhạc tập luyện", "playlist lái xe ban đêm", "V-pop mới")
+            "th" -> listOf("เพลงไทยใหม่ 2026", "แรปไทยใหม่", "เพลงออกกำลังกาย", "เพลย์ลิสต์ขับรถกลางคืน", "เพลงป๊อปไทยใหม่")
+            "fil" -> listOf("bagong OPM 2026", "bagong Pinoy rap", "musikang pang-workout", "playlist para sa night drive", "bagong P-pop")
+            "he" -> listOf("שירים ישראליים חדשים 2026", "ראפ ישראלי חדש", "מוזיקה לאימון", "פלייליסט לנסיעה בלילה", "פופ ישראלי חדש")
             else -> listOf("new music 2026", "top hits 2026", "gym music", "night drive playlist", "fresh pop hits")
         }.let { list ->
             if (query.isBlank()) list else list.map { item -> if (item.lowercase().contains(query)) item else "$query $item" }

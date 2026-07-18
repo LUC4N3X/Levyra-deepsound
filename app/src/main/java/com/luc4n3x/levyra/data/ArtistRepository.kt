@@ -715,7 +715,17 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             normalized.contains("kann sich beziehen") ||
             normalized.contains("puede referirse") ||
             normalized.contains("قد يشير إلى") ||
-            normalized.contains("可能指")
+            normalized.contains("可能指") ||
+            normalized.contains("曖昧さ回避") ||
+            normalized.contains("동음이의어") ||
+            normalized.contains("बहुविकल्पी") ||
+            normalized.contains("dapat merujuk") ||
+            normalized.contains("có thể đề cập") ||
+            normalized.contains("อาจหมายถึง") ||
+            normalized.contains("maaaring tumukoy sa") ||
+            normalized.contains("עשוי להתייחס") ||
+            normalized.contains("עשויה להתייחס") ||
+            normalized.contains("פירושונים")
     }
 
     private fun wikipediaLanguage(languageCode: String): String {
@@ -737,6 +747,14 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             "fr" -> "fr"
             "es" -> "es"
             "it" -> "it"
+            "ja" -> "ja"
+            "ko" -> "ko"
+            "hi" -> "hi"
+            "id" -> "id"
+            "vi" -> "vi"
+            "th" -> "th"
+            "fil" -> "tl"
+            "he" -> "he"
             else -> "en"
         }
     }

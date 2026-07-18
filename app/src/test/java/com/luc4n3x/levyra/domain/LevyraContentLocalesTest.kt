@@ -27,6 +27,36 @@ class LevyraContentLocalesTest {
             }
     }
 
+
+    @Test
+    fun everySupportedLanguageResolvesToAnExplicitChartRegion() {
+        val regionIds = ChartsCatalog.regions.map { it.id }.toSet()
+        LevyraLanguageCatalog.languages.forEach { language ->
+            val locale = LevyraContentLocales.forLanguage(language.code)
+            assertTrue("Missing chart region for ${language.code}: ${locale.chartRegionId}", locale.chartRegionId in regionIds)
+            assertEquals(locale.chartRegionId, ChartsCatalog.defaultRegionForLanguage(language.code).id)
+        }
+    }
+
+    @Test
+    fun majorAsianLanguagesUseLocalizedDiscoveryData() {
+        assertEquals("jp", LevyraContentLocales.forLanguage("ja-JP").chartRegionId)
+        assertEquals("kr", LevyraContentLocales.forLanguage("ko-KR").chartRegionId)
+        assertEquals("in", LevyraContentLocales.forLanguage("hi-IN").chartRegionId)
+        assertEquals("id", LevyraContentLocales.forLanguage("in-ID").chartRegionId)
+        assertEquals("vn", LevyraContentLocales.forLanguage("vi-VN").chartRegionId)
+        assertEquals("th", LevyraContentLocales.forLanguage("th-TH").chartRegionId)
+        assertEquals("ph", LevyraContentLocales.forLanguage("fil-PH").chartRegionId)
+        assertEquals("ph", LevyraContentLocales.forLanguage("tl-PH").chartRegionId)
+        assertEquals("il", LevyraContentLocales.forLanguage("he-IL").chartRegionId)
+        assertEquals("il", LevyraContentLocales.forLanguage("iw-IL").chartRegionId)
+        assertTrue(LevyraContentLocales.artistSuggestions("ja").contains("YOASOBI"))
+        assertTrue(LevyraContentLocales.artistSuggestions("ko").contains("BTS"))
+        assertTrue(LevyraContentLocales.artistSuggestions("vi").contains("Sơn Tùng M-TP"))
+        assertTrue(LevyraContentLocales.artistSuggestions("fil").contains("Cup of Joe"))
+        assertTrue(LevyraContentLocales.artistSuggestions("he").contains("נועה קירל"))
+    }
+
     @Test
     fun artistSuggestionMatchingUsesNormalizedLanguageAndPrimaryArtist() {
         assertTrue(LevyraContentLocales.isArtistSuggestionForLanguage("Bad Bunny feat. Feid", "es-MX"))
