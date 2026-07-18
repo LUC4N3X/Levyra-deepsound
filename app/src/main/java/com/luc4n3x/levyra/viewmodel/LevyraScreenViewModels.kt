@@ -218,7 +218,7 @@ class LevyraScreenViewModelFactory(
 }
 
 
-private const val HOME_RENDER_SETTLE_MS = 220L
+private const val HOME_RENDER_SETTLE_MS = 360L
 
 private data class HomeRenderInput(
     val state: LevyraUiState,
@@ -246,6 +246,7 @@ private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): Levyra
         homeSections = previous.homeSections,
         homeAlbums = previous.homeAlbums,
         homeArtists = previous.homeArtists,
+        homeResonanceTracks = previous.homeResonanceTracks,
         homeArtistsLoading = previous.homeArtistsLoading,
         homeAlbumsLoading = previous.homeAlbumsLoading,
         isLoadingHome = previous.isLoadingHome,
@@ -285,6 +286,7 @@ private data class HomeDerivedInput(
     val homeSections: List<HomeSection>,
     val homeAlbums: List<AlbumHit>,
     val charts: List<Track>,
+    val cachedResonanceTracks: List<Track>,
     val releaseRadar: List<ReleaseRadarEntry>,
     val similarArtists: List<ArtistHit>,
     val currentTrack: Track?
@@ -319,6 +321,7 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.homeSections === current.homeSections &&
         previous.homeAlbums === current.homeAlbums &&
         previous.charts === current.charts &&
+        previous.homeResonanceTracks === current.homeResonanceTracks &&
         previous.releaseRadar === current.releaseRadar &&
         previous.similarArtists === current.similarArtists
 }
@@ -333,6 +336,7 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         homeSections = homeSections,
         homeAlbums = homeAlbums,
         charts = charts,
+        cachedResonanceTracks = homeResonanceTracks,
         releaseRadar = releaseRadar,
         similarArtists = similarArtists,
         currentTrack = currentTrack
@@ -358,7 +362,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         hasCurrentTrack = input.currentTrack != null
     )
     return HomeDerivedState(
-        resonanceTracks = buildHomeResonanceTracks(input),
+        resonanceTracks = input.cachedResonanceTracks.ifEmpty { buildHomeResonanceTracks(input) },
         artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
         newReleases = newReleases,
         otherSections = otherSections,
@@ -385,6 +389,10 @@ private fun buildHomeResonanceTracks(input: HomeDerivedInput): List<Track> {
         )
         .take(8)
         .toList()
+}
+
+internal fun buildHomeResonanceTracks(state: LevyraUiState): List<Track> {
+    return buildHomeResonanceTracks(state.toHomeDerivedInput())
 }
 
 private fun buildHomeArtistRefreshFingerprint(input: HomeDerivedInput): String {
@@ -508,6 +516,7 @@ private data class HomeProjection(
     val favorites: List<Track>,
     val homeAlbums: List<AlbumHit>,
     val homeArtists: List<ArtistHit>,
+    val homeResonanceTracks: List<Track>,
     val homeArtistsLoading: Boolean,
     val homeAlbumsLoading: Boolean,
     val homeSections: List<HomeSection>,
@@ -541,6 +550,7 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     favorites = state.favorites,
     homeAlbums = state.homeAlbums,
     homeArtists = state.homeArtists,
+    homeResonanceTracks = state.homeResonanceTracks,
     homeArtistsLoading = state.homeArtistsLoading,
     homeAlbumsLoading = state.homeAlbumsLoading,
     homeSections = state.homeSections,
