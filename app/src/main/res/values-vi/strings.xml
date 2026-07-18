@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Trình phát mini, yêu thích nhanh, Flow hằng ngày, ngoại tuyến và lời bài hát</string>
+    <string name="widget_idle_subtitle">Chạm để nghe</string>
+    <string name="widget_toggle">Phát/Tạm dừng</string>
+    <string name="widget_next">Tiếp</string>
+    <string name="widget_previous">Trước</string>
+    <string name="widget_favorites">Yêu thích</string>
+    <string name="widget_flow">Flow hằng ngày</string>
+    <string name="widget_offline">Bản phối ngoại tuyến</string>
+    <string name="widget_lyrics">Lời bài hát</string>
+    <string name="radar_channel_name">Radar phát hành</string>
+    <string name="radar_channel_description">Bản phát hành mới từ nghệ sĩ bạn theo dõi</string>
+    <string name="radar_new_release_title">Bản phát hành mới từ %1$s</string>
+</resources>

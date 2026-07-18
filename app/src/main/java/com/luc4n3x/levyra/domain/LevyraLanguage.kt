@@ -28,14 +28,29 @@ object LevyraLanguageCatalog {
         LevyraLanguageOption("ru", "🇷🇺", "Russian", "Русский"),
         LevyraLanguageOption("tr", "🇹🇷", "Turkish", "Türkçe"),
         LevyraLanguageOption("ar", "🇸🇦", "Arabic", "العربية"),
-        LevyraLanguageOption("zh", "🇨🇳", "Chinese (Simplified)", "简体中文")
+        LevyraLanguageOption("zh", "🇨🇳", "Chinese (Simplified)", "简体中文"),
+        LevyraLanguageOption("ja", "🇯🇵", "Japanese", "日本語"),
+        LevyraLanguageOption("ko", "🇰🇷", "Korean", "한국어"),
+        LevyraLanguageOption("hi", "🇮🇳", "Hindi", "हिन्दी"),
+        LevyraLanguageOption("id", "🇮🇩", "Indonesian", "Bahasa Indonesia"),
+        LevyraLanguageOption("vi", "🇻🇳", "Vietnamese", "Tiếng Việt"),
+        LevyraLanguageOption("th", "🇹🇭", "Thai", "ไทย"),
+        LevyraLanguageOption("fil", "🇵🇭", "Filipino", "Filipino"),
+        LevyraLanguageOption("he", "🇮🇱", "Hebrew", "עברית")
     )
 
     private val supportedCodes = languages.map { it.code }.toSet()
+    private val rtlCodes = setOf("ar", "he")
 
     fun normalize(code: String): String {
         val normalized = code.trim().replace('_', '-').substringBefore('-').lowercase(Locale.ROOT)
-        return if (normalized in supportedCodes) normalized else "en"
+        val canonical = when (normalized) {
+            "in" -> "id"
+            "tl" -> "fil"
+            "iw" -> "he"
+            else -> normalized
+        }
+        return if (canonical in supportedCodes) canonical else "en"
     }
 
     fun deviceDefault(): String = normalize(Locale.getDefault().language)
@@ -44,4 +59,6 @@ object LevyraLanguageCatalog {
         val language = languages.firstOrNull { it.code == normalize(code) }
         return language?.let { "${it.flag} ${it.nativeName}" } ?: "🇬🇧 English"
     }
+
+    fun isRtl(code: String): Boolean = normalize(code) in rtlCodes
 }
