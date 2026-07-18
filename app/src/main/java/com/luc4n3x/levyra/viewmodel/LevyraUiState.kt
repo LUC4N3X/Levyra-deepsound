@@ -28,6 +28,7 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 
 enum class DetailReturnTarget {
@@ -82,6 +83,8 @@ data class LevyraUiState(
     val playlists: List<com.luc4n3x.levyra.domain.Playlist> = emptyList(),
     val openPlaylist: com.luc4n3x.levyra.domain.Playlist? = null,
     val currentTrack: Track? = null,
+    val motionArtwork: MotionArtwork? = null,
+    val motionArtworkLoading: Boolean = false,
     val lyrics: List<LyricLine> = emptyList(),
     val lyricsSections: List<LyricSection> = emptyList(),
     val activeLyric: LyricLine? = null,
