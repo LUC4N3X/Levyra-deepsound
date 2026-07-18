@@ -17,7 +17,7 @@ import android.view.TextureView
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.matchParentSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -62,7 +62,7 @@ internal fun MotionArtworkLayer(
                 artwork = artwork,
                 isPlaying = isPlaying,
                 cornerRadius = cornerRadius,
-                modifier = Modifier.matchParentSize()
+                modifier = Modifier.fillMaxSize()
             )
         }
     }
@@ -91,7 +91,10 @@ private fun rememberMotionArtworkEnvironmentAllowed(observe: Boolean): Boolean {
     DisposableEffect(context, observe) {
         if (!observe) return@DisposableEffect onDispose { }
         val mainHandler = Handler(Looper.getMainLooper())
-        val refresh = { mainHandler.post { revision++ } }
+        val refresh: () -> Unit = {
+            mainHandler.post { revision++ }
+            Unit
+        }
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 refresh()
@@ -111,9 +114,17 @@ private fun rememberMotionArtworkEnvironmentAllowed(observe: Boolean): Boolean {
         }.isSuccess
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) = refresh()
-            override fun onLost(network: Network) = refresh()
-            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) = refresh()
+            override fun onAvailable(network: Network) {
+                refresh()
+            }
+
+            override fun onLost(network: Network) {
+                refresh()
+            }
+
+            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                refresh()
+            }
         }
         val callbackRegistered = runCatching {
             connectivity?.registerDefaultNetworkCallback(callback)
