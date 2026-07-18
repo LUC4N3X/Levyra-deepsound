@@ -18,4 +18,12 @@
     <locale android:name="tr" />
     <locale android:name="ar" />
     <locale android:name="zh-Hans" />
+    <locale android:name="ja" />
+    <locale android:name="ko" />
+    <locale android:name="hi" />
+    <locale android:name="id" />
+    <locale android:name="vi" />
+    <locale android:name="th" />
+    <locale android:name="fil" />
+    <locale android:name="he" />
 </locale-config>

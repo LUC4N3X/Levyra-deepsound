@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">เครื่องเล่นขนาดเล็ก รายการโปรดด่วน Flow รายวัน ออฟไลน์ และเนื้อเพลง</string>
+    <string name="widget_idle_subtitle">แตะเพื่อฟัง</string>
+    <string name="widget_toggle">เล่น/หยุดชั่วคราว</string>
+    <string name="widget_next">ถัดไป</string>
+    <string name="widget_previous">ก่อนหน้า</string>
+    <string name="widget_favorites">รายการโปรด</string>
+    <string name="widget_flow">Flow รายวัน</string>
+    <string name="widget_offline">มิกซ์ออฟไลน์</string>
+    <string name="widget_lyrics">เนื้อเพลง</string>
+    <string name="radar_channel_name">เรดาร์ผลงานใหม่</string>
+    <string name="radar_channel_description">ผลงานใหม่จากศิลปินที่คุณติดตาม</string>
+    <string name="radar_new_release_title">ผลงานใหม่จาก %1$s</string>
+</resources>

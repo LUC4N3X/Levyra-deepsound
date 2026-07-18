@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Mini player, mabilis na paborito, daily Flow, offline, at mga liriko</string>
+    <string name="widget_idle_subtitle">I-tap para makinig</string>
+    <string name="widget_toggle">I-play/I-pause</string>
+    <string name="widget_next">Susunod</string>
+    <string name="widget_previous">Nakaraan</string>
+    <string name="widget_favorites">Mga paborito</string>
+    <string name="widget_flow">Daily Flow</string>
+    <string name="widget_offline">Offline mix</string>
+    <string name="widget_lyrics">Mga liriko</string>
+    <string name="radar_channel_name">Release Radar</string>
+    <string name="radar_channel_description">Mga bagong release mula sa mga artist na fina-follow mo</string>
+    <string name="radar_new_release_title">Bagong release mula kay %1$s</string>
+</resources>
