@@ -57,6 +57,26 @@
 </div>
  
 <br>
+
+<div align="center">
+
+### ⭐ Enjoying Levyra?
+
+**Leave a star on the repository to support the project and thank the developer.**
+
+<a href="https://github.com/LUC4N3X/Levyra-deepsound">
+  <img
+    src="https://img.shields.io/badge/STAR_LEVYRA_ON_GITHUB-0A84FF?style=for-the-badge&logo=github&logoColor=white"
+    alt="Star Levyra on GitHub"
+  />
+</a>
+
+<br><br>
+<sub>Every star helps Levyra grow and reach more listeners.</sub>
+
+</div>
+
+<br>
  
 ## ✦ What is Levyra?
  
