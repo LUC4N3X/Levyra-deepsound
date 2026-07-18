@@ -8,6 +8,27 @@ import org.junit.Test
 
 class AlbumRecommendationPolicyTest {
     @Test
+    fun localizedAlbumLabelsAreAccepted() {
+        val labels = listOf(
+            "Album",
+            "ÁLBUM",
+            "Άλμπουμ",
+            "Albüm",
+            "Альбом",
+            "ألبوم",
+            "专辑",
+            "專輯",
+            "アルバム",
+            "앨범",
+            "एल्बम",
+            "อัลบั้ม",
+            "אלבום"
+        )
+
+        labels.forEach { label -> assertTrue(label, levyraIsAlbumLabel(label)) }
+    }
+
+    @Test
     fun artistSeedRejectsDifferentArtist() {
         val seed = AlbumRecommendationSeed(
             query = "Bresh album",

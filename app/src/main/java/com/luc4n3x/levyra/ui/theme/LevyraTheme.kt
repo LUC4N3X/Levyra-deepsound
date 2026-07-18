@@ -35,9 +35,12 @@ object LevyraThemes {
     const val NEON_CYAN = "neon_cyan"
     const val PURPLE_GLASS = "purple_glass"
     const val MINIMAL_WHITE = "minimal_white"
-    const val APPLE_MUSIC = "apple_music"
+    const val LEVYRA_AURA = "levyra_aura"
+    const val APPLE_MUSIC = LEVYRA_AURA
     const val COVER_FLOW = "cover_flow"
     const val MOOD_FLOW = "mood_flow"
+
+    private const val LEGACY_APPLE_MUSIC = "apple_music"
 
     val cosmic = LevyraPalette(
         id = COSMIC,
@@ -60,10 +63,10 @@ object LevyraThemes {
         outline = Color(0x33FFFFFF)
     )
 
-    val appleMusic = cosmic.copy(
-        id = APPLE_MUSIC,
-        label = "Apple Music",
-        emoji = "🍎",
+    val levyraAura = cosmic.copy(
+        id = LEVYRA_AURA,
+        label = "Levyra Aura",
+        emoji = "✦",
         cyan = Color(0xFF0A84FF),
         blue = Color(0xFF0066FF),
         violet = Color(0xFF5E5CE6),
@@ -153,9 +156,21 @@ object LevyraThemes {
         followsMood = true
     )
 
-    val presets: List<LevyraPalette> = listOf(appleMusic, cosmic, amoled, neonCyan, purpleGlass, minimalWhite, coverFlow, moodFlow)
+    val presets: List<LevyraPalette> = listOf(
+        levyraAura,
+        cosmic,
+        amoled,
+        neonCyan,
+        purpleGlass,
+        minimalWhite,
+        coverFlow,
+        moodFlow
+    )
 
-    fun byId(id: String): LevyraPalette = presets.firstOrNull { it.id == id } ?: appleMusic
+    fun byId(id: String): LevyraPalette = when (id) {
+        LEVYRA_AURA, LEGACY_APPLE_MUSIC -> levyraAura
+        else -> presets.firstOrNull { it.id == id } ?: levyraAura
+    }
 
     fun normalize(id: String): String = byId(id).id
 }
@@ -178,12 +193,17 @@ object LevyraThemeController {
                 tinted(base, Color(moodAccentStart), Color(moodAccentEnd))
             else -> base
         }
+
         if (activePaletteState.value != palette) {
             activePaletteState.value = palette
         }
     }
 
-    private fun tinted(base: LevyraPalette, start: Color, end: Color): LevyraPalette = base.copy(
+    private fun tinted(
+        base: LevyraPalette,
+        start: Color,
+        end: Color
+    ): LevyraPalette = base.copy(
         cyan = brighten(start),
         blue = start,
         violet = brighten(end),
@@ -199,21 +219,62 @@ object LevyraThemeController {
     )
 }
 
-val LevyraActivePalette: LevyraPalette get() = activePaletteState.value
-val LevyraBlack: Color get() = activePaletteState.value.black
-val LevyraInk: Color get() = activePaletteState.value.ink
-val LevyraPanel: Color get() = activePaletteState.value.panel
-val LevyraPanelSoft: Color get() = activePaletteState.value.panelSoft
-val LevyraCyan: Color get() = activePaletteState.value.cyan
-val LevyraBlue: Color get() = activePaletteState.value.blue
-val LevyraViolet: Color get() = activePaletteState.value.violet
-val LevyraPink: Color get() = activePaletteState.value.pink
-val LevyraOrange: Color get() = activePaletteState.value.orange
-val LevyraText: Color get() = activePaletteState.value.text
-val LevyraMuted: Color get() = activePaletteState.value.muted
-val LevyraGlass: Color get() = if (activePaletteState.value.isLight) Color(0x14101322) else Color(0x0FFFFFFF)
-val LevyraGlassBorder: Color get() = if (activePaletteState.value.isLight) Color(0x26101322) else Color(0x1AFFFFFF)
-val LevyraOnAccent: Color get() = if (activePaletteState.value.isLight) Color(0xFFF8F7FF) else activePaletteState.value.black
+val LevyraActivePalette: LevyraPalette
+    get() = activePaletteState.value
+
+val LevyraBlack: Color
+    get() = activePaletteState.value.black
+
+val LevyraInk: Color
+    get() = activePaletteState.value.ink
+
+val LevyraPanel: Color
+    get() = activePaletteState.value.panel
+
+val LevyraPanelSoft: Color
+    get() = activePaletteState.value.panelSoft
+
+val LevyraCyan: Color
+    get() = activePaletteState.value.cyan
+
+val LevyraBlue: Color
+    get() = activePaletteState.value.blue
+
+val LevyraViolet: Color
+    get() = activePaletteState.value.violet
+
+val LevyraPink: Color
+    get() = activePaletteState.value.pink
+
+val LevyraOrange: Color
+    get() = activePaletteState.value.orange
+
+val LevyraText: Color
+    get() = activePaletteState.value.text
+
+val LevyraMuted: Color
+    get() = activePaletteState.value.muted
+
+val LevyraGlass: Color
+    get() = if (activePaletteState.value.isLight) {
+        Color(0x14101322)
+    } else {
+        Color(0x0FFFFFFF)
+    }
+
+val LevyraGlassBorder: Color
+    get() = if (activePaletteState.value.isLight) {
+        Color(0x26101322)
+    } else {
+        Color(0x1AFFFFFF)
+    }
+
+val LevyraOnAccent: Color
+    get() = if (activePaletteState.value.isLight) {
+        Color(0xFFF8F7FF)
+    } else {
+        activePaletteState.value.black
+    }
 
 private fun schemeFor(palette: LevyraPalette): ColorScheme {
     return if (palette.isLight) {
