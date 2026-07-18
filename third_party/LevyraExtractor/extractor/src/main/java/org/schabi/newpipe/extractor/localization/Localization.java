@@ -77,7 +77,7 @@ public class Localization implements Serializable {
     }
 
     public Locale asLocale() {
-        return new Locale(getLanguageCode(), getCountryCode());
+        return Locale.forLanguageTag(getLocalizationCode());
     }
 
     public static Localization fromLocale(@Nonnull final Locale locale) {
@@ -131,7 +131,7 @@ public class Localization implements Serializable {
         final String[] languages = Locale.getISOLanguages();
         final Map<String, Locale> localeMap = new HashMap<>(languages.length);
         for (final String language : languages) {
-            final Locale locale = new Locale(language);
+            final Locale locale = Locale.forLanguageTag(language);
             localeMap.put(locale.getISO3Language(), locale);
         }
         if (localeMap.containsKey(code)) {
