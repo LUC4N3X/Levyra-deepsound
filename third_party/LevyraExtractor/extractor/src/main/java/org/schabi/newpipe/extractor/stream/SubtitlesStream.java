@@ -236,19 +236,7 @@ public final class SubtitlesStream extends Stream {
          * Locale.Builder only for Android API >= 21
          * Country codes doesn't work well without
          */
-        final String[] splits = languageCode.split("-");
-        switch (splits.length) {
-            case 2:
-                this.locale = new Locale(splits[0], splits[1]);
-                break;
-            case 3:
-                // Complex variants don't work!
-                this.locale = new Locale(splits[0], splits[1], splits[2]);
-                break;
-            default:
-                this.locale = new Locale(splits[0]);
-                break;
-        }
+        this.locale = Locale.forLanguageTag(languageCode.replace('_', '-'));
 
         this.code = languageCode;
         this.format = mediaFormat;

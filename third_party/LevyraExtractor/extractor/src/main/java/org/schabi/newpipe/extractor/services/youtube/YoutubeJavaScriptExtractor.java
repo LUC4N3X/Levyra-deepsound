@@ -8,10 +8,10 @@ import org.schabi.newpipe.extractor.NewPipe;
 import org.schabi.newpipe.extractor.exceptions.ParsingException;
 import org.schabi.newpipe.extractor.localization.Localization;
 import org.schabi.newpipe.extractor.utils.Parser;
+import org.schabi.newpipe.extractor.utils.Utils;
 
 import javax.annotation.Nonnull;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.regex.Pattern;
 
 /**
@@ -115,7 +115,7 @@ final class YoutubeJavaScriptExtractor {
         if (OVERRIDE_PLAYER_HASH != null && !OVERRIDE_PLAYER_HASH.isEmpty()) {
             final String playerJsUrl = String.format(BASE_JS_PLAYER_URL_FORMAT, OVERRIDE_PLAYER_HASH);
             try {
-                new URL(playerJsUrl);
+                Utils.stringToURL(playerJsUrl);
                 return YoutubeJavaScriptExtractor.downloadJavaScriptCode(playerJsUrl);
             } catch (final MalformedURLException e) {
                 throw new ParsingException("The override player hash produced an invalid URL", e);
@@ -127,7 +127,7 @@ final class YoutubeJavaScriptExtractor {
             final String playerJsUrl = YoutubeJavaScriptExtractor.cleanJavaScriptUrl(url);
 
             // Assert that the URL we extracted and built is valid
-            new URL(playerJsUrl);
+            Utils.stringToURL(playerJsUrl);
 
             return YoutubeJavaScriptExtractor.downloadJavaScriptCode(playerJsUrl);
         } catch (final Exception e) {
@@ -136,7 +136,7 @@ final class YoutubeJavaScriptExtractor {
 
             try {
                 // Assert that the URL we extracted and built is valid
-                new URL(playerJsUrl);
+                Utils.stringToURL(playerJsUrl);
             } catch (final MalformedURLException exception) {
                 throw new ParsingException(
                         "The extracted and built JavaScript URL is invalid", exception);

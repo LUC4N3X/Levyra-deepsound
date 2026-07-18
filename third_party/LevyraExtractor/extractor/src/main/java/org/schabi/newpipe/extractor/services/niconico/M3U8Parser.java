@@ -1,6 +1,7 @@
 package org.schabi.newpipe.extractor.services.niconico;
 
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.regex.Pattern;
 public class M3U8Parser {
 
     public static Map<String, List<String>> parseMasterM3U8(String masterContent, String cookies, long length) {
-        cookies = URLEncoder.encode(cookies);
+        cookies = URLEncoder.encode(cookies, StandardCharsets.UTF_8);
         Map<String, List<String>> parsedContent = new HashMap<>();
 
         // Pattern to match audio playlist
