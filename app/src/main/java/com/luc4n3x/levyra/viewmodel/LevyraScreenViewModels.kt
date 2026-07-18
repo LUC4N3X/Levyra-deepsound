@@ -105,10 +105,10 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun selectMood(mood: Mood) = root.selectMood(mood)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
-    fun onHomeEntered() {
+    fun onHomeEntered(atTop: Boolean) {
         homeRenderSettleJob?.cancel()
-        freezeHomeContent.value = false
-        root.onHomeEntered()
+        freezeHomeContent.value = shouldFreezeHomeStructure(scrollInProgress = false, atTop = atTop)
+        root.onHomeEntered(atTop)
     }
 
     fun onHomeLeft() {
@@ -120,7 +120,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun setHomeViewport(scrollInProgress: Boolean, atTop: Boolean) {
         root.setHomeViewport(scrollInProgress, atTop)
         homeRenderSettleJob?.cancel()
-        if (scrollInProgress) {
+        if (shouldFreezeHomeStructure(scrollInProgress, atTop)) {
             freezeHomeContent.value = true
         } else {
             homeRenderSettleJob = viewModelScope.launch {
@@ -219,6 +219,10 @@ class LevyraScreenViewModelFactory(
 
 
 private const val HOME_RENDER_SETTLE_MS = 360L
+
+internal fun shouldFreezeHomeStructure(scrollInProgress: Boolean, atTop: Boolean): Boolean {
+    return scrollInProgress || !atTop
+}
 
 private data class HomeRenderInput(
     val state: LevyraUiState,
