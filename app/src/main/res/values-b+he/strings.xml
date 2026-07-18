@@ -11,5 +11,5 @@
     <string name="widget_lyrics">מילות השיר</string>
     <string name="radar_channel_name">רדאר ההשקות</string>
     <string name="radar_channel_description">השקות חדשות מאמנים שבמעקב שלך</string>
-    <string name="radar_new_release_title">השקה חדשה מאת %1$s</string>
+    <string name="radar_new_release_title">השקה חדשה מאת &#x2068;%1$s&#x2069;</string>
 </resources>
