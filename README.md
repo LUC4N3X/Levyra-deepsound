@@ -192,20 +192,108 @@ graph TD
 
 ---
 
-## ✦ Technical Stack
+## ✦ Technical stack
 
-*   **Language:** Kotlin 2.4.0
-*   **User Interface:** Jetpack Compose, Material 3 Design Components, Compose BOM
-*   **Media Playback:** AndroidX Media3, ExoPlayer, HLS Playback, MediaSession
-*   **Network Transport:** OkHttp 5, Brotli compression module
-*   **Image Caching:** Coil 3 (Compose-optimized asynchronous image loading)
-*   **Data Persistence:** Room Database, DataStore Preferences
-*   **Background Jobs:** Android WorkManager Daemon
-*   **Serialization:** kotlinx.serialization (JSON)
-*   **Build Pipeline:** Gradle Kotlin DSL (`.gradle.kts`), Version Catalogs (`libs.versions.toml`), KSP (Kotlin Symbol Processing)
-*   **APK Size Guard:** Spotify Ruler report workflow for bundle size analysis and dependency weight tracking
-*   **Player Architecture:** Mobius-sample-inspired `Model / Event / Effect / Update` foundation for safe player refactoring
-*   **Extraction Layer:** InnerTube resolver plus GPL-3.0 LevyraExtractor playback core via JitPack
+Levyra is built natively for Android, focusing on a light runtime footprint and direct local data ownership.
+
+```yaml
+system:
+  language: "Kotlin 2.4.0"
+  interface: "Jetpack Compose (Material 3)"
+  state: "Mobius MVI"
+audio:
+  core: "AndroidX Media3 / ExoPlayer"
+  resolver: "LevyraExtractor"
+data:
+  client: "OkHttp 5 (Brotli)"
+  image_cache: "Coil 3"
+  database: "Room (SQLite) + DataStore"
+  downloads: "WorkManager Daemon"
+build:
+  engine: "Gradle Kotlin DSL + KSP"
+  size_audit: "Spotify Ruler"
+```
+
+### 📱 Core and UI
+* **Kotlin 2.4.0**: A 100% native codebase built with coroutines and flow APIs for asynchronous streaming.
+* **Jetpack Compose** (via Compose BOM): Declarative layouts with Material 3 components and system-wide dynamic color adaptation.
+* **Mobius architecture**: A unidirectional data flow design (Model-Event-Effect-Update) for reliable player state transitions.
+
+### 🎧 Audio pipeline
+* **Media3 and ExoPlayer**: A foreground playback service that handles HTTP live streaming, ExoPlayer caching, and background controller sync.
+* **LevyraExtractor**: A custom resolver hosted on JitPack to parse playback streams from InnerTube endpoints.
+
+### 📦 Storage and networking
+* **OkHttp 5**: The underlying network client, using Brotli compression to save mobile bandwidth.
+* **Room Database and DataStore**: Local SQLite and key-value storage for player history (Pulse metrics) and user preferences.
+* **Coil 3**: Asynchronous image loading optimized for Jetpack Compose.
+* **WorkManager**: A background daemon that schedules and runs offline audio downloads, resuming automatically if the device restarts.
+
+### 🛠️ Build and bundle tools
+* **Gradle Kotlin DSL**: Build configuration using version catalogs, KSP, and Kotlin script files.
+* **Spotify Ruler**: A build analyzer that runs size audits and tracks dependency weights to keep the APK compact.
+
+---
+
+## ✦ Building from source
+
+### Prerequisites
+
+Ensure your development environment meets the following requirements:
+
+* **💻 Build Environment**
+  * **Android Studio:** Jellyfish or newer
+  * **Java Development Kit:** JDK 17
+  * **Gradle Version:** 9.6.1 (loaded automatically via the Gradle Wrapper)
+* **📱 Android SDK Specifications**
+  * **compileSdk:** 37 (Android 15)
+  * **targetSdk:** 35 (Android 15)
+  * **minSdk:** 26 (Android 8.0+)
+
+### ⚙️ Build & Install
+
+Run these commands in your terminal to compile and run the application.
+
+1. Clone the repository and navigate into the folder:
+```bash
+git clone https://github.com/LUC4N3X/Levyra-deepsound.git
+cd Levyra-deepsound
+```
+
+2. Compile and install the debug build on your connected device or emulator:
+```bash
+./gradlew installDebug
+```
+
+3. Compile a clean, optimized release build:
+```bash
+./gradlew clean assembleRelease
+```
+The compiled release APK will be saved at:
+`app/build/outputs/apk/release/app-release.apk`
+
+4. (Optional) Run size profiling via Spotify Ruler to inspect dependencies:
+```bash
+./gradlew :app:analyzeDebugBundle
+```
+For notes on architecture and size control, check [APK_SIZE_RULER.md](docs/APK_SIZE_RULER.md) and [PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md](docs/PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md).
+
+### 🚀 Versioning & CI
+
+Version numbers are defined in `gradle.properties`:
+
+```properties
+levyraVersionName=2.3.11
+levyraVersionCode=2031100
+```
+
+The release version code is calculated using the following formula to prevent collisions:
+
+`versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`
+
+For example, version `2.3.11` corresponds to code `2031100`.
+
+The GitHub Actions workflow parses this configuration, runs structural tests with `aapt`, compiles the signed binaries, and uploads the output as `LEVYRA-<version>.apk`.
 
 ---
 
