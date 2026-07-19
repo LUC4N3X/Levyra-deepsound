@@ -327,9 +327,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val officialMetadataDeferUntilIdle = AtomicBoolean(false)
 
     private val homeInteractionGate = HomeInteractionGate()
-    private val _homeStartupBusy = MutableStateFlow(true)
-    internal val homeStartupBusy: StateFlow<Boolean> = _homeStartupBusy.asStateFlow()
-    private var homeStartupCoordinatorJob: Job? = null
     private val homeFeedRequestGeneration = AtomicLong(0L)
     private val homeAlbumsRequestGeneration = AtomicLong(0L)
     private val chartsRequestGeneration = AtomicLong(0L)
@@ -551,7 +548,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 homeArtists = startupHomeArtists,
                 homeResonanceTracks = startupResonanceTracks,
                 homeResonanceUpdatedAt = startupResonanceUpdatedAt,
-                homeArtistsLoading = false,
+                homeArtistsLoading = startupHomeArtists.isEmpty(),
                 homeAlbumsLoading = startupAlbums.isEmpty(),
                 tracks = initialTracks,
                 queue = initialQueue,
@@ -645,6 +642,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         observeDownloadTasks()
         loadPlaylists()
         viewModelScope.launch(Dispatchers.Default) { consumeOfficialMetadataQueue() }
+        refreshListeningPulse(force = true)
         scheduleColdStartRefresh(initialTracks)
         LevyraWidgetBridge.onToggle = { togglePlay() }
         LevyraWidgetBridge.onNext = { next() }
@@ -724,68 +722,51 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
         val startupPlan = homeStartupWorkPlan()
 
-        homeStartupCoordinatorJob?.cancel()
-        _homeStartupBusy.value = true
-        homeStartupCoordinatorJob = viewModelScope.launch {
-            try {
-                delay(startupPlan.homeFeedStartDelayMs.coerceAtLeast(180L))
-                loadHomeFeed(deferUntilHomeIdle = true)
-                homeFeedJob?.join()
-                homeAlbumsJob?.join()
+        viewModelScope.launch(Dispatchers.IO) {
+            delay(playbackWarmPlan.delayMs)
+            awaitHomeUiIdle(startupPlan)
+            resolver.warmNetwork()
+            val hot = (orbitSeed.take(1) + initialTracks.take(playbackWarmPlan.trackCount))
+                .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
+                .distinctBy { playbackIdentity(it) }
+                .take(playbackWarmPlan.trackCount)
+            warmTracks(
+                tracks = hot,
+                concurrency = playbackWarmPlan.concurrency,
+                delayStepMs = playbackPlan.staggerMs,
+                prime = true,
+                respectHomeScroll = true
+            )
+        }
 
-                awaitHomeUiIdle(startupPlan)
-                refreshHomeResonanceIfStale()
-                homeResonanceJob?.join()
-
+        if (orbitSeed.isNotEmpty()) {
+            viewModelScope.launch {
                 delay(startupPlan.secondaryStartDelayMs)
                 awaitHomeUiIdle(startupPlan)
-                loadCharts(deferUntilHomeIdle = true)
-                chartsJob?.join()
-            } finally {
-                _homeStartupBusy.value = false
+                LevyraArtworkCache.preloadPriority(appContext, orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT)
+                warmPersistentOrbit(orbitSeed, LevyraPersonalOrbit.DISPLAY_LIMIT, persist = false)
+                refreshMissingOfficialOrbitArtwork(orbitSeed, deferUntilHomeIdle = true)
             }
+        }
 
-            if (orbitSeed.isNotEmpty() && startupPlan.persistentArtworkCount > 0) {
-                viewModelScope.launch(Dispatchers.IO) {
-                    delay(2_800L)
-                    awaitHomeUiIdle(startupPlan)
-                    LevyraArtworkCache.cachePersistent(
-                        appContext,
-                        orbitSeed,
-                        startupPlan.persistentArtworkCount
-                    )
-                }
-            }
-
-            viewModelScope.launch {
-                delay(1_200L)
-                awaitHomeUiIdle(startupPlan)
-                refreshListeningPulse(force = true)
-            }
-
-            viewModelScope.launch {
-                delay(4_500L)
-                awaitHomeUiIdle(startupPlan)
-                checkForUpdates(silent = true)
-                loadReleaseRadar(deferUntilHomeIdle = true)
-            }
-
-            viewModelScope.launch(Dispatchers.IO) {
-                delay(playbackWarmPlan.delayMs)
-                awaitHomeUiIdle(startupPlan)
-                resolver.warmNetwork()
-                val hot = (orbitSeed.take(1) + initialTracks.take(playbackWarmPlan.trackCount))
-                    .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
-                    .distinctBy { playbackIdentity(it) }
-                    .take(playbackWarmPlan.trackCount)
-                warmTracks(
-                    tracks = hot,
-                    concurrency = playbackWarmPlan.concurrency,
-                    delayStepMs = playbackPlan.staggerMs,
-                    prime = true,
-                    respectHomeScroll = true
-                )
-            }
+        viewModelScope.launch {
+            delay(startupPlan.homeFeedStartDelayMs)
+            loadHomeFeed(deferUntilHomeIdle = true)
+        }
+        viewModelScope.launch {
+            delay(startupPlan.secondaryStartDelayMs)
+            awaitHomeUiIdle(startupPlan)
+            loadCharts(deferUntilHomeIdle = true)
+        }
+        viewModelScope.launch {
+            delay(1_200L)
+            refreshHomeResonanceIfStale()
+        }
+        viewModelScope.launch {
+            delay(3_200L)
+            awaitHomeUiIdle(startupPlan)
+            checkForUpdates(silent = true)
+            loadReleaseRadar(deferUntilHomeIdle = true)
         }
     }
 
@@ -976,18 +957,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         current
                     }
                 }
-                val refreshDelayMs = if (_homeStartupBusy.value) {
-                    maxOf(HOME_ARTIST_STARTUP_GRACE_MS, startupPlan.artistStartDelayMs)
-                } else {
-                    HOME_ARTIST_STARTUP_GRACE_MS
-                }
-                delay(refreshDelayMs)
+                delay(maxOf(HOME_ARTIST_STARTUP_GRACE_MS, startupPlan.artistStartDelayMs))
                 awaitHomeUiIdle(startupPlan)
             }
 
             withTimeoutOrNull(HOME_ARTIST_TOTAL_TIMEOUT_MS) {
                 for (batch in orderedCandidates.chunked(HOME_ARTIST_RESOLUTION_CONCURRENCY)) {
-                    awaitHomeUiIdle(startupPlan)
                     val hits = coroutineScope {
                         batch.map { candidate ->
                             async {
@@ -1701,18 +1676,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             persistHomeSnapshot()
-            if (!deferUntilHomeIdle) {
-                val startupPlan = homeStartupWorkPlan()
-                viewModelScope.launch(Dispatchers.IO) {
-                    LevyraArtworkCache.preloadHome(
-                        getApplication<Application>().applicationContext,
-                        visibleTracks,
-                        startupPlan.refreshedArtworkCount
-                    )
-                }
-                prefetchTop(visibleTracks, HOME_STARTUP_STREAM_PREFETCH_COUNT)
-                refreshOfficialMetadataBatch(visibleTracks, HOME_STARTUP_METADATA_REFRESH_COUNT)
+            val startupPlan = homeStartupWorkPlan()
+            viewModelScope.launch(Dispatchers.IO) {
+                if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
+                LevyraArtworkCache.preloadHome(
+                    getApplication<Application>().applicationContext,
+                    visibleTracks,
+                    startupPlan.refreshedArtworkCount
+                )
             }
+            prefetchTop(visibleTracks, HOME_STARTUP_STREAM_PREFETCH_COUNT, respectHomeScroll = deferUntilHomeIdle)
+            refreshOfficialMetadataBatch(visibleTracks, HOME_STARTUP_METADATA_REFRESH_COUNT, deferUntilHomeIdle)
             loadHomeAlbums(languageCode, deferUntilHomeIdle)
             refreshHomeResonanceIfStale()
         }
@@ -2428,18 +2402,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             persistHomeSnapshot()
             refreshHomeResonanceIfStale()
-            if (!deferUntilHomeIdle) {
-                val startupPlan = homeStartupWorkPlan()
-                viewModelScope.launch(Dispatchers.IO) {
-                    LevyraArtworkCache.preloadHome(
-                        getApplication<Application>().applicationContext,
-                        result,
-                        startupPlan.chartArtworkCount
-                    )
-                }
-                enrichCharts(regionId, result)
-                refreshOfficialMetadataBatch(result, 6)
+            val startupPlan = homeStartupWorkPlan()
+            viewModelScope.launch(Dispatchers.IO) {
+                if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
+                LevyraArtworkCache.preloadHome(
+                    getApplication<Application>().applicationContext,
+                    result,
+                    startupPlan.chartArtworkCount
+                )
             }
+            enrichCharts(regionId, result, deferUntilHomeIdle)
+            refreshOfficialMetadataBatch(result, 6, deferUntilHomeIdle)
         }
     }
 
@@ -4736,17 +4709,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             preferences.saveHomeSections(listOf(fallbackSection), languageCode)
         }
         persistHomeSnapshot()
-        if (!deferUntilHomeIdle) {
-            val startupPlan = homeStartupWorkPlan()
-            viewModelScope.launch(Dispatchers.IO) {
-                LevyraArtworkCache.preloadHome(
-                    getApplication<Application>().applicationContext,
-                    tracks,
-                    startupPlan.refreshedArtworkCount
-                )
-            }
-            prefetchTop(tracks, startupPlan.refreshedArtworkCount)
+        val startupPlan = homeStartupWorkPlan()
+        viewModelScope.launch(Dispatchers.IO) {
+            if (deferUntilHomeIdle) awaitHomeUiIdle(startupPlan)
+            LevyraArtworkCache.preloadHome(
+                getApplication<Application>().applicationContext,
+                tracks,
+                startupPlan.refreshedArtworkCount
+            )
         }
+        prefetchTop(tracks, startupPlan.refreshedArtworkCount, respectHomeScroll = deferUntilHomeIdle)
     }
 
     private fun searchMood(mood: Mood) {
@@ -5167,7 +5139,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_ARTIST_SHELF_SIZE = 13
         private const val HOME_ARTIST_HISTORY_LIMIT = 48
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
-        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 1
+        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 2
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
         private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 9_000L
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
