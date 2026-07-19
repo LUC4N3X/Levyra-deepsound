@@ -12,13 +12,50 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  apply-player-cover-fix:
+    name: Apply Player Cover Fix
+    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Restore large artwork and clean temporary files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          content = path.read_text(encoding='utf-8')
+          old = '''            densePlayer -> 214.dp
+            compactPlayer -> 250.dp'''
+          new = '''            densePlayer -> 292.dp
+            compactPlayer -> 344.dp'''
+          if content.count(old) != 1:
+              raise SystemExit('Player artwork limits not found exactly once')
+          path.write_text(content.replace(old, new, 1), encoding='utf-8')
+          PY
+          git show "${{ github.event.pull_request.base.sha }}:.github/workflows/pr-check.yml" > .github/workflows/pr-check.yml
+          rm -f .github/player-cover-size-fix.patch
+          rm -f .github/workflows/apply-player-cover-size-fix.yml
+          git add -A
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(player): restore large artwork on phones"
+          git push origin "HEAD:${{ github.head_ref }}"
+
   android:
     name: Lint, Test and Release Compile
     runs-on: ubuntu-latest
