@@ -27,7 +27,7 @@
 
 <div align="center">
 
-✦ **Levyra** isn't another website wearing an app icon. It's a native Android music client,<br>
+🎵 **Levyra** isn't another website wearing an app icon. It's a native Android music client,<br>
 written from the ground up in 100% Kotlin, for people who are tired of renting their own music library.
 
 It streams instantly, plays flawlessly in the background, and when you hit download it gives you<br>
@@ -123,7 +123,7 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 ---
 
-## 📸 A Look Inside
+## ✦ A Look Inside
 
 <div align="center">
 
