@@ -47,30 +47,33 @@ const escapeXml = value => String(value)
 
 const measure = value => {
   let width = 0
-  for (const character of String(value).toUpperCase()) {
-    if ('MW@#%&'.includes(character)) width += 9
-    else if ('I1L'.includes(character)) width += 4.5
-    else if (' .,:;|!'.includes(character)) width += 3.5
-    else width += 7
+  for (const character of String(value)) {
+    if ('WM@%#'.includes(character)) width += 10
+    else if ('Il1|'.includes(character)) width += 4.2
+    else if (' .,:;'.includes(character)) width += 4
+    else width += 7.2
   }
   return width
 }
 
-const githubPath = 'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.65 7.65 0 0 1 8 5.8c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z'
-
-const makeBadge = ({ label, message, color }) => {
-  const normalizedLabel = String(label).toUpperCase()
-  const normalizedMessage = String(message).toUpperCase()
-  const labelWidth = Math.max(92, Math.ceil(measure(normalizedLabel) + 48))
-  const messageWidth = Math.max(46, Math.ceil(measure(normalizedMessage) + 24))
-  const totalWidth = labelWidth + messageWidth
-  const labelTextX = 28 + (labelWidth - 28) / 2
-  const messageTextX = labelWidth + messageWidth / 2
-  const title = `${normalizedLabel}: ${normalizedMessage}`
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="28" role="img" aria-label="${escapeXml(title)}"><title>${escapeXml(title)}</title><defs><linearGradient id="badge-sheen" x2="0" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-opacity=".08"/></linearGradient><clipPath id="badge-round"><rect width="${totalWidth}" height="28" rx="4"/></clipPath></defs><g clip-path="url(#badge-round)"><rect width="${labelWidth}" height="28" fill="#0d1117"/><rect x="${labelWidth}" width="${messageWidth}" height="28" fill="${color}"/><rect width="${totalWidth}" height="28" fill="url(#badge-sheen)"/></g><g fill="#fff"><svg x="9" y="6" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="#fff" d="${githubPath}"/></svg><g font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="10" font-weight="700" text-anchor="middle"><text x="${labelTextX}" y="18" textLength="${Math.max(1, Math.round(measure(normalizedLabel)))}" lengthAdjust="spacing">${escapeXml(normalizedLabel)}</text><text x="${messageTextX}" y="18" textLength="${Math.max(1, Math.round(measure(normalizedMessage)))}" lengthAdjust="spacing">${escapeXml(normalizedMessage)}</text></g></g></svg>\n`
+const icons = {
+  release: 'M7.73 2.5a1.5 1.5 0 0 0-1.06.44L2.44 7.17a1.5 1.5 0 0 0 0 2.12l4.27 4.27a1.5 1.5 0 0 0 2.12 0l4.23-4.23a1.5 1.5 0 0 0 .44-1.06V4A1.5 1.5 0 0 0 12 2.5H7.73Zm0 1.5H12v4.27L7.77 12.5 3.5 8.23 7.73 4ZM9 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z',
+  downloads: 'M8 2.25a.75.75 0 0 1 .75.75v5.69l1.97-1.97a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.78a.75.75 0 0 1 1.06-1.06l1.97 1.97V3A.75.75 0 0 1 8 2.25Zm-4.75 10a.75.75 0 0 1 .75-.75h8a.75.75 0 0 1 0 1.5H4a.75.75 0 0 1-.75-.75Z',
+  license: 'M8 1.25 2.5 3.2v4.16c0 3.42 2.29 6.55 5.5 7.39 3.21-.84 5.5-3.97 5.5-7.39V3.2L8 1.25Zm0 1.59 4 1.42v3.1c0 2.6-1.64 5.05-4 5.82-2.36-.77-4-3.22-4-5.82v-3.1l4-1.42Z',
+  stars: 'M8 .75a.75.75 0 0 1 .673.418L10.52 4.9l4.12.599a.75.75 0 0 1 .416 1.279l-2.98 2.905.704 4.103a.75.75 0 0 1-1.088.79L8 12.61l-3.694 1.943a.75.75 0 0 1-1.088-.79l.704-4.103-2.98-2.905a.75.75 0 0 1 .416-1.279l4.12-.599L7.327 1.168A.75.75 0 0 1 8 .75Z'
 }
 
+const makeBadge = ({ label, value, color, icon }) => {
+  const labelWidth = Math.max(92, Math.ceil(measure(label) + 44))
+  const valueWidth = Math.max(52, Math.ceil(measure(value) + 28))
+  const totalWidth = labelWidth + valueWidth
+  const valueCenter = labelWidth + valueWidth / 2
+  const title = `${label}: ${value}`
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="36" role="img" aria-label="${escapeXml(title)}"><title>${escapeXml(title)}</title><rect x="0.75" y="0.75" width="${totalWidth - 1.5}" height="34.5" rx="8" fill="#0d1117" stroke="#303b4d"/><path d="M${labelWidth} 1h${valueWidth - 8}a8 8 0 0 1 8 8v18a8 8 0 0 1-8 8h-${valueWidth - 8}Z" fill="${color}"/><path d="M${labelWidth} 6v24" stroke="#ffffff" stroke-opacity=".16"/><svg x="12" y="10" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="#ffffff" d="${icon}"/></svg><text x="36" y="22.5" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="11.5" font-weight="700" letter-spacing=".15">${escapeXml(label)}</text><text x="${valueCenter}" y="22.5" fill="#ffffff" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">${escapeXml(value)}</text></svg>\n`
+}
+
+const repositoryData = await requestJson(`https://api.github.com/repos/${repository}`)
 const releases = (await listReleases()).filter(release => !release.draft)
 const latestRelease = [...releases].sort((left, right) => {
   const leftDate = new Date(left.published_at ?? left.created_at).getTime()
@@ -84,11 +87,15 @@ const totalDownloads = releases.reduce((releaseTotal, release) => {
   return releaseTotal + assetTotal
 }, 0)
 
-const releaseMessage = latestRelease?.tag_name ?? 'none'
-const downloadsMessage = new Intl.NumberFormat('en-US').format(totalDownloads)
+const formatNumber = value => new Intl.NumberFormat('en-US').format(Number(value))
+const releaseValue = latestRelease?.tag_name ?? 'none'
+const downloadsValue = formatNumber(totalDownloads)
+const starsValue = formatNumber(repositoryData.stargazers_count ?? 0)
 
 await mkdir('docs/assets', { recursive: true })
 await Promise.all([
-  writeFile('docs/assets/levyra-release.svg', makeBadge({ label: 'release', message: releaseMessage, color: '#7F52FF' }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads.svg', makeBadge({ label: 'downloads', message: downloadsMessage, color: '#0A84FF' }), 'utf8')
+  writeFile('docs/assets/levyra-release.svg', makeBadge({ label: 'Release', value: releaseValue, color: '#7C3AED', icon: icons.release }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads.svg', makeBadge({ label: 'Downloads', value: downloadsValue, color: '#1689E8', icon: icons.downloads }), 'utf8'),
+  writeFile('docs/assets/levyra-license.svg', makeBadge({ label: 'License', value: 'GPL-3.0', color: '#22C776', icon: icons.license }), 'utf8'),
+  writeFile('docs/assets/levyra-stars.svg', makeBadge({ label: 'Stars', value: starsValue, color: '#F2A900', icon: icons.stars }), 'utf8')
 ])
