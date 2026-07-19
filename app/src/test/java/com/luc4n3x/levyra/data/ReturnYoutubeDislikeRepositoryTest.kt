@@ -65,6 +65,12 @@ class ReturnYoutubeDislikeRepositoryTest {
         )
         assertNull(
             parseReturnYoutubeDislikeResponse(
+                json = """{"id":"kxOuG8jMIgI","likes":1,"dislikes":2,"viewCount":-1}""",
+                expectedVideoId = "kxOuG8jMIgI"
+            )
+        )
+        assertNull(
+            parseReturnYoutubeDislikeResponse(
                 json = "{}",
                 expectedVideoId = "not-a-video-id"
             )
