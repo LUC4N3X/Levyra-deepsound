@@ -48,6 +48,7 @@ public final class CommentsInfo extends ListInfo<CommentsInfoItem> {
         final InfoItemsPage<CommentsInfoItem> initialCommentsPage =
                 ExtractorHelper.getItemsPageOrLogError(commentsInfo, commentsExtractor);
         commentsInfo.setCommentsDisabled(commentsExtractor.isCommentsDisabled());
+        commentsInfo.setCommentsCountText(commentsExtractor.getCommentsCountText());
         commentsInfo.setRelatedItems(initialCommentsPage.getItems());
         commentsInfo.setNextPage(initialCommentsPage.getNextPage());
 
@@ -85,6 +86,7 @@ public final class CommentsInfo extends ListInfo<CommentsInfoItem> {
 
     private transient CommentsExtractor commentsExtractor;
     private boolean commentsDisabled = false;
+    private String commentsCountText = "";
 
     public CommentsExtractor getCommentsExtractor() {
         return commentsExtractor;
@@ -109,5 +111,16 @@ public final class CommentsInfo extends ListInfo<CommentsInfoItem> {
      */
     public void setCommentsDisabled(final boolean commentsDisabled) {
         this.commentsDisabled = commentsDisabled;
+    }
+
+    /**
+     * @return human-readable total comment count, or an empty string when unavailable
+     */
+    public String getCommentsCountText() {
+        return commentsCountText;
+    }
+
+    public void setCommentsCountText(final String commentsCountText) {
+        this.commentsCountText = commentsCountText == null ? "" : commentsCountText;
     }
 }
