@@ -37,6 +37,7 @@ import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
+import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationIdentityKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.local.DownloadEntity
@@ -3370,7 +3371,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val searchResults = current.searchResults.map(::withArtwork)
             val favorites = current.favorites.map(::withArtwork)
             val charts = current.charts.map(::withArtwork)
-            val homeAlbums = current.homeAlbums.map(::withAlbumMetadata)
+            val homeAlbums = current.homeAlbums
+                .map(::withAlbumMetadata)
+                .distinctBy(::albumRecommendationDeduplicationKey)
             val homeSections = current.homeSections.map { section ->
                 section.copy(tracks = section.tracks.map(::withArtwork))
             }
@@ -4942,10 +4945,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun mergeAlbums(primary: List<AlbumHit>, secondary: List<AlbumHit>): List<AlbumHit> {
         val map = LinkedHashMap<String, AlbumHit>()
         (primary + secondary).forEach { album ->
-            val key = "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}"
-            if (album.title.isNotBlank() && album.artist.isNotBlank() && album.thumbnailUrl.isNotBlank() && !map.containsKey(key)) {
-                map[key] = album
-            }
+            if (album.title.isBlank() || album.artist.isBlank() || album.thumbnailUrl.isBlank()) return@forEach
+            val key = albumRecommendationDeduplicationKey(album)
+            val existing = map[key]
+            val shouldReplace = existing == null ||
+                album.metadataConfidence > existing.metadataConfidence ||
+                (existing.browseId.isBlank() && album.browseId.isNotBlank()) ||
+                (existing.upc.isBlank() && album.upc.isNotBlank())
+            if (shouldReplace) map[key] = album
         }
         return map.values.toList()
     }
