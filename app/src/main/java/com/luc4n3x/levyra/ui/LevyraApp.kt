@@ -140,6 +140,7 @@ import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.TaskAlt
@@ -547,9 +548,10 @@ private fun rememberEqualizerBar(
     maximumValue: Float,
     durationMillis: Int
 ): Float {
+    val animationsEnabled = LocalAnimationsEnabled.current
     val bar = remember { Animatable(idleValue) }
-    LaunchedEffect(isPlaying, idleValue, minimumValue, maximumValue, durationMillis) {
-        if (!isPlaying) {
+    LaunchedEffect(animationsEnabled, isPlaying, idleValue, minimumValue, maximumValue, durationMillis) {
+        if (!animationsEnabled || !isPlaying) {
             bar.snapTo(idleValue)
             return@LaunchedEffect
         }
@@ -649,11 +651,15 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
             else -> ArtworkRequestSource.Remote
         }
     }
-    LaunchedEffect(artworkKey, modelIdentity, requestSource) {
-        LevyraArtworkStartupMetrics.recordArtworkRequest(artworkKey, modelIdentity, requestSource)
-        if (model == null) LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey)
+    if (BuildConfig.DEBUG) {
+        LaunchedEffect(artworkKey, modelIdentity, requestSource) {
+            LevyraArtworkStartupMetrics.recordArtworkRequest(artworkKey, modelIdentity, requestSource)
+            if (model == null) LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey)
+        }
     }
-    val background = Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
+    val background = remember(track.accentStart, track.accentEnd) {
+        Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
+    }
     Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
         if (model != null) {
@@ -1856,7 +1862,6 @@ private fun AlbumTrackItem(
     isFavorite: Boolean,
     isDownloading: Boolean,
     isDownloaded: Boolean,
-    downloadProgress: Int?,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
@@ -4235,6 +4240,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
         state.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
     val resonanceTracks = homeDerivedState.resonanceTracks
+    val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val otherSections = homeDerivedState.otherSections
     val chartChunks = homeDerivedState.chartChunks
@@ -4242,6 +4248,21 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     val homeFingerprint = homeDerivedState.contentFingerprint
     val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
     val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
+    val heroUpdate = remember(homeFingerprint, state.currentTrack?.id) { pickHeroUpdate(state) }
+    val quickMixTracks = remember(personalTracks, resonanceTracks, state.tracks) {
+        personalTracks
+            .ifEmpty { resonanceTracks }
+            .ifEmpty { state.tracks }
+            .distinctBy { it.id }
+            .take(40)
+    }
+    val quickReleaseTracks = remember(newReleases, state.charts) {
+        newReleases?.tracks
+            ?.distinctBy { it.id }
+            ?.take(40)
+            ?.takeIf { it.isNotEmpty() }
+            ?: state.charts.distinctBy { it.id }.take(40)
+    }
     LaunchedEffect(homeFingerprint) {
         LevyraArtworkStartupMetrics.recordHomeEmission(homeFingerprint, homeContent.hasUsableContent)
     }
@@ -4264,13 +4285,17 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
         viewModel.onHomeEntered(atTop)
         onDispose { viewModel.onHomeLeft() }
     }
-    LaunchedEffect(Unit) {
-        delay(5_000L)
-        withContext(Dispatchers.IO) {
-            LevyraArtworkStartupMetrics.persistSnapshot(context)
+    if (BuildConfig.DEBUG) {
+        LaunchedEffect(Unit) {
+            delay(5_000L)
+            withContext(Dispatchers.IO) {
+                LevyraArtworkStartupMetrics.persistSnapshot(context)
+            }
         }
     }
-    LazyColumn(
+    val homeAnimationsEnabled = LocalAnimationsEnabled.current && !homeListState.isScrollInProgress
+    CompositionLocalProvider(LocalAnimationsEnabled provides homeAnimationsEnabled) {
+        LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
@@ -4281,6 +4306,52 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
                     MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
+                }
+            }
+        }
+        item(key = "home-quick-access", contentType = "home-actions") {
+            HomeSectionInset {
+                HomeQuickAccessGrid(
+                    hasMix = quickMixTracks.isNotEmpty(),
+                    hasFavorites = state.favorites.isNotEmpty(),
+                    hasNewReleases = quickReleaseTracks.isNotEmpty(),
+                    onMix = { viewModel.playAll(quickMixTracks) },
+                    onFavorites = { viewModel.playAll(state.favorites) },
+                    onNewReleases = { viewModel.playAll(quickReleaseTracks) },
+                    onSearch = { viewModel.searchNow() }
+                )
+            }
+        }
+        if (state.currentTrack != null) {
+            item(key = "home-continue", contentType = "home-card") {
+                HomeContinueListeningCard(
+                    viewModel = viewModel,
+                    track = state.currentTrack,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving
+                )
+            }
+        }
+        heroUpdate?.let { update ->
+            item(key = "home-editorial-${update.track.id}", contentType = "home-hero") {
+                val heroQueue = remember(update.track.id, homeFingerprint) {
+                    state.homeSections
+                        .firstOrNull { section -> section.tracks.any { it.id == update.track.id } }
+                        ?.tracks
+                        ?.takeIf { it.isNotEmpty() }
+                        ?: state.charts.takeIf { charts -> charts.any { it.id == update.track.id } }
+                        ?: state.tracks.takeIf { tracks -> tracks.any { it.id == update.track.id } }
+                        ?: listOf(update.track)
+                }
+                HomeSectionInset {
+                    HomeDiscoveryHero(
+                        update = update,
+                        isFavorite = update.track.id in state.favoriteIds,
+                        isDownloading = update.track.id in state.downloadingTrackIds,
+                        isDownloaded = update.track.id in state.downloadedTrackIds,
+                        onPlay = { viewModel.playFrom(heroQueue, update.track) },
+                        onSave = { viewModel.toggleFavorite(update.track) }
+                    )
                 }
             }
         }
@@ -4308,13 +4379,16 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 )
             }
         }
-        if (state.currentTrack != null) {
-            item(key = "home-continue", contentType = "home-card") {
-                HomeContinueListeningCard(
-                    viewModel = viewModel,
-                    track = state.currentTrack,
+        if (quickPicks != null && quickPicks.tracks.isNotEmpty()) {
+            item(key = "home-quick-picks", contentType = "home-dense-shelf") {
+                HomeQuickPicksShelf(
+                    title = quickPicks.title.ifBlank { strings.quickPicks },
+                    tracks = quickPicks.tracks,
+                    currentId = state.currentTrack?.id,
                     isPlaying = state.isPlaying,
-                    isResolving = state.isResolving
+                    isResolving = state.isResolving,
+                    onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
+                    onPlayAll = { viewModel.playAll(quickPicks.tracks) }
                 )
             }
         }
@@ -4464,6 +4538,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
         item(key = "home-status", contentType = "home-card") {
             HomeSectionInset { StatusBlock(state) }
         }
+        }
     }
 
     addTarget?.let { track ->
@@ -4479,6 +4554,199 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 viewModel.createPlaylist(name, track)
                 addTarget = null
             }
+        )
+    }
+}
+
+@Composable
+private fun HomeQuickAccessGrid(
+    hasMix: Boolean,
+    hasFavorites: Boolean,
+    hasNewReleases: Boolean,
+    onMix: () -> Unit,
+    onFavorites: () -> Unit,
+    onNewReleases: () -> Unit,
+    onSearch: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            QuickAction(
+                icon = Icons.Rounded.Shuffle,
+                label = LocalLevyraStrings.current.mixForYou,
+                accent = LevyraCyan,
+                enabled = hasMix,
+                modifier = Modifier.weight(1f),
+                onClick = onMix
+            )
+            QuickAction(
+                icon = Icons.Rounded.Favorite,
+                label = LocalLevyraStrings.current.favoritesPlain,
+                accent = LevyraPink,
+                enabled = hasFavorites,
+                modifier = Modifier.weight(1f),
+                onClick = onFavorites
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            QuickAction(
+                icon = Icons.Rounded.Bolt,
+                label = LocalLevyraStrings.current.newReleases,
+                accent = LevyraViolet,
+                enabled = hasNewReleases,
+                modifier = Modifier.weight(1f),
+                onClick = onNewReleases
+            )
+            QuickAction(
+                icon = Icons.Rounded.Search,
+                label = LocalLevyraStrings.current.search,
+                accent = Color(0xFFB7C7FF),
+                enabled = true,
+                modifier = Modifier.weight(1f),
+                onClick = onSearch
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeQuickPicksShelf(
+    title: String,
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: (Track) -> Unit,
+    onPlayAll: () -> Unit
+) {
+    val pages = remember(tracks) {
+        tracks
+            .distinctBy { it.id }
+            .take(24)
+            .chunked(4)
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        HomeSectionInset {
+            SectionHeaderAction(title, onPlayAll)
+        }
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
+        ) {
+            itemsIndexed(
+                items = pages,
+                key = { pageIndex, page -> "quick-picks-$pageIndex-${page.firstOrNull()?.id.orEmpty()}" },
+                contentType = { _, _ -> "quick-picks-page" }
+            ) { pageIndex, page ->
+                Surface(
+                    color = LevyraAdaptiveChip.copy(alpha = if (LevyraIsLight) 0.86f else 0.56f),
+                    border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.width(322.dp)
+                ) {
+                    Column(modifier = Modifier.padding(6.dp)) {
+                        page.forEachIndexed { itemIndex, track ->
+                            HomeQuickPickRow(
+                                rank = pageIndex * 4 + itemIndex + 1,
+                                track = track,
+                                isCurrent = track.id == currentId,
+                                isPlaying = isPlaying && track.id == currentId,
+                                isResolving = isResolving && track.id == currentId,
+                                onPlay = { onPlay(track) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeQuickPickRow(
+    rank: Int,
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(66.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .pressable(onClick = onPlay)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier.width(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                isResolving -> CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 1.8.dp,
+                    color = LevyraCyan
+                )
+                isCurrent && isPlaying -> ActiveTrackEqualizer(
+                    color = LevyraCyan,
+                    isPlaying = true,
+                    width = 14.dp,
+                    height = 10.dp
+                )
+                else -> Text(
+                    text = rank.toString(),
+                    color = if (isCurrent) LevyraCyan else LevyraMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        CoverImage(
+            track = track,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .border(Dp.Hairline, LevyraAdaptiveHairline, RoundedCornerShape(11.dp)),
+            highRes = false
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = track.title,
+                color = if (isCurrent) LevyraCyan else LevyraText,
+                fontSize = 14.5.sp,
+                lineHeight = 17.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                color = LevyraMuted,
+                fontSize = 11.8.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Icon(
+            imageVector = if (isCurrent && isPlaying) Icons.Rounded.Equalizer else Icons.Rounded.PlayArrow,
+            contentDescription = null,
+            tint = if (isCurrent) LevyraCyan else LevyraMuted,
+            modifier = Modifier.size(19.dp)
         )
     }
 }
@@ -4543,7 +4811,6 @@ private fun pickHeroUpdate(state: LevyraUiState): HomeHeroUpdate? {
         .flatten()
         .distinctBy { it.track.id }
         .firstOrNull { it.track.id != currentId }
-        ?: state.currentTrack?.let { HomeHeroUpdate(it, it.source.ifBlank { "YouTube Music" }, false) }
 }
 
 @Composable
@@ -4605,11 +4872,11 @@ private fun TrendingArtistsShelf(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
-            items(
+            itemsIndexed(
                 items = artists,
-                key = { it.browseId.ifBlank { it.name } },
-                contentType = { "trending-artist" }
-            ) { artist ->
+                key = { index, artist -> "trending-artist-$index-${artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }}" },
+                contentType = { _, _ -> "trending-artist" }
+            ) { _, artist ->
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
@@ -5390,7 +5657,6 @@ private fun HomeDiscoveryHero(
     isFavorite: Boolean,
     isDownloading: Boolean,
     isDownloaded: Boolean,
-    downloadProgress: Int?,
     onPlay: () -> Unit,
     onSave: () -> Unit
 ) {
@@ -5400,6 +5666,11 @@ private fun HomeDiscoveryHero(
     val accentEnd = Color(track.accentEnd)
     val copy = remember(track.id, track.title, track.artist, track.album, update.sourceTitle, update.verifiedRelease, strings.code) {
         buildHomeUpdateCopy(update, strings)
+    }
+    val availabilityLabel = when {
+        isDownloaded -> strings.downloaded
+        isDownloading -> strings.localizeDownloadState("DOWNLOADING")
+        else -> null
     }
     Surface(
         color = Color.Transparent,
@@ -5491,6 +5762,27 @@ private fun HomeDiscoveryHero(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        if (availabilityLabel != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
+                                    contentDescription = null,
+                                    tint = LevyraMuted,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = availabilityLabel,
+                                    color = LevyraMuted,
+                                    fontSize = 9.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                     Box(contentAlignment = Alignment.BottomEnd) {
                         CoverImage(
@@ -8091,7 +8383,6 @@ private fun PlayerImmersiveBackdrop(
     primaryTarget: Color,
     secondaryTarget: Color,
     isPlaying: Boolean,
-    auroraEnabled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val primary by animateColorAsState(
@@ -8177,13 +8468,6 @@ private fun PlayerImmersiveBackdrop(
                 )
             }
     ) {
-        AuroraBackdrop(
-            primary = primarySurface.playerMix(Color.White, 0.10f),
-            secondary = secondarySurface.playerMix(Color.White, 0.08f),
-            accent = mixedSurface,
-            enabled = auroraEnabled && isPlaying,
-            modifier = Modifier.fillMaxSize()
-        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -8311,26 +8595,14 @@ private fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
     onSong: () -> Unit,
-    onVideo: () -> Unit,
-    glass: GlassBackdropState? = null
+    onVideo: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val switchShape = RoundedCornerShape(500.dp)
-    val switchBackground = if (glass != null) {
-        Modifier.glassSurface(
-            state = glass,
-            shape = switchShape,
-            tint = Color.Black.copy(alpha = 0.12f),
-            fallbackColor = Color.Black.copy(alpha = 0.24f),
-            borderColor = Color.White.copy(alpha = 0.12f)
-        )
-    } else {
-        Modifier
-            .background(Color.Black.copy(alpha = 0.24f), switchShape)
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), switchShape)
-    }
     Row(
-        modifier = switchBackground.padding(3.dp),
+        modifier = Modifier
+            .background(Color.Black.copy(alpha = 0.24f), RoundedCornerShape(500.dp))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(500.dp))
+            .padding(3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val songBackground by animateColorAsState(
@@ -8386,29 +8658,14 @@ private fun PlayerUtilityDock(
     isDownloaded: Boolean,
     onQueue: () -> Unit,
     onLyrics: () -> Unit,
-    onDownload: () -> Unit,
-    glass: GlassBackdropState? = null
+    onDownload: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val dockShape = RoundedCornerShape(28.dp)
-    val dockBackground = if (glass != null) {
-        Modifier.glassSurface(
-            state = glass,
-            shape = dockShape,
-            tint = Color.Black.copy(alpha = 0.10f),
-            fallbackColor = Color.Black.copy(alpha = 0.22f),
-            borderColor = Color.White.copy(alpha = 0.11f)
-        )
-    } else {
-        Modifier
-            .clip(dockShape)
-            .background(Color.Black.copy(alpha = 0.22f))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.11f)), dockShape)
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(dockBackground)
+    Surface(
+        color = Color.Black.copy(alpha = 0.22f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.11f)),
+        shape = RoundedCornerShape(28.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
@@ -8633,25 +8890,15 @@ private fun PlayerYoutubeEngagementRow(
             }
 
             if (hasDislikeEstimate) {
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .clickable(onClick = onOpenDislikeAttribution)
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                IconButton(
+                    onClick = onOpenDislikeAttribution,
+                    modifier = Modifier.size(24.dp)
                 ) {
-                    Text(
-                        text = "~ Return YouTube Dislike",
-                        color = Color.White.copy(alpha = 0.48f),
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.Medium
-                    )
                     Icon(
-                        imageVector = Icons.Rounded.OpenInNew,
-                        contentDescription = null,
+                        imageVector = Icons.Rounded.Info,
+                        contentDescription = "Return YouTube Dislike",
                         tint = Color.White.copy(alpha = 0.40f),
-                        modifier = Modifier.size(10.dp)
+                        modifier = Modifier.size(13.dp)
                     )
                 }
             }
@@ -8735,8 +8982,6 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
         label = "artwork-shadow"
     )
 
-    val glassState = rememberGlassBackdropState(state.animationsEnabled)
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -8746,10 +8991,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
             primaryTarget = primaryTarget,
             secondaryTarget = secondaryTarget,
             isPlaying = state.isPlaying,
-            auroraEnabled = state.animationsEnabled,
-            modifier = Modifier
-                .fillMaxSize()
-                .glassBackdropSource(glassState)
+            modifier = Modifier.fillMaxSize()
         )
 
         LazyColumn(
@@ -8789,8 +9031,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 isVideoMode = state.isVideoMode,
                                 activeColor = primary,
                                 onSong = viewModel::toggleVideoMode,
-                                onVideo = viewModel::toggleVideoMode,
-                                glass = glassState
+                                onVideo = viewModel::toggleVideoMode
                             )
                         } else {
                             Surface(
@@ -9166,8 +9407,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         isDownloaded = track.id in state.downloadedTrackIds,
                         onQueue = viewModel::openQueue,
                         onLyrics = viewModel::openLyrics,
-                        onDownload = viewModel::exportCurrentTrack,
-                        glass = glassState
+                        onDownload = viewModel::exportCurrentTrack
                     )
                 }
                 item {
@@ -12215,22 +12455,23 @@ private fun HomeAlbumLoadingRow() {
 @Composable
 private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, onOpen: (AlbumHit) -> Unit) {
     if (albums.isEmpty()) return
+    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         itemsIndexed(
             items = albums,
-            key = { _, album -> album.browseId.ifBlank { "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}" } },
+            key = { index, album -> "home-album-$index-${album.browseId.ifBlank { "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}" }}" },
             contentType = { _, _ -> "home-album-card" }
         ) { index, album ->
             var isPressed by remember { mutableStateOf(false) }
             val scale by animateFloatAsState(
-                targetValue = if (isPressed && animationsEnabled) 0.95f else 1f,
+                targetValue = if (isPressed && effectiveAnimationsEnabled) 0.95f else 1f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "homeAlbumScale"
             )
-            val modifier = if (animationsEnabled) {
+            val modifier = if (effectiveAnimationsEnabled) {
                 Modifier.graphicsLayer {
                     scaleX = scale
                     scaleY = scale
@@ -12319,23 +12560,24 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
 @Composable
 private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnabled: Boolean, onPlay: (Track) -> Unit) {
     if (tracks.isEmpty()) return
+    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
     ) {
         itemsIndexed(
             items = tracks,
-            key = { _, track -> track.id.ifBlank { "${track.title.trim().lowercase()}|${track.artist.trim().lowercase()}" } },
+            key = { index, track -> "album-card-$index-${track.id.ifBlank { "${track.title.trim().lowercase()}|${track.artist.trim().lowercase()}" }}" },
             contentType = { _, _ -> "album-card" }
         ) { index, track ->
             val isCurrent = track.id == currentId
             var isPressed by remember { mutableStateOf(false) }
             val scale by animateFloatAsState(
-                targetValue = if (isPressed && animationsEnabled) 0.95f else 1f,
+                targetValue = if (isPressed && effectiveAnimationsEnabled) 0.95f else 1f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "scale"
             )
-            val modifier = if (animationsEnabled) {
+            val modifier = if (effectiveAnimationsEnabled) {
                 Modifier.graphicsLayer {
                     scaleX = scale
                     scaleY = scale
@@ -13074,7 +13316,11 @@ private fun ArtistHitRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         contentPadding = contentPadding
     ) {
-        items(artists, key = { "artist-hit-${it.name}" }) { hit ->
+        itemsIndexed(
+            items = artists,
+            key = { index, hit -> "artist-hit-$index-${hit.browseId.ifBlank { hit.name.trim().lowercase(Locale.ROOT) }}" },
+            contentType = { _, _ -> "artist-hit" }
+        ) { _, hit ->
             Column(
                 modifier = Modifier.width(104.dp).clickable { onClick(hit) },
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -13088,8 +13334,8 @@ private fun ArtistHitRow(
                     contentAlignment = Alignment.Center
                 ) {
                     if (hit.thumbnailUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(hit.thumbnailUrl).crossfade(true).build(),
+                        StableRemoteArtwork(
+                            url = hit.thumbnailUrl,
                             contentDescription = hit.name,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.matchParentSize().clip(CircleShape)
@@ -13108,7 +13354,11 @@ private fun ArtistHitRow(
 @Composable
 private fun AlbumHitRow(albums: List<AlbumHit>, onClick: (AlbumHit) -> Unit) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(albums, key = { "album-hit-${it.title}-${it.artist}" }) { album ->
+        itemsIndexed(
+            items = albums,
+            key = { index, album -> "album-hit-$index-${album.browseId.ifBlank { "${album.title.trim().lowercase(Locale.ROOT)}-${album.artist.trim().lowercase(Locale.ROOT)}" }}" },
+            contentType = { _, _ -> "album-hit" }
+        ) { _, album ->
             Column(
                 modifier = Modifier.width(150.dp).clickable { onClick(album) },
                 verticalArrangement = Arrangement.spacedBy(6.dp)
