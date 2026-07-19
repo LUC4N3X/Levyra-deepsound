@@ -18,6 +18,7 @@ Levyra is licensed under the GNU General Public License v3.0. Third-party librar
 | Metrolist | https://github.com/MetrolistGroup/Metrolist | Android music client ecosystem reference | GPL-3.0 license notices must be preserved where code is reused |
 | zemer-cipher | https://github.com/ZemerTeam/zemer-cipher | Reference design and validated player configuration data for the local YouTube signature and n-parameter decoder | GPL-3.0; adapted decoder logic and configuration validation retain upstream attribution |
 | NewPipeExtractor | https://github.com/TeamNewPipe/NewPipeExtractor | Upstream extractor ecosystem reference | Original copyright and license notices remain with upstream authors |
+| Return YouTube Dislike | https://returnyoutubedislike.com | Read-only estimated dislike metadata | Counts are estimates, not official YouTube statistics; attribution and API rate limits must be preserved |
 | PipePipeExtractor | https://github.com/InfinityLoop1308/PipePipeExtractor | Upstream base for LevyraExtractor | Original copyright and license notices remain with upstream authors |
 | MusicApp-KMP | https://github.com/SEAbdulbasit/MusicApp-KMP | UI and modular styling inspiration only | No ownership claim is made over the original project |
 
@@ -53,6 +54,7 @@ Each dependency keeps its own upstream license. Dependency versions and package 
 |:---|:---|
 | LRCLIB-compatible lyrics metadata | Lyrics lookup where available |
 | SponsorBlock-compatible segment metadata | Optional segment metadata where supported |
+| Return YouTube Dislike API | Optional estimated dislike metadata; Levyra does not submit votes |
 | Third-party music metadata/search endpoints | Search, metadata and playback resolving where configured by the app |
 
 Levyra does not claim ownership over third-party metadata, album artwork, track names, artist names, lyrics, media content, logos, trademarks, or service names.
