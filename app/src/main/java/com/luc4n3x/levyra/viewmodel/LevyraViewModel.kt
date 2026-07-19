@@ -28,6 +28,10 @@ import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.ReturnYoutubeDislikeRepository
+import com.luc4n3x.levyra.data.ReturnYoutubeDislikeResult
+import com.luc4n3x.levyra.data.YoutubeCommentsRepository
+import com.luc4n3x.levyra.data.YoutubeCommentsResult
 import com.luc4n3x.levyra.data.SponsorBlockRepository
 import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
@@ -75,6 +79,9 @@ import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeComment
+import com.luc4n3x.levyra.domain.YoutubeCommentsState
+import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.feature.motion.MotionArtworkEngine
 import com.luc4n3x.levyra.feature.motion.MotionArtworkIdentityKey
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -214,6 +221,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val lyricsRepository = LyricsRepository(application.applicationContext)
     private val sponsorBlockRepository = SponsorBlockRepository()
     private val resolver = PlaybackResolver.getInstance(application.applicationContext)
+    private val returnYoutubeDislikeRepository = ReturnYoutubeDislikeRepository()
+    private val youtubeCommentsRepository = YoutubeCommentsRepository()
     private val moodEngine = MoodEngine()
     private val lyricsEngine = LyricsEngine()
     private val localIntelligence = LevyraLocalIntelligence()
@@ -258,12 +267,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var streamRecoveryJob: Job? = null
     private var alternateModePrefetchJob: Job? = null
     private var youtubeEngagementJob: Job? = null
+    private var youtubeDislikeJob: Job? = null
+    private var youtubeCommentsJob: Job? = null
+    private var youtubeCommentsPageJob: Job? = null
+    private val youtubeCommentReplyJobs = ConcurrentHashMap<String, Job>()
+    private val youtubeEngagementGeneration = AtomicLong(0L)
     private var prefetchJob: Job? = null
     private var chartEnrichJob: Job? = null
     private var orbitArtworkJob: Job? = null
     private var motionArtworkJob: Job? = null
     @Volatile private var motionArtworkRequestKey: String? = null
-    private val motionArtworkRequestGeneration = AtomicLong(0L)
     private var motionArtworkPrefetchJob: Job? = null
     private var sleepJob: Job? = null
     private var crossfadeJob: Job? = null
@@ -1282,6 +1295,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
                 prefetchAlternateMode(resolved, targetMode)
+                if (_state.value.selectedTab == LevyraTab.Player) {
+                    refreshYoutubeEngagement(resolved)
+                }
                 updateWidget()
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
@@ -2009,7 +2025,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (value) {
             _state.value.currentTrack?.let(::refreshMotionArtworkAround)
         } else {
-            motionArtworkRequestGeneration.incrementAndGet()
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             motionArtworkPrefetchJob?.cancel()
@@ -2886,6 +2901,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun navigateBack(): Boolean {
         val snapshot = _state.value
         return when {
+            snapshot.youtubeEngagement.comments.visible -> {
+                closeYoutubeComments()
+                true
+            }
             snapshot.showUpdatePrompt -> {
                 dismissUpdatePrompt()
                 true
@@ -3486,10 +3505,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         youtubeEngagementJob?.cancel()
-        motionArtworkRequestGeneration.incrementAndGet()
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = null
         motionArtworkPrefetchJob?.cancel()
+        youtubeDislikeJob?.cancel()
+        youtubeCommentsJob?.cancel()
+        youtubeCommentsPageJob?.cancel()
+        youtubeCommentReplyJobs.values.forEach { it.cancel() }
+        youtubeCommentReplyJobs.clear()
+        youtubeEngagementGeneration.incrementAndGet()
+        val engagementVideoId = youtubeEngagementVideoId(track)
         if (!preserveCrossfade) {
             crossfadeJob?.cancel()
             crossfadeInProgress = false
@@ -3504,6 +3529,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isResolving = true,
                 playerError = null,
                 currentTrack = track.copy(streamUrl = ""),
+                youtubeEngagement = YoutubeEngagementState(videoId = engagementVideoId),
                 isPlaying = false,
                 positionMs = 0L,
                 durationMs = track.durationMs,
@@ -3682,13 +3708,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun refreshYoutubeEngagement(track: Track) {
-        youtubeEngagementJob?.cancel()
         if (track.source.equals("Offline", ignoreCase = true)) return
+        val videoId = youtubeEngagementVideoId(track)
+        if (videoId.isBlank()) return
+        val generation = prepareYoutubeEngagement(videoId)
+
+        refreshYoutubeDislikeEstimate(videoId, generation)
+        refreshYoutubeCommentsSummary(videoId, generation)
+
+        youtubeEngagementJob?.cancel()
         if (track.youtubeLikeCount >= 0L && track.youtubeViewCount >= 0L) return
         val requestId = playRequestId
         youtubeEngagementJob = viewModelScope.launch {
             val enriched = resolver.enrichYoutubeEngagement(track)
             if (!isActive || requestId != playRequestId) return@launch
+            if (!isYoutubeEngagementRequestCurrent(videoId, generation)) return@launch
             val current = _state.value.currentTrack ?: return@launch
             if (!samePlayableTrack(current, enriched)) return@launch
             val merged = current.copy(
@@ -3706,6 +3740,302 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     searchResults = mergeTracks(it.searchResults, listOf(merged))
                 )
             }
+        }
+    }
+
+    private fun prepareYoutubeEngagement(videoId: String): Long {
+        val current = _state.value.youtubeEngagement
+        if (current.videoId == videoId) return youtubeEngagementGeneration.get()
+        val generation = youtubeEngagementGeneration.incrementAndGet()
+        _state.update { state ->
+            state.copy(youtubeEngagement = YoutubeEngagementState(videoId = videoId))
+        }
+        return generation
+    }
+
+    private fun isYoutubeEngagementRequestCurrent(videoId: String, generation: Long): Boolean {
+        if (generation != youtubeEngagementGeneration.get()) return false
+        val snapshot = _state.value
+        if (snapshot.youtubeEngagement.videoId != videoId) return false
+        val current = snapshot.currentTrack ?: return false
+        return youtubeEngagementVideoId(current) == videoId
+    }
+
+    private fun refreshYoutubeDislikeEstimate(videoId: String, generation: Long) {
+        val current = _state.value.youtubeEngagement
+        if (current.videoId != videoId || current.dislikeEstimateLoading || current.dislikeEstimateAvailable) return
+        youtubeDislikeJob?.cancel()
+        _state.update { state ->
+            if (state.youtubeEngagement.videoId != videoId) state else state.copy(
+                youtubeEngagement = state.youtubeEngagement.copy(
+                    dislikeEstimateLoading = true,
+                    dislikeEstimateError = null
+                )
+            )
+        }
+        youtubeDislikeJob = viewModelScope.launch {
+            val result = returnYoutubeDislikeRepository.estimate(videoId)
+            if (!isActive || !isYoutubeEngagementRequestCurrent(videoId, generation)) return@launch
+            _state.update { state ->
+                if (state.youtubeEngagement.videoId != videoId) return@update state
+                val updated = when (result) {
+                    is ReturnYoutubeDislikeResult.Available -> {
+                        if (result.estimate.deleted) {
+                            state.youtubeEngagement.copy(
+                                estimatedDislikeCount = -1L,
+                                dislikeEstimateLoading = false,
+                                dislikeEstimateAvailable = false,
+                                dislikeEstimateError = null
+                            )
+                        } else {
+                            state.youtubeEngagement.copy(
+                                estimatedDislikeCount = result.estimate.dislikes,
+                                dislikeEstimateLoading = false,
+                                dislikeEstimateAvailable = true,
+                                dislikeEstimateError = null
+                            )
+                        }
+                    }
+                    ReturnYoutubeDislikeResult.NotFound -> state.youtubeEngagement.copy(
+                        estimatedDislikeCount = -1L,
+                        dislikeEstimateLoading = false,
+                        dislikeEstimateAvailable = false,
+                        dislikeEstimateError = null
+                    )
+                    is ReturnYoutubeDislikeResult.RateLimited -> state.youtubeEngagement.copy(
+                        estimatedDislikeCount = -1L,
+                        dislikeEstimateLoading = false,
+                        dislikeEstimateAvailable = false,
+                        dislikeEstimateError = "rate_limited"
+                    )
+                    is ReturnYoutubeDislikeResult.Failed -> state.youtubeEngagement.copy(
+                        estimatedDislikeCount = -1L,
+                        dislikeEstimateLoading = false,
+                        dislikeEstimateAvailable = false,
+                        dislikeEstimateError = "unavailable"
+                    )
+                }
+                state.copy(youtubeEngagement = updated)
+            }
+        }
+    }
+
+    private fun refreshYoutubeCommentsSummary(videoId: String, generation: Long, force: Boolean = false) {
+        val comments = _state.value.youtubeEngagement.comments
+        if (
+            comments.videoId == videoId &&
+            !force &&
+            (comments.loading || comments.loaded || comments.disabled)
+        ) return
+
+        youtubeCommentsJob?.cancel()
+        _state.update { state ->
+            if (state.youtubeEngagement.videoId != videoId) state else state.copy(
+                youtubeEngagement = state.youtubeEngagement.copy(
+                    comments = state.youtubeEngagement.comments.copy(
+                        videoId = videoId,
+                        loading = true,
+                        error = null
+                    )
+                )
+            )
+        }
+        youtubeCommentsJob = viewModelScope.launch {
+            val result = youtubeCommentsRepository.initial(videoId)
+            if (!isActive || !isYoutubeEngagementRequestCurrent(videoId, generation)) return@launch
+            _state.update { state ->
+                if (state.youtubeEngagement.videoId != videoId) return@update state
+                val visible = state.youtubeEngagement.comments.visible
+                val updatedComments = when (result) {
+                    is YoutubeCommentsResult.Available -> YoutubeCommentsState(
+                        videoId = videoId,
+                        visible = visible,
+                        loaded = true,
+                        loading = false,
+                        loadingMore = false,
+                        disabled = result.page.commentsDisabled,
+                        countText = result.page.countText,
+                        items = result.page.items.distinctBy(YoutubeComment::id),
+                        nextToken = result.page.nextToken,
+                        error = null
+                    )
+                    YoutubeCommentsResult.Disabled -> YoutubeCommentsState(
+                        videoId = videoId,
+                        visible = visible,
+                        loaded = true,
+                        loading = false,
+                        disabled = true
+                    )
+                    is YoutubeCommentsResult.Failed -> state.youtubeEngagement.comments.copy(
+                        videoId = videoId,
+                        loading = false,
+                        loaded = false,
+                        error = "unavailable"
+                    )
+                }
+                state.copy(
+                    youtubeEngagement = state.youtubeEngagement.copy(comments = updatedComments)
+                )
+            }
+        }
+    }
+
+    fun openYoutubeComments() {
+        val track = _state.value.currentTrack ?: return
+        val videoId = youtubeEngagementVideoId(track)
+        if (videoId.isBlank()) return
+        val generation = prepareYoutubeEngagement(videoId)
+        _state.update { state ->
+            state.copy(
+                youtubeEngagement = state.youtubeEngagement.copy(
+                    comments = state.youtubeEngagement.comments.copy(
+                        videoId = videoId,
+                        visible = true
+                    )
+                )
+            )
+        }
+        val comments = _state.value.youtubeEngagement.comments
+        if (!comments.loaded && !comments.loading && !comments.disabled) {
+            refreshYoutubeCommentsSummary(videoId, generation, force = true)
+        }
+    }
+
+    fun closeYoutubeComments() {
+        _state.update { state ->
+            state.copy(
+                youtubeEngagement = state.youtubeEngagement.copy(
+                    comments = state.youtubeEngagement.comments.copy(visible = false)
+                )
+            )
+        }
+    }
+
+    fun retryYoutubeComments() {
+        val videoId = _state.value.youtubeEngagement.videoId
+        if (videoId.isBlank()) return
+        val generation = prepareYoutubeEngagement(videoId)
+        refreshYoutubeCommentsSummary(videoId, generation, force = true)
+    }
+
+    fun loadMoreYoutubeComments() {
+        val engagement = _state.value.youtubeEngagement
+        val comments = engagement.comments
+        val videoId = engagement.videoId
+        val token = comments.nextToken
+        if (videoId.isBlank() || token.isBlank() || comments.loadingMore) return
+        val generation = youtubeEngagementGeneration.get()
+        youtubeCommentsPageJob?.cancel()
+        _state.update { state ->
+            if (state.youtubeEngagement.videoId != videoId) state else state.copy(
+                youtubeEngagement = state.youtubeEngagement.copy(
+                    comments = state.youtubeEngagement.comments.copy(loadingMore = true, error = null)
+                )
+            )
+        }
+        youtubeCommentsPageJob = viewModelScope.launch {
+            val result = youtubeCommentsRepository.more(videoId, token)
+            if (!isActive || !isYoutubeEngagementRequestCurrent(videoId, generation)) return@launch
+            _state.update { state ->
+                if (state.youtubeEngagement.videoId != videoId) return@update state
+                val currentComments = state.youtubeEngagement.comments
+                val updated = when (result) {
+                    is YoutubeCommentsResult.Available -> {
+                        val merged = (currentComments.items + result.page.items).distinctBy(YoutubeComment::id)
+                        currentComments.copy(
+                            loaded = true,
+                            loadingMore = false,
+                            items = merged,
+                            nextToken = result.page.nextToken.takeUnless { it == token }.orEmpty(),
+                            error = null
+                        )
+                    }
+                    YoutubeCommentsResult.Disabled -> currentComments.copy(
+                        loadingMore = false,
+                        disabled = true,
+                        nextToken = ""
+                    )
+                    is YoutubeCommentsResult.Failed -> currentComments.copy(
+                        loadingMore = false,
+                        error = "unavailable"
+                    )
+                }
+                state.copy(
+                    youtubeEngagement = state.youtubeEngagement.copy(comments = updated)
+                )
+            }
+        }
+    }
+
+    fun toggleYoutubeCommentReplies(commentId: String) {
+        val engagement = _state.value.youtubeEngagement
+        val comment = engagement.comments.items.firstOrNull { it.id == commentId } ?: return
+        if (comment.repliesExpanded) {
+            updateYoutubeComment(commentId) { it.copy(repliesExpanded = false) }
+            return
+        }
+        if (comment.replies.isNotEmpty()) {
+            updateYoutubeComment(commentId) { it.copy(repliesExpanded = true) }
+            return
+        }
+        loadYoutubeCommentReplies(commentId, append = false)
+    }
+
+    fun loadMoreYoutubeCommentReplies(commentId: String) {
+        loadYoutubeCommentReplies(commentId, append = true)
+    }
+
+    private fun loadYoutubeCommentReplies(commentId: String, append: Boolean) {
+        val engagement = _state.value.youtubeEngagement
+        val comment = engagement.comments.items.firstOrNull { it.id == commentId } ?: return
+        val token = if (append) comment.repliesNextToken else comment.replyToken
+        if (engagement.videoId.isBlank() || token.isBlank() || comment.repliesLoading) return
+        val videoId = engagement.videoId
+        val generation = youtubeEngagementGeneration.get()
+        youtubeCommentReplyJobs.remove(commentId)?.cancel()
+        updateYoutubeComment(commentId) {
+            it.copy(repliesExpanded = true, repliesLoading = true, repliesError = null)
+        }
+        val job = viewModelScope.launch {
+            val result = youtubeCommentsRepository.replies(videoId, token)
+            if (!isActive || !isYoutubeEngagementRequestCurrent(videoId, generation)) return@launch
+            when (result) {
+                is YoutubeCommentsResult.Available -> updateYoutubeComment(commentId) { current ->
+                    val base = if (append) current.replies else emptyList()
+                    current.copy(
+                        replies = (base + result.page.items).distinctBy(YoutubeComment::id),
+                        repliesNextToken = result.page.nextToken.takeUnless { it == token }.orEmpty(),
+                        repliesExpanded = true,
+                        repliesLoading = false,
+                        repliesError = null
+                    )
+                }
+                YoutubeCommentsResult.Disabled -> updateYoutubeComment(commentId) {
+                    it.copy(repliesLoading = false, repliesNextToken = "")
+                }
+                is YoutubeCommentsResult.Failed -> updateYoutubeComment(commentId) {
+                    it.copy(repliesLoading = false, repliesError = "unavailable")
+                }
+            }
+        }
+        youtubeCommentReplyJobs[commentId] = job
+        job.invokeOnCompletion { youtubeCommentReplyJobs.remove(commentId, job) }
+    }
+
+    private fun updateYoutubeComment(
+        commentId: String,
+        transform: (YoutubeComment) -> YoutubeComment
+    ) {
+        _state.update { state ->
+            val comments = state.youtubeEngagement.comments
+            val updatedItems = comments.items.map { comment ->
+                if (comment.id == commentId) transform(comment) else comment
+            }
+            state.copy(
+                youtubeEngagement = state.youtubeEngagement.copy(
+                    comments = comments.copy(items = updatedItems)
+                )
+            )
         }
     }
 
@@ -3835,7 +4165,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun refreshMotionArtworkAround(current: Track) {
         if (!_state.value.animationsEnabled) {
-            motionArtworkRequestGeneration.incrementAndGet()
             motionArtworkJob?.cancel()
             motionArtworkRequestKey = null
             _state.update { it.copy(motionArtwork = null, motionArtworkLoading = false) }
@@ -3844,7 +4173,6 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val expectedKey = MotionArtworkIdentityKey.create(current)
         if (motionArtworkJob?.isActive == true && motionArtworkRequestKey == expectedKey) return
         motionArtworkJob?.cancel()
-        val requestGeneration = motionArtworkRequestGeneration.incrementAndGet()
         motionArtworkRequestKey = expectedKey
         motionArtworkJob = viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -3855,34 +4183,18 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     .getOrNull()
                 if (!isActive) return@launch
-                var published = false
-                _state.update { latest ->
-                    val activeTrack = latest.currentTrack
-                    val stillOwnsRequest = motionArtworkRequestGeneration.get() == requestGeneration &&
-                        motionArtworkRequestKey == expectedKey &&
-                        latest.animationsEnabled &&
-                        activeTrack != null &&
-                        MotionArtworkIdentityKey.create(activeTrack) == expectedKey
-                    published = stillOwnsRequest
-                    if (stillOwnsRequest) {
-                        latest.copy(
+                val activeTrack = _state.value.currentTrack
+                if (activeTrack != null && MotionArtworkIdentityKey.create(activeTrack) == expectedKey) {
+                    _state.update {
+                        it.copy(
                             motionArtwork = resolved,
                             motionArtworkLoading = false
                         )
-                    } else {
-                        latest
                     }
                 }
-                if (published && motionArtworkRequestGeneration.get() == requestGeneration) {
-                    prefetchNextMotionArtwork(current)
-                }
+                prefetchNextMotionArtwork(current)
             } finally {
-                if (
-                    motionArtworkRequestGeneration.get() == requestGeneration &&
-                    motionArtworkRequestKey == expectedKey
-                ) {
-                    motionArtworkRequestKey = null
-                }
+                if (motionArtworkRequestKey == expectedKey) motionArtworkRequestKey = null
             }
         }
     }
@@ -4166,8 +4478,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
+        youtubeEngagementJob?.cancel()
+        youtubeDislikeJob?.cancel()
+        youtubeCommentsJob?.cancel()
+        youtubeCommentsPageJob?.cancel()
+        youtubeCommentReplyJobs.values.forEach { it.cancel() }
+        youtubeCommentReplyJobs.clear()
+        youtubeEngagementGeneration.incrementAndGet()
         prefetchJob?.cancel()
-        motionArtworkRequestGeneration.incrementAndGet()
         motionArtworkJob?.cancel()
         motionArtworkRequestKey = null
         motionArtworkPrefetchJob?.cancel()
@@ -4192,6 +4510,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(
                 selectedTab = if (it.selectedTab == LevyraTab.Player) LevyraTab.Home else it.selectedTab,
                 currentTrack = null,
+                youtubeEngagement = YoutubeEngagementState(),
                 queue = emptyList(),
                 queueCurrentIndex = -1,
                 queueUndoAvailable = false,
@@ -4779,6 +5098,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob?.cancel()
         alternateModePrefetchJob?.cancel()
         youtubeEngagementJob?.cancel()
+        youtubeDislikeJob?.cancel()
+        youtubeCommentsJob?.cancel()
+        youtubeCommentsPageJob?.cancel()
+        youtubeCommentReplyJobs.values.forEach { it.cancel() }
+        youtubeCommentReplyJobs.clear()
+        returnYoutubeDislikeRepository.close()
+        youtubeCommentsRepository.close()
         cancelBackgroundWarmups()
         orbitArtworkJob?.cancel()
         officialMetadataSignal.close()
@@ -4814,6 +5140,19 @@ internal fun youtubePlayableTrack(track: Track): Track? {
     if (videoId.isBlank()) return null
     val videoUrl = track.videoUrl.ifBlank { "https://www.youtube.com/watch?v=$videoId" }
     return track.copy(id = videoId, videoUrl = videoUrl)
+}
+
+
+private val YOUTUBE_ENGAGEMENT_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
+
+internal fun youtubeEngagementVideoId(track: Track): String {
+    val candidates = listOf(
+        youtubeVideoId(track.videoUrl),
+        youtubeVideoId(track.id),
+        track.counterpartVideoId,
+        track.id
+    )
+    return candidates.firstOrNull { YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(it.trim()) }?.trim().orEmpty()
 }
 
 private fun youtubeVideoId(url: String): String {
