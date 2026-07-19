@@ -22,6 +22,15 @@ public abstract class CommentsExtractor extends ListExtractor<CommentsInfoItem> 
         return false;
     }
 
+    /**
+     * Human-readable total comment count as returned by the service, for example
+     * {@code "1.2K comments"}. Empty when the service does not expose it.
+     */
+    @Nonnull
+    public String getCommentsCountText() throws ExtractionException {
+        return "";
+    }
+
     @Nonnull
     @Override
     public String getName() throws ParsingException {
