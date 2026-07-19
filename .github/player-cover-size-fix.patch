@@ -1,0 +1,14 @@
+diff --git a/app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt b/app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+index ca4577ad8eb55c71a8f82ca8552759440e934bcf..0000000000000000000000000000000000000000 100644
+--- a/app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
++++ b/app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+@@ -8947,8 +8947,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
+         }
+         val artworkLimit = when {
+-            densePlayer -> 214.dp
+-            compactPlayer -> 250.dp
++            densePlayer -> 292.dp
++            compactPlayer -> 344.dp
+             else -> 520.dp
+         }
+         val artworkSize = minOf(
