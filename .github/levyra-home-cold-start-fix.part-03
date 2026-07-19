@@ -1,0 +1,82 @@
+ALBUM_REMOTE_CANDIDATE_LIMIT
++            }
++            val remoteConcurrency = if (deferUntilHomeIdle) {
++                startupPlan.albumConcurrency
++            } else {
++                HOME_ALBUM_REMOTE_CONCURRENCY
++            }
+             val albums = try {
+                 repository.homeAlbums(
+                     languageCode = languageCode,
+-                    limit = HOME_ALBUM_REMOTE_CANDIDATE_LIMIT,
+-                    seeds = seeds
++                    limit = remoteLimit,
++                    seeds = seeds,
++                    concurrency = remoteConcurrency
+                 )
+             } catch (error: CancellationException) {
+                 throw error
+@@ -1939,7 +1966,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application)
+                 .map { scored: Pair<AlbumHit, Int> -> scored.first }
+                 .filterNot { candidate: AlbumHit ->
+                     selected.any { selectedAlbum: AlbumHit ->
+-                        albumRecommendationIdentityKey(selectedAlbum) == albumRecommendationIdentityKey(candidate)
++                        albumRecommendationDeduplicationKey(selectedAlbum) == albumRecommendationDeduplicationKey(candidate)
+                     }
+                 }
+                 .take(limit - selected.size)
+@@ -5121,6 +5148,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application)
+         private const val HOME_RESONANCE_REFRESH_INTERVAL_MS = 12L * 60L * 60L * 1000L
+         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
+         private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
++        private const val HOME_ALBUM_REMOTE_CONCURRENCY = 3
+         private const val HOME_ALBUM_SEED_LIMIT = 12
+         private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 8
+         private const val OFFICIAL_METADATA_CONCURRENCY = 2
+diff --git a/app/src/test/java/com/luc4n3x/levyra/data/AlbumRecommendationPolicyTest.kt b/app/src/test/java/com/luc4n3x/levyra/data/AlbumRecommendationPolicyTest.kt
+index 448c33111537140ae4a3785cf084c81aee1f9844..a46a24f8e477a51660b8914ed0a716449e4646e9 100644
+--- a/app/src/test/java/com/luc4n3x/levyra/data/AlbumRecommendationPolicyTest.kt
++++ b/app/src/test/java/com/luc4n3x/levyra/data/AlbumRecommendationPolicyTest.kt
+@@ -105,6 +105,34 @@ class AlbumRecommendationPolicyTest {
+         )
+     }
+ 
++    @Test
++    fun albumDeduplicationIgnoresDifferentUpcAndBrowseIdsForSameVisibleRelease() {
++        val first = album("AMATORE", "Samurai Jay").copy(
++            upc = "0602475840112",
++            browseId = "MPREb_first"
++        )
++        val duplicate = album("AMATORE", "Samurai Jay").copy(
++            upc = "0602475840999",
++            browseId = "MPREb_second"
++        )
++
++        assertEquals(
++            albumRecommendationDeduplicationKey(first),
++            albumRecommendationDeduplicationKey(duplicate)
++        )
++    }
++
++    @Test
++    fun albumDeduplicationCollapsesEditionSuffixesForTheSameArtist() {
++        val standard = album("AMATORE", "Samurai Jay")
++        val deluxe = album("AMATORE Deluxe Edition", "Samurai Jay")
++
++        assertEquals(
++            albumRecommendationDeduplicationKey(standard),
++            albumRecommendationDeduplicationKey(deluxe)
++        )
++    }
++
+     private fun album(title: String, artist: String): AlbumHit = AlbumHit(
+         title = title,
+         artist = artist,
+diff --git a/app/src/test/java/com/luc4n3x/levyra/data/HomeStartupPerformanceTest.kt b/app/src/test/java/com/luc4n3x/levyra/data/HomeStartupPerformanceTest.kt
+index 5116c7070ce276f60746503af3257ef2f992ec30..9d7f470bb74ee6a29d42ffe02a2ed228ac507067 100644
+--- a/app/src/test/java/com/luc4n3x/levyra/data/HomeStartupPerformanceTest.kt
++++ b/app/src/test/java/com/luc4n3x/levyra/data/HomeStartupPerformanceTest.kt
+@@ -20,6 +20,12 @@ class HomeStartupPerformanceTest {
+         assertTrue(plan.releaseRadarArtistCount <= 2)
+         assertTrue(plan.releasesPerArtist <= 4)
+         asser
