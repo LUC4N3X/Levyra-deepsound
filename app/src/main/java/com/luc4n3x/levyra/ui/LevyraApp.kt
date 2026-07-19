@@ -8091,6 +8091,7 @@ private fun PlayerImmersiveBackdrop(
     primaryTarget: Color,
     secondaryTarget: Color,
     isPlaying: Boolean,
+    auroraEnabled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val primary by animateColorAsState(
@@ -8176,6 +8177,13 @@ private fun PlayerImmersiveBackdrop(
                 )
             }
     ) {
+        AuroraBackdrop(
+            primary = primarySurface.playerMix(Color.White, 0.10f),
+            secondary = secondarySurface.playerMix(Color.White, 0.08f),
+            accent = mixedSurface,
+            enabled = auroraEnabled && isPlaying,
+            modifier = Modifier.fillMaxSize()
+        )
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -8303,14 +8311,26 @@ private fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
     onSong: () -> Unit,
-    onVideo: () -> Unit
+    onVideo: () -> Unit,
+    glass: GlassBackdropState? = null
 ) {
     val strings = LocalLevyraStrings.current
+    val switchShape = RoundedCornerShape(500.dp)
+    val switchBackground = if (glass != null) {
+        Modifier.glassSurface(
+            state = glass,
+            shape = switchShape,
+            tint = Color.Black.copy(alpha = 0.12f),
+            fallbackColor = Color.Black.copy(alpha = 0.24f),
+            borderColor = Color.White.copy(alpha = 0.12f)
+        )
+    } else {
+        Modifier
+            .background(Color.Black.copy(alpha = 0.24f), switchShape)
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), switchShape)
+    }
     Row(
-        modifier = Modifier
-            .background(Color.Black.copy(alpha = 0.24f), RoundedCornerShape(500.dp))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(500.dp))
-            .padding(3.dp),
+        modifier = switchBackground.padding(3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val songBackground by animateColorAsState(
@@ -8366,14 +8386,29 @@ private fun PlayerUtilityDock(
     isDownloaded: Boolean,
     onQueue: () -> Unit,
     onLyrics: () -> Unit,
-    onDownload: () -> Unit
+    onDownload: () -> Unit,
+    glass: GlassBackdropState? = null
 ) {
     val strings = LocalLevyraStrings.current
-    Surface(
-        color = Color.Black.copy(alpha = 0.22f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.11f)),
-        shape = RoundedCornerShape(28.dp),
-        modifier = Modifier.fillMaxWidth()
+    val dockShape = RoundedCornerShape(28.dp)
+    val dockBackground = if (glass != null) {
+        Modifier.glassSurface(
+            state = glass,
+            shape = dockShape,
+            tint = Color.Black.copy(alpha = 0.10f),
+            fallbackColor = Color.Black.copy(alpha = 0.22f),
+            borderColor = Color.White.copy(alpha = 0.11f)
+        )
+    } else {
+        Modifier
+            .clip(dockShape)
+            .background(Color.Black.copy(alpha = 0.22f))
+            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.11f)), dockShape)
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(dockBackground)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
@@ -8700,6 +8735,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
         label = "artwork-shadow"
     )
 
+    val glassState = rememberGlassBackdropState(state.animationsEnabled)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -8709,7 +8746,10 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
             primaryTarget = primaryTarget,
             secondaryTarget = secondaryTarget,
             isPlaying = state.isPlaying,
-            modifier = Modifier.fillMaxSize()
+            auroraEnabled = state.animationsEnabled,
+            modifier = Modifier
+                .fillMaxSize()
+                .glassBackdropSource(glassState)
         )
 
         LazyColumn(
@@ -8749,7 +8789,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 isVideoMode = state.isVideoMode,
                                 activeColor = primary,
                                 onSong = viewModel::toggleVideoMode,
-                                onVideo = viewModel::toggleVideoMode
+                                onVideo = viewModel::toggleVideoMode,
+                                glass = glassState
                             )
                         } else {
                             Surface(
@@ -9125,7 +9166,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         isDownloaded = track.id in state.downloadedTrackIds,
                         onQueue = viewModel::openQueue,
                         onLyrics = viewModel::openLyrics,
-                        onDownload = viewModel::exportCurrentTrack
+                        onDownload = viewModel::exportCurrentTrack,
+                        glass = glassState
                     )
                 }
                 item {
