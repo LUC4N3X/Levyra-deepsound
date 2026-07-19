@@ -8613,7 +8613,7 @@ private fun PlayerUtilityDock(
         Row(
             modifier = Modifier.padding(
                 horizontal = 8.dp,
-                vertical = if (compact) 5.dp else 8.dp
+                vertical = if (compact) 7.dp else 8.dp
             ),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -8661,14 +8661,14 @@ private fun RowScope.PlayerDockAction(
     Column(
         modifier = Modifier
             .weight(1f)
-            .height(if (compact) 48.dp else 62.dp)
+            .height(if (compact) 58.dp else 62.dp)
             .pressable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         if (isBusy) {
             CircularProgressIndicator(
-                modifier = Modifier.size(if (compact) 18.dp else 21.dp),
+                modifier = Modifier.size(if (compact) 20.dp else 21.dp),
                 strokeWidth = 2.4.dp,
                 color = tint
             )
@@ -8677,14 +8677,14 @@ private fun RowScope.PlayerDockAction(
                 icon,
                 contentDescription = label,
                 tint = tint,
-                modifier = Modifier.size(if (compact) 20.dp else 23.dp)
+                modifier = Modifier.size(if (compact) 22.dp else 23.dp)
             )
         }
-        Spacer(modifier = Modifier.height(if (compact) 3.dp else 5.dp))
+        Spacer(modifier = Modifier.height(if (compact) 4.dp else 5.dp))
         Text(
             text = label,
             color = Color.White.copy(alpha = 0.68f),
-            fontSize = if (compact) 9.sp else 10.sp,
+            fontSize = if (compact) 9.5.sp else 10.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -8727,11 +8727,11 @@ private fun PlayerYoutubeEngagementRow(
         exit = fadeOut(animationSpec = tween(140))
     ) {
         Column(
-            modifier = Modifier.padding(top = if (compact) 7.dp else 11.dp),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)
+            modifier = Modifier.padding(top = if (compact) 9.dp else 11.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 6.dp)
         ) {
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 9.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 9.dp),
                 contentPadding = PaddingValues(end = 10.dp)
             ) {
                 item(key = "youtube-votes") {
@@ -8741,13 +8741,13 @@ private fun PlayerYoutubeEngagementRow(
                         shape = CircleShape
                     ) {
                         Row(
-                            modifier = Modifier.height(if (compact) 36.dp else 42.dp),
+                            modifier = Modifier.height(if (compact) 40.dp else 42.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
                                 modifier = Modifier.padding(
-                                    start = if (compact) 11.dp else 13.dp,
-                                    end = if (compact) 9.dp else 11.dp
+                                    start = if (compact) 12.dp else 13.dp,
+                                    end = if (compact) 10.dp else 11.dp
                                 ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -8756,13 +8756,13 @@ private fun PlayerYoutubeEngagementRow(
                                     imageVector = Icons.Rounded.ThumbUp,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = if (hasLikes) 0.94f else 0.48f),
-                                    modifier = Modifier.size(if (compact) 18.dp else 20.dp)
+                                    modifier = Modifier.size(if (compact) 19.dp else 20.dp)
                                 )
                                 if (hasLikes) {
                                     Text(
                                         text = compactYoutubeCount(track.youtubeLikeCount),
                                         color = Color.White.copy(alpha = 0.94f),
-                                        fontSize = if (compact) 12.sp else 13.sp,
+                                        fontSize = if (compact) 12.5.sp else 13.sp,
                                         fontWeight = FontWeight.ExtraBold
                                     )
                                 }
@@ -8770,13 +8770,13 @@ private fun PlayerYoutubeEngagementRow(
                             Box(
                                 modifier = Modifier
                                     .width(1.dp)
-                                    .height(if (compact) 21.dp else 24.dp)
+                                    .height(if (compact) 23.dp else 24.dp)
                                     .background(Color.White.copy(alpha = 0.14f))
                             )
                             Row(
                                 modifier = Modifier.padding(
-                                    start = if (compact) 9.dp else 11.dp,
-                                    end = if (compact) 11.dp else 13.dp
+                                    start = if (compact) 10.dp else 11.dp,
+                                    end = if (compact) 12.dp else 13.dp
                                 ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -8789,7 +8789,7 @@ private fun PlayerYoutubeEngagementRow(
                                     } else {
                                         Color.White.copy(alpha = 0.48f)
                                     },
-                                    modifier = Modifier.size(if (compact) 18.dp else 20.dp)
+                                    modifier = Modifier.size(if (compact) 19.dp else 20.dp)
                                 )
                                 when {
                                     engagement.dislikeEstimateLoading -> CircularProgressIndicator(
@@ -8800,7 +8800,7 @@ private fun PlayerYoutubeEngagementRow(
                                     hasDislikeEstimate -> Text(
                                         text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
                                         color = Color.White.copy(alpha = 0.90f),
-                                        fontSize = if (compact) 12.sp else 13.sp,
+                                        fontSize = if (compact) 12.5.sp else 13.sp,
                                         fontWeight = FontWeight.ExtraBold
                                     )
                                 }
@@ -8821,8 +8821,8 @@ private fun PlayerYoutubeEngagementRow(
                     ) {
                         Row(
                             modifier = Modifier
-                                .height(if (compact) 36.dp else 42.dp)
-                                .padding(horizontal = if (compact) 12.dp else 14.dp),
+                                .height(if (compact) 40.dp else 42.dp)
+                                .padding(horizontal = if (compact) 13.dp else 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -8830,7 +8830,7 @@ private fun PlayerYoutubeEngagementRow(
                                 imageVector = Icons.Rounded.ChatBubbleOutline,
                                 contentDescription = null,
                                 tint = if (canOpenComments) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.42f),
-                                modifier = Modifier.size(if (compact) 18.dp else 20.dp)
+                                modifier = Modifier.size(if (compact) 19.dp else 20.dp)
                             )
                             when {
                                 comments.loading && !comments.loaded -> CircularProgressIndicator(
@@ -8841,7 +8841,7 @@ private fun PlayerYoutubeEngagementRow(
                                 commentBadge.isNotBlank() -> Text(
                                     text = commentBadge,
                                     color = Color.White.copy(alpha = 0.92f),
-                                    fontSize = if (compact) 12.sp else 13.sp,
+                                    fontSize = if (compact) 12.5.sp else 13.sp,
                                     fontWeight = FontWeight.ExtraBold
                                 )
                             }
@@ -8935,22 +8935,12 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        val compactPlayer = maxHeight < 840.dp
-        val densePlayer = maxHeight < 720.dp
-        val playerHorizontalPadding = if (compactPlayer) 16.dp else 20.dp
-        val playerItemSpacing = when {
-            densePlayer -> 5.dp
-            compactPlayer -> 7.dp
-            else -> 12.dp
-        }
-        val artworkLimit = when {
-            densePlayer -> 292.dp
-            compactPlayer -> 344.dp
-            else -> 520.dp
-        }
+        val compactPlayer = maxHeight < 700.dp
+        val playerHorizontalPadding = if (compactPlayer) 18.dp else 20.dp
+        val playerItemSpacing = if (compactPlayer) 9.dp else 12.dp
         val artworkSize = minOf(
             (maxWidth - playerHorizontalPadding * 2f).coerceAtLeast(180.dp),
-            artworkLimit
+            520.dp
         )
 
         PlayerImmersiveBackdrop(
@@ -8971,8 +8961,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
             contentPadding = PaddingValues(
                 start = playerHorizontalPadding,
                 end = playerHorizontalPadding,
-                top = if (compactPlayer) 6.dp else 10.dp,
-                bottom = if (compactPlayer) 18.dp else 34.dp
+                top = if (compactPlayer) 8.dp else 10.dp,
+                bottom = if (compactPlayer) 28.dp else 34.dp
             ),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(playerItemSpacing)
@@ -8981,15 +8971,15 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(if (compactPlayer) 44.dp else 48.dp),
+                        .height(if (compactPlayer) 46.dp else 48.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(modifier = Modifier.width(86.dp), contentAlignment = Alignment.CenterStart) {
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.KeyboardArrowDown,
                             contentDescription = strings.back,
-                            size = if (compactPlayer) 38.dp else 40.dp,
-                            iconSize = if (compactPlayer) 25.dp else 27.dp,
+                            size = if (compactPlayer) 39.dp else 40.dp,
+                            iconSize = if (compactPlayer) 26.dp else 27.dp,
                             tint = Color.White,
                             background = Color.Black.copy(alpha = 0.22f),
                             borderColor = Color.White.copy(alpha = 0.12f),
@@ -9032,8 +9022,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                             PlayerRoundIconButton(
                                 icon = Icons.Rounded.PictureInPictureAlt,
                                 contentDescription = strings.pictureInPicture,
-                                size = if (compactPlayer) 38.dp else 40.dp,
-                                iconSize = if (compactPlayer) 19.dp else 20.dp,
+                                size = if (compactPlayer) 39.dp else 40.dp,
+                                iconSize = if (compactPlayer) 20.dp else 20.dp,
                                 tint = Color.White,
                                 background = Color.Black.copy(alpha = 0.22f),
                                 borderColor = primary.copy(alpha = 0.38f),
@@ -9044,8 +9034,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.MoreVert,
                             contentDescription = strings.options,
-                            size = if (compactPlayer) 38.dp else 40.dp,
-                            iconSize = if (compactPlayer) 21.dp else 23.dp,
+                            size = if (compactPlayer) 39.dp else 40.dp,
+                            iconSize = if (compactPlayer) 22.dp else 23.dp,
                             tint = Color.White,
                             background = Color.Black.copy(alpha = 0.22f),
                             borderColor = Color.White.copy(alpha = 0.12f),
@@ -9066,7 +9056,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                     Box(
                         modifier = Modifier
                             .size(width = artworkSize, height = mediaHeight)
-                            .padding(vertical = if (compactPlayer) 0.dp else 2.dp)
+                            .padding(vertical = if (compactPlayer) 1.dp else 2.dp)
                     ) {
                         if (state.isVideoMode && track.videoUrl.isNotBlank()) {
                             LevyraVideoSurface(
@@ -9276,7 +9266,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     Text(
                                         text = "${if (mediaSeekFeedbackMs < 0L) "−" else "+"}${kotlin.math.abs(mediaSeekFeedbackMs) / 1_000L} s",
                                         color = Color.White,
-                                        fontSize = if (compactPlayer) 13.sp else 15.sp,
+                                        fontSize = if (compactPlayer) 14.sp else 15.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 13.dp)
                                     )
@@ -9291,7 +9281,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                             .fillMaxWidth()
                             .padding(
                                 horizontal = 4.dp,
-                                vertical = if (compactPlayer) 0.dp else 2.dp
+                                vertical = if (compactPlayer) 1.dp else 2.dp
                             ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -9299,17 +9289,17 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                             Text(
                                 text = track.title,
                                 color = Color.White,
-                                fontSize = if (compactPlayer) 22.sp else 25.sp,
-                                lineHeight = if (compactPlayer) 25.sp else 29.sp,
+                                fontSize = if (compactPlayer) 24.sp else 25.sp,
+                                lineHeight = if (compactPlayer) 28.sp else 29.sp,
                                 fontWeight = FontWeight.Black,
-                                maxLines = if (compactPlayer) 1 else 2,
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            Spacer(modifier = Modifier.height(if (compactPlayer) 2.dp else 4.dp))
+                            Spacer(modifier = Modifier.height(if (compactPlayer) 3.dp else 4.dp))
                             Text(
                                 text = track.artist,
                                 color = Color.White.copy(alpha = 0.68f),
-                                fontSize = if (compactPlayer) 13.sp else 15.sp,
+                                fontSize = if (compactPlayer) 14.sp else 15.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -9329,8 +9319,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         PlayerRoundIconButton(
                             icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                             contentDescription = strings.favoritesPlain,
-                            size = if (compactPlayer) 42.dp else 46.dp,
-                            iconSize = if (compactPlayer) 22.dp else 24.dp,
+                            size = if (compactPlayer) 44.dp else 46.dp,
+                            iconSize = if (compactPlayer) 23.dp else 24.dp,
                             tint = if (isFavorite) {
                                 Color.White.playerContentColor(
                                     listOf(primary.copy(alpha = 0.46f).playerCompositeOver(PlayerDarkSurface))
@@ -9413,7 +9403,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 Row(
                                     modifier = Modifier.padding(
                                         horizontal = 18.dp,
-                                        vertical = if (compactPlayer) 10.dp else 13.dp
+                                        vertical = if (compactPlayer) 12.dp else 13.dp
                                     ),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
@@ -9424,7 +9414,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                         Text(
                                             strings.showLyrics,
                                             color = Color.White,
-                                            fontSize = if (compactPlayer) 12.sp else 13.sp,
+                                            fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
@@ -10149,14 +10139,14 @@ private fun PlayerTimeline(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                top = if (compact) 0.dp else 2.dp,
-                bottom = if (compact) 2.dp else 4.dp
+                top = if (compact) 1.dp else 2.dp,
+                bottom = if (compact) 3.dp else 4.dp
             )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (compact) 26.dp else 32.dp)
+                .height(if (compact) 30.dp else 32.dp)
                 .semantics {
                     progressBarRangeInfo = ProgressBarRangeInfo(
                         current = fraction,
@@ -10364,14 +10354,14 @@ private fun PlayerTimeline(
             Text(
                 text = formatDuration(if (isDragging) (durationMs * fraction).toLong() else positionMs),
                 color = if (isDragging) Color.White else Color.White.copy(alpha = 0.64f),
-                fontSize = if (compact) 10.sp else 11.sp,
+                fontSize = if (compact) 10.5.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = formatDuration(durationMs),
                 color = Color.White.copy(alpha = 0.52f),
-                fontSize = if (compact) 10.sp else 11.sp,
+                fontSize = if (compact) 10.5.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
             )
@@ -10401,7 +10391,7 @@ private fun MainPlayerControls(
             .fillMaxWidth()
             .padding(
                 horizontal = 2.dp,
-                vertical = if (compact) 1.dp else 4.dp
+                vertical = if (compact) 3.dp else 4.dp
             ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -10409,8 +10399,8 @@ private fun MainPlayerControls(
         PlayerRoundIconButton(
             icon = Icons.Rounded.Shuffle,
             contentDescription = LocalLevyraStrings.current.shuffle,
-            size = if (compact) 36.dp else 40.dp,
-            iconSize = if (compact) 20.dp else 22.dp,
+            size = if (compact) 38.dp else 40.dp,
+            iconSize = if (compact) 21.dp else 22.dp,
             tint = if (shuffleOn) activeContentColor else Color.White.copy(alpha = 0.58f),
             background = Color.Transparent,
             borderColor = Color.Transparent,
@@ -10438,11 +10428,11 @@ private fun MainPlayerControls(
         Box(
             modifier = Modifier
                 .size(
-                    width = if (compact) 72.dp else 82.dp,
-                    height = if (compact) 58.dp else 66.dp
+                    width = if (compact) 78.dp else 82.dp,
+                    height = if (compact) 64.dp else 66.dp
                 )
                 .shadow(
-                    elevation = if (compact) 14.dp else 18.dp,
+                    elevation = if (compact) 16.dp else 18.dp,
                     shape = playShape,
                     clip = false,
                     ambientColor = activeColor.copy(alpha = 0.46f),
@@ -10460,7 +10450,7 @@ private fun MainPlayerControls(
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(if (compact) 26.dp else 29.dp),
+                    modifier = Modifier.size(if (compact) 28.dp else 29.dp),
                     strokeWidth = 3.2.dp,
                     color = playGradient.content
                 )
@@ -10477,7 +10467,7 @@ private fun MainPlayerControls(
                         imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
                         tint = playGradient.content,
-                        modifier = Modifier.size(if (compact) 34.dp else 39.dp)
+                        modifier = Modifier.size(if (compact) 37.dp else 39.dp)
                     )
                 }
             }
@@ -10492,8 +10482,8 @@ private fun MainPlayerControls(
         PlayerRoundIconButton(
             icon = repeatIcon,
             contentDescription = LocalLevyraStrings.current.repeat,
-            size = if (compact) 36.dp else 40.dp,
-            iconSize = if (compact) 20.dp else 22.dp,
+            size = if (compact) 38.dp else 40.dp,
+            iconSize = if (compact) 21.dp else 22.dp,
             tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) secondaryContentColor else Color.White.copy(alpha = 0.58f),
             background = Color.Transparent,
             borderColor = Color.Transparent,
@@ -10512,8 +10502,8 @@ private fun PlayerTransportButton(
     Box(
         modifier = Modifier
             .size(
-                width = if (compact) 50.dp else 56.dp,
-                height = if (compact) 48.dp else 54.dp
+                width = if (compact) 54.dp else 56.dp,
+                height = if (compact) 52.dp else 54.dp
             )
             .background(Color.White.copy(alpha = 0.11f), RoundedCornerShape(20.dp))
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
@@ -10524,7 +10514,7 @@ private fun PlayerTransportButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = Color.White,
-            modifier = Modifier.size(if (compact) 28.dp else 31.dp)
+            modifier = Modifier.size(if (compact) 30.dp else 31.dp)
         )
     }
 }
@@ -10545,8 +10535,8 @@ private fun PlayerOptionsRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                top = if (compact) 0.dp else 2.dp,
-                bottom = if (compact) 2.dp else 4.dp
+                top = if (compact) 1.dp else 2.dp,
+                bottom = if (compact) 3.dp else 4.dp
             ),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -10610,7 +10600,7 @@ private fun OptionChip(
         border = BorderStroke(1.dp, borderColor),
         shape = RoundedCornerShape(18.dp),
         modifier = modifier
-            .height(if (compact) 36.dp else 42.dp)
+            .height(if (compact) 40.dp else 42.dp)
             .graphicsLayer { this.alpha = alpha }
             .pressable(enabled = enabled, onClick = onClick)
     ) {
@@ -10623,13 +10613,13 @@ private fun OptionChip(
                 icon,
                 null,
                 tint = contentColor,
-                modifier = Modifier.size(if (compact) 15.dp else 16.dp)
+                modifier = Modifier.size(if (compact) 16.dp else 16.dp)
             )
-            Spacer(modifier = Modifier.width(if (compact) 5.dp else 6.dp))
+            Spacer(modifier = Modifier.width(if (compact) 6.dp else 6.dp))
             Text(
                 text = label,
                 color = contentColor,
-                fontSize = if (compact) 11.sp else 12.sp,
+                fontSize = if (compact) 11.5.sp else 12.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
