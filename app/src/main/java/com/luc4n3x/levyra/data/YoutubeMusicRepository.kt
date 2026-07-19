@@ -142,13 +142,17 @@ internal fun albumRecommendationIdentityKey(album: AlbumHit): String =
     "${albumRecommendationTextKey(album.title)}|${albumRecommendationTextKey(album.artist)}"
 
 internal fun albumRecommendationDeduplicationKey(album: AlbumHit): String {
-    val upc = album.upc.filter { it.isLetterOrDigit() }.lowercase(Locale.ROOT)
-    if (upc.isNotBlank()) return "upc:$upc"
-    val title = albumRecommendationTextKey(album.title)
+    val title = albumRecommendationDisplayTitleKey(album.title)
     val primaryArtist = albumRecommendationTextKey(
         album.artist.split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR, limit = 2).firstOrNull().orEmpty()
     )
     if (title.isNotBlank() && primaryArtist.isNotBlank()) return "release:$title|$primaryArtist"
+    val upc = album.upc.filter { it.isLetterOrDigit() }.lowercase(Locale.ROOT)
+    if (upc.isNotBlank()) return "upc:$upc"
+    val canonical = album.canonicalUrl.trim().lowercase(Locale.ROOT).substringBefore('?')
+    if (canonical.isNotBlank()) return "canonical:$canonical"
+    val browseId = album.browseId.trim().lowercase(Locale.ROOT)
+    if (browseId.isNotBlank()) return "browse:$browseId"
     val artwork = album.thumbnailUrl
         .trim()
         .lowercase(Locale.ROOT)
@@ -158,8 +162,19 @@ internal fun albumRecommendationDeduplicationKey(album: AlbumHit): String {
     return albumRecommendationIdentityKey(album)
 }
 
+private fun albumRecommendationDisplayTitleKey(value: String): String {
+    return albumRecommendationTextKey(value)
+        .replace(ALBUM_RECOMMENDATION_EDITION_SUFFIX, " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
 private val ALBUM_RECOMMENDATION_ARTIST_SEPARATOR =
     Regex("(?i)\\s*(?:,|;|&|\\bfeat(?:uring)?\\b|\\bft\\b|\\s+[x×]\\s+)\\s*")
+
+private val ALBUM_RECOMMENDATION_EDITION_SUFFIX = Regex(
+    """(?i)\s+(?:deluxe(?: edition)?|expanded(?: edition)?|anniversary(?: edition)?|remaster(?:ed)?(?: edition)?|bonus(?: track)?s?|special edition|collector(?:s)? edition|legacy edition|tour edition|digital edition|international edition|explicit edition|explicit version)\b.*$"""
+)
 
 internal fun albumRecommendationTextKey(value: String): String {
     val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
@@ -367,7 +382,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     suspend fun homeAlbums(
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
         limit: Int = 10,
-        seeds: List<AlbumRecommendationSeed> = emptyList()
+        seeds: List<AlbumRecommendationSeed> = emptyList(),
+        concurrency: Int = ALBUM_RECOMMENDATION_CONCURRENCY
     ): List<AlbumHit> = withContext(Dispatchers.IO) {
         val boundedLimit = limit.coerceIn(1, 24)
         val normalizedSeeds = seeds
@@ -385,7 +401,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .take(MAX_ALBUM_RECOMMENDATION_SEEDS)
             .toList()
         if (normalizedSeeds.isNotEmpty()) {
-            val limiter = Semaphore(ALBUM_RECOMMENDATION_CONCURRENCY)
+            val limiter = Semaphore(concurrency.coerceIn(1, ALBUM_RECOMMENDATION_CONCURRENCY))
             val personalized = coroutineScope {
                 normalizedSeeds.map { seed ->
                     async {
