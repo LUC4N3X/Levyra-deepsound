@@ -131,7 +131,7 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 <img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI Preview" width="95%" />
 
-<sub>*Home · Top 50 charts · L'Abisso genre zones · Artist pages — dark-first, OLED-true.*</sub>
+<sub>*Home, charts, genre spaces and artist pages in Levyra's dark-first interface.*</sub>
 
 <br>
 
