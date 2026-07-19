@@ -193,6 +193,7 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun closeYoutubeComments() = root.closeYoutubeComments()
     fun retryYoutubeComments() = root.retryYoutubeComments()
     fun loadMoreYoutubeComments() = root.loadMoreYoutubeComments()
+    fun retryYoutubeCommentsPage() = root.retryYoutubeCommentsPage()
     fun toggleYoutubeCommentReplies(commentId: String) = root.toggleYoutubeCommentReplies(commentId)
     fun loadMoreYoutubeCommentReplies(commentId: String) = root.loadMoreYoutubeCommentReplies(commentId)
     fun previous() = root.previous()

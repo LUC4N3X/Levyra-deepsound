@@ -271,6 +271,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var youtubeCommentsJob: Job? = null
     private var youtubeCommentsPageJob: Job? = null
     private val youtubeCommentReplyJobs = ConcurrentHashMap<String, Job>()
+    private val youtubeCommentContinuationHistory = linkedSetOf<String>()
     private val youtubeEngagementGeneration = AtomicLong(0L)
     private var prefetchJob: Job? = null
     private var chartEnrichJob: Job? = null
@@ -3513,6 +3514,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         youtubeCommentsPageJob?.cancel()
         youtubeCommentReplyJobs.values.forEach { it.cancel() }
         youtubeCommentReplyJobs.clear()
+        youtubeCommentContinuationHistory.clear()
         youtubeEngagementGeneration.incrementAndGet()
         val engagementVideoId = youtubeEngagementVideoId(track)
         if (!preserveCrossfade) {
@@ -3747,6 +3749,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val current = _state.value.youtubeEngagement
         if (current.videoId == videoId) return youtubeEngagementGeneration.get()
         val generation = youtubeEngagementGeneration.incrementAndGet()
+        youtubeCommentContinuationHistory.clear()
         _state.update { state ->
             state.copy(youtubeEngagement = YoutubeEngagementState(videoId = videoId))
         }
@@ -3841,8 +3844,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         youtubeCommentsJob = viewModelScope.launch {
-            val result = youtubeCommentsRepository.initial(videoId)
+            val result = youtubeCommentsRepository.initial(videoId, forceRefresh = force)
             if (!isActive || !isYoutubeEngagementRequestCurrent(videoId, generation)) return@launch
+            if (result !is YoutubeCommentsResult.Failed) youtubeCommentContinuationHistory.clear()
             _state.update { state ->
                 if (state.youtubeEngagement.videoId != videoId) return@update state
                 val visible = state.youtubeEngagement.comments.visible
@@ -3919,11 +3923,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun loadMoreYoutubeComments() {
+        loadMoreYoutubeComments(forceRefresh = false)
+    }
+
+    fun retryYoutubeCommentsPage() {
+        loadMoreYoutubeComments(forceRefresh = true)
+    }
+
+    private fun loadMoreYoutubeComments(forceRefresh: Boolean) {
         val engagement = _state.value.youtubeEngagement
         val comments = engagement.comments
         val videoId = engagement.videoId
         val token = comments.nextToken
-        if (videoId.isBlank() || token.isBlank() || comments.loadingMore) return
+        if (
+            videoId.isBlank() ||
+            token.isBlank() ||
+            comments.loadingMore ||
+            (!forceRefresh && comments.error != null)
+        ) return
         val generation = youtubeEngagementGeneration.get()
         youtubeCommentsPageJob?.cancel()
         _state.update { state ->
@@ -3934,19 +3951,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         youtubeCommentsPageJob = viewModelScope.launch {
-            val result = youtubeCommentsRepository.more(videoId, token)
+            val result = youtubeCommentsRepository.more(
+                videoId = videoId,
+                continuationToken = token,
+                forceRefresh = forceRefresh
+            )
             if (!isActive || !isYoutubeEngagementRequestCurrent(videoId, generation)) return@launch
             _state.update { state ->
                 if (state.youtubeEngagement.videoId != videoId) return@update state
                 val currentComments = state.youtubeEngagement.comments
                 val updated = when (result) {
                     is YoutubeCommentsResult.Available -> {
+                        youtubeCommentContinuationHistory += token
                         val merged = (currentComments.items + result.page.items).distinctBy(YoutubeComment::id)
+                        val nextToken = nextYoutubeCommentsToken(
+                            requestedToken = token,
+                            candidateToken = result.page.nextToken,
+                            successfulTokens = youtubeCommentContinuationHistory
+                        )
                         currentComments.copy(
                             loaded = true,
                             loadingMore = false,
                             items = merged,
-                            nextToken = result.page.nextToken.takeUnless { it == token }.orEmpty(),
+                            nextToken = nextToken,
                             error = null
                         )
                     }
@@ -3997,7 +4024,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             it.copy(repliesExpanded = true, repliesLoading = true, repliesError = null)
         }
         val job = viewModelScope.launch {
-            val result = youtubeCommentsRepository.replies(videoId, token)
+            val result = youtubeCommentsRepository.replies(
+                videoId = videoId,
+                continuationToken = token,
+                forceRefresh = comment.repliesError != null
+            )
             if (!isActive || !isYoutubeEngagementRequestCurrent(videoId, generation)) return@launch
             when (result) {
                 is YoutubeCommentsResult.Available -> updateYoutubeComment(commentId) { current ->
@@ -4484,6 +4515,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         youtubeCommentsPageJob?.cancel()
         youtubeCommentReplyJobs.values.forEach { it.cancel() }
         youtubeCommentReplyJobs.clear()
+        youtubeCommentContinuationHistory.clear()
         youtubeEngagementGeneration.incrementAndGet()
         prefetchJob?.cancel()
         motionArtworkJob?.cancel()
@@ -5103,6 +5135,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         youtubeCommentsPageJob?.cancel()
         youtubeCommentReplyJobs.values.forEach { it.cancel() }
         youtubeCommentReplyJobs.clear()
+        youtubeCommentContinuationHistory.clear()
         returnYoutubeDislikeRepository.close()
         youtubeCommentsRepository.close()
         cancelBackgroundWarmups()
@@ -5146,13 +5179,37 @@ internal fun youtubePlayableTrack(track: Track): Track? {
 private val YOUTUBE_ENGAGEMENT_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")
 
 internal fun youtubeEngagementVideoId(track: Track): String {
-    val candidates = listOf(
-        youtubeVideoId(track.videoUrl),
-        youtubeVideoId(track.id),
-        track.counterpartVideoId,
-        track.id
-    )
-    return candidates.firstOrNull { YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(it.trim()) }?.trim().orEmpty()
+    val urlVideoId = youtubeVideoId(track.videoUrl).trim()
+    if (YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(urlVideoId)) return urlVideoId
+
+    val idUrlVideoId = youtubeVideoId(track.id).trim()
+    if (YOUTUBE_ENGAGEMENT_VIDEO_ID.matches(idUrlVideoId)) return idUrlVideoId
+
+    if (!isYoutubeBackedTrack(track)) return ""
+    return sequenceOf(track.counterpartVideoId, track.id)
+        .map(String::trim)
+        .firstOrNull(YOUTUBE_ENGAGEMENT_VIDEO_ID::matches)
+        .orEmpty()
+}
+
+
+internal fun nextYoutubeCommentsToken(
+    requestedToken: String,
+    candidateToken: String,
+    successfulTokens: Set<String>
+): String {
+    val requested = requestedToken.trim()
+    val candidate = candidateToken.trim()
+    if (candidate.isBlank() || candidate == requested || candidate in successfulTokens) return ""
+    return candidate
+}
+
+private fun isYoutubeBackedTrack(track: Track): Boolean {
+    val sourceMarker = "${track.source} ${track.metadataProvider}".lowercase()
+    return sourceMarker.contains("youtube") ||
+        track.videoType.isNotBlank() ||
+        track.videoUrl.contains("youtube.com", ignoreCase = true) ||
+        track.videoUrl.contains("youtu.be", ignoreCase = true)
 }
 
 private fun youtubeVideoId(url: String): String {
