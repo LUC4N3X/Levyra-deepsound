@@ -6,8 +6,8 @@
 
 ### Stream everything. Keep what you love. Own every note.
 
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="https://img.shields.io/badge/Download-Latest%20release-7F52FF?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117" alt="Download latest release"></a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="https://img.shields.io/badge/Downloads-All%20releases-0A84FF?style=for-the-badge&logo=github&logoColor=white&labelColor=0d1117" alt="Browse all releases"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-latest-release-badge.svg" alt="Download latest release" height="32"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-all-releases-badge.svg" alt="Browse all releases" height="32"></a>
 <a href="LICENSE"><img src="https://img.shields.io/github/license/LUC4N3X/Levyra-deepsound?style=for-the-badge&labelColor=0d1117&color=3DDC84" alt="GPL-3.0 License"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound"><img src="https://img.shields.io/github/stars/LUC4N3X/Levyra-deepsound?style=for-the-badge&label=Stars&labelColor=0d1117&color=F9AB00&logo=github&logoColor=white" alt="Star Levyra"></a>
 
