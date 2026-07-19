@@ -115,9 +115,21 @@ public abstract class ListExtractor<R extends InfoItem> extends Extractor {
         }
 
         public InfoItemsPage(final List<T> itemsList,
-                             Page nextPage,
+                             final Page nextPage,
                              final List<Throwable> errors) {
-            if (itemsList.isEmpty()) {
+            this(itemsList, nextPage, errors, false);
+        }
+
+        /**
+         * Creates a page while optionally preserving a valid continuation when no items were
+         * successfully parsed. This is useful for feeds where a legitimate page can contain only
+         * unavailable, deleted or otherwise unsupported renderers while later pages remain valid.
+         */
+        public InfoItemsPage(final List<T> itemsList,
+                             Page nextPage,
+                             final List<Throwable> errors,
+                             final boolean preserveNextPageWhenEmpty) {
+            if (!preserveNextPageWhenEmpty && itemsList.isEmpty()) {
                 nextPage = null;
             }
             this.itemsList = itemsList;
