@@ -20,6 +20,12 @@ class HomeStartupPerformanceTest {
         assertTrue(plan.releaseRadarArtistCount <= 2)
         assertTrue(plan.releasesPerArtist <= 4)
         assertTrue(plan.idleWindowMs >= 650L)
+        assertTrue(plan.secondaryStartDelayMs >= 1_800L)
+        assertTrue(plan.albumStartDelayMs > plan.secondaryStartDelayMs)
+        assertTrue(plan.artistStartDelayMs > plan.albumStartDelayMs)
+        assertEquals(1, plan.albumConcurrency)
+        assertTrue(plan.albumSeedCount <= 4)
+        assertTrue(plan.albumCandidateCount <= 10)
     }
 
     @Test
@@ -31,6 +37,13 @@ class HomeStartupPerformanceTest {
         assertTrue(plan.chartWarmCount <= 1)
         assertTrue(plan.releaseRadarArtistCount <= 4)
         assertTrue(plan.idleWindowMs >= 500L)
+        assertTrue(plan.homeFeedStartDelayMs <= 100L)
+        assertTrue(plan.secondaryStartDelayMs >= 1_200L)
+        assertTrue(plan.albumStartDelayMs > plan.secondaryStartDelayMs)
+        assertTrue(plan.artistStartDelayMs > plan.albumStartDelayMs)
+        assertEquals(1, plan.albumConcurrency)
+        assertTrue(plan.albumSeedCount <= 6)
+        assertTrue(plan.albumCandidateCount <= 14)
     }
 
     @Test
@@ -40,7 +53,7 @@ class HomeStartupPerformanceTest {
             powerConstrained = true,
             preferredConcurrency = 2
         )
-        assertTrue(plan.delayMs >= 900L)
+        assertTrue(plan.delayMs >= 7_000L)
         assertEquals(1, plan.trackCount)
         assertEquals(1, plan.concurrency)
     }
@@ -52,7 +65,7 @@ class HomeStartupPerformanceTest {
             powerConstrained = false,
             preferredConcurrency = 2
         )
-        assertTrue(plan.delayMs >= 650L)
+        assertTrue(plan.delayMs >= 4_500L)
         assertEquals(1, plan.trackCount)
         assertEquals(1, plan.concurrency)
     }

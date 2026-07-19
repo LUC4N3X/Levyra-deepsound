@@ -282,6 +282,7 @@ internal data class HomeRenderSnapshot(
 internal data class HomeDerivedState(
     val resonanceTracks: List<Track>,
     val artistRefreshFingerprint: String,
+    val quickPicks: HomeSection?,
     val newReleases: HomeSection?,
     val otherSections: List<HomeSection>,
     val chartChunks: List<List<Track>>,
@@ -356,6 +357,7 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
 }
 
 private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
+    val quickPicks = input.homeSections.firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
     val newReleases = input.homeSections.firstOrNull { isVerifiedHomeReleaseSectionTitle(it.title) }
     val otherSections = input.homeSections.filter {
         !isVerifiedHomeReleaseSectionTitle(it.title) &&
@@ -376,6 +378,7 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     return HomeDerivedState(
         resonanceTracks = input.cachedResonanceTracks.ifEmpty { buildHomeResonanceTracks(input) },
         artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
+        quickPicks = quickPicks,
         newReleases = newReleases,
         otherSections = otherSections,
         chartChunks = input.charts.chunked(4),
@@ -524,6 +527,8 @@ private data class HomeProjection(
     val chartRegions: List<ChartRegion>,
     val charts: List<Track>,
     val currentTrack: Track?,
+    val downloadedTrackIds: Set<String>,
+    val downloadingTrackIds: Set<String>,
     val favoriteIds: Set<String>,
     val favorites: List<Track>,
     val homeAlbums: List<AlbumHit>,
@@ -558,6 +563,8 @@ private fun homeProjection(state: LevyraUiState): HomeProjection = HomeProjectio
     chartRegions = state.chartRegions,
     charts = state.charts,
     currentTrack = state.currentTrack,
+    downloadedTrackIds = state.downloadedTrackIds,
+    downloadingTrackIds = state.downloadingTrackIds,
     favoriteIds = state.favoriteIds,
     favorites = state.favorites,
     homeAlbums = state.homeAlbums,
