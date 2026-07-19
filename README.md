@@ -23,7 +23,7 @@
 
 ---
 
-## 🎶 About Levyra
+## ✦ About Levyra
 
 <div align="center">
 
@@ -52,7 +52,7 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 ---
 
-## ✨ Features
+## ✦ Features
 
 <table width="100%">
 <tr>
@@ -139,7 +139,7 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 ---
 
-## 🏗️ Architecture
+## ✦ Architecture
 
 Levyra runs on strict unidirectional data flow: Compose renders, a central ViewModel owns state, and decoupled repositories and services make sure no network call or database write ever touches the main thread.
 
@@ -251,7 +251,7 @@ levyraVersionCode=2031100
 
 ---
 
-## 🛡️ Privacy & Data Collection
+## ✦ Privacy & Data Collection
 
 Your listening habits are nobody's business — including mine.
 
@@ -270,7 +270,7 @@ Your listening habits are nobody's business — including mine.
 
 ---
 
-## 🤝 Contributing
+## ✦ Contributing
 
 Bug reports, feature requests and pull requests are all welcome:
 
@@ -289,7 +289,7 @@ Bug reports, feature requests and pull requests are all welcome:
 
 ---
 
-## 🙏 Credits
+## ✦ Credits
 
 <table align="center">
   <tr>
