@@ -98,6 +98,31 @@ class YoutubeMusicPlaylistPageParserTest {
         assertEquals("Example song", tracks.single().title)
     }
 
+    @Test
+    fun unavailableRendererStillCountsAsRawPageProgress() {
+        val root = JSONObject(
+            """
+            {
+              "continuationContents": {
+                "musicPlaylistShelfContinuation": {
+                  "contents": [
+                    ${unavailableRendererItem()},
+                    ${continuationItem("TOKEN_AFTER_UNAVAILABLE")}
+                  ]
+                }
+              }
+            }
+            """.trimIndent()
+        )
+
+        val renderers = YoutubeMusicPlaylistPageParser.renderers(root)
+        val tracks = YoutubeMusicRepository().parsePlaylistTracks(root, "PLAYLIST_ID")
+
+        assertEquals(1, renderers.size)
+        assertEquals(0, tracks.size)
+        assertEquals("TOKEN_AFTER_UNAVAILABLE", YoutubeMusicPlaylistPageParser.continuation(root))
+    }
+
     private fun rendererVideoIds(root: JSONObject): List<String> =
         YoutubeMusicPlaylistPageParser.renderers(root).map { renderer ->
             renderer.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()
@@ -186,6 +211,18 @@ class YoutubeMusicPlaylistPageParserTest {
                 }
               }
             ]
+          }
+        }
+        """.trimIndent()
+
+    private fun unavailableRendererItem(): String =
+        """
+        {
+          "musicResponsiveListItemRenderer": {
+            "playlistItemData": {
+              "videoId": "UNAVAILABLE_VIDEO"
+            },
+            "flexColumns": []
           }
         }
         """.trimIndent()
