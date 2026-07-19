@@ -625,7 +625,7 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false, zoom: Float = 1f) {
     val context = LocalContext.current
-    val models = remember(
+    val candidateModels = remember(
         context,
         track.id,
         track.title,
@@ -637,16 +637,39 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     ) {
         LevyraArtworkCache.models(context, track, highRes)
     }
-    var modelIndex by remember(models) { mutableStateOf(0) }
-    val model = models.getOrNull(modelIndex)
-    val artworkKey = remember(track.id, highRes) { "${track.id}:${if (highRes) "large" else "small"}" }
-    val modelIdentity = remember(model) {
-        when (model) {
-            is File -> "file:${model.absolutePath}"
-            null -> "missing"
-            else -> "remote:${model}"
+    val artworkKey = remember(track.id, highRes) {
+        "${track.id}:${if (highRes) "large" else "small"}"
+    }
+    val remoteArtworkLoadingEnabled = LocalRemoteArtworkLoadingEnabled.current
+    var activeModel by remember(artworkKey) {
+        mutableStateOf<Any?>(candidateModels.firstOrNull())
+    }
+    var failedModelIdentities by remember(artworkKey) {
+        mutableStateOf(emptySet<String>())
+    }
+    var remoteRequestUnlocked by remember(artworkKey) {
+        mutableStateOf(activeModel is File || remoteArtworkLoadingEnabled)
+    }
+    val activeModelIdentity = remember(activeModel) {
+        artworkModelIdentity(activeModel)
+    }
+
+    LaunchedEffect(artworkKey, candidateModels, failedModelIdentities, activeModelIdentity) {
+        val activeModelUsable = activeModel != null && activeModelIdentity !in failedModelIdentities
+        if (!activeModelUsable) {
+            activeModel = candidateModels.firstOrNull { candidate ->
+                artworkModelIdentity(candidate) !in failedModelIdentities
+            }
         }
     }
+    LaunchedEffect(remoteArtworkLoadingEnabled, activeModelIdentity) {
+        if (remoteArtworkLoadingEnabled || activeModel is File) {
+            remoteRequestUnlocked = true
+        }
+    }
+
+    val model = activeModel
+    val modelIdentity = remember(model) { artworkModelIdentity(model) }
     val requestSource = remember(model) {
         when (model) {
             is File -> ArtworkRequestSource.PersistentFile
@@ -654,8 +677,11 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
             else -> ArtworkRequestSource.Remote
         }
     }
-    val remoteArtworkLoadingEnabled = LocalRemoteArtworkLoadingEnabled.current
-    val canLoadArtwork = model != null && (model is File || remoteArtworkLoadingEnabled)
+    val canLoadArtwork = model != null && (
+        model is File ||
+            remoteArtworkLoadingEnabled ||
+            remoteRequestUnlocked
+        )
     if (BuildConfig.DEBUG) {
         LaunchedEffect(artworkKey, modelIdentity, requestSource) {
             LevyraArtworkStartupMetrics.recordArtworkRequest(artworkKey, modelIdentity, requestSource)
@@ -683,14 +709,32 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
                 onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
-                onSuccess = { LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey) },
+                onSuccess = {
+                    remoteRequestUnlocked = true
+                    LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey)
+                },
                 onError = {
                     LevyraArtworkStartupMetrics.recordArtworkFailure(artworkKey)
-                    if (modelIndex < models.lastIndex) modelIndex += 1
+                    val failedIdentity = modelIdentity
+                    val updatedFailures = failedModelIdentities + failedIdentity
+                    failedModelIdentities = updatedFailures
+                    activeModel = candidateModels.firstOrNull { candidate ->
+                        artworkModelIdentity(candidate) !in updatedFailures
+                    }
                 },
-                modifier = Modifier.fillMaxSize().scale(zoom)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scale(zoom)
             )
         }
+    }
+}
+
+private fun artworkModelIdentity(model: Any?): String {
+    return when (model) {
+        is File -> "file:${model.absolutePath}"
+        null -> "missing"
+        else -> "remote:$model"
     }
 }
 
