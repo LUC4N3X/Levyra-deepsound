@@ -20,7 +20,7 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
-      - name: Apply player layout fix
+      - name: Apply player artwork layout fix
         shell: bash
         run: |
           set -euo pipefail
