@@ -7,7 +7,13 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal data class HomeStartupWorkPlan(
     val idleWindowMs: Long,
+    val homeFeedStartDelayMs: Long,
     val secondaryStartDelayMs: Long,
+    val albumStartDelayMs: Long,
+    val artistStartDelayMs: Long,
+    val albumSeedCount: Int,
+    val albumCandidateCount: Int,
+    val albumConcurrency: Int,
     val priorityArtworkCount: Int,
     val refreshedArtworkCount: Int,
     val chartArtworkCount: Int,
@@ -24,7 +30,13 @@ internal object HomeStartupWorkPolicy {
         return when {
             lowRam -> HomeStartupWorkPlan(
                 idleWindowMs = 700L,
-                secondaryStartDelayMs = 900L,
+                homeFeedStartDelayMs = 80L,
+                secondaryStartDelayMs = 2_200L,
+                albumStartDelayMs = 4_200L,
+                artistStartDelayMs = 6_000L,
+                albumSeedCount = 4,
+                albumCandidateCount = 10,
+                albumConcurrency = 1,
                 priorityArtworkCount = 2,
                 refreshedArtworkCount = 4,
                 chartArtworkCount = 3,
@@ -37,7 +49,13 @@ internal object HomeStartupWorkPolicy {
             )
             powerConstrained -> HomeStartupWorkPlan(
                 idleWindowMs = 600L,
-                secondaryStartDelayMs = 800L,
+                homeFeedStartDelayMs = 70L,
+                secondaryStartDelayMs = 1_800L,
+                albumStartDelayMs = 3_400L,
+                artistStartDelayMs = 4_800L,
+                albumSeedCount = 5,
+                albumCandidateCount = 12,
+                albumConcurrency = 1,
                 priorityArtworkCount = 3,
                 refreshedArtworkCount = 5,
                 chartArtworkCount = 4,
@@ -50,7 +68,13 @@ internal object HomeStartupWorkPolicy {
             )
             else -> HomeStartupWorkPlan(
                 idleWindowMs = 520L,
-                secondaryStartDelayMs = 800L,
+                homeFeedStartDelayMs = 60L,
+                secondaryStartDelayMs = 1_400L,
+                albumStartDelayMs = 2_600L,
+                artistStartDelayMs = 3_800L,
+                albumSeedCount = 6,
+                albumCandidateCount = 14,
+                albumConcurrency = 1,
                 priorityArtworkCount = 4,
                 refreshedArtworkCount = 6,
                 chartArtworkCount = 5,
@@ -74,10 +98,10 @@ internal data class StartupPlaybackWarmPlan(
 internal object StartupPlaybackWarmPolicy {
     fun create(lowRam: Boolean, powerConstrained: Boolean, preferredConcurrency: Int): StartupPlaybackWarmPlan {
         return when {
-            lowRam -> StartupPlaybackWarmPlan(delayMs = 1_000L, trackCount = 1, concurrency = 1)
-            powerConstrained -> StartupPlaybackWarmPlan(delayMs = 900L, trackCount = 1, concurrency = 1)
+            lowRam -> StartupPlaybackWarmPlan(delayMs = 7_200L, trackCount = 1, concurrency = 1)
+            powerConstrained -> StartupPlaybackWarmPlan(delayMs = 6_000L, trackCount = 1, concurrency = 1)
             else -> StartupPlaybackWarmPlan(
-                delayMs = 700L,
+                delayMs = 4_800L,
                 trackCount = 1,
                 concurrency = preferredConcurrency.coerceIn(1, 1)
             )

@@ -4286,7 +4286,13 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
     }
-    val homeAnimationsEnabled = LocalAnimationsEnabled.current && !homeListState.isScrollInProgress
+    val homeBackgroundWorkActive = state.isLoadingHome ||
+        state.homeAlbumsLoading ||
+        state.homeArtistsLoading ||
+        state.isLoadingCharts
+    val homeAnimationsEnabled = LocalAnimationsEnabled.current &&
+        !homeListState.isScrollInProgress &&
+        !homeBackgroundWorkActive
     CompositionLocalProvider(LocalAnimationsEnabled provides homeAnimationsEnabled) {
         LazyColumn(
         state = homeListState,

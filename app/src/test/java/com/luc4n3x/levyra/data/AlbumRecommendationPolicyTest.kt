@@ -105,6 +105,34 @@ class AlbumRecommendationPolicyTest {
         )
     }
 
+    @Test
+    fun albumDeduplicationIgnoresDifferentUpcAndBrowseIdsForSameVisibleRelease() {
+        val first = album("AMATORE", "Samurai Jay").copy(
+            upc = "0602475840112",
+            browseId = "MPREb_first"
+        )
+        val duplicate = album("AMATORE", "Samurai Jay").copy(
+            upc = "0602475840999",
+            browseId = "MPREb_second"
+        )
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(first),
+            albumRecommendationDeduplicationKey(duplicate)
+        )
+    }
+
+    @Test
+    fun albumDeduplicationCollapsesEditionSuffixesForTheSameArtist() {
+        val standard = album("AMATORE", "Samurai Jay")
+        val deluxe = album("AMATORE Deluxe Edition", "Samurai Jay")
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(standard),
+            albumRecommendationDeduplicationKey(deluxe)
+        )
+    }
+
     private fun album(title: String, artist: String): AlbumHit = AlbumHit(
         title = title,
         artist = artist,
