@@ -39,6 +39,9 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
      */
     private boolean commentsDisabled;
 
+    /** Human-readable total comment count returned by YouTube. */
+    private String commentsCountText = "";
+
     /**
      * The second ajax <b>/next</b> response.
      */
@@ -154,20 +157,24 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
             return null;
         }
 
-        if(jsonObjectSafe == null) {
-            return getNextPage(onResponseReceivedEndpoints
-                    .getObject(0)
-                    .getObject("reloadContinuationItemsCommand")
-                    .getArray("continuationItems")
-                    .getObject(0)
-                    .getObject("commentsHeaderRenderer")
-                    .getObject("sortMenu")
-                    .getObject("sortFilterSubMenuRenderer")
-                    .getArray("subMenuItems")
-                    .getObject(0)
-                    .getObject("serviceEndpoint")
-                    .getObject("continuationCommand")
-                    .getString("token"));
+        if (jsonObjectSafe == null) {
+            try {
+                return getNextPage(onResponseReceivedEndpoints
+                        .getObject(0)
+                        .getObject("reloadContinuationItemsCommand")
+                        .getArray("continuationItems")
+                        .getObject(0)
+                        .getObject("commentsHeaderRenderer")
+                        .getObject("sortMenu")
+                        .getObject("sortFilterSubMenuRenderer")
+                        .getArray("subMenuItems")
+                        .getObject(0)
+                        .getObject("serviceEndpoint")
+                        .getObject("continuationCommand")
+                        .getString("token"));
+            } catch (final Exception ignored) {
+                return null;
+            }
         }
 
         final JsonArray continuationItemsArray;
@@ -261,11 +268,12 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
 
         String resp = getJsonPostResponseRaw("next", body, localization);
         final JsonObject jsonObject = JsonUtils.toJsonObject(resp);
-        final JSONObject jsonObjectSafe;
+        JSONObject jsonObjectSafe = null;
         try {
             jsonObjectSafe = new JSONObject(resp);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
+        } catch (final JSONException ignored) {
+            // NanoJSON already parsed the response. The org.json representation is optional and
+            // only used for a few defensive continuation/count fallbacks.
         }
 
         return extractComments(jsonObject, jsonObjectSafe);
@@ -275,10 +283,12 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
             throws ExtractionException {
         final CommentsInfoItemsCollector collector = new CommentsInfoItemsCollector(
                 getServiceId());
-        if(jsonObjectSafe != null) {
-            collectCommentsFrom(collector, jsonObject);
-        }
-        return new InfoItemsPage<>(collector, getNextPage(jsonObject, jsonObjectSafe));
+        collectCommentsFrom(collector, jsonObject);
+        return new InfoItemsPage<>(
+                collector.getItems(),
+                getNextPage(jsonObject, jsonObjectSafe),
+                collector.getErrors(),
+                true);
     }
 
     private void collectCommentsFrom(@Nonnull final CommentsInfoItemsCollector collector,
@@ -394,6 +404,79 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
         }
     }
 
+    @Nonnull
+    @Override
+    public String getCommentsCountText() {
+        return commentsCountText;
+    }
+
+    @Nonnull
+    static String extractCommentsCountText(@Nullable final JSONObject root) {
+        if (root == null) {
+            return "";
+        }
+        final JSONObject header = findObjectForKey(root, "commentsHeaderRenderer", 0);
+        if (header == null) {
+            return "";
+        }
+        return extractText(header.optJSONObject("countText")).trim();
+    }
+
+    @Nullable
+    private static JSONObject findObjectForKey(@Nullable final Object node,
+                                               @Nonnull final String key,
+                                               final int depth) {
+        if (node == null || depth > 48) {
+            return null;
+        }
+        if (node instanceof JSONObject) {
+            final JSONObject object = (JSONObject) node;
+            final JSONObject direct = object.optJSONObject(key);
+            if (direct != null) {
+                return direct;
+            }
+            final java.util.Iterator<String> keys = object.keys();
+            while (keys.hasNext()) {
+                final JSONObject found = findObjectForKey(object.opt(keys.next()), key, depth + 1);
+                if (found != null) {
+                    return found;
+                }
+            }
+        } else if (node instanceof JSONArray) {
+            final JSONArray array = (JSONArray) node;
+            for (int index = 0; index < array.length(); index++) {
+                final JSONObject found = findObjectForKey(array.opt(index), key, depth + 1);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    @Nonnull
+    private static String extractText(@Nullable final JSONObject textObject) {
+        if (textObject == null) {
+            return "";
+        }
+        final String simpleText = textObject.optString("simpleText", "").trim();
+        if (!simpleText.isEmpty()) {
+            return simpleText;
+        }
+        final JSONArray runs = textObject.optJSONArray("runs");
+        if (runs == null) {
+            return "";
+        }
+        final StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < runs.length(); index++) {
+            final JSONObject run = runs.optJSONObject(index);
+            if (run != null) {
+                builder.append(run.optString("text", ""));
+            }
+        }
+        return builder.toString();
+    }
+
     @Override
     public void onFetchPage(@Nonnull final Downloader downloader)
             throws IOException, ExtractionException {
@@ -425,8 +508,10 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
         ajaxJson = JsonUtils.toJsonObject(resp);
         try {
             ajaxJsonSafe = new JSONObject(resp);
+            commentsCountText = extractCommentsCountText(ajaxJsonSafe);
         } catch (JSONException e) {
-            e.printStackTrace();
+            ajaxJsonSafe = null;
+            commentsCountText = "";
         }
     }
 

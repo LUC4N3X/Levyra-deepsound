@@ -144,6 +144,12 @@ import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.ThumbUp
+import androidx.compose.material.icons.rounded.ThumbDown
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.Reply
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.ViewCompact
@@ -273,6 +279,9 @@ import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeComment
+import com.luc4n3x.levyra.domain.YoutubeCommentsState
+import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.LevyraLaunchActions
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraInk
@@ -8452,64 +8461,177 @@ private fun compactYoutubeCount(value: Long): String {
 @Composable
 private fun PlayerYoutubeEngagementRow(
     track: Track,
+    engagement: YoutubeEngagementState,
     primary: Color,
-    secondary: Color
+    secondary: Color,
+    onComments: () -> Unit,
+    onOpenDislikeAttribution: () -> Unit
 ) {
-    val hasLikes = track.youtubeLikeCount > 0L
-    val hasViews = track.youtubeViewCount > 0L
+    val hasLikes = track.youtubeLikeCount >= 0L
+    val hasDislikeEstimate = engagement.dislikeEstimateAvailable && engagement.estimatedDislikeCount >= 0L
+    val comments = engagement.comments
+    val commentBadge = youtubeCommentCountBadge(comments.countText)
+    val canOpenComments = engagement.videoId.isNotBlank()
+    val visible = hasLikes || hasDislikeEstimate || engagement.dislikeEstimateLoading || canOpenComments
+
     AnimatedVisibility(
-        visible = hasLikes || hasViews,
+        visible = visible,
         enter = fadeIn(animationSpec = tween(220)) + slideInVertically(initialOffsetY = { it / 3 }),
         exit = fadeOut(animationSpec = tween(140))
     ) {
-        Surface(
-            modifier = Modifier.padding(top = 10.dp),
-            color = Color.White.copy(alpha = 0.08f),
-            shape = CircleShape
+        Column(
+            modifier = Modifier.padding(top = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                contentPadding = PaddingValues(end = 10.dp)
             ) {
-                if (hasLikes) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                item(key = "youtube-votes") {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.085f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.105f)),
+                        shape = CircleShape
                     ) {
-                        Text("👍", fontSize = 11.sp)
-                        Text(
-                            text = compactYoutubeCount(track.youtubeLikeCount),
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.2.sp
-                        )
+                        Row(
+                            modifier = Modifier.height(42.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(start = 13.dp, end = 11.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ThumbUp,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = if (hasLikes) 0.94f else 0.48f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                if (hasLikes) {
+                                    Text(
+                                        text = compactYoutubeCount(track.youtubeLikeCount),
+                                        color = Color.White.copy(alpha = 0.94f),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(24.dp)
+                                    .background(Color.White.copy(alpha = 0.14f))
+                            )
+                            Row(
+                                modifier = Modifier.padding(start = 11.dp, end = 13.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ThumbDown,
+                                    contentDescription = null,
+                                    tint = if (hasDislikeEstimate) {
+                                        secondary.playerMix(Color.White, 0.58f)
+                                    } else {
+                                        Color.White.copy(alpha = 0.48f)
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                when {
+                                    engagement.dislikeEstimateLoading -> CircularProgressIndicator(
+                                        modifier = Modifier.size(13.dp),
+                                        strokeWidth = 1.8.dp,
+                                        color = secondary.playerMix(Color.White, 0.58f)
+                                    )
+                                    hasDislikeEstimate -> Text(
+                                        text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
+                                        color = Color.White.copy(alpha = 0.90f),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-                
-                if (hasLikes && hasViews) {
-                    Box(modifier = Modifier.size(3.dp).background(Color.White.copy(alpha = 0.3f), CircleShape))
-                }
-                
-                if (hasViews) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+
+                item(key = "youtube-comments") {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.085f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (comments.visible) primary.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.105f)
+                        ),
+                        shape = CircleShape,
+                        modifier = Modifier.pressable(enabled = canOpenComments, onClick = onComments)
                     ) {
-                        Text("🎧", fontSize = 11.sp)
-                        Text(
-                            text = compactYoutubeCount(track.youtubeViewCount),
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.2.sp
-                        )
+                        Row(
+                            modifier = Modifier
+                                .height(42.dp)
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ChatBubbleOutline,
+                                contentDescription = null,
+                                tint = if (canOpenComments) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.42f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            when {
+                                comments.loading && !comments.loaded -> CircularProgressIndicator(
+                                    modifier = Modifier.size(13.dp),
+                                    strokeWidth = 1.8.dp,
+                                    color = primary.playerMix(Color.White, 0.52f)
+                                )
+                                commentBadge.isNotBlank() -> Text(
+                                    text = commentBadge,
+                                    color = Color.White.copy(alpha = 0.92f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                        }
                     }
+                }
+            }
+
+            if (hasDislikeEstimate) {
+                Row(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(onClick = onOpenDislikeAttribution)
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "~ Return YouTube Dislike",
+                        color = Color.White.copy(alpha = 0.48f),
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Icon(
+                        imageVector = Icons.Rounded.OpenInNew,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.40f),
+                        modifier = Modifier.size(10.dp)
+                    )
                 }
             }
         }
     }
+}
+
+private fun youtubeCommentCountBadge(value: String): String {
+    val normalized = value.replace('\u00A0', ' ').trim()
+    if (normalized.isBlank()) return ""
+    return Regex("""\d[\d\s.,]*(?:[KMBkmb])?""")
+        .find(normalized)
+        ?.value
+        ?.replace(" ", "")
+        .orEmpty()
 }
 
 @Composable
@@ -8544,6 +8666,10 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
     var gestureFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
+
+    BackHandler(enabled = state.youtubeEngagement.comments.visible) {
+        viewModel.closeYoutubeComments()
+    }
 
     LaunchedEffect(mediaSeekFeedbackEvent) {
         if (mediaSeekFeedbackEvent > 0) {
@@ -8931,8 +9057,17 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                             )
                             PlayerYoutubeEngagementRow(
                                 track = track,
+                                engagement = state.youtubeEngagement,
                                 primary = primary,
-                                secondary = secondary
+                                secondary = secondary,
+                                onComments = viewModel::openYoutubeComments,
+                                onOpenDislikeAttribution = {
+                                    openExternalUrl(
+                                        playerContext,
+                                        "https://returnyoutubedislike.com",
+                                        strings
+                                    )
+                                }
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
@@ -9088,6 +9223,629 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                     }
                 }
                 item { PlayerError(state.playerError) }
+            }
+        }
+
+        if (state.youtubeEngagement.comments.visible) {
+            PlayerYoutubeCommentsSheet(
+                comments = state.youtubeEngagement.comments,
+                primary = primary,
+                secondary = secondary,
+                strings = strings,
+                onDismiss = viewModel::closeYoutubeComments,
+                onRetry = viewModel::retryYoutubeComments,
+                onLoadMore = viewModel::loadMoreYoutubeComments,
+                onRetryLoadMore = viewModel::retryYoutubeCommentsPage,
+                onToggleReplies = viewModel::toggleYoutubeCommentReplies,
+                onLoadMoreReplies = viewModel::loadMoreYoutubeCommentReplies
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerYoutubeCommentsSheet(
+    comments: YoutubeCommentsState,
+    primary: Color,
+    secondary: Color,
+    strings: LevyraStrings,
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+    onLoadMore: () -> Unit,
+    onRetryLoadMore: () -> Unit,
+    onToggleReplies: (String) -> Unit,
+    onLoadMoreReplies: (String) -> Unit
+) {
+    val listState = rememberLazyListState()
+    val sheetInteraction = remember { MutableInteractionSource() }
+
+    LaunchedEffect(comments.nextToken, comments.loadingMore, comments.items.size, comments.error) {
+        if (comments.error != null || comments.nextToken.isBlank()) return@LaunchedEffect
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+            .distinctUntilChanged()
+            .collect { lastVisible ->
+                if (
+                    comments.nextToken.isNotBlank() &&
+                    !comments.loadingMore &&
+                    comments.items.isNotEmpty() &&
+                    lastVisible >= comments.items.lastIndex - 2
+                ) {
+                    onLoadMore()
+                }
+            }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(100f)
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(Color.Black.copy(alpha = 0.62f))
+                .clickable(onClick = onDismiss)
+        )
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .widthIn(max = 620.dp)
+                .fillMaxHeight(0.82f)
+                .navigationBarsPadding()
+                .clickable(
+                    interactionSource = sheetInteraction,
+                    indication = null,
+                    onClick = {}
+                ),
+            color = Color(0xFF101114),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+            shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 10.dp)
+                        .align(Alignment.CenterHorizontally)
+                        .width(42.dp)
+                        .height(4.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.24f))
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = strings.totalComments,
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        if (comments.countText.isNotBlank()) {
+                            Text(
+                                text = comments.countText,
+                                color = Color.White.copy(alpha = 0.52f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    PlayerRoundIconButton(
+                        icon = Icons.Rounded.Close,
+                        contentDescription = strings.close,
+                        size = 38.dp,
+                        iconSize = 20.dp,
+                        tint = Color.White.copy(alpha = 0.82f),
+                        background = Color.White.copy(alpha = 0.07f),
+                        borderColor = Color.White.copy(alpha = 0.10f),
+                        onClick = onDismiss
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.Transparent,
+                                    primary.copy(alpha = 0.34f),
+                                    secondary.copy(alpha = 0.28f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                when {
+                    comments.loading && comments.items.isEmpty() -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                color = primary.playerMix(Color.White, 0.55f),
+                                strokeWidth = 3.dp
+                            )
+                        }
+                    }
+                    comments.disabled -> {
+                        YoutubeCommentsEmptyState(
+                            icon = Icons.Rounded.ChatBubbleOutline,
+                            label = "${strings.totalComments}: —",
+                            primary = primary
+                        )
+                    }
+                    comments.error != null && comments.items.isEmpty() -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ChatBubbleOutline,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.38f),
+                                modifier = Modifier.size(38.dp)
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Surface(
+                                color = primary.copy(alpha = 0.18f),
+                                border = BorderStroke(1.dp, primary.copy(alpha = 0.34f)),
+                                shape = CircleShape,
+                                modifier = Modifier.pressable(onClick = onRetry)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Refresh,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                    Text(
+                                        text = strings.check,
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    comments.items.isEmpty() -> {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            YoutubeCommentsEmptyState(
+                                icon = Icons.Rounded.ChatBubbleOutline,
+                                label = if (comments.nextToken.isBlank()) {
+                                    "${strings.totalComments}: 0"
+                                } else {
+                                    strings.totalComments
+                                },
+                                primary = primary,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (comments.nextToken.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                TextButton(onClick = onLoadMore) {
+                                    Text(
+                                        text = strings.more,
+                                        color = primary.playerMix(Color.White, 0.52f),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 28.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(
+                                items = comments.items,
+                                key = YoutubeComment::id,
+                                contentType = { "youtube-comment" }
+                            ) { comment ->
+                                YoutubeCommentCard(
+                                    comment = comment,
+                                    primary = primary,
+                                    secondary = secondary,
+                                    moreLabel = strings.more,
+                                    onToggleReplies = { onToggleReplies(comment.id) },
+                                    onLoadMoreReplies = { onLoadMoreReplies(comment.id) }
+                                )
+                            }
+                            if (comments.loadingMore) {
+                                item(key = "comments-loading-more") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 14.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.4.dp,
+                                            color = primary.playerMix(Color.White, 0.55f)
+                                        )
+                                    }
+                                }
+                            } else if (comments.error != null && comments.nextToken.isNotBlank()) {
+                                item(key = "comments-retry-more") {
+                                    TextButton(
+                                        onClick = onRetryLoadMore,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Refresh,
+                                            contentDescription = null,
+                                            tint = primary.playerMix(Color.White, 0.52f),
+                                            modifier = Modifier.size(17.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(7.dp))
+                                        Text(
+                                            text = strings.check,
+                                            color = primary.playerMix(Color.White, 0.52f),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            } else if (comments.nextToken.isNotBlank()) {
+                                item(key = "comments-more") {
+                                    TextButton(
+                                        onClick = onLoadMore,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = strings.more,
+                                            color = primary.playerMix(Color.White, 0.52f),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YoutubeCommentsEmptyState(
+    icon: ImageVector,
+    label: String,
+    primary: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            color = primary.copy(alpha = 0.10f),
+            shape = CircleShape
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.44f),
+                modifier = Modifier.padding(16.dp).size(30.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = 0.52f),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun YoutubeCommentCard(
+    comment: YoutubeComment,
+    primary: Color,
+    secondary: Color,
+    moreLabel: String,
+    onToggleReplies: () -> Unit,
+    onLoadMoreReplies: () -> Unit
+) {
+    Surface(
+        color = Color.White.copy(alpha = 0.055f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                YoutubeCommentAvatar(
+                    url = comment.authorAvatarUrl,
+                    author = comment.author,
+                    modifier = Modifier.size(36.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            text = comment.author,
+                            color = Color.White.copy(alpha = 0.92f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (comment.verifiedAuthor) {
+                            Icon(
+                                imageVector = Icons.Rounded.Verified,
+                                contentDescription = null,
+                                tint = primary.playerMix(Color.White, 0.44f),
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                        if (comment.pinned) {
+                            Icon(
+                                imageVector = Icons.Rounded.PushPin,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.46f),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
+                    if (comment.publishedText.isNotBlank()) {
+                        Text(
+                            text = comment.publishedText,
+                            color = Color.White.copy(alpha = 0.40f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                if (comment.heartedByUploader) {
+                    Icon(
+                        imageVector = Icons.Rounded.Favorite,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5B72),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = comment.text,
+                color = Color.White.copy(alpha = 0.86f),
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.Normal
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                if (comment.likeCountText.isNotBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ThumbUp,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.46f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = comment.likeCountText,
+                            color = Color.White.copy(alpha = 0.48f),
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                if (comment.replyCount > 0 && comment.replyToken.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(onClick = onToggleReplies)
+                            .padding(horizontal = 7.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Reply,
+                            contentDescription = null,
+                            tint = secondary.playerMix(Color.White, 0.58f),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = comment.replyCount.toString(),
+                            color = secondary.playerMix(Color.White, 0.58f),
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = comment.repliesExpanded,
+                enter = fadeIn(tween(160)) + slideInVertically(initialOffsetY = { -it / 5 }),
+                exit = fadeOut(tween(120))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 30.dp, top = 2.dp)
+                        .border(
+                            width = 1.dp,
+                            color = primary.copy(alpha = 0.18f),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    comment.replies.forEach { reply ->
+                        YoutubeCommentReply(reply = reply, primary = primary)
+                    }
+                    if (comment.repliesLoading) {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = primary.playerMix(Color.White, 0.52f)
+                            )
+                        }
+                    } else if (comment.repliesError != null && comment.replies.isEmpty()) {
+                        TextButton(onClick = onToggleReplies, modifier = Modifier.fillMaxWidth()) {
+                            Icon(
+                                imageVector = Icons.Rounded.Refresh,
+                                contentDescription = null,
+                                tint = primary.playerMix(Color.White, 0.52f),
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    } else if (comment.repliesNextToken.isNotBlank()) {
+                        TextButton(onClick = onLoadMoreReplies, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = moreLabel,
+                                color = primary.playerMix(Color.White, 0.52f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YoutubeCommentReply(
+    reply: YoutubeComment,
+    primary: Color
+) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        YoutubeCommentAvatar(
+            url = reply.authorAvatarUrl,
+            author = reply.author,
+            modifier = Modifier.size(28.dp)
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = reply.author,
+                    color = Color.White.copy(alpha = 0.86f),
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (reply.verifiedAuthor) {
+                    Icon(
+                        imageVector = Icons.Rounded.Verified,
+                        contentDescription = null,
+                        tint = primary.playerMix(Color.White, 0.44f),
+                        modifier = Modifier.size(11.dp)
+                    )
+                }
+                if (reply.heartedByUploader) {
+                    Icon(
+                        imageVector = Icons.Rounded.Favorite,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5B72),
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+            Text(
+                text = reply.text,
+                color = Color.White.copy(alpha = 0.75f),
+                fontSize = 11.5.sp,
+                lineHeight = 16.sp
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (reply.publishedText.isNotBlank()) {
+                    Text(
+                        text = reply.publishedText,
+                        color = Color.White.copy(alpha = 0.36f),
+                        fontSize = 9.5.sp
+                    )
+                }
+                if (reply.likeCountText.isNotBlank()) {
+                    Text(
+                        text = "👍 ${reply.likeCountText}",
+                        color = Color.White.copy(alpha = 0.36f),
+                        fontSize = 9.5.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YoutubeCommentAvatar(
+    url: String,
+    author: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = Color.White.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
+    ) {
+        if (url.isNotBlank()) {
+            AsyncImage(
+                model = url,
+                contentDescription = author,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = author.trim().firstOrNull()?.uppercaseChar()?.toString().orEmpty(),
+                    color = Color.White.copy(alpha = 0.72f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black
+                )
             }
         }
     }
