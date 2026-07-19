@@ -9235,6 +9235,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                 onDismiss = viewModel::closeYoutubeComments,
                 onRetry = viewModel::retryYoutubeComments,
                 onLoadMore = viewModel::loadMoreYoutubeComments,
+                onRetryLoadMore = viewModel::retryYoutubeCommentsPage,
                 onToggleReplies = viewModel::toggleYoutubeCommentReplies,
                 onLoadMoreReplies = viewModel::loadMoreYoutubeCommentReplies
             )
@@ -9251,14 +9252,15 @@ private fun PlayerYoutubeCommentsSheet(
     onDismiss: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
+    onRetryLoadMore: () -> Unit,
     onToggleReplies: (String) -> Unit,
     onLoadMoreReplies: (String) -> Unit
 ) {
     val listState = rememberLazyListState()
     val sheetInteraction = remember { MutableInteractionSource() }
 
-    LaunchedEffect(comments.nextToken, comments.loadingMore, comments.items.size) {
-        if (comments.nextToken.isBlank()) return@LaunchedEffect
+    LaunchedEffect(comments.nextToken, comments.loadingMore, comments.items.size, comments.error) {
+        if (comments.error != null || comments.nextToken.isBlank()) return@LaunchedEffect
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
             .distinctUntilChanged()
             .collect { lastVisible ->
@@ -9481,6 +9483,26 @@ private fun PlayerYoutubeCommentsSheet(
                                             modifier = Modifier.size(24.dp),
                                             strokeWidth = 2.4.dp,
                                             color = primary.playerMix(Color.White, 0.55f)
+                                        )
+                                    }
+                                }
+                            } else if (comments.error != null && comments.nextToken.isNotBlank()) {
+                                item(key = "comments-retry-more") {
+                                    TextButton(
+                                        onClick = onRetryLoadMore,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Refresh,
+                                            contentDescription = null,
+                                            tint = primary.playerMix(Color.White, 0.52f),
+                                            modifier = Modifier.size(17.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(7.dp))
+                                        Text(
+                                            text = strings.check,
+                                            color = primary.playerMix(Color.White, 0.52f),
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
                                 }
