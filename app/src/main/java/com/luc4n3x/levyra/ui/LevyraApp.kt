@@ -62,6 +62,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -247,6 +248,7 @@ import com.luc4n3x.levyra.data.ArtworkRequestSource
 import com.luc4n3x.levyra.data.HomeLoadingPolicy
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
+import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
@@ -4243,6 +4245,11 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     val resonanceTracks = homeDerivedState.resonanceTracks
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
+    val homeAlbums = remember(state.homeAlbums) {
+        state.homeAlbums
+            .filter { album -> album.title.isNotBlank() && album.artist.isNotBlank() }
+            .distinctBy(::albumRecommendationDeduplicationKey)
+    }
     val otherSections = homeDerivedState.otherSections
     val chartChunks = homeDerivedState.chartChunks
     val homeContent = homeDerivedState.contentAvailability
@@ -4295,16 +4302,6 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 }
             }
         }
-        if (state.currentTrack != null) {
-            item(key = "home-continue", contentType = "home-card") {
-                HomeContinueListeningCard(
-                    viewModel = viewModel,
-                    track = state.currentTrack,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving
-                )
-            }
-        }
         if (state.interfaceSettings.showPersonalOrbit && personalTracks.isNotEmpty()) {
             item(key = "home-personal", contentType = "home-shelf") {
                 PersonalListeningShelf(
@@ -4314,6 +4311,14 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                     isResolving = state.isResolving,
                     onPlay = { track -> viewModel.playFrom(personalTracks, track) },
                     onPlayAll = { viewModel.playAll(personalTracks) }
+                )
+            }
+        }
+        if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {
+            item(key = "home-continue", contentType = "home-card") {
+                HomeContinueListeningCard(
+                    viewModel = viewModel,
+                    track = state.currentTrack
                 )
             }
         }
@@ -4380,14 +4385,14 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 )
             }
         }
-        if (state.interfaceSettings.showAlbumsForYou && (state.homeAlbums.isNotEmpty() || showHomeAlbumShimmer)) {
+        if (state.interfaceSettings.showAlbumsForYou && (homeAlbums.isNotEmpty() || showHomeAlbumShimmer)) {
             item(key = "sec-home-albums-header", contentType = "home-section-header") {
-                HomeSectionInset { SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(state.homeAlbums) }) }
+                HomeSectionInset { SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(homeAlbums) }) }
             }
             item(key = "sec-home-albums-row", contentType = "home-horizontal-row") {
-                if (state.homeAlbums.isNotEmpty()) {
+                if (homeAlbums.isNotEmpty()) {
                     HomeAlbumHitRow(
-                        albums = state.homeAlbums,
+                        albums = homeAlbums,
                         animationsEnabled = state.animationsEnabled,
                         onOpen = viewModel::openAlbum
                     )
@@ -4704,16 +4709,12 @@ private fun HomeQuickPickRow(
 @Composable
 private fun HomeContinueListeningCard(
     viewModel: HomeViewModel,
-    track: Track,
-    isPlaying: Boolean,
-    isResolving: Boolean
+    track: Track
 ) {
     val playbackProgress by viewModel.playbackProgress.collectAsStateWithLifecycle()
     HomeSectionInset {
         ContinueListeningCard(
             track = track,
-            isPlaying = isPlaying,
-            isResolving = isResolving,
             progress = progressOf(playbackProgress.positionMs, playbackProgress.durationMs),
             onResume = viewModel::togglePlay
         )
@@ -5843,8 +5844,6 @@ private fun HomeDiscoveryHero(
 @Composable
 private fun ContinueListeningCard(
     track: Track,
-    isPlaying: Boolean,
-    isResolving: Boolean,
     progress: Float,
     onResume: () -> Unit
 ) {
@@ -5856,7 +5855,7 @@ private fun ContinueListeningCard(
         border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 88.dp)
+            .heightIn(min = 70.dp)
             .pressable(onClick = onResume)
     ) {
         Box(
@@ -5866,9 +5865,9 @@ private fun ContinueListeningCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(128.dp)
+                    .size(104.dp)
                     .align(Alignment.CenterEnd)
-                    .offset(x = 52.dp)
+                    .offset(x = 44.dp)
                     .background(
                         Brush.radialGradient(
                             listOf(accentEnd.copy(alpha = 0.16f), Color.Transparent)
@@ -5878,16 +5877,16 @@ private fun ContinueListeningCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 11.dp, vertical = 9.dp),
+                    .padding(horizontal = 9.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 CoverImage(
                     track = track,
                     modifier = Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .border(Dp.Hairline, Color.White.copy(alpha = 0.13f), RoundedCornerShape(13.dp)),
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .border(Dp.Hairline, Color.White.copy(alpha = 0.13f), RoundedCornerShape(11.dp)),
                     highRes = false
                 )
                 Column(
@@ -5907,8 +5906,8 @@ private fun ContinueListeningCard(
                         Text(
                             text = LocalLevyraStrings.current.continueListening,
                             color = LevyraCyan,
-                            fontSize = 10.8.sp,
-                            lineHeight = 13.sp,
+                            fontSize = 9.8.sp,
+                            lineHeight = 11.5.sp,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -5917,8 +5916,8 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.title,
                         color = LevyraText,
-                        fontSize = 15.5.sp,
-                        lineHeight = 18.sp,
+                        fontSize = 14.sp,
+                        lineHeight = 16.sp,
                         fontWeight = FontWeight.ExtraBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -5926,8 +5925,8 @@ private fun ContinueListeningCard(
                     Text(
                         text = track.artist,
                         color = LevyraMuted,
-                        fontSize = 11.8.sp,
-                        lineHeight = 14.sp,
+                        fontSize = 10.8.sp,
+                        lineHeight = 12.5.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -5937,28 +5936,15 @@ private fun ContinueListeningCard(
                     color = LevyraAdaptiveChip,
                     shape = CircleShape,
                     border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        when {
-                            isResolving -> CircularProgressIndicator(
-                                modifier = Modifier.size(15.dp),
-                                strokeWidth = 1.8.dp,
-                                color = LevyraCyan
-                            )
-                            isPlaying -> ActiveTrackEqualizer(
-                                color = LevyraCyan,
-                                isPlaying = true,
-                                width = 14.dp,
-                                height = 10.dp
-                            )
-                            else -> Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
-                                contentDescription = null,
-                                tint = LevyraText,
-                                modifier = Modifier.size(19.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = null,
+                            tint = LevyraText,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
@@ -5966,7 +5952,7 @@ private fun ContinueListeningCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(2.5.dp)
+                    .height(2.dp)
                     .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
             )
         }
@@ -8606,6 +8592,7 @@ private fun PlayerUtilityDock(
     lyricsAvailable: Boolean,
     isExporting: Boolean,
     isDownloaded: Boolean,
+    compact: Boolean,
     onQueue: () -> Unit,
     onLyrics: () -> Unit,
     onDownload: () -> Unit
@@ -8618,19 +8605,24 @@ private fun PlayerUtilityDock(
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.padding(
+                horizontal = 8.dp,
+                vertical = if (compact) 5.dp else 8.dp
+            ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             PlayerDockAction(
                 icon = Icons.AutoMirrored.Rounded.QueueMusic,
                 label = strings.queue,
                 tint = Color.White.copy(alpha = 0.86f),
+                compact = compact,
                 onClick = onQueue
             )
             PlayerDockAction(
                 icon = Icons.AutoMirrored.Rounded.Subject,
                 label = strings.lyrics,
                 tint = if (lyricsAvailable) activeColor else Color.White.copy(alpha = 0.70f),
+                compact = compact,
                 onClick = onLyrics
             )
             PlayerDockAction(
@@ -8643,6 +8635,7 @@ private fun PlayerUtilityDock(
                 tint = if (isExporting || isDownloaded) secondaryColor else Color.White.copy(alpha = 0.70f),
                 isBusy = isExporting,
                 enabled = !isExporting,
+                compact = compact,
                 onClick = onDownload
             )
         }
@@ -8656,30 +8649,36 @@ private fun RowScope.PlayerDockAction(
     tint: Color,
     isBusy: Boolean = false,
     enabled: Boolean = true,
+    compact: Boolean,
     onClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .weight(1f)
-            .height(62.dp)
+            .height(if (compact) 48.dp else 62.dp)
             .pressable(enabled = enabled, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         if (isBusy) {
             CircularProgressIndicator(
-                modifier = Modifier.size(21.dp),
+                modifier = Modifier.size(if (compact) 18.dp else 21.dp),
                 strokeWidth = 2.4.dp,
                 color = tint
             )
         } else {
-            Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(23.dp))
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = tint,
+                modifier = Modifier.size(if (compact) 20.dp else 23.dp)
+            )
         }
-        Spacer(modifier = Modifier.height(5.dp))
+        Spacer(modifier = Modifier.height(if (compact) 3.dp else 5.dp))
         Text(
             text = label,
             color = Color.White.copy(alpha = 0.68f),
-            fontSize = 10.sp,
+            fontSize = if (compact) 9.sp else 10.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -8706,6 +8705,7 @@ private fun PlayerYoutubeEngagementRow(
     engagement: YoutubeEngagementState,
     primary: Color,
     secondary: Color,
+    compact: Boolean,
     onComments: () -> Unit
 ) {
     val hasLikes = track.youtubeLikeCount >= 0L
@@ -8721,11 +8721,11 @@ private fun PlayerYoutubeEngagementRow(
         exit = fadeOut(animationSpec = tween(140))
     ) {
         Column(
-            modifier = Modifier.padding(top = 11.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.padding(top = if (compact) 7.dp else 11.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)
         ) {
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 9.dp),
                 contentPadding = PaddingValues(end = 10.dp)
             ) {
                 item(key = "youtube-votes") {
@@ -8735,11 +8735,14 @@ private fun PlayerYoutubeEngagementRow(
                         shape = CircleShape
                     ) {
                         Row(
-                            modifier = Modifier.height(42.dp),
+                            modifier = Modifier.height(if (compact) 36.dp else 42.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                modifier = Modifier.padding(start = 13.dp, end = 11.dp),
+                                modifier = Modifier.padding(
+                                    start = if (compact) 11.dp else 13.dp,
+                                    end = if (compact) 9.dp else 11.dp
+                                ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
@@ -8747,13 +8750,13 @@ private fun PlayerYoutubeEngagementRow(
                                     imageVector = Icons.Rounded.ThumbUp,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = if (hasLikes) 0.94f else 0.48f),
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(if (compact) 18.dp else 20.dp)
                                 )
                                 if (hasLikes) {
                                     Text(
                                         text = compactYoutubeCount(track.youtubeLikeCount),
                                         color = Color.White.copy(alpha = 0.94f),
-                                        fontSize = 13.sp,
+                                        fontSize = if (compact) 12.sp else 13.sp,
                                         fontWeight = FontWeight.ExtraBold
                                     )
                                 }
@@ -8761,11 +8764,14 @@ private fun PlayerYoutubeEngagementRow(
                             Box(
                                 modifier = Modifier
                                     .width(1.dp)
-                                    .height(24.dp)
+                                    .height(if (compact) 21.dp else 24.dp)
                                     .background(Color.White.copy(alpha = 0.14f))
                             )
                             Row(
-                                modifier = Modifier.padding(start = 11.dp, end = 13.dp),
+                                modifier = Modifier.padding(
+                                    start = if (compact) 9.dp else 11.dp,
+                                    end = if (compact) 11.dp else 13.dp
+                                ),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(7.dp)
                             ) {
@@ -8777,18 +8783,18 @@ private fun PlayerYoutubeEngagementRow(
                                     } else {
                                         Color.White.copy(alpha = 0.48f)
                                     },
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(if (compact) 18.dp else 20.dp)
                                 )
                                 when {
                                     engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                        modifier = Modifier.size(13.dp),
+                                        modifier = Modifier.size(if (compact) 12.dp else 13.dp),
                                         strokeWidth = 1.8.dp,
                                         color = secondary.playerMix(Color.White, 0.58f)
                                     )
                                     hasDislikeEstimate -> Text(
                                         text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
                                         color = Color.White.copy(alpha = 0.90f),
-                                        fontSize = 13.sp,
+                                        fontSize = if (compact) 12.sp else 13.sp,
                                         fontWeight = FontWeight.ExtraBold
                                     )
                                 }
@@ -8809,8 +8815,8 @@ private fun PlayerYoutubeEngagementRow(
                     ) {
                         Row(
                             modifier = Modifier
-                                .height(42.dp)
-                                .padding(horizontal = 14.dp),
+                                .height(if (compact) 36.dp else 42.dp)
+                                .padding(horizontal = if (compact) 12.dp else 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
@@ -8818,18 +8824,18 @@ private fun PlayerYoutubeEngagementRow(
                                 imageVector = Icons.Rounded.ChatBubbleOutline,
                                 contentDescription = null,
                                 tint = if (canOpenComments) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.42f),
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(if (compact) 18.dp else 20.dp)
                             )
                             when {
                                 comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                    modifier = Modifier.size(13.dp),
+                                    modifier = Modifier.size(if (compact) 12.dp else 13.dp),
                                     strokeWidth = 1.8.dp,
                                     color = primary.playerMix(Color.White, 0.52f)
                                 )
                                 commentBadge.isNotBlank() -> Text(
                                     text = commentBadge,
                                     color = Color.White.copy(alpha = 0.92f),
-                                    fontSize = 13.sp,
+                                    fontSize = if (compact) 12.sp else 13.sp,
                                     fontWeight = FontWeight.ExtraBold
                                 )
                             }
@@ -8918,11 +8924,29 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
         label = "artwork-shadow"
     )
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
+        val compactPlayer = maxHeight < 840.dp
+        val densePlayer = maxHeight < 720.dp
+        val playerHorizontalPadding = if (compactPlayer) 16.dp else 20.dp
+        val playerItemSpacing = when {
+            densePlayer -> 5.dp
+            compactPlayer -> 7.dp
+            else -> 12.dp
+        }
+        val artworkLimit = when {
+            densePlayer -> 214.dp
+            compactPlayer -> 250.dp
+            else -> 520.dp
+        }
+        val artworkSize = minOf(
+            (maxWidth - playerHorizontalPadding * 2f).coerceAtLeast(180.dp),
+            artworkLimit
+        )
+
         PlayerImmersiveBackdrop(
             primaryTarget = primaryTarget,
             secondaryTarget = secondaryTarget,
@@ -8938,23 +8962,28 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .navigationBarsPadding(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 34.dp),
+            contentPadding = PaddingValues(
+                start = playerHorizontalPadding,
+                end = playerHorizontalPadding,
+                top = if (compactPlayer) 6.dp else 10.dp,
+                bottom = if (compactPlayer) 18.dp else 34.dp
+            ),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(playerItemSpacing)
         ) {
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
+                        .height(if (compactPlayer) 44.dp else 48.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(modifier = Modifier.width(86.dp), contentAlignment = Alignment.CenterStart) {
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.KeyboardArrowDown,
                             contentDescription = strings.back,
-                            size = 40.dp,
-                            iconSize = 27.dp,
+                            size = if (compactPlayer) 38.dp else 40.dp,
+                            iconSize = if (compactPlayer) 25.dp else 27.dp,
                             tint = Color.White,
                             background = Color.Black.copy(alpha = 0.22f),
                             borderColor = Color.White.copy(alpha = 0.12f),
@@ -8997,8 +9026,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                             PlayerRoundIconButton(
                                 icon = Icons.Rounded.PictureInPictureAlt,
                                 contentDescription = strings.pictureInPicture,
-                                size = 40.dp,
-                                iconSize = 20.dp,
+                                size = if (compactPlayer) 38.dp else 40.dp,
+                                iconSize = if (compactPlayer) 19.dp else 20.dp,
                                 tint = Color.White,
                                 background = Color.Black.copy(alpha = 0.22f),
                                 borderColor = primary.copy(alpha = 0.38f),
@@ -9009,8 +9038,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         PlayerRoundIconButton(
                             icon = Icons.Rounded.MoreVert,
                             contentDescription = strings.options,
-                            size = 40.dp,
-                            iconSize = 23.dp,
+                            size = if (compactPlayer) 38.dp else 40.dp,
+                            iconSize = if (compactPlayer) 21.dp else 23.dp,
                             tint = Color.White,
                             background = Color.Black.copy(alpha = 0.22f),
                             borderColor = Color.White.copy(alpha = 0.12f),
@@ -9023,16 +9052,21 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                 item { EmptyState(strings.emptyPlayer) }
             } else {
                 item {
+                    val mediaHeight = if (state.isVideoMode && track.videoUrl.isNotBlank()) {
+                        artworkSize * 0.5625f
+                    } else {
+                        artworkSize
+                    }
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 2.dp, bottom = 2.dp)
+                            .size(width = artworkSize, height = mediaHeight)
+                            .padding(vertical = if (compactPlayer) 0.dp else 2.dp)
                     ) {
                         if (state.isVideoMode && track.videoUrl.isNotBlank()) {
                             LevyraVideoSurface(
                                 state = state,
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .fillMaxSize()
                                     .padding(horizontal = 8.dp, vertical = 8.dp)
                                     .graphicsLayer {
                                         scaleX = artScale
@@ -9054,8 +9088,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 isPlaying = state.isPlaying,
                                 cornerRadius = artCorner,
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1f)
+                                    .fillMaxSize()
                                     .graphicsLayer {
                                         scaleX = artScale
                                         scaleY = artScale
@@ -9237,7 +9270,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     Text(
                                         text = "${if (mediaSeekFeedbackMs < 0L) "−" else "+"}${kotlin.math.abs(mediaSeekFeedbackMs) / 1_000L} s",
                                         color = Color.White,
-                                        fontSize = 15.sp,
+                                        fontSize = if (compactPlayer) 13.sp else 15.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 13.dp)
                                     )
@@ -9250,24 +9283,27 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                            .padding(
+                                horizontal = 4.dp,
+                                vertical = if (compactPlayer) 0.dp else 2.dp
+                            ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = track.title,
                                 color = Color.White,
-                                fontSize = 25.sp,
-                                lineHeight = 29.sp,
+                                fontSize = if (compactPlayer) 22.sp else 25.sp,
+                                lineHeight = if (compactPlayer) 25.sp else 29.sp,
                                 fontWeight = FontWeight.Black,
-                                maxLines = 2,
+                                maxLines = if (compactPlayer) 1 else 2,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(if (compactPlayer) 2.dp else 4.dp))
                             Text(
                                 text = track.artist,
                                 color = Color.White.copy(alpha = 0.68f),
-                                fontSize = 15.sp,
+                                fontSize = if (compactPlayer) 13.sp else 15.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -9278,6 +9314,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 engagement = state.youtubeEngagement,
                                 primary = primary,
                                 secondary = secondary,
+                                compact = compactPlayer,
                                 onComments = viewModel::openYoutubeComments
                             )
                         }
@@ -9286,8 +9323,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         PlayerRoundIconButton(
                             icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                             contentDescription = strings.favoritesPlain,
-                            size = 46.dp,
-                            iconSize = 24.dp,
+                            size = if (compactPlayer) 42.dp else 46.dp,
+                            iconSize = if (compactPlayer) 22.dp else 24.dp,
                             tint = if (isFavorite) {
                                 Color.White.playerContentColor(
                                     listOf(primary.copy(alpha = 0.46f).playerCompositeOver(PlayerDarkSurface))
@@ -9307,6 +9344,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         durationMs = state.durationMs,
                         activeColor = primary,
                         secondaryColor = secondary,
+                        compact = compactPlayer,
                         onSeek = viewModel::seekTo
                     )
                 }
@@ -9320,6 +9358,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         secondaryColor = secondary,
                         activeContentColor = primaryContent,
                         secondaryContentColor = secondaryContent,
+                        compact = compactPlayer,
                         onShuffle = viewModel::toggleShuffle,
                         onPrevious = viewModel::previous,
                         onToggle = viewModel::togglePlay,
@@ -9334,6 +9373,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         lyricsAvailable = state.lyrics.isNotEmpty(),
                         isExporting = state.isOfflineExporting,
                         isDownloaded = track.id in state.downloadedTrackIds,
+                        compact = compactPlayer,
                         onQueue = viewModel::openQueue,
                         onLyrics = viewModel::openLyrics,
                         onDownload = viewModel::exportCurrentTrack
@@ -9346,6 +9386,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         audioNormalization = state.audioNormalization,
                         activeColor = primary,
                         secondaryColor = secondary,
+                        compact = compactPlayer,
                         onSpeed = viewModel::cycleSpeed,
                         onSleep = viewModel::cycleSleepTimer,
                         onNormalization = viewModel::toggleAudioNormalization
@@ -9364,14 +9405,22 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     .pressable { showInlineLyrics = true }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 13.dp),
+                                    modifier = Modifier.padding(
+                                        horizontal = 18.dp,
+                                        vertical = if (compactPlayer) 10.dp else 13.dp
+                                    ),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(Icons.AutoMirrored.Rounded.Subject, null, tint = primaryContent, modifier = Modifier.size(19.dp))
                                         Spacer(modifier = Modifier.width(9.dp))
-                                        Text(strings.showLyrics, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            strings.showLyrics,
+                                            color = Color.White,
+                                            fontSize = if (compactPlayer) 12.sp else 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
                                     Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(20.dp))
                                 }
@@ -10068,6 +10117,7 @@ private fun PlayerTimeline(
     durationMs: Long,
     activeColor: Color,
     secondaryColor: Color,
+    compact: Boolean,
     onSeek: (Float) -> Unit
 ) {
     var dragFraction by remember { mutableFloatStateOf(-1f) }
@@ -10092,12 +10142,15 @@ private fun PlayerTimeline(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 2.dp, bottom = 4.dp)
+            .padding(
+                top = if (compact) 0.dp else 2.dp,
+                bottom = if (compact) 2.dp else 4.dp
+            )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(32.dp)
+                .height(if (compact) 26.dp else 32.dp)
                 .semantics {
                     progressBarRangeInfo = ProgressBarRangeInfo(
                         current = fraction,
@@ -10305,14 +10358,14 @@ private fun PlayerTimeline(
             Text(
                 text = formatDuration(if (isDragging) (durationMs * fraction).toLong() else positionMs),
                 color = if (isDragging) Color.White else Color.White.copy(alpha = 0.64f),
-                fontSize = 11.sp,
+                fontSize = if (compact) 10.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = formatDuration(durationMs),
                 color = Color.White.copy(alpha = 0.52f),
-                fontSize = 11.sp,
+                fontSize = if (compact) 10.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
             )
@@ -10330,6 +10383,7 @@ private fun MainPlayerControls(
     secondaryColor: Color,
     activeContentColor: Color,
     secondaryContentColor: Color,
+    compact: Boolean,
     onShuffle: () -> Unit,
     onPrevious: () -> Unit,
     onToggle: () -> Unit,
@@ -10339,15 +10393,18 @@ private fun MainPlayerControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 2.dp, vertical = 4.dp),
+            .padding(
+                horizontal = 2.dp,
+                vertical = if (compact) 1.dp else 4.dp
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         PlayerRoundIconButton(
             icon = Icons.Rounded.Shuffle,
             contentDescription = LocalLevyraStrings.current.shuffle,
-            size = 40.dp,
-            iconSize = 22.dp,
+            size = if (compact) 36.dp else 40.dp,
+            iconSize = if (compact) 20.dp else 22.dp,
             tint = if (shuffleOn) activeContentColor else Color.White.copy(alpha = 0.58f),
             background = Color.Transparent,
             borderColor = Color.Transparent,
@@ -10356,6 +10413,7 @@ private fun MainPlayerControls(
         PlayerTransportButton(
             icon = Icons.Rounded.SkipPrevious,
             contentDescription = LocalLevyraStrings.current.previous,
+            compact = compact,
             onClick = onPrevious
         )
         val playCorner by animateDpAsState(
@@ -10373,9 +10431,12 @@ private fun MainPlayerControls(
         }
         Box(
             modifier = Modifier
-                .size(width = 82.dp, height = 66.dp)
+                .size(
+                    width = if (compact) 72.dp else 82.dp,
+                    height = if (compact) 58.dp else 66.dp
+                )
                 .shadow(
-                    elevation = 18.dp,
+                    elevation = if (compact) 14.dp else 18.dp,
                     shape = playShape,
                     clip = false,
                     ambientColor = activeColor.copy(alpha = 0.46f),
@@ -10393,7 +10454,7 @@ private fun MainPlayerControls(
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(29.dp),
+                    modifier = Modifier.size(if (compact) 26.dp else 29.dp),
                     strokeWidth = 3.2.dp,
                     color = playGradient.content
                 )
@@ -10410,7 +10471,7 @@ private fun MainPlayerControls(
                         imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
                         tint = playGradient.content,
-                        modifier = Modifier.size(39.dp)
+                        modifier = Modifier.size(if (compact) 34.dp else 39.dp)
                     )
                 }
             }
@@ -10418,14 +10479,15 @@ private fun MainPlayerControls(
         PlayerTransportButton(
             icon = Icons.Rounded.SkipNext,
             contentDescription = LocalLevyraStrings.current.next,
+            compact = compact,
             onClick = onNext
         )
         val repeatIcon = if (repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
         PlayerRoundIconButton(
             icon = repeatIcon,
             contentDescription = LocalLevyraStrings.current.repeat,
-            size = 40.dp,
-            iconSize = 22.dp,
+            size = if (compact) 36.dp else 40.dp,
+            iconSize = if (compact) 20.dp else 22.dp,
             tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) secondaryContentColor else Color.White.copy(alpha = 0.58f),
             background = Color.Transparent,
             borderColor = Color.Transparent,
@@ -10438,11 +10500,15 @@ private fun MainPlayerControls(
 private fun PlayerTransportButton(
     icon: ImageVector,
     contentDescription: String,
+    compact: Boolean,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
-            .size(width = 56.dp, height = 54.dp)
+            .size(
+                width = if (compact) 50.dp else 56.dp,
+                height = if (compact) 48.dp else 54.dp
+            )
             .background(Color.White.copy(alpha = 0.11f), RoundedCornerShape(20.dp))
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
             .pressable(onClick = onClick),
@@ -10452,7 +10518,7 @@ private fun PlayerTransportButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = Color.White,
-            modifier = Modifier.size(31.dp)
+            modifier = Modifier.size(if (compact) 28.dp else 31.dp)
         )
     }
 }
@@ -10464,6 +10530,7 @@ private fun PlayerOptionsRow(
     audioNormalization: Boolean,
     activeColor: Color,
     secondaryColor: Color,
+    compact: Boolean,
     onSpeed: () -> Unit,
     onSleep: () -> Unit,
     onNormalization: () -> Unit
@@ -10471,7 +10538,10 @@ private fun PlayerOptionsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 2.dp, bottom = 4.dp),
+            .padding(
+                top = if (compact) 0.dp else 2.dp,
+                bottom = if (compact) 2.dp else 4.dp
+            ),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         OptionChip(
@@ -10480,6 +10550,7 @@ private fun PlayerOptionsRow(
             active = audioNormalization,
             activeColor = activeColor,
             modifier = Modifier.weight(1f),
+            compact = compact,
             onClick = onNormalization
         )
         OptionChip(
@@ -10488,6 +10559,7 @@ private fun PlayerOptionsRow(
             active = speed != 1f,
             activeColor = activeColor.playerMix(secondaryColor, 0.35f),
             modifier = Modifier.weight(1f),
+            compact = compact,
             onClick = onSpeed
         )
         OptionChip(
@@ -10496,6 +10568,7 @@ private fun PlayerOptionsRow(
             active = sleepMinutes > 0,
             activeColor = secondaryColor,
             modifier = Modifier.weight(1f),
+            compact = compact,
             onClick = onSleep
         )
     }
@@ -10508,6 +10581,7 @@ private fun OptionChip(
     active: Boolean,
     activeColor: Color,
     modifier: Modifier,
+    compact: Boolean,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -10530,7 +10604,7 @@ private fun OptionChip(
         border = BorderStroke(1.dp, borderColor),
         shape = RoundedCornerShape(18.dp),
         modifier = modifier
-            .height(42.dp)
+            .height(if (compact) 36.dp else 42.dp)
             .graphicsLayer { this.alpha = alpha }
             .pressable(enabled = enabled, onClick = onClick)
     ) {
@@ -10539,12 +10613,17 @@ private fun OptionChip(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, tint = contentColor, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(6.dp))
+            Icon(
+                icon,
+                null,
+                tint = contentColor,
+                modifier = Modifier.size(if (compact) 15.dp else 16.dp)
+            )
+            Spacer(modifier = Modifier.width(if (compact) 5.dp else 6.dp))
             Text(
                 text = label,
                 color = contentColor,
-                fontSize = 12.sp,
+                fontSize = if (compact) 11.sp else 12.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
