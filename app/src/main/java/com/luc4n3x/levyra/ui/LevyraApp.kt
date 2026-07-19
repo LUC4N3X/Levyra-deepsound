@@ -329,6 +329,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
+private val LocalRemoteArtworkLoadingEnabled = compositionLocalOf { true }
 private val CinematicPlum = Color(0xFF2A1738)
 private val CinematicGold = Color(0xFFFFC46B)
 private val CinematicGlass = Color(0xFF151321)
@@ -653,6 +654,8 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
             else -> ArtworkRequestSource.Remote
         }
     }
+    val remoteArtworkLoadingEnabled = LocalRemoteArtworkLoadingEnabled.current
+    val canLoadArtwork = model != null && (model is File || remoteArtworkLoadingEnabled)
     if (BuildConfig.DEBUG) {
         LaunchedEffect(artworkKey, modelIdentity, requestSource) {
             LevyraArtworkStartupMetrics.recordArtworkRequest(artworkKey, modelIdentity, requestSource)
@@ -664,7 +667,7 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     }
     Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
-        if (model != null) {
+        if (canLoadArtwork) {
             val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
             val request = remember(context, model, crossfadeMs) {
                 ImageRequest.Builder(context)
@@ -4233,11 +4236,12 @@ internal fun homeSectionLazyKey(
 private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnapshot, homeListState: LazyListState) {
     val state = renderSnapshot.state
     val homeDerivedState = renderSnapshot.derived
+    val homeStartupBusy by viewModel.homeStartupBusy.collectAsStateWithLifecycle()
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
-        viewModel.refreshHomeArtists()
+    LaunchedEffect(homeDerivedState.artistRefreshFingerprint, homeStartupBusy) {
+        if (!homeStartupBusy) viewModel.refreshHomeArtists()
     }
     val personalTracks = remember(state.personalOrbitTracks) {
         state.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -4286,14 +4290,19 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
     }
-    val homeBackgroundWorkActive = state.isLoadingHome ||
+    val homeBackgroundWorkActive = homeStartupBusy ||
+        state.isLoadingHome ||
         state.homeAlbumsLoading ||
         state.homeArtistsLoading ||
         state.isLoadingCharts
     val homeAnimationsEnabled = LocalAnimationsEnabled.current &&
         !homeListState.isScrollInProgress &&
         !homeBackgroundWorkActive
-    CompositionLocalProvider(LocalAnimationsEnabled provides homeAnimationsEnabled) {
+    val remoteArtworkLoadingEnabled = !(homeStartupBusy && homeListState.isScrollInProgress)
+    CompositionLocalProvider(
+        LocalAnimationsEnabled provides homeAnimationsEnabled,
+        LocalRemoteArtworkLoadingEnabled provides remoteArtworkLoadingEnabled
+    ) {
         LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -4585,11 +4594,11 @@ private fun HomeQuickPicksShelf(
     onPlay: (Track) -> Unit,
     onPlayAll: () -> Unit
 ) {
-    val pages = remember(tracks) {
+    val columns = remember(tracks) {
         tracks
-            .distinctBy { it.id }
-            .take(24)
-            .chunked(4)
+            .distinctBy(LevyraPersonalOrbit::identityKey)
+            .take(20)
+            .chunked(2)
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
@@ -4597,26 +4606,25 @@ private fun HomeQuickPicksShelf(
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(
                 start = HomeHorizontalInset,
                 end = HomeHorizontalShelfEndPadding
             )
         ) {
             itemsIndexed(
-                items = pages,
-                key = { pageIndex, page ->
-                    "quick-picks-$pageIndex-${page.firstOrNull()?.id.orEmpty()}"
+                items = columns,
+                key = { columnIndex, column ->
+                    "quick-picks-$columnIndex-${column.firstOrNull()?.id.orEmpty()}"
                 },
-                contentType = { _, _ -> "quick-picks-page" }
-            ) { pageIndex, page ->
+                contentType = { _, _ -> "quick-picks-column" }
+            ) { _, column ->
                 Column(
-                    modifier = Modifier.width(322.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    modifier = Modifier.width(286.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    page.forEachIndexed { itemIndex, track ->
+                    column.forEach { track ->
                         HomeQuickPickRow(
-                            rank = pageIndex * 4 + itemIndex + 1,
                             track = track,
                             isCurrent = track.id == currentId,
                             isPlaying = isPlaying && track.id == currentId,
@@ -4632,74 +4640,52 @@ private fun HomeQuickPicksShelf(
 
 @Composable
 private fun HomeQuickPickRow(
-    rank: Int,
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: () -> Unit
 ) {
-    val rowBackground = if (isCurrent) {
-        LevyraCyan.copy(alpha = 0.10f)
+    val shape = RoundedCornerShape(17.dp)
+    val background = if (isCurrent) {
+        Brush.horizontalGradient(
+            listOf(
+                LevyraCyan.copy(alpha = 0.16f),
+                LevyraViolet.copy(alpha = 0.07f)
+            )
+        )
     } else {
-        Color.Transparent
+        Brush.horizontalGradient(
+            listOf(
+                LevyraAdaptiveChip.copy(alpha = if (LevyraIsLight) 0.54f else 0.24f),
+                LevyraAdaptiveChip.copy(alpha = if (LevyraIsLight) 0.34f else 0.12f)
+            )
+        )
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(62.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(rowBackground)
+            .height(72.dp)
+            .clip(shape)
+            .background(background)
+            .border(
+                Dp.Hairline,
+                if (isCurrent) LevyraCyan.copy(alpha = 0.30f) else LevyraAdaptiveHairline,
+                shape
+            )
             .pressable(onClick = onPlay)
-            .padding(horizontal = 6.dp),
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(
-            modifier = Modifier.width(22.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                isResolving -> CircularProgressIndicator(
-                    modifier = Modifier.size(14.dp),
-                    strokeWidth = 1.8.dp,
-                    color = LevyraCyan
-                )
-
-                isCurrent && isPlaying -> ActiveTrackEqualizer(
-                    color = LevyraCyan,
-                    isPlaying = true,
-                    width = 14.dp,
-                    height = 10.dp
-                )
-
-                else -> Text(
-                    text = rank.toString(),
-                    color = if (isCurrent) {
-                        LevyraCyan
-                    } else {
-                        LevyraMuted.copy(alpha = 0.58f)
-                    },
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
         CoverImage(
             track = track,
             modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .border(
-                    Dp.Hairline,
-                    LevyraAdaptiveHairline,
-                    RoundedCornerShape(10.dp)
-                ),
+                .size(56.dp)
+                .clip(RoundedCornerShape(13.dp)),
             highRes = false
         )
-
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center
@@ -4716,24 +4702,42 @@ private fun HomeQuickPickRow(
             Text(
                 text = track.artist,
                 color = LevyraMuted,
-                fontSize = 11.8.sp,
-                lineHeight = 14.sp,
+                fontSize = 12.sp,
+                lineHeight = 15.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
-
-        Icon(
-            imageVector = if (isCurrent && isPlaying) {
-                Icons.Rounded.Equalizer
-            } else {
-                Icons.Rounded.PlayArrow
-            },
-            contentDescription = null,
-            tint = if (isCurrent) LevyraCyan else LevyraMuted,
-            modifier = Modifier.size(18.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(
+                    if (isCurrent) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.055f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                isResolving -> CircularProgressIndicator(
+                    modifier = Modifier.size(15.dp),
+                    strokeWidth = 1.8.dp,
+                    color = LevyraCyan
+                )
+                isCurrent && isPlaying -> ActiveTrackEqualizer(
+                    color = LevyraCyan,
+                    isPlaying = true,
+                    width = 15.dp,
+                    height = 11.dp
+                )
+                else -> Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = if (isCurrent) LevyraCyan else LevyraText.copy(alpha = 0.72f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
     }
 }
 
