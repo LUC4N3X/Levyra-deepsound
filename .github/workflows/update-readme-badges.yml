@@ -1,0 +1,47 @@
+name: Update README badges
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+      - edited
+      - deleted
+  schedule:
+    - cron: "17 */6 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - README.md
+      - scripts/update-readme-badges.mjs
+      - .github/workflows/update-readme-badges.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-readme-badges
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/update-readme-badges.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          if git diff --quiet -- docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg
+          git commit -m "chore: update README badges"
+          git push
