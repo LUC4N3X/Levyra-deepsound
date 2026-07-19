@@ -4585,11 +4585,11 @@ private fun HomeQuickPicksShelf(
     onPlay: (Track) -> Unit,
     onPlayAll: () -> Unit
 ) {
-    val pages = remember(tracks) {
+    val columns = remember(tracks) {
         tracks
             .distinctBy(LevyraPersonalOrbit::identityKey)
-            .take(24)
-            .chunked(4)
+            .take(20)
+            .chunked(2)
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
@@ -4597,26 +4597,25 @@ private fun HomeQuickPicksShelf(
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(
                 start = HomeHorizontalInset,
                 end = HomeHorizontalShelfEndPadding
             )
         ) {
             itemsIndexed(
-                items = pages,
-                key = { pageIndex, page ->
-                    "quick-picks-$pageIndex-${page.firstOrNull()?.id.orEmpty()}"
+                items = columns,
+                key = { columnIndex, column ->
+                    "quick-picks-$columnIndex-${column.firstOrNull()?.id.orEmpty()}"
                 },
-                contentType = { _, _ -> "quick-picks-page" }
-            ) { pageIndex, page ->
+                contentType = { _, _ -> "quick-picks-column" }
+            ) { _, column ->
                 Column(
-                    modifier = Modifier.width(322.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    modifier = Modifier.width(286.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    page.forEachIndexed { itemIndex, track ->
+                    column.forEach { track ->
                         HomeQuickPickRow(
-                            rank = pageIndex * 4 + itemIndex + 1,
                             track = track,
                             isCurrent = track.id == currentId,
                             isPlaying = isPlaying && track.id == currentId,
@@ -4632,74 +4631,54 @@ private fun HomeQuickPicksShelf(
 
 @Composable
 private fun HomeQuickPickRow(
-    rank: Int,
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: () -> Unit
 ) {
-    val rowBackground = if (isCurrent) {
-        LevyraCyan.copy(alpha = 0.10f)
+    val shape = RoundedCornerShape(17.dp)
+    val background = if (isCurrent) {
+        Brush.horizontalGradient(
+            listOf(
+                LevyraCyan.copy(alpha = 0.13f),
+                LevyraViolet.copy(alpha = 0.045f),
+                Color.Transparent
+            )
+        )
     } else {
-        Color.Transparent
+        SolidColor(Color.Transparent)
+    }
+    val outlineColor = if (isCurrent) {
+        LevyraCyan.copy(alpha = 0.24f)
+    } else {
+        Color.White.copy(alpha = 0.055f)
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(62.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(rowBackground)
+            .height(70.dp)
+            .clip(shape)
+            .background(background)
+            .border(Dp.Hairline, outlineColor, shape)
             .pressable(onClick = onPlay)
-            .padding(horizontal = 6.dp),
+            .padding(horizontal = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Box(
-            modifier = Modifier.width(22.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                isResolving -> CircularProgressIndicator(
-                    modifier = Modifier.size(14.dp),
-                    strokeWidth = 1.8.dp,
-                    color = LevyraCyan
-                )
-
-                isCurrent && isPlaying -> ActiveTrackEqualizer(
-                    color = LevyraCyan,
-                    isPlaying = true,
-                    width = 14.dp,
-                    height = 10.dp
-                )
-
-                else -> Text(
-                    text = rank.toString(),
-                    color = if (isCurrent) {
-                        LevyraCyan
-                    } else {
-                        LevyraMuted.copy(alpha = 0.58f)
-                    },
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
         CoverImage(
             track = track,
             modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(10.dp))
+                .size(54.dp)
+                .clip(RoundedCornerShape(13.dp))
                 .border(
                     Dp.Hairline,
-                    LevyraAdaptiveHairline,
-                    RoundedCornerShape(10.dp)
+                    Color.White.copy(alpha = 0.08f),
+                    RoundedCornerShape(13.dp)
                 ),
             highRes = false
         )
-
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center
@@ -4716,24 +4695,47 @@ private fun HomeQuickPickRow(
             Text(
                 text = track.artist,
                 color = LevyraMuted,
-                fontSize = 11.8.sp,
-                lineHeight = 14.sp,
+                fontSize = 12.sp,
+                lineHeight = 15.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
-
-        Icon(
-            imageVector = if (isCurrent && isPlaying) {
-                Icons.Rounded.Equalizer
-            } else {
-                Icons.Rounded.PlayArrow
-            },
-            contentDescription = null,
-            tint = if (isCurrent) LevyraCyan else LevyraMuted,
-            modifier = Modifier.size(18.dp)
-        )
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(
+                    if (isCurrent) LevyraCyan.copy(alpha = 0.16f) else Color.Transparent,
+                    CircleShape
+                )
+                .border(
+                    Dp.Hairline,
+                    if (isCurrent) LevyraCyan.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                isResolving -> CircularProgressIndicator(
+                    modifier = Modifier.size(15.dp),
+                    strokeWidth = 1.8.dp,
+                    color = LevyraCyan
+                )
+                isCurrent && isPlaying -> ActiveTrackEqualizer(
+                    color = LevyraCyan,
+                    isPlaying = true,
+                    width = 15.dp,
+                    height = 11.dp
+                )
+                else -> Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = if (isCurrent) LevyraCyan else LevyraText.copy(alpha = 0.72f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
     }
 }
 
