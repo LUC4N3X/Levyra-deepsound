@@ -141,6 +141,26 @@ internal fun levyraAlbumRecommendationMatchScore(album: AlbumHit, seed: AlbumRec
 internal fun albumRecommendationIdentityKey(album: AlbumHit): String =
     "${albumRecommendationTextKey(album.title)}|${albumRecommendationTextKey(album.artist)}"
 
+internal fun albumRecommendationDeduplicationKey(album: AlbumHit): String {
+    val upc = album.upc.filter { it.isLetterOrDigit() }.lowercase(Locale.ROOT)
+    if (upc.isNotBlank()) return "upc:$upc"
+    val title = albumRecommendationTextKey(album.title)
+    val primaryArtist = albumRecommendationTextKey(
+        album.artist.split(ALBUM_RECOMMENDATION_ARTIST_SEPARATOR, limit = 2).firstOrNull().orEmpty()
+    )
+    if (title.isNotBlank() && primaryArtist.isNotBlank()) return "release:$title|$primaryArtist"
+    val artwork = album.thumbnailUrl
+        .trim()
+        .lowercase(Locale.ROOT)
+        .substringBefore('?')
+        .substringBefore('=')
+    if (title.isNotBlank() && artwork.isNotBlank()) return "artwork:$title|$artwork"
+    return albumRecommendationIdentityKey(album)
+}
+
+private val ALBUM_RECOMMENDATION_ARTIST_SEPARATOR =
+    Regex("(?i)\\s*(?:,|;|&|\\bfeat(?:uring)?\\b|\\bft\\b|\\s+[x×]\\s+)\\s*")
+
 internal fun albumRecommendationTextKey(value: String): String {
     val decomposed = Normalizer.normalize(value, Normalizer.Form.NFD)
     return decomposed
@@ -386,7 +406,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 }.awaitAll().flatten()
             }
             return@withContext personalized
-                .groupBy { albumRecommendationIdentityKey(it.album) }
+                .groupBy { albumRecommendationDeduplicationKey(it.album) }
                 .values
                 .mapNotNull { group -> group.maxByOrNull { it.score } }
                 .sortedWith(
@@ -407,7 +427,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .asSequence()
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }
             .filter { it.browseId.isNotBlank() || it.query.isNotBlank() }
-            .distinctBy(::albumRecommendationIdentityKey)
+            .distinctBy(::albumRecommendationDeduplicationKey)
             .take(boundedLimit)
             .toList()
     }
