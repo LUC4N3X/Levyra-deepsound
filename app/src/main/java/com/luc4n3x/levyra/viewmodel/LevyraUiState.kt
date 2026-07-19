@@ -28,6 +28,7 @@ import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 
@@ -85,6 +86,7 @@ data class LevyraUiState(
     val currentTrack: Track? = null,
     val motionArtwork: MotionArtwork? = null,
     val motionArtworkLoading: Boolean = false,
+    val youtubeEngagement: YoutubeEngagementState = YoutubeEngagementState(),
     val lyrics: List<LyricLine> = emptyList(),
     val lyricsSections: List<LyricSection> = emptyList(),
     val activeLyric: LyricLine? = null,
