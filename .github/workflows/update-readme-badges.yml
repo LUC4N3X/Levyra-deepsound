@@ -8,7 +8,7 @@ on:
       - edited
       - deleted
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "*/5 * * * *"
   push:
     branches:
       - main
@@ -37,11 +37,11 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: |
-          if git diff --quiet -- docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg; then
+          if git diff --quiet -- docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg docs/assets/levyra-license.svg docs/assets/levyra-stars.svg; then
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg
+          git add docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg docs/assets/levyra-license.svg docs/assets/levyra-stars.svg
           git commit -m "chore: update README badges"
           git push
