@@ -4650,40 +4650,42 @@ private fun HomeQuickPickRow(
     val background = if (isCurrent) {
         Brush.horizontalGradient(
             listOf(
-                LevyraCyan.copy(alpha = 0.16f),
-                LevyraViolet.copy(alpha = 0.07f)
+                LevyraCyan.copy(alpha = 0.13f),
+                LevyraViolet.copy(alpha = 0.045f),
+                Color.Transparent
             )
         )
     } else {
-        Brush.horizontalGradient(
-            listOf(
-                LevyraAdaptiveChip.copy(alpha = if (LevyraIsLight) 0.54f else 0.24f),
-                LevyraAdaptiveChip.copy(alpha = if (LevyraIsLight) 0.34f else 0.12f)
-            )
-        )
+        SolidColor(Color.Transparent)
+    }
+    val outlineColor = if (isCurrent) {
+        LevyraCyan.copy(alpha = 0.24f)
+    } else {
+        Color.White.copy(alpha = 0.055f)
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
+            .height(70.dp)
             .clip(shape)
             .background(background)
-            .border(
-                Dp.Hairline,
-                if (isCurrent) LevyraCyan.copy(alpha = 0.30f) else LevyraAdaptiveHairline,
-                shape
-            )
+            .border(Dp.Hairline, outlineColor, shape)
             .pressable(onClick = onPlay)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         CoverImage(
             track = track,
             modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(13.dp)),
+                .size(54.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .border(
+                    Dp.Hairline,
+                    Color.White.copy(alpha = 0.08f),
+                    RoundedCornerShape(13.dp)
+                ),
             highRes = false
         )
         Column(
@@ -4713,7 +4715,12 @@ private fun HomeQuickPickRow(
             modifier = Modifier
                 .size(32.dp)
                 .background(
-                    if (isCurrent) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.055f),
+                    if (isCurrent) LevyraCyan.copy(alpha = 0.16f) else Color.Transparent,
+                    CircleShape
+                )
+                .border(
+                    Dp.Hairline,
+                    if (isCurrent) LevyraCyan.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
