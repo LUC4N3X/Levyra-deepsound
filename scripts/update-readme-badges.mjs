@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 
 const repository = process.env.GITHUB_REPOSITORY
 const token = process.env.GITHUB_TOKEN
@@ -99,3 +99,19 @@ await Promise.all([
   writeFile('docs/assets/levyra-license.svg', makeBadge({ label: 'License', value: 'GPL-3.0', color: '#22C776', icon: icons.license }), 'utf8'),
   writeFile('docs/assets/levyra-stars.svg', makeBadge({ label: 'Stars', value: starsValue, color: '#F2A900', icon: icons.stars }), 'utf8')
 ])
+
+const badgeBlock = `<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest Levyra release"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>
+<a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>`
+const badgePattern = /<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\/latest"><img[^>]+><\/a>\n<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases"><img[^>]+><\/a>\n<a href="LICENSE"><img[^>]+><\/a>\n<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound(?:\/stargazers)?"><img[^>]+><\/a>/
+const readme = await readFile('README.md', 'utf8')
+const updatedReadme = readme.replace(badgePattern, badgeBlock)
+
+if (updatedReadme === readme && !readme.includes(badgeBlock)) {
+  throw new Error('README badge block was not found')
+}
+
+if (updatedReadme !== readme) {
+  await writeFile('README.md', updatedReadme, 'utf8')
+}
