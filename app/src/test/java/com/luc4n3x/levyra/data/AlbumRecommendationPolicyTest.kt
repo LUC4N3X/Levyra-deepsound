@@ -82,6 +82,29 @@ class AlbumRecommendationPolicyTest {
         )
     }
 
+    @Test
+    fun albumIdentityCollapsesEquivalentRecommendations() {
+        val first = album("AMATORE", "Samurai Jay")
+        val duplicate = album("  Amatore  ", "SAMURAI JAY")
+
+        assertEquals(albumRecommendationIdentityKey(first), albumRecommendationIdentityKey(duplicate))
+    }
+
+    @Test
+    fun albumDeduplicationCollapsesSameReleaseWithExpandedArtistCredits() {
+        val first = album("AMATORE", "Samurai Jay").copy(
+            thumbnailUrl = "https://lh3.googleusercontent.com/cover=w544-h544"
+        )
+        val duplicate = album("AMATORE", "Samurai Jay, Vito Salamanca").copy(
+            thumbnailUrl = "https://lh3.googleusercontent.com/cover=w1200-h1200"
+        )
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(first),
+            albumRecommendationDeduplicationKey(duplicate)
+        )
+    }
+
     private fun album(title: String, artist: String): AlbumHit = AlbumHit(
         title = title,
         artist = artist,
