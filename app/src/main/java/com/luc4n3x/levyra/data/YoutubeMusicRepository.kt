@@ -513,16 +513,28 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val browseId = "VL$cleanPlaylistId"
         val initial = requestMusicBrowseRoot(languageCode, browseId) ?: return@withContext null
         val tracks = LinkedHashMap<String, Track>()
-        parsePlaylistTracks(initial, cleanPlaylistId).forEach { tracks.putIfAbsent(it.id, it) }
+        parsePlaylistTrackRenderers(playlistShelfRenderers(initial), cleanPlaylistId)
+            .forEach { tracks.putIfAbsent(it.id, it) }
         var continuation = findPlaylistContinuation(initial)
+        val requestedContinuations = mutableSetOf<String>()
         var page = 0
         while (tracks.size < boundedLimit && continuation.isNotBlank() && page < MAX_BROWSE_CONTINUATIONS) {
-            val next = requestMusicBrowseRoot(languageCode, "", continuation = continuation) ?: break
-            val before = tracks.size
-            parsePlaylistTracks(next, cleanPlaylistId).forEach { tracks.putIfAbsent(it.id, it) }
-            continuation = findPlaylistContinuation(next)
+            val requestedToken = continuation
+            if (!requestedContinuations.add(requestedToken)) {
+                continuation = ""
+                break
+            }
+            val next = requestMusicBrowseRoot(languageCode, "", continuation = requestedToken) ?: break
+            val pageRenderers = playlistShelfRenderers(next)
+            parsePlaylistTrackRenderers(pageRenderers, cleanPlaylistId)
+                .forEach { tracks.putIfAbsent(it.id, it) }
+            val nextToken = findPlaylistContinuation(next)
+            continuation = nextToken.takeUnless { it in requestedContinuations }.orEmpty()
             page += 1
-            if (tracks.size == before) break
+            if (pageRenderers.isEmpty()) {
+                continuation = ""
+                break
+            }
         }
         val header = parsePlaylistHeader(initial, cleanPlaylistId)
         val result = header.copy(tracks = tracks.values.take(boundedLimit), continuation = continuation)
@@ -823,8 +835,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun parsePlaylistTracks(root: JSONObject, playlistId: String): List<Track> {
-        val renderers = playlistShelfRenderers(root)
+    internal fun parsePlaylistTracks(root: JSONObject, playlistId: String): List<Track> {
+        return parsePlaylistTrackRenderers(playlistShelfRenderers(root), playlistId)
+    }
+
+    private fun parsePlaylistTrackRenderers(renderers: List<JSONObject>, playlistId: String): List<Track> {
         return renderers.mapNotNull { renderer ->
             val track = parseMusicRenderer(renderer, "playlist $playlistId") ?: return@mapNotNull null
             val albumReference = extractYoutubeMusicAlbumReference(renderer)
@@ -867,54 +882,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         )
     }
 
-    private fun playlistShelfContainer(root: JSONObject): JSONObject? {
-        root.optJSONObject("continuationContents")
-            ?.optJSONObject("musicPlaylistShelfContinuation")
-            ?.let { return it }
-        val sectionContents = root.optJSONObject("contents")
-            ?.optJSONObject("singleColumnBrowseResultsRenderer")
-            ?.optJSONArray("tabs")
-            ?.optJSONObject(0)
-            ?.optJSONObject("tabRenderer")
-            ?.optJSONObject("content")
-            ?.optJSONObject("sectionListRenderer")
-            ?.optJSONArray("contents")
-        if (sectionContents != null) {
-            for (index in 0 until sectionContents.length()) {
-                sectionContents.optJSONObject(index)
-                    ?.optJSONObject("musicPlaylistShelfRenderer")
-                    ?.let { return it }
-            }
-        }
-        val shelves = mutableListOf<JSONObject>()
-        collectObjectsByKey(root, "musicPlaylistShelfRenderer", shelves)
-        return shelves.firstOrNull()
-    }
+    private fun playlistShelfRenderers(root: JSONObject): List<JSONObject> =
+        YoutubeMusicPlaylistPageParser.renderers(root)
 
-    private fun playlistShelfRenderers(root: JSONObject): List<JSONObject> {
-        val contents = playlistShelfContainer(root)?.optJSONArray("contents") ?: return emptyList()
-        return buildList {
-            for (index in 0 until contents.length()) {
-                contents.optJSONObject(index)
-                    ?.optJSONObject("musicResponsiveListItemRenderer")
-                    ?.let(::add)
-            }
-        }
-    }
-
-    private fun findPlaylistContinuation(root: JSONObject): String {
-        val shelf = playlistShelfContainer(root) ?: return ""
-        val keys = listOf("nextContinuationData", "reloadContinuationData", "continuationCommand")
-        keys.forEach { key ->
-            val nodes = mutableListOf<JSONObject>()
-            collectObjectsByKey(shelf, key, nodes)
-            nodes.forEach { node ->
-                node.optString("continuation").takeIf { it.isNotBlank() }?.let { return it }
-                node.optString("token").takeIf { it.isNotBlank() }?.let { return it }
-            }
-        }
-        return ""
-    }
+    private fun findPlaylistContinuation(root: JSONObject): String =
+        YoutubeMusicPlaylistPageParser.continuation(root)
 
     private fun extractYoutubeMusicAlbumReference(value: Any?): Pair<String, String> {
         val runArrays = mutableListOf<JSONArray>()
