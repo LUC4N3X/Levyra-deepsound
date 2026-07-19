@@ -292,49 +292,30 @@ Bug reports, feature requests and pull requests are all welcome:
 ## 🙏 Credits
 
 <table align="center">
-  <tr>
-    <td align="center" width="130">
-      <a href="https://github.com/LUC4N3X">
-        <img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=192&w=192&fit=cover&mask=circle" width="96" alt="LUC4N3X Avatar" />
-      </a>
-    </td>
-    <td>
-      <h3>LUC4N3X</h3>
-      <strong>Creator · Lead Architect · Design Lead</strong>
-      <br>
-      <sub>System architecture · ExoPlayer orchestration · WorkManager export pipeline · Automated release CI · UI/UX</sub>
-      <br>
-      <sub><em>One developer. No team, no shortcuts — every line, every pixel.</em></sub>
-      <br><br>
-      <a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub"></a>
-    </td>
-  </tr>
+<tr>
+<td align="center" width="132">
+<a href="https://github.com/LUC4N3X">
+<img src="https://images.weserv.nl/?url=github.com/LUC4N3X.png&h=192&w=192&fit=cover&mask=circle" width="96" alt="LUC4N3X" />
+</a>
+</td>
+<td>
+<h3>LUC4N3X</h3>
+<strong>Creator and lead developer</strong>
+<br>
+<sub>Architecture · Android development · Playback · Offline pipeline · Release automation · Product design</sub>
+<br><br>
+<a href="https://github.com/LUC4N3X"><img src="https://img.shields.io/badge/GitHub-LUC4N3X-7F52FF?style=flat-square&logo=github&logoColor=white&labelColor=0d1117" alt="LUC4N3X on GitHub"></a>
+</td>
+</tr>
 </table>
 
-<div align="center">
+Levyra is developed independently, but it also benefits from the work and ideas shared by the wider open-source community.
 
-#### Standing on the Shoulders of Open Source
-
-</div>
-
-<table align="center">
-  <tr>
-    <th align="left">Project</th>
-    <th align="left">Contribution</th>
-  </tr>
-  <tr>
-    <td><a href="https://github.com/MetrolistGroup/Metrolist"><strong>Metrolist</strong></a></td>
-    <td>Structural inspiration for UI conventions and modular styling</td>
-  </tr>
-  <tr>
-    <td><a href="https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor"><strong>LevyraExtractor</strong></a></td>
-    <td>Stream extraction core — GPL-3.0 fork maintained for Levyra</td>
-  </tr>
-  <tr>
-    <td><a href="https://github.com/InfinityLoop1308/PipePipeExtractor"><strong>PipePipeExtractor</strong></a></td>
-    <td>Upstream extractor foundation from the NewPipe/PipePipe ecosystem</td>
-  </tr>
-</table>
+| Project | Role in the ecosystem |
+|:---|:---|
+| [Metrolist](https://github.com/MetrolistGroup/Metrolist) | Reference for selected Android music interface conventions and interaction patterns |
+| [LevyraExtractor](https://github.com/LUC4N3X/Levyra-deepsound/tree/main/third_party/LevyraExtractor) | GPL-3.0 extraction core maintained for Levyra |
+| [PipePipeExtractor](https://github.com/InfinityLoop1308/PipePipeExtractor) | Upstream foundation from the NewPipe and PipePipe extractor ecosystem |
 
 ---
 
