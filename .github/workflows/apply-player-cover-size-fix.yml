@@ -20,12 +20,22 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
-      - name: Apply player artwork layout fix
+      - name: Restore large player artwork
         shell: bash
         run: |
           set -euo pipefail
-          git apply --check .github/player-cover-size-fix.patch
-          git apply .github/player-cover-size-fix.patch
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          content = path.read_text(encoding='utf-8')
+          old = '''            densePlayer -> 214.dp
+            compactPlayer -> 250.dp'''
+          new = '''            densePlayer -> 292.dp
+            compactPlayer -> 344.dp'''
+          if content.count(old) != 1:
+              raise SystemExit('Player artwork limits not found exactly once')
+          path.write_text(content.replace(old, new, 1), encoding='utf-8')
+          PY
           rm .github/player-cover-size-fix.patch
           rm .github/workflows/apply-player-cover-size-fix.yml
           git add -A
