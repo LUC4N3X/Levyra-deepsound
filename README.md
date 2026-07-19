@@ -23,7 +23,7 @@
 
 ---
 
-## 🎶 About Levyra
+## 🎵 About Levyra
 
 <div align="center">
 
