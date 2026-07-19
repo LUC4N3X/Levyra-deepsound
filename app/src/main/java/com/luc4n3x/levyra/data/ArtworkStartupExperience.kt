@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.BuildConfig
 import timber.log.Timber
 import java.io.File
 import java.util.Locale
@@ -228,33 +229,34 @@ internal class ArtworkStartupMetricsCollector(
 
 internal object LevyraArtworkStartupMetrics {
     private val collector = ArtworkStartupMetricsCollector()
+    private val enabled = BuildConfig.DEBUG
 
     fun beginSession() {
-        collector.reset()
+        if (enabled) collector.reset()
     }
 
     fun recordHomeEmission(fingerprint: String, hasUsableContent: Boolean) {
-        collector.recordHomeEmission(fingerprint, hasUsableContent)
+        if (enabled) collector.recordHomeEmission(fingerprint, hasUsableContent)
     }
 
     fun recordShimmer(hasUsableContent: Boolean) {
-        collector.recordShimmer(hasUsableContent)
+        if (enabled) collector.recordShimmer(hasUsableContent)
     }
 
     fun recordArtworkRequest(key: String, modelIdentity: String, source: ArtworkRequestSource) {
-        collector.recordArtworkRequest(key, modelIdentity, source)
+        if (enabled) collector.recordArtworkRequest(key, modelIdentity, source)
     }
 
     fun recordArtworkLoading(key: String) {
-        collector.recordArtworkLoading(key)
+        if (enabled) collector.recordArtworkLoading(key)
     }
 
     fun recordArtworkDisplayed(key: String) {
-        collector.recordArtworkDisplayed(key)
+        if (enabled) collector.recordArtworkDisplayed(key)
     }
 
     fun recordArtworkFailure(key: String) {
-        collector.recordArtworkFailure(key)
+        if (enabled) collector.recordArtworkFailure(key)
     }
 
     fun snapshot(): ArtworkStartupMetricsSnapshot {
@@ -262,6 +264,7 @@ internal object LevyraArtworkStartupMetrics {
     }
 
     fun persistSnapshot(context: Context) {
+        if (!enabled) return
         val snapshot = collector.snapshot()
         val rate = String.format(Locale.US, "%.1f", snapshot.persistentRequestRate * 100.0)
         val violations = snapshot.regressionViolations()
