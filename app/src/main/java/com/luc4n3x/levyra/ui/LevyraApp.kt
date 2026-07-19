@@ -329,7 +329,6 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
-private val LocalRemoteArtworkLoadingEnabled = compositionLocalOf { true }
 private val CinematicPlum = Color(0xFF2A1738)
 private val CinematicGold = Color(0xFFFFC46B)
 private val CinematicGlass = Color(0xFF151321)
@@ -625,7 +624,7 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false, zoom: Float = 1f) {
     val context = LocalContext.current
-    val candidateModels = remember(
+    val models = remember(
         context,
         track.id,
         track.title,
@@ -637,39 +636,16 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     ) {
         LevyraArtworkCache.models(context, track, highRes)
     }
-    val artworkKey = remember(track.id, highRes) {
-        "${track.id}:${if (highRes) "large" else "small"}"
-    }
-    val remoteArtworkLoadingEnabled = LocalRemoteArtworkLoadingEnabled.current
-    var activeModel by remember(artworkKey) {
-        mutableStateOf<Any?>(candidateModels.firstOrNull())
-    }
-    var failedModelIdentities by remember(artworkKey) {
-        mutableStateOf(emptySet<String>())
-    }
-    var remoteRequestUnlocked by remember(artworkKey) {
-        mutableStateOf(activeModel is File || remoteArtworkLoadingEnabled)
-    }
-    val activeModelIdentity = remember(activeModel) {
-        artworkModelIdentity(activeModel)
-    }
-
-    LaunchedEffect(artworkKey, candidateModels, failedModelIdentities, activeModelIdentity) {
-        val activeModelUsable = activeModel != null && activeModelIdentity !in failedModelIdentities
-        if (!activeModelUsable) {
-            activeModel = candidateModels.firstOrNull { candidate ->
-                artworkModelIdentity(candidate) !in failedModelIdentities
-            }
+    var modelIndex by remember(models) { mutableStateOf(0) }
+    val model = models.getOrNull(modelIndex)
+    val artworkKey = remember(track.id, highRes) { "${track.id}:${if (highRes) "large" else "small"}" }
+    val modelIdentity = remember(model) {
+        when (model) {
+            is File -> "file:${model.absolutePath}"
+            null -> "missing"
+            else -> "remote:${model}"
         }
     }
-    LaunchedEffect(remoteArtworkLoadingEnabled, activeModelIdentity) {
-        if (remoteArtworkLoadingEnabled || activeModel is File) {
-            remoteRequestUnlocked = true
-        }
-    }
-
-    val model = activeModel
-    val modelIdentity = remember(model) { artworkModelIdentity(model) }
     val requestSource = remember(model) {
         when (model) {
             is File -> ArtworkRequestSource.PersistentFile
@@ -677,11 +653,6 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
             else -> ArtworkRequestSource.Remote
         }
     }
-    val canLoadArtwork = model != null && (
-        model is File ||
-            remoteArtworkLoadingEnabled ||
-            remoteRequestUnlocked
-        )
     if (BuildConfig.DEBUG) {
         LaunchedEffect(artworkKey, modelIdentity, requestSource) {
             LevyraArtworkStartupMetrics.recordArtworkRequest(artworkKey, modelIdentity, requestSource)
@@ -693,7 +664,7 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     }
     Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
-        if (canLoadArtwork) {
+        if (model != null) {
             val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
             val request = remember(context, model, crossfadeMs) {
                 ImageRequest.Builder(context)
@@ -709,32 +680,14 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
                 onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
-                onSuccess = {
-                    remoteRequestUnlocked = true
-                    LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey)
-                },
+                onSuccess = { LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey) },
                 onError = {
                     LevyraArtworkStartupMetrics.recordArtworkFailure(artworkKey)
-                    val failedIdentity = modelIdentity
-                    val updatedFailures = failedModelIdentities + failedIdentity
-                    failedModelIdentities = updatedFailures
-                    activeModel = candidateModels.firstOrNull { candidate ->
-                        artworkModelIdentity(candidate) !in updatedFailures
-                    }
+                    if (modelIndex < models.lastIndex) modelIndex += 1
                 },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scale(zoom)
+                modifier = Modifier.fillMaxSize().scale(zoom)
             )
         }
-    }
-}
-
-private fun artworkModelIdentity(model: Any?): String {
-    return when (model) {
-        is File -> "file:${model.absolutePath}"
-        null -> "missing"
-        else -> "remote:$model"
     }
 }
 
@@ -4280,12 +4233,11 @@ internal fun homeSectionLazyKey(
 private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnapshot, homeListState: LazyListState) {
     val state = renderSnapshot.state
     val homeDerivedState = renderSnapshot.derived
-    val homeStartupBusy by viewModel.homeStartupBusy.collectAsStateWithLifecycle()
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    LaunchedEffect(homeDerivedState.artistRefreshFingerprint, homeStartupBusy) {
-        if (!homeStartupBusy) viewModel.refreshHomeArtists()
+    LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
+        viewModel.refreshHomeArtists()
     }
     val personalTracks = remember(state.personalOrbitTracks) {
         state.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -4334,19 +4286,14 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
     }
-    val homeBackgroundWorkActive = homeStartupBusy ||
-        state.isLoadingHome ||
+    val homeBackgroundWorkActive = state.isLoadingHome ||
         state.homeAlbumsLoading ||
         state.homeArtistsLoading ||
         state.isLoadingCharts
     val homeAnimationsEnabled = LocalAnimationsEnabled.current &&
         !homeListState.isScrollInProgress &&
         !homeBackgroundWorkActive
-    val remoteArtworkLoadingEnabled = !(homeStartupBusy && homeListState.isScrollInProgress)
-    CompositionLocalProvider(
-        LocalAnimationsEnabled provides homeAnimationsEnabled,
-        LocalRemoteArtworkLoadingEnabled provides remoteArtworkLoadingEnabled
-    ) {
+    CompositionLocalProvider(LocalAnimationsEnabled provides homeAnimationsEnabled) {
         LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
@@ -4638,11 +4585,11 @@ private fun HomeQuickPicksShelf(
     onPlay: (Track) -> Unit,
     onPlayAll: () -> Unit
 ) {
-    val columns = remember(tracks) {
+    val pages = remember(tracks) {
         tracks
-            .distinctBy(LevyraPersonalOrbit::identityKey)
-            .take(20)
-            .chunked(2)
+            .distinctBy { it.id }
+            .take(24)
+            .chunked(4)
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
@@ -4650,25 +4597,26 @@ private fun HomeQuickPicksShelf(
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(
                 start = HomeHorizontalInset,
                 end = HomeHorizontalShelfEndPadding
             )
         ) {
             itemsIndexed(
-                items = columns,
-                key = { columnIndex, column ->
-                    "quick-picks-$columnIndex-${column.firstOrNull()?.id.orEmpty()}"
+                items = pages,
+                key = { pageIndex, page ->
+                    "quick-picks-$pageIndex-${page.firstOrNull()?.id.orEmpty()}"
                 },
-                contentType = { _, _ -> "quick-picks-column" }
-            ) { _, column ->
+                contentType = { _, _ -> "quick-picks-page" }
+            ) { pageIndex, page ->
                 Column(
-                    modifier = Modifier.width(286.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.width(322.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    column.forEach { track ->
+                    page.forEachIndexed { itemIndex, track ->
                         HomeQuickPickRow(
+                            rank = pageIndex * 4 + itemIndex + 1,
                             track = track,
                             isCurrent = track.id == currentId,
                             isPlaying = isPlaying && track.id == currentId,
@@ -4684,54 +4632,74 @@ private fun HomeQuickPicksShelf(
 
 @Composable
 private fun HomeQuickPickRow(
+    rank: Int,
     track: Track,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: () -> Unit
 ) {
-    val shape = RoundedCornerShape(17.dp)
-    val background = if (isCurrent) {
-        Brush.horizontalGradient(
-            listOf(
-                LevyraCyan.copy(alpha = 0.13f),
-                LevyraViolet.copy(alpha = 0.045f),
-                Color.Transparent
-            )
-        )
+    val rowBackground = if (isCurrent) {
+        LevyraCyan.copy(alpha = 0.10f)
     } else {
-        SolidColor(Color.Transparent)
-    }
-    val outlineColor = if (isCurrent) {
-        LevyraCyan.copy(alpha = 0.24f)
-    } else {
-        Color.White.copy(alpha = 0.055f)
+        Color.Transparent
     }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(70.dp)
-            .clip(shape)
-            .background(background)
-            .border(Dp.Hairline, outlineColor, shape)
+            .height(62.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(rowBackground)
             .pressable(onClick = onPlay)
-            .padding(horizontal = 7.dp),
+            .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
+        Box(
+            modifier = Modifier.width(22.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                isResolving -> CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 1.8.dp,
+                    color = LevyraCyan
+                )
+
+                isCurrent && isPlaying -> ActiveTrackEqualizer(
+                    color = LevyraCyan,
+                    isPlaying = true,
+                    width = 14.dp,
+                    height = 10.dp
+                )
+
+                else -> Text(
+                    text = rank.toString(),
+                    color = if (isCurrent) {
+                        LevyraCyan
+                    } else {
+                        LevyraMuted.copy(alpha = 0.58f)
+                    },
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
         CoverImage(
             track = track,
             modifier = Modifier
-                .size(54.dp)
-                .clip(RoundedCornerShape(13.dp))
+                .size(46.dp)
+                .clip(RoundedCornerShape(10.dp))
                 .border(
                     Dp.Hairline,
-                    Color.White.copy(alpha = 0.08f),
-                    RoundedCornerShape(13.dp)
+                    LevyraAdaptiveHairline,
+                    RoundedCornerShape(10.dp)
                 ),
             highRes = false
         )
+
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center
@@ -4748,47 +4716,24 @@ private fun HomeQuickPickRow(
             Text(
                 text = track.artist,
                 color = LevyraMuted,
-                fontSize = 12.sp,
-                lineHeight = 15.sp,
+                fontSize = 11.8.sp,
+                lineHeight = 14.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .background(
-                    if (isCurrent) LevyraCyan.copy(alpha = 0.16f) else Color.Transparent,
-                    CircleShape
-                )
-                .border(
-                    Dp.Hairline,
-                    if (isCurrent) LevyraCyan.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.06f),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                isResolving -> CircularProgressIndicator(
-                    modifier = Modifier.size(15.dp),
-                    strokeWidth = 1.8.dp,
-                    color = LevyraCyan
-                )
-                isCurrent && isPlaying -> ActiveTrackEqualizer(
-                    color = LevyraCyan,
-                    isPlaying = true,
-                    width = 15.dp,
-                    height = 11.dp
-                )
-                else -> Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = if (isCurrent) LevyraCyan else LevyraText.copy(alpha = 0.72f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
+
+        Icon(
+            imageVector = if (isCurrent && isPlaying) {
+                Icons.Rounded.Equalizer
+            } else {
+                Icons.Rounded.PlayArrow
+            },
+            contentDescription = null,
+            tint = if (isCurrent) LevyraCyan else LevyraMuted,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
