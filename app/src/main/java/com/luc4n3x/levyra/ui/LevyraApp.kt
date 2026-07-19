@@ -4591,37 +4591,38 @@ private fun HomeQuickPicksShelf(
             .take(24)
             .chunked(4)
     }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
             SectionHeaderAction(title, onPlayAll)
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
+            contentPadding = PaddingValues(
+                start = HomeHorizontalInset,
+                end = HomeHorizontalShelfEndPadding
+            )
         ) {
             itemsIndexed(
                 items = pages,
-                key = { pageIndex, page -> "quick-picks-$pageIndex-${page.firstOrNull()?.id.orEmpty()}" },
+                key = { pageIndex, page ->
+                    "quick-picks-$pageIndex-${page.firstOrNull()?.id.orEmpty()}"
+                },
                 contentType = { _, _ -> "quick-picks-page" }
             ) { pageIndex, page ->
-                Surface(
-                    color = LevyraAdaptiveChip.copy(alpha = if (LevyraIsLight) 0.86f else 0.56f),
-                    border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.width(322.dp)
+                Column(
+                    modifier = Modifier.width(322.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Column(modifier = Modifier.padding(6.dp)) {
-                        page.forEachIndexed { itemIndex, track ->
-                            HomeQuickPickRow(
-                                rank = pageIndex * 4 + itemIndex + 1,
-                                track = track,
-                                isCurrent = track.id == currentId,
-                                isPlaying = isPlaying && track.id == currentId,
-                                isResolving = isResolving && track.id == currentId,
-                                onPlay = { onPlay(track) }
-                            )
-                        }
+                    page.forEachIndexed { itemIndex, track ->
+                        HomeQuickPickRow(
+                            rank = pageIndex * 4 + itemIndex + 1,
+                            track = track,
+                            isCurrent = track.id == currentId,
+                            isPlaying = isPlaying && track.id == currentId,
+                            isResolving = isResolving && track.id == currentId,
+                            onPlay = { onPlay(track) }
+                        )
                     }
                 }
             }
@@ -4638,18 +4639,25 @@ private fun HomeQuickPickRow(
     isResolving: Boolean,
     onPlay: () -> Unit
 ) {
+    val rowBackground = if (isCurrent) {
+        LevyraCyan.copy(alpha = 0.10f)
+    } else {
+        Color.Transparent
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(66.dp)
-            .clip(RoundedCornerShape(13.dp))
+            .height(62.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(rowBackground)
             .pressable(onClick = onPlay)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         Box(
-            modifier = Modifier.width(24.dp),
+            modifier = Modifier.width(22.dp),
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -4658,28 +4666,40 @@ private fun HomeQuickPickRow(
                     strokeWidth = 1.8.dp,
                     color = LevyraCyan
                 )
+
                 isCurrent && isPlaying -> ActiveTrackEqualizer(
                     color = LevyraCyan,
                     isPlaying = true,
                     width = 14.dp,
                     height = 10.dp
                 )
+
                 else -> Text(
                     text = rank.toString(),
-                    color = if (isCurrent) LevyraCyan else LevyraMuted,
+                    color = if (isCurrent) {
+                        LevyraCyan
+                    } else {
+                        LevyraMuted.copy(alpha = 0.58f)
+                    },
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
         }
+
         CoverImage(
             track = track,
             modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(11.dp))
-                .border(Dp.Hairline, LevyraAdaptiveHairline, RoundedCornerShape(11.dp)),
+                .size(46.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .border(
+                    Dp.Hairline,
+                    LevyraAdaptiveHairline,
+                    RoundedCornerShape(10.dp)
+                ),
             highRes = false
         )
+
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.Center
@@ -4703,11 +4723,16 @@ private fun HomeQuickPickRow(
                 overflow = TextOverflow.Ellipsis
             )
         }
+
         Icon(
-            imageVector = if (isCurrent && isPlaying) Icons.Rounded.Equalizer else Icons.Rounded.PlayArrow,
+            imageVector = if (isCurrent && isPlaying) {
+                Icons.Rounded.Equalizer
+            } else {
+                Icons.Rounded.PlayArrow
+            },
             contentDescription = null,
             tint = if (isCurrent) LevyraCyan else LevyraMuted,
-            modifier = Modifier.size(19.dp)
+            modifier = Modifier.size(18.dp)
         )
     }
 }
