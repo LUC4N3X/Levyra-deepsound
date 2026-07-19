@@ -8944,8 +8944,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
             else -> 12.dp
         }
         val artworkLimit = when {
-            densePlayer -> 214.dp
-            compactPlayer -> 250.dp
+            densePlayer -> 292.dp
+            compactPlayer -> 344.dp
             else -> 520.dp
         }
         val artworkSize = minOf(
