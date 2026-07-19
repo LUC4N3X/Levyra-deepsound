@@ -14,6 +14,7 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraContentLocales
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.ListeningPulse
@@ -396,7 +397,7 @@ private const val HOME_QUICK_PICKS_ARTIST_LIMIT = 2
 private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
     val orbitKeys = input.personalOrbitTracks
         .asSequence()
-        .map(LevyraPersonalOrbit::identityKey)
+        .map { track -> LevyraPersonalOrbit.identityKey(track) }
         .filter(String::isNotBlank)
         .toHashSet()
     val candidates = buildList {
