@@ -14,7 +14,6 @@ import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.LevyraContentLocales
-import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.ListeningPulse
@@ -63,7 +62,6 @@ data class HomePlaybackProgress(
 )
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
-    val homeStartupBusy: StateFlow<Boolean> = root.homeStartupBusy
     private val freezeHomeContent = MutableStateFlow(false)
     private var homeRenderSettleJob: Job? = null
 
@@ -361,7 +359,9 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
 }
 
 private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
-    val quickPicks = buildQuickPicks(input)
+    val quickPicks = input.homeSections
+        .firstOrNull { isHomeQuickPicksSectionTitle(it.title) && it.tracks.isNotEmpty() }
+        ?: buildFallbackQuickPicks(input)
     val newReleases = input.homeSections.firstOrNull { isVerifiedHomeReleaseSectionTitle(it.title) }
     val otherSections = input.homeSections.filter {
         !isVerifiedHomeReleaseSectionTitle(it.title) &&
@@ -391,63 +391,35 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     )
 }
 
-private const val HOME_QUICK_PICKS_LIMIT = 20
-private const val HOME_QUICK_PICKS_ARTIST_LIMIT = 2
-
-private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
-    val orbitKeys = input.personalOrbitTracks
-        .asSequence()
-        .map { track -> LevyraPersonalOrbit.identityKey(track) }
-        .filter(String::isNotBlank)
-        .toHashSet()
-    val candidates = buildList {
-        input.homeSections
-            .firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
-            ?.tracks
-            ?.let(::addAll)
-        input.homeSections
-            .asSequence()
-            .filterNot { isHomeQuickPicksSectionTitle(it.title) || isHomePersonalOrbitSectionTitle(it.title) }
-            .forEach { section -> addAll(section.tracks) }
-        addAll(input.charts)
+private fun buildFallbackQuickPicks(input: HomeDerivedInput): HomeSection? {
+    val personalizedTracks = buildList {
         addAll(input.recentListens)
+        addAll(input.personalOrbitTracks)
         addAll(input.favorites)
+        addAll(input.charts)
         addAll(input.tracks)
         input.currentTrack?.let(::add)
+    }
+        .asSequence()
+        .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+        .distinctBy { it.id }
+        .take(8)
+        .toList()
+
+    val tracks = personalizedTracks.ifEmpty {
         LevyraStartupCatalog.homeSections(input.languageCode)
             .firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
             ?.tracks
-            ?.let(::addAll)
+            .orEmpty()
+            .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+            .distinctBy { it.id }
+            .take(8)
     }
-
-    val selected = ArrayList<Track>(HOME_QUICK_PICKS_LIMIT)
-    val seen = HashSet<String>()
-    val artistCounts = HashMap<String, Int>()
-
-    fun addCandidate(track: Track, enforceArtistLimit: Boolean) {
-        if (selected.size >= HOME_QUICK_PICKS_LIMIT) return
-        if (track.id.length != 11 || !isReliableHomeMusicCandidate(track)) return
-        val identity = LevyraPersonalOrbit.identityKey(track)
-        if (identity.isBlank() || identity in orbitKeys || !seen.add(identity)) return
-        val artistKey = track.artist.trim().lowercase(Locale.ROOT)
-        val artistCount = artistCounts[artistKey] ?: 0
-        if (enforceArtistLimit && artistKey.isNotBlank() && artistCount >= HOME_QUICK_PICKS_ARTIST_LIMIT) {
-            seen.remove(identity)
-            return
-        }
-        selected += track
-        if (artistKey.isNotBlank()) artistCounts[artistKey] = artistCount + 1
-    }
-
-    candidates.forEach { track -> addCandidate(track, enforceArtistLimit = true) }
-    if (selected.size < HOME_QUICK_PICKS_LIMIT) {
-        candidates.forEach { track -> addCandidate(track, enforceArtistLimit = false) }
-    }
-    if (selected.isEmpty()) return null
+    if (tracks.isEmpty()) return null
 
     return HomeSection(
         title = LevyraContentLocales.forLanguage(input.languageCode).quickSectionTitle,
-        tracks = selected
+        tracks = tracks
     )
 }
 
