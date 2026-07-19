@@ -49,7 +49,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -549,7 +552,7 @@ private fun rememberEqualizerBar(
     minimumValue: Float,
     maximumValue: Float,
     durationMillis: Int
-): Float {
+): Animatable<Float, AnimationVector1D> {
     val animationsEnabled = LocalAnimationsEnabled.current
     val bar = remember { Animatable(idleValue) }
     LaunchedEffect(animationsEnabled, isPlaying, idleValue, minimumValue, maximumValue, durationMillis) {
@@ -569,7 +572,7 @@ private fun rememberEqualizerBar(
             )
         }
     }
-    return bar.value
+    return bar
 }
 
 @Composable
@@ -580,31 +583,26 @@ private fun ActiveTrackEqualizer(
     width: Dp = 18.dp,
     height: Dp = 14.dp
 ) {
-    val height1 = rememberEqualizerBar(isPlaying, 0.4f, 0.2f, 1f, 550)
-    val height2 = rememberEqualizerBar(isPlaying, 0.6f, 0.3f, 0.9f, 380)
-    val height3 = rememberEqualizerBar(isPlaying, 0.3f, 0.15f, 0.95f, 460)
-    val height4 = rememberEqualizerBar(isPlaying, 0.5f, 0.25f, 0.85f, 620)
+    val bar1 = rememberEqualizerBar(isPlaying, 0.4f, 0.2f, 1f, 550)
+    val bar2 = rememberEqualizerBar(isPlaying, 0.6f, 0.3f, 0.9f, 380)
+    val bar3 = rememberEqualizerBar(isPlaying, 0.3f, 0.15f, 0.95f, 460)
+    val bar4 = rememberEqualizerBar(isPlaying, 0.5f, 0.25f, 0.85f, 620)
+    val bars = remember(bar1, bar2, bar3, bar4) { listOf(bar1, bar2, bar3, bar4) }
 
-    Row(
-        modifier = modifier.size(width = width, height = height),
-        horizontalArrangement = Arrangement.spacedBy(1.5.dp),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        EqualizerBar(height1, color)
-        EqualizerBar(height2, color)
-        EqualizerBar(height3, color)
-        EqualizerBar(height4, color)
+    Canvas(modifier = modifier.size(width = width, height = height)) {
+        val gap = 1.5.dp.toPx()
+        val barWidth = (size.width - gap * (bars.size - 1)) / bars.size
+        val cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx(), 1.dp.toPx())
+        bars.forEachIndexed { index, bar ->
+            val barHeight = size.height * bar.value.coerceIn(0f, 1f)
+            drawRoundRect(
+                color = color,
+                topLeft = androidx.compose.ui.geometry.Offset(index * (barWidth + gap), size.height - barHeight),
+                size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
+                cornerRadius = cornerRadius
+            )
+        }
     }
-}
-
-@Composable
-private fun RowScope.EqualizerBar(height: Float, color: Color) {
-    Box(
-        modifier = Modifier
-            .weight(1f)
-            .fillMaxHeight(height)
-            .background(color, RoundedCornerShape(topStart = 1.dp, topEnd = 1.dp))
-    )
 }
 @Composable
 private fun SectionTitle(title: String) {
@@ -662,8 +660,14 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     val background = remember(track.accentStart, track.accentEnd) {
         Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
     }
-    Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
-        InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+    var artworkLoaded by remember(artworkKey) { mutableStateOf(false) }
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        if (!artworkLoaded) {
+            InstantArtworkPlaceholder(
+                track = track,
+                modifier = Modifier.fillMaxSize().background(background)
+            )
+        }
         if (model != null) {
             val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
             val request = remember(context, model, crossfadeMs) {
@@ -680,7 +684,10 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
                 onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
-                onSuccess = { LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey) },
+                onSuccess = {
+                    LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey)
+                    artworkLoaded = true
+                },
                 onError = {
                     LevyraArtworkStartupMetrics.recordArtworkFailure(artworkKey)
                     if (modelIndex < models.lastIndex) modelIndex += 1
@@ -757,19 +764,22 @@ private fun Modifier.pressable(
     pressedScale: Float = 0.96f,
     onClick: () -> Unit
 ): Modifier {
-    if (!LocalAnimationsEnabled.current) {
-        return this.clickable(enabled = enabled, onClick = onClick)
-    }
+    val animationsEnabled = LocalAnimationsEnabled.current
     val interaction = interactionSource ?: remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) pressedScale else 1f,
+        targetValue = if (pressed && animationsEnabled) pressedScale else 1f,
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
         label = "press"
     )
     return this
         .graphicsLayer { scaleX = scale; scaleY = scale }
-        .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
+        .clickable(
+            interactionSource = interaction,
+            indication = if (animationsEnabled) null else LocalIndication.current,
+            enabled = enabled,
+            onClick = onClick
+        )
 }
 
 @Composable
@@ -4286,15 +4296,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
     }
-    val homeBackgroundWorkActive = state.isLoadingHome ||
-        state.homeAlbumsLoading ||
-        state.homeArtistsLoading ||
-        state.isLoadingCharts
-    val homeAnimationsEnabled = LocalAnimationsEnabled.current &&
-        !homeListState.isScrollInProgress &&
-        !homeBackgroundWorkActive
-    CompositionLocalProvider(LocalAnimationsEnabled provides homeAnimationsEnabled) {
-        LazyColumn(
+    LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
@@ -4498,7 +4500,6 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
         }
         item(key = "home-status", contentType = "home-card") {
             HomeSectionInset { StatusBlock(state) }
-        }
         }
     }
 
@@ -12500,14 +12501,12 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "homeAlbumScale"
             )
-            val modifier = if (effectiveAnimationsEnabled) {
-                Modifier.graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-            } else Modifier
             Column(
-                modifier = modifier
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
                     .width(148.dp)
                     .pointerInput(album.title, album.artist) {
                         detectTapGestures(
@@ -12606,14 +12605,12 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
                 label = "scale"
             )
-            val modifier = if (effectiveAnimationsEnabled) {
-                Modifier.graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }
-            } else Modifier
             Column(
-                modifier = modifier
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
                     .width(148.dp)
                     .pointerInput(Unit) {
                         detectTapGestures(
