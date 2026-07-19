@@ -105,11 +105,20 @@ const badgeBlock = `<a href="https://github.com/LUC4N3X/Levyra-deepsound/release
 <a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>`
 const badgePattern = /<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\/latest"><img[^>]+><\/a>\n<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases"><img[^>]+><\/a>\n<a href="LICENSE"><img[^>]+><\/a>\n<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound(?:\/stargazers)?"><img[^>]+><\/a>/
+const downloadBlock = `<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
+  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="520" />
+</a>`
+const downloadPattern = /<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\/latest">\n\s*<img src="docs\/assets\/levyra-github-download\.svg"[^>]*>\n<\/a>/
 const readme = await readFile('README.md', 'utf8')
-const updatedReadme = readme.replace(badgePattern, badgeBlock)
+const badgesUpdated = readme.replace(badgePattern, badgeBlock)
+const updatedReadme = badgesUpdated.replace(downloadPattern, downloadBlock)
 
-if (updatedReadme === readme && !readme.includes(badgeBlock)) {
+if (badgesUpdated === readme && !readme.includes(badgeBlock)) {
   throw new Error('README badge block was not found')
+}
+
+if (updatedReadme === badgesUpdated && !badgesUpdated.includes(downloadBlock)) {
+  throw new Error('README download block was not found')
 }
 
 if (updatedReadme !== readme) {
