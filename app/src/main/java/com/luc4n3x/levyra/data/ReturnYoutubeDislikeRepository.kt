@@ -70,8 +70,20 @@ internal class ReturnYoutubeDislikeRepository {
 
         val now = System.currentTimeMillis()
         cache[normalizedId]?.let { cached ->
-            if (now < cached.expiresAtMs) return cached.result
-            cache.remove(normalizedId, cached)
+            if (now < cached.expiresAtMs) {
+                val cachedResult = cached.result
+                if (cachedResult is ReturnYoutubeDislikeResult.RateLimited) {
+                    val remainingMs = blockedUntilMs.get() - now
+                    if (remainingMs > 0L) {
+                        return ReturnYoutubeDislikeResult.RateLimited(remainingMs)
+                    }
+                    cache.remove(normalizedId, cached)
+                } else {
+                    return cachedResult
+                }
+            } else {
+                cache.remove(normalizedId, cached)
+            }
         }
 
         val blockedUntil = blockedUntilMs.get()
@@ -193,7 +205,9 @@ internal fun parseReturnYoutubeDislikeResponse(
         val dislikes = root.optLongStrict("dislikes") ?: return null
         val rawLikes = root.optLongStrict("rawLikes") ?: 0L
         val rawDislikes = root.optLongStrict("rawDislikes") ?: 0L
-        val viewCount = root.optLongStrict("viewCount") ?: -1L
+        val parsedViewCount = root.optLongStrict("viewCount")
+        if (parsedViewCount != null && parsedViewCount < 0L) return null
+        val viewCount = parsedViewCount ?: -1L
         val rating = root.optDouble("rating", 0.0).takeIf(Double::isFinite) ?: 0.0
         val deleted = root.optBoolean("deleted", false)
 

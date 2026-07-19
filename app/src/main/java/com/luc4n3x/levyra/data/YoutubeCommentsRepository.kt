@@ -41,12 +41,12 @@ internal class YoutubeCommentsRepository {
     private val cache = ConcurrentHashMap<RequestKey, CachedCommentsResult>()
     private val inFlight = ConcurrentHashMap<RequestKey, Deferred<YoutubeCommentsResult>>()
 
-    suspend fun initial(videoId: String): YoutubeCommentsResult {
+    suspend fun initial(videoId: String, forceRefresh: Boolean = false): YoutubeCommentsResult {
         val normalized = videoId.trim()
         if (!COMMENTS_VIDEO_ID.matches(normalized)) {
             return YoutubeCommentsResult.Failed(IllegalArgumentException("Invalid YouTube video id"))
         }
-        return resolve(RequestKey(normalized, "initial")) {
+        return resolve(RequestKey(normalized, "initial"), forceRefresh = forceRefresh) {
             NewPipeRuntime.ensure()
             val url = youtubeUrl(normalized)
             val info = CommentsInfo.getInfo(ServiceList.YouTube, url)
@@ -71,13 +71,17 @@ internal class YoutubeCommentsRepository {
         }
     }
 
-    suspend fun more(videoId: String, continuationToken: String): YoutubeCommentsResult {
+    suspend fun more(
+        videoId: String,
+        continuationToken: String,
+        forceRefresh: Boolean = false
+    ): YoutubeCommentsResult {
         val normalized = videoId.trim()
         val token = continuationToken.trim()
         if (!COMMENTS_VIDEO_ID.matches(normalized) || token.isBlank()) {
             return YoutubeCommentsResult.Failed(IllegalArgumentException("Invalid comments continuation"))
         }
-        return resolve(RequestKey(normalized, "page:$token")) {
+        return resolve(RequestKey(normalized, "page:$token"), forceRefresh = forceRefresh) {
             NewPipeRuntime.ensure()
             val firstPage = fetchContinuationPage(normalized, token)
             YoutubeCommentsResult.Available(
@@ -90,8 +94,11 @@ internal class YoutubeCommentsRepository {
         }
     }
 
-    suspend fun replies(videoId: String, continuationToken: String): YoutubeCommentsResult =
-        more(videoId, continuationToken)
+    suspend fun replies(
+        videoId: String,
+        continuationToken: String,
+        forceRefresh: Boolean = false
+    ): YoutubeCommentsResult = more(videoId, continuationToken, forceRefresh)
 
     fun close() {
         scope.cancel()
@@ -101,8 +108,10 @@ internal class YoutubeCommentsRepository {
 
     private suspend fun resolve(
         key: RequestKey,
+        forceRefresh: Boolean = false,
         loader: suspend () -> YoutubeCommentsResult
     ): YoutubeCommentsResult {
+        if (forceRefresh) cache.remove(key)
         val now = System.currentTimeMillis()
         cache[key]?.let { cached ->
             if (now < cached.expiresAtMs) return cached.result
