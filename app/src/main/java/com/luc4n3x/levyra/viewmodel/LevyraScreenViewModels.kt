@@ -23,6 +23,7 @@ import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SearchResults
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -188,6 +189,13 @@ class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::pla
     fun openAudioQualityPanel() = root.openAudioQualityPanel()
     fun openLyrics() = root.openLyrics()
     fun openQueue() = root.openQueue()
+    fun openYoutubeComments() = root.openYoutubeComments()
+    fun closeYoutubeComments() = root.closeYoutubeComments()
+    fun retryYoutubeComments() = root.retryYoutubeComments()
+    fun loadMoreYoutubeComments() = root.loadMoreYoutubeComments()
+    fun retryYoutubeCommentsPage() = root.retryYoutubeCommentsPage()
+    fun toggleYoutubeCommentReplies(commentId: String) = root.toggleYoutubeCommentReplies(commentId)
+    fun loadMoreYoutubeCommentReplies(commentId: String) = root.loadMoreYoutubeCommentReplies(commentId)
     fun previous() = root.previous()
     fun seekBy(deltaMs: Long) = root.seekBy(deltaMs)
     fun seekTo(progress: Float) = root.seekTo(progress)
@@ -693,7 +701,8 @@ private data class PlayerProjection(
     val repeatMode: RepeatMode,
     val shuffleEnabled: Boolean,
     val sleepTimerMinutes: Int,
-    val interfaceSettings: LevyraInterfaceSettings
+    val interfaceSettings: LevyraInterfaceSettings,
+    val youtubeEngagement: YoutubeEngagementState
 )
 
 private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
@@ -714,5 +723,6 @@ private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerPro
     repeatMode = state.repeatMode,
     shuffleEnabled = state.shuffleEnabled,
     sleepTimerMinutes = state.sleepTimerMinutes,
-    interfaceSettings = state.interfaceSettings
+    interfaceSettings = state.interfaceSettings,
+    youtubeEngagement = state.youtubeEngagement
 )
