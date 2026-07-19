@@ -8,8 +8,8 @@
 
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest Levyra release"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>
-<a href="LICENSE"><img src="https://img.shields.io/github/license/LUC4N3X/Levyra-deepsound?style=for-the-badge&labelColor=0d1117&color=3DDC84" alt="GPL-3.0 License"></a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound"><img src="https://img.shields.io/github/stars/LUC4N3X/Levyra-deepsound?style=for-the-badge&label=Stars&labelColor=0d1117&color=F9AB00&logo=github&logoColor=white" alt="Star Levyra"></a>
+<a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>
 
 <br>
 
