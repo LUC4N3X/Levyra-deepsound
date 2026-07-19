@@ -72,6 +72,19 @@ class HomeRenderSnapshotTest {
     }
 
     @Test
+    fun exposesQuickPicksWithoutDuplicatingThemInGenericSections() {
+        val quickTrack = track("aaaaaaaaaaa")
+        val state = LevyraUiState(
+            homeSections = listOf(HomeSection("Quick picks", listOf(quickTrack)))
+        )
+
+        val snapshot = buildHomeRenderSnapshot(state)
+
+        assertEquals(listOf(quickTrack), snapshot.derived.quickPicks?.tracks)
+        assertEquals(emptyList<HomeSection>(), snapshot.derived.otherSections)
+    }
+
+    @Test
     fun keepsCachedResonanceStableAcrossOtherHomeChanges() {
         val cachedResonance = track("aaaaaaaaaaa")
         val refreshedTrack = track("bbbbbbbbbbb")

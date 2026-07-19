@@ -82,6 +82,57 @@ class AlbumRecommendationPolicyTest {
         )
     }
 
+    @Test
+    fun albumIdentityCollapsesEquivalentRecommendations() {
+        val first = album("AMATORE", "Samurai Jay")
+        val duplicate = album("  Amatore  ", "SAMURAI JAY")
+
+        assertEquals(albumRecommendationIdentityKey(first), albumRecommendationIdentityKey(duplicate))
+    }
+
+    @Test
+    fun albumDeduplicationCollapsesSameReleaseWithExpandedArtistCredits() {
+        val first = album("AMATORE", "Samurai Jay").copy(
+            thumbnailUrl = "https://lh3.googleusercontent.com/cover=w544-h544"
+        )
+        val duplicate = album("AMATORE", "Samurai Jay, Vito Salamanca").copy(
+            thumbnailUrl = "https://lh3.googleusercontent.com/cover=w1200-h1200"
+        )
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(first),
+            albumRecommendationDeduplicationKey(duplicate)
+        )
+    }
+
+    @Test
+    fun albumDeduplicationIgnoresDifferentUpcAndBrowseIdsForSameVisibleRelease() {
+        val first = album("AMATORE", "Samurai Jay").copy(
+            upc = "0602475840112",
+            browseId = "MPREb_first"
+        )
+        val duplicate = album("AMATORE", "Samurai Jay").copy(
+            upc = "0602475840999",
+            browseId = "MPREb_second"
+        )
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(first),
+            albumRecommendationDeduplicationKey(duplicate)
+        )
+    }
+
+    @Test
+    fun albumDeduplicationCollapsesEditionSuffixesForTheSameArtist() {
+        val standard = album("AMATORE", "Samurai Jay")
+        val deluxe = album("AMATORE Deluxe Edition", "Samurai Jay")
+
+        assertEquals(
+            albumRecommendationDeduplicationKey(standard),
+            albumRecommendationDeduplicationKey(deluxe)
+        )
+    }
+
     private fun album(title: String, artist: String): AlbumHit = AlbumHit(
         title = title,
         artist = artist,

@@ -37,7 +37,7 @@ import com.luc4n3x.levyra.data.TrackPayloadCodec
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
-import com.luc4n3x.levyra.data.albumRecommendationIdentityKey
+import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -749,10 +749,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        loadCharts(deferUntilHomeIdle = true)
         viewModelScope.launch {
-            delay(350L)
+            delay(startupPlan.homeFeedStartDelayMs)
             loadHomeFeed(deferUntilHomeIdle = true)
+        }
+        viewModelScope.launch {
+            delay(startupPlan.secondaryStartDelayMs)
+            awaitHomeUiIdle(startupPlan)
+            loadCharts(deferUntilHomeIdle = true)
         }
         viewModelScope.launch {
             delay(1_200L)
@@ -939,8 +943,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val resolved = LinkedHashMap<String, ArtistHit>()
             val semaphore = Semaphore(HOME_ARTIST_RESOLUTION_CONCURRENCY)
 
+            val startupPlan = homeStartupWorkPlan()
             if (freezeVisibleShelf) {
-                awaitHomeUiIdle()
+                awaitHomeUiIdle(startupPlan)
             } else {
                 _state.update { current ->
                     if (current.languageCode == languageCode) {
@@ -952,8 +957,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         current
                     }
                 }
-                delay(HOME_ARTIST_STARTUP_GRACE_MS)
-                awaitHomeUiIdle()
+                delay(maxOf(HOME_ARTIST_STARTUP_GRACE_MS, startupPlan.artistStartDelayMs))
+                awaitHomeUiIdle(startupPlan)
             }
 
             withTimeoutOrNull(HOME_ARTIST_TOTAL_TIMEOUT_MS) {
@@ -1710,12 +1715,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
-            val seeds = albumRecommendationSeeds(_state.value)
+            val startupPlan = homeStartupWorkPlan()
+            if (deferUntilHomeIdle) {
+                delay(startupPlan.albumStartDelayMs)
+                awaitHomeUiIdle(startupPlan)
+                if (
+                    !isActive ||
+                    homeAlbumsRequestGeneration.get() != requestGeneration ||
+                    _state.value.languageCode != languageCode
+                ) return@launch
+            }
+            val seeds = albumRecommendationSeeds(_state.value).let { candidates ->
+                if (deferUntilHomeIdle) candidates.take(startupPlan.albumSeedCount) else candidates
+            }
+            val remoteLimit = if (deferUntilHomeIdle) {
+                startupPlan.albumCandidateCount
+            } else {
+                HOME_ALBUM_REMOTE_CANDIDATE_LIMIT
+            }
+            val remoteConcurrency = if (deferUntilHomeIdle) {
+                startupPlan.albumConcurrency
+            } else {
+                HOME_ALBUM_REMOTE_CONCURRENCY
+            }
             val albums = try {
                 repository.homeAlbums(
                     languageCode = languageCode,
-                    limit = HOME_ALBUM_REMOTE_CANDIDATE_LIMIT,
-                    seeds = seeds
+                    limit = remoteLimit,
+                    seeds = seeds,
+                    concurrency = remoteConcurrency
                 )
             } catch (error: CancellationException) {
                 throw error
@@ -1938,7 +1966,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .map { scored: Pair<AlbumHit, Int> -> scored.first }
                 .filterNot { candidate: AlbumHit ->
                     selected.any { selectedAlbum: AlbumHit ->
-                        albumRecommendationIdentityKey(selectedAlbum) == albumRecommendationIdentityKey(candidate)
+                        albumRecommendationDeduplicationKey(selectedAlbum) == albumRecommendationDeduplicationKey(candidate)
                     }
                 }
                 .take(limit - selected.size)
@@ -3370,7 +3398,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val searchResults = current.searchResults.map(::withArtwork)
             val favorites = current.favorites.map(::withArtwork)
             val charts = current.charts.map(::withArtwork)
-            val homeAlbums = current.homeAlbums.map(::withAlbumMetadata)
+            val homeAlbums = current.homeAlbums
+                .map(::withAlbumMetadata)
+                .distinctBy(::albumRecommendationDeduplicationKey)
             val homeSections = current.homeSections.map { section ->
                 section.copy(tracks = section.tracks.map(::withArtwork))
             }
@@ -4942,10 +4972,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun mergeAlbums(primary: List<AlbumHit>, secondary: List<AlbumHit>): List<AlbumHit> {
         val map = LinkedHashMap<String, AlbumHit>()
         (primary + secondary).forEach { album ->
-            val key = "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}"
-            if (album.title.isNotBlank() && album.artist.isNotBlank() && album.thumbnailUrl.isNotBlank() && !map.containsKey(key)) {
-                map[key] = album
-            }
+            if (album.title.isBlank() || album.artist.isBlank() || album.thumbnailUrl.isBlank()) return@forEach
+            val key = albumRecommendationDeduplicationKey(album)
+            val existing = map[key]
+            val shouldReplace = existing == null ||
+                album.metadataConfidence > existing.metadataConfidence ||
+                (existing.browseId.isBlank() && album.browseId.isNotBlank()) ||
+                (existing.upc.isBlank() && album.upc.isNotBlank())
+            if (shouldReplace) map[key] = album
         }
         return map.values.toList()
     }
@@ -5114,6 +5148,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         private const val HOME_RESONANCE_REFRESH_INTERVAL_MS = 12L * 60L * 60L * 1000L
         private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
         private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
+        private const val HOME_ALBUM_REMOTE_CONCURRENCY = 3
         private const val HOME_ALBUM_SEED_LIMIT = 12
         private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 8
         private const val OFFICIAL_METADATA_CONCURRENCY = 2
