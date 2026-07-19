@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.luc4n3x.levyra.data.HomeContentAvailability
+import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartRegion
@@ -12,6 +13,7 @@ import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
+import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraTab
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.ListeningPulse
@@ -357,7 +359,9 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
 }
 
 private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
-    val quickPicks = input.homeSections.firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
+    val quickPicks = input.homeSections
+        .firstOrNull { isHomeQuickPicksSectionTitle(it.title) && it.tracks.isNotEmpty() }
+        ?: buildFallbackQuickPicks(input)
     val newReleases = input.homeSections.firstOrNull { isVerifiedHomeReleaseSectionTitle(it.title) }
     val otherSections = input.homeSections.filter {
         !isVerifiedHomeReleaseSectionTitle(it.title) &&
@@ -384,6 +388,38 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         chartChunks = input.charts.chunked(4),
         contentAvailability = contentAvailability,
         contentFingerprint = buildHomeContentFingerprint(input, contentAvailability)
+    )
+}
+
+private fun buildFallbackQuickPicks(input: HomeDerivedInput): HomeSection? {
+    val personalizedTracks = buildList {
+        addAll(input.recentListens)
+        addAll(input.personalOrbitTracks)
+        addAll(input.favorites)
+        addAll(input.charts)
+        addAll(input.tracks)
+        input.currentTrack?.let(::add)
+    }
+        .asSequence()
+        .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+        .distinctBy { it.id }
+        .take(8)
+        .toList()
+
+    val tracks = personalizedTracks.ifEmpty {
+        LevyraStartupCatalog.homeSections(input.languageCode)
+            .firstOrNull { isHomeQuickPicksSectionTitle(it.title) }
+            ?.tracks
+            .orEmpty()
+            .filter { it.id.length == 11 && isReliableHomeMusicCandidate(it) }
+            .distinctBy { it.id }
+            .take(8)
+    }
+    if (tracks.isEmpty()) return null
+
+    return HomeSection(
+        title = LevyraContentLocales.forLanguage(input.languageCode).quickSectionTitle,
+        tracks = tracks
     )
 }
 
