@@ -157,20 +157,24 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
             return null;
         }
 
-        if(jsonObjectSafe == null) {
-            return getNextPage(onResponseReceivedEndpoints
-                    .getObject(0)
-                    .getObject("reloadContinuationItemsCommand")
-                    .getArray("continuationItems")
-                    .getObject(0)
-                    .getObject("commentsHeaderRenderer")
-                    .getObject("sortMenu")
-                    .getObject("sortFilterSubMenuRenderer")
-                    .getArray("subMenuItems")
-                    .getObject(0)
-                    .getObject("serviceEndpoint")
-                    .getObject("continuationCommand")
-                    .getString("token"));
+        if (jsonObjectSafe == null) {
+            try {
+                return getNextPage(onResponseReceivedEndpoints
+                        .getObject(0)
+                        .getObject("reloadContinuationItemsCommand")
+                        .getArray("continuationItems")
+                        .getObject(0)
+                        .getObject("commentsHeaderRenderer")
+                        .getObject("sortMenu")
+                        .getObject("sortFilterSubMenuRenderer")
+                        .getArray("subMenuItems")
+                        .getObject(0)
+                        .getObject("serviceEndpoint")
+                        .getObject("continuationCommand")
+                        .getString("token"));
+            } catch (final Exception ignored) {
+                return null;
+            }
         }
 
         final JsonArray continuationItemsArray;
@@ -264,11 +268,12 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
 
         String resp = getJsonPostResponseRaw("next", body, localization);
         final JsonObject jsonObject = JsonUtils.toJsonObject(resp);
-        final JSONObject jsonObjectSafe;
+        JSONObject jsonObjectSafe = null;
         try {
             jsonObjectSafe = new JSONObject(resp);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
+        } catch (final JSONException ignored) {
+            // NanoJSON already parsed the response. The org.json representation is optional and
+            // only used for a few defensive continuation/count fallbacks.
         }
 
         return extractComments(jsonObject, jsonObjectSafe);
@@ -278,9 +283,7 @@ public class YoutubeCommentsExtractor extends CommentsExtractor {
             throws ExtractionException {
         final CommentsInfoItemsCollector collector = new CommentsInfoItemsCollector(
                 getServiceId());
-        if(jsonObjectSafe != null) {
-            collectCommentsFrom(collector, jsonObject);
-        }
+        collectCommentsFrom(collector, jsonObject);
         return new InfoItemsPage<>(
                 collector.getItems(),
                 getNextPage(jsonObject, jsonObjectSafe),
