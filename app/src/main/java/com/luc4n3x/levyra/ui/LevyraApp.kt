@@ -4587,7 +4587,7 @@ private fun HomeQuickPicksShelf(
 ) {
     val pages = remember(tracks) {
         tracks
-            .distinctBy { it.id }
+            .distinctBy(LevyraPersonalOrbit::identityKey)
             .take(24)
             .chunked(4)
     }
