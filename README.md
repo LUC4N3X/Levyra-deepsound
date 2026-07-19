@@ -251,41 +251,51 @@ levyraVersionCode=2031200
 
 ---
 
-## ✦ Privacy & Data Collection
+## ✦  Privacy & data collection
 
-Your listening habits are nobody's business — including mine.
+Your listening habits are nobody's business, including mine.
 
-- **No analytics frameworks.** No tracking SDKs, no developer-operated telemetry. None.
-- **Pulse stays home.** Every listening statistic is computed and stored on your device, in a local Room database.
-- **Honest about the rest.** Search, artwork, lyrics, playback, SponsorBlock and optional account features contact third-party services, which may receive ordinary request data — IP address, HTTP headers, client/device info and, where applicable, cookies or account identifiers.
+* **No analytics frameworks**: There are no tracking SDKs or developer-operated telemetry services.
+* **On-device statistics**: Every history entry and Pulse statistic is stored locally inside your Room database.
+* **Network interactions**: Actions like searching, loading artwork, showing SponsorBlock segments, fetching lyrics, or using account features contact third-party endpoints. These connections send standard client data, including your IP address, device headers, and cookies where applicable.
+
+### Declared manifest permissions
 
 ```text
-🛡️ DECLARED MANIFEST PERMISSIONS
-├── INTERNET & ACCESS_NETWORK_STATE       Streams music data and queries metadata
-├── FOREGROUND_SERVICE_MEDIA_PLAYBACK     Ensures audio playback survives app backgrounding
-├── POST_NOTIFICATIONS                     Displays the Media3 media controller notification
-├── WAKE_LOCK                              Prevents playback stutters when the CPU goes to sleep
-└── WRITE_EXTERNAL_STORAGE (≤ SDK 28)     Legacy permission for offline file export
+INTERNET & ACCESS_NETWORK_STATE       Streams music data and queries metadata.
+FOREGROUND_SERVICE_MEDIA_PLAYBACK     Keeps audio playing when the app is backgrounded.
+POST_NOTIFICATIONS                     Displays the playback controller notification.
+WAKE_LOCK                              Prevents playback stutter when the CPU goes to sleep.
+WRITE_EXTERNAL_STORAGE (≤ SDK 28)     Saves offline files on older Android versions.
 ```
 
 ---
+## ✦  Contributing
 
-## ✦ Contributing
+Contributions are welcome. If you want to report a bug, suggest a feature, or submit a pull request, follow these steps:
 
-Bug reports, feature requests and pull requests are all welcome:
+1. Fork the repository.
+2. Create a feature branch:
+   ```bash
+   git checkout -b feature/AmazingFeature
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m "Add some AmazingFeature"
+   ```
+4. Push to your branch:
+   ```bash
+   git push origin feature/AmazingFeature
+   ```
+5. Open a Pull Request.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+### Custom distribution guidelines
 
-**Distributing your own builds?** A few house rules:
-
-- **Signing Keys:** Generate and rotate your own Android keystores before publishing public packages.
-- **Build Name:** Follow the release schema `LEVYRA-<version>.apk` instead of default Gradle outputs.
-- **Execution Offloading:** All database, disk and network work runs on background dispatchers (`Dispatchers.IO`). Keep UI threads clear.
-- **Resiliency:** API queries must route through the fallback channel on timeout.
+If you build and distribute your own version of Levyra, please respect these rules:
+* **Signing keys**: Generate your own Android keystores. Do not reuse existing keys.
+* **Build names**: Follow the release naming schema `LEVYRA-<version>.apk` rather than standard Gradle outputs.
+* **Execution dispatching**: Run all database, storage, and network requests on background thread pools (`Dispatchers.IO`), keeping the UI thread responsive.
+* **Resiliency**: Handle query timeouts gracefully with clear fallback routes.
 
 ---
 
