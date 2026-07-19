@@ -329,7 +329,6 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 private val LocalAnimationsEnabled = compositionLocalOf { true }
-private val LocalRemoteArtworkLoadingEnabled = compositionLocalOf { true }
 private val CinematicPlum = Color(0xFF2A1738)
 private val CinematicGold = Color(0xFFFFC46B)
 private val CinematicGlass = Color(0xFF151321)
@@ -625,7 +624,7 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = false, zoom: Float = 1f) {
     val context = LocalContext.current
-    val candidateModels = remember(
+    val models = remember(
         context,
         track.id,
         track.title,
@@ -637,39 +636,16 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     ) {
         LevyraArtworkCache.models(context, track, highRes)
     }
-    val artworkKey = remember(track.id, highRes) {
-        "${track.id}:${if (highRes) "large" else "small"}"
-    }
-    val remoteArtworkLoadingEnabled = LocalRemoteArtworkLoadingEnabled.current
-    var activeModel by remember(artworkKey) {
-        mutableStateOf<Any?>(candidateModels.firstOrNull())
-    }
-    var failedModelIdentities by remember(artworkKey) {
-        mutableStateOf(emptySet<String>())
-    }
-    var remoteRequestUnlocked by remember(artworkKey) {
-        mutableStateOf(activeModel is File || remoteArtworkLoadingEnabled)
-    }
-    val activeModelIdentity = remember(activeModel) {
-        artworkModelIdentity(activeModel)
-    }
-
-    LaunchedEffect(artworkKey, candidateModels, failedModelIdentities, activeModelIdentity) {
-        val activeModelUsable = activeModel != null && activeModelIdentity !in failedModelIdentities
-        if (!activeModelUsable) {
-            activeModel = candidateModels.firstOrNull { candidate ->
-                artworkModelIdentity(candidate) !in failedModelIdentities
-            }
+    var modelIndex by remember(models) { mutableStateOf(0) }
+    val model = models.getOrNull(modelIndex)
+    val artworkKey = remember(track.id, highRes) { "${track.id}:${if (highRes) "large" else "small"}" }
+    val modelIdentity = remember(model) {
+        when (model) {
+            is File -> "file:${model.absolutePath}"
+            null -> "missing"
+            else -> "remote:${model}"
         }
     }
-    LaunchedEffect(remoteArtworkLoadingEnabled, activeModelIdentity) {
-        if (remoteArtworkLoadingEnabled || activeModel is File) {
-            remoteRequestUnlocked = true
-        }
-    }
-
-    val model = activeModel
-    val modelIdentity = remember(model) { artworkModelIdentity(model) }
     val requestSource = remember(model) {
         when (model) {
             is File -> ArtworkRequestSource.PersistentFile
@@ -677,11 +653,6 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
             else -> ArtworkRequestSource.Remote
         }
     }
-    val canLoadArtwork = model != null && (
-        model is File ||
-            remoteArtworkLoadingEnabled ||
-            remoteRequestUnlocked
-        )
     if (BuildConfig.DEBUG) {
         LaunchedEffect(artworkKey, modelIdentity, requestSource) {
             LevyraArtworkStartupMetrics.recordArtworkRequest(artworkKey, modelIdentity, requestSource)
@@ -693,7 +664,7 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     }
     Box(modifier = modifier.background(background), contentAlignment = Alignment.Center) {
         InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
-        if (canLoadArtwork) {
+        if (model != null) {
             val crossfadeMs = if (LocalAnimationsEnabled.current && highRes && model !is File) 120 else 0
             val request = remember(context, model, crossfadeMs) {
                 ImageRequest.Builder(context)
@@ -709,32 +680,14 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
                 contentDescription = track.title,
                 contentScale = ContentScale.Crop,
                 onLoading = { LevyraArtworkStartupMetrics.recordArtworkLoading(artworkKey) },
-                onSuccess = {
-                    remoteRequestUnlocked = true
-                    LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey)
-                },
+                onSuccess = { LevyraArtworkStartupMetrics.recordArtworkDisplayed(artworkKey) },
                 onError = {
                     LevyraArtworkStartupMetrics.recordArtworkFailure(artworkKey)
-                    val failedIdentity = modelIdentity
-                    val updatedFailures = failedModelIdentities + failedIdentity
-                    failedModelIdentities = updatedFailures
-                    activeModel = candidateModels.firstOrNull { candidate ->
-                        artworkModelIdentity(candidate) !in updatedFailures
-                    }
+                    if (modelIndex < models.lastIndex) modelIndex += 1
                 },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scale(zoom)
+                modifier = Modifier.fillMaxSize().scale(zoom)
             )
         }
-    }
-}
-
-private fun artworkModelIdentity(model: Any?): String {
-    return when (model) {
-        is File -> "file:${model.absolutePath}"
-        null -> "missing"
-        else -> "remote:$model"
     }
 }
 
@@ -4280,12 +4233,11 @@ internal fun homeSectionLazyKey(
 private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnapshot, homeListState: LazyListState) {
     val state = renderSnapshot.state
     val homeDerivedState = renderSnapshot.derived
-    val homeStartupBusy by viewModel.homeStartupBusy.collectAsStateWithLifecycle()
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
-    LaunchedEffect(homeDerivedState.artistRefreshFingerprint, homeStartupBusy) {
-        if (!homeStartupBusy) viewModel.refreshHomeArtists()
+    LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
+        viewModel.refreshHomeArtists()
     }
     val personalTracks = remember(state.personalOrbitTracks) {
         state.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)
@@ -4334,19 +4286,14 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
     }
-    val homeBackgroundWorkActive = homeStartupBusy ||
-        state.isLoadingHome ||
+    val homeBackgroundWorkActive = state.isLoadingHome ||
         state.homeAlbumsLoading ||
         state.homeArtistsLoading ||
         state.isLoadingCharts
     val homeAnimationsEnabled = LocalAnimationsEnabled.current &&
         !homeListState.isScrollInProgress &&
         !homeBackgroundWorkActive
-    val remoteArtworkLoadingEnabled = !(homeStartupBusy && homeListState.isScrollInProgress)
-    CompositionLocalProvider(
-        LocalAnimationsEnabled provides homeAnimationsEnabled,
-        LocalRemoteArtworkLoadingEnabled provides remoteArtworkLoadingEnabled
-    ) {
+    CompositionLocalProvider(LocalAnimationsEnabled provides homeAnimationsEnabled) {
         LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),

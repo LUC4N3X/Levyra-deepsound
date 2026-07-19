@@ -63,7 +63,6 @@ data class HomePlaybackProgress(
 )
 
 class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeProjection) {
-    val homeStartupBusy: StateFlow<Boolean> = root.homeStartupBusy
     private val freezeHomeContent = MutableStateFlow(false)
     private var homeRenderSettleJob: Job? = null
 
