@@ -1,0 +1,36 @@
+name: Apply Player Cover Size Fix
+
+on:
+  push:
+    branches:
+      - claude/simpmusic-graphic-improvements-le6347
+    paths:
+      - .github/player-cover-size-fix.patch
+      - .github/workflows/apply-player-cover-size-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Apply player layout fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --check .github/player-cover-size-fix.patch
+          git apply .github/player-cover-size-fix.patch
+          rm .github/player-cover-size-fix.patch
+          rm .github/workflows/apply-player-cover-size-fix.yml
+          git add -A
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(player): restore large artwork on phones"
+          git push origin "HEAD:${{ github.ref_name }}"
