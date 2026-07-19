@@ -513,7 +513,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val browseId = "VL$cleanPlaylistId"
         val initial = requestMusicBrowseRoot(languageCode, browseId) ?: return@withContext null
         val tracks = LinkedHashMap<String, Track>()
-        parsePlaylistTracks(initial, cleanPlaylistId).forEach { tracks.putIfAbsent(it.id, it) }
+        parsePlaylistTrackRenderers(playlistShelfRenderers(initial), cleanPlaylistId)
+            .forEach { tracks.putIfAbsent(it.id, it) }
         var continuation = findPlaylistContinuation(initial)
         val requestedContinuations = mutableSetOf<String>()
         var page = 0
@@ -524,12 +525,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 break
             }
             val next = requestMusicBrowseRoot(languageCode, "", continuation = requestedToken) ?: break
-            val before = tracks.size
-            parsePlaylistTracks(next, cleanPlaylistId).forEach { tracks.putIfAbsent(it.id, it) }
+            val pageRenderers = playlistShelfRenderers(next)
+            parsePlaylistTrackRenderers(pageRenderers, cleanPlaylistId)
+                .forEach { tracks.putIfAbsent(it.id, it) }
             val nextToken = findPlaylistContinuation(next)
             continuation = nextToken.takeUnless { it in requestedContinuations }.orEmpty()
             page += 1
-            if (tracks.size == before) {
+            if (pageRenderers.isEmpty()) {
                 continuation = ""
                 break
             }
@@ -834,7 +836,10 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     internal fun parsePlaylistTracks(root: JSONObject, playlistId: String): List<Track> {
-        val renderers = playlistShelfRenderers(root)
+        return parsePlaylistTrackRenderers(playlistShelfRenderers(root), playlistId)
+    }
+
+    private fun parsePlaylistTrackRenderers(renderers: List<JSONObject>, playlistId: String): List<Track> {
         return renderers.mapNotNull { renderer ->
             val track = parseMusicRenderer(renderer, "playlist $playlistId") ?: return@mapNotNull null
             val albumReference = extractYoutubeMusicAlbumReference(renderer)
