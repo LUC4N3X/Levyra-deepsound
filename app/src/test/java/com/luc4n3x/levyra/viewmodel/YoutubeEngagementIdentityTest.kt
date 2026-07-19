@@ -32,10 +32,41 @@ class YoutubeEngagementIdentityTest {
         assertEquals("", youtubeEngagementVideoId(track(id = "not-a-video")))
     }
 
+    @Test
+    fun rawElevenCharacterIdsAreRejectedForNonYoutubeTracks() {
+        assertEquals(
+            "",
+            youtubeEngagementVideoId(
+                track(id = "abcdefghijk", source = "Local library")
+            )
+        )
+    }
+
+    @Test
+    fun continuationCyclesAreStoppedAcrossSuccessfulPages() {
+        assertEquals(
+            "",
+            nextYoutubeCommentsToken(
+                requestedToken = "token-b",
+                candidateToken = "token-a",
+                successfulTokens = setOf("token-a", "token-b")
+            )
+        )
+        assertEquals(
+            "token-c",
+            nextYoutubeCommentsToken(
+                requestedToken = "token-b",
+                candidateToken = "token-c",
+                successfulTokens = setOf("token-a", "token-b")
+            )
+        )
+    }
+
     private fun track(
         id: String,
         videoUrl: String = "",
-        counterpartVideoId: String = ""
+        counterpartVideoId: String = "",
+        source: String = "YouTube Music"
     ) = Track(
         id = id,
         title = "Title",
@@ -46,7 +77,7 @@ class YoutubeEngagementIdentityTest {
         videoUrl = videoUrl,
         thumbnailUrl = "",
         largeThumbnailUrl = "",
-        source = "YouTube Music",
+        source = source,
         moodTags = emptySet(),
         energy = 50,
         vocal = 50,
