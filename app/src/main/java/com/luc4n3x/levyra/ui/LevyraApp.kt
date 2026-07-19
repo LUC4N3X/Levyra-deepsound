@@ -1862,6 +1862,7 @@ private fun AlbumTrackItem(
     isFavorite: Boolean,
     isDownloading: Boolean,
     isDownloaded: Boolean,
+    downloadProgress: Int?,
     onPlay: () -> Unit,
     onFavorite: () -> Unit,
     onDownload: () -> Unit,
