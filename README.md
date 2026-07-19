@@ -14,7 +14,7 @@
 <br>
 
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
-  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest Levyra APK from GitHub Releases" width="400" />
+  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="520" />
 </a>
 
 <sub>**One APK. No Play Store. No account. No ads.** · Official signed build · Android 8.0+</sub>
