@@ -752,15 +752,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             delay(startupPlan.homeFeedStartDelayMs)
             loadHomeFeed(deferUntilHomeIdle = true)
+            homeFeedJob?.join()
+            refreshHomeResonanceIfStale()
         }
         viewModelScope.launch {
             delay(startupPlan.secondaryStartDelayMs)
             awaitHomeUiIdle(startupPlan)
             loadCharts(deferUntilHomeIdle = true)
-        }
-        viewModelScope.launch {
-            delay(1_200L)
-            refreshHomeResonanceIfStale()
         }
         viewModelScope.launch {
             delay(3_200L)
