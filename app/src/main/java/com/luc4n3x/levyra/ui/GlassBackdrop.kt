@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.record
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -28,6 +29,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toIntSize
 
 /**
  * Lightweight, dependency-free backdrop-blur system for Levyra "real glass" panels.
@@ -82,7 +84,9 @@ fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
         .drawWithContent {
             val layer = state.layer
             if (layer != null) {
-                layer.record { this@drawWithContent.drawContent() }
+                layer.record(size = size.toIntSize()) {
+                    this@drawWithContent.drawContent()
+                }
                 drawLayer(layer)
             } else {
                 drawContent()
@@ -128,8 +132,10 @@ fun Modifier.glassSurface(
                 val dx = state.sourceOrigin.x - panelOrigin.x
                 val dy = state.sourceOrigin.y - panelOrigin.y
                 frost.renderEffect = blurEffect
-                frost.record {
-                    translate(dx, dy) { drawLayer(source) }
+                frost.record(size = size.toIntSize()) {
+                    translate(dx, dy) {
+                        drawLayer(source)
+                    }
                 }
                 drawLayer(frost)
                 drawRect(tint)
