@@ -192,7 +192,7 @@ graph TD
 
 ---
 
-## 🛠️ Technical Stack
+## ✦ Technical Stack
 
 *   **Language:** Kotlin 2.4.0
 *   **User Interface:** Jetpack Compose, Material 3 Design Components, Compose BOM
@@ -209,7 +209,7 @@ graph TD
 
 ---
 
-## 🚀 Building from Source
+## ✦ Building from Source
 
 ### Prerequisites
 *   Android Studio Jellyfish (or newer)
