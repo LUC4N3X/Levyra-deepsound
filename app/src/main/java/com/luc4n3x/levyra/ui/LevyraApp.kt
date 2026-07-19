@@ -4249,21 +4249,6 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     val homeFingerprint = homeDerivedState.contentFingerprint
     val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
     val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
-    val heroUpdate = remember(homeFingerprint, state.currentTrack?.id) { pickHeroUpdate(state) }
-    val quickMixTracks = remember(personalTracks, resonanceTracks, state.tracks) {
-        personalTracks
-            .ifEmpty { resonanceTracks }
-            .ifEmpty { state.tracks }
-            .distinctBy { it.id }
-            .take(40)
-    }
-    val quickReleaseTracks = remember(newReleases, state.charts) {
-        newReleases?.tracks
-            ?.distinctBy { it.id }
-            ?.take(40)
-            ?.takeIf { it.isNotEmpty() }
-            ?: state.charts.distinctBy { it.id }.take(40)
-    }
     LaunchedEffect(homeFingerprint) {
         LevyraArtworkStartupMetrics.recordHomeEmission(homeFingerprint, homeContent.hasUsableContent)
     }
@@ -4310,19 +4295,6 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 }
             }
         }
-        item(key = "home-quick-access", contentType = "home-actions") {
-            HomeSectionInset {
-                HomeQuickAccessGrid(
-                    hasMix = quickMixTracks.isNotEmpty(),
-                    hasFavorites = state.favorites.isNotEmpty(),
-                    hasNewReleases = quickReleaseTracks.isNotEmpty(),
-                    onMix = { viewModel.playAll(quickMixTracks) },
-                    onFavorites = { viewModel.playAll(state.favorites) },
-                    onNewReleases = { viewModel.playAll(quickReleaseTracks) },
-                    onSearch = { viewModel.searchNow() }
-                )
-            }
-        }
         if (state.currentTrack != null) {
             item(key = "home-continue", contentType = "home-card") {
                 HomeContinueListeningCard(
@@ -4331,29 +4303,6 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                     isPlaying = state.isPlaying,
                     isResolving = state.isResolving
                 )
-            }
-        }
-        heroUpdate?.let { update ->
-            item(key = "home-editorial-${update.track.id}", contentType = "home-hero") {
-                val heroQueue = remember(update.track.id, homeFingerprint) {
-                    state.homeSections
-                        .firstOrNull { section -> section.tracks.any { it.id == update.track.id } }
-                        ?.tracks
-                        ?.takeIf { it.isNotEmpty() }
-                        ?: state.charts.takeIf { charts -> charts.any { it.id == update.track.id } }
-                        ?: state.tracks.takeIf { tracks -> tracks.any { it.id == update.track.id } }
-                        ?: listOf(update.track)
-                }
-                HomeSectionInset {
-                    HomeDiscoveryHero(
-                        update = update,
-                        isFavorite = update.track.id in state.favoriteIds,
-                        isDownloading = update.track.id in state.downloadingTrackIds,
-                        isDownloaded = update.track.id in state.downloadedTrackIds,
-                        onPlay = { viewModel.playFrom(heroQueue, update.track) },
-                        onSave = { viewModel.toggleFavorite(update.track) }
-                    )
-                }
             }
         }
         if (state.interfaceSettings.showPersonalOrbit && personalTracks.isNotEmpty()) {
@@ -8757,8 +8706,7 @@ private fun PlayerYoutubeEngagementRow(
     engagement: YoutubeEngagementState,
     primary: Color,
     secondary: Color,
-    onComments: () -> Unit,
-    onOpenDislikeAttribution: () -> Unit
+    onComments: () -> Unit
 ) {
     val hasLikes = track.youtubeLikeCount >= 0L
     val hasDislikeEstimate = engagement.dislikeEstimateAvailable && engagement.estimatedDislikeCount >= 0L
@@ -8890,19 +8838,6 @@ private fun PlayerYoutubeEngagementRow(
                 }
             }
 
-            if (hasDislikeEstimate) {
-                IconButton(
-                    onClick = onOpenDislikeAttribution,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Info,
-                        contentDescription = "Return YouTube Dislike",
-                        tint = Color.White.copy(alpha = 0.40f),
-                        modifier = Modifier.size(13.dp)
-                    )
-                }
-            }
         }
     }
 }
@@ -9343,14 +9278,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 engagement = state.youtubeEngagement,
                                 primary = primary,
                                 secondary = secondary,
-                                onComments = viewModel::openYoutubeComments,
-                                onOpenDislikeAttribution = {
-                                    openExternalUrl(
-                                        playerContext,
-                                        "https://returnyoutubedislike.com",
-                                        strings
-                                    )
-                                }
+                                onComments = viewModel::openYoutubeComments
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
