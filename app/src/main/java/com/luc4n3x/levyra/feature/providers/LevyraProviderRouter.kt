@@ -33,6 +33,8 @@ interface LevyraPlaybackProvider {
     suspend fun resolveForOffline(track: Track): Track
 }
 
+internal class LevyraProviderMissException(message: String) : IOException(message)
+
 data class LevyraProviderHealth(
     val providerId: String,
     val consecutiveFailures: Int,
@@ -168,11 +170,11 @@ class CachedPlaybackProvider(
     override val priority: Int = 0
 
     override suspend fun resolve(track: Track, videoMode: Boolean): Track {
-        return resolver.cached(track, videoMode) ?: throw IOException("Stream non presente in cache")
+        return resolver.cached(track, videoMode) ?: throw LevyraProviderMissException("Stream non presente in cache")
     }
 
     override suspend fun resolveForOffline(track: Track): Track {
-        return resolver.cached(track, false) ?: throw IOException("Stream offline non presente in cache")
+        return resolver.cached(track, false) ?: throw LevyraProviderMissException("Stream offline non presente in cache")
     }
 }
 
@@ -299,7 +301,8 @@ class LevyraProviderRouter(
                     healthTracker.recordSuccess(provider.id, elapsedMs(startedAt))
                     return result
                 }
-                healthTracker.recordFailure(provider.id)
+            } catch (error: LevyraProviderMissException) {
+                continue
             } catch (error: Throwable) {
                 if (error is CancellationException && error !is TimeoutCancellationException) throw error
                 lastError = error
