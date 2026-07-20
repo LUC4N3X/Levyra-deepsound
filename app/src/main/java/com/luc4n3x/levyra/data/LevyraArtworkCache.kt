@@ -13,10 +13,13 @@ import coil3.request.crossfade
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -66,11 +69,15 @@ object LevyraArtworkCache {
     private val youtubeSquare = Regex("=s\\d+[^?&]*")
     private val appleArtwork = Regex("\\d+x\\d+bb")
     @Volatile private var configured = false
+    private val indexScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val localIndex: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    @Volatile private var localIndexPrimed = false
 
     fun configure(context: Context) {
         if (configured) return
         synchronized(this) {
             if (configured) return
+            primeLocalIndex(context.applicationContext)
             SingletonImageLoader.setSafe { appContext ->
                 val memoryProfile = memoryDeviceProfile(appContext)
                 val memoryCacheBytes = ArtworkMemoryCachePolicy.maxSizeBytes(memoryProfile)
@@ -141,12 +148,29 @@ object LevyraArtworkCache {
     fun localFile(context: Context, track: Track, highRes: Boolean = false): File? {
         if (artworkUrlCandidates(track, highRes).isEmpty()) return null
         val file = persistentFile(context.applicationContext, track, if (highRes) LARGE_SIZE else SMALL_SIZE)
+        if (localIndexPrimed) {
+            return if (localIndex.contains(file.name)) file else null
+        }
         if (!file.isFile || file.length() <= 512L) return null
         if (!isLikelyArtworkFile(file)) {
             runCatching { file.delete() }
+            localIndex.remove(file.name)
             return null
         }
+        localIndex.add(file.name)
         return file
+    }
+
+    private fun primeLocalIndex(context: Context) {
+        indexScope.launch {
+            runCatching {
+                persistentDirectory(context)
+                    .listFiles()
+                    ?.filter { it.isFile && it.length() > 512L && isLikelyArtworkFile(it) }
+                    ?.forEach { localIndex.add(it.name) }
+            }.onFailure { Timber.d(it, "Artwork index priming failed") }
+            localIndexPrimed = true
+        }
     }
 
     fun preloadHome(context: Context, tracks: List<Track>, limit: Int = 36) {
@@ -232,9 +256,13 @@ object LevyraArtworkCache {
         val file = target.file
         if (file.isFile && file.length() > 512L && isLikelyArtworkFile(file)) {
             file.setLastModified(System.currentTimeMillis())
+            localIndex.add(file.name)
             return
         }
-        if (file.exists()) runCatching { file.delete() }
+        if (file.exists()) {
+            runCatching { file.delete() }
+            localIndex.remove(file.name)
+        }
         target.urls.forEach { url ->
             repeat(2) { attempt ->
                 val saved = runCatching {
@@ -264,7 +292,10 @@ object LevyraArtworkCache {
                 }.onFailure { error ->
                     if (attempt == 1) Timber.d(error, "Artwork persistent cache miss")
                 }.getOrDefault(false)
-                if (saved || file.isFile && file.length() > 512L && isLikelyArtworkFile(file)) return
+                if (saved || file.isFile && file.length() > 512L && isLikelyArtworkFile(file)) {
+                    localIndex.add(file.name)
+                    return
+                }
             }
         }
     }
@@ -328,7 +359,11 @@ object LevyraArtworkCache {
         files
             .sortedBy { it.lastModified() }
             .take(files.size - MAX_PERSISTENT_FILES)
-            .forEach { runCatching { it.delete() } }
+            .forEach { file ->
+                if (runCatching { file.delete() }.getOrDefault(false)) {
+                    localIndex.remove(file.name)
+                }
+            }
     }
 
     private fun resize(url: String, size: Int): String {
