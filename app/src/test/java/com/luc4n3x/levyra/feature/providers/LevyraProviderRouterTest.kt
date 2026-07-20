@@ -4,6 +4,8 @@ import com.luc4n3x.levyra.data.YoutubeMusicPlaylistDetail
 import com.luc4n3x.levyra.domain.AlbumDetail
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.SearchResults
+import com.luc4n3x.levyra.domain.Track
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -12,6 +14,86 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 
 class LevyraProviderRouterTest {
+    @Test
+    fun defaultTimeoutsPreserveNativeResolverBudgets() {
+        assertTrue(DEFAULT_PLAYBACK_PROVIDER_TIMEOUT_MS > 30_000L)
+        assertTrue(DEFAULT_OFFLINE_PROVIDER_TIMEOUT_MS > 60_000L)
+    }
+
+    @Test
+    fun offlineResolutionUsesItsIndependentTimeoutBudget() = runBlocking {
+        val provider = object : LevyraPlaybackProvider {
+            override val id: String = "native"
+            override val priority: Int = 0
+
+            override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+                delay(80L)
+                return track.copy(streamUrl = "https://example.com/playback.m4a")
+            }
+
+            override suspend fun resolveForOffline(track: Track): Track {
+                delay(80L)
+                return track.copy(streamUrl = "https://example.com/offline.m4a")
+            }
+        }
+        val router = LevyraProviderRouter(
+            catalogProviders = emptyList(),
+            playbackProviders = listOf(provider),
+            playbackTimeoutMs = 20L,
+            offlinePlaybackTimeoutMs = 200L
+        )
+
+        val result = router.resolveForOffline(track())
+
+        assertEquals("https://example.com/offline.m4a", result.streamUrl)
+    }
+
+    @Test
+    fun cacheMissDoesNotPolluteHealthOrOpenCircuit() = runBlocking {
+        val cacheCalls = AtomicInteger(0)
+        val cache = object : LevyraPlaybackProvider {
+            override val id: String = "playback_cache"
+            override val priority: Int = 0
+
+            override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+                cacheCalls.incrementAndGet()
+                throw LevyraProviderMissException("miss")
+            }
+
+            override suspend fun resolveForOffline(track: Track): Track {
+                cacheCalls.incrementAndGet()
+                throw LevyraProviderMissException("miss")
+            }
+        }
+        val native = object : LevyraPlaybackProvider {
+            override val id: String = "native"
+            override val priority: Int = 10
+
+            override suspend fun resolve(track: Track, videoMode: Boolean): Track {
+                return track.copy(streamUrl = "https://example.com/native.m4a")
+            }
+
+            override suspend fun resolveForOffline(track: Track): Track {
+                return track.copy(streamUrl = "https://example.com/native-offline.m4a")
+            }
+        }
+        val router = LevyraProviderRouter(
+            catalogProviders = emptyList(),
+            playbackProviders = listOf(cache, native),
+            healthTracker = LevyraProviderHealthTracker(failureThreshold = 3, cooldownMs = 60_000L),
+            playbackTimeoutMs = 1_000L,
+            offlinePlaybackTimeoutMs = 1_000L
+        )
+
+        repeat(5) { router.resolve(track()) }
+
+        assertEquals(5, cacheCalls.get())
+        val health = router.health().first { it.providerId == "playback_cache" }
+        assertEquals(0, health.consecutiveFailures)
+        assertEquals(0L, health.totalFailures)
+        assertEquals(0L, health.circuitOpenUntilMs)
+    }
+
     @Test
     fun catalogFallsBackAfterProviderFailure() = runBlocking {
         val failures = AtomicInteger(0)
@@ -78,6 +160,26 @@ class LevyraProviderRouterTest {
         assertEquals(3, health.consecutiveFailures)
         assertTrue(health.circuitOpenUntilMs > System.currentTimeMillis())
     }
+
+    private fun track(): Track = Track(
+        id = "track-1",
+        title = "Track",
+        artist = "Levyra",
+        album = "Tests",
+        durationMs = 180_000L,
+        streamUrl = "",
+        videoUrl = "https://youtube.com/watch?v=track-1",
+        thumbnailUrl = "",
+        largeThumbnailUrl = "",
+        source = "test",
+        moodTags = emptySet(),
+        energy = 50,
+        vocal = 50,
+        replayScore = 0,
+        cacheScore = 0,
+        accentStart = 0,
+        accentEnd = 0
+    )
 
     private fun album(title: String): AlbumHit = AlbumHit(
         title = title,
