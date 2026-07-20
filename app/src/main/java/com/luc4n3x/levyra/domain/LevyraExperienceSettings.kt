@@ -61,9 +61,9 @@ data class LevyraDownloadSettings(
 
     val maxParallelFragments: Int
         get() = when (preset) {
-            LevyraDownloadPreset.HighQuality -> 12
-            LevyraDownloadPreset.Automatic -> 8
-            LevyraDownloadPreset.DataSaver -> 4
+            LevyraDownloadPreset.HighQuality -> 24
+            LevyraDownloadPreset.Automatic -> 20
+            LevyraDownloadPreset.DataSaver -> 16
         }
 
     val resolverAudioQuality: String?
