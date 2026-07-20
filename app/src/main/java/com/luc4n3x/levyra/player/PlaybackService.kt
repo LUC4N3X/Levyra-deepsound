@@ -79,6 +79,7 @@ class PlaybackService : MediaLibraryService() {
     private lateinit var playbackWakeLock: PowerManager.WakeLock
     private lateinit var playbackStateStore: SharedPreferences
     private var serviceRecoveryAttempts = 0
+    private var serviceRecoveryExhausted = false
     private var watchdogPositionMs = C.TIME_UNSET
     private var watchdogAdvancedAtMs = 0L
     private var lastPlaybackExpected: Boolean? = null
@@ -252,6 +253,10 @@ class PlaybackService : MediaLibraryService() {
         activePlayer = player
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                if (serviceRecoveryJob?.isActive != true && stickyRestoreJob?.isActive != true) {
+                    serviceRecoveryExhausted = false
+                    serviceRecoveryAttempts = 0
+                }
                 val extras = mediaItem?.mediaMetadata?.extras
                 val loudness = extras?.takeIf { it.containsKey(EXTRA_YOUTUBE_LOUDNESS_DB) }
                     ?.getFloat(EXTRA_YOUTUBE_LOUDNESS_DB)
@@ -272,6 +277,14 @@ class PlaybackService : MediaLibraryService() {
             override fun onPlayerError(error: PlaybackException) {
                 updatePlaybackProtection(player)
                 if (!uiRecoveryAvailable) scheduleServiceRecovery(error)
+            }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (playWhenReady && serviceRecoveryExhausted) {
+                    serviceRecoveryExhausted = false
+                    serviceRecoveryAttempts = 0
+                    markPlaybackExpected(true, force = true)
+                }
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
@@ -448,7 +461,7 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        if (intent == null) scheduleStickyPlaybackRestore()
+        if (intent == null && !scheduleStickyPlaybackRestore(startId)) return START_NOT_STICKY
         return START_STICKY
     }
 
@@ -593,7 +606,8 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private fun updatePlaybackProtection(player: Player) {
-        val playbackExpected = player.mediaItemCount > 0 &&
+        val playbackExpected = !serviceRecoveryExhausted &&
+            player.mediaItemCount > 0 &&
             player.playWhenReady &&
             player.playbackState != Player.STATE_ENDED
         if (playbackExpected) acquirePlaybackWakeLock() else releasePlaybackWakeLock()
@@ -625,7 +639,10 @@ class PlaybackService : MediaLibraryService() {
         recoveryResetJob?.cancel()
         recoveryResetJob = serviceScope.launch {
             delay(10_000L)
-            if (player.playbackState == Player.STATE_READY && player.playWhenReady) serviceRecoveryAttempts = 0
+            if (player.playbackState == Player.STATE_READY && player.playWhenReady) {
+                serviceRecoveryAttempts = 0
+                serviceRecoveryExhausted = false
+            }
         }
     }
 
@@ -633,6 +650,8 @@ class PlaybackService : MediaLibraryService() {
         if (serviceRecoveryJob?.isActive == true) return
         if (!playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) return
         if (serviceRecoveryAttempts >= RECOVERY_DELAYS_MS.size) {
+            serviceRecoveryExhausted = true
+            mediaSession?.player?.pause()
             markPlaybackExpected(false, force = true)
             releasePlaybackWakeLock()
             Timber.e(error, "Background playback recovery exhausted")
@@ -643,21 +662,38 @@ class PlaybackService : MediaLibraryService() {
         serviceRecoveryJob = serviceScope.launch {
             delay(RECOVERY_DELAYS_MS[attempt])
             val restored = restoreCurrentPlayback(positionMs, preferFreshResolution = true)
-            if (!restored) Timber.w(error, "Background playback recovery attempt %d failed", attempt + 1)
+            if (!restored) {
+                Timber.w(error, "Background playback recovery attempt %d failed", attempt + 1)
+                if (attempt == RECOVERY_DELAYS_MS.lastIndex) {
+                    serviceRecoveryExhausted = true
+                    mediaSession?.player?.pause()
+                    markPlaybackExpected(false, force = true)
+                    releasePlaybackWakeLock()
+                    Timber.e(error, "Background playback recovery exhausted")
+                }
+            }
         }
     }
 
-    private fun scheduleStickyPlaybackRestore() {
-        if (!playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) return
+    private fun scheduleStickyPlaybackRestore(startId: Int): Boolean {
+        if (!playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) {
+            stopSelfResult(startId)
+            return false
+        }
         val heartbeatAt = playbackStateStore.getLong(KEY_PLAYBACK_HEARTBEAT_AT, 0L)
         if (heartbeatAt <= 0L || System.currentTimeMillis() - heartbeatAt > STICKY_RESTORE_MAX_AGE_MS) {
             markPlaybackExpected(false, force = true)
-            return
+            stopSelfResult(startId)
+            return false
         }
         stickyRestoreJob?.cancel()
         stickyRestoreJob = serviceScope.launch {
             delay(250L)
-            val player = mediaSession?.player ?: return@launch
+            val player = mediaSession?.player ?: run {
+                markPlaybackExpected(false, force = true)
+                stopSelfResult(startId)
+                return@launch
+            }
             if (player.mediaItemCount > 0 || player.playWhenReady) return@launch
             val snapshot = withContext(Dispatchers.IO) {
                 if (queueEngine.state.value.tracks.isEmpty()) {
@@ -673,12 +709,16 @@ class PlaybackService : MediaLibraryService() {
             }
             if (snapshot.currentTrack == null) {
                 markPlaybackExpected(false, force = true)
+                stopSelfResult(startId)
                 return@launch
             }
             if (!restoreCurrentPlayback(snapshot.positionMs, preferFreshResolution = true)) {
                 Timber.w("Sticky background playback restore failed")
+                markPlaybackExpected(false, force = true)
+                stopSelfResult(startId)
             }
         }
+        return true
     }
 
     private suspend fun restoreCurrentPlayback(positionMs: Long, preferFreshResolution: Boolean): Boolean {
@@ -717,8 +757,16 @@ class PlaybackService : MediaLibraryService() {
             while (isActive) {
                 delay(WATCHDOG_INTERVAL_MS)
                 markPlaybackExpected(
-                    player.mediaItemCount > 0 && player.playWhenReady && player.playbackState != Player.STATE_ENDED
+                    !serviceRecoveryExhausted &&
+                        player.mediaItemCount > 0 &&
+                        player.playWhenReady &&
+                        player.playbackState != Player.STATE_ENDED
                 )
+                if (serviceRecoveryExhausted) {
+                    watchdogPositionMs = C.TIME_UNSET
+                    watchdogAdvancedAtMs = SystemClock.elapsedRealtime()
+                    continue
+                }
                 val activelyPlaying = player.mediaItemCount > 0 &&
                     player.playWhenReady &&
                     player.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE &&
