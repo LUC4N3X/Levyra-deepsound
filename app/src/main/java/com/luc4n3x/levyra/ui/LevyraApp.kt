@@ -155,7 +155,7 @@ import androidx.compose.material.icons.rounded.ThumbUp
 import androidx.compose.material.icons.rounded.ThumbDown
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.PushPin
-import androidx.compose.material.icons.rounded.Reply
+import androidx.compose.material.icons.automirrored.rounded.Reply
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Visibility
@@ -10704,7 +10704,7 @@ private fun YoutubeCommentCard(
                         horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Reply,
+                            imageVector = Icons.AutoMirrored.Rounded.Reply,
                             contentDescription = null,
                             tint = secondary.playerMix(Color.White, 0.58f),
                             modifier = Modifier.size(15.dp)
