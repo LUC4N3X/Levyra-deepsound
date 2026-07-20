@@ -57,17 +57,13 @@ data class LevyraDownloadSettings(
     )
 
     val effectiveRateKbps: Int
-        get() = when {
-            maxRateKbps > 0 -> maxRateKbps
-            preset == LevyraDownloadPreset.DataSaver -> 1024
-            else -> 0
-        }
+        get() = maxRateKbps.coerceAtLeast(0)
 
     val maxParallelFragments: Int
         get() = when (preset) {
-            LevyraDownloadPreset.HighQuality -> 10
-            LevyraDownloadPreset.Automatic -> 6
-            LevyraDownloadPreset.DataSaver -> 2
+            LevyraDownloadPreset.HighQuality -> 24
+            LevyraDownloadPreset.Automatic -> 20
+            LevyraDownloadPreset.DataSaver -> 16
         }
 
     val resolverAudioQuality: String?
