@@ -30,6 +30,7 @@ import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 
 enum class DetailReturnTarget {
@@ -146,6 +147,7 @@ data class LevyraUiState(
     val themePreset: String = LevyraThemes.COSMIC,
     val interfaceSettings: LevyraInterfaceSettings = LevyraInterfaceSettings(),
     val downloadSettings: LevyraDownloadSettings = LevyraDownloadSettings(),
+    val sharedMediaPreview: SharedMediaPreview? = null,
     val intelligenceSummary: LevyraIntelligenceSummary = LevyraIntelligenceSummary(),
     val backupMessage: String? = null,
     val playbackDiagnostics: String = "",
