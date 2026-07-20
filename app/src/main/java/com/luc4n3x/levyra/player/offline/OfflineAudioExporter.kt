@@ -155,27 +155,30 @@ internal fun shouldEmbedFastMetadata(fileLength: Long, durationMs: Long = 0L): B
     return durationIsFast && fileLength in 1L..FAST_METADATA_EMBED_MAX_BYTES
 }
 
-private class DownloadRateLimiter(maxRateKbps: Int) {
+internal class DownloadRateLimiter(
+    maxRateKbps: Int,
+    private val nanoTime: () -> Long = System::nanoTime,
+    private val sleepNanos: suspend (Long) -> Unit = { nanos ->
+        if (nanos > 0L) delay((nanos + 999_999L) / 1_000_000L)
+    }
+) {
     private val maxBytesPerSecond = maxRateKbps.toLong().coerceAtLeast(0L) * 125L
     private val mutex = Mutex()
-    private var windowStartedAtNanos = System.nanoTime()
-    private var windowBytes = 0L
+    private var nextCompletionAtNanos = nanoTime()
 
     suspend fun consume(bytes: Int) {
         if (maxBytesPerSecond <= 0L || bytes <= 0) return
-        mutex.withLock {
-            windowBytes += bytes.toLong()
-            val elapsedNanos = (System.nanoTime() - windowStartedAtNanos).coerceAtLeast(1L)
-            val expectedNanos = windowBytes * 1_000_000_000L / maxBytesPerSecond
-            if (expectedNanos > elapsedNanos) {
-                val waitMs = ((expectedNanos - elapsedNanos) / 1_000_000L).coerceIn(1L, 2_000L)
-                delay(waitMs)
-            }
-            if (System.nanoTime() - windowStartedAtNanos >= 1_000_000_000L) {
-                windowStartedAtNanos = System.nanoTime()
-                windowBytes = 0L
-            }
+        val waitNanos = mutex.withLock {
+            val now = nanoTime()
+            val startAt = maxOf(now, nextCompletionAtNanos)
+            val transferNanos = (
+                bytes.toLong() * 1_000_000_000L + maxBytesPerSecond - 1L
+            ) / maxBytesPerSecond
+            val completionAt = startAt + transferNanos
+            nextCompletionAtNanos = completionAt
+            (completionAt - now).coerceAtLeast(0L)
         }
+        sleepNanos(waitNanos)
     }
 }
 
