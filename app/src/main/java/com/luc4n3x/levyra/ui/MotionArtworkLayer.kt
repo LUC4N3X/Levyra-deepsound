@@ -93,7 +93,6 @@ private fun rememberMotionArtworkEnvironmentAllowed(observe: Boolean): Boolean {
         val mainHandler = Handler(Looper.getMainLooper())
         val refresh: () -> Unit = {
             mainHandler.post { revision++ }
-            Unit
         }
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
