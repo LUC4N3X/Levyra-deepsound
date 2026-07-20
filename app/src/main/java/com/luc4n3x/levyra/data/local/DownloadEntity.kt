@@ -6,7 +6,11 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "downloaded_tracks",
-    indices = [Index(value = ["trackId"]), Index(value = ["savedAt"])]
+    indices = [
+        Index(value = ["trackId"]),
+        Index(value = ["savedAt"]),
+        Index(value = ["trackId", "downloadPreset", "downloadQuality"])
+    ]
 )
 data class DownloadEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
@@ -19,5 +23,7 @@ data class DownloadEntity(
     val uri: String,
     val mimeType: String,
     val embeddedMetadata: Boolean,
+    val downloadPreset: String,
+    val downloadQuality: String,
     val savedAt: Long
 )
