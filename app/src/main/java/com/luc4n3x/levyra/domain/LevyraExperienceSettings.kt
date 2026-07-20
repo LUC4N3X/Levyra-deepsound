@@ -76,6 +76,13 @@ data class LevyraDownloadSettings(
             LevyraDownloadPreset.DataSaver -> "Low"
             LevyraDownloadPreset.Automatic -> null
         }
+
+    val storedPresetKey: String
+        get() = preset.name
+
+    fun storedQualityKey(automaticQuality: String = "Auto"): String {
+        return resolverAudioQuality ?: automaticQuality.trim().ifBlank { "Auto" }
+    }
 }
 
 internal fun LevyraDownloadSettings.shouldSkipExistingDownload(
