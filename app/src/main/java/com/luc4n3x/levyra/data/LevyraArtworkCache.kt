@@ -15,6 +15,7 @@ import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -72,6 +73,7 @@ object LevyraArtworkCache {
     private val indexScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val localIndex: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
     @Volatile private var localIndexPrimed = false
+    @Volatile private var primeJob: Job? = null
 
     fun configure(context: Context) {
         if (configured) return
@@ -162,7 +164,7 @@ object LevyraArtworkCache {
     }
 
     private fun primeLocalIndex(context: Context) {
-        indexScope.launch {
+        primeJob = indexScope.launch {
             runCatching {
                 persistentDirectory(context)
                     .listFiles()
@@ -208,6 +210,7 @@ object LevyraArtworkCache {
             if (smallTargets.isEmpty() && largeTargets.isEmpty()) return@withContext
             cacheTargets(smallTargets, 3)
             cacheTargets(largeTargets, 2)
+            primeJob?.join()
             trimPersistentDirectory(appContext)
         }
     }
