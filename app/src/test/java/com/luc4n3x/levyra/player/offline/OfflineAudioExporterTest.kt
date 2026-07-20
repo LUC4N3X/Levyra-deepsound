@@ -1,11 +1,46 @@
 package com.luc4n3x.levyra.player.offline
 
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OfflineAudioExporterTest {
+    @Test
+    fun lowRateLimitsReserveTheEntireTransferDuration() = runBlocking {
+        var nowNanos = 0L
+        val waits = mutableListOf<Long>()
+        val limiter = DownloadRateLimiter(
+            maxRateKbps = 512,
+            nanoTime = { nowNanos },
+            sleepNanos = { nanos ->
+                waits += nanos
+                nowNanos += nanos
+            }
+        )
+
+        limiter.consume(512 * 1024)
+        limiter.consume(512 * 1024)
+
+        assertEquals(listOf(8_192_000_000L, 8_192_000_000L), waits)
+        assertTrue(waits.all { it > 2_000_000_000L })
+    }
+
+    @Test
+    fun oneMegabitLimitUsesAFullFourSecondBudgetForA512KibBuffer() = runBlocking {
+        var nowNanos = 0L
+        val limiter = DownloadRateLimiter(
+            maxRateKbps = 1024,
+            nanoTime = { nowNanos },
+            sleepNanos = { nanos -> nowNanos += nanos }
+        )
+
+        limiter.consume(512 * 1024)
+
+        assertEquals(4_096_000_000L, nowNanos)
+    }
+
     @Test
     fun longKnownDownloadsAreSplitIntoBoundedRanges() {
         val oneMb = 1024L * 1024L
