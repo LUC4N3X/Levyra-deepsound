@@ -660,7 +660,7 @@ private fun CoverImage(track: Track, modifier: Modifier, highRes: Boolean = fals
     val background = remember(track.accentStart, track.accentEnd) {
         Brush.linearGradient(listOf(Color(track.accentStart), Color(track.accentEnd)))
     }
-    var artworkLoaded by remember(artworkKey) { mutableStateOf(false) }
+    var artworkLoaded by remember(models) { mutableStateOf(false) }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         if (!artworkLoaded) {
             InstantArtworkPlaceholder(
@@ -12495,7 +12495,8 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
             key = { index, album -> "home-album-$index-${album.browseId.ifBlank { "${album.title.trim().lowercase()}|${album.artist.trim().lowercase()}" }}" },
             contentType = { _, _ -> "home-album-card" }
         ) { index, album ->
-            var isPressed by remember { mutableStateOf(false) }
+            val interaction = remember { MutableInteractionSource() }
+            val isPressed by interaction.collectIsPressedAsState()
             val scale by animateFloatAsState(
                 targetValue = if (isPressed && effectiveAnimationsEnabled) 0.95f else 1f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
@@ -12508,16 +12509,11 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                         scaleY = scale
                     }
                     .width(148.dp)
-                    .pointerInput(album.title, album.artist) {
-                        detectTapGestures(
-                            onPress = {
-                                isPressed = true
-                                tryAwaitRelease()
-                                isPressed = false
-                            },
-                            onTap = { onOpen(album) }
-                        )
-                    },
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = { onOpen(album) }
+                    ),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
@@ -12599,7 +12595,8 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
             contentType = { _, _ -> "album-card" }
         ) { index, track ->
             val isCurrent = track.id == currentId
-            var isPressed by remember { mutableStateOf(false) }
+            val interaction = remember { MutableInteractionSource() }
+            val isPressed by interaction.collectIsPressedAsState()
             val scale by animateFloatAsState(
                 targetValue = if (isPressed && effectiveAnimationsEnabled) 0.95f else 1f,
                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
@@ -12612,16 +12609,11 @@ private fun AlbumCardRow(tracks: List<Track>, currentId: String?, animationsEnab
                         scaleY = scale
                     }
                     .width(148.dp)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                isPressed = true
-                                tryAwaitRelease()
-                                isPressed = false
-                            },
-                            onTap = { onPlay(track) }
-                        )
-                    },
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = { onPlay(track) }
+                    ),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Surface(
