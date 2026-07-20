@@ -4858,13 +4858,12 @@ private fun HomeQuickPicksShelf(
     onPlay: (Track) -> Unit,
     onPlayAll: () -> Unit
 ) {
-    val shelfTracks = remember(tracks) {
+    val columns = remember(tracks) {
         tracks
             .distinctBy(LevyraPersonalOrbit::identityKey)
             .take(21)
+            .chunked(3)
     }
-    val featured = shelfTracks.firstOrNull()
-    val columns = remember(shelfTracks) { shelfTracks.drop(1).chunked(2) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HomeSectionInset {
             SectionHeaderAction(title, onPlayAll)
@@ -4877,20 +4876,6 @@ private fun HomeQuickPicksShelf(
                 end = HomeHorizontalShelfEndPadding
             )
         ) {
-            if (featured != null) {
-                item(
-                    key = "quick-picks-featured-${featured.id}",
-                    contentType = "quick-picks-featured"
-                ) {
-                    HomeQuickPickFeaturedCard(
-                        track = featured,
-                        isCurrent = featured.id == currentId,
-                        isPlaying = isPlaying && featured.id == currentId,
-                        isResolving = isResolving && featured.id == currentId,
-                        onPlay = { onPlay(featured) }
-                    )
-                }
-            }
             itemsIndexed(
                 items = columns,
                 key = { columnIndex, column ->
@@ -4912,107 +4897,6 @@ private fun HomeQuickPicksShelf(
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeQuickPickFeaturedCard(
-    track: Track,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    onPlay: () -> Unit
-) {
-    val shape = RoundedCornerShape(17.dp)
-    Box(
-        modifier = Modifier
-            .width(168.dp)
-            .height(148.dp)
-            .clip(shape)
-            .border(
-                width = if (isCurrent) 1.5.dp else Dp.Hairline,
-                color = if (isCurrent) LevyraCyan.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.10f),
-                shape = shape
-            )
-            .pressable(onClick = onPlay)
-    ) {
-        CoverImage(
-            track = track,
-            modifier = Modifier.fillMaxSize(),
-            highRes = true
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.32f),
-                            Color.Black.copy(alpha = 0.82f)
-                        )
-                    )
-                )
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = track.title,
-                color = Color.White,
-                fontSize = 14.5.sp,
-                lineHeight = 17.sp,
-                fontWeight = FontWeight.Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                color = Color.White.copy(alpha = 0.72f),
-                fontSize = 11.5.sp,
-                lineHeight = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(30.dp)
-                .background(Color.Black.copy(alpha = 0.45f), CircleShape)
-                .border(
-                    Dp.Hairline,
-                    if (isCurrent) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.14f),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                isResolving -> CircularProgressIndicator(
-                    modifier = Modifier.size(14.dp),
-                    strokeWidth = 1.8.dp,
-                    color = LevyraCyan
-                )
-                isCurrent && isPlaying -> ActiveTrackEqualizer(
-                    color = LevyraCyan,
-                    isPlaying = true,
-                    width = 14.dp,
-                    height = 10.dp
-                )
-                else -> Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(17.dp)
-                )
             }
         }
     }
@@ -13366,25 +13250,27 @@ private fun HomeAlbumLoadingRow() {
     ) {
         items(4, key = { "home-album-loading-$it" }) {
             Column(
-                modifier = Modifier.width(176.dp).shimmer(),
+                modifier = Modifier.width(156.dp).shimmer(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(148.dp)
+                        .height(166.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(132.dp)
-                            .align(Alignment.CenterEnd)
-                            .clip(CircleShape)
+                            .size(134.dp)
+                            .align(Alignment.TopCenter)
+                            .offset(y = 6.dp)
+                            .graphicsLayer { rotationZ = 5f }
+                            .clip(RoundedCornerShape(18.dp))
                             .background(Color.White.copy(alpha = 0.05f))
                     )
                     Box(
                         modifier = Modifier
                             .size(148.dp)
-                            .align(Alignment.CenterStart)
+                            .align(Alignment.BottomCenter)
                             .clip(RoundedCornerShape(18.dp))
                             .background(Color.White.copy(alpha = 0.075f))
                     )
@@ -13405,68 +13291,6 @@ private fun HomeAlbumLoadingRow() {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun VinylDisc(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val radius = size.minDimension / 2f
-        val discCenter = center
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF23242B),
-                    Color(0xFF101116),
-                    Color(0xFF07080B)
-                ),
-                center = discCenter,
-                radius = radius
-            ),
-            radius = radius,
-            center = discCenter
-        )
-        drawCircle(
-            color = Color.White.copy(alpha = 0.09f),
-            radius = radius - 0.5.dp.toPx(),
-            center = discCenter,
-            style = Stroke(width = 1.dp.toPx())
-        )
-        listOf(0.88f, 0.76f, 0.64f, 0.52f).forEach { fraction ->
-            drawCircle(
-                color = Color.White.copy(alpha = 0.045f),
-                radius = radius * fraction,
-                center = discCenter,
-                style = Stroke(width = 1.dp.toPx())
-            )
-        }
-        drawArc(
-            color = Color.White.copy(alpha = 0.07f),
-            startAngle = -108f,
-            sweepAngle = 76f,
-            useCenter = false,
-            topLeft = androidx.compose.ui.geometry.Offset(
-                discCenter.x - radius * 0.70f,
-                discCenter.y - radius * 0.70f
-            ),
-            size = androidx.compose.ui.geometry.Size(radius * 1.40f, radius * 1.40f),
-            style = Stroke(width = 1.5.dp.toPx())
-        )
-        drawCircle(
-            brush = Brush.linearGradient(
-                listOf(
-                    LevyraCyan.copy(alpha = 0.85f),
-                    LevyraViolet.copy(alpha = 0.85f)
-                )
-            ),
-            radius = radius * 0.32f,
-            center = discCenter
-        )
-        drawCircle(
-            color = Color(0xFF0A0B0E),
-            radius = radius * 0.06f,
-            center = discCenter
-        )
     }
 }
 
@@ -13496,7 +13320,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                         scaleX = scale
                         scaleY = scale
                     }
-                    .width(176.dp)
+                    .width(156.dp)
                     .clickable(
                         interactionSource = interaction,
                         indication = null,
@@ -13507,12 +13331,27 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(148.dp)
+                        .height(166.dp)
                 ) {
-                    VinylDisc(
+                    Box(
                         modifier = Modifier
-                            .size(132.dp)
-                            .align(Alignment.CenterEnd)
+                            .size(134.dp)
+                            .align(Alignment.TopCenter)
+                            .offset(y = 4.dp)
+                            .graphicsLayer { rotationZ = -7f }
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(cinematicGlassBrush(LevyraViolet, LevyraPink, 0.9f))
+                            .border(Dp.Hairline, Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(134.dp)
+                            .align(Alignment.TopCenter)
+                            .offset(y = 9.dp)
+                            .graphicsLayer { rotationZ = 5f }
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(cinematicGlassBrush(LevyraCyan, LevyraViolet, 0.9f))
+                            .border(Dp.Hairline, Color.White.copy(alpha = 0.10f), RoundedCornerShape(18.dp))
                     )
                     Surface(
                         color = CinematicGlass.copy(alpha = 0.3f),
@@ -13521,7 +13360,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                         shadowElevation = 0.dp,
                         modifier = Modifier
                             .size(148.dp)
-                            .align(Alignment.CenterStart)
+                            .align(Alignment.BottomCenter)
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             if (album.thumbnailUrl.isNotBlank()) {
@@ -13549,6 +13388,24 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                                     .matchParentSize()
                                     .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.34f))))
                             )
+                            if (album.year.isNotBlank()) {
+                                Surface(
+                                    color = CinematicGlassDeep.copy(alpha = 0.55f),
+                                    border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.15f)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(8.dp)
+                                ) {
+                                    Text(
+                                        text = album.year,
+                                        color = Color.White,
+                                        fontSize = 9.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
                             if (album.explicit) {
                                 Surface(
                                     color = CinematicGlassDeep.copy(alpha = 0.55f),
@@ -13561,7 +13418,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                                     Icon(
                                         imageVector = Icons.Rounded.Explicit,
                                         contentDescription = null,
-                                        tint = LevyraText,
+                                        tint = Color.White,
                                         modifier = Modifier
                                             .padding(3.dp)
                                             .size(13.dp)
@@ -13573,7 +13430,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                 }
                 Column(modifier = Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(album.title, color = LevyraText, fontSize = 13.5.sp, lineHeight = 15.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    val subtitle = listOf(LocalLevyraStrings.current.albumPlain, album.artist, album.year).filter { it.isNotBlank() }.joinToString(" • ")
+                    val subtitle = listOf(LocalLevyraStrings.current.albumPlain, album.artist).filter { it.isNotBlank() }.joinToString(" • ")
                     Text(subtitle, color = LevyraMuted, fontSize = 11.5.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
