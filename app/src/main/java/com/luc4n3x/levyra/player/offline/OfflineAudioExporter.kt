@@ -188,7 +188,8 @@ class OfflineAudioExporter(
     private val client: OkHttpClient = LevyraHttpClientFactory.download(),
     private val progress: suspend (Int) -> Unit = {},
     private val taskKey: String = "",
-    private val settings: LevyraDownloadSettings = LevyraDownloadSettings()
+    private val settings: LevyraDownloadSettings = LevyraDownloadSettings(),
+    private val downloadQualityKey: String = settings.storedQualityKey()
 ) {
     private val rateLimiter = DownloadRateLimiter(settings.effectiveRateKbps)
     val embeddedMetadataWriterReady: Boolean
@@ -616,6 +617,8 @@ class OfflineAudioExporter(
                     uri = uri.toString(),
                     mimeType = container.mimeType,
                     embeddedMetadata = embeddedMetadata,
+                    downloadPreset = settings.storedPresetKey,
+                    downloadQuality = downloadQualityKey,
                     savedAt = System.currentTimeMillis()
                 )
             )
