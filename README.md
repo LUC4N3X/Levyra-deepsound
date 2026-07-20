@@ -269,8 +269,8 @@ Architecture and size-control notes live in `docs/APK_SIZE_RULER.md` and `docs/P
 Version numbering is centralized in `gradle.properties`:
 
 ```properties
-levyraVersionName=2.3.12
-levyraVersionCode=2031200
+levyraVersionName=2.3.13
+levyraVersionCode=2031300
 ```
 
 `versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build` — calculated sequentially so no two deployments ever collide. The APK Artifact workflow parses this schema, verifies target versions with `aapt`, checks structural integrity, compiles the signed binary and publishes it as `LEVYRA-<version>.apk`.
