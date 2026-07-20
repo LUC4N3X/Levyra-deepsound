@@ -74,12 +74,20 @@ class OfflineExportWorker(
         val taskKey = inputData.getString(KEY_TASK_KEY).orEmpty().ifBlank { id.toString() }
         val track = TrackPayloadCodec.decode(payload) ?: return Result.failure(errorData("Traccia non valida"))
         val taskDao = LevyraDatabase.get(applicationContext).offlineDownloadTasksDao()
-        val settings = LevyraPreferences(applicationContext).downloadSettings()
+        val preferences = LevyraPreferences(applicationContext)
+        val settings = preferences.downloadSettings()
+        val downloadQualityKey = settings.storedQualityKey(preferences.audioQuality())
         val workId = id.toString()
         if (settings.skipExisting && track.id.isNotBlank()) {
-            val existing = LevyraDatabase.get(applicationContext).downloadedTracksDao().byTrackId(track.id)
+            val existing = LevyraDatabase.get(applicationContext).downloadedTracksDao().byTrackIdAndProfile(
+                trackId = track.id,
+                downloadPreset = settings.storedPresetKey,
+                downloadQuality = downloadQualityKey
+            )
             if (existing != null && isStoredDownloadReadable(existing.uri)) {
-                taskDao.updateStateForWork(taskKey, workId, "SUCCEEDED", 100, "", System.currentTimeMillis())
+                if (taskDao.updateStateForWork(taskKey, workId, "SUCCEEDED", 100, "", System.currentTimeMillis()) == 0) {
+                    return Result.failure(errorData(ERROR_SUPERSEDED))
+                }
                 return Result.success(
                     workDataOf(
                         KEY_FILE_NAME to existing.fileName,
@@ -111,7 +119,8 @@ class OfflineExportWorker(
                     }
                 },
                 taskKey = taskKey,
-                settings = settings
+                settings = settings,
+                downloadQualityKey = downloadQualityKey
             )
             val result = OfflineDownloadConcurrencyGate.withLimit(settings.maxConcurrentDownloads) {
                 exporter.export(track)
