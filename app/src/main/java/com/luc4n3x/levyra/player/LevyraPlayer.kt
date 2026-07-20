@@ -53,6 +53,7 @@ class LevyraPlayer(context: Context) {
                 return@addListener
             }
             controller = connected
+            PlaybackService.setUiRecoveryAvailable(true)
             connected.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_READY) {
@@ -253,6 +254,7 @@ class LevyraPlayer(context: Context) {
     }
 
     fun release() {
+        PlaybackService.setUiRecoveryAvailable(false)
         sponsorJob?.cancel()
         sponsorJob = null
         recoveryResetJob?.cancel()
