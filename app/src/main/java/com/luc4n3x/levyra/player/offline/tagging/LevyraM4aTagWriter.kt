@@ -111,7 +111,7 @@ object LevyraM4aTagWriter {
         val payload = ByteArrayOutputStream(ilst.length + 4096)
         val children = runCatching { parseBoxes(source, ilst.payloadStart, ilst.end) }.getOrDefault(emptyList())
         for (child in children) {
-            if (child.type !in Atom.REPLACED_TAGS) payload.write(source, child.start, child.length)
+            if (!shouldReplaceMetadataItem(source, child)) payload.write(source, child.start, child.length)
         }
         for (item in metadataItems) payload.write(item)
         return atom(Atom.ILST, payload.toByteArray())
@@ -217,10 +217,42 @@ object LevyraM4aTagWriter {
         metadata.artist.cleanTag()?.let { items += textItem(Atom.ART, it) }
         metadata.album.cleanTag()?.let { items += textItem(Atom.ALB, it) }
         metadata.albumArtist.cleanTag()?.let { items += textItem(Atom.AART, it) }
-        metadata.year.cleanTag()?.let { items += textItem(Atom.DAY, it) }
+        metadata.releaseDate.ifBlank { metadata.year }.cleanTag()?.let { items += textItem(Atom.DAY, it) }
+        metadata.genres.joinToString("; ").cleanTag()?.let { items += textItem(Atom.GENRE, it) }
+        metadata.lyrics.cleanMultilineTag()?.let { items += textItem(Atom.LYRICS, it) }
+        metadata.encodedBy.cleanTag()?.let { items += textItem(Atom.ENCODER, it) }
+        if (metadata.trackNumber > 0) items += pairItem(Atom.TRACK_NUMBER, metadata.trackNumber, metadata.trackTotal, trailingReserved = true)
+        if (metadata.discNumber > 0) items += pairItem(Atom.DISC_NUMBER, metadata.discNumber, metadata.discTotal, trailingReserved = false)
+        if (metadata.explicit) items += binaryItem(Atom.ADVISORY, byteArrayOf(1), DATA_SIGNED_INTEGER)
+        metadata.isrc.cleanTag()?.let { items += freeformItem(FREEFORM_ISRC, it) }
+        metadata.upc.cleanTag()?.let { items += freeformItem(FREEFORM_UPC, it) }
+        metadata.sourceUrl.cleanTag(4096)?.let { items += freeformItem(FREEFORM_SOURCE_URL, it) }
+        metadata.sourceProvider.cleanTag()?.let { items += freeformItem(FREEFORM_SOURCE_PROVIDER, it) }
+        metadata.metadataProvider.cleanTag()?.let { items += freeformItem(FREEFORM_METADATA_PROVIDER, it) }
+        metadata.metadataConfidence.takeIf { it > 0 }?.let { items += freeformItem(FREEFORM_METADATA_CONFIDENCE, it.toString()) }
+        metadata.trackId.cleanTag()?.let { items += freeformItem(FREEFORM_TRACK_ID, it) }
+        metadata.albumId.cleanTag()?.let { items += freeformItem(FREEFORM_ALBUM_ID, it) }
+        metadata.artistIds.joinToString(",").cleanTag(4096)?.let { items += freeformItem(FREEFORM_ARTIST_IDS, it) }
+        metadata.albumUrl.cleanTag(4096)?.let { items += freeformItem(FREEFORM_ALBUM_URL, it) }
+        metadata.counterpartId.cleanTag()?.let { items += freeformItem(FREEFORM_COUNTERPART_ID, it) }
+        metadata.mediaType.cleanTag()?.let { items += freeformItem(FREEFORM_MEDIA_TYPE, it) }
         val imageType = metadata.artworkData?.let(::artworkType)
         if (metadata.artworkData != null && imageType != null) items += binaryItem(Atom.COVR, metadata.artworkData, imageType)
         return items
+    }
+
+    private fun shouldReplaceMetadataItem(source: ByteArray, item: Mp4Box): Boolean {
+        if (item.type in Atom.REPLACED_TAGS) return true
+        if (item.type != Atom.FREEFORM) return false
+        return freeformName(source, item) in LEVYRA_FREEFORM_NAMES
+    }
+
+    private fun freeformName(source: ByteArray, item: Mp4Box): String? {
+        val children = runCatching { parseBoxes(source, item.payloadStart, item.end) }.getOrDefault(emptyList())
+        val name = children.firstOrNull { it.type == Atom.NAME } ?: return null
+        val start = (name.payloadStart + 4).coerceAtMost(name.end)
+        if (start >= name.end) return null
+        return String(source, start, name.end - start, StandardCharsets.UTF_8).trim()
     }
 
     private fun textItem(type: Int, text: String): ByteArray {
@@ -228,16 +260,42 @@ object LevyraM4aTagWriter {
         return dataItem(type, value, DATA_UTF8)
     }
 
-    private fun binaryItem(type: Int, bytes: ByteArray, dataType: Int): ByteArray = dataItem(type, bytes, dataType)
+    private fun pairItem(type: Int, number: Int, total: Int, trailingReserved: Boolean): ByteArray {
+        val value = ByteArrayOutputStream(if (trailingReserved) 8 else 6)
+        writeUInt16(value, 0)
+        writeUInt16(value, number.coerceIn(0, 0xFFFF))
+        writeUInt16(value, total.coerceIn(0, 0xFFFF))
+        if (trailingReserved) writeUInt16(value, 0)
+        return dataItem(type, value.toByteArray(), DATA_IMPLICIT)
+    }
 
-    private fun dataItem(type: Int, value: ByteArray, dataType: Int): ByteArray {
+    private fun freeformItem(name: String, value: String): ByteArray {
+        val payload = ByteArrayOutputStream(value.length + 64)
+        payload.write(fullBoxTextAtom(Atom.MEAN, FREEFORM_MEAN))
+        payload.write(fullBoxTextAtom(Atom.NAME, name))
+        payload.write(dataItemPayload(value.toByteArray(StandardCharsets.UTF_8), DATA_UTF8))
+        return atom(Atom.FREEFORM, payload.toByteArray())
+    }
+
+    private fun fullBoxTextAtom(type: Int, value: String): ByteArray {
+        val payload = ByteArrayOutputStream(value.length + 4)
+        payload.write(ByteArray(4))
+        payload.write(value.toByteArray(StandardCharsets.UTF_8))
+        return atom(type, payload.toByteArray())
+    }
+
+    private fun dataItemPayload(value: ByteArray, dataType: Int): ByteArray {
         val dataPayload = ByteArrayOutputStream(value.size + 8)
         writeUInt32(dataPayload, dataType.toLong())
         writeUInt32(dataPayload, 0)
         dataPayload.write(value)
-        val dataAtom = atom(Atom.DATA, dataPayload.toByteArray())
-        return atom(type, dataAtom)
+        return atom(Atom.DATA, dataPayload.toByteArray())
     }
+
+    private fun binaryItem(type: Int, bytes: ByteArray, dataType: Int): ByteArray = dataItem(type, bytes, dataType)
+
+    private fun dataItem(type: Int, value: ByteArray, dataType: Int): ByteArray =
+        atom(type, dataItemPayload(value, dataType))
 
     private fun artworkType(bytes: ByteArray): Int? {
         if (bytes.size >= 3 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() && bytes[2] == 0xFF.toByte()) return DATA_JPEG
@@ -281,10 +339,20 @@ object LevyraM4aTagWriter {
         return out.toByteArray()
     }
 
-    private fun String.cleanTag(): String? {
+    private fun String.cleanTag(maxLength: Int = 1024): String? {
         val value = trim().replace(Regex("\\s+"), " ")
         if (value.isBlank()) return null
-        return value.take(1024)
+        return value.take(maxLength)
+    }
+
+    private fun String.cleanMultilineTag(): String? {
+        val value = lineSequence()
+            .map { it.trim().replace(Regex("[ \t]+"), " ") }
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+            .trim()
+        if (value.isBlank()) return null
+        return value.take(MAX_LYRICS_CHARS)
     }
 
     private fun readInt32(source: ByteArray, offset: Int): Int {
@@ -302,6 +370,11 @@ object LevyraM4aTagWriter {
         return value
     }
 
+    private fun writeUInt16(out: ByteArrayOutputStream, value: Int) {
+        out.write((value ushr 8) and 0xFF)
+        out.write(value and 0xFF)
+    }
+
     private fun writeUInt32(out: ByteArrayOutputStream, value: Long) {
         out.write(((value ushr 24) and 0xFF).toInt())
         out.write(((value ushr 16) and 0xFF).toInt())
@@ -313,9 +386,39 @@ object LevyraM4aTagWriter {
         for (shift in 56 downTo 0 step 8) out.write(((value ushr shift) and 0xFF).toInt())
     }
 
+    private const val DATA_IMPLICIT = 0
     private const val DATA_UTF8 = 1
     private const val DATA_JPEG = 13
+    private const val DATA_SIGNED_INTEGER = 21
     private const val DATA_PNG = 14
+    private const val MAX_LYRICS_CHARS = 128 * 1024
+    private const val FREEFORM_MEAN = "com.luc4n3x.levyra"
+    private const val FREEFORM_ISRC = "ISRC"
+    private const val FREEFORM_UPC = "UPC"
+    private const val FREEFORM_SOURCE_URL = "SOURCE_URL"
+    private const val FREEFORM_SOURCE_PROVIDER = "SOURCE_PROVIDER"
+    private const val FREEFORM_METADATA_PROVIDER = "METADATA_PROVIDER"
+    private const val FREEFORM_METADATA_CONFIDENCE = "METADATA_CONFIDENCE"
+    private const val FREEFORM_TRACK_ID = "TRACK_ID"
+    private const val FREEFORM_ALBUM_ID = "ALBUM_ID"
+    private const val FREEFORM_ARTIST_IDS = "ARTIST_IDS"
+    private const val FREEFORM_ALBUM_URL = "ALBUM_URL"
+    private const val FREEFORM_COUNTERPART_ID = "COUNTERPART_ID"
+    private const val FREEFORM_MEDIA_TYPE = "MEDIA_TYPE"
+    private val LEVYRA_FREEFORM_NAMES = setOf(
+        FREEFORM_ISRC,
+        FREEFORM_UPC,
+        FREEFORM_SOURCE_URL,
+        FREEFORM_SOURCE_PROVIDER,
+        FREEFORM_METADATA_PROVIDER,
+        FREEFORM_METADATA_CONFIDENCE,
+        FREEFORM_TRACK_ID,
+        FREEFORM_ALBUM_ID,
+        FREEFORM_ARTIST_IDS,
+        FREEFORM_ALBUM_URL,
+        FREEFORM_COUNTERPART_ID,
+        FREEFORM_MEDIA_TYPE
+    )
 }
 
 data class LevyraM4aMetadata(
@@ -324,6 +427,27 @@ data class LevyraM4aMetadata(
     val album: String,
     val albumArtist: String = artist,
     val year: String = "",
+    val releaseDate: String = "",
+    val genres: List<String> = emptyList(),
+    val trackNumber: Int = 0,
+    val trackTotal: Int = 0,
+    val discNumber: Int = 0,
+    val discTotal: Int = 0,
+    val lyrics: String = "",
+    val explicit: Boolean = false,
+    val isrc: String = "",
+    val upc: String = "",
+    val sourceUrl: String = "",
+    val sourceProvider: String = "",
+    val metadataProvider: String = "",
+    val metadataConfidence: Int = 0,
+    val trackId: String = "",
+    val albumId: String = "",
+    val artistIds: List<String> = emptyList(),
+    val albumUrl: String = "",
+    val counterpartId: String = "",
+    val mediaType: String = "",
+    val encodedBy: String = "Levyra",
     val artworkData: ByteArray? = null
 )
 
@@ -368,9 +492,31 @@ private object Atom {
     val ART = fourCc(0xA9, 'A'.code, 'R'.code, 'T'.code)
     val ALB = fourCc(0xA9, 'a'.code, 'l'.code, 'b'.code)
     val DAY = fourCc(0xA9, 'd'.code, 'a'.code, 'y'.code)
+    val GENRE = fourCc(0xA9, 'g'.code, 'e'.code, 'n'.code)
+    val LYRICS = fourCc(0xA9, 'l'.code, 'y'.code, 'r'.code)
+    val ENCODER = fourCc(0xA9, 't'.code, 'o'.code, 'o'.code)
     val AART = ascii("aART")
     val COVR = ascii("covr")
-    val REPLACED_TAGS = setOf(NAM, ART, ALB, DAY, AART, COVR)
+    val TRACK_NUMBER = ascii("trkn")
+    val DISC_NUMBER = ascii("disk")
+    val ADVISORY = ascii("rtng")
+    val FREEFORM = ascii("----")
+    val MEAN = ascii("mean")
+    val NAME = ascii("name")
+    val REPLACED_TAGS = setOf(
+        NAM,
+        ART,
+        ALB,
+        DAY,
+        GENRE,
+        LYRICS,
+        ENCODER,
+        AART,
+        COVR,
+        TRACK_NUMBER,
+        DISC_NUMBER,
+        ADVISORY
+    )
     val CONTAINERS = setOf(MOOV, TRAK, MDIA, MINF, STBL, EDTS, DINF, UDTA, MOOF, TRAF, MVEX)
 
     fun bytes(type: Int): ByteArray {
