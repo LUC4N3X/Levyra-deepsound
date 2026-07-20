@@ -2110,8 +2110,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun cancelDownload(taskKey: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            OfflineExportWorker.cancel(getApplication<Application>().applicationContext, taskKey)
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                OfflineExportWorker.cancel(getApplication<Application>().applicationContext, taskKey)
+            }
+            handleOfflineExportStopped(taskKey)
         }
     }
 
@@ -2815,7 +2818,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         finished = info
                     } else {
                         info?.let { updateDownloadProgress(downloadKey, it.progress.getInt(OfflineExportWorker.KEY_PROGRESS, 0)) }
-                        delay(120L)
+                        delay(500L)
                     }
                 }
                 finished ?: throw CancellationException("Offline export observation cancelled")
