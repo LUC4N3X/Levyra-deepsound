@@ -74,6 +74,10 @@
         </receiver>
 
         <receiver
+            android:name=".player.offline.work.OfflineDownloadCancelReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".widget.LevyraWidgetProvider"
             android:exported="false"
             android:label="@string/app_name">
