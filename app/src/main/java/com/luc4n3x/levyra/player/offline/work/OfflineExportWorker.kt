@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -104,18 +105,41 @@ class OfflineExportWorker(
         }
         return try {
             setProgress(workDataOf(KEY_PROGRESS to 1))
-            setForeground(createForegroundInfo(track, 1))
+            setForeground(createForegroundInfo(track, taskKey, 1))
+            var persistedProgress = 1
+            var persistedAtMs = SystemClock.elapsedRealtime()
             var foregroundProgress = 1
+            var foregroundAtMs = persistedAtMs
             val exporter = OfflineAudioExporter(
                 context = applicationContext,
                 resolver = PlaybackResolver.getInstance(applicationContext),
                 progress = { value ->
                     val safeProgress = value.coerceIn(0, 100)
-                    setProgress(workDataOf(KEY_PROGRESS to safeProgress))
-                    taskDao.updateStateForWork(taskKey, workId, "RUNNING", safeProgress, "", System.currentTimeMillis())
-                    if (safeProgress == 100 || safeProgress >= foregroundProgress + FOREGROUND_PROGRESS_STEP) {
-                        foregroundProgress = safeProgress
-                        setForeground(createForegroundInfo(track, safeProgress))
+                    val monotonicProgress = maxOf(safeProgress, persistedProgress)
+                    val nowElapsed = SystemClock.elapsedRealtime()
+                    val progressAdvanced = monotonicProgress > persistedProgress
+                    val shouldPersist = monotonicProgress == 100 ||
+                        progressAdvanced && (
+                            monotonicProgress >= persistedProgress + PROGRESS_PERSIST_STEP ||
+                                nowElapsed - persistedAtMs >= PROGRESS_PERSIST_INTERVAL_MS
+                            )
+                    if (shouldPersist) {
+                        persistedProgress = monotonicProgress
+                        persistedAtMs = nowElapsed
+                        setProgress(workDataOf(KEY_PROGRESS to monotonicProgress))
+                        val updated = taskDao.updateRunningProgress(taskKey, workId, monotonicProgress, System.currentTimeMillis())
+                        if (updated == 0) throw CancellationException("Download no longer active")
+                    }
+                    val foregroundAdvanced = monotonicProgress > foregroundProgress
+                    val shouldRefreshForeground = monotonicProgress == 100 ||
+                        foregroundAdvanced && (
+                            monotonicProgress >= foregroundProgress + FOREGROUND_PROGRESS_STEP ||
+                                nowElapsed - foregroundAtMs >= FOREGROUND_PROGRESS_INTERVAL_MS
+                            )
+                    if (shouldRefreshForeground) {
+                        foregroundProgress = monotonicProgress
+                        foregroundAtMs = nowElapsed
+                        setForeground(createForegroundInfo(track, taskKey, monotonicProgress))
                     }
                 },
                 taskKey = taskKey,
@@ -139,8 +163,13 @@ class OfflineExportWorker(
             )
         } catch (error: CancellationException) {
             val current = taskDao.byKey(taskKey)
-            if (current?.workId == workId && current.state != "CANCELLED") {
-                taskDao.updateStateForWork(taskKey, workId, "PAUSED", current.progress, "", System.currentTimeMillis())
+            if (current?.workId == workId) {
+                if (current.state !in setOf("PAUSED", "CANCELLED")) {
+                    taskDao.updateStateForWork(taskKey, workId, "PAUSED", current.progress, "", System.currentTimeMillis())
+                }
+                if (current.state == "CANCELLED") {
+                    OfflineAudioExporter.discardPartialDownload(applicationContext, taskKey)
+                }
             }
             throw error
         } catch (error: Throwable) {
@@ -170,9 +199,9 @@ class OfflineExportWorker(
         }.getOrDefault(false)
     }
 
-    private fun createForegroundInfo(track: Track, progress: Int): ForegroundInfo {
+    private fun createForegroundInfo(track: Track, taskKey: String, progress: Int): ForegroundInfo {
         ensureNotificationChannel()
-        val notification = buildForegroundNotification(track, progress.coerceIn(0, 100))
+        val notification = buildForegroundNotification(track, taskKey, progress.coerceIn(0, 100))
         val notificationId = NOTIFICATION_ID_BASE + (track.id.hashCode() and Int.MAX_VALUE) % NOTIFICATION_ID_RANGE
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -181,7 +210,7 @@ class OfflineExportWorker(
         }
     }
 
-    private fun buildForegroundNotification(track: Track, progress: Int): Notification {
+    private fun buildForegroundNotification(track: Track, taskKey: String, progress: Int): Notification {
         val title = track.title.ifBlank { "Download offline" }
         val artist = track.artist.ifBlank { "LEVYRA" }
         val percent = progress.coerceIn(0, 100)
@@ -191,6 +220,9 @@ class OfflineExportWorker(
             .setContentText("$percent% - $title")
             .setStyle(NotificationCompat.BigTextStyle().bigText("$title\n$artist"))
             .setContentIntent(openAppIntent())
+            .apply {
+                if (percent < 100) addAction(android.R.drawable.ic_menu_close_clear_cancel, "Annulla", cancelDownloadIntent(taskKey))
+            }
             .setOngoing(percent < 100)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
@@ -205,6 +237,20 @@ class OfflineExportWorker(
         }
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         return PendingIntent.getActivity(applicationContext, 0, intent, flags)
+    }
+
+    private fun cancelDownloadIntent(taskKey: String): PendingIntent {
+        val intent = Intent(applicationContext, OfflineDownloadCancelReceiver::class.java).apply {
+            action = OfflineDownloadCancelReceiver.ACTION_CANCEL_DOWNLOAD
+            data = android.net.Uri.Builder()
+                .scheme("levyra")
+                .authority("download-cancel")
+                .appendPath(taskKey)
+                .build()
+            putExtra(OfflineDownloadCancelReceiver.EXTRA_TASK_KEY, taskKey)
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        return PendingIntent.getBroadcast(applicationContext, taskKey.hashCode() and Int.MAX_VALUE, intent, flags)
     }
 
     private fun ensureNotificationChannel() {
@@ -232,7 +278,10 @@ class OfflineExportWorker(
         const val KEY_PROGRESS = "progress"
         const val ERROR_SUPERSEDED = "task_superseded"
         private const val CHANNEL_ID = "levyra_offline_downloads"
-        private const val FOREGROUND_PROGRESS_STEP = 2
+        private const val PROGRESS_PERSIST_STEP = 3
+        private const val PROGRESS_PERSIST_INTERVAL_MS = 750L
+        private const val FOREGROUND_PROGRESS_STEP = 5
+        private const val FOREGROUND_PROGRESS_INTERVAL_MS = 2_000L
         private const val NOTIFICATION_ID_BASE = 4200
         private const val NOTIFICATION_ID_RANGE = 5000
         private const val COMPLETED_TASK_RETENTION_MS = 7L * 24L * 60L * 60L * 1000L
@@ -299,6 +348,7 @@ class OfflineExportWorker(
             val current = dao.byKey(taskKey) ?: return
             dao.updateState(taskKey, "CANCELLED", current.progress.coerceIn(0, 100), "", System.currentTimeMillis())
             WorkManager.getInstance(appContext).cancelUniqueWork(uniqueNameFor(taskKey))
+            OfflineAudioExporter.discardPartialDownload(appContext, taskKey)
         }
 
         private fun uniqueNameFor(trackId: String): String {

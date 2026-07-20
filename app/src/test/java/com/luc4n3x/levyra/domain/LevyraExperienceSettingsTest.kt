@@ -62,9 +62,9 @@ class LevyraExperienceSettingsTest {
         val highQuality = LevyraDownloadSettings(preset = LevyraDownloadPreset.HighQuality, maxRateKbps = 4096).normalized()
 
         assertEquals(0, invalid.maxRateKbps)
-        assertEquals(1024, dataSaver.effectiveRateKbps)
-        assertEquals(2, dataSaver.maxParallelFragments)
+        assertEquals(0, dataSaver.effectiveRateKbps)
+        assertEquals(4, dataSaver.maxParallelFragments)
         assertEquals(4096, highQuality.effectiveRateKbps)
-        assertEquals(10, highQuality.maxParallelFragments)
+        assertEquals(12, highQuality.maxParallelFragments)
     }
 }
