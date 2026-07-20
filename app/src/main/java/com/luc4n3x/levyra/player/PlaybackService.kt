@@ -756,43 +756,71 @@ class PlaybackService : MediaLibraryService() {
         playbackWatchdogJob = serviceScope.launch {
             while (isActive) {
                 delay(WATCHDOG_INTERVAL_MS)
-                markPlaybackExpected(
-                    !serviceRecoveryExhausted &&
-                        player.mediaItemCount > 0 &&
-                        player.playWhenReady &&
-                        player.playbackState != Player.STATE_ENDED
-                )
-                if (serviceRecoveryExhausted) {
-                    watchdogPositionMs = C.TIME_UNSET
-                    watchdogAdvancedAtMs = SystemClock.elapsedRealtime()
-                    continue
-                }
-                val activelyPlaying = player.mediaItemCount > 0 &&
-                    player.playWhenReady &&
-                    player.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE &&
-                    player.playbackState == Player.STATE_READY
-                if (!activelyPlaying) {
-                    watchdogPositionMs = C.TIME_UNSET
-                    watchdogAdvancedAtMs = SystemClock.elapsedRealtime()
-                    continue
-                }
-                val positionMs = player.currentPosition.coerceAtLeast(0L)
-                val now = SystemClock.elapsedRealtime()
-                if (watchdogPositionMs == C.TIME_UNSET || positionMs > watchdogPositionMs + 250L || positionMs < watchdogPositionMs) {
-                    watchdogPositionMs = positionMs
-                    watchdogAdvancedAtMs = now
-                    continue
-                }
-                if (now - watchdogAdvancedAtMs < WATCHDOG_STALL_TIMEOUT_MS) continue
-                if (serviceRecoveryJob?.isActive != true) {
-                    Timber.w("Playback watchdog detected a stalled player at %d ms", positionMs)
-                    serviceRecoveryJob = serviceScope.launch {
-                        val restored = restoreCurrentPlayback(positionMs, preferFreshResolution = true)
-                        if (!restored) Timber.w("Playback watchdog recovery failed")
-                    }
-                }
-                watchdogAdvancedAtMs = now
+                inspectPlaybackWatchdog(player)
             }
+        }
+    }
+
+    private fun inspectPlaybackWatchdog(player: ExoPlayer) {
+        val now = SystemClock.elapsedRealtime()
+        markPlaybackExpected(isPlaybackExpected(player))
+        if (resetWatchdogForExhaustedRecovery(now)) return
+        if (resetWatchdogForInactivePlayer(player, now)) return
+        val positionMs = player.currentPosition.coerceAtLeast(0L)
+        if (recordWatchdogProgress(positionMs, now)) return
+        if (!isWatchdogStalled(now)) return
+        scheduleWatchdogRecovery(positionMs)
+        watchdogAdvancedAtMs = now
+    }
+
+    private fun isPlaybackExpected(player: ExoPlayer): Boolean = !serviceRecoveryExhausted &&
+        player.mediaItemCount > 0 &&
+        player.playWhenReady &&
+        player.playbackState != Player.STATE_ENDED
+
+    private fun resetWatchdogForExhaustedRecovery(now: Long): Boolean {
+        if (!serviceRecoveryExhausted) return false
+        resetWatchdogProgress(now)
+        return true
+    }
+
+    private fun resetWatchdogForInactivePlayer(player: ExoPlayer, now: Long): Boolean {
+        if (isPlayerActivelyPlaying(player)) return false
+        resetWatchdogProgress(now)
+        return true
+    }
+
+    private fun isPlayerActivelyPlaying(player: ExoPlayer): Boolean = player.mediaItemCount > 0 &&
+        player.playWhenReady &&
+        player.playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE &&
+        player.playbackState == Player.STATE_READY
+
+    private fun resetWatchdogProgress(now: Long) {
+        watchdogPositionMs = C.TIME_UNSET
+        watchdogAdvancedAtMs = now
+    }
+
+    private fun recordWatchdogProgress(positionMs: Long, now: Long): Boolean {
+        if (!hasWatchdogPositionAdvanced(positionMs)) return false
+        watchdogPositionMs = positionMs
+        watchdogAdvancedAtMs = now
+        return true
+    }
+
+    private fun hasWatchdogPositionAdvanced(positionMs: Long): Boolean =
+        watchdogPositionMs == C.TIME_UNSET ||
+            positionMs > watchdogPositionMs + 250L ||
+            positionMs < watchdogPositionMs
+
+    private fun isWatchdogStalled(now: Long): Boolean =
+        now - watchdogAdvancedAtMs >= WATCHDOG_STALL_TIMEOUT_MS
+
+    private fun scheduleWatchdogRecovery(positionMs: Long) {
+        if (serviceRecoveryJob?.isActive == true) return
+        Timber.w("Playback watchdog detected a stalled player at %d ms", positionMs)
+        serviceRecoveryJob = serviceScope.launch {
+            val restored = restoreCurrentPlayback(positionMs, preferFreshResolution = true)
+            if (!restored) Timber.w("Playback watchdog recovery failed")
         }
     }
 
