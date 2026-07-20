@@ -8,6 +8,7 @@ import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
+import com.luc4n3x.levyra.data.LyricsMatcher
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -16,7 +17,6 @@ import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.Track
-import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aMetadata
 import com.luc4n3x.levyra.player.offline.tagging.LevyraM4aTagWriter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -188,8 +188,7 @@ class OfflineAudioExporter(
     private val client: OkHttpClient = LevyraHttpClientFactory.download(),
     private val progress: suspend (Int) -> Unit = {},
     private val taskKey: String = "",
-    private val settings: LevyraDownloadSettings = LevyraDownloadSettings(),
-    private val downloadQualityKey: String = settings.storedQualityKey()
+    private val settings: LevyraDownloadSettings = LevyraDownloadSettings()
 ) {
     private val rateLimiter = DownloadRateLimiter(settings.effectiveRateKbps)
     val embeddedMetadataWriterReady: Boolean
@@ -222,21 +221,22 @@ class OfflineAudioExporter(
         }
         var embeddedFile: PreparedAudioFile? = null
         try {
+            val metadataTrack = mergeOfflineMetadataTrack(track, playable)
+            val canEmbedMetadata = settings.embedMetadata &&
+                downloaded.container.supportsEmbeddedMetadata &&
+                shouldEmbedFastMetadata(downloaded.file.length(), metadataTrack.durationMs)
             reportProgress(84)
-            val artwork = if (settings.embedMetadata && settings.embedArtwork && downloaded.container.supportsEmbeddedMetadata && shouldEmbedFastMetadata(downloaded.file.length(), playable.durationMs)) {
-                downloadArtwork(playable)
-            } else {
-                null
-            }
+            val artwork = if (canEmbedMetadata && settings.embedArtwork) downloadArtwork(metadataTrack) else null
+            val lyrics = if (canEmbedMetadata) loadCachedLyrics(metadataTrack) else ""
             reportProgress(88)
-            embeddedFile = maybeEmbedMetadata(downloaded.file, playable, artwork, downloaded.container, workspace)
+            embeddedFile = maybeEmbedMetadata(downloaded.file, metadataTrack, artwork, lyrics, downloaded.container, workspace)
             reportProgress(90)
             if (settings.verifyFile) verifyAudioFile(embeddedFile.file, embeddedFile.container)
             reportProgress(92)
-            val exported = saveToMusicCollection(embeddedFile.file, playable, embeddedFile.container)
+            val exported = saveToMusicCollection(embeddedFile.file, metadataTrack, embeddedFile.container)
             reportProgress(98)
-            val fileName = buildFileName(playable, embeddedFile.container.extension)
-            persistDownload(track, playable, fileName, exported.uri, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
+            val fileName = buildFileName(metadataTrack, embeddedFile.container.extension)
+            persistDownload(track, metadataTrack, fileName, exported.uri, embeddedFile.container, embeddedFile.fileMetadataEmbedded)
             Timber.i("Offline export completed: %s", fileName)
             reportProgress(100)
             OfflineExportResult(
@@ -577,6 +577,7 @@ class OfflineAudioExporter(
         input: File,
         track: Track,
         artwork: ByteArray?,
+        lyrics: String,
         container: AudioContainer,
         workspace: File
     ): PreparedAudioFile {
@@ -588,12 +589,9 @@ class OfflineAudioExporter(
         val tagResult = LevyraM4aTagWriter.write(
             input = input,
             output = output,
-            metadata = LevyraM4aMetadata(
-                title = track.title,
-                artist = track.artist,
-                album = track.album.ifBlank { "Levyra" },
-                albumArtist = track.artist,
-                artworkData = artwork
+            metadata = track.toRichM4aMetadata(
+                artwork = artwork,
+                lyrics = lyrics
             )
         )
         return if (tagResult.success && output.exists() && output.length() > 0L) {
@@ -602,6 +600,21 @@ class OfflineAudioExporter(
             runCatching { output.delete() }
             PreparedAudioFile(input, fileName, container, fileMetadataEmbedded = false)
         }
+    }
+
+    private suspend fun loadCachedLyrics(track: Track): String {
+        if (track.title.isBlank()) return ""
+        val durationBucket = (track.durationMs.coerceAtLeast(0L) / 1000L) / 5L
+        val entity = runCatching {
+            LevyraDatabase.get(context).lyricsCacheDao().findBestPositiveForOffline(
+                titleKey = LyricsMatcher.normalize(track.title),
+                artistKey = LyricsMatcher.normalize(track.artist),
+                durationBucket = durationBucket,
+                minimumDurationBucket = (durationBucket - 1L).coerceAtLeast(0L),
+                maximumDurationBucket = durationBucket + 1L
+            )
+        }.onFailure { Timber.w(it, "Cached lyrics lookup failed") }.getOrNull() ?: return ""
+        return cachedLyricsText(entity.payload)
     }
 
     private suspend fun persistDownload(original: Track, resolved: Track, fileName: String, uri: Uri, container: AudioContainer, embeddedMetadata: Boolean) {
@@ -617,8 +630,6 @@ class OfflineAudioExporter(
                     uri = uri.toString(),
                     mimeType = container.mimeType,
                     embeddedMetadata = embeddedMetadata,
-                    downloadPreset = settings.storedPresetKey,
-                    downloadQuality = downloadQualityKey,
                     savedAt = System.currentTimeMillis()
                 )
             )
