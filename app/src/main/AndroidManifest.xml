@@ -44,6 +44,24 @@
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="youtube.com" />
+                <data android:scheme="https" android:host="www.youtube.com" />
+                <data android:scheme="https" android:host="m.youtube.com" />
+                <data android:scheme="https" android:host="music.youtube.com" />
+                <data android:scheme="https" android:host="youtu.be" />
+                <data android:scheme="https" android:host="youtube-nocookie.com" />
+                <data android:scheme="https" android:host="www.youtube-nocookie.com" />
+            </intent-filter>
         </activity>
 
         <receiver

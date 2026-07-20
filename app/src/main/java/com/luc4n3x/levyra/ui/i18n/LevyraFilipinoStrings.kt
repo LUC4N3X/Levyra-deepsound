@@ -316,7 +316,7 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "doubleTapSeekSubtitle" to "Tagal ng paglaktaw sa kaliwa at kanan",
     "longPress" to "Long press",
     "longPressSubtitle" to "Pansamantalang bilis habang nakapindot",
-    "downloadEngineSection" to "DOWNLOAD ENGINE 2.0",
+    "downloadEngineSection" to "DOWNLOAD ENGINE 3.0",
     "wifiOnly" to "Wi-Fi lamang",
     "wifiOnlySubtitle" to "Sisimulan lamang ng WorkManager ang download sa unmetered network",
     "chargingOnly" to "Habang nagcha-charge lamang",

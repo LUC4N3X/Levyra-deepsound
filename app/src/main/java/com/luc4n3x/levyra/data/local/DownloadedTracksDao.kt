@@ -20,6 +20,22 @@ interface DownloadedTracksDao {
     @Query("SELECT * FROM downloaded_tracks WHERE trackId = :trackId ORDER BY savedAt DESC LIMIT 1")
     suspend fun byTrackId(trackId: String): DownloadEntity?
 
+    @Query(
+        """
+        SELECT * FROM downloaded_tracks
+        WHERE trackId = :trackId
+          AND downloadPreset = :downloadPreset
+          AND downloadQuality = :downloadQuality
+        ORDER BY savedAt DESC
+        LIMIT 1
+        """
+    )
+    suspend fun byTrackIdAndProfile(
+        trackId: String,
+        downloadPreset: String,
+        downloadQuality: String
+    ): DownloadEntity?
+
     @Query("DELETE FROM downloaded_tracks WHERE id = :id")
     suspend fun deleteById(id: Long)
 }
