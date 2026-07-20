@@ -78,6 +78,13 @@ data class LevyraDownloadSettings(
         }
 }
 
+internal fun LevyraDownloadSettings.shouldSkipExistingDownload(
+    trackId: String,
+    downloadedTrackIds: Set<String>
+): Boolean {
+    return skipExisting && trackId.isNotBlank() && trackId in downloadedTrackIds
+}
+
 data class LevyraIntelligenceSummary(
     val overview: String = "",
     val mood: String = "",
