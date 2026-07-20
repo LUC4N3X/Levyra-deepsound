@@ -84,6 +84,15 @@ import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.feature.motion.MotionArtworkEngine
 import com.luc4n3x.levyra.feature.motion.MotionArtworkIdentityKey
+import com.luc4n3x.levyra.feature.providers.CachedPlaybackProvider
+import com.luc4n3x.levyra.feature.providers.LevyraNativePlaybackProvider
+import com.luc4n3x.levyra.feature.providers.LevyraProviderRouter
+import com.luc4n3x.levyra.feature.providers.MemoryCatalogProvider
+import com.luc4n3x.levyra.feature.providers.YoutubeMusicCatalogProvider
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaKind
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaResolver
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
@@ -221,6 +230,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val lyricsRepository = LyricsRepository(application.applicationContext)
     private val sponsorBlockRepository = SponsorBlockRepository()
     private val resolver = PlaybackResolver.getInstance(application.applicationContext)
+    private val providerRouter = LevyraProviderRouter(
+        catalogProviders = listOf(
+            YoutubeMusicCatalogProvider(repository),
+            MemoryCatalogProvider(repository)
+        ),
+        playbackProviders = listOf(
+            CachedPlaybackProvider(resolver),
+            LevyraNativePlaybackProvider(resolver)
+        )
+    )
+    private val sharedMediaResolver = SharedMediaResolver(providerRouter)
     private val returnYoutubeDislikeRepository = ReturnYoutubeDislikeRepository()
     private val youtubeCommentsRepository = YoutubeCommentsRepository()
     private val moodEngine = MoodEngine()
@@ -262,6 +282,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
     )
     private var searchJob: Job? = null
+    private var sharedMediaJob: Job? = null
     private var playJob: Job? = null
     private var modeSwitchJob: Job? = null
     private var streamRecoveryJob: Job? = null
@@ -1274,7 +1295,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val baseTrack = (youtubePlayableTrack(track) ?: track).copy(streamUrl = "", videoStreamUrl = "")
                 val resolved = withContext(Dispatchers.IO) {
-                    resolver.cached(baseTrack, targetMode) ?: resolver.resolve(baseTrack, targetMode)
+                    resolver.cached(baseTrack, targetMode) ?: providerRouter.resolve(baseTrack, targetMode)
                 }
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
@@ -1333,7 +1354,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         streamRecoveryJob = viewModelScope.launch {
             try {
                 val baseTrack = (youtubePlayableTrack(failedTrack) ?: failedTrack).copy(streamUrl = "", videoStreamUrl = "")
-                val resolved = withContext(Dispatchers.IO) { resolver.resolve(baseTrack, videoMode) }
+                val resolved = withContext(Dispatchers.IO) { providerRouter.resolve(baseTrack, videoMode) }
                 if (!isActive || transitionId != streamTransitionId) return@launch
                 val currentIndex = queueEngine.state.value.currentIndex
                 if (currentIndex >= 0) queueEngine.updateTrackAt(currentIndex, resolved)
@@ -2117,7 +2138,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun refreshPlaybackDiagnostics(): String {
-        val diagnostics = resolver.playbackDiagnostics()
+        val diagnostics = listOf(
+            resolver.playbackDiagnostics(),
+            providerRouter.diagnostics()
+        ).filter { it.isNotBlank() }.joinToString("\n")
         _state.update { it.copy(playbackDiagnostics = diagnostics) }
         return diagnostics
     }
@@ -2918,6 +2942,87 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(offlineExportMessage = null) }
     }
 
+    fun handleSharedMedia(request: SharedMediaRequest) {
+        if (_state.value.sharedMediaPreview?.request?.key == request.key && _state.value.sharedMediaPreview?.loading == true) return
+        sharedMediaJob?.cancel()
+        _state.update {
+            it.copy(
+                sharedMediaPreview = SharedMediaPreview(
+                    request = request,
+                    title = when (request.kind) {
+                        SharedMediaKind.Playlist -> "Caricamento playlist"
+                        SharedMediaKind.Album -> "Caricamento album"
+                        SharedMediaKind.Artist, SharedMediaKind.Channel -> "Caricamento artista"
+                        else -> "Apertura contenuto condiviso"
+                    },
+                    subtitle = request.url.ifBlank { request.query },
+                    thumbnailUrl = "",
+                    tracks = emptyList(),
+                    loading = true
+                )
+            )
+        }
+        sharedMediaJob = viewModelScope.launch {
+            val result = runCatching {
+                sharedMediaResolver.resolve(request, _state.value.languageCode)
+            }
+            result.onSuccess { preview ->
+                _state.update { it.copy(sharedMediaPreview = preview) }
+            }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
+                Timber.w(error, "Shared media resolution failed")
+                _state.update {
+                    it.copy(
+                        sharedMediaPreview = SharedMediaPreview(
+                            request = request,
+                            title = "Contenuto non disponibile",
+                            subtitle = request.url.ifBlank { request.query },
+                            thumbnailUrl = "",
+                            tracks = emptyList(),
+                            error = cleanUserError(error)
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissSharedMedia() {
+        sharedMediaJob?.cancel()
+        sharedMediaJob = null
+        _state.update { it.copy(sharedMediaPreview = null) }
+    }
+
+    fun playSharedMedia() {
+        val tracks = _state.value.sharedMediaPreview?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        dismissSharedMedia()
+        if (tracks.size == 1) play(tracks.first()) else playAll(tracks)
+    }
+
+    fun playNextSharedMedia() {
+        val tracks = _state.value.sharedMediaPreview?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        dismissSharedMedia()
+        tracks.asReversed().forEach(::playNext)
+        _state.update { it.copy(offlineExportMessage = if (tracks.size == 1) "Riproduci dopo: ${tracks.first().title}" else "${tracks.size} brani aggiunti dopo quello corrente") }
+    }
+
+    fun queueSharedMedia() {
+        val tracks = _state.value.sharedMediaPreview?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        dismissSharedMedia()
+        tracks.forEach(::addToQueue)
+        _state.update { it.copy(offlineExportMessage = if (tracks.size == 1) "Aggiunto alla coda: ${tracks.first().title}" else "${tracks.size} brani aggiunti alla coda") }
+    }
+
+    fun downloadSharedMedia() {
+        val tracks = _state.value.sharedMediaPreview?.tracks.orEmpty()
+        if (tracks.isEmpty()) return
+        dismissSharedMedia()
+        exportTracksSequential(tracks, if (tracks.size == 1) "Brano condiviso" else "Contenuto condiviso")
+    }
+
     fun selectTab(tab: LevyraTab) {
         moveToTab(tab, rememberCurrent = true)
         if (tab == LevyraTab.Player) {
@@ -3028,7 +3133,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         moveToTab(LevyraTab.Search, rememberCurrent = true)
         _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList(), searchFilter = SearchFilter.All) }
         val result = runCatching {
-            val raw = repository.searchEverything(clean, _state.value.languageCode)
+            val raw = providerRouter.searchEverything(clean, _state.value.languageCode)
             raw.copy(artists = artistRepository.officialArtistHits(raw.artists))
         }
         result.onSuccess { data ->
@@ -4881,7 +4986,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private suspend fun resolvePlayableTrack(track: Track): Track {
-        val resolved = resolver.resolve(track.copy(streamUrl = ""), _state.value.isVideoMode)
+        val resolved = providerRouter.resolve(track.copy(streamUrl = ""), _state.value.isVideoMode)
         if (resolved.id != track.id) {
             throw IllegalStateException("Resolver bloccato: il brano risolto non corrisponde al brano selezionato")
         }

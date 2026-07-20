@@ -2,6 +2,8 @@ package com.luc4n3x.levyra
 
 import android.content.Intent
 import androidx.compose.runtime.mutableStateOf
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaIntentParser
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
 
 object LevyraLaunchActions {
     const val EXTRA_SHORTCUT = "levyra.shortcut"
@@ -13,6 +15,7 @@ object LevyraLaunchActions {
 
     val pendingShortcut = mutableStateOf<String?>(null)
     val pendingArtist = mutableStateOf<String?>(null)
+    val pendingSharedMedia = mutableStateOf<SharedMediaRequest?>(null)
 
     fun consumeFrom(intent: Intent?) {
         intent ?: return
@@ -23,6 +26,11 @@ object LevyraLaunchActions {
         intent.getStringExtra(EXTRA_ARTIST)?.takeIf { it.isNotBlank() }?.let { value ->
             pendingArtist.value = value
             intent.removeExtra(EXTRA_ARTIST)
+        }
+        if (intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_VIEW || intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            SharedMediaIntentParser.parse(intent)?.let { request ->
+                pendingSharedMedia.value = request
+            }
         }
     }
 }

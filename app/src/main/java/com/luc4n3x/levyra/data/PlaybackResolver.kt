@@ -112,7 +112,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     fun setAudioQuality(value: String) {
-        selectedAudioQuality = when (value.lowercase()) {
+        selectedAudioQuality = normalizeAudioQuality(value)
+    }
+
+    private fun normalizeAudioQuality(value: String): String {
+        return when (value.lowercase()) {
             "high" -> "High"
             "low" -> "Low"
             else -> "Auto"
@@ -173,12 +177,16 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     fun cached(track: Track, isVideoMode: Boolean = false): Track? {
+        return cached(track, isVideoMode, selectedAudioQuality)
+    }
+
+    private fun cached(track: Track, isVideoMode: Boolean, audioQuality: String): Track? {
         if (track.streamUrl.isNotBlank()) {
             if (isPlaybackUrlBlocked(track.streamUrl) || track.videoStreamUrl.isNotBlank() && isPlaybackUrlBlocked(track.videoStreamUrl)) return null
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             return if (streamStillFresh(track.streamUrl)) track else null
         }
-        val key = cacheKey(track, isVideoMode)
+        val key = cacheKey(track, isVideoMode, audioQuality)
         val hit = streamCache[key] ?: return null
         if (!isFresh(hit.expiresAt)) {
             remove(key)
@@ -244,17 +252,22 @@ class PlaybackResolver private constructor(private val context: Context) {
             isVideoMode = isVideoMode,
             timeoutMs = playbackResolveTimeoutMs,
             preferMp4Audio = false,
-            requestKind = "playback"
+            requestKind = "playback",
+            audioQuality = selectedAudioQuality,
+            reuseProvidedStream = true
         )
     }
 
-    suspend fun resolveForOffline(track: Track): Track {
+    suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
+        val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
         return resolveInternal(
             track = track,
             isVideoMode = false,
             timeoutMs = offlineResolveTimeoutMs,
             preferMp4Audio = true,
-            requestKind = "offline"
+            requestKind = "offline",
+            audioQuality = quality,
+            reuseProvidedStream = audioQualityOverride == null
         )
     }
 
@@ -263,23 +276,29 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         timeoutMs: Long,
         preferMp4Audio: Boolean,
-        requestKind: String
+        requestKind: String,
+        audioQuality: String,
+        reuseProvidedStream: Boolean
     ): Track = coroutineScope {
         track.streamUrl.takeIf {
+            reuseProvidedStream &&
             it.isNotBlank() &&
                 !isPlaybackUrlBlocked(it) &&
                 (track.videoStreamUrl.isBlank() || !isPlaybackUrlBlocked(track.videoStreamUrl)) &&
                 streamStillFresh(it) &&
                 (isVideoMode || isPlayableAudioUrl(it))
         }?.let { return@coroutineScope track }
-        cached(track, isVideoMode)?.let { return@coroutineScope it }
+        if (!preferMp4Audio) {
+            val cacheLookupTrack = if (reuseProvidedStream) track else track.copy(streamUrl = "", videoStreamUrl = "")
+            cached(cacheLookupTrack, isVideoMode, audioQuality)?.let { return@coroutineScope it }
+        }
 
-        val key = "${cacheKey(track, isVideoMode)}_$requestKind"
-        Timber.d("resolver start kind=%s mode=%s id=%s quality=%s", requestKind, if (isVideoMode) "video" else "audio", track.id, selectedAudioQuality)
+        val key = "${cacheKey(track, isVideoMode, audioQuality)}_$requestKind"
+        Timber.d("resolver start kind=%s mode=%s id=%s quality=%s", requestKind, if (isVideoMode) "video" else "audio", track.id, audioQuality)
         val deferred = async(Dispatchers.IO, start = CoroutineStart.LAZY) {
             try {
                 withTimeout(timeoutMs) {
-                    resolveUncached(track.copy(streamUrl = ""), isVideoMode, preferMp4Audio)
+                    resolveUncached(track.copy(streamUrl = "", videoStreamUrl = ""), isVideoMode, preferMp4Audio, audioQuality)
                 }
             } catch (error: TimeoutCancellationException) {
                 val label = if (requestKind == "offline") "Download" else "YouTube"
@@ -314,7 +333,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         return runCatching { resolve(track, isVideoMode) }.getOrNull()
     }
 
-    private suspend fun resolveUncached(track: Track, isVideoMode: Boolean = false, preferMp4Audio: Boolean = false): Track = withContext(Dispatchers.IO) {
+    private suspend fun resolveUncached(
+        track: Track,
+        isVideoMode: Boolean = false,
+        preferMp4Audio: Boolean = false,
+        audioQuality: String = selectedAudioQuality
+    ): Track = withContext(Dispatchers.IO) {
         val errors = Collections.synchronizedList(mutableListOf<String>())
 
         if (isVideoMode) {
@@ -323,7 +347,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val extractorJob = launch {
                     delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
-                    val result = runCatching { resolveVideoWithLevyraExtractor(track) }
+                    val result = runCatching { resolveVideoWithLevyraExtractor(track, audioQuality) }
                     result.onSuccess { winner.complete(it) }
                         .onFailure { error ->
                             errors += "LevyraExtractor video: ${error.playbackDiagnostic()}"
@@ -332,7 +356,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 val innerTubeJob = launch {
                     delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = true, preferMp4Audio = false))
                     if (winner.isCompleted) return@launch
-                    val stream = runCatching { hedgedInnerTube(track, errors, true) }.getOrNull()
+                    val stream = runCatching { hedgedInnerTube(track, errors, true, audioQuality) }.getOrNull()
                     if (stream != null) {
                         winner.complete(track.withDirectStream(stream))
                     }
@@ -347,7 +371,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 result
             }
             if (resolved != null) {
-                store(resolved, isVideoMode)
+                store(resolved, isVideoMode, audioQuality)
                 return@withContext resolved
             }
             val reason = errors.firstOrNull { it.contains("age", true) || it.contains("login", true) }
@@ -356,15 +380,15 @@ class PlaybackResolver private constructor(private val context: Context) {
             throw PlaybackBlockedException(reason)
         }
 
-        val resolved = resolveAudioFast(track, errors, preferMp4Audio)
+        val resolved = resolveAudioFast(track, errors, preferMp4Audio, audioQuality)
         if (resolved != null) {
-            store(resolved, isVideoMode)
+            store(resolved, isVideoMode, audioQuality)
             return@withContext resolved
         }
 
-        val alternate = resolveAudioWithSearchFallback(track, errors, preferMp4Audio)
+        val alternate = resolveAudioWithSearchFallback(track, errors, preferMp4Audio, audioQuality)
         if (alternate != null) {
-            store(alternate, isVideoMode)
+            store(alternate, isVideoMode, audioQuality)
             return@withContext alternate
         }
 
@@ -375,14 +399,19 @@ class PlaybackResolver private constructor(private val context: Context) {
         throw PlaybackBlockedException(reason)
     }
 
-    private suspend fun resolveAudioFast(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
-        if (preferMp4Audio) return resolveAudioResilient(track, errors)
+    private suspend fun resolveAudioFast(
+        track: Track,
+        errors: MutableList<String>,
+        preferMp4Audio: Boolean,
+        audioQuality: String
+    ): Track? {
+        if (preferMp4Audio) return resolveAudioResilient(track, errors, audioQuality)
         return coroutineScope {
             val winner = CompletableDeferred<Track?>()
             val extractorJob = launch {
                 delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = false))
                 if (winner.isCompleted) return@launch
-                val resolved = runCatching { resolveWithLevyraExtractor(track, false) }
+                val resolved = runCatching { resolveWithLevyraExtractor(track, false, audioQuality) }
                 resolved.onSuccess { winner.complete(it) }
                     .onFailure { error ->
                         errors += "LevyraExtractor: ${error.playbackDiagnostic()}"
@@ -391,7 +420,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             val innerTubeJob = launch {
                 delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = false))
                 if (winner.isCompleted) return@launch
-                val stream = runCatching { hedgedInnerTube(track, errors, false) }.getOrNull()
+                val stream = runCatching { hedgedInnerTube(track, errors, false, audioQuality) }.getOrNull()
                 if (stream != null) winner.complete(track.withDirectStream(stream))
             }
             launch {
@@ -405,12 +434,16 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private suspend fun resolveAudioResilient(track: Track, errors: MutableList<String>): Track? = coroutineScope {
+    private suspend fun resolveAudioResilient(
+        track: Track,
+        errors: MutableList<String>,
+        audioQuality: String
+    ): Track? = coroutineScope {
         val winner = CompletableDeferred<Track?>()
         val extractorJob = launch {
             delay(LevyraResolverLatency.extractorHedgeDelayMs(isVideoMode = false, preferMp4Audio = true))
             if (winner.isCompleted) return@launch
-            val resolved = runCatching { resolveWithLevyraExtractor(track, true) }
+            val resolved = runCatching { resolveWithLevyraExtractor(track, true, audioQuality) }
             resolved.onSuccess { winner.complete(it) }
                 .onFailure { error ->
                     errors += "LevyraExtractor: ${error.playbackDiagnostic()}"
@@ -419,7 +452,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         val innerTubeJob = launch {
             delay(LevyraResolverLatency.innerTubeFallbackDelayMs(isVideoMode = false, preferMp4Audio = true))
             if (winner.isCompleted) return@launch
-            val stream = runCatching { raceInnerTube(track, errors, false, true) }.getOrNull()
+            val stream = runCatching { raceInnerTube(track, errors, false, true, audioQuality) }.getOrNull()
             if (stream != null) winner.complete(track.withDirectStream(stream))
         }
         launch {
@@ -432,12 +465,17 @@ class PlaybackResolver private constructor(private val context: Context) {
         result
     }
 
-    private suspend fun resolveAudioWithSearchFallback(track: Track, errors: MutableList<String>, preferMp4Audio: Boolean): Track? {
+    private suspend fun resolveAudioWithSearchFallback(
+        track: Track,
+        errors: MutableList<String>,
+        preferMp4Audio: Boolean,
+        audioQuality: String
+    ): Track? {
         val candidates = findAlternativeAudioCandidates(track)
         if (candidates.isEmpty()) return null
         for (candidate in candidates) {
             val localErrors = Collections.synchronizedList(mutableListOf<String>())
-            val resolved = runCatching { resolveAudioFast(candidate, localErrors, preferMp4Audio) }.getOrNull()
+            val resolved = runCatching { resolveAudioFast(candidate, localErrors, preferMp4Audio, audioQuality) }.getOrNull()
             if (resolved != null && resolved.streamUrl.isNotBlank() && streamStillFresh(resolved.streamUrl) && isPlayableAudioUrl(resolved.streamUrl)) {
                 return track.copy(
                     streamUrl = resolved.streamUrl,
@@ -581,11 +619,16 @@ class PlaybackResolver private constructor(private val context: Context) {
             .trim()
     }
 
-    private suspend fun hedgedInnerTube(track: Track, errors: MutableList<String>, isVideoMode: Boolean): DirectStream? {
+    private suspend fun hedgedInnerTube(
+        track: Track,
+        errors: MutableList<String>,
+        isVideoMode: Boolean,
+        audioQuality: String
+    ): DirectStream? {
         val ladder = orderedProfiles().map { profile ->
             listOf(
                 suspend {
-                    runCatching { resolveWithInnerTube(track, profile, isVideoMode, false) }
+                    runCatching { resolveWithInnerTube(track, profile, isVideoMode, false, audioQuality) }
                         .onFailure { error ->
                             error.message?.takeIf { it.isNotBlank() }?.let { errors += "${profile.label}: $it" }
                         }
@@ -620,7 +663,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         errors: MutableList<String>,
         isVideoMode: Boolean = false,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        audioQuality: String = selectedAudioQuality
     ): DirectStream? = coroutineScope {
         val winner = CompletableDeferred<DirectStream?>()
         val fallback = AtomicReference<DirectStream?>(null)
@@ -628,7 +672,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             launch {
                 val dynamicDelay = profile.delayMs + index * 20L
                 if (dynamicDelay > 0L) delay(dynamicDelay)
-                val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio) }
+                val attempt = runCatching { resolveWithInnerTube(track, profile, isVideoMode, preferMp4Audio, audioQuality) }
                 attempt.onSuccess { stream ->
                     if (!acceptResolvedStream(stream, isVideoMode, "${profile.label} probe", errors)) {
                         recordClientFailure(profile, null, IllegalStateException("Stream non valido o URL scaduto"))
@@ -780,10 +824,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun store(track: Track, isVideoMode: Boolean = false) {
+    private fun store(
+        track: Track,
+        isVideoMode: Boolean = false,
+        audioQuality: String = selectedAudioQuality
+    ) {
         if (track.streamUrl.isBlank() || !streamStillFresh(track.streamUrl)) return
         if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return
-        val key = cacheKey(track, isVideoMode)
+        val key = cacheKey(track, isVideoMode, audioQuality)
         val expiresAt = expiresAtFor(track.streamUrl)
         streamCache[key] = CachedStream(track, expiresAt)
         if (isVideoMode || track.videoStreamUrl.isNotBlank()) return
@@ -914,9 +962,13 @@ class PlaybackResolver private constructor(private val context: Context) {
         return Regex("(?:[?&])expire=(\\d+)").find(url)?.groupValues?.getOrNull(1)?.toLongOrNull()
     }
 
-    private fun cacheKey(track: Track, isVideoMode: Boolean = false): String {
+    private fun cacheKey(
+        track: Track,
+        isVideoMode: Boolean = false,
+        audioQuality: String = selectedAudioQuality
+    ): String {
         val base = track.id.trim().ifBlank { track.videoUrl.trim() }
-        val quality = selectedAudioQuality.lowercase()
+        val quality = normalizeAudioQuality(audioQuality).lowercase()
         return if (isVideoMode) "${base}_video_$quality" else "${base}_audio_$quality"
     }
 
@@ -924,18 +976,19 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         profile: ClientProfile,
         isVideoMode: Boolean = false,
-        preferMp4Audio: Boolean = false
+        preferMp4Audio: Boolean = false,
+        audioQuality: String = selectedAudioQuality
     ): DirectStream {
         val startedAt = System.nanoTime()
         val mode = if (isVideoMode) "video" else if (preferMp4Audio) "offline" else "audio"
         resilienceEngine.recordAttempt(profile.label, mode)
         return try {
             val firstAttempt = runCatching {
-                resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio)
+                resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
             val stream = firstAttempt.getOrElse { firstError ->
                 if (!playbackSecurity.rotateIfNeeded(firstError)) throw firstError
-                resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio)
+                resolveWithInnerTubeOnce(track, profile, isVideoMode, preferMp4Audio, audioQuality)
             }
             playbackSecurity.resetFailureState()
             val latency = elapsedMs(startedAt)
@@ -954,7 +1007,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         track: Track,
         profile: ClientProfile,
         isVideoMode: Boolean,
-        preferMp4Audio: Boolean
+        preferMp4Audio: Boolean,
+        audioQuality: String
     ): DirectStream = withContext(Dispatchers.IO) {
         val session = if (profile.requiresPoToken) {
             playbackSecurity.currentSession()
@@ -1025,12 +1079,12 @@ class PlaybackResolver private constructor(private val context: Context) {
                     if (!mime.startsWith("audio/", true)) continue
                     val itag = format.optInt("itag", 0)
                     val bitrate = format.optInt("bitrate", 0)
-                    val audioQuality = format.optString("audioQuality")
+                    val formatAudioQuality = format.optString("audioQuality")
                     add(
                         Triple(
                             format,
-                            scoreAudioFormat(mime, itag, bitrate, audioQuality, preferMp4Audio),
-                            formatLabel(mime, itag, bitrate, audioQuality)
+                            scoreAudioFormat(mime, itag, bitrate, formatAudioQuality, preferMp4Audio, audioQuality),
+                            formatLabel(mime, itag, bitrate, formatAudioQuality)
                         )
                     )
                 }
@@ -1161,7 +1215,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun selectAudioStream(streams: List<AudioStream>, preferMp4Audio: Boolean): AudioStream? {
+    private fun selectAudioStream(
+        streams: List<AudioStream>,
+        preferMp4Audio: Boolean,
+        audioQuality: String = selectedAudioQuality
+    ): AudioStream? {
         val direct = streams.filter {
             it.isUrl &&
                 it.content.isNotBlank() &&
@@ -1169,14 +1227,14 @@ class PlaybackResolver private constructor(private val context: Context) {
                 isDirectAudioUrl(it.content)
         }
         val playable = direct.filter { streamStillFresh(it.content) }.ifEmpty { direct }
-        return playable.maxByOrNull { scoreExtractorAudio(it, preferMp4Audio) }
+        return playable.maxByOrNull { scoreExtractorAudio(it, preferMp4Audio, audioQuality) }
     }
 
-    private fun scoreExtractorAudio(stream: AudioStream, preferMp4Audio: Boolean): Int {
+    private fun scoreExtractorAudio(stream: AudioStream, preferMp4Audio: Boolean, audioQuality: String): Int {
         val formatName = stream.getFormat()?.name.orEmpty()
         val content = stream.content
         val mime = "$formatName $content"
-        return scoreAudioFormat(mime, stream.formatId, stream.averageBitrate, "", preferMp4Audio)
+        return scoreAudioFormat(mime, stream.formatId, stream.averageBitrate, "", preferMp4Audio, audioQuality)
     }
 
     private fun isMp4AudioStream(stream: AudioStream): Boolean {
@@ -1208,10 +1266,14 @@ class PlaybackResolver private constructor(private val context: Context) {
         }.getOrDefault(false)
     }
 
-    private fun resolveWithLevyraExtractor(track: Track, preferMp4Audio: Boolean = false): Track {
+    private fun resolveWithLevyraExtractor(
+        track: Track,
+        preferMp4Audio: Boolean = false,
+        audioQuality: String = selectedAudioQuality
+    ): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
-        val audio = selectAudioStream(info.audioStreams, preferMp4Audio)
+        val audio = selectAudioStream(info.audioStreams, preferMp4Audio, audioQuality)
         val hlsUrl = if (audio == null && !preferMp4Audio) {
             info.hlsUrl.takeIf { isVerifiedHlsManifest(it) }
         } else {
@@ -1241,7 +1303,10 @@ class PlaybackResolver private constructor(private val context: Context) {
         }
     }
 
-    private fun resolveVideoWithLevyraExtractor(track: Track): Track {
+    private fun resolveVideoWithLevyraExtractor(
+        track: Track,
+        audioQuality: String = selectedAudioQuality
+    ): Track {
         NewPipeRuntime.ensure()
         val info = StreamInfo.getInfo(ServiceList.YouTube, track.videoUrl)
         val bestThumb = info.thumbnails.maxByOrNull { image ->
@@ -1253,7 +1318,7 @@ class PlaybackResolver private constructor(private val context: Context) {
         ).withYoutubeEngagement(info.likeCount, info.viewCount)
         cacheYoutubeEngagement(extractVideoId(track.videoUrl).ifBlank { track.id }, info.likeCount, info.viewCount)
         val durationMs = if (info.duration > 0L) info.duration * 1000L else track.durationMs
-        val bestAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false)?.content
+        val bestAudio = selectAudioStream(info.audioStreams, preferMp4Audio = false, audioQuality = audioQuality)?.content
         val muxedCandidates = info.videoStreams
             .filter { it.isUrl && it.content.isNotBlank() && streamStillFresh(it.content) }
             .map(::extractorVideoCandidate)
@@ -1415,7 +1480,14 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
     }
 
-    private fun scoreAudioFormat(mime: String, itag: Int, bitrate: Int, audioQuality: String, preferMp4Audio: Boolean): Int {
+    private fun scoreAudioFormat(
+        mime: String,
+        itag: Int,
+        bitrate: Int,
+        formatAudioQuality: String,
+        preferMp4Audio: Boolean,
+        requestedAudioQuality: String
+    ): Int {
         val clean = mime.lowercase()
         val isMp4 = clean.contains("mp4") || clean.contains("m4a") || clean.contains("mpeg")
         val isOpus = clean.contains("opus") || clean.contains("webm")
@@ -1426,7 +1498,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             isMp4 -> 420_000
             else -> 0
         }
-        val itagBias = if (selectedAudioQuality.equals("low", true)) {
+        val itagBias = if (requestedAudioQuality.equals("low", true)) {
             when (itag) {
                 139 -> 420_000
                 249 -> 380_000
@@ -1448,12 +1520,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             }
         }
         val qualityBias = when {
-            audioQuality.contains("HIGH", true) -> 620_000
-            audioQuality.contains("MEDIUM", true) -> 420_000
-            audioQuality.contains("LOW", true) -> 120_000
+            formatAudioQuality.contains("HIGH", true) -> 620_000
+            formatAudioQuality.contains("MEDIUM", true) -> 420_000
+            formatAudioQuality.contains("LOW", true) -> 120_000
             else -> 0
         }
-        val bitrateBias = when (selectedAudioQuality.lowercase()) {
+        val bitrateBias = when (requestedAudioQuality.lowercase()) {
             "low" -> -bitrate
             "high" -> bitrate
             else -> bitrate / 2

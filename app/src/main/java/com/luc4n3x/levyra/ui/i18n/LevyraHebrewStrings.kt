@@ -316,7 +316,7 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "doubleTapSeekSubtitle" to "משך הדילוג בצד שמאל ובצד ימין",
     "longPress" to "לחיצה ארוכה",
     "longPressSubtitle" to "מהירות זמנית כל עוד ממשיכים ללחוץ",
-    "downloadEngineSection" to "מנוע הורדות 2.0",
+    "downloadEngineSection" to "מנוע הורדות 3.0",
     "wifiOnly" to "Wi-Fi בלבד",
     "wifiOnlySubtitle" to "WorkManager מתחיל הורדות רק ברשת שאינה מוגבלת",
     "chargingOnly" to "רק בזמן טעינה",
