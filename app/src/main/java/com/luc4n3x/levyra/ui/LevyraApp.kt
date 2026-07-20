@@ -1067,7 +1067,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 enter = miniEnter,
                 exit = miniExit
             ) {
-                DownloadProgressHud(state = state)
+                DownloadProgressHud(state = state, onCancel = viewModel::cancelDownload)
             }
 
             AnimatedVisibility(visible = state.showOnboarding, enter = overlayEnter, exit = overlayExit) {
@@ -1417,6 +1417,7 @@ private fun SharedMediaAction(
 }
 
 private data class DownloadHudItem(
+    val taskKey: String,
     val progress: Int,
     val title: String,
     val count: Int
@@ -1429,7 +1430,7 @@ private fun LevyraUiState.activeDownloadHudItem(strings: LevyraStrings): Downloa
     val progress = (downloadProgressByTrackId[primaryId] ?: 1).coerceIn(1, 99)
     val rawTitle = downloadTitleByTrackId[primaryId].orEmpty().ifBlank { strings.song }
     val title = if (ids.size > 1) "$rawTitle +${ids.size - 1}" else rawTitle
-    return DownloadHudItem(progress = progress, title = title, count = ids.size)
+    return DownloadHudItem(taskKey = primaryId, progress = progress, title = title, count = ids.size)
 }
 
 private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
@@ -1441,7 +1442,7 @@ private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
 }
 
 @Composable
-private fun DownloadProgressHud(state: LevyraUiState) {
+private fun DownloadProgressHud(state: LevyraUiState, onCancel: (String) -> Unit) {
     val item = state.activeDownloadHudItem(LocalLevyraStrings.current) ?: return
     val progressFraction = item.progress / 100f
     Surface(
@@ -1525,7 +1526,17 @@ private fun DownloadProgressHud(state: LevyraUiState) {
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Icon(Icons.Rounded.Download, contentDescription = null, tint = LevyraCyan, modifier = Modifier.size(22.dp))
+            IconButton(
+                onClick = { onCancel(item.taskKey) },
+                modifier = Modifier.size(38.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = LocalLevyraStrings.current.cancelDownload,
+                    tint = LevyraMuted,
+                    modifier = Modifier.size(21.dp)
+                )
+            }
         }
     }
 }
