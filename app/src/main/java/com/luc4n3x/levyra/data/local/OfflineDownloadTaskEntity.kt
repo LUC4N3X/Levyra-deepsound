@@ -40,6 +40,9 @@ interface OfflineDownloadTasksDao {
     @Query("UPDATE offline_download_tasks SET state = :state, progress = :progress, error = :error, updatedAt = :updatedAt WHERE taskKey = :taskKey AND workId = :workId")
     suspend fun updateStateForWork(taskKey: String, workId: String, state: String, progress: Int, error: String, updatedAt: Long): Int
 
+    @Query("UPDATE offline_download_tasks SET progress = :progress, updatedAt = :updatedAt WHERE taskKey = :taskKey AND workId = :workId AND state = 'RUNNING'")
+    suspend fun updateRunningProgress(taskKey: String, workId: String, progress: Int, updatedAt: Long): Int
+
     @Query("DELETE FROM offline_download_tasks WHERE taskKey = :taskKey")
     suspend fun delete(taskKey: String)
 
