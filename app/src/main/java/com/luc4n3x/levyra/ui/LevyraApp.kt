@@ -611,17 +611,59 @@ private fun ActiveTrackEqualizer(
     }
 }
 @Composable
+private fun SectionAccentBar(height: Dp = 20.dp, width: Dp = 3.5.dp) {
+    Box(
+        modifier = Modifier
+            .width(width)
+            .height(height)
+            .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
+    )
+}
+
+@Composable
+private fun HomePlayAllButton(onClick: () -> Unit, size: Dp = 36.dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = 0.15f),
+                        LevyraViolet.copy(alpha = 0.11f)
+                    )
+                ),
+                CircleShape
+            )
+            .border(
+                1.dp,
+                Brush.linearGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = 0.45f),
+                        LevyraViolet.copy(alpha = 0.32f)
+                    )
+                ),
+                CircleShape
+            )
+            .pressable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.PlayArrow,
+            contentDescription = LocalLevyraStrings.current.play,
+            tint = LevyraCyan,
+            modifier = Modifier.size(size * 0.55f)
+        )
+    }
+}
+
+@Composable
 private fun SectionTitle(title: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(3.5.dp)
-                .height(20.dp)
-                .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
-        )
+        SectionAccentBar()
         Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -4240,12 +4282,28 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                         center = haloCenter,
                         radius = haloRadius
                     )
+                    val violetHaloCenter = androidx.compose.ui.geometry.Offset(width * 0.94f, height * 0.12f)
+                    val violetHaloRadius = width * 0.64f
+                    val violetHaloBrush = Brush.radialGradient(
+                        colors = listOf(
+                            LevyraViolet.copy(alpha = 0.05f),
+                            LevyraViolet.copy(alpha = 0.015f),
+                            Color.Transparent
+                        ),
+                        center = violetHaloCenter,
+                        radius = violetHaloRadius
+                    )
                     onDrawBehind {
                         drawRect(backgroundBrush)
                         drawCircle(
                             brush = haloBrush,
                             radius = haloRadius,
                             center = haloCenter
+                        )
+                        drawCircle(
+                            brush = violetHaloBrush,
+                            radius = violetHaloRadius,
+                            center = violetHaloCenter
                         )
                     }
                 } else {
@@ -4280,6 +4338,17 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                         ),
                         center = rightHalo,
                         radius = rightHaloRadius
+                    )
+                    val leftHalo = androidx.compose.ui.geometry.Offset(-width * 0.06f, height * 0.56f)
+                    val leftHaloRadius = width * 0.62f
+                    val leftHaloBrush = Brush.radialGradient(
+                        colors = listOf(
+                            primaryAccent.copy(alpha = 0.055f),
+                            primaryAccent.copy(alpha = 0.018f),
+                            Color.Transparent
+                        ),
+                        center = leftHalo,
+                        radius = leftHaloRadius
                     )
                     val signalPath = androidx.compose.ui.graphics.Path().apply {
                         moveTo(-width * 0.10f, height * 0.27f)
@@ -4374,6 +4443,11 @@ private fun LevyraBackground(accentStart: Int?, accentEnd: Int?) {
                             brush = rightHaloBrush,
                             radius = rightHaloRadius,
                             center = rightHalo
+                        )
+                        drawCircle(
+                            brush = leftHaloBrush,
+                            radius = leftHaloRadius,
+                            center = leftHalo
                         )
                         drawPath(
                             path = signalPath,
@@ -5034,13 +5108,7 @@ private fun TrendingArtistsShelf(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .height(22.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-            )
+            SectionAccentBar(height = 22.dp, width = 4.dp)
             Text(
                 text = strings.artists,
                 color = LevyraText,
@@ -5171,47 +5239,44 @@ private fun ResonanceShelf(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
+            Row(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
+                SectionAccentBar(height = 32.dp, width = 4.dp)
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = strings.voicesTitle,
+                            color = LevyraText,
+                            fontSize = 24.sp,
+                            lineHeight = 27.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.55).sp
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = LevyraMuted,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                     Text(
-                        text = strings.voicesTitle,
-                        color = LevyraText,
-                        fontSize = 24.sp,
-                        lineHeight = 27.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-0.55).sp
-                    )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = LevyraMuted,
-                        modifier = Modifier.size(22.dp)
+                        text = strings.voicesSubtitle,
+                        color = LevyraMuted,
+                        fontSize = 12.5.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(
-                    text = strings.voicesSubtitle,
-                    color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
-            IconButton(onClick = onPlayAll) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = strings.play,
-                    tint = LevyraText,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            HomePlayAllButton(onClick = onPlayAll)
         }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
@@ -5426,47 +5491,44 @@ private fun PersonalListeningShelf(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
+            Row(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
+                SectionAccentBar(height = 34.dp, width = 4.dp)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = strings.personalOrbitTitle,
+                            color = LevyraText,
+                            fontSize = 26.sp,
+                            lineHeight = 29.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.65).sp
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = LevyraMuted,
+                            modifier = Modifier.size(23.dp)
+                        )
+                    }
                     Text(
-                        text = strings.personalOrbitTitle,
-                        color = LevyraText,
-                        fontSize = 26.sp,
-                        lineHeight = 29.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-0.65).sp
-                    )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = LevyraMuted,
-                        modifier = Modifier.size(23.dp)
+                        text = strings.personalOrbitSubtitle,
+                        color = LevyraMuted,
+                        fontSize = 12.5.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(
-                    text = strings.personalOrbitSubtitle,
-                    color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
-            IconButton(onClick = onPlayAll) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = strings.play,
-                    tint = LevyraText,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            HomePlayAllButton(onClick = onPlayAll)
         }
 
         HorizontalPager(
@@ -6183,7 +6245,8 @@ private fun ContinueListeningCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
-                    .height(2.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(topEnd = 3.dp))
                     .background(Brush.horizontalGradient(listOf(accentStart, accentEnd)))
             )
         }
@@ -12714,58 +12777,58 @@ private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
 
 @Composable
 private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            LevyraLogoMark(size = 56.dp)
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                LevyraWordmark(fontSize = 27.sp, dotSize = 5.dp)
-                Text(
-                    text = LocalLevyraStrings.current.formatGreeting(userName, java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)),
-                    color = LevyraMuted,
-                    fontSize = 12.5.sp,
-                    lineHeight = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        Surface(
-            color = if (LevyraIsLight) Color.White.copy(alpha = 0.90f) else Color(0xFF0C0D10),
-            border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
-            shape = RoundedCornerShape(15.dp),
             modifier = Modifier
-                .size(48.dp)
-                .pressable(onClick = onSettings)
+                .fillMaxWidth()
+                .padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                if (isResolving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = LevyraCyan
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Rounded.Settings,
-                        contentDescription = LocalLevyraStrings.current.settings,
-                        tint = LevyraText,
-                        modifier = Modifier.size(22.dp)
-                    )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(11.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                LevyraLogoMark(size = 42.dp)
+                LevyraWordmark(fontSize = 20.sp, dotSize = 4.dp)
+            }
+            Surface(
+                color = if (LevyraIsLight) Color.White.copy(alpha = 0.90f) else Color(0xFF0C0D10),
+                border = BorderStroke(Dp.Hairline, LevyraAdaptiveSoftHairline),
+                shape = RoundedCornerShape(15.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .pressable(onClick = onSettings)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (isResolving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = LevyraCyan
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = LocalLevyraStrings.current.settings,
+                            tint = LevyraText,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
         }
+        Text(
+            text = LocalLevyraStrings.current.formatGreeting(userName, java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)),
+            color = LevyraText,
+            fontSize = 24.sp,
+            lineHeight = 28.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.6).sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -13116,30 +13179,26 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
             contentType = { "home-mood" }
         ) { mood ->
             val selected = mood.id == selectedId
-            Surface(
-                color = when {
-                    selected && LevyraIsLight -> LevyraText
-                    selected -> Color(0xFFF4F4F6)
-                    LevyraIsLight -> Color.White.copy(alpha = 0.82f)
-                    else -> Color(0xFF0C0D10)
-                },
-                border = BorderStroke(
-                    width = Dp.Hairline,
-                    color = when {
-                        selected -> Color.Transparent
-                        else -> LevyraAdaptiveSoftHairline
-                    }
-                ),
-                shape = CircleShape,
-                modifier = Modifier.pressable(onClick = { onSelect(mood) })
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(
+                        if (selected) {
+                            Brush.linearGradient(listOf(LevyraCyan, LevyraViolet))
+                        } else {
+                            SolidColor(if (LevyraIsLight) Color.White.copy(alpha = 0.82f) else Color(0xFF0C0D10))
+                        },
+                        CircleShape
+                    )
+                    .then(
+                        if (selected) Modifier
+                        else Modifier.border(Dp.Hairline, LevyraAdaptiveSoftHairline, CircleShape)
+                    )
+                    .pressable(onClick = { onSelect(mood) })
             ) {
                 Text(
                     text = mood.title,
-                    color = when {
-                        selected && LevyraIsLight -> Color.White
-                        selected -> Color(0xFF090A0C)
-                        else -> LevyraText
-                    },
+                    color = if (selected) Color.White else LevyraText,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
@@ -13162,13 +13221,7 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .height(22.dp)
-                    .width(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
-            )
+            SectionAccentBar(height = 22.dp, width = 4.dp)
             Text(
                 text = title,
                 color = LevyraText,
@@ -13180,23 +13233,7 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Surface(
-            color = LevyraAdaptiveChip,
-            border = BorderStroke(Dp.Hairline, LevyraAdaptiveHairline),
-            shape = CircleShape,
-            modifier = Modifier
-                .size(36.dp)
-                .pressable(onClick = onPlayAll)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = LocalLevyraStrings.current.play,
-                    tint = LevyraCyan,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
+        HomePlayAllButton(onClick = onPlayAll)
     }
 }
 
@@ -13601,12 +13638,21 @@ private fun ChartRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(modifier = Modifier.width(26.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    text = rank.toString(),
-                    color = if (rank <= 3) LevyraCyan else LevyraMuted,
-                    fontSize = if (rank <= 3) 20.sp else 16.sp,
-                    fontWeight = FontWeight.Black
-                )
+                if (rank <= 3) {
+                    Text(
+                        text = rank.toString(),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        style = TextStyle(brush = Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)))
+                    )
+                } else {
+                    Text(
+                        text = rank.toString(),
+                        color = LevyraMuted,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
             }
             Box {
                 CoverImage(track, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)), zoom = 1.35f)
