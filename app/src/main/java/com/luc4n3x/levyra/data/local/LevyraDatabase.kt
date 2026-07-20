@@ -20,7 +20,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LyricsCacheEntity::class,
         MotionArtworkEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -36,11 +36,6 @@ abstract class LevyraDatabase : RoomDatabase() {
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
 
-        /**
-         * Migrazione 1 -> 2: aggiunge le tabelle delle playlist SENZA toccare i dati esistenti
-         * (preferiti e download restano intatti). È il motivo per cui un aggiornamento dell'app
-         * non fa più "ricominciare da capo".
-         */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -348,6 +343,17 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE downloaded_tracks ADD COLUMN downloadPreset TEXT NOT NULL DEFAULT 'Legacy'")
+                db.execSQL("ALTER TABLE downloaded_tracks ADD COLUMN downloadQuality TEXT NOT NULL DEFAULT 'Unknown'")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_downloaded_tracks_trackId_downloadPreset_downloadQuality " +
+                        "ON downloaded_tracks(trackId, downloadPreset, downloadQuality)"
+                )
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -355,8 +361,18 @@ abstract class LevyraDatabase : RoomDatabase() {
                     LevyraDatabase::class.java,
                     "levyra.db"
                 )
-                    // Migrazioni versionate: i dati utente sopravvivono agli aggiornamenti.
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_3_4,
+                        MIGRATION_4_5,
+                        MIGRATION_5_6,
+                        MIGRATION_6_7,
+                        MIGRATION_7_8,
+                        MIGRATION_8_9,
+                        MIGRATION_9_10
+                    )
                     .build()
                     .also { instance = it }
             }
