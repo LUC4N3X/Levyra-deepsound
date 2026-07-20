@@ -15,6 +15,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
+internal const val DEFAULT_PLAYBACK_PROVIDER_TIMEOUT_MS = 32_000L
+internal const val DEFAULT_OFFLINE_PROVIDER_TIMEOUT_MS = 62_000L
+
 interface LevyraCatalogProvider {
     val id: String
     val priority: Int
@@ -193,7 +196,8 @@ class LevyraProviderRouter(
     playbackProviders: List<LevyraPlaybackProvider>,
     private val healthTracker: LevyraProviderHealthTracker = LevyraProviderHealthTracker(),
     private val catalogTimeoutMs: Long = 18_000L,
-    private val playbackTimeoutMs: Long = 25_000L
+    private val playbackTimeoutMs: Long = DEFAULT_PLAYBACK_PROVIDER_TIMEOUT_MS,
+    private val offlinePlaybackTimeoutMs: Long = DEFAULT_OFFLINE_PROVIDER_TIMEOUT_MS
 ) {
     private val catalogProviders = catalogProviders.distinctBy { it.id }
     private val playbackProviders = playbackProviders.distinctBy { it.id }
@@ -245,11 +249,11 @@ class LevyraProviderRouter(
     }
 
     suspend fun resolve(track: Track, videoMode: Boolean = false): Track {
-        return executePlayback("playback") { it.resolve(track, videoMode) }
+        return executePlayback("playback", playbackTimeoutMs) { it.resolve(track, videoMode) }
     }
 
     suspend fun resolveForOffline(track: Track): Track {
-        return executePlayback("offline") { it.resolveForOffline(track) }
+        return executePlayback("offline", offlinePlaybackTimeoutMs) { it.resolveForOffline(track) }
     }
 
     fun health(): List<LevyraProviderHealth> = healthTracker.snapshot()
@@ -281,12 +285,16 @@ class LevyraProviderRouter(
         throw IOException("Nessun provider disponibile per $operation", lastError)
     }
 
-    private suspend fun executePlayback(operation: String, block: suspend (LevyraPlaybackProvider) -> Track): Track {
+    private suspend fun executePlayback(
+        operation: String,
+        timeoutMs: Long,
+        block: suspend (LevyraPlaybackProvider) -> Track
+    ): Track {
         var lastError: Throwable? = null
         for (provider in orderedPlaybackProviders()) {
             val startedAt = System.nanoTime()
             try {
-                val result = withTimeout(playbackTimeoutMs) { block(provider) }
+                val result = withTimeout(timeoutMs) { block(provider) }
                 if (result.streamUrl.isNotBlank()) {
                     healthTracker.recordSuccess(provider.id, elapsedMs(startedAt))
                     return result
