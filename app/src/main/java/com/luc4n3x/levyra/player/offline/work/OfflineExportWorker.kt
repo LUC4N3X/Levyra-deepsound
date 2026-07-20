@@ -76,6 +76,21 @@ class OfflineExportWorker(
         val taskDao = LevyraDatabase.get(applicationContext).offlineDownloadTasksDao()
         val settings = LevyraPreferences(applicationContext).downloadSettings()
         val workId = id.toString()
+        if (settings.skipExisting && track.id.isNotBlank()) {
+            val existing = LevyraDatabase.get(applicationContext).downloadedTracksDao().byTrackId(track.id)
+            if (existing != null && isStoredDownloadReadable(existing.uri)) {
+                taskDao.updateStateForWork(taskKey, workId, "SUCCEEDED", 100, "", System.currentTimeMillis())
+                return Result.success(
+                    workDataOf(
+                        KEY_FILE_NAME to existing.fileName,
+                        KEY_EMBEDDED_METADATA to existing.embeddedMetadata,
+                        KEY_MIME_TYPE to existing.mimeType,
+                        KEY_URI to existing.uri,
+                        KEY_DESTINATION_LABEL to "Già presente nella libreria"
+                    )
+                )
+            }
+        }
         if (taskDao.updateStateForWork(taskKey, workId, "RUNNING", 1, "", System.currentTimeMillis()) == 0) {
             return Result.failure(errorData(ERROR_SUPERSEDED))
         }
@@ -96,7 +111,7 @@ class OfflineExportWorker(
                     }
                 },
                 taskKey = taskKey,
-                resumable = settings.resumable
+                settings = settings
             )
             val result = OfflineDownloadConcurrencyGate.withLimit(settings.maxConcurrentDownloads) {
                 exporter.export(track)
@@ -136,6 +151,15 @@ class OfflineExportWorker(
     }
 
     private fun errorData(message: String): Data = workDataOf(KEY_ERROR to message)
+
+    private fun isStoredDownloadReadable(rawUri: String): Boolean {
+        if (rawUri.isBlank()) return false
+        return runCatching {
+            applicationContext.contentResolver.openFileDescriptor(android.net.Uri.parse(rawUri), "r")?.use { descriptor ->
+                descriptor.statSize != 0L
+            } ?: false
+        }.getOrDefault(false)
+    }
 
     private fun createForegroundInfo(track: Track, progress: Int): ForegroundInfo {
         ensureNotificationChannel()

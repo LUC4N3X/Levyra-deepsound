@@ -265,6 +265,8 @@ import com.luc4n3x.levyra.domain.SearchFilter
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
+import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
@@ -289,6 +291,7 @@ import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.LevyraLaunchActions
+import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
@@ -305,6 +308,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import androidx.compose.ui.platform.LocalLocale
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
@@ -864,6 +868,13 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             LevyraLaunchActions.pendingArtist.value = null
         }
     }
+    val pendingSharedMedia by LevyraLaunchActions.pendingSharedMedia
+    LaunchedEffect(pendingSharedMedia?.key) {
+        pendingSharedMedia?.let { request ->
+            viewModel.handleSharedMedia(request)
+            LevyraLaunchActions.pendingSharedMedia.value = null
+        }
+    }
     LaunchedEffect(state.offlineExportMessage) {
         state.offlineExportMessage?.let { message ->
             Toast.makeText(toastContext, message, Toast.LENGTH_LONG).show()
@@ -882,9 +893,11 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             viewModel.clearBackupMessage()
         }
     }
-    BackHandler(enabled = showLanguageRestartDialog || showDownloadsFolder || state.openPlaylist != null || state.showUpdatePrompt || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
+    BackHandler(enabled = showLanguageRestartDialog || state.sharedMediaPreview != null || showDownloadsFolder || state.openPlaylist != null || state.showUpdatePrompt || state.showAlbum || state.showArtist || state.showQueue || state.showLyrics || state.showSettings || state.showAudioQualityPanel || state.selectedTab != LevyraTab.Home) {
         if (showLanguageRestartDialog) {
             showLanguageRestartDialog = false
+        } else if (state.sharedMediaPreview != null) {
+            viewModel.dismissSharedMedia()
         } else if (showDownloadsFolder) {
             showDownloadsFolder = false
         } else if (state.showAudioQualityPanel) {
@@ -1016,6 +1029,18 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 if (state.showOnboarding) {
                     OnboardingOverlay(selectedLanguageCode = state.languageCode, onDone = viewModel::completeOnboarding)
                 }
+            }
+
+            state.sharedMediaPreview?.let { preview ->
+                SharedMediaPreviewDialog(
+                    preview = preview,
+                    languageCode = state.languageCode,
+                    onPlay = viewModel::playSharedMedia,
+                    onPlayNext = viewModel::playNextSharedMedia,
+                    onQueue = viewModel::queueSharedMedia,
+                    onDownload = viewModel::downloadSharedMedia,
+                    onDismiss = viewModel::dismissSharedMedia
+                )
             }
 
             AnimatedVisibility(visible = state.showSettings, enter = overlayEnter, exit = overlayExit) {
@@ -1172,6 +1197,176 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 )
             }
 
+        }
+    }
+}
+
+@Composable
+private fun SharedMediaPreviewDialog(
+    preview: SharedMediaPreview,
+    languageCode: String,
+    onPlay: () -> Unit,
+    onPlayNext: () -> Unit,
+    onQueue: () -> Unit,
+    onDownload: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val italian = languageCode.equals("it", ignoreCase = true)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            color = LevyraInk.copy(alpha = 0.98f),
+            shape = RoundedCornerShape(30.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    if (preview.thumbnailUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = preview.thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(78.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                        )
+                    } else {
+                        EmptyCover(
+                            Modifier
+                                .size(78.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(
+                            text = if (italian) "Condiviso con Levyra" else "Shared with Levyra",
+                            color = LevyraCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = preview.title,
+                            color = LevyraText,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = preview.subtitle,
+                            color = LevyraMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    CircleIconButton(
+                        icon = Icons.Rounded.Close,
+                        tint = LevyraText,
+                        background = Color.White.copy(alpha = 0.08f),
+                        onClick = onDismiss
+                    )
+                }
+                when {
+                    preview.loading -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.5.dp, color = LevyraCyan)
+                        }
+                    }
+                    preview.error.isNotBlank() -> {
+                        Text(
+                            text = preview.error,
+                            color = LevyraOrange,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    preview.playable -> {
+                        Text(
+                            text = if (italian) "${preview.tracks.size} ${if (preview.tracks.size == 1) "brano pronto" else "brani pronti"}" else "${preview.tracks.size} ${if (preview.tracks.size == 1) "track ready" else "tracks ready"}",
+                            color = LevyraMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            SharedMediaAction(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Rounded.PlayArrow,
+                                title = if (italian) "Riproduci" else "Play",
+                                primary = true,
+                                onClick = onPlay
+                            )
+                            SharedMediaAction(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Rounded.Download,
+                                title = if (italian) "Scarica" else "Download",
+                                primary = false,
+                                onClick = onDownload
+                            )
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            SharedMediaAction(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Rounded.SkipNext,
+                                title = if (italian) "Dopo" else "Play next",
+                                primary = false,
+                                onClick = onPlayNext
+                            )
+                            SharedMediaAction(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                                title = if (italian) "In coda" else "Queue",
+                                primary = false,
+                                onClick = onQueue
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SharedMediaAction(
+    modifier: Modifier,
+    icon: ImageVector,
+    title: String,
+    primary: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (primary) LevyraCyan else Color.White.copy(alpha = 0.08f),
+        contentColor = if (primary) LevyraBlack else LevyraText,
+        shape = RoundedCornerShape(16.dp),
+        border = if (primary) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+        modifier = modifier.pressable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(7.dp))
+            Text(title, fontSize = 12.sp, fontWeight = FontWeight.Black, maxLines = 1)
         }
     }
 }
@@ -8620,6 +8815,119 @@ private fun PlayerModeSwitch(
 }
 
 @Composable
+private fun LevyraControlPulseHandle(
+    expanded: Boolean,
+    compact: Boolean,
+    activeColor: Color,
+    secondaryColor: Color,
+    hasActiveState: Boolean,
+    onToggle: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 430f),
+        label = "player-shelf-chevron"
+    )
+    val glow by animateFloatAsState(
+        targetValue = if (expanded) 0.42f else 0.26f,
+        animationSpec = tween(220),
+        label = "player-shelf-glow"
+    )
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            color = Color.Black.copy(alpha = 0.25f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = if (expanded) 0.18f else 0.11f)),
+            shape = RoundedCornerShape(500.dp),
+            modifier = Modifier
+                .width(if (compact) 88.dp else 94.dp)
+                .height(if (compact) 29.dp else 31.dp)
+                .shadow(
+                    elevation = if (expanded) 10.dp else 5.dp,
+                    shape = RoundedCornerShape(500.dp),
+                    ambientColor = activeColor.copy(alpha = glow),
+                    spotColor = secondaryColor.copy(alpha = glow)
+                )
+                .pressable(pressedScale = 0.93f, onClick = onToggle)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            listOf(
+                                activeColor.copy(alpha = 0.08f),
+                                activeColor.copy(alpha = glow),
+                                secondaryColor.copy(alpha = glow),
+                                secondaryColor.copy(alpha = 0.08f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(500.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 7.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(if (compact) 18.dp else 20.dp)
+                            .height(2.dp)
+                            .background(activeColor.copy(alpha = 0.72f), CircleShape)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(if (compact) 21.dp else 23.dp)
+                            .graphicsLayer { rotationZ = rotation }
+                            .background(
+                                brush = Brush.linearGradient(
+                                    listOf(
+                                        activeColor.copy(alpha = 0.50f),
+                                        secondaryColor.copy(alpha = 0.50f)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                BorderStroke(1.dp, Color.White.copy(alpha = 0.20f)),
+                                RoundedCornerShape(8.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.KeyboardArrowDown,
+                            contentDescription = strings.options,
+                            tint = Color.White,
+                            modifier = Modifier.size(if (compact) 17.dp else 18.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .width(if (compact) 18.dp else 20.dp)
+                            .height(2.dp)
+                            .background(secondaryColor.copy(alpha = 0.72f), CircleShape)
+                    )
+                }
+                if (hasActiveState && !expanded) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 5.dp, end = 8.dp)
+                            .size(5.dp)
+                            .background(Color.White, CircleShape)
+                            .shadow(5.dp, CircleShape, ambientColor = activeColor, spotColor = secondaryColor)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PlayerUtilityDock(
     activeColor: Color,
     secondaryColor: Color,
@@ -8963,7 +9271,10 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        val compactPlayer = maxHeight < 700.dp
+        val compactPlayer = maxWidth < 380.dp || maxHeight < 700.dp
+        var advancedControlsExpanded by rememberSaveable(track?.id, compactPlayer) {
+            mutableStateOf(!compactPlayer)
+        }
         val playerHorizontalPadding = if (compactPlayer) 18.dp else 20.dp
         val playerItemSpacing = if (compactPlayer) 9.dp else 12.dp
         val artworkSize = minOf(
@@ -9391,32 +9702,58 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                     )
                 }
                 item {
-                    PlayerUtilityDock(
-                        activeColor = primaryContent,
-                        secondaryColor = secondaryContent,
-                        lyricsAvailable = state.lyrics.isNotEmpty(),
-                        isExporting = state.isOfflineExporting,
-                        isDownloaded = track.id in state.downloadedTrackIds,
+                    LevyraControlPulseHandle(
+                        expanded = advancedControlsExpanded,
                         compact = compactPlayer,
-                        onQueue = viewModel::openQueue,
-                        onLyrics = viewModel::openLyrics,
-                        onDownload = viewModel::exportCurrentTrack
-                    )
-                }
-                item {
-                    PlayerOptionsRow(
-                        speed = state.playbackSpeed,
-                        sleepMinutes = state.sleepTimerMinutes,
-                        audioNormalization = state.audioNormalization,
                         activeColor = primary,
                         secondaryColor = secondary,
-                        compact = compactPlayer,
-                        onSpeed = viewModel::cycleSpeed,
-                        onSleep = viewModel::cycleSleepTimer,
-                        onNormalization = viewModel::toggleAudioNormalization
+                        hasActiveState = state.playbackSpeed != 1f || state.sleepTimerMinutes > 0 || state.isOfflineExporting,
+                        onToggle = { advancedControlsExpanded = !advancedControlsExpanded }
                     )
                 }
                 item {
+                    AnimatedVisibility(
+                        visible = advancedControlsExpanded,
+                        enter = fadeIn(animationSpec = tween(180)) + slideInVertically(
+                            animationSpec = tween(220, easing = LinearOutSlowInEasing),
+                            initialOffsetY = { -it / 4 }
+                        ),
+                        exit = fadeOut(animationSpec = tween(140)) + slideOutVertically(
+                            animationSpec = tween(180, easing = FastOutSlowInEasing),
+                            targetOffsetY = { -it / 5 }
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(if (compactPlayer) 8.dp else 10.dp)
+                        ) {
+                            PlayerUtilityDock(
+                                activeColor = primaryContent,
+                                secondaryColor = secondaryContent,
+                                lyricsAvailable = state.lyrics.isNotEmpty(),
+                                isExporting = state.isOfflineExporting,
+                                isDownloaded = track.id in state.downloadedTrackIds,
+                                compact = compactPlayer,
+                                onQueue = viewModel::openQueue,
+                                onLyrics = viewModel::openLyrics,
+                                onDownload = viewModel::exportCurrentTrack
+                            )
+                            PlayerOptionsRow(
+                                speed = state.playbackSpeed,
+                                sleepMinutes = state.sleepTimerMinutes,
+                                audioNormalization = state.audioNormalization,
+                                activeColor = primary,
+                                secondaryColor = secondary,
+                                compact = compactPlayer,
+                                onSpeed = viewModel::cycleSpeed,
+                                onSleep = viewModel::cycleSleepTimer,
+                                onNormalization = viewModel::toggleAudioNormalization
+                            )
+                        }
+                    }
+                }
+                if (advancedControlsExpanded) {
+                    item {
                     if (state.lyrics.isNotEmpty()) {
                         var showInlineLyrics by remember(track.id) { mutableStateOf(false) }
                         if (!showInlineLyrics) {
@@ -9504,6 +9841,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         ) {
                             CircularProgressIndicator(color = primaryContent, strokeWidth = 3.dp)
                         }
+                    }
                     }
                 }
                 item { PlayerError(state.playerError) }
@@ -11344,6 +11682,51 @@ private fun SettingsOverlay(
             }
             item { SettingsSectionLabel(strings.downloadEngineSection) }
             item {
+                SettingsChoiceRow(
+                    icon = Icons.Rounded.Speed,
+                    title = if (strings.code == "it") "Preset qualità" else "Quality preset",
+                    subtitle = if (strings.code == "it") "Bilancia qualità, velocità e consumo dati" else "Balance quality, speed and data usage",
+                    options = listOf(
+                        LevyraDownloadPreset.Automatic.name to if (strings.code == "it") "Automatico" else "Automatic",
+                        LevyraDownloadPreset.HighQuality.name to if (strings.code == "it") "Alta qualità" else "High quality",
+                        LevyraDownloadPreset.DataSaver.name to if (strings.code == "it") "Risparmio dati" else "Data saver"
+                    ),
+                    selected = downloadSettings.preset.name,
+                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(preset = LevyraDownloadPreset.valueOf(value))) }
+                )
+            }
+            item {
+                SettingsChoiceRow(
+                    icon = Icons.Rounded.Album,
+                    title = if (strings.code == "it") "Organizzazione cartelle" else "Folder organization",
+                    subtitle = if (strings.code == "it") "Salva per artista e album senza duplicare i file" else "Save by artist and album without duplicating files",
+                    options = listOf(
+                        LevyraDownloadFolderMode.Flat.name to if (strings.code == "it") "Levyra" else "Levyra",
+                        LevyraDownloadFolderMode.Artist.name to if (strings.code == "it") "Artista" else "Artist",
+                        LevyraDownloadFolderMode.ArtistAlbum.name to if (strings.code == "it") "Artista / Album" else "Artist / Album"
+                    ),
+                    selected = downloadSettings.folderMode.name,
+                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(folderMode = LevyraDownloadFolderMode.valueOf(value))) }
+                )
+            }
+            item {
+                SettingsChoiceRow(
+                    icon = Icons.Rounded.Speed,
+                    title = if (strings.code == "it") "Limite velocità" else "Speed limit",
+                    subtitle = if (strings.code == "it") "Riduce l'uso della rete durante i download" else "Limit network usage while downloading",
+                    options = listOf(
+                        "0" to if (strings.code == "it") "Illimitato" else "Unlimited",
+                        "512" to "512 Kbps",
+                        "1024" to "1 Mbps",
+                        "2048" to "2 Mbps",
+                        "4096" to "4 Mbps",
+                        "8192" to "8 Mbps"
+                    ),
+                    selected = downloadSettings.maxRateKbps.toString(),
+                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxRateKbps = value.toInt())) }
+                )
+            }
+            item {
                 SettingsToggle(
                     icon = Icons.Rounded.Download,
                     title = strings.wifiOnly,
@@ -11378,6 +11761,42 @@ private fun SettingsOverlay(
                     options = listOf("1" to "1", "2" to "2", "3" to "3", "4" to "4"),
                     selected = downloadSettings.maxConcurrentDownloads.toString(),
                     onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxConcurrentDownloads = value.toInt())) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Album,
+                    title = if (strings.code == "it") "Metadati incorporati" else "Embedded metadata",
+                    subtitle = if (strings.code == "it") "Scrive titolo, artista e album nel file" else "Write title, artist and album into the file",
+                    checked = downloadSettings.embedMetadata,
+                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedMetadata = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Palette,
+                    title = if (strings.code == "it") "Copertina incorporata" else "Embedded artwork",
+                    subtitle = if (strings.code == "it") "Inserisce la copertina ufficiale nel brano" else "Embed the official artwork into the track",
+                    checked = downloadSettings.embedArtwork,
+                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedArtwork = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.Verified,
+                    title = if (strings.code == "it") "Verifica file" else "File verification",
+                    subtitle = if (strings.code == "it") "Controlla firma, dimensione e leggibilità prima di completare" else "Validate signature, size and readability before completion",
+                    checked = downloadSettings.verifyFile,
+                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(verifyFile = it)) }
+                )
+            }
+            item {
+                SettingsToggle(
+                    icon = Icons.Rounded.DownloadDone,
+                    title = if (strings.code == "it") "Evita duplicati" else "Skip duplicates",
+                    subtitle = if (strings.code == "it") "Riutilizza i download già presenti e validi" else "Reuse existing valid downloads",
+                    checked = downloadSettings.skipExisting,
+                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(skipExisting = it)) }
                 )
             }
             if (downloadQueue.isNotEmpty()) {

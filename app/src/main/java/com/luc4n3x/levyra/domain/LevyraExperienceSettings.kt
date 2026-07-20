@@ -18,15 +18,64 @@ data class LevyraInterfaceSettings(
     )
 }
 
+enum class LevyraDownloadPreset {
+    Automatic,
+    HighQuality,
+    DataSaver;
+
+    companion object {
+        fun from(value: String): LevyraDownloadPreset = entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Automatic
+    }
+}
+
+enum class LevyraDownloadFolderMode {
+    Flat,
+    Artist,
+    ArtistAlbum;
+
+    companion object {
+        fun from(value: String): LevyraDownloadFolderMode = entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: ArtistAlbum
+    }
+}
+
 data class LevyraDownloadSettings(
     val wifiOnly: Boolean = false,
     val chargingOnly: Boolean = false,
     val resumable: Boolean = true,
-    val maxConcurrentDownloads: Int = 2
+    val maxConcurrentDownloads: Int = 2,
+    val preset: LevyraDownloadPreset = LevyraDownloadPreset.Automatic,
+    val folderMode: LevyraDownloadFolderMode = LevyraDownloadFolderMode.ArtistAlbum,
+    val maxRateKbps: Int = 0,
+    val embedMetadata: Boolean = true,
+    val embedArtwork: Boolean = true,
+    val verifyFile: Boolean = true,
+    val skipExisting: Boolean = true
 ) {
     fun normalized(): LevyraDownloadSettings = copy(
-        maxConcurrentDownloads = maxConcurrentDownloads.coerceIn(1, 4)
+        maxConcurrentDownloads = maxConcurrentDownloads.coerceIn(1, 4),
+        maxRateKbps = maxRateKbps.takeIf { it in setOf(0, 512, 1024, 2048, 4096, 8192) } ?: 0
     )
+
+    val effectiveRateKbps: Int
+        get() = when {
+            maxRateKbps > 0 -> maxRateKbps
+            preset == LevyraDownloadPreset.DataSaver -> 1024
+            else -> 0
+        }
+
+    val maxParallelFragments: Int
+        get() = when (preset) {
+            LevyraDownloadPreset.HighQuality -> 10
+            LevyraDownloadPreset.Automatic -> 6
+            LevyraDownloadPreset.DataSaver -> 2
+        }
+
+    val resolverAudioQuality: String?
+        get() = when (preset) {
+            LevyraDownloadPreset.HighQuality -> "High"
+            LevyraDownloadPreset.DataSaver -> "Low"
+            LevyraDownloadPreset.Automatic -> null
+        }
 }
 
 data class LevyraIntelligenceSummary(
