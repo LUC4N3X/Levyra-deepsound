@@ -121,4 +121,20 @@ class OfflineAudioExporterTest {
         assertEquals(73400320L, audioContentLengthFromUrl(url))
         assertEquals(-1L, audioContentLengthFromUrl("https://example.com/audio.m4a"))
     }
+    @Test
+    fun longDownloadsUseLargeParallelChunksAndHighConcurrency() {
+        val oneMb = 1024L * 1024L
+
+        assertEquals(8L * oneMb, parallelAudioChunkSize(70L * oneMb))
+        assertEquals(8, parallelAudioConcurrency(70L * oneMb))
+        assertEquals(12L * oneMb, parallelAudioChunkSize(140L * oneMb))
+        assertEquals(10, parallelAudioConcurrency(140L * oneMb))
+    }
+
+    @Test
+    fun taskKeysProduceStableSafePartialFileNames() {
+        assertEquals("track_id_with_spaces", offlineDownloadTaskFileKey(" track id with spaces "))
+        assertEquals("unknown", offlineDownloadTaskFileKey(""))
+    }
+
 }
