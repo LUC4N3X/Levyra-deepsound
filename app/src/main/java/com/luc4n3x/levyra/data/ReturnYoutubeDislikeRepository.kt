@@ -125,7 +125,7 @@ internal class ReturnYoutubeDislikeRepository {
                 } else {
                     when (response.code) {
                         200 -> {
-                            val body = response.body?.string().orEmpty()
+                            val body = response.body.string()
                             val estimate = parseReturnYoutubeDislikeResponse(body, videoId)
                             if (estimate == null) {
                                 ReturnYoutubeDislikeResult.Failed(IOException("Invalid RYD response"))
@@ -229,6 +229,7 @@ internal fun parseReturnYoutubeDislikeResponse(
 private fun JSONObject.optLongStrict(name: String): Long? {
     if (!has(name) || isNull(name)) return null
     return when (val value = opt(name)) {
+        null -> null
         is Number -> value.toLong()
         is String -> value.trim().toLongOrNull()
         else -> null
