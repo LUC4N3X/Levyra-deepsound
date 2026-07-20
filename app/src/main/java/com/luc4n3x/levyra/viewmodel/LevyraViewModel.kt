@@ -66,6 +66,7 @@ import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
+import com.luc4n3x.levyra.domain.shouldSkipExistingDownload
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.LevyraLocalIntelligence
 import com.luc4n3x.levyra.domain.LevyraTab
@@ -2746,10 +2747,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun exportTracksSequential(tracks: List<Track>, label: String) {
+        val currentState = _state.value
         val pending = tracks
             .filter { it.id.isNotBlank() || it.videoUrl.isNotBlank() || it.title.isNotBlank() }
             .distinctBy { downloadKeyFor(it) }
-            .filterNot { track -> track.id.isNotBlank() && track.id in _state.value.downloadedTrackIds }
+            .filterNot { track ->
+                currentState.downloadSettings.shouldSkipExistingDownload(
+                    trackId = track.id,
+                    downloadedTrackIds = currentState.downloadedTrackIds
+                )
+            }
         if (pending.isEmpty()) {
             _state.update { it.copy(offlineExportMessage = "Già tutto offline") }
             return
@@ -2775,7 +2782,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { it.copy(offlineExportMessage = "Download già in corso: ${track.title}") }
             return
         }
-        if (track.id.isNotBlank() && track.id in _state.value.downloadedTrackIds) {
+        val currentState = _state.value
+        if (currentState.downloadSettings.shouldSkipExistingDownload(track.id, currentState.downloadedTrackIds)) {
             activeDownloadKeys.remove(downloadKey)
             _state.update { it.copy(offlineExportMessage = "Già scaricato: ${track.title}") }
             return
