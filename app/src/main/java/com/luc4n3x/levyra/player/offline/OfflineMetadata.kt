@@ -92,15 +92,14 @@ internal fun cachedLyricsText(payload: String): String {
     if (payload.isBlank()) return ""
     return runCatching {
         val lines = JSONObject(payload).optJSONArray("lines") ?: JSONArray()
-        buildString {
-            for (index in 0 until lines.length()) {
-                val line = lines.optJSONObject(index) ?: continue
-                if (line.optBoolean("metadata") || line.optBoolean("instrumental")) continue
-                val text = line.optString("text").trim()
-                if (text.isBlank()) continue
-                if (isNotEmpty()) append('\n')
-                append(text)
-            }
-        }.trim()
+        (0 until lines.length())
+            .mapNotNull { index -> lines.optJSONObject(index)?.cachedLyricTextOrNull() }
+            .joinToString("\n")
     }.getOrDefault("")
+}
+
+private fun JSONObject.cachedLyricTextOrNull(): String? {
+    if (optBoolean("metadata")) return null
+    if (optBoolean("instrumental")) return null
+    return optString("text").trim().takeIf { it.isNotBlank() }
 }
