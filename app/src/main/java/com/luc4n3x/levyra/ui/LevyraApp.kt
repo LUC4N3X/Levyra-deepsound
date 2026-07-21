@@ -2618,6 +2618,12 @@ private fun ArtistBio(biography: ArtistBiography) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     var expanded by remember(biography.text) { mutableStateOf(false) }
+    val sourceLabel = biography.sourceLabel.trim()
+    val showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
+    val sourceText = when {
+        sourceLabel.equals("Wikipedia", ignoreCase = true) -> "Wikipedia · CC BY-SA 4.0"
+        else -> sourceLabel
+    }
     Surface(
         color = Color.White.copy(alpha = 0.045f),
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
@@ -2646,7 +2652,7 @@ private fun ArtistBio(biography: ArtistBiography) {
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = if (showSource) Arrangement.SpaceBetween else Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -2655,13 +2661,9 @@ private fun ArtistBio(biography: ArtistBiography) {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
-                if (biography.sourceLabel.isNotBlank()) {
+                if (showSource) {
                     Text(
-                        text = if (biography.sourceLabel.equals("Wikipedia", ignoreCase = true)) {
-                            "Wikipedia · CC BY-SA 4.0"
-                        } else {
-                            biography.sourceLabel
-                        },
+                        text = sourceText,
                         color = LevyraMuted.copy(alpha = 0.82f),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
