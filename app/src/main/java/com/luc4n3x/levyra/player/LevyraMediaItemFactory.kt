@@ -16,9 +16,8 @@ object LevyraMediaItemFactory {
 
     fun build(track: Track, videoMode: Boolean = false): MediaItem {
         val streamUrl = track.streamUrl
-        return MediaItem.Builder()
+        val builder = MediaItem.Builder()
             .setUri(streamUrl)
-            .setMimeType(mimeTypeFor(streamUrl, videoMode))
             .setCustomCacheKey(
                 if (videoMode && track.videoStreamUrl.isBlank()) {
                     LevyraPlaybackCacheKey.video(track)
@@ -28,7 +27,8 @@ object LevyraMediaItemFactory {
             )
             .setMediaId(mediaId(track))
             .setMediaMetadata(metadata(track, videoMode))
-            .build()
+        mimeTypeFor(streamUrl, videoMode)?.let { builder.setMimeType(it) }
+        return builder.build()
     }
 
     internal fun mimeTypeFor(url: String, videoMode: Boolean): String? {
@@ -68,7 +68,7 @@ object LevyraMediaItemFactory {
             if (videoMode && track.videoStreamUrl.isNotBlank()) {
                 putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
                 putString(PlaybackService.EXTRA_VIDEO_CACHE_KEY, LevyraPlaybackCacheKey.video(track))
-                putString(PlaybackService.EXTRA_VIDEO_MIME_TYPE, mimeTypeFor(track.videoStreamUrl, true))
+                mimeTypeFor(track.videoStreamUrl, true)?.let { putString(PlaybackService.EXTRA_VIDEO_MIME_TYPE, it) }
             }
         }
         return MediaMetadata.Builder()
