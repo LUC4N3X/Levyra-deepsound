@@ -31,10 +31,13 @@ object LevyraMediaItemFactory {
             .build()
     }
 
-    internal fun mimeTypeFor(url: String, videoMode: Boolean): String {
+    internal fun mimeTypeFor(url: String, videoMode: Boolean): String? {
         val clean = url.substringBefore('#').lowercase()
         val path = clean.substringBefore('?')
+        val isContentUri = clean.startsWith("content://")
+        val isExtensionlessFileUri = clean.startsWith("file://") && !path.substringAfterLast('/').contains('.')
         return when {
+            isContentUri || isExtensionlessFileUri -> null
             path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") || clean.contains("mime=application/vnd.apple.mpegurl") || clean.contains("type=application%2fx-mpegurl") -> "application/x-mpegURL"
             path.endsWith(".mpd") || clean.contains("mime=application%2fdash+xml") || clean.contains("mime=application/dash+xml") -> "application/dash+xml"
             clean.contains("mime=video%2fwebm") || clean.contains("mime=video/webm") -> "video/webm"
