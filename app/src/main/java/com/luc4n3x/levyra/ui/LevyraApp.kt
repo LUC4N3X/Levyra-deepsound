@@ -316,6 +316,8 @@ import androidx.compose.ui.window.DialogProperties
 
 import com.luc4n3x.levyra.ui.theme.glassmorphism
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.library.LevyraLibraryScreen
+import com.luc4n3x.levyra.ui.library.LevyraPlaylistDetailScreen
 import com.luc4n3x.levyra.viewmodel.ExploreViewModel
 import com.luc4n3x.levyra.viewmodel.HomeRenderSnapshot
 import com.luc4n3x.levyra.viewmodel.HomeViewModel
@@ -966,7 +968,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             LevyraBackground(accent?.accentStart, accent?.accentEnd)
 
             val homeListState = rememberLazyListState()
-            val libraryListState = rememberLazyListState()
 
             AnimatedContent(
                 targetState = state.selectedTab,
@@ -1008,7 +1009,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         LevyraTab.Library -> {
                             val libraryViewModel: LibraryViewModel = composeViewModel(key = "levyra-library", factory = screenViewModelFactory)
                             val screenState by libraryViewModel.state.collectAsStateWithLifecycle()
-                            LibraryScreen(libraryViewModel, screenState, libraryListState, onOpenDownloads = { showDownloadsFolder = true })
+                            LevyraLibraryScreen(libraryViewModel, screenState, onOpenDownloads = { showDownloadsFolder = true })
                         }
                         LevyraTab.Player -> {
                             val playerViewModel: PlayerViewModel = composeViewModel(key = "levyra-player", factory = screenViewModelFactory)
@@ -1225,7 +1226,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             }
 
             AnimatedVisibility(visible = state.openPlaylist != null, enter = overlayEnter, exit = overlayExit) {
-                PlaylistDetailOverlay(viewModel = viewModel, state = state)
+                LevyraPlaylistDetailScreen(viewModel = viewModel, state = state)
             }
 
             AnimatedVisibility(visible = showDownloadsFolder, enter = overlayEnter, exit = overlayExit) {
