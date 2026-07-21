@@ -128,6 +128,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import timber.log.Timber
+import java.io.File
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -227,6 +228,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val database = LevyraDatabase.get(application.applicationContext)
     private val downloadedTracksDao = database.downloadedTracksDao()
     private val offlineDownloadTasksDao = database.offlineDownloadTasksDao()
+    private val downloadedMediaSizeCache = ConcurrentHashMap<String, Long>()
     private val appUpdateRepository = AppUpdateRepository(application.applicationContext)
     private val lyricsRepository = LyricsRepository(application.applicationContext)
     private val sponsorBlockRepository = SponsorBlockRepository()
@@ -1159,6 +1161,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun createPlaylistWithTracks(name: String, tracks: List<Track>) {
+        viewModelScope.launch {
+            val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }
+            val playlist = playlistStore.create(name)
+            playlistStore.addTracks(playlist.id, cleanTracks.map { it.copy(streamUrl = "") })
+            loadPlaylists()
+            _state.update { it.copy(offlineExportMessage = "Playlist creata: ${playlist.name}") }
+        }
+    }
+
     fun renamePlaylist(playlistId: String, name: String) {
         viewModelScope.launch {
             playlistStore.rename(playlistId, name)
@@ -1175,6 +1187,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun deletePlaylists(playlistIds: Collection<String>) {
+        val uniqueIds = playlistIds.filter(String::isNotBlank).toSet()
+        if (uniqueIds.isEmpty()) return
+        viewModelScope.launch {
+            uniqueIds.forEach { playlistStore.delete(it) }
+            _state.update { current ->
+                if (current.openPlaylist?.id in uniqueIds) current.copy(openPlaylist = null) else current
+            }
+            loadPlaylists()
+            _state.update { it.copy(offlineExportMessage = "Playlist eliminate: ${uniqueIds.size}") }
+        }
+    }
+
     fun addToPlaylist(playlistId: String, track: Track) {
         viewModelScope.launch {
             playlistStore.addTrack(playlistId, track.copy(streamUrl = ""))
@@ -1183,11 +1208,42 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) {
+        val cleanTracks = tracks.distinctBy { it.id }.filter { it.id.isNotBlank() }
+        if (cleanTracks.isEmpty()) return
+        viewModelScope.launch {
+            playlistStore.addTracks(playlistId, cleanTracks.map { it.copy(streamUrl = "") })
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+            _state.update { it.copy(offlineExportMessage = "Aggiunti ${cleanTracks.size} brani alla playlist") }
+        }
+    }
+
     fun removeFromPlaylist(playlistId: String, trackId: String) {
         viewModelScope.launch {
             playlistStore.removeTrack(playlistId, trackId)
             loadPlaylists()
             refreshOpenPlaylist(playlistId)
+        }
+    }
+
+    fun removeTracksFromPlaylist(playlistId: String, tracks: List<Track>) {
+        val trackIds = tracks.map { it.id }.filter(String::isNotBlank).toSet()
+        if (trackIds.isEmpty()) return
+        viewModelScope.launch {
+            playlistStore.removeTracks(playlistId, trackIds)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+            _state.update { it.copy(offlineExportMessage = "Rimossi ${trackIds.size} brani dalla playlist") }
+        }
+    }
+
+    fun reorderPlaylist(playlistId: String, orderedTracks: List<Track>) {
+        viewModelScope.launch {
+            playlistStore.reorder(playlistId, orderedTracks)
+            loadPlaylists()
+            refreshOpenPlaylist(playlistId)
+            _state.update { it.copy(offlineExportMessage = "Ordine playlist salvato") }
         }
     }
 
@@ -1219,19 +1275,22 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun observeDownloads() {
         viewModelScope.launch {
-            downloadedTracksDao.observeRecent().collectLatest { entities ->
-                val mapped = entities.map { it.toDownloadedTrack() }
+            downloadedTracksDao.observeAll().collectLatest { entities ->
+                val mapped = withContext(Dispatchers.IO) {
+                    entities.map { entity -> entity.toDownloadedTrack(downloadedMediaSize(entity.uri)) }
+                }
                 _state.update {
                     it.copy(
                         downloads = mapped,
-                        downloadedTrackIds = mapped.map { item -> item.trackId }.toSet()
+                        downloadStorageBytes = mapped.sumOf { item -> item.sizeBytes.coerceAtLeast(0L) },
+                        downloadedTrackIds = mapped.map { item -> item.trackId }.filter(String::isNotBlank).toSet()
                     )
                 }
             }
         }
     }
 
-    private fun DownloadEntity.toDownloadedTrack(): DownloadedTrack = DownloadedTrack(
+    private fun DownloadEntity.toDownloadedTrack(sizeBytes: Long): DownloadedTrack = DownloadedTrack(
         id = id,
         trackId = trackId,
         title = title,
@@ -1242,8 +1301,47 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         uri = uri,
         mimeType = mimeType,
         embeddedMetadata = embeddedMetadata,
-        savedAt = savedAt
+        savedAt = savedAt,
+        sizeBytes = sizeBytes
     )
+
+    private fun downloadedMediaSize(rawUri: String): Long {
+        if (rawUri.isBlank()) return 0L
+        downloadedMediaSizeCache[rawUri]?.let { return it }
+        val size = runCatching {
+            val uri = Uri.parse(rawUri)
+            when (uri.scheme?.lowercase()) {
+                "content" -> getApplication<Application>().contentResolver
+                    .openAssetFileDescriptor(uri, "r")
+                    ?.use { descriptor -> descriptor.length.coerceAtLeast(0L) }
+                    ?: 0L
+                "file" -> uri.path?.let(::File)?.takeIf(File::isFile)?.length() ?: 0L
+                else -> File(rawUri).takeIf(File::isFile)?.length() ?: 0L
+            }
+        }.getOrDefault(0L)
+        if (size > 0L) downloadedMediaSizeCache[rawUri] = size
+        return size
+    }
+
+    private fun deleteDownloadedMedia(download: DownloadedTrack): Boolean {
+        if (download.uri.isBlank()) return true
+        return runCatching {
+            val uri = Uri.parse(download.uri)
+            when (uri.scheme?.lowercase()) {
+                "content" -> {
+                    val resolver = getApplication<Application>().contentResolver
+                    val deletedRows = resolver.delete(uri, null, null)
+                    if (deletedRows > 0) {
+                        true
+                    } else {
+                        resolver.openAssetFileDescriptor(uri, "r")?.use { false } ?: true
+                    }
+                }
+                "file" -> uri.path?.let(::File)?.let { file -> !file.exists() || file.delete() } ?: true
+                else -> File(download.uri).let { file -> !file.exists() || file.delete() }
+            }
+        }.getOrDefault(false)
+    }
 
     private fun onTrackCompleted() {
         val snapshot = _state.value
@@ -2328,6 +2426,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(offlineExportMessage = "Aggiunto alla coda: ${track.title}") }
     }
 
+    fun addTracksToQueue(tracks: List<Track>) {
+        val cleanTracks = tracks.distinctBy { it.id.ifBlank { "${it.title}|${it.artist}" } }
+        if (cleanTracks.isEmpty()) return
+        cleanTracks.forEach { track -> queueEngine.addLast(track) }
+        refreshQueuePrefetch()
+        _state.update { it.copy(offlineExportMessage = "Aggiunti alla coda: ${cleanTracks.size} brani") }
+    }
+
     fun playNext(track: Track) {
         queueEngine.playNext(track)
         refreshQueuePrefetch()
@@ -2524,6 +2630,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, updated, 6)
         _state.update { it.copy(favorites = updated, favoriteIds = updated.map { fav -> fav.id }.toSet()) }
         recordSmartFavorite(track, !exists)
+    }
+
+    fun removeFavorites(tracks: List<Track>) {
+        val ids = tracks.map { it.id }.filter(String::isNotBlank).toSet()
+        if (ids.isEmpty()) return
+        val current = _state.value.favorites
+        val updated = current.filterNot { it.id in ids }
+        if (updated.size == current.size) return
+        _state.update { it.copy(favorites = updated, favoriteIds = updated.map { favorite -> favorite.id }.toSet()) }
+        viewModelScope.launch(Dispatchers.IO) { favoritesStore.saveSuspending(updated) }
+        _state.update { it.copy(offlineExportMessage = "Rimossi dai preferiti: ${current.size - updated.size}") }
     }
 
     fun exportCurrentTrack() {
@@ -2749,6 +2866,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         exportTracksSequential(playlist.tracks, "Playlist offline")
     }
 
+    fun exportTracks(tracks: List<Track>, label: String = "Selezione offline") {
+        exportTracksSequential(tracks, label)
+    }
+
     private fun exportTracksSequential(tracks: List<Track>, label: String) {
         val currentState = _state.value
         val pending = tracks
@@ -2858,9 +2979,40 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun deleteDownload(download: DownloadedTrack) {
+        deleteDownloads(listOf(download))
+    }
+
+    fun deleteDownloads(downloads: List<DownloadedTrack>) {
+        val uniqueDownloads = downloads.distinctBy { it.id }
+        if (uniqueDownloads.isEmpty()) return
         viewModelScope.launch {
-            runCatching { downloadedTracksDao.deleteById(download.id) }
-            _state.update { it.copy(offlineExportMessage = "Rimosso dai download: ${download.title}") }
+            val result = withContext(Dispatchers.IO) {
+                var deleted = 0
+                val failed = mutableListOf<String>()
+                uniqueDownloads.forEach { download ->
+                    if (deleteDownloadedMedia(download)) {
+                        runCatching { downloadedTracksDao.deleteById(download.id) }
+                            .onSuccess {
+                                downloadedMediaSizeCache.remove(download.uri)
+                                deleted++
+                            }
+                            .onFailure { failed += download.title }
+                    } else {
+                        failed += download.title
+                    }
+                }
+                deleted to failed
+            }
+            val (deleted, failed) = result
+            _state.update { current ->
+                current.copy(
+                    offlineExportMessage = when {
+                        failed.isEmpty() -> "Eliminati dal dispositivo: $deleted"
+                        deleted > 0 -> "Eliminati $deleted file; ${failed.size} non rimossi"
+                        else -> "Impossibile eliminare i file selezionati"
+                    }
+                )
+            }
         }
     }
 
