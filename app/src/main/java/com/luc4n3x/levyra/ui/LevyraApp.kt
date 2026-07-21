@@ -5532,9 +5532,10 @@ private fun PersonalListeningShelf(
                             lineHeight = 34.sp,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = (-1.2).sp,
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            modifier = Modifier
+                                .weight(1f)
+                                .basicMarquee(iterations = Int.MAX_VALUE, repeatDelayMillis = 2000),
+                            maxLines = 1
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
