@@ -60,6 +60,7 @@ import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Sort
@@ -98,7 +99,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
@@ -1270,7 +1271,7 @@ private fun LibraryTrackRow(
             }
             if (selectionActive) {
                 Icon(
-                    if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.CheckCircle,
+                    if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                     contentDescription = null,
                     tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f)
                 )
@@ -1328,7 +1329,7 @@ private fun LibraryPlaylistRow(
                 )
             }
             if (selectionActive) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f))
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, contentDescription = null, tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f))
             } else {
                 IconButton(onClick = onPlay, enabled = playlist.tracks.isNotEmpty()) {
                     Icon(Icons.AutoMirrored.Rounded.PlaylistPlay, contentDescription = null, tint = if (playlist.tracks.isNotEmpty()) LevyraCyan else LevyraMuted.copy(alpha = 0.35f))
@@ -1371,7 +1372,7 @@ private fun LibraryAlbumRow(
                 )
             }
             if (selectionActive) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f))
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, contentDescription = null, tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f))
             } else {
                 IconButton(onClick = onPlay) { Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraCyan) }
             }
@@ -1408,7 +1409,7 @@ private fun LibraryArtistRow(
                 )
             }
             if (selectionActive) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f))
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, contentDescription = null, tint = if (selected) LevyraCyan else LevyraMuted.copy(alpha = 0.35f))
             } else if (artist.tracks.isNotEmpty()) {
                 IconButton(onClick = onPlay) { Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = LevyraCyan) }
             }
@@ -1456,7 +1457,7 @@ private fun LibraryPlaylistGridCard(
         Box {
             LibraryArtwork(playlist.coverUrl, playlist.name, Modifier.fillMaxWidth().height(164.dp), RoundedCornerShape(22.dp), selected)
             if (selectionActive) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.TopEnd).padding(10.dp))
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, contentDescription = null, tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.TopEnd).padding(10.dp))
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -1523,7 +1524,7 @@ private fun LibraryAlbumGridCard(
         Box {
             LibraryArtwork(album.artworkUrl, album.title, Modifier.fillMaxWidth().height(164.dp), RoundedCornerShape(22.dp), selected)
             if (selectionActive) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.TopEnd).padding(10.dp))
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, contentDescription = null, tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.TopEnd).padding(10.dp))
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -1572,7 +1573,7 @@ private fun LibraryArtistGridCard(
         Box {
             LibraryArtwork(artist.artworkUrl, artist.name, Modifier.size(152.dp), CircleShape, selected)
             if (selectionActive) {
-                Icon(Icons.Rounded.CheckCircle, contentDescription = null, tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
+                Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, contentDescription = null, tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
             }
         }
         Spacer(Modifier.height(8.dp))
