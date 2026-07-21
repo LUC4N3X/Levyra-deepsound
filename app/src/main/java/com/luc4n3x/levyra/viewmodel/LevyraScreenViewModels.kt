@@ -20,6 +20,7 @@ import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.Mood
+import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.RepeatMode
@@ -165,19 +166,35 @@ class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::ex
 
 class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::libraryProjection) {
     fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun addTracksToPlaylist(playlistId: String, tracks: List<Track>) = root.addTracksToPlaylist(playlistId, tracks)
     fun addToQueue(track: Track) = root.addToQueue(track)
+    fun addTracksToQueue(tracks: List<Track>) = root.addTracksToQueue(tracks)
+    fun cancelDownload(taskKey: String) = root.cancelDownload(taskKey)
     fun closePlaylist() = root.closePlaylist()
     fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
+    fun createPlaylistWithTracks(name: String, tracks: List<Track>) = root.createPlaylistWithTracks(name, tracks)
+    fun deleteDownload(download: DownloadedTrack) = root.deleteDownload(download)
+    fun deleteDownloads(downloads: List<DownloadedTrack>) = root.deleteDownloads(downloads)
     fun deletePlaylist(playlistId: String) = root.deletePlaylist(playlistId)
+    fun deletePlaylists(playlistIds: Collection<String>) = root.deletePlaylists(playlistIds)
     fun exportOpenPlaylist() = root.exportOpenPlaylist()
     fun exportTrack(track: Track) = root.exportTrack(track)
+    fun exportTracks(tracks: List<Track>, label: String) = root.exportTracks(tracks, label)
+    fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openArtist(track: Track) = root.openArtist(track)
     fun openArtistByName(name: String) = root.openArtistByName(name)
     fun openPlayerScreen() = root.openPlayerScreen()
     fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
+    fun pauseDownload(taskKey: String) = root.pauseDownload(taskKey)
+    fun playDownloaded(download: DownloadedTrack) = root.playDownloaded(download)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun playPlaylist(playlistId: String, startTrackId: String? = null) = root.playPlaylist(playlistId, startTrackId)
+    fun removeFavorites(tracks: List<Track>) = root.removeFavorites(tracks)
     fun removeFromPlaylist(playlistId: String, trackId: String) = root.removeFromPlaylist(playlistId, trackId)
+    fun removeTracksFromPlaylist(playlistId: String, tracks: List<Track>) = root.removeTracksFromPlaylist(playlistId, tracks)
+    fun renamePlaylist(playlistId: String, name: String) = root.renamePlaylist(playlistId, name)
+    fun reorderPlaylist(playlistId: String, tracks: List<Track>) = root.reorderPlaylist(playlistId, tracks)
+    fun resumeDownload(taskKey: String) = root.resumeDownload(taskKey)
     fun toggleFavorite(track: Track) = root.toggleFavorite(track)
     fun togglePlay() = root.togglePlay()
 }
@@ -683,6 +700,8 @@ private fun searchProjection(state: LevyraUiState): SearchProjection = SearchPro
     downloadProgressByTrackId = state.downloadProgressByTrackId,
     downloadedTrackIds = state.downloadedTrackIds,
     downloadingTrackIds = state.downloadingTrackIds,
+    downloadQueue = state.downloadQueue,
+    downloadStorageBytes = state.downloadStorageBytes,
     downloads = state.downloads,
     favoriteIds = state.favoriteIds,
     isPlaying = state.isPlaying,
@@ -724,6 +743,8 @@ private data class LibraryProjection(
     val downloadProgressByTrackId: Map<String, Int>,
     val downloadedTrackIds: Set<String>,
     val downloadingTrackIds: Set<String>,
+    val downloadQueue: List<OfflineDownloadTask>,
+    val downloadStorageBytes: Long,
     val downloads: List<DownloadedTrack>,
     val favoriteIds: Set<String>,
     val favorites: List<Track>,
@@ -741,6 +762,8 @@ private fun libraryProjection(state: LevyraUiState): LibraryProjection = Library
     downloadProgressByTrackId = state.downloadProgressByTrackId,
     downloadedTrackIds = state.downloadedTrackIds,
     downloadingTrackIds = state.downloadingTrackIds,
+    downloadQueue = state.downloadQueue,
+    downloadStorageBytes = state.downloadStorageBytes,
     downloads = state.downloads,
     favoriteIds = state.favoriteIds,
     favorites = state.favorites,
