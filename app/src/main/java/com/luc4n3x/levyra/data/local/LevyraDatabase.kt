@@ -19,9 +19,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         OfflineDownloadTaskEntity::class,
         LyricsCacheEntity::class,
         MotionArtworkEntity::class,
-        PlaybackSourceMatchEntity::class
+        PlaybackSourceMatchEntity::class,
+        ArtistLoreEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -34,6 +35,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun lyricsCacheDao(): LyricsCacheDao
     abstract fun motionArtworkDao(): MotionArtworkDao
     abstract fun playbackSourceMatchDao(): PlaybackSourceMatchDao
+    abstract fun artistLoreDao(): ArtistLoreDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -385,6 +387,41 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS artist_lore (
+                        cacheKey TEXT NOT NULL PRIMARY KEY,
+                        artistKey TEXT NOT NULL,
+                        browseId TEXT NOT NULL,
+                        languageCode TEXT NOT NULL,
+                        text TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        pageTitle TEXT NOT NULL,
+                        pageId INTEGER NOT NULL,
+                        entityId TEXT NOT NULL,
+                        thumbnailUrl TEXT NOT NULL,
+                        originalImageUrl TEXT NOT NULL,
+                        sourceUrl TEXT NOT NULL,
+                        confidence INTEGER NOT NULL,
+                        negative INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        lastAccessedAt INTEGER NOT NULL,
+                        expiresAt INTEGER NOT NULL,
+                        staleUntil INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_artist_lore_artistKey_languageCode ON artist_lore(artistKey, languageCode)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_artist_lore_browseId_languageCode ON artist_lore(browseId, languageCode)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_artist_lore_expiresAt ON artist_lore(expiresAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_artist_lore_lastAccessedAt ON artist_lore(lastAccessedAt)")
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -403,7 +440,8 @@ abstract class LevyraDatabase : RoomDatabase() {
                         MIGRATION_7_8,
                         MIGRATION_8_9,
                         MIGRATION_9_10,
-                        MIGRATION_10_11
+                        MIGRATION_10_11,
+                        MIGRATION_11_12
                     )
                     .build()
                     .also { instance = it }
