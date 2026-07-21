@@ -277,7 +277,7 @@ class PlaybackService : MediaLibraryService() {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_READY) scheduleRecoveryReset(player)
                 if (playbackState == Player.STATE_ENDED && LevyraWidgetBridge.onNext == null) {
-                    skipQueue(forward = true, respectRepeatOne = true)
+                    skipQueue(forward = true, respectRepeatOne = true, autoAdvance = true)
                 }
             }
 
@@ -468,7 +468,7 @@ class PlaybackService : MediaLibraryService() {
         return START_STICKY
     }
 
-    private fun skipQueue(forward: Boolean, respectRepeatOne: Boolean) {
+    private fun skipQueue(forward: Boolean, respectRepeatOne: Boolean, autoAdvance: Boolean = false) {
         queueSkipJob?.cancel()
         servicePrefetchJob?.cancel()
         queueSkipJob = serviceScope.launch {
@@ -504,10 +504,21 @@ class PlaybackService : MediaLibraryService() {
                 selected
             } ?: return@launch
             val resolved = withContext(Dispatchers.IO) {
-                runCatching { resolveQueueTrack(target) }
-                    .onFailure { Timber.w(it, "Background queue resolution failed") }
-                    .getOrNull()
-            } ?: return@launch
+                if (autoAdvance) {
+                    resolveQueueTrackPersistently(target)
+                } else {
+                    runCatching { resolveQueueTrack(target) }
+                        .onFailure { Timber.w(it, "Background queue resolution failed") }
+                        .getOrNull()
+                }
+            } ?: run {
+                if (autoAdvance) {
+                    Timber.e("Background queue auto-advance gave up for %s", target.title)
+                    markPlaybackExpected(false, force = true)
+                    releasePlaybackWakeLock()
+                }
+                return@launch
+            }
             queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
             player.setMediaItem(LevyraMediaItemFactory.build(resolved))
             player.prepare()
@@ -540,6 +551,30 @@ class PlaybackService : MediaLibraryService() {
             if (queueEngine.state.value.generation != generation) return@launch
             withContext(Dispatchers.IO) { runCatching { playbackWarmup.prime(resolved, 256L * 1024L) } }
         }
+    }
+
+    private suspend fun resolveQueueTrackPersistently(
+        track: com.luc4n3x.levyra.domain.Track
+    ): com.luc4n3x.levyra.domain.Track? {
+        var attempts = 0
+        while (isPlaybackRecoveryExpected() && !isStickyRestoreExpired()) {
+            if (!isLocalPlaybackTrack(track) && !hasInternetCapableNetwork()) {
+                releasePlaybackWakeLock()
+                Timber.d("Background queue auto-advance waiting for network")
+                delay(5_000L)
+                attempts = 0
+                continue
+            }
+            acquirePlaybackWakeLock()
+            val resolved = runCatching { resolveQueueTrack(track) }
+                .onFailure { Timber.w(it, "Background queue resolution failed") }
+                .getOrNull()
+            if (resolved != null) return resolved
+            if (attempts >= ONLINE_RECOVERY_DELAYS_MS.lastIndex) return null
+            delay(ONLINE_RECOVERY_DELAYS_MS[attempts])
+            attempts++
+        }
+        return null
     }
 
     private suspend fun resolveQueueTrack(track: com.luc4n3x.levyra.domain.Track): com.luc4n3x.levyra.domain.Track {
@@ -622,9 +657,25 @@ class PlaybackService : MediaLibraryService() {
             player.mediaItemCount > 0 &&
             player.playWhenReady &&
             player.playbackState != Player.STATE_ENDED
-        if (playbackExpected) acquirePlaybackWakeLock() else releasePlaybackWakeLock()
-        markPlaybackExpected(playbackExpected)
+        if (playbackExpected) {
+            acquirePlaybackWakeLock()
+            markPlaybackExpected(true)
+        } else if (!shouldPreservePlaybackExpectation(player)) {
+            releasePlaybackWakeLock()
+            markPlaybackExpected(false)
+        }
     }
+
+    private fun isPlaybackRecoveryInFlight(): Boolean =
+        serviceRecoveryJob?.isActive == true ||
+            stickyRestoreJob?.isActive == true ||
+            queueSkipJob?.isActive == true
+
+    private fun shouldPreservePlaybackExpectation(player: Player): Boolean =
+        isPlaybackRecoveryInFlight() &&
+            (player.mediaItemCount == 0 ||
+                player.playbackState == Player.STATE_ENDED ||
+                player.playbackState == Player.STATE_IDLE)
 
     @SuppressLint("WakelockTimeout")
     private fun acquirePlaybackWakeLock() {
@@ -891,7 +942,7 @@ class PlaybackService : MediaLibraryService() {
                 ?.takeIf { it.streamUrl.isNotBlank() }
                 ?.let { LevyraMediaItemFactory.build(it, videoMode) }
         } ?: return false
-        updatePlayerWakeMode(player, mediaItem)
+        (player as? ExoPlayer)?.let { updatePlayerWakeMode(it, mediaItem) }
         acquirePlaybackWakeLock()
         player.setMediaItem(mediaItem, positionMs.coerceAtLeast(0L))
         player.prepare()
@@ -913,7 +964,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun inspectPlaybackWatchdog(player: ExoPlayer) {
         val now = SystemClock.elapsedRealtime()
-        markPlaybackExpected(isPlaybackExpected(player))
+        if (!shouldPreservePlaybackExpectation(player)) markPlaybackExpected(isPlaybackExpected(player))
         if (resetWatchdogForExhaustedRecovery(now)) return
         if (resetWatchdogForInactivePlayer(player, now)) return
         val positionMs = player.currentPosition.coerceAtLeast(0L)

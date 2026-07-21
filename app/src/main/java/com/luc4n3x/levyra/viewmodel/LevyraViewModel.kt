@@ -1356,7 +1356,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         recordSmartCompletion(current)
         val nextTrack = queueEngine.next()
         when {
-            nextTrack != null -> startResolve(nextTrack)
+            nextTrack != null -> startResolve(nextTrack, autoRetryWhenOffline = true)
             queueEngine.state.value.radioEnabled -> ensureRadioTail(force = true, playWhenReady = true)
             loopCurrentQueueOnCompletion && queueEngine.state.value.tracks.isNotEmpty() -> {
                 val first = queueEngine.select(0, rememberCurrent = true)
@@ -3799,7 +3799,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(list.getOrElse(index) { track })
     }
 
-    private fun startResolve(track: Track, preserveCrossfade: Boolean = false) {
+    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {
         streamTransitionId++
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
@@ -3868,6 +3868,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 if (!isActive || requestId != playRequestId) return@launch
+                if (autoRetryWhenOffline && !hasInternetCapableNetwork()) {
+                    player.stop()
+                    _state.update {
+                        it.copy(
+                            isResolving = false,
+                            isPlaying = false,
+                            positionMs = 0L,
+                            durationMs = track.durationMs,
+                            currentTrack = track.copy(streamUrl = ""),
+                            playerError = null
+                        )
+                    }
+                    scheduleOfflineAutoAdvanceRetry(track, requestId)
+                    return@launch
+                }
                 player.stop()
                 _state.update {
                     it.copy(
@@ -3880,6 +3895,25 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     )
                 }
             }
+        }
+    }
+
+    private fun hasInternetCapableNetwork(): Boolean {
+        val connectivity = getApplication<Application>().getSystemService(ConnectivityManager::class.java)
+            ?: return false
+        val network = connectivity.activeNetwork ?: return false
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun scheduleOfflineAutoAdvanceRetry(track: Track, requestId: Long) {
+        streamRecoveryJob?.cancel()
+        streamRecoveryJob = viewModelScope.launch {
+            while (isActive && requestId == playRequestId && !hasInternetCapableNetwork()) {
+                delay(5_000L)
+            }
+            if (!isActive || requestId != playRequestId) return@launch
+            startResolve(track, autoRetryWhenOffline = true)
         }
     }
 
@@ -3971,19 +4005,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             accentStart = 0,
             accentEnd = 0
         )
-        playRequestId++
-        streamTransitionId++
-        playJob?.cancel()
-        modeSwitchJob?.cancel()
-        streamRecoveryJob?.cancel()
-        crossfadeJob?.cancel()
-        crossfadeInProgress = false
-        cancelBackgroundWarmups(cancelList = true)
-        _state.update { it.copy(isVideoMode = false, playerError = null, isResolving = false) }
+        _state.update { it.copy(isVideoMode = false) }
         loopCurrentQueueOnCompletion = false
         queueEngine.replace(listOf(track), 0, keepPlaybackModes = true, radioEnabled = false)
         queueIndex = 0
-        startPlayback(track)
+        startResolve(track)
     }
 
     private fun startPlayback(playable: Track) {
