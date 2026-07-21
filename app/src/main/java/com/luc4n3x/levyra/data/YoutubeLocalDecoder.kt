@@ -804,7 +804,7 @@ internal class YoutubePlayerConfigStore(
     companion object {
         private const val BUNDLED_CONFIG_ASSET = "player_configs.json"
         private const val REMOTE_CONFIG_URL = "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json"
-        private const val USER_AGENT = "Levyra/2.3.13 Android local-decoder"
+        private const val USER_AGENT = "Levyra/2.3.15 Android local-decoder"
         private const val CONFIG_TTL_MS = 6L * 60L * 60L * 1000L
         private const val UNKNOWN_REFRESH_COOLDOWN_MS = 60_000L
         private const val REJECTION_REFRESH_COOLDOWN_MS = 5L * 60L * 1000L
