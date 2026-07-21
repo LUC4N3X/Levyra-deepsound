@@ -66,7 +66,7 @@ if (isReleaseTaskRequested() && !releaseSigningAvailable) {
 fun normalizedVersionName(value: String): String {
     val clean = value.trim().removePrefix("v").removePrefix("V")
     val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
-    return match ?: clean.ifBlank { "2.3.13" }
+    return match ?: clean.ifBlank { "2.3.15" }
 }
 
 fun generatedVersionCode(versionName: String): Int {
