@@ -50,6 +50,12 @@ interface ArtistLoreDao {
     @Query("SELECT * FROM artist_lore WHERE negative = 0 AND artistKey = :artistKey AND languageCode = :languageCode ORDER BY confidence DESC, updatedAt DESC LIMIT 1")
     suspend fun findByArtistKey(artistKey: String, languageCode: String): ArtistLoreEntity?
 
+    @Query("SELECT * FROM artist_lore WHERE negative = 0 AND browseId = :browseId AND languageCode NOT IN (:excludedLanguages) ORDER BY confidence DESC, updatedAt DESC LIMIT 1")
+    suspend fun findBestByBrowseId(browseId: String, excludedLanguages: List<String>): ArtistLoreEntity?
+
+    @Query("SELECT * FROM artist_lore WHERE negative = 0 AND browseId = '' AND artistKey = :artistKey AND languageCode NOT IN (:excludedLanguages) ORDER BY confidence DESC, updatedAt DESC LIMIT 1")
+    suspend fun findBestByArtistKey(artistKey: String, excludedLanguages: List<String>): ArtistLoreEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ArtistLoreEntity)
 
