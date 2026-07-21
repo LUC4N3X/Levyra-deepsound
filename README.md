@@ -269,7 +269,7 @@ Architecture and size-control notes live in `docs/APK_SIZE_RULER.md` and `docs/P
 Version numbering is centralized in `gradle.properties`:
 
 ```properties
-levyraVersionName=2.3.13
+levyraVersionName=2.3.15
 levyraVersionCode=2031300
 ```
 
