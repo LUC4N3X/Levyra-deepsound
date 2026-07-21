@@ -18,9 +18,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaybackQueueStateEntity::class,
         OfflineDownloadTaskEntity::class,
         LyricsCacheEntity::class,
-        MotionArtworkEntity::class
+        MotionArtworkEntity::class,
+        PlaybackSourceMatchEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class LevyraDatabase : RoomDatabase() {
@@ -32,6 +33,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun offlineDownloadTasksDao(): OfflineDownloadTasksDao
     abstract fun lyricsCacheDao(): LyricsCacheDao
     abstract fun motionArtworkDao(): MotionArtworkDao
+    abstract fun playbackSourceMatchDao(): PlaybackSourceMatchDao
 
     companion object {
         @Volatile private var instance: LevyraDatabase? = null
@@ -354,6 +356,35 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS playback_source_matches (
+                        matchKey TEXT NOT NULL PRIMARY KEY,
+                        canonicalKey TEXT NOT NULL,
+                        mode TEXT NOT NULL,
+                        audioQuality TEXT NOT NULL,
+                        sourceVideoId TEXT NOT NULL,
+                        sourceVideoUrl TEXT NOT NULL,
+                        provider TEXT NOT NULL,
+                        manifestJson TEXT NOT NULL,
+                        confidence INTEGER NOT NULL,
+                        successCount INTEGER NOT NULL,
+                        failureCount INTEGER NOT NULL,
+                        blockedUntil INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        lastValidatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_playback_source_matches_canonicalKey ON playback_source_matches(canonicalKey)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_playback_source_matches_sourceVideoId ON playback_source_matches(sourceVideoId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_playback_source_matches_updatedAt ON playback_source_matches(updatedAt)")
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -371,7 +402,8 @@ abstract class LevyraDatabase : RoomDatabase() {
                         MIGRATION_6_7,
                         MIGRATION_7_8,
                         MIGRATION_8_9,
-                        MIGRATION_9_10
+                        MIGRATION_9_10,
+                        MIGRATION_10_11
                     )
                     .build()
                     .also { instance = it }
