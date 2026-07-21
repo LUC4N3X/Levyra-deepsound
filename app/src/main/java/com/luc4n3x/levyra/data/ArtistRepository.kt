@@ -41,6 +41,61 @@ internal fun chooseVerifiedArtistShelfThumbnail(
     headerPortraitUrl: String
 ): String = searchThumbnailUrl.trim().ifBlank { headerPortraitUrl.trim() }
 
+internal fun normalizeInlineArtistBiography(value: String): ArtistBiography? {
+    val normalized = value
+        .replace("\u00a0", " ")
+        .replace(Regex("\\s*\\n+\\s*"), " ")
+        .replace(Regex("\\s{2,}"), " ")
+        .trim()
+    if (normalized.length < 24) return null
+    val sourceMatch = Regex("https?://[a-z0-9.-]+\\.wikipedia\\.org/wiki/[^\\s)]+", RegexOption.IGNORE_CASE)
+        .find(normalized)
+    val sourceUrl = sourceMatch?.value
+        ?.trimEnd('.', ',', ';', ':')
+        .orEmpty()
+    val lower = normalized.lowercase(Locale.ROOT)
+    val attributionMarkers = listOf(
+        "da wikipedia",
+        "from wikipedia",
+        "de wikipedia",
+        "aus wikipedia",
+        "fonte wikipedia",
+        "source wikipedia",
+        "wikipedia, the free encyclopedia",
+        "wikipedia, l'enciclopedia libera"
+    )
+    val markerIndex = attributionMarkers
+        .map { lower.indexOf(it) }
+        .filter { it >= 0 }
+        .minOrNull()
+    val hasLicenseTail = lower.contains("creative commons") ||
+        lower.contains("cc-by-sa") ||
+        lower.contains("cc by-sa") ||
+        lower.contains("creativecommons.org/licenses")
+    val attributionStart = when {
+        markerIndex != null && (sourceUrl.isNotBlank() || hasLicenseTail) -> markerIndex
+        sourceMatch != null && hasLicenseTail -> normalized.lastIndexOf('\n', sourceMatch.range.first).takeIf { it >= 0 } ?: sourceMatch.range.first
+        else -> -1
+    }
+    val text = normalized
+        .let { raw -> if (attributionStart > 0) raw.substring(0, attributionStart) else raw }
+        .replace(Regex("\\s{2,}"), " ")
+        .trim()
+    if (text.length < 24) return null
+    val sourceLanguage = Regex("https?://([a-z-]+)\\.wikipedia\\.org", RegexOption.IGNORE_CASE)
+        .find(sourceUrl)
+        ?.groupValues
+        ?.getOrNull(1)
+        .orEmpty()
+    return ArtistBiography(
+        text = text,
+        sourceLabel = if (sourceUrl.isNotBlank()) "Wikipedia" else "YouTube Music",
+        sourceUrl = sourceUrl,
+        languageCode = sourceLanguage,
+        confidence = if (sourceUrl.isNotBlank()) 96 else 100
+    )
+}
+
 internal fun parseArtistHeaderArtwork(header: JSONObject?): ArtistHeaderArtwork {
     fun bestThumbnail(array: JSONArray?): String {
         if (array == null) return ""
@@ -517,13 +572,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ArtistProfile(
             browseId = browseId,
             name = name,
-            biography = inlineBio.takeIf { it.isNotBlank() }?.let { text ->
-                ArtistBiography(
-                    text = text,
-                    sourceLabel = "YouTube Music",
-                    confidence = 100
-                )
-            },
+            biography = normalizeInlineArtistBiography(inlineBio),
             subscribers = subscribers,
             monthlyListeners = monthly,
             thumbnailUrl = thumb,
