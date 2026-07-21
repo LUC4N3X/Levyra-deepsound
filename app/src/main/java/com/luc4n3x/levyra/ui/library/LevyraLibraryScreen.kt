@@ -57,8 +57,8 @@ import androidx.compose.material.icons.rounded.OfflinePin
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Insights
@@ -66,9 +66,9 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Storage
-import androidx.compose.material.icons.rounded.ViewList
+import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -442,7 +442,7 @@ internal fun LevyraLibraryScreen(
                         )
                     }
                     if (visiblePlaylists.isEmpty()) {
-                        item { LibraryEmpty(Icons.Rounded.QueueMusic, if (isItalian) "Nessuna playlist trovata" else "No playlists found") }
+                        item { LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, if (isItalian) "Nessuna playlist trovata" else "No playlists found") }
                     } else if (layout == LibraryLayout.List) {
                         items(visiblePlaylists, key = { "playlist-${it.id}" }) { playlist ->
                             val key = "playlist:${playlist.id}"
@@ -718,7 +718,7 @@ internal fun LevyraLibraryScreen(
                     .navigationBarsPadding()
                     .padding(end = 18.dp, bottom = if (state.currentTrack != null) 94.dp else 24.dp)
             ) {
-                Icon(Icons.Rounded.PlaylistAdd, contentDescription = null)
+                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null)
             }
         }
 
@@ -909,7 +909,7 @@ internal fun LevyraPlaylistDetailScreen(
             }
 
             if (orderedTracks.isEmpty()) {
-                item { LibraryEmpty(Icons.Rounded.QueueMusic, if (isItalian) "Questa playlist è vuota" else "This playlist is empty") }
+                item { LibraryEmpty(Icons.AutoMirrored.Rounded.QueueMusic, if (isItalian) "Questa playlist è vuota" else "This playlist is empty") }
             } else if (reorderMode) {
                 items(orderedTracks, key = { "reorder-${playlistEntryKey(it)}" }) { track ->
                     val entryKey = playlistEntryKey(track)
@@ -1158,7 +1158,7 @@ private fun LibraryToolbar(
                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 Icon(
-                    Icons.Rounded.Sort,
+                    Icons.AutoMirrored.Rounded.Sort,
                     contentDescription = null,
                     tint = LevyraCyan,
                     modifier = Modifier.size(18.dp)
@@ -1207,7 +1207,7 @@ private fun LibraryToolbar(
             if (category != LibraryCategory.Offline && category != LibraryCategory.Songs) {
                 IconButton(onClick = onLayout) {
                     Icon(
-                        if (layout == LibraryLayout.List) Icons.Rounded.GridView else Icons.Rounded.ViewList,
+                        if (layout == LibraryLayout.List) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
                         contentDescription = null,
                         tint = LevyraMuted
                     )
@@ -1757,7 +1757,7 @@ private fun LibraryListeningDashboard(
                     ) {
                         LibraryInsightMetric(
                             modifier = Modifier.weight(1f),
-                            icon = Icons.Rounded.QueueMusic,
+                            icon = Icons.AutoMirrored.Rounded.QueueMusic,
                             value = playlistCount.toString(),
                             label = "Playlist",
                             accent = LevyraCyan
@@ -2549,8 +2549,8 @@ private fun LibrarySelectionBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 LibrarySelectionAction(Icons.Rounded.PlayArrow, if (isItalian) "Riproduci" else "Play", canOperateTracks, onPlay, LevyraCyan)
-                LibrarySelectionAction(Icons.Rounded.QueueMusic, if (isItalian) "Coda" else "Queue", canOperateTracks, onQueue, LevyraText)
-                LibrarySelectionAction(Icons.Rounded.PlaylistAdd, if (isItalian) "Playlist" else "Playlist", canOperateTracks, onAddToPlaylist, LevyraText)
+                LibrarySelectionAction(Icons.AutoMirrored.Rounded.QueueMusic, if (isItalian) "Coda" else "Queue", canOperateTracks, onQueue, LevyraText)
+                LibrarySelectionAction(Icons.AutoMirrored.Rounded.PlaylistAdd, if (isItalian) "Playlist" else "Playlist", canOperateTracks, onAddToPlaylist, LevyraText)
                 LibrarySelectionAction(Icons.Rounded.Download, if (isItalian) "Offline" else "Offline", canOperateTracks, onDownload, LevyraText)
                 LibrarySelectionAction(Icons.Rounded.Delete, if (isItalian) "Elimina" else "Delete", canDelete, onDelete, LevyraPink)
             }
@@ -2607,7 +2607,7 @@ private fun AddTracksToPlaylistDialog(
                     OutlinedTextField(value = name, onValueChange = { name = it }, singleLine = true, label = { Text(if (isItalian) "Nome playlist" else "Playlist name") })
                 } else {
                     TextButton(onClick = { creating = true }) {
-                        Icon(Icons.Rounded.PlaylistAdd, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null)
                         Spacer(Modifier.width(7.dp))
                         Text(if (isItalian) "Crea nuova playlist" else "Create new playlist")
                     }
@@ -2618,7 +2618,7 @@ private fun AddTracksToPlaylistDialog(
                             modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onAdd(playlist.id) })
                         ) {
                             Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Rounded.QueueMusic, contentDescription = null, tint = LevyraMuted)
+                                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = LevyraMuted)
                                 Spacer(Modifier.width(10.dp))
                                 Text(playlist.name, color = LevyraText, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
@@ -2696,7 +2696,7 @@ private fun PlaylistDetailHeader(
                     IconButton(onClick = { menuExpanded = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = LevyraText) }
                     DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                         DropdownMenuItem(text = { Text(if (isItalian) "Rinomina" else "Rename") }, leadingIcon = { Icon(Icons.Rounded.Edit, null) }, onClick = { menuExpanded = false; onRename() })
-                        DropdownMenuItem(text = { Text(if (isItalian) "Riordina" else "Reorder") }, leadingIcon = { Icon(Icons.Rounded.Sort, null) }, onClick = { menuExpanded = false; onReorder() })
+                        DropdownMenuItem(text = { Text(if (isItalian) "Riordina" else "Reorder") }, leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Sort, null) }, onClick = { menuExpanded = false; onReorder() })
                     }
                 }
             }
