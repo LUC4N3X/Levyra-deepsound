@@ -2,7 +2,9 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
+import com.luc4n3x.levyra.data.lore.ArtistLoreRepository
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
+import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
@@ -16,13 +18,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
@@ -123,6 +125,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     private val preferences = context?.applicationContext?.let { LevyraPreferences(it) }
     private val memory = ConcurrentHashMap<String, ArtistProfile>()
     private val artistHitMemory = ConcurrentHashMap<String, ArtistHit>()
+    private val artistLore = ArtistLoreRepository(context)
 
     private fun profileBrowseKey(browseId: String): String = "browse:${browseId.trim().lowercase(Locale.ROOT)}"
 
@@ -131,19 +134,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val ALBUM_SECTION_WORDS = setOf("album", "albums", "álbum", "álbumes", "alben", "albumi", "альбом", "альбомы", "アルバム", "앨범")
         val SINGLE_SECTION_WORDS = setOf("single", "singles", "singol", "singoli", "sencillo", "sencillos", "ep", "eps")
         val VIDEO_SECTION_WORDS = setOf("video", "videos", "vídeo", "vídeos", "clip", "clips", "videoclip", "music video")
-        val BIOGRAPHY_MUSIC_TERMS = setOf(
-            "singer", "rapper", "musician", "songwriter", "composer", "record producer", "disc jockey", "music group", "musical group", "band", "duo",
-            "cantante", "rapper", "musicista", "cantautore", "cantautrice", "compositore", "compositrice", "produttore discografico", "produttrice discografica", "disc jockey", "gruppo musicale", "duo musicale",
-            "chanteur", "chanteuse", "rappeur", "rappeuse", "musicien", "musicienne", "auteur-compositeur", "compositeur", "compositrice", "producteur de musique", "productrice de musique", "groupe musical",
-            "sänger", "sängerin", "rapper", "rapperin", "musiker", "musikerin", "songwriter", "komponist", "komponistin", "musikproduzent", "musikproduzentin", "musikgruppe", "band",
-            "cantor", "cantora", "rapero", "rapera", "músico", "música", "compositor", "compositora", "productor musical", "productora musical", "grupo musical", "banda"
-        )
-        val BIOGRAPHY_TITLE_TERMS = setOf(
-            "rapper", "singer", "musician", "band", "music group", "dj", "cantante", "musicista", "gruppo musicale", "chanteur", "chanteuse", "musicien", "musicienne", "sänger", "sängerin", "musiker", "musikerin", "rapero", "rapera", "cantor", "cantora"
-        )
-        val BIOGRAPHY_NON_ARTIST_TITLE_TERMS = setOf(
-            "album", "song", "single", "ep", "film", "soundtrack", "brano", "canzone", "singolo", "disco", "pellicola", "chanson", "titre", "lied", "álbum", "canción", "sencillo"
-        )
     }
 
     suspend fun profileFor(artistName: String): ArtistProfile? = withContext(Dispatchers.IO) {
@@ -183,6 +173,37 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         }
     }
 
+
+    fun observeBiography(profile: ArtistProfile): Flow<ArtistBiography> {
+        return artistLore.observe(
+            artistName = profile.name,
+            browseId = profile.browseId,
+            languageCode = contentLanguage()
+        )
+    }
+
+    fun mergeBiography(profile: ArtistProfile, candidate: ArtistBiography): ArtistProfile {
+        val current = profile.biography
+        val replace = when {
+            candidate.text.isBlank() -> false
+            current == null || current.text.isBlank() -> true
+            current.sourceLabel.equals("YouTube Music", ignoreCase = true) ->
+                candidate.confidence >= 80 && candidate.text.length >= current.text.length + 120
+            candidate.confidence > current.confidence -> true
+            candidate.confidence == current.confidence && candidate.text.length > current.text.length -> true
+            else -> false
+        }
+        if (!replace) return profile
+        val portrait = candidate.originalImageUrl.ifBlank { candidate.thumbnailUrl }
+        val updated = profile.copy(
+            biography = candidate,
+            thumbnailUrl = profile.thumbnailUrl.ifBlank { portrait },
+            bannerUrl = profile.bannerUrl.ifBlank { portrait }
+        )
+        memory[artistIdentityKey(updated.name)] = updated
+        if (updated.browseId.isNotBlank()) memory[profileBrowseKey(updated.browseId)] = updated
+        return updated
+    }
 
     suspend fun relatedArtistHits(
         browseId: String,
@@ -461,13 +482,11 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             val albumsJob = async { albumPointer?.let(::fetchReleases).orEmpty() }
             val singlesJob = async { singlePointer?.let(::fetchReleases).orEmpty() }
             val videosJob = async { videoPointer?.let { fetchVideos(it, name) }.orEmpty() }
-            val bioJob = async { inlineBio.ifBlank { fetchExternalBiography(name) } }
             ArtistExpandedSections(
                 songs = songsJob.await(),
                 albums = albumsJob.await(),
                 singles = singlesJob.await(),
-                videos = videosJob.await(),
-                bio = bioJob.await()
+                videos = videosJob.await()
             )
         }
         val songs = (initialSongs + expanded.songs).distinctBy { it.id }.take(100)
@@ -481,7 +500,13 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ArtistProfile(
             browseId = browseId,
             name = name,
-            bio = expanded.bio,
+            biography = inlineBio.takeIf { it.isNotBlank() }?.let { text ->
+                ArtistBiography(
+                    text = text,
+                    sourceLabel = "YouTube Music",
+                    confidence = 100
+                )
+            },
             subscribers = subscribers,
             monthlyListeners = monthly,
             thumbnailUrl = thumb,
@@ -552,7 +577,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ArtistProfile(
             browseId = resolvedArtist?.browseId.orEmpty(),
             name = resolvedName,
-            bio = fetchExternalBiography(resolvedName),
+            biography = null,
             subscribers = resolvedArtist?.subscribers.orEmpty(),
             monthlyListeners = "",
             thumbnailUrl = portrait,
@@ -629,134 +654,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             description?.optJSONArray("runs")?.joinText()?.trim()?.takeIf { it.length > 24 }
         }.firstOrNull()
         return headerText.orEmpty()
-    }
-
-    private suspend fun fetchExternalBiography(artistName: String): String = coroutineScope {
-        val cleanName = artistName.trim()
-        if (cleanName.length < 2) return@coroutineScope ""
-        val languages = linkedSetOf(wikipediaLanguage(contentLanguage()), "en")
-        val biographies = languages.map { language ->
-            async(Dispatchers.IO) { fetchWikipediaBiography(cleanName, language) }
-        }.map { it.await() }
-        biographies.firstOrNull { it.isNotBlank() }.orEmpty()
-    }
-
-    private fun fetchWikipediaBiography(artistName: String, language: String): String {
-        val query = URLEncoder.encode("$artistName music artist", StandardCharsets.UTF_8.name())
-        val endpoint = "https://$language.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=$query&gsrnamespace=0&gsrlimit=6&prop=extracts&exintro=1&explaintext=1&redirects=1&format=json&formatversion=2"
-        val root = runCatching { getJson(endpoint) }.getOrNull() ?: return ""
-        val pages = root.optJSONObject("query")?.optJSONArray("pages") ?: return ""
-        return selectWikipediaBiography(artistName, pages)
-    }
-
-    internal fun selectWikipediaBiography(artistName: String, pages: JSONArray): String {
-        var bestText = ""
-        var bestScore = Int.MIN_VALUE
-        for (index in 0 until pages.length()) {
-            val page = pages.optJSONObject(index) ?: continue
-            val title = page.optString("title").trim()
-            val extract = cleanBiography(page.optString("extract"))
-            if (title.isBlank() || extract.length < 80 || isDisambiguationBiography(extract)) continue
-            val baseTitle = title.substringBefore(" (").trim()
-            if (artistIdentityKey(baseTitle) != artistIdentityKey(artistName)) continue
-            val normalizedExtract = extract.lowercase(Locale.ROOT)
-            val normalizedIntro = normalizedExtract.take(600)
-            val normalizedTitle = title.lowercase(Locale.ROOT)
-            val parenthetical = title.substringAfter("(", "").substringBeforeLast(")", "").lowercase(Locale.ROOT)
-            if (BIOGRAPHY_NON_ARTIST_TITLE_TERMS.any { term -> parenthetical.contains(term) }) continue
-            val hasMusicRole = BIOGRAPHY_MUSIC_TERMS.any { term -> normalizedIntro.contains(term) } ||
-                BIOGRAPHY_TITLE_TERMS.any { term -> normalizedTitle.contains(term) }
-            if (!hasMusicRole) continue
-            var score = 1_000
-            if (BIOGRAPHY_TITLE_TERMS.any { term -> parenthetical.contains(term) }) score += 300
-            if (normalizedIntro.startsWith(artistName.lowercase(Locale.ROOT))) score += 200
-            if (score > bestScore) {
-                bestScore = score
-                bestText = extract
-            }
-        }
-        return bestText.takeIf { bestScore >= 1_000 }.orEmpty()
-    }
-
-    private fun getJson(endpoint: String): JSONObject {
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 5_000
-            readTimeout = 7_000
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Accept-Language", contentLanguage())
-            setRequestProperty("User-Agent", "Levyra/${BuildConfig.VERSION_NAME} Android music client")
-        }
-        return try {
-            val code = connection.responseCode
-            if (code !in 200..299) return JSONObject()
-            val response = BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
-            JSONObject(response)
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    private fun cleanBiography(value: String): String {
-        val normalized = value
-            .replace(Regex("\\s*\n+\\s*"), " ")
-            .replace(Regex("\\s{2,}"), " ")
-            .trim()
-        if (normalized.length <= 3_200) return normalized
-        val cut = normalized.lastIndexOf('.', 3_200).takeIf { it >= 1_800 } ?: 3_200
-        return normalized.substring(0, cut + if (cut < normalized.length && normalized[cut] == '.') 1 else 0).trim()
-    }
-
-    private fun isDisambiguationBiography(value: String): Boolean {
-        val normalized = value.lowercase(Locale.ROOT)
-        return normalized.contains("may refer to") ||
-            normalized.contains("può riferirsi") ||
-            normalized.contains("peut faire référence") ||
-            normalized.contains("kann sich beziehen") ||
-            normalized.contains("puede referirse") ||
-            normalized.contains("قد يشير إلى") ||
-            normalized.contains("可能指") ||
-            normalized.contains("曖昧さ回避") ||
-            normalized.contains("동음이의어") ||
-            normalized.contains("बहुविकल्पी") ||
-            normalized.contains("dapat merujuk") ||
-            normalized.contains("có thể đề cập") ||
-            normalized.contains("อาจหมายถึง") ||
-            normalized.contains("maaaring tumukoy sa") ||
-            normalized.contains("עשוי להתייחס") ||
-            normalized.contains("עשויה להתייחס") ||
-            normalized.contains("פירושונים")
-    }
-
-    private fun wikipediaLanguage(languageCode: String): String {
-        return when (LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')) {
-            "zh" -> "zh"
-            "ar" -> "ar"
-            "pt" -> "pt"
-            "uk" -> "uk"
-            "ru" -> "ru"
-            "tr" -> "tr"
-            "el" -> "el"
-            "sv" -> "sv"
-            "da" -> "da"
-            "cs" -> "cs"
-            "pl" -> "pl"
-            "ro" -> "ro"
-            "nl" -> "nl"
-            "de" -> "de"
-            "fr" -> "fr"
-            "es" -> "es"
-            "it" -> "it"
-            "ja" -> "ja"
-            "ko" -> "ko"
-            "hi" -> "hi"
-            "id" -> "id"
-            "vi" -> "vi"
-            "th" -> "th"
-            "fil" -> "tl"
-            "he" -> "he"
-            else -> "en"
-        }
     }
 
     private fun extractSubscribers(header: JSONObject?): String {
@@ -857,8 +754,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         val songs: List<Track>,
         val albums: List<ArtistRelease>,
         val singles: List<ArtistRelease>,
-        val videos: List<Track>,
-        val bio: String
+        val videos: List<Track>
     )
 
     private fun findSongsPointer(root: JSONObject): ArtistSectionPointer? {
