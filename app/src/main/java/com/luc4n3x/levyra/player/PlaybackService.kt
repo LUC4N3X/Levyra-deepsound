@@ -877,7 +877,7 @@ class PlaybackService : MediaLibraryService() {
                 ?.takeIf { it.streamUrl.isNotBlank() }
                 ?.let { LevyraMediaItemFactory.build(it, videoMode) }
         } ?: return false
-        updatePlayerWakeMode(player, mediaItem)
+        (player as? ExoPlayer)?.let { updatePlayerWakeMode(it, mediaItem) }
         acquirePlaybackWakeLock()
         player.setMediaItem(mediaItem, positionMs.coerceAtLeast(0L))
         player.prepare()
