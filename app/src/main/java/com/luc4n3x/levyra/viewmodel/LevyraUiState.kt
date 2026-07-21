@@ -128,6 +128,7 @@ data class LevyraUiState(
     val updateMessage: String? = null,
     val showUpdatePrompt: Boolean = false,
     val downloads: List<DownloadedTrack> = emptyList(),
+    val downloadStorageBytes: Long = 0L,
     val exploreZoneId: String? = null,
     val exploreTracks: List<Track> = emptyList(),
     val exploreVideos: List<Track> = emptyList(),
