@@ -30,3 +30,4 @@ includeBuild("third_party/LevyraExtractor") {
 
 rootProject.name = "Levyra"
 include(":app")
+include(":baselineprofile")
