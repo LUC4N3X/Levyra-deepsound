@@ -91,4 +91,62 @@ class PlaybackManifestCodecTest {
 
         assertFalse(manifest.isFresh(now))
     }
+
+    @Test
+    fun mp4ExportRequirementRejectsWebmAndAcceptsM4a() {
+        val now = System.currentTimeMillis()
+        val webmUrl = "https://r1.googlevideo.com/videoplayback?expire=9999999999&mime=audio%2Fwebm"
+        val mp4Url = "https://r1.googlevideo.com/videoplayback?expire=9999999999&mime=audio%2Fmp4"
+        val webm = ResolvedPlaybackManifest(
+            sourceVideoId = "dQw4w9WgXcQ",
+            provider = "YouTube",
+            resolvedAtMs = now,
+            expiresAtMs = now + 3_600_000L,
+            durationMs = 1L,
+            selectedAudioUrl = webmUrl,
+            selectedVideoUrl = "",
+            streams = listOf(
+                PlaybackStreamDescriptor(
+                    url = webmUrl,
+                    kind = PlaybackStreamKind.AUDIO,
+                    deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+                    container = "webm",
+                    mimeType = "audio/webm",
+                    selected = true
+                )
+            )
+        )
+        val mp4 = webm.copy(
+            selectedAudioUrl = mp4Url,
+            streams = listOf(
+                PlaybackStreamDescriptor(
+                    url = mp4Url,
+                    kind = PlaybackStreamKind.AUDIO,
+                    deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+                    container = "m4a",
+                    mimeType = "audio/mp4",
+                    selected = true
+                )
+            )
+        )
+
+        val muxed = webm.copy(
+            selectedAudioUrl = mp4Url,
+            streams = listOf(
+                PlaybackStreamDescriptor(
+                    url = mp4Url,
+                    kind = PlaybackStreamKind.MUXED,
+                    deliveryMethod = PlaybackDeliveryMethod.PROGRESSIVE,
+                    container = "mp4",
+                    mimeType = "video/mp4",
+                    selected = true
+                )
+            )
+        )
+
+        assertFalse(webm.supportsMp4AudioExport())
+        assertFalse(muxed.supportsMp4AudioExport())
+        assertTrue(mp4.supportsMp4AudioExport())
+    }
+
 }
