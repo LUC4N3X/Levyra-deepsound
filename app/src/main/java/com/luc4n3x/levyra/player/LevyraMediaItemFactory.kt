@@ -16,9 +16,8 @@ object LevyraMediaItemFactory {
 
     fun build(track: Track, videoMode: Boolean = false): MediaItem {
         val streamUrl = track.streamUrl
-        return MediaItem.Builder()
+        val builder = MediaItem.Builder()
             .setUri(streamUrl)
-            .setMimeType(mimeTypeFor(streamUrl, videoMode))
             .setCustomCacheKey(
                 if (videoMode && track.videoStreamUrl.isBlank()) {
                     LevyraPlaybackCacheKey.video(track)
@@ -28,13 +27,17 @@ object LevyraMediaItemFactory {
             )
             .setMediaId(mediaId(track))
             .setMediaMetadata(metadata(track, videoMode))
-            .build()
+        mimeTypeFor(streamUrl, videoMode)?.let { builder.setMimeType(it) }
+        return builder.build()
     }
 
-    internal fun mimeTypeFor(url: String, videoMode: Boolean): String {
+    internal fun mimeTypeFor(url: String, videoMode: Boolean): String? {
         val clean = url.substringBefore('#').lowercase()
         val path = clean.substringBefore('?')
+        val isContentUri = clean.startsWith("content://")
+        val isExtensionlessFileUri = clean.startsWith("file://") && !path.substringAfterLast('/').contains('.')
         return when {
+            isContentUri || isExtensionlessFileUri -> null
             path.endsWith(".m3u8") || path.contains("/hls_playlist") || path.contains("/manifest/hls") || clean.contains("mime=application%2fx-mpegurl") || clean.contains("mime=application/vnd.apple.mpegurl") || clean.contains("type=application%2fx-mpegurl") -> "application/x-mpegURL"
             path.endsWith(".mpd") || clean.contains("mime=application%2fdash+xml") || clean.contains("mime=application/dash+xml") -> "application/dash+xml"
             clean.contains("mime=video%2fwebm") || clean.contains("mime=video/webm") -> "video/webm"
@@ -65,7 +68,7 @@ object LevyraMediaItemFactory {
             if (videoMode && track.videoStreamUrl.isNotBlank()) {
                 putString(PlaybackService.EXTRA_VIDEO_URL, track.videoStreamUrl)
                 putString(PlaybackService.EXTRA_VIDEO_CACHE_KEY, LevyraPlaybackCacheKey.video(track))
-                putString(PlaybackService.EXTRA_VIDEO_MIME_TYPE, mimeTypeFor(track.videoStreamUrl, true))
+                mimeTypeFor(track.videoStreamUrl, true)?.let { putString(PlaybackService.EXTRA_VIDEO_MIME_TYPE, it) }
             }
         }
         return MediaMetadata.Builder()

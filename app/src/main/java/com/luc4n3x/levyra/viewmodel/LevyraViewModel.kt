@@ -106,6 +106,7 @@ import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.TimeoutCancellationException
@@ -327,6 +328,51 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var radioJob: Job? = null
     private var sponsorSegments: List<SponsorSegment> = emptyList()
     private val tabBackStack = ArrayDeque<LevyraTab>()
+
+    private sealed interface DetailPage {
+        data class AlbumPage(val detail: AlbumDetail) : DetailPage
+        data class ArtistPage(val profile: ArtistProfile) : DetailPage
+    }
+
+    private val detailBackStack = ArrayDeque<DetailPage>()
+
+    private fun pushDetailPage(page: DetailPage) {
+        detailBackStack.addLast(page)
+        while (detailBackStack.size > 12) {
+            detailBackStack.removeFirst()
+        }
+    }
+
+    private fun restoreDetailPage(): Boolean {
+        val page = detailBackStack.removeLastOrNull() ?: return false
+        when (page) {
+            is DetailPage.AlbumPage -> _state.update {
+                it.copy(
+                    showAlbum = true,
+                    albumLoading = false,
+                    albumError = null,
+                    albumDetail = page.detail,
+                    showArtist = false,
+                    artistLoading = false,
+                    artistError = null,
+                    detailReturnTarget = DetailReturnTarget.None
+                )
+            }
+            is DetailPage.ArtistPage -> _state.update {
+                it.copy(
+                    showArtist = true,
+                    artistLoading = false,
+                    artistError = null,
+                    artistProfile = page.profile,
+                    showAlbum = false,
+                    albumLoading = false,
+                    albumError = null,
+                    detailReturnTarget = DetailReturnTarget.None
+                )
+            }
+        }
+        return true
+    }
     private var playRequestId: Long = 0L
     private var streamTransitionId: Long = 0L
     private var pendingSeekMs: Long = 0L
@@ -657,7 +703,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             recoverPlaybackStream(track, positionMs, videoMode, playWhenReady, errorMessage)
         }
         player.onError = { errorMsg ->
-            _state.value.currentTrack?.let { resolver.invalidate(it, _state.value.isVideoMode) }
+            _state.value.currentTrack
+                ?.takeUnless(::isLocalPlaybackTrack)
+                ?.let { resolver.invalidate(it, _state.value.isVideoMode) }
             _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
         }
         applyFollowedArtists(followedArtistsStore.load())
@@ -1354,7 +1402,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         recordSmartCompletion(current)
         val nextTrack = queueEngine.next()
         when {
-            nextTrack != null -> startResolve(nextTrack)
+            nextTrack != null -> startResolve(nextTrack, autoRetryWhenOffline = true)
             queueEngine.state.value.radioEnabled -> ensureRadioTail(force = true, playWhenReady = true)
             loopCurrentQueueOnCompletion && queueEngine.state.value.tracks.isNotEmpty() -> {
                 val first = queueEngine.select(0, rememberCurrent = true)
@@ -1445,6 +1493,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playWhenReady: Boolean,
         errorMessage: String
     ) {
+        if (isLocalPlaybackTrack(failedTrack)) return
         val transitionId = ++streamTransitionId
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
@@ -2652,11 +2701,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val artistName = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
         val browseId = track.artistBrowseIds.firstOrNull().orEmpty()
         if (browseId.isNotBlank()) {
-            openArtistReference(
-                name = artistName,
-                browseId = browseId,
-                returnTarget = DetailReturnTarget.None
-            )
+            openArtistReference(name = artistName, browseId = browseId)
         } else {
             openArtistByName(artistName)
         }
@@ -2664,11 +2709,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openArtistFromAlbum() {
         val album = _state.value.albumDetail?.album ?: return
-        openArtistReference(
-            name = album.artist,
-            browseId = album.artistBrowseId,
-            returnTarget = DetailReturnTarget.Album
-        )
+        openArtistReference(name = album.artist, browseId = album.artistBrowseId)
     }
 
     fun openArtistRelease(release: ArtistRelease, artistName: String) {
@@ -2686,18 +2727,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openArtistByName(name: String) {
-        openArtistByNameInternal(name, DetailReturnTarget.None)
+        openArtistReference(name = name, browseId = "")
     }
 
-    private fun openArtistByNameInternal(name: String, returnTarget: DetailReturnTarget) {
-        openArtistReference(name = name, browseId = "", returnTarget = returnTarget)
-    }
-
-    private fun openArtistReference(name: String, browseId: String, returnTarget: DetailReturnTarget) {
+    private fun openArtistReference(name: String, browseId: String) {
         val clean = name.trim()
         val normalizedBrowseId = browseId.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
         artistJob?.cancel()
+        val previous = _state.value
+        val previousProfileMatches = previous.artistProfile?.let { profile ->
+            if (normalizedBrowseId.isNotBlank()) {
+                profile.browseId.equals(normalizedBrowseId, ignoreCase = true)
+            } else {
+                profile.name.equals(clean, ignoreCase = true)
+            }
+        } == true
+        val previousAlbum = previous.albumDetail
+        val previousProfile = previous.artistProfile
+        if (previous.showAlbum && previousAlbum != null) {
+            pushDetailPage(DetailPage.AlbumPage(previousAlbum))
+        } else if (previous.showArtist && previousProfile != null && !previousProfileMatches) {
+            pushDetailPage(DetailPage.ArtistPage(previousProfile))
+        }
         _state.update { current ->
             val sameProfile = current.artistProfile?.let { profile ->
                 if (normalizedBrowseId.isNotBlank()) {
@@ -2713,11 +2765,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 artistError = null,
                 artistProfile = if (sameProfile) current.artistProfile else null,
                 openPlaylist = null,
-                detailReturnTarget = if (returnTarget == DetailReturnTarget.Album && current.albumDetail != null) {
-                    DetailReturnTarget.Album
-                } else {
-                    DetailReturnTarget.None
-                }
+                detailReturnTarget = DetailReturnTarget.None
             )
         }
         artistJob = viewModelScope.launch {
@@ -2749,13 +2797,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeArtist() {
         artistJob?.cancel()
-        _state.update { current ->
-            val returnToAlbum = current.detailReturnTarget == DetailReturnTarget.Album && current.albumDetail != null
-            current.copy(
+        if (restoreDetailPage()) return
+        _state.update {
+            it.copy(
                 showArtist = false,
                 artistLoading = false,
                 artistError = null,
-                showAlbum = returnToAlbum,
+                showAlbum = false,
                 detailReturnTarget = DetailReturnTarget.None
             )
         }
@@ -2768,8 +2816,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
         albumJob?.cancel()
         if (returnTarget != DetailReturnTarget.Artist) artistJob?.cancel()
-        val current = _state.value.albumDetail
+        val previous = _state.value
+        val current = previous.albumDetail
         val sameAlbum = current != null && current.album.title.equals(album.title, ignoreCase = true) && current.album.artist.equals(album.artist, ignoreCase = true)
+        val keepsArtistParent = returnTarget == DetailReturnTarget.Artist && previous.showArtist
+        if (previous.showAlbum && current != null && !sameAlbum) {
+            pushDetailPage(DetailPage.AlbumPage(current))
+        } else if (!keepsArtistParent && previous.showArtist && previous.artistProfile != null) {
+            pushDetailPage(DetailPage.ArtistPage(previous.artistProfile))
+        }
         _state.update { state ->
             val keepArtistParent = returnTarget == DetailReturnTarget.Artist && state.showArtist
             state.copy(
@@ -2816,13 +2871,26 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeAlbum() {
         albumJob?.cancel()
-        _state.update { current ->
-            val returnToArtist = current.detailReturnTarget == DetailReturnTarget.Artist && current.showArtist
-            current.copy(
+        val current = _state.value
+        if (current.detailReturnTarget == DetailReturnTarget.Artist && current.showArtist) {
+            _state.update {
+                it.copy(
+                    showAlbum = false,
+                    albumLoading = false,
+                    albumError = null,
+                    showArtist = true,
+                    detailReturnTarget = DetailReturnTarget.None
+                )
+            }
+            return
+        }
+        if (restoreDetailPage()) return
+        _state.update {
+            it.copy(
                 showAlbum = false,
                 albumLoading = false,
                 albumError = null,
-                showArtist = returnToArtist,
+                showArtist = false,
                 detailReturnTarget = DetailReturnTarget.None
             )
         }
@@ -2831,6 +2899,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openPlayerScreen() {
         albumJob?.cancel()
         artistJob?.cancel()
+        detailBackStack.clear()
         _state.update {
             it.copy(
                 showAlbum = false,
@@ -3360,11 +3429,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openArtistFromHit(hit: ArtistHit) {
-        openArtistReference(
-            name = hit.name,
-            browseId = hit.browseId,
-            returnTarget = DetailReturnTarget.None
-        )
+        openArtistReference(name = hit.name, browseId = hit.browseId)
     }
 
     private fun recordPlaybackHistory(track: Track) {
@@ -3796,22 +3861,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         startResolve(list.getOrElse(index) { track })
     }
 
-    private fun startResolve(track: Track, preserveCrossfade: Boolean = false) {
+    private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {
         streamTransitionId++
-        modeSwitchJob?.cancel()
-        streamRecoveryJob?.cancel()
-        alternateModePrefetchJob?.cancel()
-        youtubeEngagementJob?.cancel()
-        motionArtworkJob?.cancel()
-        motionArtworkRequestKey = null
-        motionArtworkPrefetchJob?.cancel()
-        youtubeDislikeJob?.cancel()
-        youtubeCommentsJob?.cancel()
-        youtubeCommentsPageJob?.cancel()
-        youtubeCommentReplyJobs.values.forEach { it.cancel() }
-        youtubeCommentReplyJobs.clear()
-        youtubeCommentContinuationHistory.clear()
-        youtubeEngagementGeneration.incrementAndGet()
+        cancelResolutionSideJobs()
         val engagementVideoId = youtubeEngagementVideoId(track)
         if (!preserveCrossfade) {
             crossfadeJob?.cancel()
@@ -3838,45 +3890,91 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         fetchLyrics(track)
         prefetchLyricsAround(track)
         refreshMotionArtworkAround(track)
-
-        val playableTrack = youtubePlayableTrack(track) ?: track
         playJob = viewModelScope.launch {
-            val local = localDownloadedTrack(track)
-            if (local != null) {
-                if (!isActive || requestId != playRequestId) return@launch
-                startPlayback(local)
-                prefetchAround(local)
-                return@launch
-            }
-            val instant = resolver.cached(playableTrack, _state.value.isVideoMode)
-            if (instant != null) {
-                if (!isActive || requestId != playRequestId) return@launch
-                startPlayback(instant)
-                prefetchAround(instant)
-                return@launch
-            }
+            resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)
+        }
+    }
 
-            player.stop()
-            try {
-                val playable = resolveForPlayback(track)
-                if (!isActive || requestId != playRequestId) return@launch
-                startPlayback(playable)
-                prefetchAround(playable)
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                if (!isActive || requestId != playRequestId) return@launch
-                player.stop()
-                _state.update {
-                    it.copy(
-                        isResolving = false,
-                        isPlaying = false,
-                        positionMs = 0L,
-                        durationMs = track.durationMs,
-                        currentTrack = track.copy(streamUrl = ""),
-                        playerError = cleanUserError(error)
-                    )
-                }
+    private fun cancelResolutionSideJobs() {
+        modeSwitchJob?.cancel()
+        streamRecoveryJob?.cancel()
+        alternateModePrefetchJob?.cancel()
+        youtubeEngagementJob?.cancel()
+        motionArtworkJob?.cancel()
+        motionArtworkRequestKey = null
+        motionArtworkPrefetchJob?.cancel()
+        youtubeDislikeJob?.cancel()
+        youtubeCommentsJob?.cancel()
+        youtubeCommentsPageJob?.cancel()
+        youtubeCommentReplyJobs.values.forEach { it.cancel() }
+        youtubeCommentReplyJobs.clear()
+        youtubeCommentContinuationHistory.clear()
+        youtubeEngagementGeneration.incrementAndGet()
+    }
+
+    private suspend fun CoroutineScope.resolveAndStartPlayback(
+        track: Track,
+        requestId: Long,
+        autoRetryWhenOffline: Boolean
+    ) {
+        val playableTrack = youtubePlayableTrack(track) ?: track
+        val instant = localDownloadedTrack(track) ?: resolver.cached(playableTrack, _state.value.isVideoMode)
+        if (instant != null) {
+            if (!isActive || requestId != playRequestId) return
+            startPlayback(instant)
+            prefetchAround(instant)
+            return
+        }
+        player.stop()
+        try {
+            val playable = resolveForPlayback(track)
+            if (!isActive || requestId != playRequestId) return
+            startPlayback(playable)
+            prefetchAround(playable)
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            if (!isActive || requestId != playRequestId) return
+            publishResolveFailure(track, error, requestId, autoRetryWhenOffline)
+        }
+    }
+
+    private fun publishResolveFailure(
+        track: Track,
+        error: Throwable,
+        requestId: Long,
+        autoRetryWhenOffline: Boolean
+    ) {
+        val retryWhenOnline = autoRetryWhenOffline && !hasInternetCapableNetwork()
+        player.stop()
+        _state.update {
+            it.copy(
+                isResolving = false,
+                isPlaying = false,
+                positionMs = 0L,
+                durationMs = track.durationMs,
+                currentTrack = track.copy(streamUrl = ""),
+                playerError = if (retryWhenOnline) null else cleanUserError(error)
+            )
+        }
+        if (retryWhenOnline) scheduleOfflineAutoAdvanceRetry(track, requestId)
+    }
+
+    private fun hasInternetCapableNetwork(): Boolean {
+        val connectivity = getApplication<Application>().getSystemService(ConnectivityManager::class.java)
+            ?: return false
+        val network = connectivity.activeNetwork ?: return false
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun scheduleOfflineAutoAdvanceRetry(track: Track, requestId: Long) {
+        streamRecoveryJob?.cancel()
+        streamRecoveryJob = viewModelScope.launch {
+            while (isActive && requestId == playRequestId && !hasInternetCapableNetwork()) {
+                delay(5_000L)
             }
+            if (!isActive || requestId != playRequestId) return@launch
+            startResolve(track, autoRetryWhenOffline = true)
         }
     }
 
@@ -3945,13 +4043,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun playDownloaded(download: DownloadedTrack) {
+        if (download.uri.isBlank()) {
+            _state.update { it.copy(playerError = "File offline non disponibile") }
+            return
+        }
         val track = Track(
-            id = download.trackId,
+            id = download.trackId.ifBlank { "offline-${download.id}" },
             title = download.title,
             artist = download.artist,
             album = download.album,
             durationMs = download.durationMs,
-            streamUrl = "",
+            streamUrl = download.uri,
             videoUrl = "",
             thumbnailUrl = "",
             largeThumbnailUrl = "",
@@ -3964,6 +4066,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             accentStart = 0,
             accentEnd = 0
         )
+        _state.update { it.copy(isVideoMode = false) }
         loopCurrentQueueOnCompletion = false
         queueEngine.replace(listOf(track), 0, keepPlaybackModes = true, radioEnabled = false)
         queueIndex = 0
@@ -4369,7 +4472,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun fetchSponsorSegments(track: Track) {
         sponsorJob?.cancel()
         sponsorSegments = emptyList()
-        if (!_state.value.sponsorBlockEnabled || track.id.isBlank() || track.id.startsWith("chart-")) return
+        if (
+            !_state.value.sponsorBlockEnabled ||
+            isLocalPlaybackTrack(track) ||
+            track.id.isBlank() ||
+            track.id.startsWith("chart-")
+        ) return
         sponsorJob = viewModelScope.launch {
             val result = runCatching { sponsorBlockRepository.segments(track.id) }.getOrDefault(emptyList())
             if (_state.value.currentTrack?.id == track.id) sponsorSegments = result
@@ -4485,9 +4593,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         prefetchJob?.cancel()
         PlaybackService.clearPreparedQueueNext()
         val current = _state.value.currentTrack
-        if (current != null) prefetchLyricsAround(current)
-        if (current != null) prefetchNextMotionArtwork(current)
-        if (_state.value.isPlaying && current != null && current.streamUrl.isNotBlank()) prefetchAround(current)
+        if (current != null && !isLocalPlaybackTrack(current)) prefetchLyricsAround(current)
+        if (current != null && !isLocalPlaybackTrack(current)) prefetchNextMotionArtwork(current)
+        if (
+            _state.value.isPlaying &&
+            current != null &&
+            current.streamUrl.isNotBlank() &&
+            !isLocalPlaybackTrack(current)
+        ) prefetchAround(current)
     }
 
     private fun refreshMotionArtworkAround(current: Track) {
@@ -4611,6 +4724,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun prefetchAround(playable: Track) {
         prefetchJob?.cancel()
         PlaybackService.clearPreparedQueueNext()
+        if (isLocalPlaybackTrack(playable) || !lyricsNetworkProfile().connected) return
         val generation = queueEngine.state.value.generation
         prefetchJob = viewModelScope.launch(Dispatchers.IO) {
             val plan = adaptivePlaybackPolicy.current(_state.value.isVideoMode)
@@ -4655,29 +4769,49 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private data class RadioTailRequest(
+        val seed: Track,
+        val generation: Long
+    )
+
     private fun ensureRadioTail(force: Boolean, playWhenReady: Boolean = false) {
-        val queueSnapshot = queueEngine.state.value
-        if (!queueSnapshot.radioEnabled || queueSnapshot.currentTrack == null) return
-        if (!force && queueEngine.upcoming(3).size >= 3) return
-        if (radioJob?.isActive == true) return
-        val seed = queueSnapshot.currentTrack ?: return
-        val generation = queueSnapshot.generation
+        val request = radioTailRequest(force) ?: return
         radioJob = viewModelScope.launch(Dispatchers.IO) {
-            val radioTracks = runCatching {
-                repository.radio(seed, _state.value.languageCode, 20)
-            }.getOrDefault(emptyList())
-            if (!isActive || radioTracks.isEmpty()) return@launch
-            val before = queueEngine.state.value
-            val sameSeed = before.currentTrack?.let { playbackQueueIdentity(it) } == playbackQueueIdentity(seed)
-            if (!sameSeed || (before.generation != generation && !force)) return@launch
-            queueEngine.appendRadioTracks(radioTracks)
-            if (playWhenReady) {
-                withContext(Dispatchers.Main) {
-                    queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
-                }
-            }
+            appendRadioTail(request, force, playWhenReady)
         }
     }
+
+    private fun radioTailRequest(force: Boolean): RadioTailRequest? {
+        val snapshot = queueEngine.state.value
+        val seed = snapshot.currentTrack ?: return null
+        if (!snapshot.radioEnabled) return null
+        if (!force && queueEngine.upcoming(3).size >= 3) return null
+        if (radioJob?.isActive == true) return null
+        if (isLocalPlaybackTrack(seed) || !lyricsNetworkProfile().connected) return null
+        return RadioTailRequest(seed = seed, generation = snapshot.generation)
+    }
+
+    private suspend fun appendRadioTail(
+        request: RadioTailRequest,
+        force: Boolean,
+        playWhenReady: Boolean
+    ) {
+        val radioTracks = runCatching {
+            repository.radio(request.seed, _state.value.languageCode, 20)
+        }.getOrDefault(emptyList())
+        if (radioTracks.isEmpty()) return
+        val current = queueEngine.state.value
+        if (!isSameRadioSeed(current.currentTrack, request.seed)) return
+        if (current.generation != request.generation && !force) return
+        queueEngine.appendRadioTracks(radioTracks)
+        if (!playWhenReady) return
+        withContext(Dispatchers.Main) {
+            queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
+        }
+    }
+
+    private fun isSameRadioSeed(current: Track?, seed: Track): Boolean =
+        current?.let { playbackQueueIdentity(it) } == playbackQueueIdentity(seed)
 
     private fun prefetchTop(tracks: List<Track>, count: Int = 8, respectHomeScroll: Boolean = false) {
         val plan = adaptivePlaybackPolicy.current(videoMode = false)
@@ -5157,6 +5291,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             throw IllegalStateException("YouTube non ha fornito uno stream audio riproducibile per ${track.title}")
         }
         return resolved
+    }
+
+    private fun isLocalPlaybackTrack(track: Track): Boolean {
+        val stream = track.streamUrl.trim()
+        return track.source.equals("Offline", ignoreCase = true) ||
+            stream.startsWith("content://", ignoreCase = true) ||
+            stream.startsWith("file://", ignoreCase = true)
     }
 
     private fun effectiveDuration(track: Track): Long {
