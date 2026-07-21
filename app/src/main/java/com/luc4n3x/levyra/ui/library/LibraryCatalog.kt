@@ -129,9 +129,18 @@ internal fun buildLibraryCatalog(
 
     val tracksByArtist = allTracks
         .flatMap { track ->
-            splitLibraryArtists(track.artist).map { artistName -> artistName to track }
+            val artistNames = splitLibraryArtists(track.artist)
+            artistNames.mapIndexed { index, artistName ->
+                LibraryArtistMembership(
+                    name = artistName,
+                    browseId = track.artistBrowseIds.getOrNull(index).orEmpty().trim().ifBlank {
+                        if (artistNames.size == 1) track.artistBrowseIds.firstOrNull().orEmpty().trim() else ""
+                    },
+                    track = track
+                )
+            }
         }
-        .groupBy({ normalizeLibraryText(it.first) }, { it.second })
+        .groupBy { normalizeLibraryText(it.name) }
 
     val followedByName = followedArtists.associateBy { normalizeLibraryText(it.name) }
     val artistKeys = linkedSetOf<String>().apply {
@@ -139,19 +148,22 @@ internal fun buildLibraryCatalog(
         addAll(tracksByArtist.keys.filter(String::isNotBlank))
     }
     val artists = artistKeys.mapNotNull { key ->
-        val tracks = tracksByArtist[key].orEmpty().distinctBy(::libraryTrackKey)
+        val memberships = tracksByArtist[key].orEmpty()
+        val tracks = memberships.map { it.track }.distinctBy(::libraryTrackKey)
         val followed = followedByName[key]
         val representative = tracks.maxByOrNull(::libraryMetadataScore)
-        val name = followed?.name?.trim().orEmpty().ifBlank {
-            representative?.artist?.let(::primaryLibraryArtist).orEmpty()
-        }
+        val groupedName = memberships.firstOrNull()?.name.orEmpty().trim()
+        val name = followed?.name?.trim().orEmpty().ifBlank { groupedName }
         if (name.isBlank()) return@mapNotNull null
+        val browseId = followed?.browseId.orEmpty().trim().ifBlank {
+            memberships.firstNotNullOfOrNull { membership ->
+                membership.browseId.takeIf(String::isNotBlank)
+            }.orEmpty()
+        }
         LibraryArtist(
-            key = followed?.browseId?.takeIf(String::isNotBlank)?.let { "browse:$it" } ?: "artist:$key",
+            key = browseId.takeIf(String::isNotBlank)?.let { "browse:$it" } ?: "artist:$key",
             name = name,
-            browseId = followed?.browseId.orEmpty().ifBlank {
-                representative?.artistBrowseIds?.firstOrNull().orEmpty()
-            },
+            browseId = browseId,
             artworkUrl = followed?.thumbnailUrl.orEmpty().ifBlank {
                 representative?.largeThumbnailUrl?.ifBlank { representative.thumbnailUrl }.orEmpty()
             },
@@ -330,6 +342,11 @@ internal fun libraryTrackKey(track: Track): String {
     ).joinToString("|")
 }
 
+internal fun playlistEntryKey(track: Track): String {
+    return track.id.trim().takeIf(String::isNotBlank)?.let { "track-id:$it" }
+        ?: "track-fallback:${libraryTrackKey(track)}"
+}
+
 internal fun libraryDownloadForTrack(
     track: Track,
     downloads: List<DownloadedTrack>
@@ -360,6 +377,12 @@ internal fun normalizeLibraryText(value: String): String {
         .trim()
 }
 
+private data class LibraryArtistMembership(
+    val name: String,
+    val browseId: String,
+    val track: Track
+)
+
 private fun libraryAlbumKey(track: Track): String {
     track.albumBrowseId.trim().takeIf(String::isNotBlank)?.let { return "browse:$it" }
     track.upc.trim().lowercase(Locale.ROOT).takeIf(String::isNotBlank)?.let { return "upc:$it" }
@@ -385,15 +408,11 @@ private fun libraryMetadataScore(track: Track): Int {
     ).count(String::isNotBlank) * 10 + track.metadataConfidence
 }
 
-private fun primaryLibraryArtist(value: String): String {
-    return splitLibraryArtists(value).firstOrNull().orEmpty().ifBlank { value.trim() }
-}
-
 private fun splitLibraryArtists(value: String): List<String> {
     return value
         .split(Regex("\\s+(?:feat\\.?|ft\\.?|x|×)\\s+|\\s*;\\s*|\\s+·\\s+", RegexOption.IGNORE_CASE))
         .map(String::trim)
-        .filter { it.length >= 2 }
+        .filter(String::isNotBlank)
         .distinctBy(::normalizeLibraryText)
         .ifEmpty { listOf(value.trim()).filter(String::isNotBlank) }
 }
