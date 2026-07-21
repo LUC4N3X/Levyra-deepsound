@@ -38,6 +38,21 @@ data class PlaybackStreamDescriptor(
         if (expiresAtMs <= 0L) return true
         return nowMs + refreshAheadMs < expiresAtMs
     }
+
+    fun isMp4Audio(): Boolean {
+        if (kind != PlaybackStreamKind.AUDIO || deliveryMethod == PlaybackDeliveryMethod.HLS) return false
+        val normalizedContainer = container.trim().lowercase()
+        val normalizedMimeType = mimeType.substringBefore(';').trim().lowercase()
+        val normalizedUrl = url.lowercase()
+        val path = normalizedUrl.substringBefore('?').substringBefore('#')
+        return normalizedContainer == "m4a" ||
+            normalizedContainer == "mp4" ||
+            normalizedMimeType == "audio/mp4" ||
+            normalizedUrl.contains("mime=audio%2fmp4") ||
+            normalizedUrl.contains("mime=audio/mp4") ||
+            path.endsWith(".m4a") ||
+            path.endsWith(".mp4")
+    }
 }
 
 data class ResolvedPlaybackManifest(
@@ -61,6 +76,13 @@ data class ResolvedPlaybackManifest(
         if (expiresAtMs > 0L && nowMs + refreshAheadMs >= expiresAtMs) return false
         val selectedStreams = streams.filter { it.selected }
         return selectedStreams.isNotEmpty() && selectedStreams.all { it.isFresh(nowMs, refreshAheadMs) }
+    }
+
+    fun supportsMp4AudioExport(): Boolean {
+        if (selectedAudioUrl.isBlank() || selectedVideoUrl.isNotBlank()) return false
+        return streams.firstOrNull { descriptor ->
+            descriptor.selected && descriptor.url == selectedAudioUrl
+        }?.isMp4Audio() == true
     }
 
     fun compact(maxStreams: Int = 10): ResolvedPlaybackManifest {
