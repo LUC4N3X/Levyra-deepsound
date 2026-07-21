@@ -282,10 +282,25 @@ fun Track.smartWeightFor(mood: Mood?): Int {
     return (replayScore + cacheScore + tagScore - energyPenalty).coerceIn(0, 100)
 }
 
+data class ArtistBiography(
+    val text: String,
+    val description: String = "",
+    val sourceLabel: String = "",
+    val sourceUrl: String = "",
+    val languageCode: String = "",
+    val pageTitle: String = "",
+    val pageId: Int = 0,
+    val entityId: String = "",
+    val thumbnailUrl: String = "",
+    val originalImageUrl: String = "",
+    val confidence: Int = 0,
+    val cached: Boolean = false
+)
+
 data class ArtistProfile(
     val browseId: String,
     val name: String,
-    val bio: String,
+    val biography: ArtistBiography? = null,
     val subscribers: String,
     val monthlyListeners: String,
     val thumbnailUrl: String,
@@ -307,6 +322,9 @@ data class ArtistProfile(
     val videosBrowseId: String = "",
     val videosParams: String = ""
 ) {
+    val bio: String
+        get() = biography?.text.orEmpty()
+
     val hasBio: Boolean
         get() = bio.isNotBlank()
 }
