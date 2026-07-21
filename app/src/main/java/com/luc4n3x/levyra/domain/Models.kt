@@ -350,7 +350,8 @@ data class DownloadedTrack(
     val uri: String,
     val mimeType: String,
     val embeddedMetadata: Boolean,
-    val savedAt: Long
+    val savedAt: Long,
+    val sizeBytes: Long = 0L
 )
 
 data class ArtistHit(

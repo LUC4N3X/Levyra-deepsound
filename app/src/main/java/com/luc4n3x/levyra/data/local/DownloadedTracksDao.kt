@@ -11,6 +11,9 @@ interface DownloadedTracksDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(download: DownloadEntity): Long
 
+    @Query("SELECT * FROM downloaded_tracks ORDER BY savedAt DESC")
+    fun observeAll(): Flow<List<DownloadEntity>>
+
     @Query("SELECT * FROM downloaded_tracks ORDER BY savedAt DESC LIMIT :limit")
     fun observeRecent(limit: Int = 80): Flow<List<DownloadEntity>>
 
