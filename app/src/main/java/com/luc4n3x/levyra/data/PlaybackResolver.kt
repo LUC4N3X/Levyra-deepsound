@@ -144,7 +144,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     fun warmNetwork() {
-        if (!hasValidatedInternet()) return
+        if (!hasInternetCapableNetwork()) return
         val now = System.currentTimeMillis()
         if (now - lastNetworkWarmAt < 15_000L) return
         lastNetworkWarmAt = now
@@ -297,6 +297,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
+    private fun hasInternetCapableNetwork(): Boolean {
+        val manager = connectivityManager ?: return false
+        val network = manager.activeNetwork ?: return false
+        val capabilities = manager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     private fun isNetworkFailureReason(reason: String): Boolean {
         val value = reason.lowercase()
         return value.contains("network") ||
@@ -384,7 +391,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             cached(cacheLookupTrack, isVideoMode, audioQuality)?.let { return@coroutineScope it }
         }
 
-        if (!hasValidatedInternet()) {
+        if (!hasInternetCapableNetwork()) {
             clearTransientClientPenalties()
             throw PlaybackBlockedException("Connessione Internet non disponibile")
         }
@@ -418,7 +425,7 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
-        if (!hasValidatedInternet()) return null
+        if (!hasInternetCapableNetwork()) return null
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             if (streamStillFresh(track.streamUrl)) {

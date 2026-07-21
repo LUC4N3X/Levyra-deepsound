@@ -306,6 +306,9 @@ class LevyraStrings private constructor(
     val restoreBackupSubtitle: String get() = value("restoreBackupSubtitle")
     val playbackResilienceSection: String get() = value("playbackResilienceSection")
     val exportSafeDiagnostics: String get() = value("exportSafeDiagnostics")
+    val batteryUnrestricted: String get() = value("batteryUnrestricted")
+    val batteryUnrestrictedSubtitle: String get() = value("batteryUnrestrictedSubtitle")
+    val batteryUnrestrictedActive: String get() = value("batteryUnrestrictedActive")
     val generateResolverTrace: String get() = value("generateResolverTrace")
     val safeDiagnosticsSubtitle: String get() = value("safeDiagnosticsSubtitle")
     val check: String get() = value("check")
@@ -682,7 +685,7 @@ class LevyraStrings private constructor(
     fun formatPauseDownload(title: String): String = "$pauseDownload ${directionalValue(title)}"
 
     companion object {
-        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreZones", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator")
+        private val requiredKeys = setOf("welcomeBadge", "welcomeTitle", "languageQuestion", "nameQuestion", "namePlaceholder", "tasteQuestion", "skipAndContinue", "startListening", "settings", "settingsSubtitle", "design", "playback", "preferences", "app", "animations", "animationsSubtitle", "dynamicColor", "dynamicColorSubtitle", "sponsorBlock", "sponsorBlockSubtitle", "skipSilence", "skipSilenceSubtitle", "redoQuestionnaire", "redoQuestionnaireSubtitle", "language", "languageSubtitle", "home", "search", "library", "player", "queue", "lyrics", "related", "song", "video", "nowPlaying", "emptyPlayer", "phoneSpeaker", "connected", "volume", "audioQuality", "done", "queueEmpty", "lyricsUnavailable", "synced", "libraryTitle", "librarySubtitle", "playlists", "newItem", "downloads", "favorites", "recent", "quickPicks", "play", "newReleases", "albumsForYou", "top50Unavailable", "artists", "albumsAndSingles", "songs", "searchPlaceholder", "back", "clear", "voice", "createPlaylistHint", "selectLanguagePrompt", "explore", "exploreTitle", "exploreSubtitle", "exploreZones", "exploreFresh", "exploreNewVideos", "exploreEmpty", "localWaveName", "localWaveEmoji", "localWaveQuery", "exploreNewReleases", "exploreRapDrill", "exploreElectronic", "explorePopGlobal", "exploreRnbSoul", "exploreRockAlt", "exploreLatino", "exploreLofiChill", "exploreJpopAnime", "followArtist", "followingArtist", "releaseRadar", "similarArtists", "similarToFollowed", "theme", "themeSubtitle", "personalOrbitTitle", "personalOrbitSubtitle", "voicesTitle", "voicesSubtitle", "totalComments", "engagement", "audioEngine", "audioEngineSubtitle", "equalizer", "equalizerSubtitle", "preset", "bassBoost", "virtualizer", "crossfade", "djSoft", "replayGain", "tempo", "pitch", "gapless", "restartRequiredTitle", "restartRequiredBody", "restartNow", "later", "audioQualityAuto", "audioQualityHigh", "audioQualityLow", "pulseSectionBand", "pulseTitle", "pulseSubtitle", "followedArtistsTitle", "followedArtistsSubtitle", "listeningHistoryEmptyTitle", "listeningHistoryEmptyDetail", "pulseMinutes", "pulseMinuteShort", "pulsePlays", "pulseStreak", "pulseCompletion", "pulseTopArtists", "pulseWeek", "pulsePeakHour", "pulseEmpty", "listeningHistory", "listeningHistorySubtitle", "listeningPrompt", "voiceSearchUnsupported", "musicFiltersComingSoon", "recentSearches", "actions", "removeFromFavorites", "addToFavorites", "playNext", "addToQueue", "addToPlaylist", "alreadyOffline", "download", "openArtist", "share", "shareSong", "removeFromRecentSearches", "songOptions", "goToPlayer", "saveOffline", "favorite", "downloaded", "remove", "youMightAlsoLike", "topResult", "currentlyPlaying", "artistLabel", "playNow", "biography", "newUpdate", "updateDescription", "whatsNew", "update", "updateLinkUnavailable", "cannotOpenDownload", "externalLinkUnavailable", "cannotOpenExternalLink", "continuousRadio", "continuousRadioSubtitle", "artistsLabelPlural", "albumMood", "openLyricsAnalysis", "closeLyrics", "lyricsDuet", "lyricsCinema", "lyricsPage", "lyricsRomanization", "lyricsCompact", "lyricsSections", "lyricsSectionIntro", "lyricsSectionVerse", "lyricsSectionPreChorus", "lyricsSectionChorus", "lyricsSectionBridge", "lyricsSectionInstrumental", "lyricsSectionOutro", "automaticTranslation", "automaticTranslationSubtitle", "atmosphere", "themes", "chorusDetected", "goToChorus", "close", "complete", "delete", "newPlaylist", "playlistName", "create", "cancel", "newPlaylistName", "createNewPlaylist", "createAndAdd", "downloadPlaylist", "playAll", "playingFrom", "closePlayer", "options", "showLyrics", "shuffle", "previous", "next", "repeat", "persistentQueue", "continueListening", "favoritesPlain", "offline", "more", "mixForYou", "genres", "smartMusicProfile", "flow", "pictureInPicture", "discoveryFlow", "shareDiagnostics", "albumUnavailable", "albumTracksUnavailable", "showLess", "playing", "artistProfileUnavailable", "popularTracks", "showAll", "versionLabel", "generalImprovements", "historyLabel", "undoRemoval", "lyricsAnalysis", "linesLabel", "wordsLabel", "localAnalysis", "open", "newRelease", "newReleaseSubtitle", "saved", "save", "noOfflineDownloads", "createFirstPlaylist", "createFirstPlaylistSubtitle", "downloadTrackHint", "savedTracks", "favoritesEmpty", "playlistEmpty", "showPersonalListening", "showRecentReleases", "showRecommendedAlbums", "showDiscoveredArtists", "showChartsCountry", "partialDownloadResume", "lyricsAnalysisSection", "lyricsAnalysisCompact", "lyricsAnalysisCompactSubtitle", "createDataBackup", "createDataBackupSubtitle", "updateAvailable", "updates", "checkingLatestVersion", "latestVersionReady", "latestInstalled", "checkNewVersions", "releasePageReady", "installedVersion", "openPlayer", "searchSongsArtists", "songsPlain", "shareVia", "emptySearchPrompt", "cancelDownload", "readAll", "singlesAndEps", "tapHeartToAdd", "all", "automaticResume", "simultaneousDownloads", "simultaneousDownloadsSubtitle", "backupRestoreSection", "restoreBackup", "restoreBackupSubtitle", "playbackResilienceSection", "exportSafeDiagnostics", "generateResolverTrace", "safeDiagnosticsSubtitle", "check", "checking", "dragToReorder", "homeInterfaceSection", "compactHome", "compactHomeSubtitle", "yourOrbitSetting", "voicesSetting", "voicesSettingSubtitle", "newReleasesSetting", "albumsForYouSetting", "trendingArtists", "top50Charts", "mobilePlayerSection", "advancedGestures", "advancedGesturesSubtitle", "doubleTapSeek", "doubleTapSeekSubtitle", "longPress", "longPressSubtitle", "downloadEngineSection", "wifiOnly", "wifiOnlySubtitle", "chargingOnly", "chargingOnlySubtitle", "resumeDownload", "pauseDownload", "signedApkReady", "downloadsInProgress", "downloadInProgress", "newAlbums", "newSingles", "newAlbum", "downloadsFolder", "offlineDownloadsPlain", "personalPlaylists", "searchingYouTubeMusic", "searchingLyrics", "pause", "newSingle", "albumsPlain", "albumPlain", "singlePlain", "playlistsPlain", "profileActive", "profileLearning", "newBadge", "brightness", "timer", "normalizationShort", "coverAndTags", "madeWithBy", "activeIndicator", "batteryUnrestricted", "batteryUnrestrictedSubtitle", "batteryUnrestrictedActive")
 
         private val values: Map<String, LevyraStrings> by lazy(LazyThreadSafetyMode.PUBLICATION) {
             mapOf(
@@ -1076,7 +1079,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm",
             "coverAndTags" to "cover and tags",
             "madeWithBy" to "Made with ❤️ by",
-            "activeIndicator" to "ON"
+            "activeIndicator" to "ON",
+            "batteryUnrestricted" to "Unrestricted background playback",
+            "batteryUnrestrictedSubtitle" to "Exclude Levyra from battery optimization so music keeps playing with the screen off",
+            "batteryUnrestrictedActive" to "Active — the system will not stop playback"
         )
 
         private fun itEntries(): Map<String, String> = mapOf(
@@ -1427,7 +1433,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "cover e tag",
             "madeWithBy" to "Creato con ❤️ da",
-            "activeIndicator" to "ATTIVO"
+            "activeIndicator" to "ATTIVO",
+            "batteryUnrestricted" to "Riproduzione in background senza limiti",
+            "batteryUnrestrictedSubtitle" to "Escludi Levyra dall'ottimizzazione batteria così la musica continua a schermo spento",
+            "batteryUnrestrictedActive" to "Attivo — il sistema non fermerà la riproduzione"
         )
 
         private fun esEntries(): Map<String, String> = mapOf(
@@ -1778,7 +1787,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "carátula y etiquetas",
             "madeWithBy" to "Creado con ❤️ por",
-            "activeIndicator" to "ACTIVO"
+            "activeIndicator" to "ACTIVO",
+            "batteryUnrestricted" to "Reproducción en segundo plano sin límites",
+            "batteryUnrestrictedSubtitle" to "Excluye Levyra de la optimización de batería para que la música siga sonando con la pantalla apagada",
+            "batteryUnrestrictedActive" to "Activo — el sistema no detendrá la reproducción"
         )
 
         private fun frEntries(): Map<String, String> = mapOf(
@@ -2129,7 +2141,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "pochette et tags",
             "madeWithBy" to "Créé avec ❤️ par",
-            "activeIndicator" to "ACTIF"
+            "activeIndicator" to "ACTIF",
+            "batteryUnrestricted" to "Lecture en arrière-plan sans limites",
+            "batteryUnrestrictedSubtitle" to "Exclure Levyra de l'optimisation de la batterie pour que la musique continue écran éteint",
+            "batteryUnrestrictedActive" to "Actif — le système n'arrêtera pas la lecture"
         )
 
         private fun deEntries(): Map<String, String> = mapOf(
@@ -2480,7 +2495,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "Cover und Tags",
             "madeWithBy" to "Mit ❤️ erstellt von",
-            "activeIndicator" to "AKTIV"
+            "activeIndicator" to "AKTIV",
+            "batteryUnrestricted" to "Uneingeschränkte Hintergrundwiedergabe",
+            "batteryUnrestrictedSubtitle" to "Levyra von der Akku-Optimierung ausschließen, damit die Musik bei ausgeschaltetem Bildschirm weiterläuft",
+            "batteryUnrestrictedActive" to "Aktiv — das System stoppt die Wiedergabe nicht"
         )
 
         private fun ptEntries(): Map<String, String> = mapOf(
@@ -2831,7 +2849,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "capa e etiquetas",
             "madeWithBy" to "Criado com ❤️ por",
-            "activeIndicator" to "ATIVO"
+            "activeIndicator" to "ATIVO",
+            "batteryUnrestricted" to "Reprodução em segundo plano sem limites",
+            "batteryUnrestrictedSubtitle" to "Exclua o Levyra da otimização de bateria para a música continuar com a tela desligada",
+            "batteryUnrestrictedActive" to "Ativo — o sistema não interromperá a reprodução"
         )
 
         private fun nlEntries(): Map<String, String> = mapOf(
@@ -3182,7 +3203,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "hoes en tags",
             "madeWithBy" to "Gemaakt met ❤️ door",
-            "activeIndicator" to "ACTIEF"
+            "activeIndicator" to "ACTIEF",
+            "batteryUnrestricted" to "Onbeperkt afspelen op de achtergrond",
+            "batteryUnrestrictedSubtitle" to "Sluit Levyra uit van batterijoptimalisatie zodat muziek blijft spelen met het scherm uit",
+            "batteryUnrestrictedActive" to "Actief — het systeem stopt het afspelen niet"
         )
 
         private fun plEntries(): Map<String, String> = mapOf(
@@ -3533,7 +3557,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "okładka i tagi",
             "madeWithBy" to "Stworzone z ❤️ przez",
-            "activeIndicator" to "AKTYWNE"
+            "activeIndicator" to "AKTYWNE",
+            "batteryUnrestricted" to "Nieograniczone odtwarzanie w tle",
+            "batteryUnrestrictedSubtitle" to "Wyklucz Levyra z optymalizacji baterii, aby muzyka grała przy wyłączonym ekranie",
+            "batteryUnrestrictedActive" to "Aktywne — system nie zatrzyma odtwarzania"
         )
 
         private fun roEntries(): Map<String, String> = mapOf(
@@ -3884,7 +3911,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "copertă și etichete",
             "madeWithBy" to "Creat cu ❤️ de",
-            "activeIndicator" to "ACTIV"
+            "activeIndicator" to "ACTIV",
+            "batteryUnrestricted" to "Redare în fundal fără limite",
+            "batteryUnrestrictedSubtitle" to "Exclude Levyra din optimizarea bateriei pentru ca muzica să continue cu ecranul stins",
+            "batteryUnrestrictedActive" to "Activ — sistemul nu va opri redarea"
         )
 
         private fun elEntries(): Map<String, String> = mapOf(
@@ -4235,7 +4265,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Κανον.",
             "coverAndTags" to "εξώφυλλο και ετικέτες",
             "madeWithBy" to "Δημιουργήθηκε με ❤️ από",
-            "activeIndicator" to "ΕΝΕΡΓΟ"
+            "activeIndicator" to "ΕΝΕΡΓΟ",
+            "batteryUnrestricted" to "Απεριόριστη αναπαραγωγή στο παρασκήνιο",
+            "batteryUnrestrictedSubtitle" to "Εξαιρέστε το Levyra από τη βελτιστοποίηση μπαταρίας ώστε η μουσική να συνεχίζει με σβηστή οθόνη",
+            "batteryUnrestrictedActive" to "Ενεργό — το σύστημα δεν θα σταματήσει την αναπαραγωγή"
         )
 
         private fun svEntries(): Map<String, String> = mapOf(
@@ -4586,7 +4619,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "omslag och taggar",
             "madeWithBy" to "Skapad med ❤️ av",
-            "activeIndicator" to "AKTIV"
+            "activeIndicator" to "AKTIV",
+            "batteryUnrestricted" to "Obegränsad bakgrundsuppspelning",
+            "batteryUnrestrictedSubtitle" to "Undanta Levyra från batterioptimering så att musiken fortsätter med släckt skärm",
+            "batteryUnrestrictedActive" to "Aktiv — systemet stoppar inte uppspelningen"
         )
 
         private fun daEntries(): Map<String, String> = mapOf(
@@ -4937,7 +4973,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "cover og tags",
             "madeWithBy" to "Skabt med ❤️ af",
-            "activeIndicator" to "AKTIV"
+            "activeIndicator" to "AKTIV",
+            "batteryUnrestricted" to "Ubegrænset baggrundsafspilning",
+            "batteryUnrestrictedSubtitle" to "Undtag Levyra fra batterioptimering, så musikken fortsætter med slukket skærm",
+            "batteryUnrestrictedActive" to "Aktiv — systemet stopper ikke afspilningen"
         )
 
         private fun csEntries(): Map<String, String> = mapOf(
@@ -5288,7 +5327,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "obal a tagy",
             "madeWithBy" to "Vytvořeno s ❤️ od",
-            "activeIndicator" to "AKTIVNÍ"
+            "activeIndicator" to "AKTIVNÍ",
+            "batteryUnrestricted" to "Neomezené přehrávání na pozadí",
+            "batteryUnrestrictedSubtitle" to "Vyjměte Levyra z optimalizace baterie, aby hudba hrála i s vypnutou obrazovkou",
+            "batteryUnrestrictedActive" to "Aktivní — systém přehrávání nezastaví"
         )
 
         private fun ukEntries(): Map<String, String> = mapOf(
@@ -5639,7 +5681,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Норм.",
             "coverAndTags" to "обкладинка й теги",
             "madeWithBy" to "Створено з ❤️ автором",
-            "activeIndicator" to "АКТИВНО"
+            "activeIndicator" to "АКТИВНО",
+            "batteryUnrestricted" to "Необмежене відтворення у фоні",
+            "batteryUnrestrictedSubtitle" to "Виключіть Levyra з оптимізації батареї, щоб музика грала з вимкненим екраном",
+            "batteryUnrestrictedActive" to "Активно — система не зупинить відтворення"
         )
 
         private fun ruEntries(): Map<String, String> = mapOf(
@@ -5990,7 +6035,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Норм.",
             "coverAndTags" to "обложка и теги",
             "madeWithBy" to "Создано с ❤️ автором",
-            "activeIndicator" to "АКТИВНО"
+            "activeIndicator" to "АКТИВНО",
+            "batteryUnrestricted" to "Фоновое воспроизведение без ограничений",
+            "batteryUnrestrictedSubtitle" to "Исключите Levyra из оптимизации батареи, чтобы музыка играла при выключенном экране",
+            "batteryUnrestrictedActive" to "Активно — система не остановит воспроизведение"
         )
 
         private fun trEntries(): Map<String, String> = mapOf(
@@ -6341,7 +6389,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "Norm.",
             "coverAndTags" to "kapak ve etiketler",
             "madeWithBy" to "❤️ ile hazırlayan",
-            "activeIndicator" to "ETKİN"
+            "activeIndicator" to "ETKİN",
+            "batteryUnrestricted" to "Sınırsız arka plan oynatma",
+            "batteryUnrestrictedSubtitle" to "Ekran kapalıyken müziğin devam etmesi için Levyra'yı pil optimizasyonundan hariç tutun",
+            "batteryUnrestrictedActive" to "Etkin — sistem oynatmayı durdurmayacak"
         )
 
         private fun arEntries(): Map<String, String> = mapOf(
@@ -6692,7 +6743,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "تسوية",
             "coverAndTags" to "الغلاف والوسوم",
             "madeWithBy" to "صُنع بـ ❤️ بواسطة",
-            "activeIndicator" to "مفعّل"
+            "activeIndicator" to "مفعّل",
+            "batteryUnrestricted" to "تشغيل غير مقيد في الخلفية",
+            "batteryUnrestrictedSubtitle" to "استثنِ Levyra من تحسين البطارية ليستمر تشغيل الموسيقى مع إطفاء الشاشة",
+            "batteryUnrestrictedActive" to "مفعّل — لن يوقف النظام التشغيل"
         )
 
         private fun zhEntries(): Map<String, String> = mapOf(
@@ -7043,7 +7097,10 @@ class LevyraStrings private constructor(
             "normalizationShort" to "标准化",
             "coverAndTags" to "封面和标签",
             "madeWithBy" to "由 ❤️ 倾心打造",
-            "activeIndicator" to "已启用"
+            "activeIndicator" to "已启用",
+            "batteryUnrestricted" to "不受限制的后台播放",
+            "batteryUnrestrictedSubtitle" to "将 Levyra 排除在电池优化之外，熄屏时音乐继续播放",
+            "batteryUnrestrictedActive" to "已启用 — 系统不会停止播放"
         )
     }
 }

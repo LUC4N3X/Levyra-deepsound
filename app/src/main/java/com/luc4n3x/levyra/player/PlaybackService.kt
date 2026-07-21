@@ -490,7 +490,7 @@ class PlaybackService : MediaLibraryService() {
                 var selected = if (forward) queueEngine.next(respectRepeatOne) else queueEngine.previous()
                 if (selected == null && forward && queueEngine.state.value.radioEnabled) {
                     val seed = queueEngine.state.value.currentTrack
-                    if (seed != null && !isLocalPlaybackTrack(seed) && hasValidatedInternet()) {
+                    if (seed != null && !isLocalPlaybackTrack(seed) && hasInternetCapableNetwork()) {
                         val additions = runCatching {
                             musicRepository.radio(seed, LevyraPreferences(this@PlaybackService).languageCode(), 20)
                         }.onFailure { Timber.w(it, "Background radio expansion failed") }
@@ -531,7 +531,7 @@ class PlaybackService : MediaLibraryService() {
             val target = withContext(Dispatchers.IO) {
                 queueEngine.upcoming(1).firstOrNull()
             } ?: return@launch
-            if (isLocalPlaybackTrack(target) || !hasValidatedInternet()) return@launch
+            if (isLocalPlaybackTrack(target) || !hasInternetCapableNetwork()) return@launch
             val resolved = withContext(Dispatchers.IO) {
                 runCatching { resolveQueueTrack(target) }
                     .onFailure { Timber.d(it, "Service queue prefetch skipped") }
@@ -549,7 +549,7 @@ class PlaybackService : MediaLibraryService() {
             }
             return track.copy(videoStreamUrl = "")
         }
-        if (!hasValidatedInternet()) throw IOException("Connessione Internet non disponibile")
+        if (!hasInternetCapableNetwork()) throw IOException("Connessione Internet non disponibile")
         val hasYoutubeIdentity = track.videoUrl.contains("youtube.com", true) ||
             track.videoUrl.contains("youtu.be", true) ||
             Regex("^[A-Za-z0-9_-]{11}$").matches(track.id)
@@ -684,9 +684,17 @@ class PlaybackService : MediaLibraryService() {
 
     private suspend fun runServiceRecovery(error: PlaybackException, plan: ServiceRecoveryPlan) {
         if (awaitUiRecovery(plan.localPlayback)) return
+        var awaitedConnectivity = false
         while (isPlaybackRecoveryExpected()) {
             if (finishHealthyServiceRecovery()) return
-            if (awaitRecoveryConnectivity(plan.localPlayback)) continue
+            if (awaitRecoveryConnectivity(plan.localPlayback)) {
+                awaitedConnectivity = true
+                continue
+            }
+            if (awaitedConnectivity) {
+                awaitedConnectivity = false
+                serviceRecoveryAttempts = 0
+            }
             if (finishExhaustedServiceRecovery(error, plan.delaysMs)) return
             if (attemptServiceRecovery(error, plan)) return
         }
@@ -699,8 +707,14 @@ class PlaybackService : MediaLibraryService() {
     private suspend fun awaitUiRecovery(localPlayback: Boolean): Boolean {
         if (!uiRecoveryAvailable || localPlayback) return false
         releasePlaybackWakeLock()
-        delay(750L)
-        return finishHealthyServiceRecovery()
+        repeat(8) {
+            delay(750L)
+            if (finishHealthyServiceRecovery()) return true
+        }
+        val player = mediaSession?.player
+        return player != null &&
+            player.playWhenReady &&
+            player.playbackState == Player.STATE_BUFFERING
     }
 
     private fun finishHealthyServiceRecovery(): Boolean {
@@ -712,9 +726,9 @@ class PlaybackService : MediaLibraryService() {
     }
 
     private suspend fun awaitRecoveryConnectivity(localPlayback: Boolean): Boolean {
-        if (localPlayback || hasValidatedInternet()) return false
+        if (localPlayback || hasInternetCapableNetwork()) return false
         releasePlaybackWakeLock()
-        Timber.d("Background playback recovery waiting for validated network")
+        Timber.d("Background playback recovery waiting for network")
         delay(5_000L)
         return true
     }
@@ -741,7 +755,7 @@ class PlaybackService : MediaLibraryService() {
         delay(plan.delaysMs[attempt])
         val restored = restoreCurrentPlayback(
             positionMs = plan.positionMs,
-            preferFreshResolution = !plan.localPlayback && hasValidatedInternet()
+            preferFreshResolution = !plan.localPlayback && hasInternetCapableNetwork()
         )
         if (restored) {
             Timber.i(
@@ -821,12 +835,12 @@ class PlaybackService : MediaLibraryService() {
     ): Boolean {
         if (isLocalPlaybackTrack(track)) return true
         while (isPlaybackRecoveryExpected() && !isStickyRestoreExpired()) {
-            if (hasValidatedInternet()) {
+            if (hasInternetCapableNetwork()) {
                 acquirePlaybackWakeLock()
                 return true
             }
             releasePlaybackWakeLock()
-            Timber.d("Sticky playback restore waiting for validated network")
+            Timber.d("Sticky playback restore waiting for network")
             delay(5_000L)
         }
         return false
@@ -860,7 +874,7 @@ class PlaybackService : MediaLibraryService() {
                 }
             }
             isLocalMediaItem(currentItem) -> currentItem
-            preferFreshResolution && queueTrack != null && hasValidatedInternet() -> {
+            preferFreshResolution && queueTrack != null && hasInternetCapableNetwork() -> {
                 val resolved = withContext(Dispatchers.IO) {
                     runCatching { resolveQueueTrack(queueTrack) }
                         .onFailure { Timber.w(it, "Fresh background stream resolution failed") }
@@ -957,7 +971,7 @@ class PlaybackService : MediaLibraryService() {
         serviceRecoveryJob = serviceScope.launch {
             val restored = restoreCurrentPlayback(
                 positionMs,
-                preferFreshResolution = !isCurrentPlaybackLocal() && hasValidatedInternet()
+                preferFreshResolution = !isCurrentPlaybackLocal() && hasInternetCapableNetwork()
             )
             if (!restored) Timber.w("Playback watchdog recovery failed")
         }
@@ -993,12 +1007,11 @@ class PlaybackService : MediaLibraryService() {
         appliedPlayerWakeMode = wakeMode
     }
 
-    private fun hasValidatedInternet(): Boolean {
+    private fun hasInternetCapableNetwork(): Boolean {
         val connectivity = getSystemService(ConnectivityManager::class.java) ?: return false
         val network = connectivity.activeNetwork ?: return false
         val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun libraryItemFuture(

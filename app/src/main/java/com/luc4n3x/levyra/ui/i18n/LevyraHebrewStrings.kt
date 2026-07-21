@@ -348,5 +348,8 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "normalizationShort" to "נרמול",
     "coverAndTags" to "עטיפה ותגיות",
     "madeWithBy" to "נוצר באהבה ❤️ על ידי",
-    "activeIndicator" to "פעיל"
+    "activeIndicator" to "פעיל",
+    "batteryUnrestricted" to "ניגון ברקע ללא הגבלה",
+    "batteryUnrestrictedSubtitle" to "החרג את Levyra מאופטימיזציית הסוללה כדי שהמוזיקה תמשיך גם כשהמסך כבוי",
+    "batteryUnrestrictedActive" to "פעיל — המערכת לא תעצור את הניגון"
 )

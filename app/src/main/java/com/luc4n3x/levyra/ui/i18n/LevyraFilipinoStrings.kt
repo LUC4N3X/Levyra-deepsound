@@ -348,5 +348,8 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "normalizationShort" to "Norm",
     "coverAndTags" to "cover at tags",
     "madeWithBy" to "Ginawa nang may ❤️ ni",
-    "activeIndicator" to "ON"
+    "activeIndicator" to "ON",
+    "batteryUnrestricted" to "Walang limitasyong pag-play sa background",
+    "batteryUnrestrictedSubtitle" to "Ibukod ang Levyra sa battery optimization para tuloy ang musika kahit nakapatay ang screen",
+    "batteryUnrestrictedActive" to "Aktibo — hindi ihihinto ng system ang pag-play"
 )
