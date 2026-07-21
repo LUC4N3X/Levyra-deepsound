@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -60,6 +61,8 @@ import androidx.compose.material.icons.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
@@ -68,16 +71,17 @@ import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -97,12 +101,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
+import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
@@ -117,6 +123,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraViolet
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import com.luc4n3x.levyra.viewmodel.LibraryViewModel
+import java.time.format.TextStyle as DayTextStyle
 import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -250,11 +257,42 @@ internal fun LevyraLibraryScreen(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
                     singleLine = true,
-                    shape = RoundedCornerShape(20.dp),
-                    placeholder = { Text(if (isItalian) "Cerca nella tua musica" else "Search your music") },
-                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    shape = RoundedCornerShape(18.dp),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = LevyraText,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = LevyraText,
+                        unfocusedTextColor = LevyraText,
+                        focusedContainerColor = LevyraPanel.copy(alpha = 0.72f),
+                        unfocusedContainerColor = LevyraPanel.copy(alpha = 0.55f),
+                        focusedBorderColor = LevyraCyan.copy(alpha = 0.56f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.10f),
+                        cursorColor = LevyraCyan,
+                        focusedLeadingIconColor = LevyraCyan,
+                        unfocusedLeadingIconColor = LevyraMuted,
+                        focusedTrailingIconColor = LevyraMuted,
+                        unfocusedTrailingIconColor = LevyraMuted
+                    ),
+                    placeholder = {
+                        Text(
+                            if (isItalian) "Cerca nella tua musica" else "Search your music",
+                            color = LevyraMuted,
+                            fontSize = 14.sp
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    },
                     trailingIcon = {
                         if (query.isNotBlank()) {
                             IconButton(onClick = { query = "" }) {
@@ -273,50 +311,47 @@ internal fun LevyraLibraryScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     LibraryCategory.entries.forEach { item ->
-                        FilterChip(
+                        LibraryCategoryChip(
+                            label = item.libraryLabel(isItalian),
                             selected = item == category,
-                            onClick = { switchCategory(item) },
-                            label = { Text(item.libraryLabel(isItalian)) },
-                            leadingIcon = if (item == category) {
-                                { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                            } else {
-                                null
-                            }
+                            onClick = { switchCategory(item) }
                         )
                     }
                 }
             }
 
-            item(key = "library-toolbar") {
-                LibraryToolbar(
-                    category = category,
-                    sort = sort,
-                    layout = layout,
-                    sortExpanded = sortExpanded,
-                    onSortExpanded = { sortExpanded = it },
-                    onSort = { sortName = it.name },
-                    onLayout = {
-                        layoutName = if (layout == LibraryLayout.List) LibraryLayout.Grid.name else LibraryLayout.List.name
-                    },
-                    onSelectAll = {
-                        selectedKeys = when (category) {
-                            LibraryCategory.Playlists -> visiblePlaylists.mapTo(linkedSetOf()) { "playlist:${it.id}" }
-                            LibraryCategory.Albums -> visibleAlbums.mapTo(linkedSetOf()) { "album:${it.key}" }
-                            LibraryCategory.Artists -> visibleArtists.mapTo(linkedSetOf()) { "artist:${it.key}" }
-                            LibraryCategory.Offline -> visibleOffline.mapTo(linkedSetOf()) { it.key }
-                            LibraryCategory.Overview, LibraryCategory.Songs -> visibleTracks.mapTo(linkedSetOf(), ::libraryTrackKey)
-                        }
-                    },
-                    isItalian = isItalian
-                )
+            if (category != LibraryCategory.Overview) {
+                item(key = "library-toolbar") {
+                    LibraryToolbar(
+                        category = category,
+                        sort = sort,
+                        layout = layout,
+                        sortExpanded = sortExpanded,
+                        onSortExpanded = { sortExpanded = it },
+                        onSort = { sortName = it.name },
+                        onLayout = {
+                            layoutName = if (layout == LibraryLayout.List) LibraryLayout.Grid.name else LibraryLayout.List.name
+                        },
+                        onSelectAll = {
+                            selectedKeys = when (category) {
+                                LibraryCategory.Playlists -> visiblePlaylists.mapTo(linkedSetOf()) { "playlist:${it.id}" }
+                                LibraryCategory.Albums -> visibleAlbums.mapTo(linkedSetOf()) { "album:${it.key}" }
+                                LibraryCategory.Artists -> visibleArtists.mapTo(linkedSetOf()) { "artist:${it.key}" }
+                                LibraryCategory.Offline -> visibleOffline.mapTo(linkedSetOf()) { it.key }
+                                LibraryCategory.Overview, LibraryCategory.Songs -> visibleTracks.mapTo(linkedSetOf(), ::libraryTrackKey)
+                            }
+                        },
+                        isItalian = isItalian
+                    )
+                }
             }
 
             when (category) {
                 LibraryCategory.Overview -> {
                     item(key = "overview-smart-title") {
                         LibrarySectionTitle(
-                            title = if (isItalian) "Collezioni intelligenti" else "Smart collections",
-                            detail = if (isItalian) "Accesso rapido alla musica che conta" else "Quick access to the music that matters"
+                            title = if (isItalian) "Accesso rapido" else "Quick access",
+                            detail = if (isItalian) "Preferiti, offline e attività d'ascolto" else "Favorites, offline music and listening activity"
                         )
                     }
                     item(key = "overview-smart-grid") {
@@ -327,6 +362,22 @@ internal fun LevyraLibraryScreen(
                             mostPlayed = catalog.mostPlayed,
                             onPlay = { tracks -> tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
                             onOpenOffline = { switchCategory(LibraryCategory.Offline) },
+                            isItalian = isItalian
+                        )
+                    }
+                    item(key = "overview-insights-title") {
+                        LibrarySectionTitle(
+                            title = if (isItalian) "Il tuo ascolto" else "Your listening",
+                            detail = if (isItalian) "Tempo, artisti e ritmo degli ultimi sette giorni" else "Time, artists and your last seven days"
+                        )
+                    }
+                    item(key = "overview-insights-card") {
+                        LibraryListeningDashboard(
+                            pulse = state.listeningPulse,
+                            artistCount = catalog.artists.size,
+                            trackCount = catalog.tracks.size,
+                            playlistCount = state.playlists.size,
+                            offlineCount = state.downloads.size,
                             isItalian = isItalian
                         )
                     }
@@ -373,36 +424,7 @@ internal fun LevyraLibraryScreen(
                             )
                         }
                     }
-                    if (catalog.recent.isNotEmpty()) {
-                        item(key = "overview-recent-title") {
-                            LibrarySectionTitle(
-                                title = if (isItalian) "Ascoltati di recente" else "Recently played",
-                                detail = if (isItalian) "Riprendi da dove eri rimasto" else "Continue where you left off",
-                                action = if (isItalian) "Tutti i brani" else "All tracks",
-                                onAction = { switchCategory(LibraryCategory.Songs) }
-                            )
-                        }
-                        items(catalog.recent.take(6), key = { "overview-track-${libraryTrackKey(it)}" }) { track ->
-                            LibraryTrackRow(
-                                track = track,
-                                selected = false,
-                                selectionActive = false,
-                                isCurrent = track.id == state.currentTrack?.id,
-                                isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                                isFavorite = track.id in state.favoriteIds,
-                                isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
-                                downloadProgress = downloadProgressFor(track, state),
-                                onClick = { viewModel.playFrom(catalog.recent, track) },
-                                onLongClick = {
-                                    switchCategory(LibraryCategory.Songs)
-                                    selectedKeys = setOf(libraryTrackKey(track))
-                                },
-                                onFavorite = { viewModel.toggleFavorite(track) },
-                                onDownload = { viewModel.exportTrack(track) },
-                                isItalian = isItalian
-                            )
-                        }
-                    }
+
                 }
 
                 LibraryCategory.Playlists -> {
@@ -1003,30 +1025,91 @@ internal fun LevyraPlaylistDetailScreen(
 
 @Composable
 private fun LibraryHero(title: String, subtitle: String) {
-    Surface(
-        color = Color.Transparent,
-        shape = RoundedCornerShape(30.dp),
-        modifier = Modifier.fillMaxWidth()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            LevyraViolet.copy(alpha = 0.24f),
-                            LevyraPanel.copy(alpha = 0.94f),
-                            LevyraCyan.copy(alpha = 0.12f)
-                        )
-                    )
-                )
-                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(30.dp))
-                .padding(horizontal = 20.dp, vertical = 22.dp)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(title, color = LevyraText, fontSize = 30.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.8).sp)
-                Text(subtitle, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = title,
+                color = LevyraText,
+                fontSize = 32.sp,
+                lineHeight = 35.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.8).sp
+            )
+            Text(
+                text = subtitle,
+                color = LevyraMuted,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.width(14.dp))
+        Surface(
+            color = LevyraPanel.copy(alpha = 0.82f),
+            shape = CircleShape,
+            border = BorderStroke(1.dp, LevyraCyan.copy(alpha = 0.22f))
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.LibraryMusic,
+                contentDescription = null,
+                tint = LevyraCyan,
+                modifier = Modifier
+                    .padding(12.dp)
+                    .size(24.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun LibraryCategoryChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        color = if (selected) LevyraViolet.copy(alpha = 0.28f) else LevyraPanel.copy(alpha = 0.50f),
+        shape = RoundedCornerShape(999.dp),
+        border = BorderStroke(
+            1.dp,
+            if (selected) LevyraViolet.copy(alpha = 0.58f) else Color.White.copy(alpha = 0.09f)
+        ),
+        modifier = Modifier
+            .height(38.dp)
+            .combinedClickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            if (selected) {
+                Icon(
+                    Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = LevyraText,
+                    modifier = Modifier.size(15.dp)
+                )
             }
+            Text(
+                text = label,
+                color = if (selected) LevyraText else LevyraMuted,
+                fontSize = 13.sp,
+                fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
+                maxLines = 1
+            )
         }
     }
 }
@@ -1049,17 +1132,30 @@ private fun LibraryToolbar(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Box {
-            TextButton(onClick = { onSortExpanded(true) }) {
-                Icon(Icons.Rounded.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+            TextButton(
+                onClick = { onSortExpanded(true) },
+                colors = ButtonDefaults.textButtonColors(contentColor = LevyraText),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.Sort,
+                    contentDescription = null,
+                    tint = LevyraCyan,
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(Modifier.width(7.dp))
-                Text(sort.libraryLabel(isItalian), fontWeight = FontWeight.Bold)
+                Text(
+                    sort.libraryLabel(isItalian),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black
+                )
             }
             DropdownMenu(expanded = sortExpanded, onDismissRequest = { onSortExpanded(false) }) {
                 LibrarySort.entries.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(option.libraryLabel(isItalian)) },
                         leadingIcon = if (option == sort) {
-                            { Icon(Icons.Rounded.Check, contentDescription = null) }
+                            { Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan) }
                         } else null,
                         onClick = {
                             onSort(option)
@@ -1070,17 +1166,30 @@ private fun LibraryToolbar(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onSelectAll) {
-                Icon(Icons.Rounded.DoneAll, contentDescription = null, modifier = Modifier.size(18.dp))
+            TextButton(
+                onClick = onSelectAll,
+                colors = ButtonDefaults.textButtonColors(contentColor = LevyraText),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.DoneAll,
+                    contentDescription = null,
+                    tint = LevyraCyan,
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(Modifier.width(6.dp))
-                Text(if (isItalian) "Seleziona" else "Select", fontWeight = FontWeight.Bold)
+                Text(
+                    if (isItalian) "Seleziona" else "Select",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black
+                )
             }
-            if (category != LibraryCategory.Overview && category != LibraryCategory.Offline && category != LibraryCategory.Songs) {
+            if (category != LibraryCategory.Offline && category != LibraryCategory.Songs) {
                 IconButton(onClick = onLayout) {
                     Icon(
                         if (layout == LibraryLayout.List) Icons.Rounded.GridView else Icons.Rounded.ViewList,
                         contentDescription = null,
-                        tint = LevyraText
+                        tint = LevyraMuted
                     )
                 }
             }
@@ -1101,8 +1210,8 @@ private fun LibrarySectionTitle(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = LevyraText, fontSize = 21.sp, fontWeight = FontWeight.Black)
-            Text(detail, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black)
+            Text(detail, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         }
         if (action != null && onAction != null) {
             TextButton(onClick = onAction) { Text(action, color = LevyraCyan, fontWeight = FontWeight.Bold) }
@@ -1120,18 +1229,24 @@ private fun SmartCollectionGrid(
     onOpenOffline: () -> Unit,
     isItalian: Boolean
 ) {
+    fun countLabel(count: Int): String = if (isItalian) {
+        "$count ${if (count == 1) "brano" else "brani"}"
+    } else {
+        "$count ${if (count == 1) "track" else "tracks"}"
+    }
+
     val cards = listOf(
         SmartCollection(
-            title = if (isItalian) "Brani preferiti" else "Favorite tracks",
-            detail = "${favorites.size}",
+            title = if (isItalian) "Preferiti" else "Favorites",
+            detail = countLabel(favorites.size),
             icon = Icons.Rounded.Favorite,
             accent = LevyraPink,
             tracks = favorites,
             onClick = { onPlay(favorites) }
         ),
         SmartCollection(
-            title = if (isItalian) "Scaricati" else "Downloaded",
-            detail = "${downloads.size}",
+            title = if (isItalian) "Offline" else "Offline",
+            detail = countLabel(downloads.size),
             icon = Icons.Rounded.DownloadDone,
             accent = LevyraCyan,
             tracks = downloads,
@@ -1140,7 +1255,7 @@ private fun SmartCollectionGrid(
         ),
         SmartCollection(
             title = if (isItalian) "Ascoltati di recente" else "Recently played",
-            detail = "${recent.size}",
+            detail = countLabel(recent.size),
             icon = Icons.Rounded.History,
             accent = LevyraViolet,
             tracks = recent,
@@ -1148,17 +1263,23 @@ private fun SmartCollectionGrid(
         ),
         SmartCollection(
             title = if (isItalian) "Più ascoltati" else "Most played",
-            detail = "${mostPlayed.size}",
+            detail = countLabel(mostPlayed.size),
             icon = Icons.Rounded.Replay,
             accent = Color(0xFFFFC857),
             tracks = mostPlayed,
             onClick = { onPlay(mostPlayed) }
         )
     )
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         cards.chunked(2).forEach { rowCards ->
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                rowCards.forEach { card -> SmartCollectionCard(card, Modifier.weight(1f)) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                rowCards.forEach { card ->
+                    SmartCollectionCard(card, Modifier.weight(1f))
+                }
                 if (rowCards.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -1178,27 +1299,451 @@ private data class SmartCollection(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SmartCollectionCard(card: SmartCollection, modifier: Modifier = Modifier) {
+    val artworkUrl = card.tracks.firstOrNull()?.let { track ->
+        track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+    }.orEmpty()
+
     Surface(
-        color = LevyraPanel.copy(alpha = 0.90f),
-        shape = RoundedCornerShape(23.dp),
+        color = LevyraPanel.copy(alpha = 0.88f),
+        shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, card.accent.copy(alpha = 0.20f)),
         modifier = modifier
-            .height(126.dp)
-            .combinedClickable(enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty, onClick = card.onClick)
+            .height(96.dp)
+            .combinedClickable(
+                enabled = card.tracks.isNotEmpty() || card.enabledWhenEmpty,
+                onClick = card.onClick
+            )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.linearGradient(listOf(card.accent.copy(alpha = 0.20f), Color.Transparent)))
-                .padding(15.dp)
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            card.accent.copy(alpha = 0.16f),
+                            LevyraPanel.copy(alpha = 0.88f)
+                        )
+                    )
+                )
         ) {
-            Icon(card.icon, contentDescription = null, tint = card.accent, modifier = Modifier.size(27.dp))
-            Column(modifier = Modifier.align(Alignment.BottomStart)) {
-                Text(card.title, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(card.detail, color = LevyraMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            if (artworkUrl.isNotBlank()) {
+                AsyncImage(
+                    model = artworkUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .width(66.dp)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp))
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .width(78.dp)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    LevyraPanel.copy(alpha = 0.96f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 13.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Surface(
+                    color = card.accent.copy(alpha = 0.15f),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        imageVector = card.icon,
+                        contentDescription = null,
+                        tint = card.accent,
+                        modifier = Modifier
+                            .padding(7.dp)
+                            .size(18.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = card.title,
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = card.detail,
+                        color = LevyraMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun LibraryListeningDashboard(
+    pulse: ListeningPulse,
+    artistCount: Int,
+    trackCount: Int,
+    playlistCount: Int,
+    offlineCount: Int,
+    isItalian: Boolean
+) {
+    val week = pulse.week.takeLast(7)
+    val weekMinutes = week.sumOf { it.listenedMs } / 60_000L
+    val locale = remember(isItalian) {
+        Locale.forLanguageTag(if (isItalian) "it" else "en")
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = LevyraPanel.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
+        shape = RoundedCornerShape(26.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            LevyraViolet.copy(alpha = 0.18f),
+                            LevyraPanel.copy(alpha = 0.96f),
+                            LevyraCyan.copy(alpha = 0.10f)
+                        )
+                    )
+                )
+                .padding(18.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(17.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Insights,
+                                contentDescription = null,
+                                tint = LevyraCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = if (isItalian) "Panoramica personale" else "Personal overview",
+                                color = LevyraText,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                        Text(
+                            text = if (isItalian) "La tua musica, in numeri" else "Your music, by the numbers",
+                            color = LevyraMuted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = formatListeningTime(pulse.totalListenMs),
+                            color = LevyraText,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.5).sp
+                        )
+                        Text(
+                            text = if (isItalian) "tempo d'ascolto" else "listening time",
+                            color = LevyraMuted,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        LibraryInsightMetric(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Rounded.Person,
+                            value = artistCount.toString(),
+                            label = if (isItalian) "Artisti" else "Artists",
+                            accent = LevyraViolet
+                        )
+                        LibraryInsightMetric(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Rounded.MusicNote,
+                            value = trackCount.toString(),
+                            label = if (isItalian) "Brani" else "Tracks",
+                            accent = LevyraPink
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        LibraryInsightMetric(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Rounded.QueueMusic,
+                            value = playlistCount.toString(),
+                            label = "Playlist",
+                            accent = LevyraCyan
+                        )
+                        LibraryInsightMetric(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Rounded.OfflinePin,
+                            value = offlineCount.toString(),
+                            label = if (isItalian) "Offline" else "Offline",
+                            accent = Color(0xFFFFC857)
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isItalian) "Ultimi 7 giorni" else "Last 7 days",
+                            color = LevyraText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = "$weekMinutes min",
+                            color = LevyraCyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    LibraryWeekChart(
+                        pulse = pulse,
+                        locale = locale
+                    )
+                }
+
+                if (pulse.topArtists.isNotEmpty() || pulse.peakHour >= 0) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (pulse.topArtists.isNotEmpty()) {
+                            Text(
+                                text = if (isItalian) "Artisti più ascoltati" else "Top artists",
+                                color = LevyraMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                pulse.topArtists.take(4).forEach { artist ->
+                                    Surface(
+                                        color = LevyraViolet.copy(alpha = 0.12f),
+                                        border = BorderStroke(1.dp, LevyraViolet.copy(alpha = 0.20f)),
+                                        shape = RoundedCornerShape(999.dp)
+                                    ) {
+                                        Text(
+                                            text = artist.name,
+                                            color = LevyraText,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (pulse.peakHour >= 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Schedule,
+                                    contentDescription = null,
+                                    tint = LevyraMuted,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = if (isItalian) {
+                                        "Ora preferita · ${pulse.peakHour.toString().padStart(2, '0')}:00"
+                                    } else {
+                                        "Peak hour · ${pulse.peakHour.toString().padStart(2, '0')}:00"
+                                    },
+                                    color = LevyraMuted,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryInsightMetric(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    label: String,
+    accent: Color
+) {
+    Surface(
+        modifier = modifier,
+        color = Color.Black.copy(alpha = 0.18f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Surface(
+                color = accent.copy(alpha = 0.14f),
+                shape = CircleShape
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier
+                        .padding(7.dp)
+                        .size(16.dp)
+                )
+            }
+            Column {
+                Text(
+                    text = value,
+                    color = LevyraText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = label,
+                    color = LevyraMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryWeekChart(
+    pulse: ListeningPulse,
+    locale: Locale
+) {
+    val week = pulse.week.takeLast(7)
+    val peak = week.maxOfOrNull { it.listenedMs } ?: 0L
+
+    if (week.isEmpty()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(82.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            repeat(7) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.White.copy(alpha = 0.07f))
+                )
+            }
+        }
+        return
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(76.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            week.forEach { day ->
+                val active = day.listenedMs > 0L
+                val fraction = if (peak > 0L) {
+                    (day.listenedMs.toFloat() / peak.toFloat()).coerceIn(0.10f, 1f)
+                } else {
+                    0.10f
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(fraction)
+                        .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 3.dp, bottomEnd = 3.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    LevyraCyan.copy(alpha = if (active) 0.95f else 0.13f),
+                                    LevyraViolet.copy(alpha = if (active) 0.70f else 0.08f)
+                                )
+                            )
+                        )
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            week.forEach { day ->
+                val label = day.date.dayOfWeek
+                    .getDisplayName(DayTextStyle.NARROW, locale)
+                    .uppercase(locale)
+                Text(
+                    text = label,
+                    color = LevyraMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+private fun formatListeningTime(totalMs: Long): String {
+    val totalMinutes = (totalMs / 60_000L).coerceAtLeast(0L)
+    if (totalMinutes < 60L) return "$totalMinutes min"
+    val hours = totalMinutes / 60L
+    val minutes = totalMinutes % 60L
+    return if (minutes == 0L) "${hours}h" else "${hours}h ${minutes}m"
 }
 
 @OptIn(ExperimentalFoundationApi::class)
