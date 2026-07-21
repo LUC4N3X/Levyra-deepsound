@@ -97,7 +97,7 @@ val levyraVersionName = normalizedVersionName(
     (findProperty("levyraVersionName") as? String)
         ?: System.getenv("LEVYRA_VERSION_NAME")
         ?: githubTagVersionName()
-        ?: "2.3.13"
+        ?: "2.3.15"
 )
 
 val levyraVersionCode = ((findProperty("levyraVersionCode") as? String)

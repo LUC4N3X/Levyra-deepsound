@@ -393,6 +393,18 @@ class PlaybackResolver private constructor(private val context: Context) {
 
         if (!hasInternetCapableNetwork()) {
             clearTransientClientPenalties()
+            val offlineTrack = track.copy(streamUrl = "", videoStreamUrl = "")
+            val restored = withContext(Dispatchers.IO) {
+                restorePersistentSource(
+                    track = offlineTrack,
+                    isVideoMode = isVideoMode,
+                    preferMp4Audio = preferMp4Audio,
+                    audioQuality = audioQuality,
+                    errors = mutableListOf(),
+                    allowNetworkRefresh = false
+                )?.also { store(offlineTrack, it, isVideoMode, audioQuality) }
+            }
+            restored?.let { return@coroutineScope it }
             throw PlaybackBlockedException("Connessione Internet non disponibile")
         }
 
@@ -425,7 +437,6 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
-        if (!hasInternetCapableNetwork()) return null
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             if (streamStillFresh(track.streamUrl)) {
@@ -435,6 +446,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             return null
         }
         cached(track, isVideoMode)?.let { return it }
+        if (!hasInternetCapableNetwork()) return null
         return runCatching { resolve(track, isVideoMode) }.getOrNull()
     }
 
@@ -621,7 +633,8 @@ class PlaybackResolver private constructor(private val context: Context) {
         isVideoMode: Boolean,
         preferMp4Audio: Boolean,
         audioQuality: String,
-        errors: MutableList<String>
+        errors: MutableList<String>,
+        allowNetworkRefresh: Boolean = true
     ): Track? {
         val stored = runCatching { sourceMatchStore.load(track, isVideoMode, audioQuality, preferMp4Audio) }
             .onFailure { error ->
@@ -640,6 +653,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 source = stored.entity.provider.ifBlank { "Persistent source match" }
             )
         }
+        if (!allowNetworkRefresh) return null
         val sourceVideoId = stored.entity.sourceVideoId
             .takeIf(youtubeVideoIdRegex::matches)
             ?: return null
