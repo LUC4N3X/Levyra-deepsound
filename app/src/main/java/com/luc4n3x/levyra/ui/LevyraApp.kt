@@ -4528,6 +4528,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     val homeDerivedState = renderSnapshot.derived
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
+    val glassState = rememberGlassBackdropState(enabled = true)
     var addTarget by remember { mutableStateOf<Track?>(null) }
     LaunchedEffect(homeDerivedState.artistRefreshFingerprint) {
         viewModel.refreshHomeArtists()
@@ -4579,12 +4580,16 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
     }
-    LazyColumn(
-        state = homeListState,
-        modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
-        verticalArrangement = Arrangement.spacedBy(if (state.interfaceSettings.compactHome) 12.dp else 22.dp)
-    ) {
+    CompositionLocalProvider(LocalGlassBackdrop provides glassState) {
+        LazyColumn(
+            state = homeListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .glassBackdropSource(glassState)
+                .statusBarsPadding(),
+            contentPadding = PaddingValues(top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
+            verticalArrangement = Arrangement.spacedBy(if (state.interfaceSettings.compactHome) 12.dp else 22.dp)
+        ) {
         item(key = "home-top", contentType = "home-header") {
             HomeSectionInset {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -4800,6 +4805,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 addTarget = null
             }
         )
+    }
     }
 }
 
@@ -5515,6 +5521,7 @@ private fun PersonalListeningShelf(
                 SectionAccentBar(height = 34.dp, width = 4.dp)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
@@ -5524,7 +5531,10 @@ private fun PersonalListeningShelf(
                             fontSize = 32.sp,
                             lineHeight = 34.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = (-1.2).sp
+                            letterSpacing = (-1.2).sp,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
