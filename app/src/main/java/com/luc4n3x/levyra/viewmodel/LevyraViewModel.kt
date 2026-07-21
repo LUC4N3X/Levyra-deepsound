@@ -315,6 +315,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
     private var artistJob: Job? = null
+    private var artistLoreJob: Job? = null
     private var albumJob: Job? = null
     private var homeFeedJob: Job? = null
     private var homeAlbumsJob: Job? = null
@@ -358,17 +359,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     detailReturnTarget = DetailReturnTarget.None
                 )
             }
-            is DetailPage.ArtistPage -> _state.update {
-                it.copy(
-                    showArtist = true,
-                    artistLoading = false,
-                    artistError = null,
-                    artistProfile = page.profile,
-                    showAlbum = false,
-                    albumLoading = false,
-                    albumError = null,
-                    detailReturnTarget = DetailReturnTarget.None
-                )
+            is DetailPage.ArtistPage -> {
+                _state.update {
+                    it.copy(
+                        showArtist = true,
+                        artistLoading = false,
+                        artistError = null,
+                        artistProfile = page.profile,
+                        showAlbum = false,
+                        albumLoading = false,
+                        albumError = null,
+                        detailReturnTarget = DetailReturnTarget.None
+                    )
+                }
+                startArtistLore(page.profile)
             }
         }
         return true
@@ -2735,6 +2739,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val normalizedBrowseId = browseId.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
         artistJob?.cancel()
+        artistLoreJob?.cancel()
         val previous = _state.value
         val previousProfileMatches = previous.artistProfile?.let { profile ->
             if (normalizedBrowseId.isNotBlank()) {
@@ -2775,12 +2780,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 runCatching { artistRepository.profileFor(clean) }.getOrNull()
             }
             if (!isActive) return@launch
-            if (profile == null || (profile.topSongs.isEmpty() && !profile.hasBio)) {
+            if (profile == null) {
                 _state.update {
                     it.copy(
                         artistLoading = false,
                         artistError = ARTIST_PROFILE_UNAVAILABLE_ERROR,
-                        artistProfile = profile
+                        artistProfile = null
                     )
                 }
             } else {
@@ -2791,12 +2796,32 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistProfile = profile
                     )
                 }
+                startArtistLore(profile)
+            }
+        }
+    }
+
+    private fun startArtistLore(profile: ArtistProfile) {
+        artistLoreJob?.cancel()
+        artistLoreJob = viewModelScope.launch {
+            artistRepository.observeBiography(profile).collectLatest { biography ->
+                _state.update { current ->
+                    val visible = current.artistProfile ?: return@update current
+                    val sameArtist = if (profile.browseId.isNotBlank()) {
+                        visible.browseId.equals(profile.browseId, ignoreCase = true)
+                    } else {
+                        visible.name.equals(profile.name, ignoreCase = true)
+                    }
+                    if (!current.showArtist || !sameArtist) return@update current
+                    current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
+                }
             }
         }
     }
 
     fun closeArtist() {
         artistJob?.cancel()
+        artistLoreJob?.cancel()
         if (restoreDetailPage()) return
         _state.update {
             it.copy(
@@ -2815,7 +2840,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
         albumJob?.cancel()
-        if (returnTarget != DetailReturnTarget.Artist) artistJob?.cancel()
+        if (returnTarget != DetailReturnTarget.Artist) {
+            artistJob?.cancel()
+            artistLoreJob?.cancel()
+        }
         val previous = _state.value
         val current = previous.albumDetail
         val sameAlbum = current != null && current.album.title.equals(album.title, ignoreCase = true) && current.album.artist.equals(album.artist, ignoreCase = true)
@@ -2899,6 +2927,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openPlayerScreen() {
         albumJob?.cancel()
         artistJob?.cancel()
+        artistLoreJob?.cancel()
         detailBackStack.clear()
         _state.update {
             it.copy(
@@ -5589,6 +5618,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         lyricsPrefetchJob?.cancel()
         sponsorJob?.cancel()
         artistJob?.cancel()
+        artistLoreJob?.cancel()
         radarJob?.cancel()
         radioJob?.cancel()
         crossfadeJob?.cancel()
