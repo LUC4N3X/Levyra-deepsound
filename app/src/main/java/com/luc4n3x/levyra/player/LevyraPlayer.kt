@@ -82,6 +82,9 @@ class LevyraPlayer(context: Context) {
                         recoveryAttempts = 0
                         sponsorJob?.cancel()
                         sponsorJob = null
+                        clearLoadedState()
+                        connected.pause()
+                        onError?.invoke(message)
                         return
                     }
                     if (isRecoverable(error) && !recoveryInFlight && recoveryAttempts < 3 && onRecoverableStreamError != null) {
