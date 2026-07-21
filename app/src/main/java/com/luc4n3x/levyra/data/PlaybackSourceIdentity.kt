@@ -6,8 +6,9 @@ import java.security.MessageDigest
 import java.util.Locale
 
 object PlaybackSourceIdentity {
-    private val youtubeIdPattern = Regex("[A-Za-z0-9_-]{11}")
-    private val youtubeUrlPattern = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)([A-Za-z0-9_-]{11})")
+    private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
+    private val youtubeIdPattern = Regex(YOUTUBE_VIDEO_ID_PATTERN)
+    private val youtubeUrlPattern = Regex("(?:v=|/shorts/|/embed/|/live/|youtu\\.be/)($YOUTUBE_VIDEO_ID_PATTERN)")
 
     fun canonicalKey(track: Track): String {
         val isrc = track.isrc.trim().lowercase(Locale.ROOT)
@@ -20,7 +21,12 @@ object PlaybackSourceIdentity {
             normalize(track.title),
             normalize(track.artist),
             normalize(track.album),
-            durationBucket.toString()
+            durationBucket.toString(),
+            if (track.explicit) "explicit" else "clean",
+            track.discNumber.coerceAtLeast(0).toString(),
+            track.trackNumber.coerceAtLeast(0).toString(),
+            normalizeIdentifier(track.upc),
+            recordingDiscriminator(track)
         ).joinToString("|")
         return "track:${sha256(payload).take(32)}"
     }
@@ -38,9 +44,29 @@ object PlaybackSourceIdentity {
         return youtubeUrlPattern.find(clean)?.groupValues?.getOrNull(1).orEmpty()
     }
 
-    fun matchKey(track: Track, videoMode: Boolean, audioQuality: String): String {
-        val mode = if (videoMode) "video" else "audio"
+    fun matchKey(
+        track: Track,
+        videoMode: Boolean,
+        audioQuality: String,
+        preferMp4Audio: Boolean = false
+    ): String {
+        val mode = when {
+            videoMode -> "video"
+            preferMp4Audio -> "audio-mp4"
+            else -> "audio"
+        }
         return "${canonicalKey(track)}|$mode|${audioQuality.trim().lowercase(Locale.ROOT)}"
+    }
+
+    private fun recordingDiscriminator(track: Track): String {
+        normalizeIdentifier(track.id).takeIf { it.isNotBlank() }?.let { return "id:$it" }
+        normalizeIdentifier(track.counterpartVideoId).takeIf { it.isNotBlank() }?.let { return "counterpart:$it" }
+        extractYoutubeVideoId(track.videoUrl).lowercase(Locale.ROOT).takeIf { it.isNotBlank() }?.let { return "youtube:$it" }
+        return "metadata-only"
+    }
+
+    private fun normalizeIdentifier(value: String): String {
+        return value.trim().lowercase(Locale.ROOT)
     }
 
     private fun normalize(value: String): String {
