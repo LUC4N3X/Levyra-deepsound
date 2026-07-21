@@ -473,66 +473,86 @@ class PlaybackService : MediaLibraryService() {
         servicePrefetchJob?.cancel()
         queueSkipJob = serviceScope.launch {
             val player = activePlayer ?: return@launch
-            if (!forward && player.currentPosition > 5_000L) {
-                player.seekTo(0L)
-                queueEngine.updatePosition(0L)
-                return@launch
-            }
+            if (rewindInsteadOfSkip(player, forward)) return@launch
             val target = withContext(Dispatchers.IO) {
-                if (queueEngine.state.value.tracks.isEmpty()) {
-                    queueEngine.restore(
-                        fallbackTracks = emptyList(),
-                        fallbackIndex = -1,
-                        fallbackPositionMs = 0L,
-                        fallbackRadioEnabled = true
-                    )
-                }
-                var selected = if (forward) queueEngine.next(respectRepeatOne) else queueEngine.previous()
-                if (selected == null && forward && queueEngine.state.value.radioEnabled) {
-                    val seed = queueEngine.state.value.currentTrack
-                    if (seed != null && !isLocalPlaybackTrack(seed) && hasInternetCapableNetwork()) {
-                        val additions = runCatching {
-                            musicRepository.radio(seed, LevyraPreferences(this@PlaybackService).languageCode(), 20)
-                        }.onFailure { Timber.w(it, "Background radio expansion failed") }
-                            .getOrDefault(emptyList())
-                        if (additions.isNotEmpty()) {
-                            queueEngine.appendRadioTracks(additions)
-                            selected = queueEngine.next(respectRepeatOne = false)
-                        }
-                    }
-                }
-                selected
+                selectSkipTarget(forward, respectRepeatOne)
             } ?: return@launch
             val resolved = withContext(Dispatchers.IO) {
-                if (autoAdvance) {
-                    resolveQueueTrackPersistently(target)
-                } else {
-                    runCatching { resolveQueueTrack(target) }
-                        .onFailure { Timber.w(it, "Background queue resolution failed") }
-                        .getOrNull()
-                }
+                resolveSkipTarget(target, autoAdvance)
             } ?: run {
-                if (autoAdvance) {
-                    Timber.e("Background queue auto-advance gave up for %s", target.title)
-                    markPlaybackExpected(false, force = true)
-                    releasePlaybackWakeLock()
-                }
+                abandonAutoAdvance(target, autoAdvance)
                 return@launch
             }
-            queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
-            player.setMediaItem(LevyraMediaItemFactory.build(resolved))
-            player.prepare()
-            player.play()
-            queueEngine.updatePosition(0L)
-            LevyraWidgetCenter.update(
-                this@PlaybackService,
-                resolved.title,
-                resolved.artist,
-                resolved.largeThumbnailUrl.ifBlank { resolved.thumbnailUrl },
-                true
-            )
-            if (!isLocalPlaybackTrack(resolved)) prefetchServiceQueueNext()
+            playSkipTarget(player, resolved)
         }
+    }
+
+    private fun rewindInsteadOfSkip(player: ExoPlayer, forward: Boolean): Boolean {
+        if (forward || player.currentPosition <= 5_000L) return false
+        player.seekTo(0L)
+        queueEngine.updatePosition(0L)
+        return true
+    }
+
+    private suspend fun selectSkipTarget(forward: Boolean, respectRepeatOne: Boolean): com.luc4n3x.levyra.domain.Track? {
+        if (queueEngine.state.value.tracks.isEmpty()) {
+            queueEngine.restore(
+                fallbackTracks = emptyList(),
+                fallbackIndex = -1,
+                fallbackPositionMs = 0L,
+                fallbackRadioEnabled = true
+            )
+        }
+        val selected = if (forward) queueEngine.next(respectRepeatOne) else queueEngine.previous()
+        if (selected != null || !forward) return selected
+        return expandRadioForSkip()
+    }
+
+    private suspend fun expandRadioForSkip(): com.luc4n3x.levyra.domain.Track? {
+        if (!queueEngine.state.value.radioEnabled) return null
+        val seed = queueEngine.state.value.currentTrack ?: return null
+        if (isLocalPlaybackTrack(seed) || !hasInternetCapableNetwork()) return null
+        val additions = runCatching {
+            musicRepository.radio(seed, LevyraPreferences(this).languageCode(), 20)
+        }.onFailure { Timber.w(it, "Background radio expansion failed") }
+            .getOrDefault(emptyList())
+        if (additions.isEmpty()) return null
+        queueEngine.appendRadioTracks(additions)
+        return queueEngine.next(respectRepeatOne = false)
+    }
+
+    private suspend fun resolveSkipTarget(
+        target: com.luc4n3x.levyra.domain.Track,
+        autoAdvance: Boolean
+    ): com.luc4n3x.levyra.domain.Track? = if (autoAdvance) {
+        resolveQueueTrackPersistently(target)
+    } else {
+        runCatching { resolveQueueTrack(target) }
+            .onFailure { Timber.w(it, "Background queue resolution failed") }
+            .getOrNull()
+    }
+
+    private fun abandonAutoAdvance(target: com.luc4n3x.levyra.domain.Track, autoAdvance: Boolean) {
+        if (!autoAdvance) return
+        Timber.e("Background queue auto-advance gave up for %s", target.title)
+        markPlaybackExpected(false, force = true)
+        releasePlaybackWakeLock()
+    }
+
+    private fun playSkipTarget(player: ExoPlayer, resolved: com.luc4n3x.levyra.domain.Track) {
+        queueEngine.updateTrackAt(queueEngine.state.value.currentIndex, resolved)
+        player.setMediaItem(LevyraMediaItemFactory.build(resolved))
+        player.prepare()
+        player.play()
+        queueEngine.updatePosition(0L)
+        LevyraWidgetCenter.update(
+            this,
+            resolved.title,
+            resolved.artist,
+            resolved.largeThumbnailUrl.ifBlank { resolved.thumbnailUrl },
+            true
+        )
+        if (!isLocalPlaybackTrack(resolved)) prefetchServiceQueueNext()
     }
 
     private fun prefetchServiceQueueNext() {

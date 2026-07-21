@@ -106,6 +106,7 @@ import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
 import com.luc4n3x.levyra.player.offline.OfflineAudioExporter
 import com.luc4n3x.levyra.player.offline.work.OfflineExportWorker
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.TimeoutCancellationException
@@ -3801,20 +3802,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun startResolve(track: Track, preserveCrossfade: Boolean = false, autoRetryWhenOffline: Boolean = false) {
         streamTransitionId++
-        modeSwitchJob?.cancel()
-        streamRecoveryJob?.cancel()
-        alternateModePrefetchJob?.cancel()
-        youtubeEngagementJob?.cancel()
-        motionArtworkJob?.cancel()
-        motionArtworkRequestKey = null
-        motionArtworkPrefetchJob?.cancel()
-        youtubeDislikeJob?.cancel()
-        youtubeCommentsJob?.cancel()
-        youtubeCommentsPageJob?.cancel()
-        youtubeCommentReplyJobs.values.forEach { it.cancel() }
-        youtubeCommentReplyJobs.clear()
-        youtubeCommentContinuationHistory.clear()
-        youtubeEngagementGeneration.incrementAndGet()
+        cancelResolutionSideJobs()
         val engagementVideoId = youtubeEngagementVideoId(track)
         if (!preserveCrossfade) {
             crossfadeJob?.cancel()
@@ -3841,61 +3829,73 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         fetchLyrics(track)
         prefetchLyricsAround(track)
         refreshMotionArtworkAround(track)
-
-        val playableTrack = youtubePlayableTrack(track) ?: track
         playJob = viewModelScope.launch {
-            val local = localDownloadedTrack(track)
-            if (local != null) {
-                if (!isActive || requestId != playRequestId) return@launch
-                startPlayback(local)
-                prefetchAround(local)
-                return@launch
-            }
-            val instant = resolver.cached(playableTrack, _state.value.isVideoMode)
-            if (instant != null) {
-                if (!isActive || requestId != playRequestId) return@launch
-                startPlayback(instant)
-                prefetchAround(instant)
-                return@launch
-            }
-
-            player.stop()
-            try {
-                val playable = resolveForPlayback(track)
-                if (!isActive || requestId != playRequestId) return@launch
-                startPlayback(playable)
-                prefetchAround(playable)
-            } catch (error: Throwable) {
-                if (error is CancellationException) throw error
-                if (!isActive || requestId != playRequestId) return@launch
-                if (autoRetryWhenOffline && !hasInternetCapableNetwork()) {
-                    player.stop()
-                    _state.update {
-                        it.copy(
-                            isResolving = false,
-                            isPlaying = false,
-                            positionMs = 0L,
-                            durationMs = track.durationMs,
-                            currentTrack = track.copy(streamUrl = ""),
-                            playerError = null
-                        )
-                    }
-                    scheduleOfflineAutoAdvanceRetry(track, requestId)
-                    return@launch
-                }
-                player.stop()
-                _state.update {
-                    it.copy(
-                        isResolving = false,
-                        isPlaying = false,
-                        positionMs = 0L,
-                        durationMs = track.durationMs,
-                        currentTrack = track.copy(streamUrl = ""),
-                        playerError = cleanUserError(error)
-                    )
-                }
-            }
+            resolveAndStartPlayback(track, requestId, autoRetryWhenOffline)
         }
+    }
+
+    private fun cancelResolutionSideJobs() {
+        modeSwitchJob?.cancel()
+        streamRecoveryJob?.cancel()
+        alternateModePrefetchJob?.cancel()
+        youtubeEngagementJob?.cancel()
+        motionArtworkJob?.cancel()
+        motionArtworkRequestKey = null
+        motionArtworkPrefetchJob?.cancel()
+        youtubeDislikeJob?.cancel()
+        youtubeCommentsJob?.cancel()
+        youtubeCommentsPageJob?.cancel()
+        youtubeCommentReplyJobs.values.forEach { it.cancel() }
+        youtubeCommentReplyJobs.clear()
+        youtubeCommentContinuationHistory.clear()
+        youtubeEngagementGeneration.incrementAndGet()
+    }
+
+    private suspend fun CoroutineScope.resolveAndStartPlayback(
+        track: Track,
+        requestId: Long,
+        autoRetryWhenOffline: Boolean
+    ) {
+        val playableTrack = youtubePlayableTrack(track) ?: track
+        val instant = localDownloadedTrack(track) ?: resolver.cached(playableTrack, _state.value.isVideoMode)
+        if (instant != null) {
+            if (!isActive || requestId != playRequestId) return
+            startPlayback(instant)
+            prefetchAround(instant)
+            return
+        }
+        player.stop()
+        try {
+            val playable = resolveForPlayback(track)
+            if (!isActive || requestId != playRequestId) return
+            startPlayback(playable)
+            prefetchAround(playable)
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            if (!isActive || requestId != playRequestId) return
+            publishResolveFailure(track, error, requestId, autoRetryWhenOffline)
+        }
+    }
+
+    private fun publishResolveFailure(
+        track: Track,
+        error: Throwable,
+        requestId: Long,
+        autoRetryWhenOffline: Boolean
+    ) {
+        val retryWhenOnline = autoRetryWhenOffline && !hasInternetCapableNetwork()
+        player.stop()
+        _state.update {
+            it.copy(
+                isResolving = false,
+                isPlaying = false,
+                positionMs = 0L,
+                durationMs = track.durationMs,
+                currentTrack = track.copy(streamUrl = ""),
+                playerError = if (retryWhenOnline) null else cleanUserError(error)
+            )
+        }
+        if (retryWhenOnline) scheduleOfflineAutoAdvanceRetry(track, requestId)
     }
 
     private fun hasInternetCapableNetwork(): Boolean {

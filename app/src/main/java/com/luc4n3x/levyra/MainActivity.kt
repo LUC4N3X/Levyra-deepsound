@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
         configureFastImageLoader()
         requestNotificationPermission()
         requestLegacyStoragePermission()
+        requestUnrestrictedBatteryUsage()
         val startPalette = LevyraThemes.byId(LevyraThemes.APPLE_MUSIC)
         LevyraThemeController.apply(startPalette.id)
         WindowCompat.enableEdgeToEdge(window)
@@ -96,6 +97,20 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         LevyraPipBridge.unbind()
         super.onDestroy()
+    }
+
+    private fun requestUnrestrictedBatteryUsage() {
+        val powerManager = getSystemService(android.os.PowerManager::class.java) ?: return
+        if (powerManager.isIgnoringBatteryOptimizations(packageName)) return
+        val prefs = getSharedPreferences("levyra_battery_guard", MODE_PRIVATE)
+        if (prefs.getBoolean("requested", false)) return
+        prefs.edit().putBoolean("requested", true).apply()
+        runCatching {
+            startActivity(
+                Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    .setData(android.net.Uri.parse("package:$packageName"))
+            )
+        }
     }
 
     private fun enterPictureInPicture(): Boolean {
