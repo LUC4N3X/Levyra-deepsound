@@ -657,7 +657,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             recoverPlaybackStream(track, positionMs, videoMode, playWhenReady, errorMessage)
         }
         player.onError = { errorMsg ->
-            _state.value.currentTrack?.let { resolver.invalidate(it, _state.value.isVideoMode) }
+            _state.value.currentTrack
+                ?.takeUnless(::isLocalPlaybackTrack)
+                ?.let { resolver.invalidate(it, _state.value.isVideoMode) }
             _state.update { it.copy(playerError = cleanUserError(errorMsg), isPlaying = false, isResolving = false) }
         }
         applyFollowedArtists(followedArtistsStore.load())
@@ -1445,6 +1447,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         playWhenReady: Boolean,
         errorMessage: String
     ) {
+        if (isLocalPlaybackTrack(failedTrack)) return
         val transitionId = ++streamTransitionId
         modeSwitchJob?.cancel()
         streamRecoveryJob?.cancel()
@@ -3945,13 +3948,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun playDownloaded(download: DownloadedTrack) {
+        if (download.uri.isBlank()) {
+            _state.update { it.copy(playerError = "File offline non disponibile") }
+            return
+        }
         val track = Track(
-            id = download.trackId,
+            id = download.trackId.ifBlank { "offline-${download.id}" },
             title = download.title,
             artist = download.artist,
             album = download.album,
             durationMs = download.durationMs,
-            streamUrl = "",
+            streamUrl = download.uri,
             videoUrl = "",
             thumbnailUrl = "",
             largeThumbnailUrl = "",
@@ -3964,10 +3971,19 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             accentStart = 0,
             accentEnd = 0
         )
+        playRequestId++
+        streamTransitionId++
+        playJob?.cancel()
+        modeSwitchJob?.cancel()
+        streamRecoveryJob?.cancel()
+        crossfadeJob?.cancel()
+        crossfadeInProgress = false
+        cancelBackgroundWarmups(cancelList = true)
+        _state.update { it.copy(isVideoMode = false, playerError = null, isResolving = false) }
         loopCurrentQueueOnCompletion = false
         queueEngine.replace(listOf(track), 0, keepPlaybackModes = true, radioEnabled = false)
         queueIndex = 0
-        startResolve(track)
+        startPlayback(track)
     }
 
     private fun startPlayback(playable: Track) {
@@ -4369,7 +4385,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun fetchSponsorSegments(track: Track) {
         sponsorJob?.cancel()
         sponsorSegments = emptyList()
-        if (!_state.value.sponsorBlockEnabled || track.id.isBlank() || track.id.startsWith("chart-")) return
+        if (
+            !_state.value.sponsorBlockEnabled ||
+            isLocalPlaybackTrack(track) ||
+            track.id.isBlank() ||
+            track.id.startsWith("chart-")
+        ) return
         sponsorJob = viewModelScope.launch {
             val result = runCatching { sponsorBlockRepository.segments(track.id) }.getOrDefault(emptyList())
             if (_state.value.currentTrack?.id == track.id) sponsorSegments = result
@@ -4485,9 +4506,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         prefetchJob?.cancel()
         PlaybackService.clearPreparedQueueNext()
         val current = _state.value.currentTrack
-        if (current != null) prefetchLyricsAround(current)
-        if (current != null) prefetchNextMotionArtwork(current)
-        if (_state.value.isPlaying && current != null && current.streamUrl.isNotBlank()) prefetchAround(current)
+        if (current != null && !isLocalPlaybackTrack(current)) prefetchLyricsAround(current)
+        if (current != null && !isLocalPlaybackTrack(current)) prefetchNextMotionArtwork(current)
+        if (
+            _state.value.isPlaying &&
+            current != null &&
+            current.streamUrl.isNotBlank() &&
+            !isLocalPlaybackTrack(current)
+        ) prefetchAround(current)
     }
 
     private fun refreshMotionArtworkAround(current: Track) {
@@ -4611,6 +4637,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun prefetchAround(playable: Track) {
         prefetchJob?.cancel()
         PlaybackService.clearPreparedQueueNext()
+        if (isLocalPlaybackTrack(playable) || !lyricsNetworkProfile().connected) return
         val generation = queueEngine.state.value.generation
         prefetchJob = viewModelScope.launch(Dispatchers.IO) {
             val plan = adaptivePlaybackPolicy.current(_state.value.isVideoMode)
@@ -4661,6 +4688,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (!force && queueEngine.upcoming(3).size >= 3) return
         if (radioJob?.isActive == true) return
         val seed = queueSnapshot.currentTrack ?: return
+        if (isLocalPlaybackTrack(seed) || !lyricsNetworkProfile().connected) return
         val generation = queueSnapshot.generation
         radioJob = viewModelScope.launch(Dispatchers.IO) {
             val radioTracks = runCatching {
@@ -5157,6 +5185,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             throw IllegalStateException("YouTube non ha fornito uno stream audio riproducibile per ${track.title}")
         }
         return resolved
+    }
+
+    private fun isLocalPlaybackTrack(track: Track): Boolean {
+        val stream = track.streamUrl.trim()
+        return track.source.equals("Offline", ignoreCase = true) ||
+            stream.startsWith("content://", ignoreCase = true) ||
+            stream.startsWith("file://", ignoreCase = true)
     }
 
     private fun effectiveDuration(track: Track): Long {
