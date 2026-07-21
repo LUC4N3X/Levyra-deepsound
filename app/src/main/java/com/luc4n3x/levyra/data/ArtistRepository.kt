@@ -96,6 +96,33 @@ internal fun parseArtistHeaderArtwork(header: JSONObject?): ArtistHeaderArtwork 
 }
 
 
+internal fun shouldReplaceArtistBiography(
+    current: ArtistBiography?,
+    candidate: ArtistBiography,
+    requestedLanguageCode: String
+): Boolean {
+    if (candidate.text.isBlank()) return false
+    if (current == null || current.text.isBlank()) return true
+    val currentIsLore = current.sourceLabel.equals("Wikipedia", ignoreCase = true) ||
+        current.sourceUrl.contains("wikipedia.org", ignoreCase = true)
+    val candidateIsLore = candidate.sourceLabel.equals("Wikipedia", ignoreCase = true) ||
+        candidate.sourceUrl.contains("wikipedia.org", ignoreCase = true)
+    if (currentIsLore && candidateIsLore && current.languageCode.isNotBlank() && candidate.languageCode.isNotBlank()) {
+        val requestedLanguage = ArtistLoreRepository.preferredLanguage(requestedLanguageCode)
+        val currentMatchesRequested = ArtistLoreRepository.preferredLanguage(current.languageCode) == requestedLanguage
+        val candidateMatchesRequested = ArtistLoreRepository.preferredLanguage(candidate.languageCode) == requestedLanguage
+        if (candidateMatchesRequested && !currentMatchesRequested) return true
+        if (!candidateMatchesRequested && currentMatchesRequested) return false
+    }
+    return when {
+        current.sourceLabel.equals("YouTube Music", ignoreCase = true) ->
+            candidate.confidence >= 80 && candidate.text.length >= current.text.length + 120
+        candidate.confidence > current.confidence -> true
+        candidate.confidence == current.confidence && candidate.text.length > current.text.length -> true
+        else -> false
+    }
+}
+
 internal fun extractOfficialMonthlyListeners(header: JSONObject?): String {
     fun textFrom(renderer: JSONObject?): String {
         renderer ?: return ""
@@ -183,17 +210,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
     }
 
     fun mergeBiography(profile: ArtistProfile, candidate: ArtistBiography): ArtistProfile {
-        val current = profile.biography
-        val replace = when {
-            candidate.text.isBlank() -> false
-            current == null || current.text.isBlank() -> true
-            current.sourceLabel.equals("YouTube Music", ignoreCase = true) ->
-                candidate.confidence >= 80 && candidate.text.length >= current.text.length + 120
-            candidate.confidence > current.confidence -> true
-            candidate.confidence == current.confidence && candidate.text.length > current.text.length -> true
-            else -> false
-        }
-        if (!replace) return profile
+        if (!shouldReplaceArtistBiography(profile.biography, candidate, contentLanguage())) return profile
         val portrait = candidate.originalImageUrl.ifBlank { candidate.thumbnailUrl }
         val updated = profile.copy(
             biography = candidate,
