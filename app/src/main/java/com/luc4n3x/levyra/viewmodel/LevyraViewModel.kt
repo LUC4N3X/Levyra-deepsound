@@ -4682,30 +4682,49 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private data class RadioTailRequest(
+        val seed: Track,
+        val generation: Long
+    )
+
     private fun ensureRadioTail(force: Boolean, playWhenReady: Boolean = false) {
-        val queueSnapshot = queueEngine.state.value
-        if (!queueSnapshot.radioEnabled || queueSnapshot.currentTrack == null) return
-        if (!force && queueEngine.upcoming(3).size >= 3) return
-        if (radioJob?.isActive == true) return
-        val seed = queueSnapshot.currentTrack ?: return
-        if (isLocalPlaybackTrack(seed) || !lyricsNetworkProfile().connected) return
-        val generation = queueSnapshot.generation
+        val request = radioTailRequest(force) ?: return
         radioJob = viewModelScope.launch(Dispatchers.IO) {
-            val radioTracks = runCatching {
-                repository.radio(seed, _state.value.languageCode, 20)
-            }.getOrDefault(emptyList())
-            if (!isActive || radioTracks.isEmpty()) return@launch
-            val before = queueEngine.state.value
-            val sameSeed = before.currentTrack?.let { playbackQueueIdentity(it) } == playbackQueueIdentity(seed)
-            if (!sameSeed || (before.generation != generation && !force)) return@launch
-            queueEngine.appendRadioTracks(radioTracks)
-            if (playWhenReady) {
-                withContext(Dispatchers.Main) {
-                    queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
-                }
-            }
+            appendRadioTail(request, force, playWhenReady)
         }
     }
+
+    private fun radioTailRequest(force: Boolean): RadioTailRequest? {
+        val snapshot = queueEngine.state.value
+        val seed = snapshot.currentTrack ?: return null
+        if (!snapshot.radioEnabled) return null
+        if (!force && queueEngine.upcoming(3).size >= 3) return null
+        if (radioJob?.isActive == true) return null
+        if (isLocalPlaybackTrack(seed) || !lyricsNetworkProfile().connected) return null
+        return RadioTailRequest(seed = seed, generation = snapshot.generation)
+    }
+
+    private suspend fun appendRadioTail(
+        request: RadioTailRequest,
+        force: Boolean,
+        playWhenReady: Boolean
+    ) {
+        val radioTracks = runCatching {
+            repository.radio(request.seed, _state.value.languageCode, 20)
+        }.getOrDefault(emptyList())
+        if (radioTracks.isEmpty()) return
+        val current = queueEngine.state.value
+        if (!isSameRadioSeed(current.currentTrack, request.seed)) return
+        if (current.generation != request.generation && !force) return
+        queueEngine.appendRadioTracks(radioTracks)
+        if (!playWhenReady) return
+        withContext(Dispatchers.Main) {
+            queueEngine.next(respectRepeatOne = false)?.let(::startResolve)
+        }
+    }
+
+    private fun isSameRadioSeed(current: Track?, seed: Track): Boolean =
+        current?.let { playbackQueueIdentity(it) } == playbackQueueIdentity(seed)
 
     private fun prefetchTop(tracks: List<Track>, count: Int = 8, respectHomeScroll: Boolean = false) {
         val plan = adaptivePlaybackPolicy.current(videoMode = false)
