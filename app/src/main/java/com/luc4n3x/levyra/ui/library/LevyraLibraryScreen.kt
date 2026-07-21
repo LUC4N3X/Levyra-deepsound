@@ -518,7 +518,7 @@ internal fun LevyraLibraryScreen(
                                 onOpen = { artist ->
                                     val key = "artist:${artist.key}"
                                     if (selectionActive) selectedKeys = selectedKeys.toggle(key)
-                                    else viewModel.openArtistByName(artist.name)
+                                    else viewModel.openArtistReference(artist.name, artist.browseId, artist.artworkUrl)
                                 },
                                 onSelect = { artist -> selectedKeys = selectedKeys.toggle("artist:${artist.key}") },
                                 isItalian = isItalian
@@ -533,7 +533,7 @@ internal fun LevyraLibraryScreen(
                                 selectionActive = selectionActive,
                                 onClick = {
                                     if (selectionActive) selectedKeys = selectedKeys.toggle(key)
-                                    else viewModel.openArtistByName(artist.name)
+                                    else viewModel.openArtistReference(artist.name, artist.browseId, artist.artworkUrl)
                                 },
                                 onLongClick = { selectedKeys = selectedKeys.toggle(key) },
                                 onPlay = { artist.tracks.firstOrNull()?.let { viewModel.playFrom(artist.tracks, it) } },
@@ -787,7 +787,7 @@ internal fun LevyraPlaylistDetailScreen(
         filterLibraryTracks(orderedTracks, query, LibrarySort.Recent)
     }
     val selectedTracks = remember(orderedTracks, selectedKeys) {
-        orderedTracks.filter { libraryTrackKey(it) in selectedKeys }
+        orderedTracks.filter { playlistEntryKey(it) in selectedKeys }
     }
     val selectionActive = selectedKeys.isNotEmpty()
 
@@ -868,8 +868,9 @@ internal fun LevyraPlaylistDetailScreen(
             if (orderedTracks.isEmpty()) {
                 item { LibraryEmpty(Icons.Rounded.QueueMusic, if (isItalian) "Questa playlist è vuota" else "This playlist is empty") }
             } else if (reorderMode) {
-                items(orderedTracks, key = { "reorder-${libraryTrackKey(it)}" }) { track ->
-                    val index = orderedTracks.indexOfFirst { libraryTrackKey(it) == libraryTrackKey(track) }
+                items(orderedTracks, key = { "reorder-${playlistEntryKey(it)}" }) { track ->
+                    val entryKey = playlistEntryKey(track)
+                    val index = orderedTracks.indexOfFirst { playlistEntryKey(it) == entryKey }
                     PlaylistReorderRow(
                         track = track,
                         index = index,
@@ -883,8 +884,8 @@ internal fun LevyraPlaylistDetailScreen(
                     )
                 }
             } else {
-                items(visibleTracks, key = { "playlist-track-${libraryTrackKey(it)}" }) { track ->
-                    val key = libraryTrackKey(track)
+                items(visibleTracks, key = { "playlist-track-${playlistEntryKey(it)}" }) { track ->
+                    val key = playlistEntryKey(track)
                     LibraryTrackRow(
                         track = track,
                         selected = key in selectedKeys,
