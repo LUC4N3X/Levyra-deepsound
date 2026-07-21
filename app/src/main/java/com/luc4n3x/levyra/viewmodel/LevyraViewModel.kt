@@ -2357,6 +2357,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (normalizedLanguage == _state.value.languageCode) return
         preferences.setLanguageCode(normalizedLanguage)
         applyLanguageContent(normalizedLanguage, refreshRemote = true)
+        _state.value.artistProfile?.takeIf { _state.value.showArtist }?.let(::startArtistLore)
         _state.value.currentTrack?.let { track ->
             fetchLyrics(track)
             prefetchLyricsAround(track)
