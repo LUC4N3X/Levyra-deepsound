@@ -61,6 +61,25 @@ class PlaylistStore(context: Context) {
         if (cover.isNotBlank()) dao.updateCover(playlistId, cover, now) else dao.touch(playlistId, now)
     }
 
+    suspend fun addTracks(playlistId: String, tracks: List<Track>) = withContext(Dispatchers.IO) {
+        val cleanTracks = tracks
+            .filter { it.id.isNotBlank() && it.title.isNotBlank() }
+            .distinctBy { it.id }
+        if (cleanTracks.isEmpty()) return@withContext
+        val existingIds = dao.tracksOf(playlistId).mapTo(hashSetOf()) { it.trackId }
+        val pending = cleanTracks.filterNot { it.id in existingIds }
+        if (pending.isEmpty()) return@withContext
+        val now = System.currentTimeMillis()
+        val startPosition = (dao.maxPosition(playlistId) ?: -1) + 1
+        dao.insertTracks(pending.mapIndexed { index, track ->
+            track.toPlaylistTrackEntity(playlistId, startPosition + index, now)
+        })
+        val cover = pending.firstNotNullOfOrNull { track ->
+            track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }.takeIf(String::isNotBlank)
+        }.orEmpty()
+        if (cover.isNotBlank()) dao.updateCover(playlistId, cover, now) else dao.touch(playlistId, now)
+    }
+
     suspend fun removeTrack(playlistId: String, trackId: String) = withContext(Dispatchers.IO) {
         dao.removeTrack(playlistId, trackId)
         // ricompatta le posizioni
@@ -68,11 +87,22 @@ class PlaylistStore(context: Context) {
         dao.replaceTracks(playlistId, remaining.mapIndexed { i, e -> e.copy(position = i) })
     }
 
-    /** Riscrive l'ordine completo (drag & drop). */
+    suspend fun removeTracks(playlistId: String, trackIds: Set<String>) = withContext(Dispatchers.IO) {
+        if (trackIds.isEmpty()) return@withContext
+        val remaining = dao.tracksOf(playlistId).filterNot { it.trackId in trackIds }
+        dao.replaceTracks(playlistId, remaining.mapIndexed { index, entity -> entity.copy(position = index) })
+    }
+
+    /** Riscrive l'ordine completo senza alterare metadati o data di aggiunta. */
     suspend fun reorder(playlistId: String, orderedTracks: List<Track>) = withContext(Dispatchers.IO) {
-        val now = System.currentTimeMillis()
-        val entities = orderedTracks.mapIndexed { i, t -> t.toPlaylistTrackEntity(playlistId, i, now) }
-        dao.replaceTracks(playlistId, entities)
+        val existing = dao.tracksOf(playlistId)
+        val existingById = existing.associateBy { it.trackId }
+        val orderedIds = orderedTracks.map { it.id }.filter(String::isNotBlank)
+        if (orderedIds.size != existing.size || orderedIds.toSet().size != orderedIds.size) return@withContext
+        if (orderedIds.toSet() != existingById.keys) return@withContext
+        dao.replaceTracks(playlistId, orderedIds.mapIndexed { index, trackId ->
+            existingById.getValue(trackId).copy(position = index)
+        })
     }
 
     suspend fun updateTrackMetadata(playlists: List<Playlist>) = withContext(Dispatchers.IO) {
