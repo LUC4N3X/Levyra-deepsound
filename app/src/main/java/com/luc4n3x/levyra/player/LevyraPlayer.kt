@@ -77,6 +77,16 @@ class LevyraPlayer(context: Context) {
                     if (ignoreEndedFromManualStop || connected.mediaItemCount == 0) return
                     val track = loadedTrack ?: return
                     val message = cleanError(error)
+                    if (isLocalPlayback(track)) {
+                        recoveryInFlight = false
+                        recoveryAttempts = 0
+                        sponsorJob?.cancel()
+                        sponsorJob = null
+                        clearLoadedState()
+                        connected.pause()
+                        onError?.invoke(message)
+                        return
+                    }
                     if (isRecoverable(error) && !recoveryInFlight && recoveryAttempts < 3 && onRecoverableStreamError != null) {
                         recoveryInFlight = true
                         recoveryAttempts++
@@ -298,6 +308,13 @@ class LevyraPlayer(context: Context) {
             append('|')
             append(videoMode)
         }
+    }
+
+    private fun isLocalPlayback(track: Track): Boolean {
+        val stream = track.streamUrl.trim()
+        return track.source.equals("Offline", ignoreCase = true) ||
+            stream.startsWith("content://", ignoreCase = true) ||
+            stream.startsWith("file://", ignoreCase = true)
     }
 
     private fun isRecoverable(error: PlaybackException): Boolean {
