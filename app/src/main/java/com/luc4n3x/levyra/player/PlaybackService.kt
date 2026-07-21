@@ -49,6 +49,7 @@ import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
+import com.luc4n3x.levyra.player.queue.PlaybackQueueSnapshot
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import kotlinx.coroutines.CoroutineScope
@@ -657,50 +658,101 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    private data class ServiceRecoveryPlan(
+        val localPlayback: Boolean,
+        val delaysMs: LongArray,
+        val positionMs: Long
+    )
+
     private fun scheduleServiceRecovery(error: PlaybackException) {
-        if (serviceRecoveryJob?.isActive == true) return
-        if (!playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) return
-        val localPlayback = isCurrentPlaybackLocal()
-        val delays = if (localPlayback) LOCAL_RECOVERY_DELAYS_MS else ONLINE_RECOVERY_DELAYS_MS
-        val positionMs = mediaSession?.player?.currentPosition?.coerceAtLeast(0L) ?: 0L
-        acquirePlaybackWakeLock()
+        val plan = serviceRecoveryPlan() ?: return
         serviceRecoveryJob = serviceScope.launch {
-            if (uiRecoveryAvailable && !localPlayback) {
-                delay(750L)
-                if (isPlaybackHealthy(mediaSession?.player)) return@launch
-            }
-            while (isActive && playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) {
-                if (isPlaybackHealthy(mediaSession?.player)) {
-                    serviceRecoveryAttempts = 0
-                    serviceRecoveryExhausted = false
-                    return@launch
-                }
-                if (!localPlayback && !hasValidatedInternet()) {
-                    Timber.d("Background playback recovery waiting for validated network")
-                    delay(5_000L)
-                    continue
-                }
-                if (serviceRecoveryAttempts >= delays.size) {
-                    serviceRecoveryExhausted = true
-                    mediaSession?.player?.pause()
-                    markPlaybackExpected(false, force = true)
-                    releasePlaybackWakeLock()
-                    Timber.e(error, "Background playback recovery exhausted")
-                    return@launch
-                }
-                val attempt = serviceRecoveryAttempts++
-                delay(delays[attempt])
-                val restored = restoreCurrentPlayback(
-                    positionMs = positionMs,
-                    preferFreshResolution = !localPlayback && hasValidatedInternet()
-                )
-                if (restored) {
-                    Timber.i("Background playback recovery restored attempt=%d local=%s", attempt + 1, localPlayback)
-                    return@launch
-                }
-                Timber.w(error, "Background playback recovery attempt %d failed", attempt + 1)
-            }
+            runServiceRecovery(error, plan)
         }
+    }
+
+    private fun serviceRecoveryPlan(): ServiceRecoveryPlan? {
+        if (serviceRecoveryJob?.isActive == true) return null
+        if (!isPlaybackRecoveryExpected()) return null
+        val localPlayback = isCurrentPlaybackLocal()
+        return ServiceRecoveryPlan(
+            localPlayback = localPlayback,
+            delaysMs = if (localPlayback) LOCAL_RECOVERY_DELAYS_MS else ONLINE_RECOVERY_DELAYS_MS,
+            positionMs = mediaSession?.player?.currentPosition?.coerceAtLeast(0L) ?: 0L
+        )
+    }
+
+    private suspend fun runServiceRecovery(error: PlaybackException, plan: ServiceRecoveryPlan) {
+        if (awaitUiRecovery(plan.localPlayback)) return
+        while (isPlaybackRecoveryExpected()) {
+            if (finishHealthyServiceRecovery()) return
+            if (awaitRecoveryConnectivity(plan.localPlayback)) continue
+            if (finishExhaustedServiceRecovery(error, plan.delaysMs)) return
+            if (attemptServiceRecovery(error, plan)) return
+        }
+        releasePlaybackWakeLock()
+    }
+
+    private fun isPlaybackRecoveryExpected(): Boolean =
+        playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)
+
+    private suspend fun awaitUiRecovery(localPlayback: Boolean): Boolean {
+        if (!uiRecoveryAvailable || localPlayback) return false
+        releasePlaybackWakeLock()
+        delay(750L)
+        return finishHealthyServiceRecovery()
+    }
+
+    private fun finishHealthyServiceRecovery(): Boolean {
+        if (!isPlaybackHealthy(mediaSession?.player)) return false
+        serviceRecoveryAttempts = 0
+        serviceRecoveryExhausted = false
+        mediaSession?.player?.let(::updatePlaybackProtection)
+        return true
+    }
+
+    private suspend fun awaitRecoveryConnectivity(localPlayback: Boolean): Boolean {
+        if (localPlayback || hasValidatedInternet()) return false
+        releasePlaybackWakeLock()
+        Timber.d("Background playback recovery waiting for validated network")
+        delay(5_000L)
+        return true
+    }
+
+    private fun finishExhaustedServiceRecovery(
+        error: PlaybackException,
+        delaysMs: LongArray
+    ): Boolean {
+        if (serviceRecoveryAttempts < delaysMs.size) return false
+        serviceRecoveryExhausted = true
+        mediaSession?.player?.pause()
+        markPlaybackExpected(false, force = true)
+        releasePlaybackWakeLock()
+        Timber.e(error, "Background playback recovery exhausted")
+        return true
+    }
+
+    private suspend fun attemptServiceRecovery(
+        error: PlaybackException,
+        plan: ServiceRecoveryPlan
+    ): Boolean {
+        val attempt = serviceRecoveryAttempts++
+        acquirePlaybackWakeLock()
+        delay(plan.delaysMs[attempt])
+        val restored = restoreCurrentPlayback(
+            positionMs = plan.positionMs,
+            preferFreshResolution = !plan.localPlayback && hasValidatedInternet()
+        )
+        if (restored) {
+            Timber.i(
+                "Background playback recovery restored attempt=%d local=%s",
+                attempt + 1,
+                plan.localPlayback
+            )
+            return true
+        }
+        Timber.w(error, "Background playback recovery attempt %d failed", attempt + 1)
+        return false
     }
 
     private fun isPlaybackHealthy(player: Player?): Boolean = player != null &&
@@ -709,54 +761,87 @@ class PlaybackService : MediaLibraryService() {
         player.playbackState == Player.STATE_READY
 
     private fun scheduleStickyPlaybackRestore(startId: Int): Boolean {
-        if (!playbackStateStore.getBoolean(KEY_PLAYBACK_EXPECTED, false)) {
+        if (!isPlaybackRecoveryExpected()) {
             stopSelfResult(startId)
             return false
         }
-        val heartbeatAt = playbackStateStore.getLong(KEY_PLAYBACK_HEARTBEAT_AT, 0L)
-        if (heartbeatAt <= 0L || System.currentTimeMillis() - heartbeatAt > STICKY_RESTORE_MAX_AGE_MS) {
-            markPlaybackExpected(false, force = true)
-            stopSelfResult(startId)
+        if (isStickyRestoreExpired()) {
+            stopStickyRestore(startId)
             return false
         }
         acquirePlaybackWakeLock()
         stickyRestoreJob?.cancel()
         stickyRestoreJob = serviceScope.launch {
-            delay(250L)
-            val player = mediaSession?.player ?: run {
-                markPlaybackExpected(false, force = true)
-                stopSelfResult(startId)
-                return@launch
-            }
-            if (player.mediaItemCount > 0 || player.playWhenReady) return@launch
-            val snapshot = withContext(Dispatchers.IO) {
-                if (queueEngine.state.value.tracks.isEmpty()) {
-                    queueEngine.restore(
-                        fallbackTracks = emptyList(),
-                        fallbackIndex = -1,
-                        fallbackPositionMs = 0L,
-                        fallbackRadioEnabled = true
-                    )
-                } else {
-                    queueEngine.state.value
-                }
-            }
-            val currentTrack = snapshot.currentTrack
-            if (currentTrack == null) {
-                markPlaybackExpected(false, force = true)
-                stopSelfResult(startId)
-                return@launch
-            }
-            if (!restoreCurrentPlayback(
-                    snapshot.positionMs,
-                    preferFreshResolution = !isLocalPlaybackTrack(currentTrack) && hasValidatedInternet()
-                )) {
-                Timber.w("Sticky background playback restore failed")
-                markPlaybackExpected(false, force = true)
-                stopSelfResult(startId)
-            }
+            restoreStickyPlayback(startId)
         }
         return true
+    }
+
+    private suspend fun restoreStickyPlayback(startId: Int) {
+        delay(250L)
+        val player = mediaSession?.player ?: run {
+            stopStickyRestore(startId)
+            return
+        }
+        if (player.mediaItemCount > 0 || player.playWhenReady) return
+        val snapshot = restoreQueueSnapshot()
+        val currentTrack = snapshot.currentTrack ?: run {
+            stopStickyRestore(startId)
+            return
+        }
+        if (!awaitStickyRestoreConnectivity(currentTrack)) {
+            if (isStickyRestoreExpired()) stopStickyRestore(startId)
+            return
+        }
+        val restored = restoreCurrentPlayback(
+            snapshot.positionMs,
+            preferFreshResolution = !isLocalPlaybackTrack(currentTrack)
+        )
+        if (!restored) {
+            Timber.w("Sticky background playback restore failed")
+            stopStickyRestore(startId)
+        }
+    }
+
+    private suspend fun restoreQueueSnapshot(): PlaybackQueueSnapshot = withContext(Dispatchers.IO) {
+        if (queueEngine.state.value.tracks.isEmpty()) {
+            queueEngine.restore(
+                fallbackTracks = emptyList(),
+                fallbackIndex = -1,
+                fallbackPositionMs = 0L,
+                fallbackRadioEnabled = true
+            )
+        } else {
+            queueEngine.state.value
+        }
+    }
+
+    private suspend fun awaitStickyRestoreConnectivity(
+        track: com.luc4n3x.levyra.domain.Track
+    ): Boolean {
+        if (isLocalPlaybackTrack(track)) return true
+        while (isPlaybackRecoveryExpected() && !isStickyRestoreExpired()) {
+            if (hasValidatedInternet()) {
+                acquirePlaybackWakeLock()
+                return true
+            }
+            releasePlaybackWakeLock()
+            Timber.d("Sticky playback restore waiting for validated network")
+            delay(5_000L)
+        }
+        return false
+    }
+
+    private fun isStickyRestoreExpired(): Boolean {
+        val heartbeatAt = playbackStateStore.getLong(KEY_PLAYBACK_HEARTBEAT_AT, 0L)
+        return heartbeatAt <= 0L ||
+            System.currentTimeMillis() - heartbeatAt > STICKY_RESTORE_MAX_AGE_MS
+    }
+
+    private fun stopStickyRestore(startId: Int) {
+        markPlaybackExpected(false, force = true)
+        releasePlaybackWakeLock()
+        stopSelfResult(startId)
     }
 
     private suspend fun restoreCurrentPlayback(positionMs: Long, preferFreshResolution: Boolean): Boolean {
