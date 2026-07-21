@@ -604,13 +604,13 @@ class PlaybackService : MediaLibraryService() {
             }
             return track.copy(videoStreamUrl = "")
         }
-        if (!hasInternetCapableNetwork()) throw IOException("Connessione Internet non disponibile")
         val hasYoutubeIdentity = track.videoUrl.contains("youtube.com", true) ||
             track.videoUrl.contains("youtu.be", true) ||
             Regex("^[A-Za-z0-9_-]{11}$").matches(track.id)
         val candidate = if (hasYoutubeIdentity) {
             track
         } else {
+            if (!hasInternetCapableNetwork()) throw IOException("Connessione Internet non disponibile")
             val query = listOf(track.title, track.artist).filter { it.isNotBlank() }.joinToString(" ")
             val match = musicRepository.searchOne(query, LevyraPreferences(this).languageCode())
             match?.copy(
