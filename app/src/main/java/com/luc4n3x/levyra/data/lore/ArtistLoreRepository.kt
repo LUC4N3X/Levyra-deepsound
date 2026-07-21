@@ -102,9 +102,10 @@ class ArtistLoreRepository(context: Context?) {
             if (cached.staleUntil > now) return cached.also { dao?.touch(it.cacheKey, now) }
             memory.remove(key)
         }
+        val requestedBrowseId = browseId.trim()
         val stored = dao?.get(key)
-            ?: browseId.takeIf { it.isNotBlank() }?.let { dao?.findByBrowseId(it, languageCode) }
-            ?: dao?.findByArtistKey(artistKey, languageCode)
+            ?: requestedBrowseId.takeIf { it.isNotBlank() }?.let { dao?.findByBrowseId(it, languageCode) }
+            ?: (if (allowsArtistKeyFallback(requestedBrowseId)) dao?.findByArtistKey(artistKey, languageCode) else null)
             ?: return null
         if (stored.staleUntil <= now) return null
         memory[key] = stored
@@ -332,12 +333,7 @@ class ArtistLoreRepository(context: Context?) {
     }
 
     private fun languagePriority(languageCode: String): List<String> {
-        val selected = when (LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')) {
-            "fil" -> "tl"
-            "zh", "ar", "pt", "uk", "ru", "tr", "el", "sv", "da", "cs", "pl", "ro", "nl", "de", "fr", "es", "it", "ja", "ko", "hi", "id", "vi", "th", "he" -> LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')
-            else -> "en"
-        }
-        return linkedSetOf(selected, "en").toList()
+        return linkedSetOf(preferredLanguage(languageCode), "en").toList()
     }
 
     private fun JSONArray?.asObjects(): List<JSONObject> {
@@ -417,6 +413,17 @@ class ArtistLoreRepository(context: Context?) {
     }
 
     companion object {
+        internal fun preferredLanguage(languageCode: String): String {
+            val normalized = LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')
+            return when (normalized) {
+                "fil" -> "tl"
+                "zh", "ar", "pt", "uk", "ru", "tr", "el", "sv", "da", "cs", "pl", "ro", "nl", "de", "fr", "es", "it", "ja", "ko", "hi", "id", "vi", "th", "he" -> normalized
+                else -> "en"
+            }
+        }
+
+        internal fun allowsArtistKeyFallback(browseId: String): Boolean = browseId.trim().isBlank()
+
         internal fun candidateScore(
             artistName: String,
             pageTitle: String,
