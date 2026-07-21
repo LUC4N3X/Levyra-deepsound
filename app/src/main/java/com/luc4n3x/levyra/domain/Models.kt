@@ -40,7 +40,8 @@ data class Track(
     val metadataConfidence: Int = 0,
     val canonicalAlbumUrl: String = "",
     val youtubeLikeCount: Long = -1L,
-    val youtubeViewCount: Long = -1L
+    val youtubeViewCount: Long = -1L,
+    val playbackManifest: ResolvedPlaybackManifest? = null
 ) {
     val hasPlayableStream: Boolean
         get() = streamUrl.isNotBlank()

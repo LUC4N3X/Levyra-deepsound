@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.licensee)
     alias(libs.plugins.ruler)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 val localProperties = Properties().apply {
@@ -36,8 +37,13 @@ fun buildConfigString(value: String): String {
     return "\"$escaped\""
 }
 
-fun isReleaseTaskRequested(): Boolean =
+fun isPerformanceTaskRequested(): Boolean =
     gradle.startParameter.taskNames.any { task ->
+        task.contains("baselineprofile", ignoreCase = true) || task.contains("benchmark", ignoreCase = true)
+    }
+
+fun isReleaseTaskRequested(): Boolean =
+    !isPerformanceTaskRequested() && gradle.startParameter.taskNames.any { task ->
         task.contains("Release", ignoreCase = true) || task.equals("bundle", ignoreCase = true) || task.equals("assemble", ignoreCase = true)
     }
 
@@ -47,12 +53,13 @@ val releaseStorePassword = envOrProperty("LEVYRA_KEYSTORE_PASSWORD", "levyraStor
 val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias")
 val releaseKeyPassword = envOrProperty("LEVYRA_KEY_PASSWORD", "levyraKeyPassword")
 val releaseStoreFile = rootProject.file(releaseStoreFilePath)
+val releaseSigningAvailable = releaseStoreFile.isFile && releaseStorePassword.isNotBlank() && releaseKeyAlias.isNotBlank() && releaseKeyPassword.isNotBlank()
 
 if (isReleaseTaskRequested() && youtubeInnertubeApiKey.isBlank()) {
     throw GradleException("Missing YOUTUBE_INNERTUBE_API_KEY. Set it as a GitHub Actions secret or in local.properties as youtubeInnertubeApiKey.")
 }
 
-if (isReleaseTaskRequested() && (!releaseStoreFile.isFile || releaseStorePassword.isBlank() || releaseKeyAlias.isBlank() || releaseKeyPassword.isBlank())) {
+if (isReleaseTaskRequested() && !releaseSigningAvailable) {
     throw GradleException("Missing release signing config. Set LEVYRA_KEYSTORE_BASE64, LEVYRA_KEYSTORE_PASSWORD, LEVYRA_KEY_ALIAS and LEVYRA_KEY_PASSWORD in GitHub Actions secrets.")
 }
 
@@ -118,10 +125,14 @@ android {
     signingConfigs {
         getByName("debug")
         create("release") {
-            storeFile = releaseStoreFile
-            storePassword = releaseStorePassword
-            keyAlias = releaseKeyAlias
-            keyPassword = releaseKeyPassword
+            if (releaseSigningAvailable) {
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            } else {
+                initWith(getByName("debug"))
+            }
         }
     }
 
@@ -216,6 +227,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
     implementation(libs.shimmer)
@@ -225,4 +237,5 @@ dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs.nio)
     testImplementation(libs.junit)
     testImplementation(libs.json)
+    baselineProfile(project(":baselineprofile"))
 }
