@@ -262,6 +262,7 @@ import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
+import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -2309,7 +2310,11 @@ private fun ArtistOverlay(
                         )
                     }
                     if (artist.hasBio) {
-                        item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistBio(artist.bio) } }
+                        item {
+                            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                ArtistBio(requireNotNull(artist.biography))
+                            }
+                        }
                     }
                     if (artist.topSongs.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.popularTracks) } }
@@ -2609,9 +2614,10 @@ private fun ArtistHeader(
 }
 
 @Composable
-private fun ArtistBio(bio: String) {
+private fun ArtistBio(biography: ArtistBiography) {
     val strings = LocalLevyraStrings.current
-    var expanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var expanded by remember(biography.text) { mutableStateOf(false) }
     Surface(
         color = Color.White.copy(alpha = 0.045f),
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
@@ -2620,8 +2626,17 @@ private fun ArtistBio(bio: String) {
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(strings.biography, color = LevyraText, fontSize = 21.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp)
+            if (biography.description.isNotBlank()) {
+                Text(
+                    biography.description,
+                    color = LevyraText.copy(alpha = 0.84f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 18.sp
+                )
+            }
             Text(
-                bio,
+                biography.text,
                 color = LevyraMuted,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
@@ -2629,12 +2644,35 @@ private fun ArtistBio(bio: String) {
                 maxLines = if (expanded) Int.MAX_VALUE else 4,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                if (expanded) strings.showLess else strings.showAll,
-                color = LevyraCyan,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (expanded) strings.showLess else strings.showAll,
+                    color = LevyraCyan,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                if (biography.sourceLabel.isNotBlank()) {
+                    Text(
+                        text = if (biography.sourceLabel.equals("Wikipedia", ignoreCase = true)) {
+                            "Wikipedia · CC BY-SA 4.0"
+                        } else {
+                            biography.sourceLabel
+                        },
+                        color = LevyraMuted.copy(alpha = 0.82f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable(enabled = biography.sourceUrl.isNotBlank()) {
+                            runCatching {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
 }
