@@ -726,9 +726,11 @@ internal fun LevyraLibraryScreen(
             SmartCollectionDetail(
                 collectionId = collectionId,
                 state = state,
-                favorites = state.favorites,
-                recent = catalog.recent,
-                mostPlayed = catalog.mostPlayed,
+                tracks = when (collectionId) {
+                    SMART_COLLECTION_RECENT -> catalog.recent
+                    SMART_COLLECTION_MOST_PLAYED -> catalog.mostPlayed
+                    else -> state.favorites
+                },
                 viewModel = viewModel,
                 isItalian = isItalian,
                 onClose = { openSmartCollectionName = null }
@@ -1318,43 +1320,44 @@ private const val SMART_COLLECTION_FAVORITES = "favorites"
 private const val SMART_COLLECTION_RECENT = "recent"
 private const val SMART_COLLECTION_MOST_PLAYED = "mostPlayed"
 
-@OptIn(ExperimentalFoundationApi::class)
+private data class SmartCollectionStyle(
+    val title: String,
+    val subtitle: String,
+    val accent: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
+private fun smartCollectionStyle(collectionId: String, isItalian: Boolean): SmartCollectionStyle = when (collectionId) {
+    SMART_COLLECTION_RECENT -> SmartCollectionStyle(
+        title = if (isItalian) "Ascoltati di recente" else "Recently played",
+        subtitle = if (isItalian) "I brani che hai riprodotto per ultimi" else "The tracks you played last",
+        accent = LevyraViolet,
+        icon = Icons.Rounded.History
+    )
+    SMART_COLLECTION_MOST_PLAYED -> SmartCollectionStyle(
+        title = if (isItalian) "Più ascoltati" else "Most played",
+        subtitle = if (isItalian) "I brani che riascolti più spesso" else "The tracks you replay the most",
+        accent = Color(0xFFFFC857),
+        icon = Icons.Rounded.Replay
+    )
+    else -> SmartCollectionStyle(
+        title = if (isItalian) "Preferiti" else "Favorites",
+        subtitle = if (isItalian) "La musica che hai salvato con il cuore" else "The music you saved with a heart",
+        accent = LevyraPink,
+        icon = Icons.Rounded.Favorite
+    )
+}
+
 @Composable
 private fun SmartCollectionDetail(
     collectionId: String,
     state: LevyraUiState,
-    favorites: List<Track>,
-    recent: List<Track>,
-    mostPlayed: List<Track>,
+    tracks: List<Track>,
     viewModel: LibraryViewModel,
     isItalian: Boolean,
     onClose: () -> Unit
 ) {
-    val tracks = when (collectionId) {
-        SMART_COLLECTION_RECENT -> recent
-        SMART_COLLECTION_MOST_PLAYED -> mostPlayed
-        else -> favorites
-    }
-    val title = when (collectionId) {
-        SMART_COLLECTION_RECENT -> if (isItalian) "Ascoltati di recente" else "Recently played"
-        SMART_COLLECTION_MOST_PLAYED -> if (isItalian) "Più ascoltati" else "Most played"
-        else -> if (isItalian) "Preferiti" else "Favorites"
-    }
-    val subtitle = when (collectionId) {
-        SMART_COLLECTION_RECENT -> if (isItalian) "I brani che hai riprodotto per ultimi" else "The tracks you played last"
-        SMART_COLLECTION_MOST_PLAYED -> if (isItalian) "I brani che riascolti più spesso" else "The tracks you replay the most"
-        else -> if (isItalian) "La musica che hai salvato con il cuore" else "The music you saved with a heart"
-    }
-    val accent = when (collectionId) {
-        SMART_COLLECTION_RECENT -> LevyraViolet
-        SMART_COLLECTION_MOST_PLAYED -> Color(0xFFFFC857)
-        else -> LevyraPink
-    }
-    val icon = when (collectionId) {
-        SMART_COLLECTION_RECENT -> Icons.Rounded.History
-        SMART_COLLECTION_MOST_PLAYED -> Icons.Rounded.Replay
-        else -> Icons.Rounded.Favorite
-    }
+    val style = smartCollectionStyle(collectionId, isItalian)
     val countLabel = if (isItalian) {
         "${tracks.size} ${if (tracks.size == 1) "brano" else "brani"}"
     } else {
@@ -1375,102 +1378,139 @@ private fun SmartCollectionDetail(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item(key = "smart-hero") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(26.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    accent.copy(alpha = 0.30f),
-                                    LevyraPanel.copy(alpha = 0.92f)
-                                )
-                            )
-                        )
-                        .padding(20.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.padding(end = 40.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = accent.copy(alpha = 0.22f)
-                        ) {
-                            Icon(
-                                icon,
-                                contentDescription = null,
-                                tint = accent,
-                                modifier = Modifier
-                                    .padding(13.dp)
-                                    .size(28.dp)
-                            )
-                        }
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(title, color = LevyraText, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                            Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                            Text(countLabel, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.align(Alignment.TopEnd)
-                    ) {
-                        Icon(Icons.Rounded.Close, contentDescription = null, tint = LevyraMuted)
-                    }
-                }
+                SmartCollectionHero(style, countLabel, onClose)
             }
             item(key = "smart-actions") {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SmartCollectionAction(
-                        label = if (isItalian) "Riproduci" else "Play",
-                        icon = Icons.Rounded.PlayArrow,
-                        accent = accent,
-                        filled = true,
-                        enabled = tracks.isNotEmpty(),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) }
-                    }
-                    SmartCollectionAction(
-                        label = if (isItalian) "Casuale" else "Shuffle",
-                        icon = Icons.Rounded.Shuffle,
-                        accent = accent,
-                        filled = false,
-                        enabled = tracks.isNotEmpty(),
-                        modifier = Modifier.weight(1f)
-                    ) {
+                SmartCollectionActions(
+                    accent = style.accent,
+                    enabled = tracks.isNotEmpty(),
+                    isItalian = isItalian,
+                    onPlay = { tracks.firstOrNull()?.let { viewModel.playFrom(tracks, it) } },
+                    onShuffle = {
                         val shuffled = tracks.shuffled()
                         shuffled.firstOrNull()?.let { viewModel.playFrom(shuffled, it) }
                     }
-                }
+                )
             }
             if (tracks.isEmpty()) {
                 item(key = "smart-empty") {
-                    LibraryEmpty(icon, if (isItalian) "Ancora nessun brano qui" else "No tracks here yet")
+                    LibraryEmpty(style.icon, if (isItalian) "Ancora nessun brano qui" else "No tracks here yet")
                 }
             } else {
                 items(tracks, key = { "smart-$collectionId-${libraryTrackKey(it)}" }) { track ->
-                    LibraryTrackRow(
-                        track = track,
-                        selected = false,
-                        selectionActive = false,
-                        isCurrent = track.id == state.currentTrack?.id,
-                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
-                        isFavorite = track.id in state.favoriteIds,
-                        isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
-                        downloadProgress = downloadProgressFor(track, state),
-                        onClick = { viewModel.playFrom(tracks, track) },
-                        onLongClick = {},
-                        onFavorite = { viewModel.toggleFavorite(track) },
-                        onDownload = { viewModel.exportTrack(track) },
-                        isItalian = isItalian
-                    )
+                    SmartCollectionTrackRow(state, tracks, track, viewModel, isItalian)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SmartCollectionHero(
+    style: SmartCollectionStyle,
+    countLabel: String,
+    onClose: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        style.accent.copy(alpha = 0.30f),
+                        LevyraPanel.copy(alpha = 0.92f)
+                    )
+                )
+            )
+            .padding(20.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(end = 40.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = style.accent.copy(alpha = 0.22f)
+            ) {
+                Icon(
+                    style.icon,
+                    contentDescription = null,
+                    tint = style.accent,
+                    modifier = Modifier
+                        .padding(13.dp)
+                        .size(28.dp)
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(style.title, color = LevyraText, fontSize = 23.sp, fontWeight = FontWeight.Black)
+                Text(style.subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(countLabel, color = style.accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        IconButton(
+            onClick = onClose,
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
+            Icon(Icons.Rounded.Close, contentDescription = null, tint = LevyraMuted)
+        }
+    }
+}
+
+@Composable
+private fun SmartCollectionActions(
+    accent: Color,
+    enabled: Boolean,
+    isItalian: Boolean,
+    onPlay: () -> Unit,
+    onShuffle: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        SmartCollectionAction(
+            label = if (isItalian) "Riproduci" else "Play",
+            icon = Icons.Rounded.PlayArrow,
+            accent = accent,
+            filled = true,
+            enabled = enabled,
+            modifier = Modifier.weight(1f),
+            onClick = onPlay
+        )
+        SmartCollectionAction(
+            label = if (isItalian) "Casuale" else "Shuffle",
+            icon = Icons.Rounded.Shuffle,
+            accent = accent,
+            filled = false,
+            enabled = enabled,
+            modifier = Modifier.weight(1f),
+            onClick = onShuffle
+        )
+    }
+}
+
+@Composable
+private fun SmartCollectionTrackRow(
+    state: LevyraUiState,
+    tracks: List<Track>,
+    track: Track,
+    viewModel: LibraryViewModel,
+    isItalian: Boolean
+) {
+    LibraryTrackRow(
+        track = track,
+        selected = false,
+        selectionActive = false,
+        isCurrent = track.id == state.currentTrack?.id,
+        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+        isFavorite = track.id in state.favoriteIds,
+        isDownloaded = libraryDownloadForTrack(track, state.downloads) != null,
+        downloadProgress = downloadProgressFor(track, state),
+        onClick = { viewModel.playFrom(tracks, track) },
+        onLongClick = {},
+        onFavorite = { viewModel.toggleFavorite(track) },
+        onDownload = { viewModel.exportTrack(track) },
+        isItalian = isItalian
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

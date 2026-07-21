@@ -2701,11 +2701,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val artistName = primaryArtistSegment(track.artist).ifBlank { track.artist.trim() }
         val browseId = track.artistBrowseIds.firstOrNull().orEmpty()
         if (browseId.isNotBlank()) {
-            openArtistReference(
-                name = artistName,
-                browseId = browseId,
-                returnTarget = DetailReturnTarget.None
-            )
+            openArtistReference(name = artistName, browseId = browseId)
         } else {
             openArtistByName(artistName)
         }
@@ -2713,11 +2709,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openArtistFromAlbum() {
         val album = _state.value.albumDetail?.album ?: return
-        openArtistReference(
-            name = album.artist,
-            browseId = album.artistBrowseId,
-            returnTarget = DetailReturnTarget.Album
-        )
+        openArtistReference(name = album.artist, browseId = album.artistBrowseId)
     }
 
     fun openArtistRelease(release: ArtistRelease, artistName: String) {
@@ -2735,14 +2727,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openArtistByName(name: String) {
-        openArtistByNameInternal(name, DetailReturnTarget.None)
+        openArtistReference(name = name, browseId = "")
     }
 
-    private fun openArtistByNameInternal(name: String, returnTarget: DetailReturnTarget) {
-        openArtistReference(name = name, browseId = "", returnTarget = returnTarget)
-    }
-
-    private fun openArtistReference(name: String, browseId: String, returnTarget: DetailReturnTarget) {
+    private fun openArtistReference(name: String, browseId: String) {
         val clean = name.trim()
         val normalizedBrowseId = browseId.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
@@ -3441,11 +3429,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openArtistFromHit(hit: ArtistHit) {
-        openArtistReference(
-            name = hit.name,
-            browseId = hit.browseId,
-            returnTarget = DetailReturnTarget.None
-        )
+        openArtistReference(name = hit.name, browseId = hit.browseId)
     }
 
     private fun recordPlaybackHistory(track: Track) {
