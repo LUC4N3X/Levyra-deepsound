@@ -384,11 +384,6 @@ class PlaybackResolver private constructor(private val context: Context) {
             cached(cacheLookupTrack, isVideoMode, audioQuality)?.let { return@coroutineScope it }
         }
 
-        if (!hasValidatedInternet()) {
-            clearTransientClientPenalties()
-            throw PlaybackBlockedException("Connessione Internet non disponibile")
-        }
-
         val key = "${cacheKey(track, isVideoMode, audioQuality)}_$requestKind"
         Timber.d("resolver start kind=%s mode=%s id=%s quality=%s", requestKind, if (isVideoMode) "video" else "audio", track.id, audioQuality)
         val deferred = async(Dispatchers.IO, start = CoroutineStart.LAZY) {
@@ -418,7 +413,6 @@ class PlaybackResolver private constructor(private val context: Context) {
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
         if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
-        if (!hasValidatedInternet()) return null
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             if (streamStillFresh(track.streamUrl)) {
@@ -428,6 +422,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             return null
         }
         cached(track, isVideoMode)?.let { return it }
+        if (!hasValidatedInternet()) return null
         return runCatching { resolve(track, isVideoMode) }.getOrNull()
     }
 
@@ -442,6 +437,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         restorePersistentSource(track, isVideoMode, preferMp4Audio, audioQuality, errors)?.let { restored ->
             store(track, restored, isVideoMode, audioQuality)
             return@withContext restored
+        }
+
+        if (!hasValidatedInternet()) {
+            clearTransientClientPenalties()
+            throw PlaybackBlockedException("Connessione Internet non disponibile")
         }
 
         if (isVideoMode) {
@@ -633,6 +633,7 @@ class PlaybackResolver private constructor(private val context: Context) {
                 source = stored.entity.provider.ifBlank { "Persistent source match" }
             )
         }
+        if (!hasValidatedInternet()) return null
         val sourceVideoId = stored.entity.sourceVideoId
             .takeIf(youtubeVideoIdRegex::matches)
             ?: return null
