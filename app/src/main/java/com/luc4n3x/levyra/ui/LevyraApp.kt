@@ -15,6 +15,7 @@ import android.app.Activity
 import android.media.AudioManager
 import android.content.Intent
 import android.net.Uri
+import android.os.PowerManager
 import android.widget.Toast
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -195,6 +196,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
 import androidx.compose.runtime.setValue
@@ -11916,6 +11920,20 @@ private fun SettingsOverlay(
     val strings = LocalLevyraStrings.current
     var languageExpanded by remember { mutableStateOf(false) }
     val blocker = remember { MutableInteractionSource() }
+    val batteryContext = LocalContext.current
+    val batteryLifecycleOwner = LocalLifecycleOwner.current
+    var batteryCheckToken by remember { mutableStateOf(0) }
+    val batteryUnrestricted = remember(batteryCheckToken) {
+        batteryContext.getSystemService(PowerManager::class.java)
+            ?.isIgnoringBatteryOptimizations(batteryContext.packageName) == true
+    }
+    DisposableEffect(batteryLifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) batteryCheckToken++
+        }
+        batteryLifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -12249,6 +12267,26 @@ private fun SettingsOverlay(
                 )
             }
             item { SettingsSectionLabel(strings.playbackResilienceSection) }
+            item {
+                SettingsButton(
+                    icon = Icons.Rounded.Bolt,
+                    title = strings.batteryUnrestricted,
+                    subtitle = if (batteryUnrestricted) strings.batteryUnrestrictedActive else strings.batteryUnrestrictedSubtitle,
+                    onClick = {
+                        if (!batteryUnrestricted) {
+                            val request = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                .setData(Uri.parse("package:${batteryContext.packageName}"))
+                            runCatching { batteryContext.startActivity(request) }.onFailure {
+                                runCatching {
+                                    batteryContext.startActivity(
+                                        Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                )
+            }
             item {
                 SettingsButton(
                     icon = Icons.Rounded.Share,

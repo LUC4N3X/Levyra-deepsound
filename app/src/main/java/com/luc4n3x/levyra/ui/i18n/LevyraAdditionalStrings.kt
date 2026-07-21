@@ -348,7 +348,10 @@ internal fun jaLocalizationEntries(): Map<String, String> = mapOf(
     "normalizationShort" to "音量正規化",
     "coverAndTags" to "カバーとタグ",
     "madeWithBy" to "❤️を込めて制作：",
-    "activeIndicator" to "オン"
+    "activeIndicator" to "オン",
+    "batteryUnrestricted" to "バックグラウンド再生を制限しない",
+    "batteryUnrestrictedSubtitle" to "電池の最適化から Levyra を除外し、画面オフでも音楽を再生し続けます",
+    "batteryUnrestrictedActive" to "有効 — システムは再生を停止しません"
 )
 
 internal fun koLocalizationEntries(): Map<String, String> = mapOf(
@@ -699,7 +702,10 @@ internal fun koLocalizationEntries(): Map<String, String> = mapOf(
     "normalizationShort" to "음량 정규화",
     "coverAndTags" to "커버 및 태그",
     "madeWithBy" to "❤️를 담아 제작：",
-    "activeIndicator" to "켜짐"
+    "activeIndicator" to "켜짐",
+    "batteryUnrestricted" to "무제한 백그라운드 재생",
+    "batteryUnrestrictedSubtitle" to "배터리 최적화에서 Levyra를 제외하여 화면이 꺼져도 음악이 계속 재생됩니다",
+    "batteryUnrestrictedActive" to "활성 — 시스템이 재생을 중지하지 않습니다"
 )
 
 internal fun hiLocalizationEntries(): Map<String, String> = mapOf(
@@ -1050,7 +1056,10 @@ internal fun hiLocalizationEntries(): Map<String, String> = mapOf(
     "normalizationShort" to "वॉल्यूम सामान्यीकरण",
     "coverAndTags" to "कवर और टैग",
     "madeWithBy" to "❤️ से बनाया गया:",
-    "activeIndicator" to "चालू"
+    "activeIndicator" to "चालू",
+    "batteryUnrestricted" to "असीमित बैकग्राउंड प्लेबैक",
+    "batteryUnrestrictedSubtitle" to "बैटरी ऑप्टिमाइज़ेशन से Levyra को बाहर रखें ताकि स्क्रीन बंद होने पर भी संगीत चलता रहे",
+    "batteryUnrestrictedActive" to "सक्रिय — सिस्टम प्लेबैक नहीं रोकेगा"
 )
 
 internal fun idLocalizationEntries(): Map<String, String> = mapOf(
@@ -1401,7 +1410,10 @@ internal fun idLocalizationEntries(): Map<String, String> = mapOf(
     "normalizationShort" to "Normalisasi",
     "coverAndTags" to "Sampul dan tag",
     "madeWithBy" to "Dibuat dengan ❤️ oleh",
-    "activeIndicator" to "AKTIF"
+    "activeIndicator" to "AKTIF",
+    "batteryUnrestricted" to "Pemutaran latar belakang tanpa batas",
+    "batteryUnrestrictedSubtitle" to "Kecualikan Levyra dari optimasi baterai agar musik terus diputar saat layar mati",
+    "batteryUnrestrictedActive" to "Aktif — sistem tidak akan menghentikan pemutaran"
 )
 
 internal fun viLocalizationEntries(): Map<String, String> = mapOf(
@@ -1752,7 +1764,10 @@ internal fun viLocalizationEntries(): Map<String, String> = mapOf(
     "normalizationShort" to "Chuẩn hóa",
     "coverAndTags" to "Ảnh bìa và thẻ",
     "madeWithBy" to "Được tạo bằng ❤️ bởi",
-    "activeIndicator" to "BẬT"
+    "activeIndicator" to "BẬT",
+    "batteryUnrestricted" to "Phát trong nền không giới hạn",
+    "batteryUnrestrictedSubtitle" to "Loại Levyra khỏi tối ưu hóa pin để nhạc tiếp tục phát khi tắt màn hình",
+    "batteryUnrestrictedActive" to "Đang bật — hệ thống sẽ không dừng phát"
 )
 
 internal fun thLocalizationEntries(): Map<String, String> = mapOf(
@@ -2103,5 +2118,8 @@ internal fun thLocalizationEntries(): Map<String, String> = mapOf(
     "normalizationShort" to "ปรับระดับเสียง",
     "coverAndTags" to "ปกและแท็ก",
     "madeWithBy" to "สร้างด้วย ❤️ โดย",
-    "activeIndicator" to "เปิด"
+    "activeIndicator" to "เปิด",
+    "batteryUnrestricted" to "เล่นเบื้องหลังแบบไม่จำกัด",
+    "batteryUnrestrictedSubtitle" to "ยกเว้น Levyra จากการปรับแต่งแบตเตอรี่เพื่อให้เพลงเล่นต่อเมื่อปิดหน้าจอ",
+    "batteryUnrestrictedActive" to "เปิดใช้งาน — ระบบจะไม่หยุดการเล่น"
 )
