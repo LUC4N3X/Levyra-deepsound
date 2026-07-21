@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
 import com.luc4n3x.levyra.data.local.LevyraDatabase
@@ -71,6 +73,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private val apiKey = BuildConfig.YOUTUBE_INNERTUBE_API_KEY
+    private val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
     private val prefs = context.getSharedPreferences("levyra_stream_cache", Context.MODE_PRIVATE)
     private val clientHealthPrefs = context.getSharedPreferences("levyra_innertube_client_health", Context.MODE_PRIVATE)
     private val userPreferences = LevyraPreferences(context)
@@ -141,6 +144,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     fun warmNetwork() {
+        if (!hasValidatedInternet()) return
         val now = System.currentTimeMillis()
         if (now - lastNetworkWarmAt < 15_000L) return
         lastNetworkWarmAt = now
@@ -221,6 +225,15 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     fun reportPlaybackFailure(track: Track, isVideoMode: Boolean, reason: String) {
+        if (isLocalPlaybackTrack(track)) {
+            resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
+            return
+        }
+        if (!hasValidatedInternet() && isNetworkFailureReason(reason)) {
+            clearTransientClientPenalties()
+            resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
+            return
+        }
         invalidate(track, isVideoMode)
         resilienceEngine.recordPlayerFailure(track.id, isVideoMode, reason)
         val now = System.currentTimeMillis()
@@ -267,6 +280,48 @@ class PlaybackResolver private constructor(private val context: Context) {
         return resilienceEngine.diagnostics(health)
     }
 
+    private fun isLocalPlaybackTrack(track: Track): Boolean =
+        track.source.equals("Offline", ignoreCase = true) || isLocalPlaybackUri(track.streamUrl)
+
+    private fun isLocalPlaybackUri(value: String): Boolean {
+        val clean = value.trim()
+        return clean.startsWith("content://", ignoreCase = true) ||
+            clean.startsWith("file://", ignoreCase = true)
+    }
+
+    private fun hasValidatedInternet(): Boolean {
+        val manager = connectivityManager ?: return false
+        val network = manager.activeNetwork ?: return false
+        val capabilities = manager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    private fun isNetworkFailureReason(reason: String): Boolean {
+        val value = reason.lowercase()
+        return value.contains("network") ||
+            value.contains("socket") ||
+            value.contains("dns") ||
+            value.contains("connection") ||
+            value.contains("host") ||
+            value.contains("rete")
+    }
+
+    private fun clearTransientClientPenalties() {
+        val now = System.currentTimeMillis()
+        clientHealth.replaceAll { name, health ->
+            if (health.consecutiveFailures == 0 && health.blockedUntilMs == 0L) {
+                health
+            } else {
+                health.copy(
+                    consecutiveFailures = 0,
+                    blockedUntilMs = 0L,
+                    updatedAtMs = now
+                ).also { persistClientHealth(name, it) }
+            }
+        }
+    }
+
     private fun isPlaybackUrlBlocked(url: String): Boolean {
         if (url.isBlank()) return true
         val until = failedPlaybackUrls[url] ?: return false
@@ -309,6 +364,12 @@ class PlaybackResolver private constructor(private val context: Context) {
         audioQuality: String,
         reuseProvidedStream: Boolean
     ): Track = coroutineScope {
+        if (isLocalPlaybackTrack(track)) {
+            if (!isLocalPlaybackUri(track.streamUrl)) {
+                throw PlaybackBlockedException("File offline non disponibile per ${track.title}")
+            }
+            return@coroutineScope track.copy(videoStreamUrl = "")
+        }
         track.streamUrl.takeIf {
             reuseProvidedStream &&
             it.isNotBlank() &&
@@ -321,6 +382,11 @@ class PlaybackResolver private constructor(private val context: Context) {
         if (!preferMp4Audio) {
             val cacheLookupTrack = if (reuseProvidedStream) track else track.copy(streamUrl = "", videoStreamUrl = "")
             cached(cacheLookupTrack, isVideoMode, audioQuality)?.let { return@coroutineScope it }
+        }
+
+        if (!hasValidatedInternet()) {
+            clearTransientClientPenalties()
+            throw PlaybackBlockedException("Connessione Internet non disponibile")
         }
 
         val key = "${cacheKey(track, isVideoMode, audioQuality)}_$requestKind"
@@ -351,6 +417,8 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     suspend fun prefetch(track: Track, isVideoMode: Boolean = false): Track? {
+        if (isLocalPlaybackTrack(track)) return track.takeIf { isLocalPlaybackUri(it.streamUrl) }
+        if (!hasValidatedInternet()) return null
         if (track.streamUrl.isNotBlank()) {
             if (!isVideoMode && !isPlayableAudioUrl(track.streamUrl)) return null
             if (streamStillFresh(track.streamUrl)) {
@@ -978,6 +1046,10 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     private fun recordClientFailure(profile: ClientProfile, latencyMs: Long?, error: Throwable) {
+        if (!hasValidatedInternet()) {
+            clearTransientClientPenalties()
+            return
+        }
         clientHealth.compute(profile.clientName) { name, current ->
             val previous = current ?: ClientHealth()
             val failures = (previous.failures + 1).coerceAtMost(10_000)
@@ -1010,10 +1082,11 @@ class PlaybackResolver private constructor(private val context: Context) {
     private fun elapsedMs(startedAt: Long): Long = ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
 
     private fun restoreClientHealth() {
+        val now = System.currentTimeMillis()
         clientHealthPrefs.all.forEach { (name, rawValue) ->
             val raw = rawValue as? String ?: return@forEach
             val json = runCatching { JSONObject(raw) }.getOrNull() ?: return@forEach
-            clientHealth[name] = ClientHealth(
+            val restored = ClientHealth(
                 successes = json.optInt("successes", 0),
                 failures = json.optInt("failures", 0),
                 consecutiveFailures = json.optInt("consecutiveFailures", 0),
@@ -1021,6 +1094,13 @@ class PlaybackResolver private constructor(private val context: Context) {
                 blockedUntilMs = json.optLong("blockedUntilMs", 0L),
                 updatedAtMs = json.optLong("updatedAtMs", 0L)
             )
+            val normalized = if (restored.blockedUntilMs in 1L..now) {
+                restored.copy(consecutiveFailures = 0, blockedUntilMs = 0L, updatedAtMs = now)
+            } else {
+                restored
+            }
+            clientHealth[name] = normalized
+            if (normalized != restored) persistClientHealth(name, normalized)
         }
     }
 
@@ -1240,8 +1320,13 @@ class PlaybackResolver private constructor(private val context: Context) {
             stream
         } catch (error: Throwable) {
             val latency = elapsedMs(startedAt)
-            recordClientFailure(profile, latency, error)
-            resilienceEngine.recordFailure(profile.label, mode, latency, error)
+            if (hasValidatedInternet()) {
+                recordClientFailure(profile, latency, error)
+                resilienceEngine.recordFailure(profile.label, mode, latency, error)
+            } else {
+                clearTransientClientPenalties()
+                Timber.d(error, "resolver skipped client penalty while offline")
+            }
             throw error
         }
     }
