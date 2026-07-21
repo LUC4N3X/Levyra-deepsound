@@ -5521,16 +5521,16 @@ private fun PersonalListeningShelf(
                         Text(
                             text = strings.personalOrbitTitle,
                             color = LevyraText,
-                            fontSize = 26.sp,
-                            lineHeight = 29.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.65).sp
+                            fontSize = 32.sp,
+                            lineHeight = 34.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-1.2).sp
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                             contentDescription = null,
                             tint = LevyraMuted,
-                            modifier = Modifier.size(23.dp)
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                     Text(
@@ -5591,27 +5591,23 @@ private fun PersonalListeningShelf(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 pages.indices.forEach { index ->
+                    val isActive = pagerState.currentPage == index
                     val indicatorWidth by animateDpAsState(
-                        targetValue = if (pagerState.currentPage == index) 20.dp else 6.dp,
-                        animationSpec = tween(220, easing = FastOutSlowInEasing),
+                        targetValue = if (isActive) 24.dp else 6.dp,
+                        animationSpec = tween(300, easing = FastOutSlowInEasing),
                         label = "orbit-page-indicator-$index"
                     )
                     Box(
                         modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .height(5.dp)
+                            .padding(horizontal = 4.dp)
+                            .height(6.dp)
                             .width(indicatorWidth)
                             .clip(CircleShape)
                             .background(
-                                if (pagerState.currentPage == index) {
+                                if (isActive) {
                                     Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))
                                 } else {
-                                    Brush.horizontalGradient(
-                                        listOf(
-                                            LevyraMuted.copy(alpha = 0.28f),
-                                            LevyraMuted.copy(alpha = 0.18f)
-                                        )
-                                    )
+                                    SolidColor(LevyraMuted.copy(alpha = 0.25f))
                                 }
                             )
                     )
@@ -5630,19 +5626,30 @@ private fun PersonalListeningCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val artworkShape = RoundedCornerShape(17.dp)
+    val artworkShape = RoundedCornerShape(20.dp)
+    val glassState = LocalGlassBackdrop.current
+    
     Column(
         modifier = modifier.pressable(onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
+                .then(
+                    if (active) Modifier.graphicsLayer {
+                        shadowElevation = 24.dp.toPx()
+                        shape = artworkShape
+                        clip = false
+                        ambientShadowColor = LevyraCyan
+                        spotShadowColor = LevyraViolet
+                    } else Modifier
+                )
                 .clip(artworkShape)
                 .border(
-                    width = if (active) 1.5.dp else Dp.Hairline,
-                    color = if (active) LevyraCyan.copy(alpha = 0.88f) else LevyraAdaptiveSoftHairline,
+                    width = if (active) 2.dp else Dp.Hairline,
+                    color = if (active) LevyraCyan.copy(alpha = 0.6f) else LevyraAdaptiveSoftHairline,
                     shape = artworkShape
                 )
         ) {
@@ -5653,57 +5660,83 @@ private fun PersonalListeningCard(
             )
             when {
                 resolving -> {
+                    val badgeModifier = if (glassState != null) {
+                        Modifier.glassSurface(
+                            state = glassState,
+                            shape = CircleShape,
+                            tint = Color.Black.copy(alpha = 0.4f),
+                            fallbackColor = Color.Black.copy(alpha = 0.72f),
+                            borderColor = Color.White.copy(alpha = 0.2f)
+                        )
+                    } else {
+                        Modifier
+                            .background(Color.Black.copy(alpha = 0.72f))
+                            .border(Dp.Hairline, Color.White.copy(alpha = 0.2f), CircleShape)
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(8.dp)
-                            .size(27.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.72f)),
+                            .then(badgeModifier),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(12.dp),
+                            modifier = Modifier.size(14.dp),
                             strokeWidth = 1.5.dp,
                             color = LevyraCyan
                         )
                     }
                 }
                 active -> {
+                    val badgeModifier = if (glassState != null) {
+                        Modifier.glassSurface(
+                            state = glassState,
+                            shape = CircleShape,
+                            tint = Color.Black.copy(alpha = 0.4f),
+                            fallbackColor = Color.Black.copy(alpha = 0.72f),
+                            borderColor = Color.White.copy(alpha = 0.2f)
+                        )
+                    } else {
+                        Modifier
+                            .background(Color.Black.copy(alpha = 0.72f))
+                            .border(Dp.Hairline, Color.White.copy(alpha = 0.2f), CircleShape)
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .padding(8.dp)
-                            .size(27.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.72f)),
+                            .then(badgeModifier),
                         contentAlignment = Alignment.Center
                     ) {
                         ActiveTrackEqualizer(
                             color = LevyraCyan,
                             isPlaying = playing,
-                            width = 12.dp,
-                            height = 9.dp
+                            width = 14.dp,
+                            height = 10.dp
                         )
                     }
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = track.title,
                 color = LevyraText,
-                fontSize = 12.5.sp,
-                lineHeight = 15.sp,
-                fontWeight = FontWeight.ExtraBold,
+                fontSize = 13.5.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = track.artist,
                 color = LevyraMuted,
-                fontSize = 10.5.sp,
-                lineHeight = 13.sp,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
