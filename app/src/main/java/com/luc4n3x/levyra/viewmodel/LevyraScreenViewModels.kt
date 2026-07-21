@@ -183,6 +183,16 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
     fun openAlbum(album: AlbumHit) = root.openAlbum(album)
     fun openArtist(track: Track) = root.openArtist(track)
     fun openArtistByName(name: String) = root.openArtistByName(name)
+    fun openArtistReference(name: String, browseId: String, thumbnailUrl: String) = root.openArtistFromHit(
+        ArtistHit(
+            name = name,
+            subscribers = "",
+            thumbnailUrl = thumbnailUrl,
+            accentStart = 0,
+            accentEnd = 0,
+            browseId = browseId
+        )
+    )
     fun openPlayerScreen() = root.openPlayerScreen()
     fun openPlaylist(playlistId: String) = root.openPlaylist(playlistId)
     fun pauseDownload(taskKey: String) = root.pauseDownload(taskKey)
@@ -700,8 +710,6 @@ private fun searchProjection(state: LevyraUiState): SearchProjection = SearchPro
     downloadProgressByTrackId = state.downloadProgressByTrackId,
     downloadedTrackIds = state.downloadedTrackIds,
     downloadingTrackIds = state.downloadingTrackIds,
-    downloadQueue = state.downloadQueue,
-    downloadStorageBytes = state.downloadStorageBytes,
     downloads = state.downloads,
     favoriteIds = state.favoriteIds,
     isPlaying = state.isPlaying,
