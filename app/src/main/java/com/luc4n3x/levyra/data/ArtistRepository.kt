@@ -177,6 +177,12 @@ private fun ArtistBiography.isWikipediaBiography(): Boolean {
         sourceUrl.contains("wikipedia.org", ignoreCase = true)
 }
 
+internal fun shouldRefreshArtistProfileAlias(cached: ArtistProfile, source: ArtistProfile): Boolean {
+    if (cached === source || cached == source) return true
+    val sourceBrowseId = source.browseId.trim()
+    return sourceBrowseId.isNotBlank() && cached.browseId.trim().equals(sourceBrowseId, ignoreCase = true)
+}
+
 internal fun extractOfficialMonthlyListeners(header: JSONObject?): String {
     fun textFrom(renderer: JSONObject?): String {
         renderer ?: return ""
@@ -281,6 +287,11 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                 originalImageUrl = ""
             )
         )
+        memory.forEach { (key, cached) ->
+            if (shouldRefreshArtistProfileAlias(cached, profile)) {
+                memory.replace(key, cached, updated)
+            }
+        }
         memory[artistIdentityKey(updated.name)] = updated
         if (updated.browseId.isNotBlank()) memory[profileBrowseKey(updated.browseId)] = updated
         return updated
