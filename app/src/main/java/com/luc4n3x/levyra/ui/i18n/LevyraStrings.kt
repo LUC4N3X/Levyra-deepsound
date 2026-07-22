@@ -1367,7 +1367,7 @@ class LevyraStrings private constructor(
             "shareVia" to "Condividi tramite",
             "emptySearchPrompt" to "Scrivi il nome di un brano e avvia la ricerca",
             "cancelDownload" to "Annulla download",
-            "readAll" to "Leggi tutto",
+            "readAll" to "Continua a leggere",
             "singlesAndEps" to "Singoli ed EP",
             "tapHeartToAdd" to "Tocca il cuore su un brano per aggiungerlo qui.",
             "all" to "Tutti",
