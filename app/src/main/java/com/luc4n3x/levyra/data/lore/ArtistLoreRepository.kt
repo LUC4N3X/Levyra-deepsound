@@ -54,7 +54,6 @@ class ArtistLoreRepository(context: Context?) {
         val languages = languagePriority(languageCode)
         val now = System.currentTimeMillis()
         var emittedSignature = ""
-        var fallbackFresh = false
         val freshLanguages = HashSet<String>()
         val blockedLanguages = HashSet<String>()
 
@@ -69,18 +68,13 @@ class ArtistLoreRepository(context: Context?) {
                 emittedSignature = cached.signature()
                 emit(cached.toBiography(cached = true))
             }
-            if (cached.sourceUrl.contains("wikidata.org", ignoreCase = true)) {
-                if (cached.expiresAt > now) fallbackFresh = true
-            } else if (cached.expiresAt > now) {
-                freshLanguages += language
-            }
+            if (cached.expiresAt > now) freshLanguages += language
         }
 
         if (emittedSignature.isBlank()) {
             val fallback = readBestFallbackCache(artistKey, browseId, languages, now)
             if (fallback != null && !fallback.negative && fallback.text.isNotBlank() && fallback.staleUntil > now) {
                 emittedSignature = fallback.signature()
-                fallbackFresh = fallback.expiresAt > now
                 emit(fallback.toBiography(cached = true))
             }
         }
@@ -105,21 +99,18 @@ class ArtistLoreRepository(context: Context?) {
             }
         }
 
-        if (!fallbackFresh) {
-            val fallbackLanguages = crossLanguagePriority(languages)
-            if (fallbackLanguages.isNotEmpty()) {
-                val fallbackOutcome = resolveFromEntitySearch(
-                    artistName = cleanName,
-                    browseId = browseId,
-                    searchLanguageCode = preferredLanguage,
-                    articleLanguages = fallbackLanguages,
-                    allowDescriptionFallback = true
-                )
-                val fallbackBiography = fallbackOutcome.biography
-                if (fallbackBiography != null) {
-                    val entity = persistPositive(artistKey, browseId, fallbackBiography, now)
-                    if (entity.signature() != emittedSignature) emit(fallbackBiography.copy(cached = false))
-                }
+        val fallbackLanguages = crossLanguagePriority(languages)
+        if (fallbackLanguages.isNotEmpty()) {
+            val fallbackOutcome = resolveFromEntitySearch(
+                artistName = cleanName,
+                browseId = browseId,
+                searchLanguageCode = preferredLanguage,
+                articleLanguages = fallbackLanguages
+            )
+            val fallbackBiography = fallbackOutcome.biography
+            if (fallbackBiography != null) {
+                val entity = persistPositive(artistKey, browseId, fallbackBiography, now)
+                if (entity.signature() != emittedSignature) emit(fallbackBiography.copy(cached = false))
             }
         }
         prune(now)
@@ -133,7 +124,9 @@ class ArtistLoreRepository(context: Context?) {
     ): ArtistLoreEntity? {
         val key = cacheKey(artistKey, browseId, languageCode)
         memory[key]?.let { cached ->
-            if (cached.staleUntil > now) return cached.also { dao?.touch(it.cacheKey, now) }
+            if (cached.staleUntil > now && cached.isWikipediaEntry()) {
+                return cached.also { dao?.touch(it.cacheKey, now) }
+            }
             memory.remove(key)
         }
         val requestedBrowseId = browseId.trim()
@@ -141,7 +134,7 @@ class ArtistLoreRepository(context: Context?) {
             ?: requestedBrowseId.takeIf { it.isNotBlank() }?.let { dao?.findByBrowseId(it, languageCode) }
             ?: (if (allowsArtistKeyFallback(requestedBrowseId)) dao?.findByArtistKey(artistKey, languageCode) else null)
             ?: return null
-        if (stored.staleUntil <= now) return null
+        if (stored.staleUntil <= now || !stored.isWikipediaEntry()) return null
         memory[key] = stored
         dao?.touch(stored.cacheKey, now)
         return stored
@@ -157,7 +150,7 @@ class ArtistLoreRepository(context: Context?) {
         val requestedBrowseId = browseId.trim()
         val memoryCandidate = memory.values
             .asSequence()
-            .filter { !it.negative && it.staleUntil > now && it.languageCode.lowercase(Locale.ROOT) !in excluded }
+            .filter { !it.negative && it.staleUntil > now && it.isWikipediaEntry() && it.languageCode.lowercase(Locale.ROOT) !in excluded }
             .filter {
                 if (requestedBrowseId.isNotBlank()) {
                     it.browseId.equals(requestedBrowseId, ignoreCase = true)
@@ -176,7 +169,7 @@ class ArtistLoreRepository(context: Context?) {
         } else {
             dao?.findBestByArtistKey(artistKey, excludedLanguages)
         } ?: return null
-        if (stored.staleUntil <= now) return null
+        if (stored.staleUntil <= now || !stored.isWikipediaEntry()) return null
         memory[stored.cacheKey] = stored
         dao?.touch(stored.cacheKey, now)
         return stored
@@ -200,8 +193,7 @@ class ArtistLoreRepository(context: Context?) {
             artistName = artistName,
             browseId = browseId,
             searchLanguageCode = languageCode,
-            articleLanguages = listOf(languageCode),
-            allowDescriptionFallback = false
+            articleLanguages = listOf(languageCode)
         )
         return LoreNetworkOutcome(
             biography = entityOutcome.biography,
@@ -257,7 +249,7 @@ class ArtistLoreRepository(context: Context?) {
         val winner = ranked.firstOrNull { candidate ->
             candidate.finalScore >= ACCEPTED_SCORE
         } ?: return null
-        val summary = fetchSummary(winner.pageTitle, languageCode)
+        val summary = fetchRichArticle(winner.pageTitle, languageCode)
         val enriched = if (summary != null) winner.enrich(summary) else winner
         return enriched.toBiography(languageCode, scoreToConfidence(enriched.finalScore))
     }
@@ -266,8 +258,7 @@ class ArtistLoreRepository(context: Context?) {
         artistName: String,
         browseId: String,
         searchLanguageCode: String,
-        articleLanguages: List<String>,
-        allowDescriptionFallback: Boolean
+        articleLanguages: List<String>
     ): LoreNetworkOutcome = coroutineScope {
         val searchLanguages = linkedSetOf(searchLanguageCode, "en")
         val jobs = searchLanguages.map { language -> async { language to queryEntitySearch(artistName, language) } }
@@ -305,7 +296,7 @@ class ArtistLoreRepository(context: Context?) {
             for (articleLanguage in articleLanguages.distinct()) {
                 val title = record.sitelinks[wikiSiteKey(articleLanguage)]?.trim().orEmpty()
                 if (title.isBlank()) continue
-                val summary = fetchSummary(title, articleLanguage)
+                val summary = fetchRichArticle(title, articleLanguage)
                 if (summary != null) {
                     val candidate = LoreCandidate(
                         pageTitle = summary.pageTitle,
@@ -342,15 +333,6 @@ class ArtistLoreRepository(context: Context?) {
                     JsonResult.Failure -> articleTransientFailure = true
                 }
             }
-        }
-        if (allowDescriptionFallback) {
-            val fallback = accepted.firstNotNullOfOrNull { (record, score) ->
-                record.toDescriptionBiography(
-                    preferredLanguages = linkedSetOf(searchLanguageCode, "en"),
-                    confidence = scoreToConfidence(score).coerceAtMost(84)
-                )
-            }
-            if (fallback != null) return@coroutineScope LoreNetworkOutcome(fallback, true)
         }
         LoreNetworkOutcome(
             biography = null,
@@ -424,11 +406,25 @@ class ArtistLoreRepository(context: Context?) {
         return getJson(url, languageCode)
     }
 
-    private suspend fun fetchSummary(pageTitle: String, languageCode: String): LoreSummary? {
-        val url = "https://$languageCode.wikipedia.org/api/rest_v1/page/summary/${encodePathSegment(pageTitle)}"
-            .toHttpUrl()
-        return when (val result = getJson(url, languageCode, SUMMARY_ACCEPT)) {
-            is JsonResult.Success -> result.value.toSummary()
+    private suspend fun fetchRichArticle(pageTitle: String, languageCode: String): LoreSummary? {
+        val url = "https://$languageCode.wikipedia.org/w/api.php".toHttpUrl().newBuilder()
+            .addQueryParameter("action", "query")
+            .addQueryParameter("redirects", "1")
+            .addQueryParameter("converttitles", "1")
+            .addQueryParameter("titles", pageTitle)
+            .addQueryParameter("prop", "description|pageimages|pageprops|extracts|info")
+            .addQueryParameter("ppprop", "disambiguation|wikibase_item")
+            .addQueryParameter("piprop", "thumbnail|original")
+            .addQueryParameter("pilicense", "any")
+            .addQueryParameter("pithumbsize", "640")
+            .addQueryParameter("explaintext", "1")
+            .addQueryParameter("exchars", RICH_ARTICLE_REQUEST_CHARS.toString())
+            .addQueryParameter("inprop", "displaytitle")
+            .addQueryParameter("format", "json")
+            .addQueryParameter("formatversion", "2")
+            .build()
+        return when (val result = getJson(url, languageCode)) {
+            is JsonResult.Success -> result.value.toRichSummary(languageCode)
             JsonResult.Failure -> null
         }
     }
@@ -514,7 +510,6 @@ class ArtistLoreRepository(context: Context?) {
         biography: ArtistBiography,
         now: Long
     ): ArtistLoreEntity {
-        val isDescriptionFallback = biography.sourceUrl.contains("wikidata.org", ignoreCase = true)
         val entity = ArtistLoreEntity(
             cacheKey = cacheKey(artistKey, browseId, biography.languageCode),
             artistKey = artistKey,
@@ -525,16 +520,16 @@ class ArtistLoreRepository(context: Context?) {
             pageTitle = biography.pageTitle,
             pageId = biography.pageId,
             entityId = biography.entityId,
-            thumbnailUrl = biography.thumbnailUrl,
-            originalImageUrl = biography.originalImageUrl,
+            thumbnailUrl = "",
+            originalImageUrl = "",
             sourceUrl = biography.sourceUrl,
             confidence = biography.confidence,
             negative = false,
             createdAt = now,
             updatedAt = now,
             lastAccessedAt = now,
-            expiresAt = now + if (isDescriptionFallback) DESCRIPTION_TTL_MS else POSITIVE_TTL_MS,
-            staleUntil = now + if (isDescriptionFallback) DESCRIPTION_STALE_MS else POSITIVE_STALE_MS
+            expiresAt = now + POSITIVE_TTL_MS,
+            staleUntil = now + POSITIVE_STALE_MS
         )
         memory[entity.cacheKey] = entity
         dao?.upsert(entity)
@@ -641,19 +636,23 @@ class ArtistLoreRepository(context: Context?) {
         )
     }
 
-    private fun JSONObject.toSummary(): LoreSummary? {
-        val title = optString("title").trim()
-        val extract = cleanBiography(optString("extract"))
-        if (title.isBlank() || extract.length < MIN_TEXT_LENGTH) return null
+    private fun JSONObject.toRichSummary(languageCode: String): LoreSummary? {
+        val page = optJSONObject("query")?.optJSONArray("pages")?.asObjects()?.firstOrNull {
+            !it.has("missing") && !it.has("invalid")
+        } ?: return null
+        val title = page.optString("title").trim()
+        val extract = cleanBiography(page.optString("extract"))
+        val pageProps = page.optJSONObject("pageprops")
+        if (title.isBlank() || pageProps?.has("disambiguation") == true || extract.length < MIN_TEXT_LENGTH) return null
         return LoreSummary(
             pageTitle = title,
-            pageId = optInt("pageid", 0),
-            entityId = optString("wikibase_item"),
-            description = optString("description").trim(),
+            pageId = page.optInt("pageid", 0),
+            entityId = pageProps?.optString("wikibase_item").orEmpty(),
+            description = page.optString("description").trim(),
             extract = extract,
-            thumbnailUrl = optJSONObject("thumbnail")?.optString("source").orEmpty(),
-            originalImageUrl = optJSONObject("originalimage")?.optString("source").orEmpty(),
-            sourceUrl = optJSONObject("content_urls")?.optJSONObject("desktop")?.optString("page").orEmpty()
+            thumbnailUrl = page.optJSONObject("thumbnail")?.optString("source").orEmpty(),
+            originalImageUrl = page.optJSONObject("original")?.optString("source").orEmpty(),
+            sourceUrl = wikipediaPageUrl(languageCode, title)
         )
     }
 
@@ -896,12 +895,47 @@ class ArtistLoreRepository(context: Context?) {
         }
 
         private fun cleanBiography(value: String): String {
-            val normalized = value
-                .replace(Regex("\\s*\\n+\\s*"), " ")
-                .replace(Regex("\\s{2,}"), " ")
+            val lines = value
+                .replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .lines()
+            val paragraphs = ArrayList<String>()
+            val current = StringBuilder()
+            fun flush() {
+                val paragraph = current.toString()
+                    .replace(Regex("[ \t]+"), " ")
+                    .trim()
+                if (paragraph.isNotBlank()) paragraphs += paragraph
+                current.clear()
+            }
+            for (rawLine in lines) {
+                val line = rawLine
+                    .replace(Regex("\\[(?:\\d+|nota\\s+\\d+|note\\s+\\d+)\\]", RegexOption.IGNORE_CASE), "")
+                    .trim()
+                if (line.isBlank()) {
+                    flush()
+                    continue
+                }
+                val heading = line.trim('=').trim()
+                val normalizedHeading = normalize(heading)
+                val looksLikeHeading = line.startsWith("=") && line.endsWith("=") ||
+                    line.length <= 48 && (normalizedHeading in ARTICLE_SECTION_HEADINGS || normalizedHeading in ARTICLE_STOP_HEADINGS)
+                if (looksLikeHeading) {
+                    flush()
+                    if (normalizedHeading in ARTICLE_STOP_HEADINGS && paragraphs.joinToString(" ").length >= MIN_TEXT_LENGTH) break
+                    continue
+                }
+                if (line.startsWith("*") || line.startsWith("#") || line.startsWith("{|")) continue
+                if (current.isNotEmpty()) current.append(' ')
+                current.append(line)
+            }
+            flush()
+            val normalized = paragraphs
+                .joinToString("\n\n")
+                .replace(Regex("\n{3,}"), "\n\n")
                 .trim()
             if (normalized.length <= MAX_TEXT_LENGTH) return normalized
-            val cut = normalized.lastIndexOf('.', MAX_TEXT_LENGTH).takeIf { it >= 1_800 } ?: MAX_TEXT_LENGTH
+            val cut = normalized.lastIndexOf('.', MAX_TEXT_LENGTH).takeIf { it >= 2_400 } ?: MAX_TEXT_LENGTH
             return normalized.substring(0, cut + if (cut < normalized.length && normalized[cut] == '.') 1 else 0).trim()
         }
 
@@ -978,9 +1012,10 @@ class ArtistLoreRepository(context: Context?) {
             return "https://$languageCode.wikipedia.org/wiki/${encodePathSegment(pageTitle.replace(' ', '_'))}"
         }
 
-        private const val CACHE_KEY_VERSION = "v3"
+        private const val CACHE_KEY_VERSION = "v5"
         private const val MIN_TEXT_LENGTH = 80
-        private const val MAX_TEXT_LENGTH = 3_200
+        private const val MAX_TEXT_LENGTH = 6_400
+        private const val RICH_ARTICLE_REQUEST_CHARS = 7_200
         private const val MIN_PRELIMINARY_SCORE = 500
         private const val STRONG_PREFIX_SCORE = 900
         private const val ACCEPTED_SCORE = 760
@@ -991,11 +1026,23 @@ class ArtistLoreRepository(context: Context?) {
         private const val MAX_CACHE_ENTRIES = 500
         private const val POSITIVE_TTL_MS = 30L * 24L * 60L * 60L * 1_000L
         private const val POSITIVE_STALE_MS = 180L * 24L * 60L * 60L * 1_000L
-        private const val DESCRIPTION_TTL_MS = 12L * 60L * 60L * 1_000L
-        private const val DESCRIPTION_STALE_MS = 7L * 24L * 60L * 60L * 1_000L
         private const val NEGATIVE_TTL_MS = 2L * 60L * 60L * 1_000L
-        private const val SUMMARY_ACCEPT = "application/json; charset=utf-8; profile=\"https://www.mediawiki.org/wiki/Specs/Summary/1.4.2\""
 
+        private val ARTICLE_SECTION_HEADINGS = setOf(
+            "biografia", "carriera", "vita privata", "stile musicale", "influenze", "attivita", "formazione", "primi anni",
+            "biography", "career", "personal life", "musical style", "influences", "early life", "history", "members",
+            "biographie", "carriere", "vie privee", "style musical", "jeunesse",
+            "biografia e carreira", "carreira", "vida pessoal", "estilo musical",
+            "biografie", "karriere", "privatleben", "musikstil",
+            "trayectoria", "carrera", "vida personal", "estilo musical"
+        )
+        private val ARTICLE_STOP_HEADINGS = setOf(
+            "discografia", "videografia", "filmografia", "premi e riconoscimenti", "note", "bibliografia", "collegamenti esterni", "altri progetti",
+            "discography", "videography", "filmography", "awards", "references", "notes", "bibliography", "external links", "see also",
+            "discographie", "filmographie", "recompenses", "notes et references", "liens externes",
+            "diskografie", "filmografie", "auszeichnungen", "einzelnachweise", "weblinks",
+            "discografia", "filmografia", "premios", "referencias", "enlaces externos"
+        )
         private val CROSS_LANGUAGE_FALLBACKS = listOf(
             "simple", "it", "es", "fr", "de", "pt", "nl", "pl", "sv", "da", "cs", "ro", "el", "tr", "ru", "uk", "ja", "ko", "zh", "ar", "he", "hi", "id", "vi", "th"
         )
@@ -1072,8 +1119,8 @@ private data class LoreCandidate(
             pageTitle = pageTitle,
             pageId = pageId,
             entityId = entityId,
-            thumbnailUrl = thumbnailUrl,
-            originalImageUrl = originalImageUrl,
+            thumbnailUrl = "",
+            originalImageUrl = "",
             confidence = confidence,
             cached = false
         )
@@ -1118,32 +1165,6 @@ private data class LoreEntityRecord(
         return descriptions[languageCode].orEmpty().ifBlank { descriptions["en"].orEmpty() }
     }
 
-    fun toDescriptionBiography(
-        preferredLanguages: Set<String>,
-        confidence: Int
-    ): ArtistBiography? {
-        val language = preferredLanguages.firstOrNull { descriptions[it].orEmpty().isNotBlank() }
-            ?: descriptions.keys.firstOrNull()
-            ?: return null
-        val description = descriptions[language].orEmpty().trim()
-        if (description.length < 12) return null
-        val label = labels[language].orEmpty().ifBlank { labels["en"].orEmpty() }
-        val sentence = description.replaceFirstChar { character ->
-            if (character.isLowerCase()) character.titlecase(Locale.forLanguageTag(language)) else character.toString()
-        }.let { value -> if (value.endsWith('.')) value else "$value." }
-        return ArtistBiography(
-            text = sentence,
-            description = "",
-            sourceLabel = "Wikidata",
-            sourceUrl = "https://www.wikidata.org/wiki/$entityId",
-            languageCode = language,
-            pageTitle = label,
-            pageId = 0,
-            entityId = entityId,
-            confidence = confidence,
-            cached = false
-        )
-    }
 }
 
 private sealed interface EntityRecordsResult {
@@ -1182,23 +1203,26 @@ private suspend fun okhttp3.OkHttpClient.await(request: Request): HttpResult = s
     })
 }
 
+private fun ArtistLoreEntity.isWikipediaEntry(): Boolean {
+    return !negative && sourceUrl.contains("wikipedia.org", ignoreCase = true)
+}
+
 private fun ArtistLoreEntity.signature(): String {
     return "$languageCode|$pageId|$entityId|$confidence|${text.hashCode()}|${description.hashCode()}|${sourceUrl.hashCode()}|${originalImageUrl.hashCode()}"
 }
 
 private fun ArtistLoreEntity.toBiography(cached: Boolean): ArtistBiography {
-    val label = if (sourceUrl.contains("wikidata.org", ignoreCase = true)) "Wikidata" else "Wikipedia"
     return ArtistBiography(
         text = text,
         description = description,
-        sourceLabel = label,
+        sourceLabel = "Wikipedia",
         sourceUrl = sourceUrl,
         languageCode = languageCode,
         pageTitle = pageTitle,
         pageId = pageId,
         entityId = entityId,
-        thumbnailUrl = thumbnailUrl,
-        originalImageUrl = originalImageUrl,
+        thumbnailUrl = "",
+        originalImageUrl = "",
         confidence = confidence,
         cached = cached
     )
