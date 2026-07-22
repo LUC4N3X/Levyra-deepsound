@@ -12855,13 +12855,15 @@ private fun SettingsOverlay(
                 item { LanguageSelector(selectedCode = currentLanguageCode, onSelect = onLanguage, modifier = Modifier.padding(bottom = 4.dp)) }
             }
             item { SettingsSectionLabel(strings.app) }
-            item {
-                SettingsUpdateCard(
-                    updateInfo = updateInfo,
-                    isChecking = isCheckingUpdates,
-                    onCheck = onCheckUpdates,
-                    onDownload = onDownloadUpdate
-                )
+            if (BuildConfig.UPSTREAM_UPDATES_ENABLED) {
+                item {
+                    SettingsUpdateCard(
+                        updateInfo = updateInfo,
+                        isChecking = isCheckingUpdates,
+                        onCheck = onCheckUpdates,
+                        onDownload = onDownloadUpdate
+                    )
+                }
             }
             item {
                 Column(

@@ -33,6 +33,7 @@ jobs:
               "pr-check.yml",
               "nightly-extractor-check.yml",
               "apk-artifact-check.yml",
+              "release-apk.yml",
               "quick-apk.yml"
           }
 
@@ -40,3 +41,151 @@ jobs:
           # "gh release" to detect them in other files, so it must not scan
           # itself or it would flag itself as a builder/publisher.
           self_workflow = "workflow-duplicates-guard.yml"
+
+          if not workflows_dir.exists():
+              print("No .github/workflows directory found.")
+              sys.exit(0)
+
+          files = sorted([
+              path for path in workflows_dir.iterdir()
+              if path.is_file()
+              and path.suffix.lower() in {".yml", ".yaml"}
+              and path.name != self_workflow
+          ])
+
+          name_map = {}
+          release_publishers = []
+          release_builders = []
+          apk_uploaders = []
+          duplicate_candidates = []
+          failures = []
+
+          def read(path: Path) -> str:
+              return path.read_text(encoding="utf-8", errors="replace")
+
+          def workflow_name(text: str, fallback: str) -> str:
+              match = re.search(r"(?m)^name:\s*[\"']?(.+?)[\"']?\s*$", text)
+              return match.group(1).strip() if match else fallback
+
+          def has_release_build(text: str) -> bool:
+              return "assembleRelease" in text or ":app:assembleRelease" in text
+
+          def has_apk_upload(text: str) -> bool:
+              return "upload-artifact" in text and (".apk" in text or "apk" in text.lower())
+
+          def has_release_publish(text: str) -> bool:
+              markers = [
+                  "softprops/action-gh-release",
+                  "gh release",
+                  "upload-release-asset",
+                  "create-release",
+                  "releases/upload"
+              ]
+              lowered = text.lower()
+              return any(marker.lower() in lowered for marker in markers)
+
+          def normalized_signature(text: str) -> str:
+              cleaned = []
+              for line in text.splitlines():
+                  stripped = line.strip()
+                  if not stripped:
+                      continue
+                  if stripped.startswith("name:"):
+                      continue
+                  if stripped.startswith("#"):
+                      continue
+                  if "run:" in stripped:
+                      cleaned.append(stripped)
+                  elif "uses:" in stripped:
+                      cleaned.append(stripped)
+                  elif "assembleRelease" in stripped:
+                      cleaned.append(stripped)
+                  elif "upload-artifact" in stripped:
+                      cleaned.append(stripped)
+                  elif "softprops/action-gh-release" in stripped:
+                      cleaned.append(stripped)
+                  elif "gh release" in stripped:
+                      cleaned.append(stripped)
+              return "\n".join(cleaned)
+
+          signatures = {}
+
+          for path in files:
+              text = read(path)
+              name = workflow_name(text, path.name)
+              lower_name = name.lower()
+
+              name_map.setdefault(lower_name, []).append(path.name)
+
+              # release-guard.yml only asserts that the canonical workflow
+              # contains a release build command; it does not build an APK.
+              if path.name != "release-guard.yml" and has_release_build(text):
+                  release_builders.append(path.name)
+
+              if has_apk_upload(text):
+                  apk_uploaders.append(path.name)
+
+              if has_release_publish(text):
+                  release_publishers.append(path.name)
+
+              signature = normalized_signature(text)
+              if signature:
+                  signatures.setdefault(signature, []).append(path.name)
+
+          for name, paths in name_map.items():
+              if len(paths) > 1:
+                  failures.append("Duplicated workflow name: " + ", ".join(paths))
+
+          for signature, paths in signatures.items():
+              if len(paths) > 1:
+                  duplicate_candidates.append(paths)
+
+          for paths in duplicate_candidates:
+              failures.append("Very similar workflow bodies: " + ", ".join(paths))
+
+          unexpected_release_builders = [
+              item for item in release_builders
+              if item not in allowed_build_workflows
+          ]
+
+          if unexpected_release_builders:
+              failures.append(
+                  "Unexpected release build workflow detected: "
+                  + ", ".join(unexpected_release_builders)
+                  + ". Keep release APK generation in release-apk.yml or apk-artifact-check.yml."
+              )
+
+          if len(release_publishers) > 1:
+              failures.append(
+                  "Multiple workflows appear to publish GitHub releases: "
+                  + ", ".join(release_publishers)
+              )
+
+          suspicious_pairs = [
+              {"android-apk.yml", "release-apk.yml"},
+              {"android-apk.yaml", "release-apk.yml"},
+              {"android-apk.yml", "release-apk.yaml"},
+              {"build-apk.yml", "release-apk.yml"},
+              {"build-release.yml", "release-apk.yml"}
+          ]
+
+          existing = {path.name for path in files}
+
+          for pair in suspicious_pairs:
+              if pair.issubset(existing):
+                  failures.append(
+                      "Suspicious duplicated APK workflow pair: "
+                      + ", ".join(sorted(pair))
+                  )
+
+          if failures:
+              print("Workflow duplicate problems found:")
+              for failure in failures:
+                  print("- " + failure)
+              sys.exit(1)
+
+          print("No duplicated workflow problems found.")
+          print("Release builders: " + (", ".join(release_builders) if release_builders else "none"))
+          print("APK uploaders: " + (", ".join(apk_uploaders) if apk_uploaders else "none"))
+          print("Release publishers: " + (", ".join(release_publishers) if release_publishers else "none"))
+          PY
