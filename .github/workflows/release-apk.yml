@@ -260,7 +260,7 @@ jobs:
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${SOURCE_APK}"
 
           cp "${SOURCE_APK}" "${APK_PATH}"
-          sha256sum "${APK_PATH}" > "${CHECKSUM_PATH}"
+          (cd release-assets && sha256sum "${APK_NAME}" > "${CHECKSUM_NAME}")
 
           {
             echo "APK_PATH=${APK_PATH}"
