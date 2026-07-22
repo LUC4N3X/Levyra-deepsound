@@ -1,0 +1,1 @@
+Aggiunge build dal sorgente compatibili con F-Droid e aggiornamenti gestiti da F-Droid. Include inoltre riproduzione in background e offline più affidabile, raccolte smart nella Libreria, biografie degli artisti, miglioramenti della Home, aggiornamenti del resolver e una pipeline di release più robusta.
