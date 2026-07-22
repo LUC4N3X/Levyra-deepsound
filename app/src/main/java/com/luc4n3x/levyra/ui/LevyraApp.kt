@@ -2622,7 +2622,7 @@ private fun ArtistBio(
 ) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
-    val editorial = remember(biography.text) { artistBioEditorial(biography.text) }
+    val editorial = remember(biography.text) { artistBiographyEditorial(biography.text) }
     var expanded by remember(biography.text) { mutableStateOf(false) }
     val visibleBody = if (expanded) editorial.body else editorial.body.take(1)
     val canExpand = editorial.body.size > 1
