@@ -263,6 +263,7 @@ import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
 import com.luc4n3x.levyra.domain.ArtistBiography
+import com.luc4n3x.levyra.domain.artistBiographyEditorial
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -2312,7 +2313,7 @@ private fun ArtistOverlay(
                     if (artist.hasBio) {
                         item {
                             Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                                ArtistBio(requireNotNull(artist.biography))
+                                ArtistBio(artist.name, artist.thumbnailUrl.ifBlank { artist.bannerUrl }, requireNotNull(artist.biography))
                             }
                         }
                     }
@@ -2614,65 +2615,172 @@ private fun ArtistHeader(
 }
 
 @Composable
-private fun ArtistBio(biography: ArtistBiography) {
+private fun ArtistBio(
+    artistName: String,
+    artworkUrl: String,
+    biography: ArtistBiography
+) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
+    val editorial = remember(biography.text) { artistBioEditorial(biography.text) }
     var expanded by remember(biography.text) { mutableStateOf(false) }
+    val visibleBody = if (expanded) editorial.body else editorial.body.take(1)
+    val canExpand = editorial.body.size > 1
     val sourceLabel = biography.sourceLabel.trim()
     val showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
-    val sourceText = when {
-        sourceLabel.equals("Wikipedia", ignoreCase = true) -> "Wikipedia · CC BY-SA 4.0"
-        else -> sourceLabel
+    val sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) {
+        "Wikipedia · CC BY-SA 4.0"
+    } else {
+        sourceLabel
     }
+
     Surface(
-        color = Color.White.copy(alpha = 0.045f),
+        color = LevyraPanelSoft,
         border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
+        shape = RoundedCornerShape(26.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(strings.biography, color = LevyraText, fontSize = 21.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp)
-            if (biography.description.isNotBlank()) {
-                Text(
-                    biography.description,
-                    color = LevyraText.copy(alpha = 0.84f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 18.sp
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(196.dp)
+                    .background(Brush.linearGradient(listOf(LevyraCyan.copy(alpha = 0.40f), LevyraViolet.copy(alpha = 0.30f))))
+            ) {
+                if (artworkUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(artworkUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = artistName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.08f),
+                                    Color.Black.copy(alpha = 0.30f),
+                                    LevyraPanelSoft.copy(alpha = 0.98f)
+                                )
+                            )
+                        )
                 )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = strings.biography,
+                        color = LevyraCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.1.sp
+                    )
+                    Text(
+                        text = artistName,
+                        color = Color.White,
+                        fontSize = 29.sp,
+                        lineHeight = 32.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-0.7).sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (biography.description.isNotBlank()) {
+                        Text(
+                            text = biography.description,
+                            color = Color.White.copy(alpha = 0.76f),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
             }
-            Text(
-                biography.text,
-                color = LevyraMuted,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 23.sp,
-                maxLines = if (expanded) Int.MAX_VALUE else 4,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = if (showSource) Arrangement.SpaceBetween else Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
+
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    if (expanded) strings.showLess else strings.showAll,
-                    color = LevyraCyan,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    text = editorial.lead,
+                    color = LevyraText,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 27.sp
                 )
-                if (showSource) {
+                visibleBody.forEach { paragraph ->
                     Text(
-                        text = sourceText,
-                        color = LevyraMuted.copy(alpha = 0.82f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable(enabled = biography.sourceUrl.isNotBlank()) {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
-                            }
-                        }
+                        text = paragraph,
+                        color = LevyraMuted.copy(alpha = 0.96f),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 24.sp
                     )
+                }
+                if (canExpand) {
+                    Text(
+                        text = if (expanded) strings.showLess else strings.showAll,
+                        color = LevyraCyan,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.clickable { expanded = !expanded }
+                    )
+                }
+                if (showSource) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(LevyraAdaptiveHairline)
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = biography.sourceUrl.isNotBlank()) {
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
+                                }
+                            },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Language,
+                                contentDescription = null,
+                                tint = LevyraMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = sourceText,
+                                color = LevyraMuted,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        if (biography.sourceUrl.isNotBlank()) {
+                            Icon(
+                                imageVector = Icons.Rounded.OpenInNew,
+                                contentDescription = null,
+                                tint = LevyraMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
