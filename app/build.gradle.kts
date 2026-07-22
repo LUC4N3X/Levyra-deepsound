@@ -47,7 +47,17 @@ fun isReleaseTaskRequested(): Boolean =
         task.contains("Release", ignoreCase = true) || task.equals("bundle", ignoreCase = true) || task.equals("assemble", ignoreCase = true)
     }
 
-val youtubeInnertubeApiKey = envOrProperty("YOUTUBE_INNERTUBE_API_KEY", "youtubeInnertubeApiKey")
+val isFdroidBuild = providers.gradleProperty("levyraFdroidBuild")
+    .map(String::toBoolean)
+    .getOrElse(false)
+// Public InnerTube client identifier, not a private developer credential. Keep this
+// aligned with LevyraExtractor's Android client so F-Droid can rebuild from source.
+val publicYoutubeInnertubeApiKey = "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w"
+val youtubeInnertubeApiKey = if (isFdroidBuild) {
+    publicYoutubeInnertubeApiKey
+} else {
+    envOrProperty("YOUTUBE_INNERTUBE_API_KEY", "youtubeInnertubeApiKey")
+}
 val releaseStoreFilePath = envOrProperty("LEVYRA_KEYSTORE_FILE", "levyraStoreFile").ifBlank { "app/levyra-release.jks" }
 val releaseStorePassword = envOrProperty("LEVYRA_KEYSTORE_PASSWORD", "levyraStorePassword")
 val releaseKeyAlias = envOrProperty("LEVYRA_KEY_ALIAS", "levyraKeyAlias")
@@ -55,11 +65,11 @@ val releaseKeyPassword = envOrProperty("LEVYRA_KEY_PASSWORD", "levyraKeyPassword
 val releaseStoreFile = rootProject.file(releaseStoreFilePath)
 val releaseSigningAvailable = releaseStoreFile.isFile && releaseStorePassword.isNotBlank() && releaseKeyAlias.isNotBlank() && releaseKeyPassword.isNotBlank()
 
-if (isReleaseTaskRequested() && youtubeInnertubeApiKey.isBlank()) {
+if (isReleaseTaskRequested() && !isFdroidBuild && youtubeInnertubeApiKey.isBlank()) {
     throw GradleException("Missing YOUTUBE_INNERTUBE_API_KEY. Set it as a GitHub Actions secret or in local.properties as youtubeInnertubeApiKey.")
 }
 
-if (isReleaseTaskRequested() && !releaseSigningAvailable) {
+if (isReleaseTaskRequested() && !isFdroidBuild && !releaseSigningAvailable) {
     throw GradleException("Missing release signing config. Set LEVYRA_KEYSTORE_BASE64, LEVYRA_KEYSTORE_PASSWORD, LEVYRA_KEY_ALIAS and LEVYRA_KEY_PASSWORD in GitHub Actions secrets.")
 }
 
@@ -119,6 +129,7 @@ android {
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "UPDATE_REPOSITORY", "\"LUC4N3X/Levyra-deepsound\"")
         buildConfigField("String", "UPDATE_LATEST_URL", "\"https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases/latest\"")
+        buildConfigField("boolean", "UPSTREAM_UPDATES_ENABLED", (!isFdroidBuild).toString())
         buildConfigField("String", "YOUTUBE_INNERTUBE_API_KEY", buildConfigString(youtubeInnertubeApiKey))
     }
 
@@ -145,7 +156,9 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             isDebuggable = false
-            signingConfig = signingConfigs.getByName("release")
+            if (releaseSigningAvailable) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

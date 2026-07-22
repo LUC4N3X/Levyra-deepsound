@@ -1,0 +1,1 @@
+Adds F-Droid-compatible source builds with F-Droid-managed updates. This release also includes resilient background and offline playback, smart Library collections, richer artist biographies, Home interface refinements, resolver updates, and release-pipeline hardening.
