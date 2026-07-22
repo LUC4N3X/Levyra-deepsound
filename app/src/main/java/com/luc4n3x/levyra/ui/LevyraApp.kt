@@ -12457,6 +12457,8 @@ private fun SettingsOverlay(
         SettingsCategory("preferences", Icons.Rounded.Settings, LevyraPink, strings.preferences, if (isItalian) "Questionario e lingua" else "Questionnaire and language"),
         SettingsCategory("app", Icons.Rounded.Info, LevyraCyan, strings.app, if (isItalian) "Aggiornamenti e versione" else "Updates and version")
     )
+    val settingsListState = rememberLazyListState()
+    LaunchedEffect(openCategory) { settingsListState.scrollToItem(0) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -12464,6 +12466,7 @@ private fun SettingsOverlay(
             .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
+            state = settingsListState,
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
