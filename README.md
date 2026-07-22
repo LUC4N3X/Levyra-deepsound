@@ -262,6 +262,18 @@ cd Levyra-deepsound
 
 The release APK lands in `app/build/outputs/apk/release/app-release.apk`.
 
+For F-Droid reproducible-build verification, use the dedicated source-build
+switch. It keeps the standard application ID, produces the unsigned rebuild
+that F-Droid compares with Levyra's upstream-signed F-Droid APK, uses the
+public InnerTube client key already documented in the source tree, and
+disables Levyra's GitHub self-update prompt. F-Droid publishes the
+upstream-signed APK only after the two builds match, preserving update
+compatibility with GitHub installations:
+
+```bash
+./gradlew --no-daemon -PlevyraFdroidBuild=true :app:assembleRelease
+```
+
 Architecture and size-control notes live in `docs/APK_SIZE_RULER.md` and `docs/PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md`.
 
 ### Versioning & CI
