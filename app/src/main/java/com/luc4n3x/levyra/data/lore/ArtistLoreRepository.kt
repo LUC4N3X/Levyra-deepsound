@@ -255,7 +255,7 @@ class ArtistLoreRepository(context: Context?) {
             candidate.copy(finalScore = candidate.baseScore + entityBonus(entitySignals, browseId))
         }.sortedByDescending { it.finalScore }
         val winner = ranked.firstOrNull { candidate ->
-            candidate.finalScore >= ACCEPTED_SCORE && entityCompatible(signals[candidate.entityId], browseId)
+            candidate.finalScore >= ACCEPTED_SCORE
         } ?: return null
         val summary = fetchSummary(winner.pageTitle, languageCode)
         val enriched = if (summary != null) winner.enrich(summary) else winner
@@ -297,8 +297,8 @@ class ArtistLoreRepository(context: Context?) {
             val hit = hitById[record.entityId]
             record to entityRecordScore(artistName, record, hit, browseId)
         }.sortedByDescending { it.second }
-        val accepted = ranked.filter { (record, score) ->
-            score >= ENTITY_ACCEPTED_SCORE && entityCompatible(record.signals, browseId)
+        val accepted = ranked.filter { (_, score) ->
+            score >= ENTITY_ACCEPTED_SCORE
         }
         var articleTransientFailure = false
         for ((record, score) in accepted.take(MAX_ENTITY_ARTICLE_ATTEMPTS)) {
@@ -581,7 +581,7 @@ class ArtistLoreRepository(context: Context?) {
 
     private fun cacheKey(artistKey: String, browseId: String, languageCode: String): String {
         val identity = browseId.trim().lowercase(Locale.ROOT).ifBlank { artistKey }
-        return "$identity|${languageCode.lowercase(Locale.ROOT)}"
+        return "$CACHE_KEY_VERSION|$identity|${languageCode.lowercase(Locale.ROOT)}"
     }
 
     private fun languagePriority(languageCode: String): List<String> {
@@ -874,16 +874,21 @@ class ArtistLoreRepository(context: Context?) {
             if (signals.instanceOf.any(NON_ARTIST_INSTANCE_IDS::contains)) score -= 1_100
             if ("Q5" in signals.instanceOf && signals.occupations.isNotEmpty() && !hasMusicOccupation) score -= 300
             if (!hasMusicOccupation && !hasMusicGroupType && signals.instanceOf.isNotEmpty()) score -= 180
-            val channelId = browseId.trim()
-            if (channelId.startsWith("UC") && signals.youtubeChannelIds.contains(channelId)) score += 700
-            if (channelId.startsWith("UC") && signals.youtubeChannelIds.isNotEmpty() && !signals.youtubeChannelIds.contains(channelId)) score -= 1_200
+            score += youtubeChannelScoreAdjustment(browseId, signals.youtubeChannelIds)
             return score
         }
 
-        private fun entityCompatible(signals: LoreEntitySignals?, browseId: String): Boolean {
+        internal fun youtubeChannelScoreAdjustment(
+            browseId: String,
+            youtubeChannelIds: Set<String>
+        ): Int {
             val channelId = browseId.trim()
-            if (!channelId.startsWith("UC") || signals == null || signals.youtubeChannelIds.isEmpty()) return true
-            return signals.youtubeChannelIds.contains(channelId)
+            if (!channelId.startsWith("UC", ignoreCase = true) || youtubeChannelIds.isEmpty()) return 0
+            return if (youtubeChannelIds.any { it.equals(channelId, ignoreCase = true) }) {
+                700
+            } else {
+                -120
+            }
         }
 
         private fun scoreToConfidence(score: Int): Int {
@@ -973,6 +978,7 @@ class ArtistLoreRepository(context: Context?) {
             return "https://$languageCode.wikipedia.org/wiki/${encodePathSegment(pageTitle.replace(' ', '_'))}"
         }
 
+        private const val CACHE_KEY_VERSION = "v3"
         private const val MIN_TEXT_LENGTH = 80
         private const val MAX_TEXT_LENGTH = 3_200
         private const val MIN_PRELIMINARY_SCORE = 500
