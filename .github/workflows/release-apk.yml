@@ -1,162 +1,337 @@
-name: Release APK Asset
+name: Publish Release APK
 
 on:
-  release:
-    types:
-      - published
+  push:
+    branches:
+      - main
+    paths:
+      - gradle.properties
+      - RELEASE_NOTES.md
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Existing GitHub Release tag"
-        required: true
-        type: string
 
 permissions:
-  actions: read
   contents: write
 
 concurrency:
-  group: release-apk-${{ github.event.release.tag_name || inputs.tag }}
+  group: publish-release-apk-${{ github.ref }}
   cancel-in-progress: false
 
 env:
   GH_TOKEN: ${{ github.token }}
-  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
-  RELEASE_EVENT_ID: ${{ github.event.release.id || '' }}
+  YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
+  LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
+  LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
+  LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
+  LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
 
 jobs:
-  publish:
-    name: Attach APK Artifact to Existing Release
+  release:
+    name: Validate, Build and Publish Signed APK
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
-      - name: Checkout Release Tag
+      - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Validate Release and Version
+      - name: Resolve Release Version
+        id: version
         shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before || '' }}
         run: |
           set -euo pipefail
-          test -n "${RELEASE_TAG}"
-          if [ -n "${RELEASE_EVENT_ID}" ]; then
-            RELEASE_ID="${RELEASE_EVENT_ID}"
-          else
-            gh api --paginate "/repos/${GITHUB_REPOSITORY}/releases?per_page=100" > release-pages.jsonl
-            RELEASE_ID="$(jq -sr --arg tag "${RELEASE_TAG}" '[.[][] | select(.tag_name == $tag)] | first | .id // empty' release-pages.jsonl)"
+
+          read_property() {
+            local file="$1"
+            local key="$2"
+            grep -E "^${key}=" "${file}" | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs
+          }
+
+          if [ "${GITHUB_REF_NAME}" != "main" ]; then
+            echo "Release publishing is allowed only from main."
+            exit 1
           fi
-          test -n "${RELEASE_ID}"
-          gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" > release-before.json
-          test "$(jq -r '.tag_name' release-before.json)" = "${RELEASE_TAG}"
-          VERSION="$(grep -E '^levyraVersionName=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
-          VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
+
+          VERSION="$(read_property gradle.properties levyraVersionName)"
+          VERSION_CODE="$(read_property gradle.properties levyraVersionCode)"
           test -n "${VERSION}"
           test -n "${VERSION_CODE}"
-          test "${RELEASE_TAG}" = "v${VERSION}"
-          RELEASE_SHA="$(git rev-parse HEAD)"
-          ARTIFACT_PREFIX="levyra-release-${VERSION}-run-"
+          printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'
+          printf '%s' "${VERSION_CODE}" | grep -Eq '^[1-9][0-9]*$'
+
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ -n "${BEFORE_SHA}" ] && ! printf '%s' "${BEFORE_SHA}" | grep -Eq '^0+$'; then
+            if git cat-file -e "${BEFORE_SHA}:gradle.properties" 2>/dev/null; then
+              git show "${BEFORE_SHA}:gradle.properties" > previous-gradle.properties
+              PREVIOUS_VERSION="$(read_property previous-gradle.properties levyraVersionName)"
+              PREVIOUS_VERSION_CODE="$(read_property previous-gradle.properties levyraVersionCode)"
+
+              if [ "${VERSION}" != "${PREVIOUS_VERSION}" ] && [ "${VERSION_CODE}" = "${PREVIOUS_VERSION_CODE}" ]; then
+                echo "levyraVersionCode must change together with levyraVersionName."
+                exit 1
+              fi
+
+              if [ "${VERSION}" = "${PREVIOUS_VERSION}" ] && [ "${VERSION_CODE}" != "${PREVIOUS_VERSION_CODE}" ]; then
+                echo "levyraVersionName must change together with levyraVersionCode."
+                exit 1
+              fi
+            fi
+          fi
+
+          TAG="v${VERSION}"
           APK_NAME="LEVYRA-${VERSION}.apk"
-          jq -S '{name: (.name // ""), body: (.body // "")}' release-before.json > release-message-before.json
+          CHECKSUM_NAME="${APK_NAME}.sha256"
+          PUBLISH="true"
+
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            PUBLISH="false"
+          else
+            git fetch --tags --force "https://github.com/${GITHUB_REPOSITORY}.git"
+            if git rev-parse "refs/tags/${TAG}" >/dev/null 2>&1; then
+              TAG_SHA="$(git rev-list -n 1 "${TAG}")"
+              if [ "${TAG_SHA}" != "${GITHUB_SHA}" ]; then
+                echo "Tag ${TAG} already points to ${TAG_SHA}, not ${GITHUB_SHA}."
+                exit 1
+              fi
+            fi
+          fi
+
           {
             echo "VERSION=${VERSION}"
             echo "VERSION_CODE=${VERSION_CODE}"
-            echo "RELEASE_ID=${RELEASE_ID}"
-            echo "RELEASE_SHA=${RELEASE_SHA}"
-            echo "ARTIFACT_PREFIX=${ARTIFACT_PREFIX}"
+            echo "TAG=${TAG}"
             echo "APK_NAME=${APK_NAME}"
+            echo "CHECKSUM_NAME=${CHECKSUM_NAME}"
           } >> "${GITHUB_ENV}"
 
-      - name: Wait for Matching APK Artifact
+          echo "publish=${PUBLISH}" >> "${GITHUB_OUTPUT}"
+
+      - name: Validate Release Notes
+        if: steps.version.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          ARTIFACT_ID=""
-          ARTIFACT_NAME=""
-          for attempt in $(seq 1 180); do
-            rm -f artifact-pages.jsonl
-            gh api --paginate "/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" > artifact-pages.jsonl
-            RECORD="$(jq -sr --arg sha "${RELEASE_SHA}" --arg prefix "${ARTIFACT_PREFIX}" '[.[].artifacts[] | select(.expired == false and .workflow_run.head_sha == $sha and (.name | startswith($prefix)))] | sort_by(.created_at) | last // empty | [.id, .name] | @tsv' artifact-pages.jsonl)"
-            if [ -n "${RECORD}" ]; then
-              IFS=$'\t' read -r ARTIFACT_ID ARTIFACT_NAME <<< "${RECORD}"
-              break
-            fi
-            echo "Waiting for APK Artifact for ${RELEASE_TAG} at ${RELEASE_SHA} (${attempt}/180)"
-            sleep 20
-          done
-          test -n "${ARTIFACT_ID}"
-          test -n "${ARTIFACT_NAME}"
-          {
-            echo "ARTIFACT_ID=${ARTIFACT_ID}"
-            echo "ARTIFACT_NAME=${ARTIFACT_NAME}"
-          } >> "${GITHUB_ENV}"
 
-      - name: Download and Verify APK Artifact
+          NOTES_FILE="RELEASE_NOTES.md"
+          test -f "${NOTES_FILE}"
+          test "$(sed -n '/./{p;q;}' "${NOTES_FILE}")" = "# Levyra ${VERSION}"
+          grep -Fx -- "- Version name: \`${VERSION}\`" "${NOTES_FILE}"
+          grep -Fx -- "- Version code: \`${VERSION_CODE}\`" "${NOTES_FILE}"
+          grep -Fx -- "## Highlights" "${NOTES_FILE}"
+          grep -Fx -- "## Versioning" "${NOTES_FILE}"
+          grep -Fx -- "## Validation" "${NOTES_FILE}"
+          grep -Fx -- "## Upgrade notes" "${NOTES_FILE}"
+          grep -Fx -- "## Final note" "${NOTES_FILE}"
+
+          NOTES_BYTES="$(wc -c < "${NOTES_FILE}")"
+          test "${NOTES_BYTES}" -ge 2000
+
+          if grep -Eiq '\b(TODO|TBD|PLACEHOLDER)\b|Closes #[[:space:]]*$|Related to #[[:space:]]*$' "${NOTES_FILE}"; then
+            echo "Release notes contain unfinished placeholders."
+            exit 1
+          fi
+
+      - name: Setup Java
+        if: steps.version.outputs.publish == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        if: steps.version.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf downloaded-artifact artifact.zip
-          mkdir -p downloaded-artifact
-          curl --fail --location --retry 5 --retry-all-errors \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
-            --output artifact.zip
-          unzip -q artifact.zip -d downloaded-artifact
-          APK_PATH="$(find downloaded-artifact -type f -name "${APK_NAME}" -print -quit)"
-          CHECKSUM_PATH="$(find downloaded-artifact -type f -name "${APK_NAME}.sha256" -print -quit)"
-          test -f "${APK_PATH}"
-          test -f "${CHECKSUM_PATH}"
-          APK_SIZE="$(stat -c%s "${APK_PATH}")"
-          test "${APK_SIZE}" -gt 1048576
-          EXPECTED_SHA="$(awk 'NR == 1 {print $1}' "${CHECKSUM_PATH}")"
-          ACTUAL_SHA="$(sha256sum "${APK_PATH}" | awk '{print $1}')"
-          test -n "${EXPECTED_SHA}"
-          test "${EXPECTED_SHA}" = "${ACTUAL_SHA}"
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        if: steps.version.outputs.publish == 'true'
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+
+      - name: Validate Gradle Wrapper
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x ./gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+          ./gradlew --no-daemon --version
+
+      - name: Prepare Release Signing
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        env:
+          LEVYRA_KEYSTORE_BASE64: ${{ secrets.LEVYRA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "${YOUTUBE_INNERTUBE_API_KEY}"
+          test -n "${LEVYRA_KEYSTORE_BASE64}"
+          test -n "${LEVYRA_KEYSTORE_PASSWORD}"
+          test -n "${LEVYRA_KEY_ALIAS}"
+          test -n "${LEVYRA_KEY_PASSWORD}"
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          printf '%s' "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          keytool -list \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            >/dev/null
+
+      - name: Android Lint
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew \
+            --no-daemon \
+            --no-configuration-cache \
+            --stacktrace \
+            :app:lintRelease \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Unit Tests
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          GRADLE_ARGS=(
+            --no-daemon
+            --no-configuration-cache
+            --stacktrace
+            -PlevyraVersionName="${VERSION}"
+            -PlevyraVersionCode="${VERSION_CODE}"
+          )
+
+          TASKS="$(./gradlew "${GRADLE_ARGS[@]}" :app:tasks --all)"
+          if grep -q '^testReleaseUnitTest ' <<< "${TASKS}"; then
+            ./gradlew "${GRADLE_ARGS[@]}" :app:testReleaseUnitTest
+          elif grep -q '^testDebugUnitTest ' <<< "${TASKS}"; then
+            ./gradlew "${GRADLE_ARGS[@]}" :app:testDebugUnitTest
+          elif grep -q '^test ' <<< "${TASKS}"; then
+            ./gradlew "${GRADLE_ARGS[@]}" :app:test
+          else
+            echo "No JVM unit test task is available for the app module."
+            exit 1
+          fi
+
+      - name: Build Signed Release APK
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew \
+            --no-daemon \
+            --no-configuration-cache \
+            --stacktrace \
+            :app:assembleRelease \
+            -PlevyraVersionName="${VERSION}" \
+            -PlevyraVersionCode="${VERSION_CODE}"
+
+      - name: Verify Release APK
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          SOURCE_APK="app/build/outputs/apk/release/app-release.apk"
+          APK_PATH="release-assets/${APK_NAME}"
+          CHECKSUM_PATH="release-assets/${CHECKSUM_NAME}"
+          test -f "${SOURCE_APK}"
+
+          SIZE_BYTES="$(stat -c%s "${SOURCE_APK}")"
+          test "${SIZE_BYTES}" -gt 1048576
+
+          BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${SOURCE_APK}")"
+          printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}'"
+          printf '%s\n' "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
+          "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${SOURCE_APK}"
+
+          cp "${SOURCE_APK}" "${APK_PATH}"
+          sha256sum "${APK_PATH}" > "${CHECKSUM_PATH}"
+
           {
             echo "APK_PATH=${APK_PATH}"
-            echo "APK_SHA256=${ACTUAL_SHA}"
-            echo "APK_SIZE=${APK_SIZE}"
+            echo "CHECKSUM_PATH=${CHECKSUM_PATH}"
+            echo "APK_SHA256=$(sha256sum "${APK_PATH}" | awk '{print $1}')"
           } >> "${GITHUB_ENV}"
 
-      - name: Attach APK Without Changing Release Message
+      - name: Create GitHub Release and Upload APK
+        if: steps.version.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
 
-          verify_release_asset() {
-            local asset_id="$1"
-            local asset_digest="$2"
-            local expected_digest="sha256:${APK_SHA256}"
-            if [ -n "${asset_digest}" ]; then
-              test "${asset_digest}" = "${expected_digest}"
-              return
-            fi
-            rm -f existing-release-asset.apk
-            curl --fail --location --retry 5 --retry-all-errors \
-              -H "Accept: application/octet-stream" \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
-              --output existing-release-asset.apk
-            test "$(sha256sum existing-release-asset.apk | awk '{print $1}')" = "${APK_SHA256}"
-          }
+          RELEASE_FLAGS=(
+            --target "${GITHUB_SHA}"
+            --title "Levyra ${VERSION}"
+            --notes-file RELEASE_NOTES.md
+            --repo "${GITHUB_REPOSITORY}"
+          )
 
-          gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" > release-current.json
-          EXISTING_ID="$(jq -r --arg name "${APK_NAME}" '.assets[]? | select(.name == $name) | .id' release-current.json | head -n 1)"
-          EXISTING_DIGEST="$(jq -r --arg name "${APK_NAME}" '.assets[]? | select(.name == $name) | .digest // empty' release-current.json | head -n 1)"
-          if [ -n "${EXISTING_ID}" ]; then
-            verify_release_asset "${EXISTING_ID}" "${EXISTING_DIGEST}"
+          if [[ "${VERSION}" == *-* ]]; then
+            RELEASE_FLAGS+=(--prerelease)
           else
-            gh release upload "${RELEASE_TAG}" "${APK_PATH}" --repo "${GITHUB_REPOSITORY}"
+            RELEASE_FLAGS+=(--latest)
           fi
-          gh api "/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" > release-after.json
-          jq -S '{name: (.name // ""), body: (.body // "")}' release-after.json > release-message-after.json
-          cmp --silent release-message-before.json release-message-after.json
-          FINAL_ID="$(jq -r --arg name "${APK_NAME}" '.assets[]? | select(.name == $name) | .id' release-after.json | head -n 1)"
-          FINAL_DIGEST="$(jq -r --arg name "${APK_NAME}" '.assets[]? | select(.name == $name) | .digest // empty' release-after.json | head -n 1)"
-          test -n "${FINAL_ID}"
-          verify_release_asset "${FINAL_ID}" "${FINAL_DIGEST}"
-          echo "Attached ${APK_NAME} from ${ARTIFACT_NAME} to ${RELEASE_TAG} without modifying the release title or message."
+
+          gh release create "${TAG}" \
+            "${APK_PATH}#LEVYRA Android APK" \
+            "${CHECKSUM_PATH}#SHA-256 checksum" \
+            "${RELEASE_FLAGS[@]}"
+
+      - name: Verify Published Release
+        if: steps.version.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-verification
+          mkdir -p release-verification
+
+          gh release download "${TAG}" \
+            --pattern "${APK_NAME}" \
+            --pattern "${CHECKSUM_NAME}" \
+            --dir release-verification \
+            --clobber \
+            --repo "${GITHUB_REPOSITORY}"
+
+          PUBLISHED_APK="release-verification/${APK_NAME}"
+          PUBLISHED_CHECKSUM="release-verification/${CHECKSUM_NAME}"
+          test -f "${PUBLISHED_APK}"
+          test -f "${PUBLISHED_CHECKSUM}"
+          test "$(sha256sum "${PUBLISHED_APK}" | awk '{print $1}')" = "${APK_SHA256}"
+          test "$(awk 'NR == 1 {print $1}' "${PUBLISHED_CHECKSUM}")" = "${APK_SHA256}"
+
+          gh release view "${TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json body,isDraft,isPrerelease,name,tagName,url \
+            > published-release.json
+
+          test "$(jq -r '.tagName' published-release.json)" = "${TAG}"
+          test "$(jq -r '.name' published-release.json)" = "Levyra ${VERSION}"
+          test "$(jq -r '.isDraft' published-release.json)" = "false"
+          jq -r '.body' published-release.json | grep -Fx "# Levyra ${VERSION}"
+          jq -r '.body' published-release.json | grep -Fx -- "- Version code: \`${VERSION_CODE}\`"
+          jq -r '.url' published-release.json
+
+      - name: Skip Existing Release
+        if: steps.version.outputs.publish != 'true'
+        shell: bash
+        run: echo "Release ${TAG} already exists; no assets or release notes were overwritten."
+
+      - name: Cleanup Signing Material
+        if: always()
+        shell: bash
+        run: rm -f "${LEVYRA_KEYSTORE_FILE}"
