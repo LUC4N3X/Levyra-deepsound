@@ -214,6 +214,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
@@ -2318,7 +2320,7 @@ private fun ArtistOverlay(
                                     accentStart = accentStart,
                                     accentEnd = accentEnd,
                                     modifier = Modifier
-                                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                                        .padding(horizontal = 14.dp, top = 8.dp, bottom = 14.dp)
                                 )
                             }
                         }
@@ -2620,6 +2622,30 @@ private fun ArtistHeader(
     }
 }
 
+private fun extractQuickFacts(summary: String, description: String): List<String> {
+    val facts = mutableListOf<String>()
+    val yearMatch = Regex("""\b(19\d{2}|20\d{2})\b""").find(summary)
+    if (yearMatch != null) {
+        facts.add(yearMatch.value)
+    }
+    val textLower = summary.lowercase()
+    if (textLower.contains("italiano") || textLower.contains("italia") || textLower.contains("nicosia") || textLower.contains("milano")) {
+        facts.add("Italia")
+    } else if (textLower.contains("american") || textLower.contains("usa") || textLower.contains("united states")) {
+        facts.add("USA")
+    } else if (textLower.contains("british") || textLower.contains("uk") || textLower.contains("london")) {
+        facts.add("UK")
+    }
+    if (textLower.contains("rapper") || textLower.contains("hip-hop") || textLower.contains("hip hop") || textLower.contains("rap")) {
+        facts.add("Hip-Hop / Rap")
+    } else if (textLower.contains("pop") || textLower.contains("cantautore")) {
+        facts.add("Pop")
+    } else if (textLower.contains("rock") || textLower.contains("band")) {
+        facts.add("Rock")
+    }
+    return facts.take(2)
+}
+
 @Composable
 private fun ArtistBio(
     biography: ArtistBiography,
@@ -2639,114 +2665,132 @@ private fun ArtistBio(
     var showFullBiography by rememberSaveable(biography.pageId, biography.languageCode, biography.text) {
         mutableStateOf(false)
     }
-    var visualOverflow by remember(editorial.summary) { mutableStateOf(false) }
     val sourceLabel = biography.sourceLabel.trim()
     val showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
     val sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) "Wikipedia" else sourceLabel
-    val showReadMore = editorial.hasMore || visualOverflow
-    val shape = RoundedCornerShape(24.dp)
+
+    val quickFacts = remember(editorial.summary, biography.description) {
+        extractQuickFacts(editorial.summary, biography.description)
+    }
+
+    val shape = RoundedCornerShape(20.dp)
 
     val borderBrush = Brush.linearGradient(
         colors = listOf(
-            accentStart.copy(alpha = 0.45f),
-            Color.White.copy(alpha = 0.12f),
-            accentEnd.copy(alpha = 0.25f)
+            accentStart.copy(alpha = 0.40f),
+            Color.White.copy(alpha = 0.10f),
+            accentEnd.copy(alpha = 0.20f)
         )
     )
-    val surfaceBrush = Brush.verticalGradient(
+    val surfaceBrush = Brush.horizontalGradient(
         colors = listOf(
-            Color(0xFF161822).copy(alpha = 0.88f),
-            accentStart.copy(alpha = 0.06f),
-            Color(0xFF0F1118).copy(alpha = 0.96f)
+            Color(0xFF141620).copy(alpha = 0.92f),
+            accentStart.copy(alpha = 0.08f),
+            Color(0xFF0E1017).copy(alpha = 0.96f)
         )
     )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(16.dp, shape, clip = false)
+            .shadow(12.dp, shape, clip = false)
             .background(surfaceBrush, shape)
             .border(BorderStroke(1.dp, borderBrush), shape)
             .clip(shape)
+            .clickable { showFullBiography = true }
     ) {
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = (-30).dp, y = (-30).dp)
-                .size(160.dp)
-                .blur(45.dp)
+                .offset(x = (-20).dp, y = (-20).dp)
+                .size(140.dp)
+                .blur(40.dp)
                 .background(accentStart.copy(alpha = 0.08f), CircleShape)
         )
 
-        Text(
-            text = "”",
-            color = accentStart.copy(alpha = 0.05f),
-            fontSize = 110.sp,
-            lineHeight = 90.sp,
-            fontWeight = FontWeight.Black,
+        Column(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 12.dp, y = (-20).dp)
-        )
-
-        Column(modifier = Modifier.fillMaxWidth()) {
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 18.dp, top = 18.dp, bottom = 14.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(7.dp)
-                            .background(
-                                Brush.horizontalGradient(listOf(accentStart, accentEnd)),
-                                CircleShape
+                            .clip(CircleShape)
+                            .background(accentStart.copy(alpha = 0.16f))
+                            .padding(horizontal = 9.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(accentStart, CircleShape)
+                        )
+                        Text(
+                            text = strings.biography.uppercase(),
+                            color = accentStart,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.0.sp
+                        )
+                    }
+
+                    quickFacts.forEach { fact ->
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.05f))
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
+                        ) {
+                            Text(
+                                text = fact,
+                                color = LevyraText.copy(alpha = 0.85f),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 0.3.sp
                             )
-                    )
-                    Text(
-                        text = strings.biography.uppercase(),
-                        color = accentStart,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
-                    )
+                        }
+                    }
                 }
 
                 if (showSource) {
                     Row(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.06f))
-                            .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+                            .background(Color.White.copy(alpha = 0.05f))
+                            .border(1.dp, Color.White.copy(alpha = 0.07f), CircleShape)
                             .clickable(enabled = biography.sourceUrl.isNotBlank()) {
                                 runCatching {
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
                                 }
                             }
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            .padding(horizontal = 9.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = sourceText,
-                            color = LevyraMuted.copy(alpha = 0.82f),
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            color = LevyraMuted.copy(alpha = 0.78f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                         if (biography.sourceUrl.isNotBlank()) {
                             Icon(
                                 imageVector = Icons.Rounded.OpenInNew,
                                 contentDescription = null,
-                                tint = LevyraMuted.copy(alpha = 0.82f),
-                                modifier = Modifier.size(11.dp)
+                                tint = LevyraMuted.copy(alpha = 0.78f),
+                                modifier = Modifier.size(10.dp)
                             )
                         }
                     }
@@ -2756,10 +2800,8 @@ private fun ArtistBio(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .padding(bottom = 16.dp)
                     .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Box(
@@ -2771,68 +2813,53 @@ private fun ArtistBio(
                             CircleShape
                         )
                 )
-                Text(
-                    text = editorial.summary,
-                    color = LevyraText.copy(alpha = 0.94f),
-                    fontSize = 14.5.sp,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 22.sp,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
-                    onTextLayout = { result -> visualOverflow = result.hasVisualOverflow }
-                )
-            }
 
-            if (showReadMore) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.White.copy(alpha = 0.08f),
-                                    Color.White.copy(alpha = 0.08f),
-                                    Color.Transparent
-                                )
+                        .weight(1f)
+                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to Color.Black,
+                                        0.55f to Color.Black,
+                                        1.0f to Color.Transparent
+                                    )
+                                ),
+                                blendMode = BlendMode.DstIn
                             )
-                        )
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showFullBiography = true }
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        }
                 ) {
                     Text(
-                        text = strings.readAll,
-                        color = accentStart,
+                        text = editorial.summary,
+                        color = LevyraText.copy(alpha = 0.94f),
                         fontSize = 13.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.2.sp
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 20.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Clip
                     )
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .background(
-                                accentStart.copy(alpha = 0.14f),
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = accentStart,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
                 }
-            } else {
-                Spacer(modifier = Modifier.height(10.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .align(Alignment.CenterVertically)
+                        .background(
+                            accentStart.copy(alpha = 0.15f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = accentStart,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
             }
         }
     }
