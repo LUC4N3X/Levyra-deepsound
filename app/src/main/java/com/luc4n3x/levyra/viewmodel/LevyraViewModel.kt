@@ -2815,9 +2815,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistProfile = initialProfile
                     )
                 }
-                if (initialBiography != null) {
+                initialBiography?.let {
                     startArtistLore(initialProfile)
-                } else {
+                } ?: run {
                     artistLoreJob?.cancel()
                     artistLoreJob = launchArtistLoreAwait(profile, biographyDeferred)
                 }
@@ -2830,8 +2830,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         biographyDeferred: Deferred<ArtistBiography?>
     ): Job {
         return viewModelScope.launch {
-            val biography = runCatching { biographyDeferred.await() }.getOrNull()
-            if (biography != null) {
+            runCatching { biographyDeferred.await() }.getOrNull()?.let { biography ->
                 _state.update { current ->
                     val visible = current.artistProfile ?: return@update current
                     if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
