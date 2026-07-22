@@ -9,6 +9,7 @@ on:
       - gradle.properties
       - app/build.gradle.kts
       - README.md
+      - RELEASE_NOTES.md
       - .github/workflows/apk-artifact-check.yml
       - .github/workflows/release-apk.yml
       - .github/workflows/release-guard.yml
@@ -48,7 +49,7 @@ jobs:
           VERSION="$(read_property levyraVersionName)"
           VERSION_CODE="$(read_property levyraVersionCode)"
 
-          if ! printf "%s" "${VERSION}" | grep -Eq '^[0-9]+(\.[0-9]+){0,3}([-+][0-9A-Za-z.-]+)?$'; then
+          if ! printf '%s' "${VERSION}" | grep -Eq '^[0-9]+(\.[0-9]+){0,3}([-+][0-9A-Za-z.-]+)?$'; then
             echo "Invalid levyraVersionName: ${VERSION}" >&2
             exit 1
           fi
@@ -86,13 +87,38 @@ jobs:
           grep -F "\"${VERSION}\"" app/build.gradle.kts >/dev/null
           grep -F "levyraVersionName=${VERSION}" README.md >/dev/null
           grep -F "levyraVersionCode=${VERSION_CODE}" README.md >/dev/null
-          test -f .github/workflows/release-apk.yml
-          grep -F "types:" .github/workflows/release-apk.yml >/dev/null
-          grep -F -- "- published" .github/workflows/release-apk.yml >/dev/null
-          grep -F "actions/artifacts" .github/workflows/release-apk.yml >/dev/null
-          grep -Eq 'gh[[:space:]]+release[[:space:]]+upload' .github/workflows/release-apk.yml
-          if grep -Eq 'gh[[:space:]]+release[[:space:]]+(create|edit)|generate[_-]release[_-]notes|generate-notes' .github/workflows/release-apk.yml; then
-            echo "release-apk.yml must not create releases or modify manually written release messages" >&2
+
+          NOTES_FILE="RELEASE_NOTES.md"
+          test -f "${NOTES_FILE}"
+          test "$(sed -n '/./{p;q;}' "${NOTES_FILE}")" = "# Levyra ${VERSION}"
+          grep -Fx -- "- Version name: \`${VERSION}\`" "${NOTES_FILE}" >/dev/null
+          grep -Fx -- "- Version code: \`${VERSION_CODE}\`" "${NOTES_FILE}" >/dev/null
+          grep -Fx "## Highlights" "${NOTES_FILE}" >/dev/null
+          grep -Fx "## Versioning" "${NOTES_FILE}" >/dev/null
+          grep -Fx "## Validation" "${NOTES_FILE}" >/dev/null
+          grep -Fx "## Upgrade notes" "${NOTES_FILE}" >/dev/null
+          grep -Fx "## Final note" "${NOTES_FILE}" >/dev/null
+          test "$(wc -c < "${NOTES_FILE}")" -ge 2000
+
+          RELEASE_WORKFLOW=".github/workflows/release-apk.yml"
+          test -f "${RELEASE_WORKFLOW}"
+          grep -F "gradle.properties" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F ":app:lintRelease" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F ":app:assembleRelease" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "LEVYRA_KEYSTORE_BASE64" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "apksigner" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "sha256sum" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -Eq 'gh[[:space:]]+release[[:space:]]+create' "${RELEASE_WORKFLOW}"
+          grep -F -- "--notes-file RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
+
+          if grep -Eq 'actions/artifacts|Wait for Matching APK Artifact|Download and Verify APK Artifact' "${RELEASE_WORKFLOW}"; then
+            echo "release-apk.yml must build the signed APK directly and must not consume workflow artifacts" >&2
+            exit 1
+          fi
+
+          if grep -Eq 'generate[_-]release[_-]notes|generate-notes' "${RELEASE_WORKFLOW}"; then
+            echo "release-apk.yml must use the curated RELEASE_NOTES.md body" >&2
             exit 1
           fi
 
@@ -101,6 +127,8 @@ jobs:
             echo "version=${VERSION}"
             echo "versionCode=${VERSION_CODE}"
             echo "tag=v${VERSION}"
+            echo "releaseNotes=${NOTES_FILE}"
+            echo "publisher=${RELEASE_WORKFLOW}"
           } | tee release-guard-result.txt
 
       - name: Upload Guard Result
