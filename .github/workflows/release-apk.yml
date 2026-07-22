@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: false
+      fdroid_release_suffix:
+        description: "Optional suffix for a corrected F-Droid build of the same app version"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -394,6 +399,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          FDROID_RELEASE_SUFFIX: ${{ inputs.fdroid_release_suffix || '' }}
         run: |
           set -euo pipefail
 
@@ -406,7 +412,12 @@ jobs:
           VERSION_CODE="$(read_property levyraVersionCode)"
           printf '%s' "${VERSION}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'
           printf '%s' "${VERSION_CODE}" | grep -Eq '^[1-9][0-9]*$'
-          FDROID_TAG="fdroid-${VERSION}"
+          if [[ -n "${FDROID_RELEASE_SUFFIX}" ]]; then
+            printf '%s' "${FDROID_RELEASE_SUFFIX}" | grep -Eq '^[0-9A-Za-z][0-9A-Za-z.-]*$'
+            FDROID_TAG="fdroid-${VERSION}-${FDROID_RELEASE_SUFFIX}"
+          else
+            FDROID_TAG="fdroid-${VERSION}"
+          fi
           FDROID_APK_NAME="LEVYRA-${VERSION}-fdroid.apk"
           FDROID_CHECKSUM_NAME="${FDROID_APK_NAME}.sha256"
 
