@@ -5245,9 +5245,12 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 }
             }
             item(key = "home-chart-regions", contentType = "home-horizontal-row") {
-                HomeSectionInset {
-                    ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
-                }
+                ChartRegionRow(
+                    regions = state.chartRegions,
+                    selectedId = state.selectedChartId,
+                    loading = state.isLoadingCharts,
+                    onSelect = viewModel::selectChart
+                )
             }
             if (state.charts.isEmpty() && (showChartShimmer || !state.isLoadingCharts)) {
                 item(key = "home-chart-empty", contentType = "home-card") {
@@ -7111,20 +7114,42 @@ private fun TrackOverflowMenu(
 }
 
 @Composable
-private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>, selectedId: String, loading: Boolean, onSelect: (String) -> Unit) {
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+private fun ChartRegionRow(
+    regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
+    selectedId: String,
+    loading: Boolean,
+    onSelect: (String) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(
+            start = HomeHorizontalInset,
+            end = HomeHorizontalShelfEndPadding
+        ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (loading) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+            item(key = "chart-region-loading", contentType = "chart-region-loading") {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = LevyraCyan
+                )
+            }
         }
-        regions.forEach { region ->
+        items(
+            items = regions,
+            key = { region -> region.id },
+            contentType = { "chart-region-chip" }
+        ) { region ->
             val selected = region.id == selectedId
             Surface(
                 color = if (selected) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.07f),
-                border = BorderStroke(1.dp, if (selected) LevyraCyan else Color.White.copy(alpha = 0.1f)),
+                border = BorderStroke(
+                    1.dp,
+                    if (selected) LevyraCyan else Color.White.copy(alpha = 0.1f)
+                ),
                 shape = CircleShape,
                 modifier = Modifier.pressable(onClick = { onSelect(region.id) })
             ) {
@@ -7134,7 +7159,13 @@ private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(region.emoji, fontSize = 14.sp)
-                    Text(region.label, color = if (selected) LevyraCyan else LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        text = region.label,
+                        color = if (selected) LevyraCyan else LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1
+                    )
                 }
             }
         }
