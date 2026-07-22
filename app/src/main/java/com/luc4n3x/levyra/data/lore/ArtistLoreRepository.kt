@@ -418,7 +418,8 @@ class ArtistLoreRepository(context: Context?) {
             .addQueryParameter("pilicense", "any")
             .addQueryParameter("pithumbsize", "640")
             .addQueryParameter("explaintext", "1")
-            .addQueryParameter("exchars", RICH_ARTICLE_REQUEST_CHARS.toString())
+            .addQueryParameter("exlimit", "1")
+            .addQueryParameter("exsectionformat", "plain")
             .addQueryParameter("inprop", "displaytitle")
             .addQueryParameter("format", "json")
             .addQueryParameter("formatversion", "2")
@@ -931,12 +932,36 @@ class ArtistLoreRepository(context: Context?) {
             }
             flush()
             val normalized = paragraphs
+                .map(::trimIncompleteBiographyTail)
+                .filter { it.isNotBlank() }
                 .joinToString("\n\n")
                 .replace(Regex("\n{3,}"), "\n\n")
                 .trim()
             if (normalized.length <= MAX_TEXT_LENGTH) return normalized
-            val cut = normalized.lastIndexOf('.', MAX_TEXT_LENGTH).takeIf { it >= 2_400 } ?: MAX_TEXT_LENGTH
-            return normalized.substring(0, cut + if (cut < normalized.length && normalized[cut] == '.') 1 else 0).trim()
+            val sentenceBoundary = lastBiographySentenceBoundary(normalized, MAX_TEXT_LENGTH)
+            val paragraphBoundary = normalized.lastIndexOf("\n\n", MAX_TEXT_LENGTH)
+            val cut = maxOf(sentenceBoundary, paragraphBoundary)
+                .takeIf { it >= MIN_SAFE_CUT_LENGTH }
+                ?: MAX_TEXT_LENGTH
+            return trimIncompleteBiographyTail(normalized.substring(0, cut + 1).trim())
+        }
+
+        private fun trimIncompleteBiographyTail(value: String): String {
+            val clean = value.replace(Regex("\\s+"), " ").trim()
+            if (clean.isBlank() || clean.last() in BIOGRAPHY_TERMINAL_PUNCTUATION) return clean
+            val boundary = lastBiographySentenceBoundary(clean, clean.lastIndex)
+            return boundary
+                .takeIf { it >= (clean.length * MIN_COMPLETE_TAIL_RATIO).toInt() }
+                ?.let { clean.substring(0, it + 1).trim() }
+                ?: clean
+        }
+
+        private fun lastBiographySentenceBoundary(value: String, fromIndex: Int): Int {
+            val safeIndex = fromIndex.coerceIn(0, value.lastIndex)
+            for (index in safeIndex downTo 0) {
+                if (value[index] in BIOGRAPHY_TERMINAL_PUNCTUATION) return index
+            }
+            return -1
         }
 
         private fun normalize(value: String): String {
@@ -1012,10 +1037,12 @@ class ArtistLoreRepository(context: Context?) {
             return "https://$languageCode.wikipedia.org/wiki/${encodePathSegment(pageTitle.replace(' ', '_'))}"
         }
 
-        private const val CACHE_KEY_VERSION = "v5"
+        private const val CACHE_KEY_VERSION = "v6"
         private const val MIN_TEXT_LENGTH = 80
-        private const val MAX_TEXT_LENGTH = 6_400
-        private const val RICH_ARTICLE_REQUEST_CHARS = 7_200
+        private const val MAX_TEXT_LENGTH = 12_000
+        private const val MIN_SAFE_CUT_LENGTH = 2_400
+        private const val MIN_COMPLETE_TAIL_RATIO = 0.55
+        private val BIOGRAPHY_TERMINAL_PUNCTUATION = setOf('.', '!', '?', '…')
         private const val MIN_PRELIMINARY_SCORE = 500
         private const val STRONG_PREFIX_SCORE = 900
         private const val ACCEPTED_SCORE = 760
