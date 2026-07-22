@@ -2633,47 +2633,37 @@ private fun ArtistBio(
 ) {
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
-    val editorial = remember(biography.text) { artistBiographyEditorial(biography.text) }
-    val biographyText = remember(biography.text, biography.description) {
-        buildString {
-            biography.description.trim().takeIf { it.isNotBlank() }?.let { description ->
-                append(description.removeSuffix("."))
-                append(". ")
-            }
-            editorial.lead.trim().takeIf { it.isNotBlank() }?.let { lead ->
-                append(lead)
-                if (!lead.endsWith('.') && !lead.endsWith('!') && !lead.endsWith('?')) append('.')
-            }
-            editorial.body.forEach { paragraph ->
-                val cleanParagraph = paragraph.trim()
-                if (cleanParagraph.isNotBlank()) {
-                    if (isNotEmpty()) append(' ')
-                    append(cleanParagraph)
-                }
-            }
-        }.replace(Regex("\\s+"), " ").trim()
+    val editorial = remember(biography.text, biography.description, biography.languageCode) {
+        artistBiographyEditorial(
+            text = biography.text,
+            description = biography.description,
+            languageCode = biography.languageCode
+        )
     }
-    var expanded by remember(biography.text) { mutableStateOf(false) }
-    var canExpand by remember(biography.text, biography.description) { mutableStateOf(false) }
+    var showFullBiography by rememberSaveable(biography.pageId, biography.languageCode, biography.text) {
+        mutableStateOf(false)
+    }
+    var visualOverflow by remember(editorial.summary) { mutableStateOf(false) }
     val sourceLabel = biography.sourceLabel.trim()
     val showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
     val sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) {
-        "Wikipedia · CC BY-SA 4.0"
+        "Wikipedia"
     } else {
         sourceLabel
     }
+    val showReadMore = editorial.hasMore || visualOverflow
 
     Surface(
-        color = Color(0xFF101010).copy(alpha = 0.98f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
-        shape = RoundedCornerShape(28.dp),
-        shadowElevation = 10.dp,
+        color = Color(0xFF101010).copy(alpha = 0.985f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.085f)),
+        shape = RoundedCornerShape(26.dp),
+        shadowElevation = 8.dp,
         tonalElevation = 0.dp,
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(11.dp)
+            modifier = Modifier.padding(horizontal = 21.dp, vertical = 17.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2685,7 +2675,7 @@ private fun ArtistBio(
                     color = LevyraCyan,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 0.5.sp
+                    letterSpacing = 0.45.sp
                 )
 
                 if (showSource) {
@@ -2700,7 +2690,7 @@ private fun ArtistBio(
                     ) {
                         Text(
                             text = sourceText,
-                            color = LevyraMuted.copy(alpha = 0.68f),
+                            color = LevyraMuted.copy(alpha = 0.66f),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -2710,7 +2700,7 @@ private fun ArtistBio(
                             Icon(
                                 imageVector = Icons.Rounded.OpenInNew,
                                 contentDescription = null,
-                                tint = LevyraMuted.copy(alpha = 0.68f),
+                                tint = LevyraMuted.copy(alpha = 0.66f),
                                 modifier = Modifier.size(12.dp)
                             )
                         }
@@ -2719,29 +2709,182 @@ private fun ArtistBio(
             }
 
             Text(
-                text = biographyText,
+                text = editorial.summary,
                 color = LevyraText.copy(alpha = 0.94f),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
-                lineHeight = 23.sp,
-                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                lineHeight = 22.sp,
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
-                onTextLayout = { result ->
-                    if (!expanded) canExpand = result.hasVisualOverflow
-                }
+                onTextLayout = { result -> visualOverflow = result.hasVisualOverflow }
             )
 
-            if (canExpand) {
-                Text(
-                    text = if (expanded) strings.showLess else strings.readAll,
-                    color = LevyraCyan,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
+            if (showReadMore) {
+                Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
-                        .clickable { expanded = !expanded }
-                        .padding(vertical = 2.dp)
-                )
+                        .clickable { showFullBiography = true }
+                        .padding(vertical = 3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.readAll,
+                        color = LevyraCyan,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = LevyraCyan,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    if (showFullBiography) {
+        ArtistBiographyDialog(
+            biography = biography,
+            paragraphs = editorial.paragraphs,
+            sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) {
+                "Wikipedia · CC BY-SA 4.0"
+            } else {
+                sourceLabel
+            },
+            onDismiss = { showFullBiography = false }
+        )
+    }
+}
+
+@Composable
+private fun ArtistBiographyDialog(
+    biography: ArtistBiography,
+    paragraphs: List<String>,
+    sourceText: String,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val context = LocalContext.current
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.78f))
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 14.dp, vertical = 18.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                color = Color(0xFF0D0D0F),
+                shape = RoundedCornerShape(30.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 620.dp)
+                    .fillMaxHeight(0.88f)
+                    .shadow(28.dp, RoundedCornerShape(30.dp), clip = false)
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 23.dp, vertical = 21.dp),
+                    verticalArrangement = Arrangement.spacedBy(17.dp)
+                ) {
+                    item(key = "biography-dialog-header") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Text(
+                                    text = strings.biography,
+                                    color = LevyraCyan,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.55.sp
+                                )
+                                Text(
+                                    text = biography.pageTitle.ifBlank { strings.biography },
+                                    color = LevyraText,
+                                    fontSize = 27.sp,
+                                    lineHeight = 31.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                                if (biography.description.isNotBlank()) {
+                                    Text(
+                                        text = biography.description,
+                                        color = LevyraMuted.copy(alpha = 0.90f),
+                                        fontSize = 14.sp,
+                                        lineHeight = 20.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                            IconButton(onClick = onDismiss) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = null,
+                                    tint = LevyraText
+                                )
+                            }
+                        }
+                    }
+
+                    itemsIndexed(
+                        items = paragraphs,
+                        key = { index, paragraph -> "biography-paragraph-$index-${paragraph.hashCode()}" }
+                    ) { index, paragraph ->
+                        Text(
+                            text = paragraph,
+                            color = if (index == 0) LevyraText else LevyraMuted.copy(alpha = 0.96f),
+                            fontSize = if (index == 0) 17.sp else 16.sp,
+                            lineHeight = if (index == 0) 27.sp else 26.sp,
+                            fontWeight = if (index == 0) FontWeight.SemiBold else FontWeight.Medium
+                        )
+                    }
+
+                    if (sourceText.isNotBlank()) {
+                        item(key = "biography-dialog-source") {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .clickable(enabled = biography.sourceUrl.isNotBlank()) {
+                                        runCatching {
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
+                                        }
+                                    }
+                                    .padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = sourceText,
+                                    color = LevyraMuted.copy(alpha = 0.76f),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                if (biography.sourceUrl.isNotBlank()) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.OpenInNew,
+                                        contentDescription = null,
+                                        tint = LevyraMuted.copy(alpha = 0.76f),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
