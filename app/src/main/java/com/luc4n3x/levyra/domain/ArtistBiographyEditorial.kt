@@ -20,60 +20,101 @@ internal fun artistBiographyEditorial(
 ): ArtistBiographyEditorial {
     val sourceText = text.trim().ifBlank { description.trim() }
     val paragraphs = biographyParagraphs(sourceText, languageCode)
+    if (paragraphs.isEmpty()) return emptyArtistBiographyEditorial()
     val fullText = paragraphs.joinToString("\n\n")
-    if (fullText.isBlank()) {
-        return ArtistBiographyEditorial(
-            summary = "",
-            paragraphs = emptyList(),
-            hasMore = false
-        )
-    }
-
-    val sentences = paragraphs.flatMap { paragraph ->
-        biographySentences(paragraph, languageCode)
-    }.distinctBy { normalizeBiographyKey(it) }
-
-    val selected = LinkedHashSet<Int>()
-    if (sentences.isNotEmpty()) selected += 0
-    if (sentences.size > 1 && sentences[0].length + sentences[1].length <= 470) selected += 1
-
-    val ranked = sentences.indices
-        .filterNot(selected::contains)
-        .map { index -> index to biographySentenceScore(sentences[index], index) }
-        .sortedWith(compareByDescending<Pair<Int, Int>> { it.second }.thenBy { it.first })
-
-    var summaryLength = selected.sumOf { sentences[it].length + 1 }
-    for ((index, score) in ranked) {
-        if (score <= 0 || selected.size >= MAX_SUMMARY_SENTENCES) continue
-        val candidateLength = sentences[index].length + if (summaryLength > 0) 1 else 0
-        if (summaryLength + candidateLength > MAX_SUMMARY_LENGTH && summaryLength >= MIN_SUMMARY_LENGTH) continue
-        selected += index
-        summaryLength += candidateLength
-        if (summaryLength >= TARGET_SUMMARY_LENGTH && selected.size >= MIN_SUMMARY_SENTENCES) break
-    }
-
-    if (summaryLength < MIN_SUMMARY_LENGTH) {
-        for (index in sentences.indices) {
-            if (index in selected) continue
-            val candidateLength = sentences[index].length + if (summaryLength > 0) 1 else 0
-            if (summaryLength + candidateLength > MAX_SUMMARY_LENGTH && summaryLength > 0) break
-            selected += index
-            summaryLength += candidateLength
-            if (summaryLength >= MIN_SUMMARY_LENGTH) break
-        }
-    }
-
-    val summary = selected
-        .sorted()
-        .joinToString(" ") { sentences[it] }
-        .trim()
-        .ifBlank { paragraphs.first() }
-
+    val sentences = distinctBiographySentences(paragraphs, languageCode)
+    val summary = selectBiographySummary(sentences, paragraphs.first())
     return ArtistBiographyEditorial(
         summary = summary,
         paragraphs = paragraphs,
         hasMore = fullText.length > summary.length + MORE_TEXT_THRESHOLD
     )
+}
+
+private fun emptyArtistBiographyEditorial(): ArtistBiographyEditorial {
+    return ArtistBiographyEditorial(
+        summary = "",
+        paragraphs = emptyList(),
+        hasMore = false
+    )
+}
+
+private fun distinctBiographySentences(
+    paragraphs: List<String>,
+    languageCode: String
+): List<String> {
+    return paragraphs
+        .flatMap { paragraph -> biographySentences(paragraph, languageCode) }
+        .distinctBy(::normalizeBiographyKey)
+}
+
+private fun selectBiographySummary(sentences: List<String>, fallback: String): String {
+    if (sentences.isEmpty()) return fallback
+    val state = BiographySummarySelection(sentences)
+    state.selectInitialSentences()
+    state.selectRankedSentences()
+    state.fillMinimumLength()
+    return state.buildSummary().ifBlank { fallback }
+}
+
+private class BiographySummarySelection(
+    private val sentences: List<String>
+) {
+    private val selected = LinkedHashSet<Int>()
+    private var length = 0
+
+    fun selectInitialSentences() {
+        add(0)
+        if (sentences.size > 1 && sentences[0].length + sentences[1].length <= INITIAL_PAIR_MAX_LENGTH) {
+            add(1)
+        }
+    }
+
+    fun selectRankedSentences() {
+        val ranked = sentences.indices
+            .filterNot(selected::contains)
+            .map { index -> index to biographySentenceScore(sentences[index], index) }
+            .sortedWith(compareByDescending<Pair<Int, Int>> { it.second }.thenBy { it.first })
+        for ((index, score) in ranked) {
+            if (!canAddRanked(index, score)) continue
+            add(index)
+            if (targetReached()) break
+        }
+    }
+
+    fun fillMinimumLength() {
+        if (length >= MIN_SUMMARY_LENGTH) return
+        for (index in sentences.indices) {
+            if (index in selected) continue
+            if (!canAddFallback(index)) break
+            add(index)
+            if (length >= MIN_SUMMARY_LENGTH) break
+        }
+    }
+
+    fun buildSummary(): String {
+        return selected.sorted().joinToString(" ") { sentences[it] }.trim()
+    }
+
+    private fun add(index: Int) {
+        if (!selected.add(index)) return
+        length += sentences[index].length + if (length > 0) 1 else 0
+    }
+
+    private fun canAddRanked(index: Int, score: Int): Boolean {
+        if (score <= 0 || selected.size >= MAX_SUMMARY_SENTENCES) return false
+        val candidateLength = sentences[index].length + if (length > 0) 1 else 0
+        return length + candidateLength <= MAX_SUMMARY_LENGTH || length < MIN_SUMMARY_LENGTH
+    }
+
+    private fun canAddFallback(index: Int): Boolean {
+        val candidateLength = sentences[index].length + if (length > 0) 1 else 0
+        return length + candidateLength <= MAX_SUMMARY_LENGTH || length == 0
+    }
+
+    private fun targetReached(): Boolean {
+        return length >= TARGET_SUMMARY_LENGTH && selected.size >= MIN_SUMMARY_SENTENCES
+    }
 }
 
 private fun biographyParagraphs(value: String, languageCode: String): List<String> {
@@ -214,6 +255,7 @@ private const val MIN_SENTENCE_LENGTH = 28
 private const val MIN_PARAGRAPH_LENGTH = 24
 private const val MAX_PARAGRAPH_LENGTH = 520
 private const val MIN_SUMMARY_SENTENCES = 3
+private const val INITIAL_PAIR_MAX_LENGTH = 470
 private const val MAX_SUMMARY_SENTENCES = 6
 private const val MIN_SUMMARY_LENGTH = 430
 private const val TARGET_SUMMARY_LENGTH = 760
