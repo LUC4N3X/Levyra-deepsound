@@ -624,7 +624,7 @@ private fun ActiveTrackEqualizer(
     }
 }
 @Composable
-private fun SectionAccentBar(height: Dp = 20.dp, width: Dp = 3.5.dp) {
+private fun SectionAccentBar(height: Dp = 22.dp, width: Dp = 4.dp) {
     Box(
         modifier = Modifier
             .width(width)
@@ -677,7 +677,7 @@ private fun SectionTitle(title: String) {
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         SectionAccentBar()
-        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, color = LevyraText, fontSize = 21.sp, lineHeight = 23.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.55).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 @Composable
@@ -13915,7 +13915,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                         color = CinematicGlass.copy(alpha = 0.3f),
                         border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
                         shape = RoundedCornerShape(18.dp),
-                        shadowElevation = 0.dp,
+                        shadowElevation = 10.dp,
                         modifier = Modifier
                             .size(148.dp)
                             .align(Alignment.BottomCenter)
