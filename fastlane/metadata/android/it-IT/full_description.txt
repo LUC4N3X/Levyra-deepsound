@@ -1,0 +1,17 @@
+Levyra è un client musicale Android nativo progettato per offrire riproduzione reattiva, controllo locale e privacy.
+
+Funzioni principali:
+
+* modalità audio e video nativo scelte dall'utente
+* riproduzione in background con AndroidX Media3 e MediaSession
+* ricerca, classifiche, album, artisti, playlist e coda persistente
+* testi sincronizzati con più provider di riserva
+* salto facoltativo dei segmenti tramite SponsorBlock
+* esportazione offline di file audio taggati nella cartella pubblica Music/Levyra
+* preferiti, playlist, cronologia e statistiche di ascolto salvati sul dispositivo
+* integrazione con Android Auto, notifiche, schermata di blocco, widget e Picture-in-Picture
+* interfacce chiare, scure, OLED, a colori dinamici e multilingua
+
+Levyra non contiene pubblicità, strumenti di analisi o telemetria gestita dallo sviluppatore. Le funzioni di rete contattano direttamente servizi di terze parti, principalmente YouTube e YouTube Music, oltre a provider di copertine, testi, metadati e servizi comunitari. Tali servizi ricevono le normali informazioni di rete, come l'indirizzo IP del dispositivo.
+
+La build F-Droid è compilata interamente dal sorgente pubblico. Non usa l'aggiornamento automatico tramite GitHub: gli aggiornamenti sono distribuiti da F-Droid.

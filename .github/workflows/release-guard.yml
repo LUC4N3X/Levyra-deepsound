@@ -110,6 +110,10 @@ jobs:
           grep -F "apksigner" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F "sha256sum" "${RELEASE_WORKFLOW}" >/dev/null
           grep -Eq 'gh[[:space:]]+release[[:space:]]+create' "${RELEASE_WORKFLOW}"
+          grep -F "levyraFdroidBuild=true" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "LEVYRA_SIGNING_CERT_SHA256" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "FDROID_TAG" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "FDROID_APK_NAME" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F -- "--notes-file RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
 
           if grep -Eq 'actions/artifacts|Wait for Matching APK Artifact|Download and Verify APK Artifact' "${RELEASE_WORKFLOW}"; then
