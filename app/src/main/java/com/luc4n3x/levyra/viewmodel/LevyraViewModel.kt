@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -111,6 +112,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -137,6 +139,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
+private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
 
 private data class HomeArtistCandidate(
     val name: String,
@@ -2769,54 +2772,100 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 showArtist = true,
                 artistLoading = true,
                 artistError = null,
-                artistProfile = if (sameProfile) current.artistProfile else null,
+                artistProfile = current.artistProfile?.takeIf { sameProfile && it.hasBio },
                 openPlaylist = null,
                 detailReturnTarget = DetailReturnTarget.None
             )
         }
         artistJob = viewModelScope.launch {
-            val profile = if (normalizedBrowseId.isNotBlank()) {
-                runCatching { artistRepository.profile(normalizedBrowseId, clean) }.getOrNull()
-            } else {
-                runCatching { artistRepository.profileFor(clean) }.getOrNull()
-            }
-            if (!isActive) return@launch
-            if (profile == null) {
-                _state.update {
-                    it.copy(
-                        artistLoading = false,
-                        artistError = ARTIST_PROFILE_UNAVAILABLE_ERROR,
-                        artistProfile = null
-                    )
+            coroutineScope {
+                val profileDeferred = async {
+                    if (normalizedBrowseId.isNotBlank()) {
+                        runCatching { artistRepository.profile(normalizedBrowseId, clean) }.getOrNull()
+                    } else {
+                        runCatching { artistRepository.profileFor(clean) }.getOrNull()
+                    }
                 }
-            } else {
+                val biographyDeferred = async {
+                    runCatching { artistRepository.biographyFor(clean, normalizedBrowseId) }.getOrNull()
+                }
+                val profile = profileDeferred.await()
+                if (!isActive) return@coroutineScope
+                if (profile == null) {
+                    biographyDeferred.cancel()
+                    _state.update {
+                        it.copy(
+                            artistLoading = false,
+                            artistError = ARTIST_PROFILE_UNAVAILABLE_ERROR,
+                            artistProfile = null
+                        )
+                    }
+                    return@coroutineScope
+                }
+                val initialBiography = withTimeoutOrNull(ARTIST_INITIAL_BIOGRAPHY_WAIT_MS) {
+                    biographyDeferred.await()
+                }
+                val initialProfile = initialBiography?.let { biography ->
+                    artistRepository.mergeBiography(profile, biography)
+                } ?: profile
                 _state.update {
                     it.copy(
                         artistLoading = false,
                         artistError = null,
-                        artistProfile = profile
+                        artistProfile = initialProfile
                     )
                 }
-                startArtistLore(profile)
+                if (initialBiography != null) {
+                    startArtistLore(initialProfile)
+                } else {
+                    artistLoreJob?.cancel()
+                    artistLoreJob = launchArtistLoreAwait(profile, biographyDeferred)
+                }
             }
+        }
+    }
+
+    private fun launchArtistLoreAwait(
+        profile: ArtistProfile,
+        biographyDeferred: Deferred<ArtistBiography?>
+    ): Job {
+        return viewModelScope.launch {
+            val biography = runCatching { biographyDeferred.await() }.getOrNull()
+            if (biography != null) {
+                _state.update { current ->
+                    val visible = current.artistProfile ?: return@update current
+                    if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
+                    current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
+                }
+            }
+            val visible = _state.value.artistProfile ?: return@launch
+            if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch
+            artistLoreJob = launchArtistLoreCollection(visible)
         }
     }
 
     private fun startArtistLore(profile: ArtistProfile) {
         artistLoreJob?.cancel()
-        artistLoreJob = viewModelScope.launch {
+        artistLoreJob = launchArtistLoreCollection(profile)
+    }
+
+    private fun launchArtistLoreCollection(profile: ArtistProfile): Job {
+        return viewModelScope.launch {
             artistRepository.observeBiography(profile).collectLatest { biography ->
                 _state.update { current ->
                     val visible = current.artistProfile ?: return@update current
-                    val sameArtist = if (profile.browseId.isNotBlank()) {
-                        visible.browseId.equals(profile.browseId, ignoreCase = true)
-                    } else {
-                        visible.name.equals(profile.name, ignoreCase = true)
-                    }
-                    if (!current.showArtist || !sameArtist) return@update current
+                    if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
                     current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
                 }
             }
+        }
+    }
+
+    private fun sameArtistProfile(left: ArtistProfile, right: ArtistProfile): Boolean {
+        return if (right.browseId.isNotBlank()) {
+            left.browseId.equals(right.browseId, ignoreCase = true)
+        } else {
+            left.name.equals(right.name, ignoreCase = true)
         }
     }
 
