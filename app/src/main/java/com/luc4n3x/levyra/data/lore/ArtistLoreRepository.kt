@@ -9,10 +9,12 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.artistIdentityKey
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -47,74 +49,123 @@ class ArtistLoreRepository(context: Context?) {
         browseId: String,
         languageCode: String
     ): Flow<ArtistBiography> = flow {
+        emitLore(artistName, browseId, languageCode, this)
+    }.flowOn(Dispatchers.IO)
+
+    private suspend fun emitLore(
+        artistName: String,
+        browseId: String,
+        languageCode: String,
+        collector: FlowCollector<ArtistBiography>
+    ) {
+        val request = createObservationRequest(artistName, browseId, languageCode) ?: return
+        val cacheState = collectCacheState(request)
+        val emittedSignature = emitCachedBiography(cacheState.initial, collector)
+        if (cacheState.canStop(request.languages.first())) return
+
+        val preferred = resolvePreferredBiography(request, cacheState)
+        if (preferred != null) {
+            persistAndEmit(request, preferred, emittedSignature, collector)
+            prune(request.now)
+            return
+        }
+
+        val fallback = resolveCrossLanguageBiography(request)
+        if (fallback != null) {
+            persistAndEmit(request, fallback, emittedSignature, collector)
+        }
+        prune(request.now)
+    }
+
+    private fun createObservationRequest(
+        artistName: String,
+        browseId: String,
+        languageCode: String
+    ): LoreObservationRequest? {
         val cleanName = artistName.trim()
-        if (cleanName.length < 2) return@flow
+        if (cleanName.length < 2) return null
         val artistKey = artistIdentityKey(cleanName)
-        if (artistKey.isBlank()) return@flow
-        val languages = languagePriority(languageCode)
-        val now = System.currentTimeMillis()
-        var emittedSignature = ""
+        if (artistKey.isBlank()) return null
+        return LoreObservationRequest(
+            artistName = cleanName,
+            artistKey = artistKey,
+            browseId = browseId.trim(),
+            languages = languagePriority(languageCode),
+            now = System.currentTimeMillis()
+        )
+    }
+
+    private suspend fun collectCacheState(request: LoreObservationRequest): LoreCacheState {
+        var initial: ArtistLoreEntity? = null
         val freshLanguages = HashSet<String>()
         val blockedLanguages = HashSet<String>()
-
-        for (language in languages) {
-            val cached = readCache(artistKey, browseId, language, now) ?: continue
+        for (language in request.languages) {
+            val cached = readCache(request.artistKey, request.browseId, language, request.now) ?: continue
             if (cached.negative) {
-                if (cached.expiresAt > now) blockedLanguages += language
+                if (cached.expiresAt > request.now) blockedLanguages += language
                 continue
             }
-            if (cached.staleUntil <= now || cached.text.isBlank()) continue
-            if (emittedSignature.isBlank()) {
-                emittedSignature = cached.signature()
-                emit(cached.toBiography(cached = true))
-            }
-            if (cached.expiresAt > now) freshLanguages += language
+            if (!cached.isUsableAt(request.now)) continue
+            if (initial == null) initial = cached
+            if (cached.expiresAt > request.now) freshLanguages += language
         }
-
-        if (emittedSignature.isBlank()) {
-            val fallback = readBestFallbackCache(artistKey, browseId, languages, now)
-            if (fallback != null && !fallback.negative && fallback.text.isNotBlank() && fallback.staleUntil > now) {
-                emittedSignature = fallback.signature()
-                emit(fallback.toBiography(cached = true))
-            }
+        if (initial == null) {
+            initial = readBestFallbackCache(
+                artistKey = request.artistKey,
+                browseId = request.browseId,
+                excludedLanguages = request.languages,
+                now = request.now
+            )?.takeIf { it.isUsableAt(request.now) }
         }
+        return LoreCacheState(initial, freshLanguages, blockedLanguages)
+    }
 
-        val preferredLanguage = languages.first()
-        if (preferredLanguage in freshLanguages || (preferredLanguage in blockedLanguages && freshLanguages.isNotEmpty())) {
-            return@flow
-        }
+    private suspend fun emitCachedBiography(
+        cached: ArtistLoreEntity?,
+        collector: FlowCollector<ArtistBiography>
+    ): String {
+        cached ?: return ""
+        collector.emit(cached.toBiography(cached = true))
+        return cached.signature()
+    }
 
-        for (language in languages) {
-            if (language in blockedLanguages || language in freshLanguages) continue
-            val outcome = resolveNetwork(cleanName, browseId, language)
-            val result = outcome.biography
-            if (result != null) {
-                val entity = persistPositive(artistKey, browseId, result, now)
-                if (entity.signature() != emittedSignature) emit(result.copy(cached = false))
-                prune(now)
-                return@flow
-            }
+    private suspend fun resolvePreferredBiography(
+        request: LoreObservationRequest,
+        cacheState: LoreCacheState
+    ): ArtistBiography? {
+        for (language in request.languages) {
+            if (cacheState.shouldSkip(language)) continue
+            val outcome = resolveNetwork(request.artistName, request.browseId, language)
+            outcome.biography?.let { return it }
             if (outcome.completedWithoutTransientFailure) {
-                persistNegative(artistKey, browseId, language, now)
+                persistNegative(request.artistKey, request.browseId, language, request.now)
             }
         }
+        return null
+    }
 
-        val fallbackLanguages = crossLanguagePriority(languages)
-        if (fallbackLanguages.isNotEmpty()) {
-            val fallbackOutcome = resolveFromEntitySearch(
-                artistName = cleanName,
-                browseId = browseId,
-                searchLanguageCode = preferredLanguage,
-                articleLanguages = fallbackLanguages
-            )
-            val fallbackBiography = fallbackOutcome.biography
-            if (fallbackBiography != null) {
-                val entity = persistPositive(artistKey, browseId, fallbackBiography, now)
-                if (entity.signature() != emittedSignature) emit(fallbackBiography.copy(cached = false))
-            }
+    private suspend fun resolveCrossLanguageBiography(request: LoreObservationRequest): ArtistBiography? {
+        val fallbackLanguages = crossLanguagePriority(request.languages)
+        if (fallbackLanguages.isEmpty()) return null
+        return resolveFromEntitySearch(
+            artistName = request.artistName,
+            browseId = request.browseId,
+            searchLanguageCode = request.languages.first(),
+            articleLanguages = fallbackLanguages
+        ).biography
+    }
+
+    private suspend fun persistAndEmit(
+        request: LoreObservationRequest,
+        biography: ArtistBiography,
+        previousSignature: String,
+        collector: FlowCollector<ArtistBiography>
+    ) {
+        val entity = persistPositive(request.artistKey, request.browseId, biography, request.now)
+        if (entity.signature() != previousSignature) {
+            collector.emit(biography.copy(cached = false))
         }
-        prune(now)
-    }.flowOn(Dispatchers.IO)
+    }
 
     private suspend fun readCache(
         artistKey: String,
@@ -125,19 +176,24 @@ class ArtistLoreRepository(context: Context?) {
         val key = cacheKey(artistKey, browseId, languageCode)
         memory[key]?.let { cached ->
             if (cached.staleUntil > now && cached.isWikipediaEntry()) {
-                return cached.also { dao?.touch(it.cacheKey, now) }
+                dao?.touch(cached.cacheKey, now)
+                return cached
             }
             memory.remove(key)
         }
+        val targetDao = dao ?: return null
         val requestedBrowseId = browseId.trim()
-        val stored = dao?.get(key)
-            ?: requestedBrowseId.takeIf { it.isNotBlank() }?.let { dao?.findByBrowseId(it, languageCode) }
-            ?: (if (allowsArtistKeyFallback(requestedBrowseId)) dao?.findByArtistKey(artistKey, languageCode) else null)
-            ?: return null
-        if (stored.staleUntil <= now || !stored.isWikipediaEntry()) return null
-        memory[key] = stored
-        dao?.touch(stored.cacheKey, now)
-        return stored
+        var stored = targetDao.get(key)
+        if (stored == null && requestedBrowseId.isNotBlank()) {
+            stored = targetDao.findByBrowseId(requestedBrowseId, languageCode)
+        }
+        if (stored == null && allowsArtistKeyFallback(requestedBrowseId)) {
+            stored = targetDao.findByArtistKey(artistKey, languageCode)
+        }
+        val valid = stored?.takeIf { it.staleUntil > now && it.isWikipediaEntry() } ?: return null
+        memory[key] = valid
+        targetDao.touch(valid.cacheKey, now)
+        return valid
     }
 
     private suspend fun readBestFallbackCache(
@@ -277,8 +333,34 @@ class ArtistLoreRepository(context: Context?) {
         searchLanguageCode: String,
         articleLanguages: List<String>
     ): LoreNetworkOutcome = coroutineScope {
-        val searchLanguages = linkedSetOf(searchLanguageCode, "en")
-        val jobs = searchLanguages.map { language -> async { language to queryEntitySearch(artistName, language) } }
+        val search = searchEntityHits(artistName, searchLanguageCode)
+        if (search.hits.isEmpty()) {
+            return@coroutineScope LoreNetworkOutcome(null, search.completedWithoutTransientFailure)
+        }
+        val records = when (
+            val result = fetchEntityRecords(
+                entityIds = search.hits.take(MAX_ENTITY_SEARCH_RESULTS).map { it.entityId },
+                languages = linkedSetOf(searchLanguageCode, "en")
+            )
+        ) {
+            is EntityRecordsResult.Success -> result.records
+            EntityRecordsResult.Failure -> return@coroutineScope LoreNetworkOutcome(null, false)
+        }
+        val accepted = rankEntityRecords(artistName, browseId, search.hits, records)
+        val resolution = resolveEntityArticles(artistName, accepted, articleLanguages)
+        LoreNetworkOutcome(
+            biography = resolution.biography,
+            completedWithoutTransientFailure = search.completedWithoutTransientFailure && !resolution.transientFailure
+        )
+    }
+
+    private suspend fun searchEntityHits(
+        artistName: String,
+        searchLanguageCode: String
+    ): LoreEntitySearchCollection = coroutineScope {
+        val jobs = linkedSetOf(searchLanguageCode, "en").map { language ->
+            async { language to queryEntitySearch(artistName, language) }
+        }
         val results = jobs.map { it.await() }
         val hits = results.flatMap { (language, result) ->
             when (result) {
@@ -286,80 +368,112 @@ class ArtistLoreRepository(context: Context?) {
                 JsonResult.Failure -> emptyList()
             }
         }.distinctBy { it.entityId }
-        if (hits.isEmpty()) {
-            return@coroutineScope LoreNetworkOutcome(
-                biography = null,
-                completedWithoutTransientFailure = results.none { it.second is JsonResult.Failure }
-            )
-        }
-        val recordsResult = fetchEntityRecords(
-            entityIds = hits.take(MAX_ENTITY_SEARCH_RESULTS).map { it.entityId },
-            languages = linkedSetOf(searchLanguageCode, "en")
+        LoreEntitySearchCollection(
+            hits = hits,
+            completedWithoutTransientFailure = results.none { it.second is JsonResult.Failure }
         )
-        val records = when (recordsResult) {
-            is EntityRecordsResult.Success -> recordsResult.records
-            EntityRecordsResult.Failure -> return@coroutineScope LoreNetworkOutcome(null, false)
-        }
+    }
+
+    private fun rankEntityRecords(
+        artistName: String,
+        browseId: String,
+        hits: List<LoreEntitySearchHit>,
+        records: List<LoreEntityRecord>
+    ): List<Pair<LoreEntityRecord, Int>> {
         val hitById = hits.associateBy { it.entityId }
-        val ranked = records.map { record ->
-            val hit = hitById[record.entityId]
-            record to entityRecordScore(artistName, record, hit, browseId)
-        }.sortedByDescending { it.second }
-        val accepted = ranked.filter { (_, score) ->
-            score >= ENTITY_ACCEPTED_SCORE
+        return records.asSequence()
+            .map { record -> record to entityRecordScore(artistName, record, hitById[record.entityId], browseId) }
+            .filter { (_, score) -> score >= ENTITY_ACCEPTED_SCORE }
+            .sortedByDescending { it.second }
+            .take(MAX_ENTITY_ARTICLE_ATTEMPTS)
+            .toList()
+    }
+
+    private suspend fun resolveEntityArticles(
+        artistName: String,
+        records: List<Pair<LoreEntityRecord, Int>>,
+        articleLanguages: List<String>
+    ): EntityArticleResolution {
+        var transientFailure = false
+        val languages = articleLanguages.distinct()
+        for ((record, score) in records) {
+            val resolution = resolveEntityRecordArticle(artistName, record, score, languages)
+            resolution.biography?.let { return resolution }
+            transientFailure = transientFailure || resolution.transientFailure
         }
-        var articleTransientFailure = false
-        for ((record, score) in accepted.take(MAX_ENTITY_ARTICLE_ATTEMPTS)) {
-            for (articleLanguage in articleLanguages.distinct()) {
-                val title = record.sitelinks[wikiSiteKey(articleLanguage)]?.trim().orEmpty()
-                if (title.isBlank()) continue
-                when (val article = fetchRichArticle(title, articleLanguage)) {
-                    is RichArticleResult.Success -> {
-                        val summary = article.summary
-                        if (summary != null) {
-                            val candidate = LoreCandidate(
-                                pageTitle = summary.pageTitle,
-                                pageId = summary.pageId,
-                                entityId = summary.entityId.ifBlank { record.entityId },
-                                description = summary.description.ifBlank { record.descriptionFor(articleLanguage) },
-                                extract = summary.extract,
-                                thumbnailUrl = summary.thumbnailUrl,
-                                originalImageUrl = summary.originalImageUrl,
-                                sourceUrl = summary.sourceUrl.ifBlank { wikipediaPageUrl(articleLanguage, summary.pageTitle) },
-                                baseScore = score,
-                                finalScore = score
-                            )
-                            val biography = candidate.toBiography(articleLanguage, scoreToConfidence(score))
-                            if (biography != null) return@coroutineScope LoreNetworkOutcome(biography, true)
-                        }
-                    }
-                    RichArticleResult.Failure -> articleTransientFailure = true
-                }
-                when (val exact = queryExactCandidates(title, articleLanguage)) {
-                    is JsonResult.Success -> {
-                        val candidate = exact.value.toCandidates(
-                            artistName = artistName,
-                            languageCode = articleLanguage,
-                            minimumScore = Int.MIN_VALUE
-                        ).firstOrNull { page ->
-                            page.entityId.isBlank() || page.entityId == record.entityId
-                        }
-                        if (candidate != null) {
-                            val biography = candidate.copy(
-                                entityId = candidate.entityId.ifBlank { record.entityId },
-                                finalScore = score
-                            ).toBiography(articleLanguage, scoreToConfidence(score))
-                            if (biography != null) return@coroutineScope LoreNetworkOutcome(biography, true)
-                        }
-                    }
-                    JsonResult.Failure -> articleTransientFailure = true
-                }
+        return EntityArticleResolution(null, transientFailure)
+    }
+
+    private suspend fun resolveEntityRecordArticle(
+        artistName: String,
+        record: LoreEntityRecord,
+        score: Int,
+        articleLanguages: List<String>
+    ): EntityArticleResolution {
+        var transientFailure = false
+        for (articleLanguage in articleLanguages) {
+            val title = record.sitelinks[wikiSiteKey(articleLanguage)]?.trim().orEmpty()
+            if (title.isBlank()) continue
+            val rich = resolveRichEntityArticle(record, score, title, articleLanguage)
+            rich.biography?.let { return rich }
+            transientFailure = transientFailure || rich.transientFailure
+            val exact = resolveExactEntityArticle(artistName, record, score, title, articleLanguage)
+            exact.biography?.let { return exact }
+            transientFailure = transientFailure || exact.transientFailure
+        }
+        return EntityArticleResolution(null, transientFailure)
+    }
+
+    private suspend fun resolveRichEntityArticle(
+        record: LoreEntityRecord,
+        score: Int,
+        title: String,
+        articleLanguage: String
+    ): EntityArticleResolution {
+        return when (val article = fetchRichArticle(title, articleLanguage)) {
+            is RichArticleResult.Success -> {
+                val summary = article.summary ?: return EntityArticleResolution(null, false)
+                val candidate = LoreCandidate(
+                    pageTitle = summary.pageTitle,
+                    pageId = summary.pageId,
+                    entityId = summary.entityId.ifBlank { record.entityId },
+                    description = summary.description.ifBlank { record.descriptionFor(articleLanguage) },
+                    extract = summary.extract,
+                    thumbnailUrl = summary.thumbnailUrl,
+                    originalImageUrl = summary.originalImageUrl,
+                    sourceUrl = summary.sourceUrl.ifBlank { wikipediaPageUrl(articleLanguage, summary.pageTitle) },
+                    baseScore = score,
+                    finalScore = score
+                )
+                EntityArticleResolution(candidate.toBiography(articleLanguage, scoreToConfidence(score)), false)
             }
+            RichArticleResult.Failure -> EntityArticleResolution(null, true)
         }
-        LoreNetworkOutcome(
-            biography = null,
-            completedWithoutTransientFailure = results.none { it.second is JsonResult.Failure } && !articleTransientFailure
-        )
+    }
+
+    private suspend fun resolveExactEntityArticle(
+        artistName: String,
+        record: LoreEntityRecord,
+        score: Int,
+        title: String,
+        articleLanguage: String
+    ): EntityArticleResolution {
+        return when (val exact = queryExactCandidates(title, articleLanguage)) {
+            is JsonResult.Success -> {
+                val candidate = exact.value.toCandidates(
+                    artistName = artistName,
+                    languageCode = articleLanguage,
+                    minimumScore = Int.MIN_VALUE
+                ).firstOrNull { page -> page.entityId.isBlank() || page.entityId == record.entityId }
+                    ?: return EntityArticleResolution(null, false)
+                val biography = candidate.copy(
+                    entityId = candidate.entityId.ifBlank { record.entityId },
+                    finalScore = score
+                ).toBiography(articleLanguage, scoreToConfidence(score))
+                EntityArticleResolution(biography, false)
+            }
+            JsonResult.Failure -> EntityArticleResolution(null, true)
+        }
     }
 
     private suspend fun queryExactCandidates(
@@ -801,30 +915,44 @@ class ArtistLoreRepository(context: Context?) {
         ): Int {
             val artist = normalize(artistName)
             val title = normalize(pageTitle)
-            val baseTitle = normalize(pageTitle.substringBefore(" (").substringBefore(" ["))
             if (artist.isBlank() || title.isBlank()) return Int.MIN_VALUE
+            val baseTitle = normalize(pageTitle.substringBefore(" (").substringBefore(" ["))
             val parenthetical = normalize(pageTitle.substringAfter("(", "").substringBeforeLast(")", ""))
             val blob = normalize("$description ${extract.take(1000)}")
-            var score = 0
+            return titleIdentityScore(artist, title, baseTitle) +
+                pageContextScore(parenthetical, blob) +
+                extractQualityScore(artist, extract)
+        }
+
+        private fun titleIdentityScore(artist: String, title: String, baseTitle: String): Int {
             val compactArtist = artist.replace(" ", "")
             val compactTitle = baseTitle.replace(" ", "")
             val distance = editDistance(compactArtist, compactTitle)
-            when {
-                baseTitle == artist -> score += 620
-                title == artist -> score += 600
-                compactArtist.length >= 3 && distance <= 1 -> score += 440
-                compactArtist.length >= 7 && distance <= 2 -> score += 320
-                title.startsWith("$artist ") || artist.startsWith("$baseTitle ") -> score += 360
-                tokenCoverage(artist, title) >= 0.9 -> score += 280
-                tokenCoverage(artist, title) >= 0.7 -> score += 160
-                else -> score -= 500
+            return when {
+                baseTitle == artist -> 620
+                title == artist -> 600
+                compactArtist.length >= 3 && distance <= 1 -> 440
+                compactArtist.length >= 7 && distance <= 2 -> 320
+                title.startsWith("$artist ") || artist.startsWith("$baseTitle ") -> 360
+                tokenCoverage(artist, title) >= 0.9 -> 280
+                tokenCoverage(artist, title) >= 0.7 -> 160
+                else -> -500
             }
-            if (MUSIC_TERMS.any { containsTerm(blob, it) }) score += 300
-            if (MUSIC_TERMS.any { containsTerm(parenthetical, it) }) score += 180
-            if (GROUP_TERMS.any { containsTerm(blob, it) }) score += 80
-            if (NON_ARTIST_TITLE_TERMS.any { containsTerm(parenthetical, it) }) score -= 850
+        }
+
+        private fun pageContextScore(parenthetical: String, blob: String): Int {
+            var score = 0
+            if (containsAnyTerm(blob, MUSIC_TERMS)) score += 300
+            if (containsAnyTerm(parenthetical, MUSIC_TERMS)) score += 180
+            if (containsAnyTerm(blob, GROUP_TERMS)) score += 80
+            if (containsAnyTerm(parenthetical, NON_ARTIST_TITLE_TERMS)) score -= 850
             if (NON_ARTIST_DESCRIPTION_TERMS.any { blob.startsWith(normalize(it)) || containsTerm(blob, it) }) score -= 260
             if (DISAMBIGUATION_TERMS.any { blob.contains(normalize(it)) }) score -= 900
+            return score
+        }
+
+        private fun extractQualityScore(artist: String, extract: String): Int {
+            var score = 0
             if (normalize(extract).startsWith(artist)) score += 70
             if (extract.length >= 500) score += 35
             return score
@@ -837,30 +965,44 @@ class ArtistLoreRepository(context: Context?) {
         ): Int {
             val artist = normalize(artistName)
             if (artist.isBlank()) return Int.MIN_VALUE
-            val identity = names.asSequence()
+            return bestEntityNameScore(artist, names) + entityDescriptionScore(description)
+        }
+
+        private fun bestEntityNameScore(artist: String, names: Collection<String>): Int {
+            return names.asSequence()
                 .map(::normalize)
                 .filter { it.isNotBlank() }
-                .maxOfOrNull { candidate ->
-                    val compactArtist = artist.replace(" ", "")
-                    val compactCandidate = candidate.replace(" ", "")
-                    val distance = editDistance(compactArtist, compactCandidate)
-                    when {
-                        candidate == artist -> 650
-                        compactArtist.length >= 3 && distance <= 1 -> 520
-                        compactArtist.length >= 7 && distance <= 2 -> 400
-                        candidate.startsWith("$artist ") || artist.startsWith("$candidate ") -> 360
-                        tokenCoverage(artist, candidate) >= 0.9 -> 320
-                        tokenCoverage(artist, candidate) >= 0.7 -> 180
-                        else -> -500
-                    }
-                } ?: -500
-            val normalizedDescription = normalize(description)
-            var score = identity
-            if (MUSIC_TERMS.any { containsTerm(normalizedDescription, it) }) score += 260
-            if (GROUP_TERMS.any { containsTerm(normalizedDescription, it) }) score += 80
-            if (NON_ARTIST_DESCRIPTION_TERMS.any { containsTerm(normalizedDescription, it) }) score -= 700
-            if (NON_ARTIST_TITLE_TERMS.any { containsTerm(normalizedDescription, it) }) score -= 420
+                .maxOfOrNull { candidate -> entityNameScore(artist, candidate) }
+                ?: -500
+        }
+
+        private fun entityNameScore(artist: String, candidate: String): Int {
+            val compactArtist = artist.replace(" ", "")
+            val compactCandidate = candidate.replace(" ", "")
+            val distance = editDistance(compactArtist, compactCandidate)
+            return when {
+                candidate == artist -> 650
+                compactArtist.length >= 3 && distance <= 1 -> 520
+                compactArtist.length >= 7 && distance <= 2 -> 400
+                candidate.startsWith("$artist ") || artist.startsWith("$candidate ") -> 360
+                tokenCoverage(artist, candidate) >= 0.9 -> 320
+                tokenCoverage(artist, candidate) >= 0.7 -> 180
+                else -> -500
+            }
+        }
+
+        private fun entityDescriptionScore(description: String): Int {
+            val normalized = normalize(description)
+            var score = 0
+            if (containsAnyTerm(normalized, MUSIC_TERMS)) score += 260
+            if (containsAnyTerm(normalized, GROUP_TERMS)) score += 80
+            if (containsAnyTerm(normalized, NON_ARTIST_DESCRIPTION_TERMS)) score -= 700
+            if (containsAnyTerm(normalized, NON_ARTIST_TITLE_TERMS)) score -= 420
             return score
+        }
+
+        private fun containsAnyTerm(value: String, terms: Set<String>): Boolean {
+            return terms.any { containsTerm(value, it) }
         }
 
         private fun entityRecordScore(
@@ -918,54 +1060,85 @@ class ArtistLoreRepository(context: Context?) {
         }
 
         private fun cleanBiography(value: String): String {
-            val lines = value
-                .replace("\r\n", "\n")
-                .replace('\r', '\n')
-                .lines()
-            val paragraphs = ArrayList<String>()
-            val current = StringBuilder()
-            fun flush() {
-                val paragraph = current.toString()
-                    .replace(Regex("[ \t]+"), " ")
-                    .trim()
-                if (paragraph.isNotBlank()) paragraphs += paragraph
-                current.clear()
-            }
-            for (rawLine in lines) {
-                val line = rawLine
-                    .replace(Regex("\\[(?:\\d+|nota\\s+\\d+|note\\s+\\d+)\\]", RegexOption.IGNORE_CASE), "")
-                    .trim()
-                if (line.isBlank()) {
-                    flush()
-                    continue
-                }
-                val heading = line.trim('=').trim()
-                val normalizedHeading = normalize(heading)
-                val looksLikeHeading = line.startsWith("=") && line.endsWith("=") ||
-                    line.length <= 48 && (normalizedHeading in ARTICLE_SECTION_HEADINGS || normalizedHeading in ARTICLE_STOP_HEADINGS)
-                if (looksLikeHeading) {
-                    flush()
-                    if (normalizedHeading in ARTICLE_STOP_HEADINGS && paragraphs.joinToString(" ").length >= MIN_TEXT_LENGTH) break
-                    continue
-                }
-                if (line.startsWith("*") || line.startsWith("#") || line.startsWith("{|")) continue
-                if (current.isNotEmpty()) current.append(' ')
-                current.append(line)
-            }
-            flush()
+            val paragraphs = collectArticleParagraphs(normalizedBiographyLines(value))
             val normalized = paragraphs
                 .map(::trimIncompleteBiographyTail)
                 .filter { it.isNotBlank() }
                 .joinToString("\n\n")
                 .replace(Regex("\n{3,}"), "\n\n")
                 .trim()
-            if (normalized.length <= MAX_TEXT_LENGTH) return normalized
-            val sentenceBoundary = lastBiographySentenceBoundary(normalized, MAX_TEXT_LENGTH)
-            val paragraphBoundary = normalized.lastIndexOf("\n\n", MAX_TEXT_LENGTH)
+            return truncateBiography(normalized)
+        }
+
+        private fun normalizedBiographyLines(value: String): List<String> {
+            return value
+                .replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .lines()
+        }
+
+        private fun collectArticleParagraphs(lines: List<String>): List<String> {
+            val paragraphs = ArrayList<String>()
+            val current = StringBuilder()
+            for (rawLine in lines) {
+                val line = cleanArticleLine(rawLine)
+                if (line.isBlank()) {
+                    flushBiographyParagraph(current, paragraphs)
+                    continue
+                }
+                val heading = articleHeading(line)
+                if (heading != null) {
+                    flushBiographyParagraph(current, paragraphs)
+                    if (shouldStopAtHeading(heading, paragraphs)) break
+                    continue
+                }
+                if (isSkippedArticleLine(line)) continue
+                if (current.isNotEmpty()) current.append(' ')
+                current.append(line)
+            }
+            flushBiographyParagraph(current, paragraphs)
+            return paragraphs
+        }
+
+        private fun cleanArticleLine(value: String): String {
+            return value
+                .replace(Regex("""\[(?:\d+|nota\s+\d+|note\s+\d+)\]""", RegexOption.IGNORE_CASE), "")
+                .trim()
+        }
+
+        private fun articleHeading(line: String): String? {
+            val heading = line.trim('=').trim()
+            val normalized = normalize(heading)
+            val markedHeading = line.startsWith("=") && line.endsWith("=")
+            val knownHeading = line.length <= 48 &&
+                (normalized in ARTICLE_SECTION_HEADINGS || normalized in ARTICLE_STOP_HEADINGS)
+            return normalized.takeIf { markedHeading || knownHeading }
+        }
+
+        private fun shouldStopAtHeading(heading: String, paragraphs: List<String>): Boolean {
+            return heading in ARTICLE_STOP_HEADINGS && paragraphs.sumOf { it.length } >= MIN_TEXT_LENGTH
+        }
+
+        private fun isSkippedArticleLine(line: String): Boolean {
+            return line.startsWith("*") || line.startsWith("#") || line.startsWith("{|")
+        }
+
+        private fun flushBiographyParagraph(current: StringBuilder, paragraphs: MutableList<String>) {
+            val paragraph = current.toString()
+                .replace(Regex("[ \t]+"), " ")
+                .trim()
+            if (paragraph.isNotBlank()) paragraphs += paragraph
+            current.clear()
+        }
+
+        private fun truncateBiography(value: String): String {
+            if (value.length <= MAX_TEXT_LENGTH) return value
+            val sentenceBoundary = lastBiographySentenceBoundary(value, MAX_TEXT_LENGTH)
+            val paragraphBoundary = value.lastIndexOf("\n\n", MAX_TEXT_LENGTH)
             val cut = maxOf(sentenceBoundary, paragraphBoundary)
                 .takeIf { it >= MIN_SAFE_CUT_LENGTH }
                 ?: MAX_TEXT_LENGTH
-            return trimIncompleteBiographyTail(normalized.substring(0, cut + 1).trim())
+            return trimIncompleteBiographyTail(value.substring(0, cut + 1).trim())
         }
 
         private fun trimIncompleteBiographyTail(value: String): String {
@@ -1121,6 +1294,39 @@ class ArtistLoreRepository(context: Context?) {
     }
 }
 
+private data class LoreObservationRequest(
+    val artistName: String,
+    val artistKey: String,
+    val browseId: String,
+    val languages: List<String>,
+    val now: Long
+)
+
+private data class LoreCacheState(
+    val initial: ArtistLoreEntity?,
+    val freshLanguages: Set<String>,
+    val blockedLanguages: Set<String>
+) {
+    fun canStop(preferredLanguage: String): Boolean {
+        return preferredLanguage in freshLanguages ||
+            (preferredLanguage in blockedLanguages && freshLanguages.isNotEmpty())
+    }
+
+    fun shouldSkip(language: String): Boolean {
+        return language in freshLanguages || language in blockedLanguages
+    }
+}
+
+private data class LoreEntitySearchCollection(
+    val hits: List<LoreEntitySearchHit>,
+    val completedWithoutTransientFailure: Boolean
+)
+
+private data class EntityArticleResolution(
+    val biography: ArtistBiography?,
+    val transientFailure: Boolean
+)
+
 private data class LoreNetworkOutcome(
     val biography: ArtistBiography?,
     val completedWithoutTransientFailure: Boolean
@@ -1156,9 +1362,8 @@ private data class LoreCandidate(
         )
     }
 
-    fun toBiography(languageCode: String, confidence: Int): ArtistBiography? {
+    fun toBiography(languageCode: String, confidence: Int): ArtistBiography {
         val cleanText = extract.trim()
-        if (cleanText.length < 80) return null
         return ArtistBiography(
             text = cleanText,
             description = description.trim(),
@@ -1239,26 +1444,37 @@ private sealed interface HttpResult {
 private suspend fun okhttp3.OkHttpClient.await(request: Request): HttpResult = suspendCancellableCoroutine { continuation ->
     val call = newCall(request)
     continuation.invokeOnCancellation { call.cancel() }
-    call.enqueue(object : Callback {
-        override fun onFailure(call: Call, error: IOException) {
-            if (continuation.isActive) continuation.resume(HttpResult.Failure)
-        }
+    call.enqueue(HttpResultCallback(continuation))
+}
 
-        override fun onResponse(call: Call, response: Response) {
-            response.use {
-                if (!response.isSuccessful) {
-                    if (continuation.isActive) continuation.resume(HttpResult.Failure)
-                    return
-                }
-                val body = runCatching { response.body?.string().orEmpty() }.getOrDefault("")
-                if (continuation.isActive) continuation.resume(HttpResult.Success(body))
-            }
-        }
-    })
+private class HttpResultCallback(
+    private val continuation: CancellableContinuation<HttpResult>
+) : Callback {
+    override fun onFailure(call: Call, error: IOException) {
+        continuation.resumeIfActive(HttpResult.Failure)
+    }
+
+    override fun onResponse(call: Call, response: Response) {
+        continuation.resumeIfActive(response.use(::responseToHttpResult))
+    }
+}
+
+private fun responseToHttpResult(response: Response): HttpResult {
+    if (!response.isSuccessful) return HttpResult.Failure
+    return runCatching { HttpResult.Success(response.body.string()) }
+        .getOrDefault(HttpResult.Failure)
+}
+
+private fun CancellableContinuation<HttpResult>.resumeIfActive(result: HttpResult) {
+    if (isActive) resume(result)
 }
 
 private fun ArtistLoreEntity.isWikipediaEntry(): Boolean {
     return !negative && sourceUrl.contains("wikipedia.org", ignoreCase = true)
+}
+
+private fun ArtistLoreEntity.isUsableAt(now: Long): Boolean {
+    return !negative && text.isNotBlank() && staleUntil > now && isWikipediaEntry()
 }
 
 private fun ArtistLoreEntity.signature(): String {
