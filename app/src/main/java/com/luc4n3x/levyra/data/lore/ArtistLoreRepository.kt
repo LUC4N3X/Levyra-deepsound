@@ -529,7 +529,7 @@ class ArtistLoreRepository(context: Context?) {
         artistName: String,
         languageCode: String
     ): JsonResult {
-        val url = "https://www.wikidata.org/w/api.php".toHttpUrl().newBuilder()
+        val url = WIKIDATA_API_URL.toHttpUrl().newBuilder()
             .addQueryParameter("action", "wbsearchentities")
             .addQueryParameter("search", artistName)
             .addQueryParameter("language", languageCode)
@@ -568,7 +568,7 @@ class ArtistLoreRepository(context: Context?) {
 
     private suspend fun fetchEntitySignals(entityIds: List<String>): Map<String, LoreEntitySignals> {
         if (entityIds.isEmpty()) return emptyMap()
-        val url = "https://www.wikidata.org/w/api.php".toHttpUrl().newBuilder()
+        val url = WIKIDATA_API_URL.toHttpUrl().newBuilder()
             .addQueryParameter("action", "wbgetentities")
             .addQueryParameter("ids", entityIds.joinToString("|"))
             .addQueryParameter("props", "claims")
@@ -593,7 +593,7 @@ class ArtistLoreRepository(context: Context?) {
         languages: Set<String>
     ): EntityRecordsResult {
         if (entityIds.isEmpty()) return EntityRecordsResult.Success(emptyList())
-        val url = "https://www.wikidata.org/w/api.php".toHttpUrl().newBuilder()
+        val url = WIKIDATA_API_URL.toHttpUrl().newBuilder()
             .addQueryParameter("action", "wbgetentities")
             .addQueryParameter("ids", entityIds.joinToString("|"))
             .addQueryParameter("props", "claims|sitelinks|labels|descriptions|aliases")
@@ -884,6 +884,8 @@ class ArtistLoreRepository(context: Context?) {
     }
 
     companion object {
+        private const val WIKIDATA_API_URL = "https://www.wikidata.org/w/api.php"
+
         internal fun preferredLanguage(languageCode: String): String {
             val normalized = LevyraLanguageCatalog.normalize(languageCode).substringBefore('-')
             return when (normalized) {
