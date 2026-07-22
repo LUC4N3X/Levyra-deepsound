@@ -148,8 +148,8 @@ import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Insights
 import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.TaskAlt
@@ -12442,6 +12442,21 @@ private fun SettingsOverlay(
         batteryLifecycleOwner.lifecycle.addObserver(observer)
         onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    var openCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    BackHandler(enabled = openCategory != null) { openCategory = null }
+    val isItalian = strings.code == "it"
+    val settingsCategories = listOf(
+        SettingsCategory("design", Icons.Rounded.Palette, LevyraCyan, strings.design, if (isItalian) "Tema, animazioni e colori" else "Theme, animations and colors"),
+        SettingsCategory("home", Icons.Rounded.Home, LevyraViolet, strings.homeInterfaceSection, if (isItalian) "Sezioni della schermata Home" else "Home screen sections"),
+        SettingsCategory("player", Icons.Rounded.Speed, LevyraPink, strings.mobilePlayerSection, if (isItalian) "Gesti e controlli del player" else "Player gestures and controls"),
+        SettingsCategory("playback", Icons.Rounded.MusicNote, LevyraCyan, strings.playback, if (isItalian) "SponsorBlock e salto silenzi" else "SponsorBlock and silence skipping"),
+        SettingsCategory("downloads", Icons.Rounded.Download, LevyraViolet, strings.downloadEngineSection, if (isItalian) "Qualità, cartelle e rete" else "Quality, folders and network"),
+        SettingsCategory("lyrics", Icons.Rounded.Insights, LevyraPink, strings.lyricsAnalysisSection, if (isItalian) "Analisi dei testi" else "Lyrics analysis"),
+        SettingsCategory("backup", Icons.Rounded.History, LevyraCyan, strings.backupRestoreSection, if (isItalian) "Backup e ripristino dati" else "Data backup and restore"),
+        SettingsCategory("resilience", Icons.Rounded.Bolt, LevyraViolet, strings.playbackResilienceSection, if (isItalian) "Batteria e diagnostica" else "Battery and diagnostics"),
+        SettingsCategory("preferences", Icons.Rounded.Settings, LevyraPink, strings.preferences, if (isItalian) "Questionario e lingua" else "Questionnaire and language"),
+        SettingsCategory("app", Icons.Rounded.Info, LevyraCyan, strings.app, if (isItalian) "Aggiornamenti e versione" else "Updates and version")
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -12456,25 +12471,31 @@ private fun SettingsOverlay(
             contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(strings.settings, color = LevyraText, fontSize = 28.sp, fontWeight = FontWeight.Black)
-                        Text(strings.settingsSubtitle, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            if (openCategory == null) {
+                item("settings-header") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(strings.settings, color = LevyraText, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                            Text(strings.settingsSubtitle, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        CircleIconButton(
+                            icon = Icons.Rounded.Close,
+                            tint = LevyraText,
+                            background = Color.White.copy(alpha = 0.08f),
+                            onClick = onClose
+                        )
                     }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = LevyraText,
-                        background = Color.White.copy(alpha = 0.08f),
-                        onClick = onClose
-                    )
+                }
+                settingsCategories.forEach { category ->
+                    item(category.id) { SettingsCategoryCard(category) { openCategory = category.id } }
                 }
             }
-            item { SettingsSectionLabel(strings.design) }
+            if (openCategory == "design") {
+                item("sub-design") { SettingsSubPageHeader(strings.design, onBack = { openCategory = null }) }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -12505,7 +12526,9 @@ private fun SettingsOverlay(
                     onCheckedChange = onDynamicColor
                 )
             }
-            item { SettingsSectionLabel(strings.homeInterfaceSection) }
+            }
+            if (openCategory == "home") {
+                item("sub-home") { SettingsSubPageHeader(strings.homeInterfaceSection, onBack = { openCategory = null }) }
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Home,
@@ -12569,7 +12592,9 @@ private fun SettingsOverlay(
                     onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showCharts = it)) }
                 )
             }
-            item { SettingsSectionLabel(strings.mobilePlayerSection) }
+            }
+            if (openCategory == "player") {
+                item("sub-player") { SettingsSubPageHeader(strings.mobilePlayerSection, onBack = { openCategory = null }) }
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.Speed,
@@ -12601,7 +12626,9 @@ private fun SettingsOverlay(
                     )
                 }
             }
-            item { SettingsSectionLabel(strings.playback) }
+            }
+            if (openCategory == "playback") {
+                item("sub-playback") { SettingsSubPageHeader(strings.playback, onBack = { openCategory = null }) }
             item {
                 SettingsToggle(
                     icon = Icons.Rounded.SkipNext,
@@ -12620,7 +12647,9 @@ private fun SettingsOverlay(
                     onCheckedChange = onSkipSilence
                 )
             }
-            item { SettingsSectionLabel(strings.downloadEngineSection) }
+            }
+            if (openCategory == "downloads") {
+                item("sub-downloads") { SettingsSubPageHeader(strings.downloadEngineSection, onBack = { openCategory = null }) }
             item {
                 SettingsChoiceRow(
                     icon = Icons.Rounded.Speed,
@@ -12749,7 +12778,9 @@ private fun SettingsOverlay(
                     )
                 }
             }
-            item { SettingsSectionLabel(strings.lyricsAnalysisSection) }
+            }
+            if (openCategory == "lyrics") {
+                item("sub-lyrics") { SettingsSubPageHeader(strings.lyricsAnalysisSection, onBack = { openCategory = null }) }
             item {
                 SettingsInfoCard(
                     icon = Icons.Rounded.Insights,
@@ -12757,7 +12788,9 @@ private fun SettingsOverlay(
                     subtitle = strings.lyricsAnalysisCompactSubtitle
                 )
             }
-            item { SettingsSectionLabel(strings.backupRestoreSection) }
+            }
+            if (openCategory == "backup") {
+                item("sub-backup") { SettingsSubPageHeader(strings.backupRestoreSection, onBack = { openCategory = null }) }
             item {
                 SettingsButton(
                     icon = Icons.Rounded.Download,
@@ -12774,7 +12807,9 @@ private fun SettingsOverlay(
                     onClick = onRestoreBackup
                 )
             }
-            item { SettingsSectionLabel(strings.playbackResilienceSection) }
+            }
+            if (openCategory == "resilience") {
+                item("sub-resilience") { SettingsSubPageHeader(strings.playbackResilienceSection, onBack = { openCategory = null }) }
             item {
                 SettingsButton(
                     icon = Icons.Rounded.Bolt,
@@ -12803,7 +12838,9 @@ private fun SettingsOverlay(
                     onClick = onShareDiagnostics
                 )
             }
-            item { SettingsSectionLabel(strings.preferences) }
+            }
+            if (openCategory == "preferences") {
+                item("sub-preferences") { SettingsSubPageHeader(strings.preferences, onBack = { openCategory = null }) }
             item {
                 SettingsButton(
                     icon = Icons.Rounded.Settings,
@@ -12823,7 +12860,9 @@ private fun SettingsOverlay(
             if (languageExpanded) {
                 item { LanguageSelector(selectedCode = currentLanguageCode, onSelect = onLanguage, modifier = Modifier.padding(bottom = 4.dp)) }
             }
-            item { SettingsSectionLabel(strings.app) }
+            }
+            if (openCategory == "app") {
+                item("sub-app") { SettingsSubPageHeader(strings.app, onBack = { openCategory = null }) }
             item {
                 SettingsUpdateCard(
                     updateInfo = updateInfo,
@@ -12892,7 +12931,72 @@ private fun SettingsOverlay(
                     }
                 }
             }
+            }
         }
+    }
+}
+
+private data class SettingsCategory(
+    val id: String,
+    val icon: ImageVector,
+    val accent: Color,
+    val title: String,
+    val subtitle: String
+)
+
+@Composable
+private fun SettingsCategoryCard(category: SettingsCategory, onClick: () -> Unit) {
+    Surface(
+        color = LevyraAdaptiveCard,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(category.accent.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(category.icon, null, tint = category.accent, modifier = Modifier.size(20.dp))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(category.title, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                Text(category.subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                null,
+                tint = LevyraMuted,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSubPageHeader(title: String, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        CircleIconButton(
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            tint = LevyraText,
+            background = Color.White.copy(alpha = 0.08f),
+            onClick = onBack
+        )
+        Text(title, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black)
     }
 }
 
@@ -13005,11 +13109,6 @@ private fun DownloadQueueSettingsCard(
             }
         }
     }
-}
-
-@Composable
-private fun SettingsSectionLabel(text: String) {
-    Text(text, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 8.dp))
 }
 
 @Composable
