@@ -2634,9 +2634,27 @@ private fun ArtistBio(
     val strings = LocalLevyraStrings.current
     val context = LocalContext.current
     val editorial = remember(biography.text) { artistBiographyEditorial(biography.text) }
+    val biographyText = remember(biography.text, biography.description) {
+        buildString {
+            biography.description.trim().takeIf { it.isNotBlank() }?.let { description ->
+                append(description.removeSuffix("."))
+                append(". ")
+            }
+            editorial.lead.trim().takeIf { it.isNotBlank() }?.let { lead ->
+                append(lead)
+                if (!lead.endsWith('.') && !lead.endsWith('!') && !lead.endsWith('?')) append('.')
+            }
+            editorial.body.forEach { paragraph ->
+                val cleanParagraph = paragraph.trim()
+                if (cleanParagraph.isNotBlank()) {
+                    if (isNotEmpty()) append(' ')
+                    append(cleanParagraph)
+                }
+            }
+        }.replace(Regex("\\s+"), " ").trim()
+    }
     var expanded by remember(biography.text) { mutableStateOf(false) }
-    val visibleBody = if (expanded) editorial.body else editorial.body.take(1)
-    val canExpand = editorial.body.size > 1
+    var canExpand by remember(biography.text, biography.description) { mutableStateOf(false) }
     val sourceLabel = biography.sourceLabel.trim()
     val showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
     val sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) {
@@ -2654,8 +2672,8 @@ private fun ArtistBio(
         modifier = modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2669,61 +2687,6 @@ private fun ArtistBio(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.5.sp
                 )
-                Box(
-                    modifier = Modifier
-                        .width(34.dp)
-                        .height(3.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.14f))
-                )
-            }
-
-            if (biography.description.isNotBlank()) {
-                Text(
-                    text = biography.description,
-                    color = LevyraText.copy(alpha = 0.84f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 20.sp
-                )
-            }
-
-            if (editorial.lead.isNotBlank()) {
-                Text(
-                    text = editorial.lead,
-                    color = LevyraText,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 27.sp
-                )
-            }
-
-            visibleBody.forEach { paragraph ->
-                Text(
-                    text = paragraph,
-                    color = LevyraMuted.copy(alpha = 0.94f),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 25.sp
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (canExpand) {
-                    Text(
-                        text = if (expanded) strings.showLess else strings.showAll,
-                        color = LevyraCyan,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Black,
-                        modifier = Modifier.clickable { expanded = !expanded }
-                    )
-                } else {
-                    Spacer(modifier = Modifier.width(1.dp))
-                }
 
                 if (showSource) {
                     Row(
@@ -2732,25 +2695,53 @@ private fun ArtistBio(
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
                             }
                         },
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = sourceText,
-                            color = LevyraMuted.copy(alpha = 0.72f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
+                            color = LevyraMuted.copy(alpha = 0.68f),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         if (biography.sourceUrl.isNotBlank()) {
                             Icon(
                                 imageVector = Icons.Rounded.OpenInNew,
                                 contentDescription = null,
-                                tint = LevyraMuted.copy(alpha = 0.72f),
-                                modifier = Modifier.size(14.dp)
+                                tint = LevyraMuted.copy(alpha = 0.68f),
+                                modifier = Modifier.size(12.dp)
                             )
                         }
                     }
                 }
+            }
+
+            Text(
+                text = biographyText,
+                color = LevyraText.copy(alpha = 0.94f),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 23.sp,
+                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { result ->
+                    if (!expanded) canExpand = result.hasVisualOverflow
+                }
+            )
+
+            if (canExpand) {
+                Text(
+                    text = if (expanded) strings.showLess else strings.readAll,
+                    color = LevyraCyan,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .clickable { expanded = !expanded }
+                        .padding(vertical = 2.dp)
+                )
             }
         }
     }
