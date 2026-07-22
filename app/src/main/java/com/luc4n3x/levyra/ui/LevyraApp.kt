@@ -2314,9 +2314,11 @@ private fun ArtistOverlay(
                             if (artist.hasBio) {
                                 ArtistBio(
                                     biography = requireNotNull(artist.biography),
+                                    accentStart = accentStart,
+                                    accentEnd = accentEnd,
                                     modifier = Modifier
                                         .padding(horizontal = 20.dp)
-                                        .artistHeroOverlap(22.dp)
+                                        .artistHeroOverlap(34.dp)
                                 )
                             }
                         }
@@ -2629,6 +2631,8 @@ private fun Modifier.artistHeroOverlap(overlap: Dp): Modifier = layout { measura
 @Composable
 private fun ArtistBio(
     biography: ArtistBiography,
+    accentStart: Color,
+    accentEnd: Color,
     modifier: Modifier = Modifier
 ) {
     val strings = LocalLevyraStrings.current
@@ -2646,51 +2650,108 @@ private fun ArtistBio(
     var visualOverflow by remember(editorial.summary) { mutableStateOf(false) }
     val sourceLabel = biography.sourceLabel.trim()
     val showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
-    val sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) {
-        "Wikipedia"
-    } else {
-        sourceLabel
-    }
+    val sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) "Wikipedia" else sourceLabel
     val showReadMore = editorial.hasMore || visualOverflow
+    val shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp, bottomStart = 27.dp, bottomEnd = 27.dp)
+    val borderBrush = Brush.linearGradient(
+        colors = listOf(
+            accentStart.copy(alpha = 0.72f),
+            Color.White.copy(alpha = 0.11f),
+            accentEnd.copy(alpha = 0.54f)
+        )
+    )
+    val surfaceBrush = Brush.linearGradient(
+        colors = listOf(
+            accentStart.copy(alpha = 0.13f),
+            Color(0xFF0C1017).copy(alpha = 0.995f),
+            Color(0xFF080A0E).copy(alpha = 0.995f),
+            accentEnd.copy(alpha = 0.08f)
+        )
+    )
 
-    Surface(
-        color = Color(0xFF101010).copy(alpha = 0.985f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.085f)),
-        shape = RoundedCornerShape(26.dp),
-        shadowElevation = 8.dp,
-        tonalElevation = 0.dp,
-        modifier = modifier.fillMaxWidth()
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(18.dp, shape, clip = false)
+            .background(surfaceBrush, shape)
+            .border(BorderStroke(1.dp, borderBrush), shape)
+            .clip(shape)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 21.dp, vertical = 17.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth(0.58f)
+                .height(2.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, accentStart, accentEnd, Color.Transparent)
+                    )
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = (-20).dp, y = (-30).dp)
+                .size(126.dp)
+                .blur(34.dp)
+                .background(accentStart.copy(alpha = 0.18f), CircleShape)
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 42.dp, y = 52.dp)
+                .size(150.dp)
+                .blur(42.dp)
+                .background(accentEnd.copy(alpha = 0.12f), CircleShape)
+        )
+
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 22.dp, end = 20.dp, top = 20.dp, bottom = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = strings.biography,
-                    color = LevyraCyan,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 0.45.sp
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                Brush.linearGradient(listOf(accentStart, accentEnd)),
+                                CircleShape
+                            )
+                    )
+                    Text(
+                        text = strings.biography,
+                        color = LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.1.sp
+                    )
+                }
 
                 if (showSource) {
                     Row(
-                        modifier = Modifier.clickable(enabled = biography.sourceUrl.isNotBlank()) {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .clickable(enabled = biography.sourceUrl.isNotBlank()) {
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
+                                }
                             }
-                        },
+                            .padding(horizontal = 2.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = sourceText,
-                            color = LevyraMuted.copy(alpha = 0.66f),
+                            color = LevyraMuted.copy(alpha = 0.72f),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -2700,7 +2761,7 @@ private fun ArtistBio(
                             Icon(
                                 imageVector = Icons.Rounded.OpenInNew,
                                 contentDescription = null,
-                                tint = LevyraMuted.copy(alpha = 0.66f),
+                                tint = LevyraMuted.copy(alpha = 0.72f),
                                 modifier = Modifier.size(12.dp)
                             )
                         }
@@ -2708,39 +2769,87 @@ private fun ArtistBio(
                 }
             }
 
-            Text(
-                text = editorial.summary,
-                color = LevyraText.copy(alpha = 0.94f),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 22.sp,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-                onTextLayout = { result -> visualOverflow = result.hasVisualOverflow }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp)
+            ) {
+                Text(
+                    text = "“",
+                    color = accentStart.copy(alpha = 0.88f),
+                    fontSize = 68.sp,
+                    lineHeight = 56.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.offset(x = (-3).dp, y = (-7).dp)
+                )
+                Text(
+                    text = editorial.summary,
+                    color = LevyraText.copy(alpha = 0.94f),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 23.sp,
+                    maxLines = 5,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 44.dp, top = 7.dp, bottom = 18.dp),
+                    onTextLayout = { result -> visualOverflow = result.hasVisualOverflow }
+                )
+            }
 
             if (showReadMore) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.White.copy(alpha = 0.11f),
+                                    Color.White.copy(alpha = 0.06f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
+                        .fillMaxWidth()
                         .clickable { showFullBiography = true }
-                        .padding(vertical = 3.dp),
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        .padding(horizontal = 22.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = strings.readAll,
-                        color = LevyraCyan,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Black
+                        color = accentStart,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.1.sp
                     )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = LevyraCyan,
-                        modifier = Modifier.size(17.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        accentStart.copy(alpha = 0.20f),
+                                        accentEnd.copy(alpha = 0.13f)
+                                    )
+                                ),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = accentStart,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
                 }
+            } else {
+                Spacer(modifier = Modifier.height(18.dp))
             }
         }
     }
@@ -2754,6 +2863,8 @@ private fun ArtistBio(
             } else {
                 sourceLabel
             },
+            accentStart = accentStart,
+            accentEnd = accentEnd,
             onDismiss = { showFullBiography = false }
         )
     }
@@ -2764,6 +2875,8 @@ private fun ArtistBiographyDialog(
     biography: ArtistBiography,
     paragraphs: List<String>,
     sourceText: String,
+    accentStart: Color,
+    accentEnd: Color,
     onDismiss: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -2784,7 +2897,12 @@ private fun ArtistBiographyDialog(
             Surface(
                 color = Color(0xFF0D0D0F),
                 shape = RoundedCornerShape(30.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                border = BorderStroke(
+                    1.dp,
+                    Brush.linearGradient(
+                        listOf(accentStart.copy(alpha = 0.65f), Color.White.copy(alpha = 0.10f), accentEnd.copy(alpha = 0.45f))
+                    )
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 620.dp)
@@ -2808,7 +2926,7 @@ private fun ArtistBiographyDialog(
                             ) {
                                 Text(
                                     text = strings.biography,
-                                    color = LevyraCyan,
+                                    color = accentStart,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Black,
                                     letterSpacing = 0.55.sp
