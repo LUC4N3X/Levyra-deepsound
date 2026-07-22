@@ -460,7 +460,7 @@ jobs:
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
-            "platforms;android-37" \
+            "platforms;android-36" \
             "build-tools;36.0.0"
 
       - name: Setup Gradle
