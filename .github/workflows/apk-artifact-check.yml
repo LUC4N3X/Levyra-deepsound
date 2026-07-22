@@ -5,10 +5,6 @@ on:
     branches:
       - main
       - master
-  push:
-    branches:
-      - main
-      - master
   workflow_dispatch:
 
 permissions:
@@ -48,7 +44,7 @@ jobs:
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
-            "platforms;android-36" \
+            "platforms;android-37" \
             "build-tools;36.0.0"
 
       - name: Setup Gradle
@@ -73,7 +69,7 @@ jobs:
           VERSION_CODE="$(grep -E '^levyraVersionCode=' gradle.properties | head -n 1 | cut -d '=' -f 2- | tr -d '\r' | xargs)"
           test -n "${VERSION}"
           test -n "${VERSION_CODE}"
-          printf "%s" "${VERSION_CODE}" | grep -Eq '^[1-9][0-9]*$'
+          printf '%s' "${VERSION_CODE}" | grep -Eq '^[1-9][0-9]*$'
           {
             echo "VERSION=${VERSION}"
             echo "VERSION_CODE=${VERSION_CODE}"
@@ -92,7 +88,7 @@ jobs:
           test -n "${LEVYRA_KEY_ALIAS}"
           test -n "${LEVYRA_KEY_PASSWORD}"
           rm -f "${LEVYRA_KEYSTORE_FILE}"
-          printf "%s" "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
+          printf '%s' "${LEVYRA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LEVYRA_KEYSTORE_FILE}"
           keytool -list \
             -keystore "${LEVYRA_KEYSTORE_FILE}" \
             -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
@@ -117,9 +113,9 @@ jobs:
           SIZE_BYTES="$(stat -c%s "${APK}")"
           test "${SIZE_BYTES}" -gt 1048576
           BADGING="$("${ANDROID_HOME}/build-tools/36.0.0/aapt" dump badging "${APK}")"
-          printf "%s\n" "${BADGING}" > artifacts/apk-badging.txt
-          printf "%s\n" "${BADGING}" | grep -F "versionName='${VERSION}'"
-          printf "%s\n" "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
+          printf '%s\n' "${BADGING}" > artifacts/apk-badging.txt
+          printf '%s\n' "${BADGING}" | grep -F "versionName='${VERSION}'"
+          printf '%s\n' "${BADGING}" | grep -F "versionCode='${VERSION_CODE}'"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose --print-certs "${APK}" > artifacts/apk-signing-certs.txt
           cp "${APK}" "artifacts/LEVYRA-${VERSION}.apk"
           sha256sum "artifacts/LEVYRA-${VERSION}.apk" > "artifacts/LEVYRA-${VERSION}.apk.sha256"
@@ -143,3 +139,8 @@ jobs:
           name: levyra-release-${{ env.VERSION }}-run-${{ github.run_number }}
           path: artifacts
           if-no-files-found: error
+
+      - name: Cleanup Signing Material
+        if: always()
+        shell: bash
+        run: rm -f "${LEVYRA_KEYSTORE_FILE}"
