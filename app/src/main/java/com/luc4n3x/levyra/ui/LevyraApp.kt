@@ -2622,28 +2622,85 @@ private fun ArtistHeader(
     }
 }
 
+private data class BiographyFactRule(
+    val label: String,
+    val tokens: List<String>
+)
+
+private val BIOGRAPHY_YEAR_PATTERN = Regex("""\b(19\d{2}|20\d{2})\b""")
+private val BIOGRAPHY_REGION_RULES = listOf(
+    BiographyFactRule("Italia", listOf("italiano", "italiana", "italia", "nicosia", "milano", "roma")),
+    BiographyFactRule("USA", listOf("american", "americana", "statunitense", "usa", "united states")),
+    BiographyFactRule("UK", listOf("british", "britannico", "britannica", "uk", "london"))
+)
+private val BIOGRAPHY_GENRE_RULES = listOf(
+    BiographyFactRule("Hip-Hop / Rap", listOf("rapper", "hip-hop", "hip hop", " rap ")),
+    BiographyFactRule("Pop", listOf("pop", "cantautore", "cantautrice")),
+    BiographyFactRule("Rock", listOf("rock", "band"))
+)
+
+private fun String.containsBiographyToken(tokens: List<String>): Boolean {
+    return tokens.any { token -> contains(token) }
+}
+
 private fun extractQuickFacts(summary: String, description: String): List<String> {
-    val facts = mutableListOf<String>()
-    val yearMatch = Regex("""\b(19\d{2}|20\d{2})\b""").find(summary)
-    if (yearMatch != null) {
-        facts.add(yearMatch.value)
-    }
-    val textLower = summary.lowercase()
-    if (textLower.contains("italiano") || textLower.contains("italia") || textLower.contains("nicosia") || textLower.contains("milano")) {
-        facts.add("Italia")
-    } else if (textLower.contains("american") || textLower.contains("usa") || textLower.contains("united states")) {
-        facts.add("USA")
-    } else if (textLower.contains("british") || textLower.contains("uk") || textLower.contains("london")) {
-        facts.add("UK")
-    }
-    if (textLower.contains("rapper") || textLower.contains("hip-hop") || textLower.contains("hip hop") || textLower.contains("rap")) {
-        facts.add("Hip-Hop / Rap")
-    } else if (textLower.contains("pop") || textLower.contains("cantautore")) {
-        facts.add("Pop")
-    } else if (textLower.contains("rock") || textLower.contains("band")) {
-        facts.add("Rock")
-    }
-    return facts.take(2)
+    val searchableText = " $summary $description ".lowercase(Locale.ROOT)
+    val year = BIOGRAPHY_YEAR_PATTERN.find(summary)?.value
+    val region = BIOGRAPHY_REGION_RULES.firstOrNull { rule ->
+        searchableText.containsBiographyToken(rule.tokens)
+    }?.label
+    val genre = BIOGRAPHY_GENRE_RULES.firstOrNull { rule ->
+        searchableText.containsBiographyToken(rule.tokens)
+    }?.label
+    return listOfNotNull(year, region, genre).distinct().take(2)
+}
+
+private data class ArtistBiographySourceUi(
+    val compactLabel: String,
+    val fullLabel: String,
+    val url: String,
+    val visible: Boolean
+)
+
+private fun artistBiographySourceUi(sourceLabel: String, sourceUrl: String): ArtistBiographySourceUi {
+    val cleanLabel = sourceLabel.trim()
+    val isWikipedia = cleanLabel.equals("Wikipedia", ignoreCase = true)
+    return ArtistBiographySourceUi(
+        compactLabel = if (isWikipedia) "Wikipedia" else cleanLabel,
+        fullLabel = if (isWikipedia) "Wikipedia · CC BY-SA 4.0" else cleanLabel,
+        url = sourceUrl,
+        visible = cleanLabel.isNotBlank() && !cleanLabel.startsWith("YouTube", ignoreCase = true)
+    )
+}
+
+private fun artistBiographyCompactBorderBrush(accentStart: Color, accentEnd: Color): Brush {
+    return Brush.linearGradient(
+        colors = listOf(
+            accentStart.copy(alpha = 0.40f),
+            Color.White.copy(alpha = 0.10f),
+            accentEnd.copy(alpha = 0.20f)
+        )
+    )
+}
+
+private fun artistBiographyCompactSurfaceBrush(accentStart: Color): Brush {
+    return Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFF141620).copy(alpha = 0.92f),
+            accentStart.copy(alpha = 0.08f),
+            Color(0xFF0E1017).copy(alpha = 0.96f)
+        )
+    )
+}
+
+private fun artistBiographyDialogBorderBrush(accentStart: Color, accentEnd: Color): Brush {
+    return Brush.linearGradient(
+        listOf(
+            accentStart.copy(alpha = 0.50f),
+            Color.White.copy(alpha = 0.10f),
+            accentEnd.copy(alpha = 0.30f)
+        )
+    )
 }
 
 @Composable
@@ -2653,8 +2710,6 @@ private fun ArtistBio(
     accentEnd: Color,
     modifier: Modifier = Modifier
 ) {
-    val strings = LocalLevyraStrings.current
-    val context = LocalContext.current
     val editorial = remember(biography.text, biography.description, biography.languageCode) {
         artistBiographyEditorial(
             text = biography.text,
@@ -2665,214 +2720,29 @@ private fun ArtistBio(
     var showFullBiography by rememberSaveable(biography.pageId, biography.languageCode, biography.text) {
         mutableStateOf(false)
     }
-    val sourceLabel = biography.sourceLabel.trim()
-    val showSource = sourceLabel.isNotBlank() && !sourceLabel.startsWith("YouTube", ignoreCase = true)
-    val sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) "Wikipedia" else sourceLabel
-
+    val source = remember(biography.sourceLabel, biography.sourceUrl) {
+        artistBiographySourceUi(biography.sourceLabel, biography.sourceUrl)
+    }
     val quickFacts = remember(editorial.summary, biography.description) {
         extractQuickFacts(editorial.summary, biography.description)
     }
 
-    val shape = RoundedCornerShape(20.dp)
-
-    val borderBrush = Brush.linearGradient(
-        colors = listOf(
-            accentStart.copy(alpha = 0.40f),
-            Color.White.copy(alpha = 0.10f),
-            accentEnd.copy(alpha = 0.20f)
-        )
+    ArtistBiographyCompactCard(
+        title = LocalLevyraStrings.current.biography,
+        summary = editorial.summary,
+        source = source,
+        quickFacts = quickFacts,
+        accentStart = accentStart,
+        accentEnd = accentEnd,
+        modifier = modifier,
+        onOpen = { showFullBiography = true }
     )
-    val surfaceBrush = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFF141620).copy(alpha = 0.92f),
-            accentStart.copy(alpha = 0.08f),
-            Color(0xFF0E1017).copy(alpha = 0.96f)
-        )
-    )
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(12.dp, shape, clip = false)
-            .background(surfaceBrush, shape)
-            .border(BorderStroke(1.dp, borderBrush), shape)
-            .clip(shape)
-            .clickable { showFullBiography = true }
-    ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = (-20).dp, y = (-20).dp)
-                .size(140.dp)
-                .blur(40.dp)
-                .background(accentStart.copy(alpha = 0.08f), CircleShape)
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(accentStart.copy(alpha = 0.16f))
-                            .padding(horizontal = 9.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .background(accentStart, CircleShape)
-                        )
-                        Text(
-                            text = strings.biography.uppercase(),
-                            color = accentStart,
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.0.sp
-                        )
-                    }
-
-                    quickFacts.forEach { fact ->
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.05f))
-                                .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
-                                .padding(horizontal = 9.dp, vertical = 3.5.dp)
-                        ) {
-                            Text(
-                                text = fact,
-                                color = LevyraText.copy(alpha = 0.85f),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.3.sp
-                            )
-                        }
-                    }
-                }
-
-                if (showSource) {
-                    Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.05f))
-                            .border(1.dp, Color.White.copy(alpha = 0.07f), CircleShape)
-                            .clickable(enabled = biography.sourceUrl.isNotBlank()) {
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
-                                }
-                            }
-                            .padding(horizontal = 9.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = sourceText,
-                            color = LevyraMuted.copy(alpha = 0.78f),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        if (biography.sourceUrl.isNotBlank()) {
-                            Icon(
-                                imageVector = Icons.Rounded.OpenInNew,
-                                contentDescription = null,
-                                tint = LevyraMuted.copy(alpha = 0.78f),
-                                modifier = Modifier.size(10.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(3.dp)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.verticalGradient(listOf(accentStart, accentEnd)),
-                            CircleShape
-                        )
-                )
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colorStops = arrayOf(
-                                        0.0f to Color.Black,
-                                        0.55f to Color.Black,
-                                        1.0f to Color.Transparent
-                                    )
-                                ),
-                                blendMode = BlendMode.DstIn
-                            )
-                        }
-                ) {
-                    Text(
-                        text = editorial.summary,
-                        color = LevyraText.copy(alpha = 0.94f),
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.Medium,
-                        lineHeight = 20.sp,
-                        maxLines = 3,
-                        overflow = TextOverflow.Clip
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .align(Alignment.CenterVertically)
-                        .background(
-                            accentStart.copy(alpha = 0.15f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = accentStart,
-                        modifier = Modifier.size(17.dp)
-                    )
-                }
-            }
-        }
-    }
 
     if (showFullBiography) {
         ArtistBiographyDialog(
             biography = biography,
             paragraphs = editorial.paragraphs,
-            sourceText = if (sourceLabel.equals("Wikipedia", ignoreCase = true)) {
-                "Wikipedia · CC BY-SA 4.0"
-            } else {
-                sourceLabel
-            },
+            source = source,
             accentStart = accentStart,
             accentEnd = accentEnd,
             onDismiss = { showFullBiography = false }
@@ -2881,16 +2751,256 @@ private fun ArtistBio(
 }
 
 @Composable
+private fun ArtistBiographyCompactCard(
+    title: String,
+    summary: String,
+    source: ArtistBiographySourceUi,
+    quickFacts: List<String>,
+    accentStart: Color,
+    accentEnd: Color,
+    modifier: Modifier,
+    onOpen: () -> Unit
+) {
+    val shape = RoundedCornerShape(20.dp)
+    val borderBrush = remember(accentStart, accentEnd) {
+        artistBiographyCompactBorderBrush(accentStart, accentEnd)
+    }
+    val surfaceBrush = remember(accentStart) {
+        artistBiographyCompactSurfaceBrush(accentStart)
+    }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(12.dp, shape, clip = false)
+            .background(surfaceBrush, shape)
+            .border(BorderStroke(1.dp, borderBrush), shape)
+            .clip(shape)
+            .clickable(onClick = onOpen)
+    ) {
+        ArtistBiographyAmbientGlow(accentStart)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ArtistBiographyCompactHeader(
+                title = title,
+                source = source,
+                quickFacts = quickFacts,
+                accent = accentStart
+            )
+            ArtistBiographyCompactSummary(
+                summary = summary,
+                accentStart = accentStart,
+                accentEnd = accentEnd
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArtistBiographyAmbientGlow(accent: Color) {
+    Box(
+        modifier = Modifier
+            .offset(x = (-20).dp, y = (-20).dp)
+            .size(140.dp)
+            .blur(40.dp)
+            .background(accent.copy(alpha = 0.08f), CircleShape)
+    )
+}
+
+@Composable
+private fun ArtistBiographyCompactHeader(
+    title: String,
+    source: ArtistBiographySourceUi,
+    quickFacts: List<String>,
+    accent: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ArtistBiographyTitleChip(title, accent)
+            quickFacts.forEach { fact -> ArtistBiographyQuickFactChip(fact) }
+        }
+        ArtistBiographySourceChip(source)
+    }
+}
+
+@Composable
+private fun ArtistBiographyTitleChip(title: String, accent: Color) {
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(accent.copy(alpha = 0.16f))
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .background(accent, CircleShape)
+        )
+        Text(
+            text = title.uppercase(),
+            color = accent,
+            fontSize = 10.5.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.0.sp
+        )
+    }
+}
+
+@Composable
+private fun ArtistBiographyQuickFactChip(fact: String) {
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.05f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+            .padding(horizontal = 9.dp, vertical = 3.5.dp)
+    ) {
+        Text(
+            text = fact,
+            color = LevyraText.copy(alpha = 0.85f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.3.sp
+        )
+    }
+}
+
+@Composable
+private fun ArtistBiographySourceChip(source: ArtistBiographySourceUi) {
+    if (!source.visible) return
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.05f))
+            .border(1.dp, Color.White.copy(alpha = 0.07f), CircleShape)
+            .clickable(enabled = source.url.isNotBlank()) {
+                runCatching {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source.url)))
+                }
+            }
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = source.compactLabel,
+            color = LevyraMuted.copy(alpha = 0.78f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        ArtistBiographySourceIcon(source.url, 10.dp, LevyraMuted.copy(alpha = 0.78f))
+    }
+}
+
+@Composable
+private fun ArtistBiographySourceIcon(url: String, size: Dp, tint: Color) {
+    if (url.isBlank()) return
+    Icon(
+        imageVector = Icons.Rounded.OpenInNew,
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier.size(size)
+    )
+}
+
+@Composable
+private fun ArtistBiographyCompactSummary(
+    summary: String,
+    accentStart: Color,
+    accentEnd: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(
+                    Brush.verticalGradient(listOf(accentStart, accentEnd)),
+                    CircleShape
+                )
+        )
+        ArtistBiographySummaryText(summary)
+        ArtistBiographyOpenIndicator(accentStart)
+    }
+}
+
+@Composable
+private fun RowScope.ArtistBiographySummaryText(summary: String) {
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black,
+                            0.55f to Color.Black,
+                            1.0f to Color.Transparent
+                        )
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+    ) {
+        Text(
+            text = summary,
+            color = LevyraText.copy(alpha = 0.94f),
+            fontSize = 13.5.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 20.sp,
+            maxLines = 3,
+            overflow = TextOverflow.Clip
+        )
+    }
+}
+
+@Composable
+private fun ArtistBiographyOpenIndicator(accent: Color) {
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .background(accent.copy(alpha = 0.15f), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(17.dp)
+        )
+    }
+}
+
+@Composable
 private fun ArtistBiographyDialog(
     biography: ArtistBiography,
     paragraphs: List<String>,
-    sourceText: String,
+    source: ArtistBiographySourceUi,
     accentStart: Color,
     accentEnd: Color,
     onDismiss: () -> Unit
 ) {
-    val strings = LocalLevyraStrings.current
-    val context = LocalContext.current
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -2904,153 +3014,198 @@ private fun ArtistBiographyDialog(
                 .padding(horizontal = 16.dp, vertical = 20.dp),
             contentAlignment = Alignment.Center
         ) {
-            Surface(
-                color = Color(0xFF10121A),
-                shape = RoundedCornerShape(26.dp),
-                border = BorderStroke(
-                    1.dp,
-                    Brush.linearGradient(
-                        listOf(accentStart.copy(alpha = 0.50f), Color.White.copy(alpha = 0.10f), accentEnd.copy(alpha = 0.30f))
-                    )
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 620.dp)
-                    .fillMaxHeight(0.88f)
-                    .shadow(32.dp, RoundedCornerShape(26.dp), clip = false)
-            ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 22.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp)
-                ) {
-                    item(key = "biography-dialog-header") {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = strings.biography.uppercase(),
-                                    color = accentStart,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.2.sp
-                                )
-                                Text(
-                                    text = biography.pageTitle.ifBlank { strings.biography },
-                                    color = LevyraText,
-                                    fontSize = 26.sp,
-                                    lineHeight = 30.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                                if (biography.description.isNotBlank()) {
-                                    Text(
-                                        text = biography.description,
-                                        color = LevyraMuted.copy(alpha = 0.88f),
-                                        fontSize = 13.5.sp,
-                                        lineHeight = 19.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(34.dp)
-                                    .background(Color.White.copy(alpha = 0.07f), CircleShape)
-                                    .clickable(onClick = onDismiss),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = null,
-                                    tint = LevyraText,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
+            ArtistBiographyDialogSurface(
+                biography = biography,
+                paragraphs = paragraphs,
+                source = source,
+                accentStart = accentStart,
+                accentEnd = accentEnd,
+                onDismiss = onDismiss
+            )
+        }
+    }
+}
 
-                    itemsIndexed(
-                        items = paragraphs,
-                        key = { index, paragraph -> "biography-paragraph-$index-${paragraph.hashCode()}" }
-                    ) { index, paragraph ->
-                        if (index == 0) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(IntrinsicSize.Min),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .width(3.dp)
-                                        .fillMaxHeight()
-                                        .background(
-                                            Brush.verticalGradient(listOf(accentStart, accentEnd)),
-                                            CircleShape
-                                        )
-                                )
-                                Text(
-                                    text = paragraph,
-                                    color = LevyraText,
-                                    fontSize = 15.5.sp,
-                                    lineHeight = 24.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        } else {
-                            Text(
-                                text = paragraph,
-                                color = LevyraMuted.copy(alpha = 0.94f),
-                                fontSize = 14.5.sp,
-                                lineHeight = 23.sp,
-                                fontWeight = FontWeight.Normal
-                            )
-                        }
-                    }
-
-                    if (sourceText.isNotBlank()) {
-                        item(key = "biography-dialog-source") {
-                            Row(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.06f))
-                                    .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
-                                    .clickable(enabled = biography.sourceUrl.isNotBlank()) {
-                                        runCatching {
-                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(biography.sourceUrl)))
-                                        }
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = sourceText,
-                                    color = LevyraMuted.copy(alpha = 0.85f),
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                if (biography.sourceUrl.isNotBlank()) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.OpenInNew,
-                                        contentDescription = null,
-                                        tint = LevyraMuted.copy(alpha = 0.85f),
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+@Composable
+private fun ArtistBiographyDialogSurface(
+    biography: ArtistBiography,
+    paragraphs: List<String>,
+    source: ArtistBiographySourceUi,
+    accentStart: Color,
+    accentEnd: Color,
+    onDismiss: () -> Unit
+) {
+    val shape = RoundedCornerShape(26.dp)
+    Surface(
+        color = Color(0xFF10121A),
+        shape = shape,
+        border = BorderStroke(1.dp, artistBiographyDialogBorderBrush(accentStart, accentEnd)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 620.dp)
+            .fillMaxHeight(0.88f)
+            .shadow(32.dp, shape, clip = false)
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            item(key = "biography-dialog-header") {
+                ArtistBiographyDialogHeader(biography, accentStart, onDismiss)
+            }
+            itemsIndexed(
+                items = paragraphs,
+                key = { index, paragraph -> "biography-paragraph-$index-${paragraph.hashCode()}" }
+            ) { index, paragraph ->
+                ArtistBiographyDialogParagraph(index, paragraph, accentStart, accentEnd)
+            }
+            item(key = "biography-dialog-source") {
+                ArtistBiographyDialogSource(source)
             }
         }
+    }
+}
+
+@Composable
+private fun ArtistBiographyDialogHeader(
+    biography: ArtistBiography,
+    accent: Color,
+    onDismiss: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = strings.biography.uppercase(),
+                color = accent,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
+            )
+            Text(
+                text = biography.pageTitle.ifBlank { strings.biography },
+                color = LevyraText,
+                fontSize = 26.sp,
+                lineHeight = 30.sp,
+                fontWeight = FontWeight.Black
+            )
+            ArtistBiographyDialogDescription(biography.description)
+        }
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .background(Color.White.copy(alpha = 0.07f), CircleShape)
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = null,
+                tint = LevyraText,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArtistBiographyDialogDescription(description: String) {
+    if (description.isBlank()) return
+    Text(
+        text = description,
+        color = LevyraMuted.copy(alpha = 0.88f),
+        fontSize = 13.5.sp,
+        lineHeight = 19.sp,
+        fontWeight = FontWeight.SemiBold
+    )
+}
+
+@Composable
+private fun ArtistBiographyDialogParagraph(
+    index: Int,
+    paragraph: String,
+    accentStart: Color,
+    accentEnd: Color
+) {
+    if (index == 0) {
+        ArtistBiographyDialogLeadParagraph(paragraph, accentStart, accentEnd)
+    } else {
+        Text(
+            text = paragraph,
+            color = LevyraMuted.copy(alpha = 0.94f),
+            fontSize = 14.5.sp,
+            lineHeight = 23.sp,
+            fontWeight = FontWeight.Normal
+        )
+    }
+}
+
+@Composable
+private fun ArtistBiographyDialogLeadParagraph(
+    paragraph: String,
+    accentStart: Color,
+    accentEnd: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(
+                    Brush.verticalGradient(listOf(accentStart, accentEnd)),
+                    CircleShape
+                )
+        )
+        Text(
+            text = paragraph,
+            color = LevyraText,
+            fontSize = 15.5.sp,
+            lineHeight = 24.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ArtistBiographyDialogSource(source: ArtistBiographySourceUi) {
+    if (!source.visible || source.fullLabel.isBlank()) return
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.06f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape)
+            .clickable(enabled = source.url.isNotBlank()) {
+                runCatching {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(source.url)))
+                }
+            }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = source.fullLabel,
+            color = LevyraMuted.copy(alpha = 0.85f),
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        ArtistBiographySourceIcon(source.url, 12.dp, LevyraMuted.copy(alpha = 0.85f))
     }
 }
 
