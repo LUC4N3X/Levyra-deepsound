@@ -19,6 +19,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -50,9 +51,8 @@ internal fun normalizeInlineArtistBiography(value: String): ArtistBiography? {
     if (normalized.length < 24) return null
     val sourceMatch = Regex("https?://[a-z0-9.-]+\\.wikipedia\\.org/wiki/[^\\s)]+", RegexOption.IGNORE_CASE)
         .find(normalized)
-    val sourceUrl = sourceMatch?.value
-        ?.trimEnd('.', ',', ';', ':')
-        .orEmpty()
+        ?: return null
+    val sourceUrl = sourceMatch.value.trimEnd('.', ',', ';', ':')
     val lower = normalized.lowercase(Locale.ROOT)
     val attributionMarkers = listOf(
         "da wikipedia",
@@ -73,26 +73,26 @@ internal fun normalizeInlineArtistBiography(value: String): ArtistBiography? {
         lower.contains("cc by-sa") ||
         lower.contains("creativecommons.org/licenses")
     val attributionStart = when {
-        markerIndex != null && (sourceUrl.isNotBlank() || hasLicenseTail) -> markerIndex
-        sourceMatch != null && hasLicenseTail -> normalized.lastIndexOf('\n', sourceMatch.range.first).takeIf { it >= 0 } ?: sourceMatch.range.first
-        else -> -1
+        markerIndex != null -> markerIndex
+        hasLicenseTail -> normalized.lastIndexOf('\n', sourceMatch.range.first).takeIf { it >= 0 } ?: sourceMatch.range.first
+        else -> sourceMatch.range.first
     }
-    val text = normalized
-        .let { raw -> if (attributionStart > 0) raw.substring(0, attributionStart) else raw }
+    val biographyText = normalized
+        .substring(0, attributionStart.coerceAtLeast(0))
         .replace(Regex("\\s{2,}"), " ")
         .trim()
-    if (text.length < 24) return null
+    if (biographyText.length < 24) return null
     val sourceLanguage = Regex("https?://([a-z-]+)\\.wikipedia\\.org", RegexOption.IGNORE_CASE)
         .find(sourceUrl)
         ?.groupValues
         ?.getOrNull(1)
         .orEmpty()
     return ArtistBiography(
-        text = text,
-        sourceLabel = if (sourceUrl.isNotBlank()) "Wikipedia" else "YouTube Music",
+        text = biographyText,
+        sourceLabel = "Wikipedia",
         sourceUrl = sourceUrl,
         languageCode = sourceLanguage,
-        confidence = if (sourceUrl.isNotBlank()) 96 else 100
+        confidence = 96
     )
 }
 
@@ -156,13 +156,9 @@ internal fun shouldReplaceArtistBiography(
     candidate: ArtistBiography,
     requestedLanguageCode: String
 ): Boolean {
-    if (candidate.text.isBlank()) return false
-    if (current == null || current.text.isBlank()) return true
-    val currentIsLore = current.sourceLabel.equals("Wikipedia", ignoreCase = true) ||
-        current.sourceUrl.contains("wikipedia.org", ignoreCase = true)
-    val candidateIsLore = candidate.sourceLabel.equals("Wikipedia", ignoreCase = true) ||
-        candidate.sourceUrl.contains("wikipedia.org", ignoreCase = true)
-    if (currentIsLore && candidateIsLore && current.languageCode.isNotBlank() && candidate.languageCode.isNotBlank()) {
+    if (candidate.text.isBlank() || !candidate.isWikipediaBiography()) return false
+    if (current == null || current.text.isBlank() || !current.isWikipediaBiography()) return true
+    if (current.languageCode.isNotBlank() && candidate.languageCode.isNotBlank()) {
         val requestedLanguage = ArtistLoreRepository.preferredLanguage(requestedLanguageCode)
         val currentMatchesRequested = ArtistLoreRepository.preferredLanguage(current.languageCode) == requestedLanguage
         val candidateMatchesRequested = ArtistLoreRepository.preferredLanguage(candidate.languageCode) == requestedLanguage
@@ -170,12 +166,15 @@ internal fun shouldReplaceArtistBiography(
         if (!candidateMatchesRequested && currentMatchesRequested) return false
     }
     return when {
-        current.sourceLabel.equals("YouTube Music", ignoreCase = true) ->
-            candidate.confidence >= 80 && candidate.text.length >= current.text.length + 120
         candidate.confidence > current.confidence -> true
         candidate.confidence == current.confidence && candidate.text.length > current.text.length -> true
         else -> false
     }
+}
+
+private fun ArtistBiography.isWikipediaBiography(): Boolean {
+    return sourceLabel.equals("Wikipedia", ignoreCase = true) ||
+        sourceUrl.contains("wikipedia.org", ignoreCase = true)
 }
 
 internal fun extractOfficialMonthlyListeners(header: JSONObject?): String {
@@ -264,13 +263,23 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         )
     }
 
+    suspend fun biographyFor(artistName: String, browseId: String): ArtistBiography? {
+        val cleanName = artistName.trim()
+        if (cleanName.length < 2) return null
+        return artistLore.observe(
+            artistName = cleanName,
+            browseId = browseId.trim(),
+            languageCode = contentLanguage()
+        ).firstOrNull()
+    }
+
     fun mergeBiography(profile: ArtistProfile, candidate: ArtistBiography): ArtistProfile {
         if (!shouldReplaceArtistBiography(profile.biography, candidate, contentLanguage())) return profile
-        val portrait = candidate.originalImageUrl.ifBlank { candidate.thumbnailUrl }
         val updated = profile.copy(
-            biography = candidate,
-            thumbnailUrl = profile.thumbnailUrl.ifBlank { portrait },
-            bannerUrl = profile.bannerUrl.ifBlank { portrait }
+            biography = candidate.copy(
+                thumbnailUrl = "",
+                originalImageUrl = ""
+            )
         )
         memory[artistIdentityKey(updated.name)] = updated
         if (updated.browseId.isNotBlank()) memory[profileBrowseKey(updated.browseId)] = updated
@@ -522,7 +531,6 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         if (!isArtistPageHeader(header)) return null
         val name = headerText(header).ifBlank { fallbackName.trim() }
         if (!artistNameMatches(fallbackName, name)) return null
-        val inlineBio = extractArtistBiography(root)
         val subscribers = extractSubscribers(header)
         val monthly = extractOfficialMonthlyListeners(header)
         val artwork = parseArtistHeaderArtwork(header)
@@ -572,7 +580,7 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
         return ArtistProfile(
             browseId = browseId,
             name = name,
-            biography = normalizeInlineArtistBiography(inlineBio),
+            biography = null,
             subscribers = subscribers,
             monthlyListeners = monthly,
             thumbnailUrl = thumb,
