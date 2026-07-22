@@ -624,7 +624,7 @@ private fun ActiveTrackEqualizer(
     }
 }
 @Composable
-private fun SectionAccentBar(height: Dp = 20.dp, width: Dp = 3.5.dp) {
+private fun SectionAccentBar(height: Dp = 22.dp, width: Dp = 4.dp) {
     Box(
         modifier = Modifier
             .width(width)
@@ -677,7 +677,7 @@ private fun SectionTitle(title: String) {
         horizontalArrangement = Arrangement.spacedBy(9.dp)
     ) {
         SectionAccentBar()
-        Text(title, color = LevyraText, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.4).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, color = LevyraText, fontSize = 21.sp, lineHeight = 23.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.55).sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 @Composable
@@ -5245,9 +5245,12 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 }
             }
             item(key = "home-chart-regions", contentType = "home-horizontal-row") {
-                HomeSectionInset {
-                    ChartRegionRow(regions = state.chartRegions, selectedId = state.selectedChartId, loading = state.isLoadingCharts, onSelect = viewModel::selectChart)
-                }
+                ChartRegionRow(
+                    regions = state.chartRegions,
+                    selectedId = state.selectedChartId,
+                    loading = state.isLoadingCharts,
+                    onSelect = viewModel::selectChart
+                )
             }
             if (state.charts.isEmpty() && (showChartShimmer || !state.isLoadingCharts)) {
                 item(key = "home-chart-empty", contentType = "home-card") {
@@ -7111,20 +7114,42 @@ private fun TrackOverflowMenu(
 }
 
 @Composable
-private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>, selectedId: String, loading: Boolean, onSelect: (String) -> Unit) {
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+private fun ChartRegionRow(
+    regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
+    selectedId: String,
+    loading: Boolean,
+    onSelect: (String) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(
+            start = HomeHorizontalInset,
+            end = HomeHorizontalShelfEndPadding
+        ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (loading) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = LevyraCyan)
+            item(key = "chart-region-loading", contentType = "chart-region-loading") {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = LevyraCyan
+                )
+            }
         }
-        regions.forEach { region ->
+        items(
+            items = regions,
+            key = { region -> region.id },
+            contentType = { "chart-region-chip" }
+        ) { region ->
             val selected = region.id == selectedId
             Surface(
                 color = if (selected) LevyraCyan.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.07f),
-                border = BorderStroke(1.dp, if (selected) LevyraCyan else Color.White.copy(alpha = 0.1f)),
+                border = BorderStroke(
+                    1.dp,
+                    if (selected) LevyraCyan else Color.White.copy(alpha = 0.1f)
+                ),
                 shape = CircleShape,
                 modifier = Modifier.pressable(onClick = { onSelect(region.id) })
             ) {
@@ -7134,7 +7159,13 @@ private fun ChartRegionRow(regions: List<com.luc4n3x.levyra.domain.ChartRegion>,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(region.emoji, fontSize = 14.sp)
-                    Text(region.label, color = if (selected) LevyraCyan else LevyraText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        text = region.label,
+                        color = if (selected) LevyraCyan else LevyraText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1
+                    )
                 }
             }
         }
@@ -13915,7 +13946,7 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                         color = CinematicGlass.copy(alpha = 0.3f),
                         border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.12f)),
                         shape = RoundedCornerShape(18.dp),
-                        shadowElevation = 0.dp,
+                        shadowElevation = 10.dp,
                         modifier = Modifier
                             .size(148.dp)
                             .align(Alignment.BottomCenter)
