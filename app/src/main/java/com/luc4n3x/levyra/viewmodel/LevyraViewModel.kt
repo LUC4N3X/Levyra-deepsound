@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
+import com.luc4n3x.levyra.domain.ArtistBiography
 import com.luc4n3x.levyra.domain.ArtistProfile
 import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.AlbumHit
@@ -111,6 +112,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -137,6 +139,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 private const val ARTIST_PROFILE_UNAVAILABLE_ERROR = "artist_profile_unavailable"
+private const val ARTIST_INITIAL_BIOGRAPHY_WAIT_MS = 4_500L
 
 private data class HomeArtistCandidate(
     val name: String,
@@ -315,6 +318,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
     private var artistJob: Job? = null
+    private var artistLoreJob: Job? = null
     private var albumJob: Job? = null
     private var homeFeedJob: Job? = null
     private var homeAlbumsJob: Job? = null
@@ -358,17 +362,20 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     detailReturnTarget = DetailReturnTarget.None
                 )
             }
-            is DetailPage.ArtistPage -> _state.update {
-                it.copy(
-                    showArtist = true,
-                    artistLoading = false,
-                    artistError = null,
-                    artistProfile = page.profile,
-                    showAlbum = false,
-                    albumLoading = false,
-                    albumError = null,
-                    detailReturnTarget = DetailReturnTarget.None
-                )
+            is DetailPage.ArtistPage -> {
+                _state.update {
+                    it.copy(
+                        showArtist = true,
+                        artistLoading = false,
+                        artistError = null,
+                        artistProfile = page.profile,
+                        showAlbum = false,
+                        albumLoading = false,
+                        albumError = null,
+                        detailReturnTarget = DetailReturnTarget.None
+                    )
+                }
+                startArtistLore(page.profile)
             }
         }
         return true
@@ -2353,6 +2360,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (normalizedLanguage == _state.value.languageCode) return
         preferences.setLanguageCode(normalizedLanguage)
         applyLanguageContent(normalizedLanguage, refreshRemote = true)
+        _state.value.artistProfile?.takeIf { _state.value.showArtist }?.let(::startArtistLore)
         _state.value.currentTrack?.let { track ->
             fetchLyrics(track)
             prefetchLyricsAround(track)
@@ -2735,6 +2743,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val normalizedBrowseId = browseId.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
         artistJob?.cancel()
+        artistLoreJob?.cancel()
         val previous = _state.value
         val previousProfileMatches = previous.artistProfile?.let { profile ->
             if (normalizedBrowseId.isNotBlank()) {
@@ -2763,40 +2772,105 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 showArtist = true,
                 artistLoading = true,
                 artistError = null,
-                artistProfile = if (sameProfile) current.artistProfile else null,
+                artistProfile = current.artistProfile?.takeIf { sameProfile && it.hasBio },
                 openPlaylist = null,
                 detailReturnTarget = DetailReturnTarget.None
             )
         }
         artistJob = viewModelScope.launch {
-            val profile = if (normalizedBrowseId.isNotBlank()) {
-                runCatching { artistRepository.profile(normalizedBrowseId, clean) }.getOrNull()
-            } else {
-                runCatching { artistRepository.profileFor(clean) }.getOrNull()
-            }
-            if (!isActive) return@launch
-            if (profile == null || (profile.topSongs.isEmpty() && !profile.hasBio)) {
-                _state.update {
-                    it.copy(
-                        artistLoading = false,
-                        artistError = ARTIST_PROFILE_UNAVAILABLE_ERROR,
-                        artistProfile = profile
-                    )
+            coroutineScope {
+                val profileDeferred = async {
+                    if (normalizedBrowseId.isNotBlank()) {
+                        runCatching { artistRepository.profile(normalizedBrowseId, clean) }.getOrNull()
+                    } else {
+                        runCatching { artistRepository.profileFor(clean) }.getOrNull()
+                    }
                 }
-            } else {
+                val biographyDeferred = async {
+                    runCatching { artistRepository.biographyFor(clean, normalizedBrowseId) }.getOrNull()
+                }
+                val profile = profileDeferred.await()
+                if (!isActive) return@coroutineScope
+                if (profile == null) {
+                    biographyDeferred.cancel()
+                    _state.update {
+                        it.copy(
+                            artistLoading = false,
+                            artistError = ARTIST_PROFILE_UNAVAILABLE_ERROR,
+                            artistProfile = null
+                        )
+                    }
+                    return@coroutineScope
+                }
+                val initialBiography = withTimeoutOrNull(ARTIST_INITIAL_BIOGRAPHY_WAIT_MS) {
+                    biographyDeferred.await()
+                }
+                val initialProfile = initialBiography?.let { biography ->
+                    artistRepository.mergeBiography(profile, biography)
+                } ?: profile
                 _state.update {
                     it.copy(
                         artistLoading = false,
                         artistError = null,
-                        artistProfile = profile
+                        artistProfile = initialProfile
                     )
+                }
+                initialBiography?.let {
+                    startArtistLore(initialProfile)
+                } ?: run {
+                    artistLoreJob?.cancel()
+                    artistLoreJob = launchArtistLoreAwait(profile, biographyDeferred)
                 }
             }
         }
     }
 
+    private fun launchArtistLoreAwait(
+        profile: ArtistProfile,
+        biographyDeferred: Deferred<ArtistBiography?>
+    ): Job {
+        return viewModelScope.launch {
+            runCatching { biographyDeferred.await() }.getOrNull()?.let { biography ->
+                _state.update { current ->
+                    val visible = current.artistProfile ?: return@update current
+                    if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
+                    current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
+                }
+            }
+            val visible = _state.value.artistProfile ?: return@launch
+            if (!_state.value.showArtist || !sameArtistProfile(visible, profile)) return@launch
+            artistLoreJob = launchArtistLoreCollection(visible)
+        }
+    }
+
+    private fun startArtistLore(profile: ArtistProfile) {
+        artistLoreJob?.cancel()
+        artistLoreJob = launchArtistLoreCollection(profile)
+    }
+
+    private fun launchArtistLoreCollection(profile: ArtistProfile): Job {
+        return viewModelScope.launch {
+            artistRepository.observeBiography(profile).collectLatest { biography ->
+                _state.update { current ->
+                    val visible = current.artistProfile ?: return@update current
+                    if (!current.showArtist || !sameArtistProfile(visible, profile)) return@update current
+                    current.copy(artistProfile = artistRepository.mergeBiography(visible, biography))
+                }
+            }
+        }
+    }
+
+    private fun sameArtistProfile(left: ArtistProfile, right: ArtistProfile): Boolean {
+        return if (right.browseId.isNotBlank()) {
+            left.browseId.equals(right.browseId, ignoreCase = true)
+        } else {
+            left.name.equals(right.name, ignoreCase = true)
+        }
+    }
+
     fun closeArtist() {
         artistJob?.cancel()
+        artistLoreJob?.cancel()
         if (restoreDetailPage()) return
         _state.update {
             it.copy(
@@ -2815,7 +2889,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun openAlbumInternal(album: AlbumHit, returnTarget: DetailReturnTarget) {
         albumJob?.cancel()
-        if (returnTarget != DetailReturnTarget.Artist) artistJob?.cancel()
+        if (returnTarget != DetailReturnTarget.Artist) {
+            artistJob?.cancel()
+            artistLoreJob?.cancel()
+        }
         val previous = _state.value
         val current = previous.albumDetail
         val sameAlbum = current != null && current.album.title.equals(album.title, ignoreCase = true) && current.album.artist.equals(album.artist, ignoreCase = true)
@@ -2899,6 +2976,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun openPlayerScreen() {
         albumJob?.cancel()
         artistJob?.cancel()
+        artistLoreJob?.cancel()
         detailBackStack.clear()
         _state.update {
             it.copy(
@@ -5589,6 +5667,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         lyricsPrefetchJob?.cancel()
         sponsorJob?.cancel()
         artistJob?.cancel()
+        artistLoreJob?.cancel()
         radarJob?.cancel()
         radioJob?.cancel()
         crossfadeJob?.cancel()
