@@ -226,6 +226,7 @@ dependencies {
     implementation(libs.androidx.media3.datasource.okhttp)
     implementation(libs.androidx.media3.datasource.cronet) {
         exclude(group = "org.chromium.net", module = "cronet-api")
+        exclude(group = "com.google.android.gms", module = "play-services-cronet")
     }
     implementation(libs.chromium.cronet.embedded)
     implementation(libs.androidx.media3.datasource)
