@@ -181,13 +181,17 @@ class ArtistLoreRepository(context: Context?) {
         languageCode: String
     ): LoreNetworkOutcome {
         val pageCollection = collectPageCandidates(artistName, languageCode)
-        val pageBiography = resolvePageCandidates(
+        val pageOutcome = resolvePageCandidates(
             browseId = browseId,
             languageCode = languageCode,
             candidates = pageCollection.candidates
         )
-        if (pageBiography != null) {
-            return LoreNetworkOutcome(pageBiography, pageCollection.completedWithoutTransientFailure)
+        if (pageOutcome.biography != null) {
+            return LoreNetworkOutcome(
+                biography = pageOutcome.biography,
+                completedWithoutTransientFailure = pageCollection.completedWithoutTransientFailure &&
+                    pageOutcome.completedWithoutTransientFailure
+            )
         }
         val entityOutcome = resolveFromEntitySearch(
             artistName = artistName,
@@ -197,7 +201,9 @@ class ArtistLoreRepository(context: Context?) {
         )
         return LoreNetworkOutcome(
             biography = entityOutcome.biography,
-            completedWithoutTransientFailure = pageCollection.completedWithoutTransientFailure && entityOutcome.completedWithoutTransientFailure
+            completedWithoutTransientFailure = pageCollection.completedWithoutTransientFailure &&
+                pageOutcome.completedWithoutTransientFailure &&
+                entityOutcome.completedWithoutTransientFailure
         )
     }
 
@@ -238,8 +244,8 @@ class ArtistLoreRepository(context: Context?) {
         browseId: String,
         languageCode: String,
         candidates: List<LoreCandidate>
-    ): ArtistBiography? {
-        if (candidates.isEmpty()) return null
+    ): LoreNetworkOutcome {
+        if (candidates.isEmpty()) return LoreNetworkOutcome(null, true)
         val finalists = candidates.take(MAX_ENTITY_CANDIDATES)
         val signals = fetchEntitySignals(finalists.map { it.entityId }.filter { it.isNotBlank() }.distinct())
         val ranked = finalists.map { candidate ->
@@ -248,10 +254,21 @@ class ArtistLoreRepository(context: Context?) {
         }.sortedByDescending { it.finalScore }
         val winner = ranked.firstOrNull { candidate ->
             candidate.finalScore >= ACCEPTED_SCORE
-        } ?: return null
-        val summary = fetchRichArticle(winner.pageTitle, languageCode)
-        val enriched = if (summary != null) winner.enrich(summary) else winner
-        return enriched.toBiography(languageCode, scoreToConfidence(enriched.finalScore))
+        } ?: return LoreNetworkOutcome(null, true)
+        val confidence = scoreToConfidence(winner.finalScore)
+        return when (val article = fetchRichArticle(winner.pageTitle, languageCode)) {
+            is RichArticleResult.Success -> {
+                val enriched = article.summary?.let(winner::enrich) ?: winner
+                LoreNetworkOutcome(
+                    biography = enriched.toBiography(languageCode, confidence),
+                    completedWithoutTransientFailure = true
+                )
+            }
+            RichArticleResult.Failure -> LoreNetworkOutcome(
+                biography = winner.toBiography(languageCode, confidence),
+                completedWithoutTransientFailure = false
+            )
+        }
     }
 
     private suspend fun resolveFromEntitySearch(
@@ -296,22 +313,27 @@ class ArtistLoreRepository(context: Context?) {
             for (articleLanguage in articleLanguages.distinct()) {
                 val title = record.sitelinks[wikiSiteKey(articleLanguage)]?.trim().orEmpty()
                 if (title.isBlank()) continue
-                val summary = fetchRichArticle(title, articleLanguage)
-                if (summary != null) {
-                    val candidate = LoreCandidate(
-                        pageTitle = summary.pageTitle,
-                        pageId = summary.pageId,
-                        entityId = summary.entityId.ifBlank { record.entityId },
-                        description = summary.description.ifBlank { record.descriptionFor(articleLanguage) },
-                        extract = summary.extract,
-                        thumbnailUrl = summary.thumbnailUrl,
-                        originalImageUrl = summary.originalImageUrl,
-                        sourceUrl = summary.sourceUrl.ifBlank { wikipediaPageUrl(articleLanguage, summary.pageTitle) },
-                        baseScore = score,
-                        finalScore = score
-                    )
-                    val biography = candidate.toBiography(articleLanguage, scoreToConfidence(score))
-                    if (biography != null) return@coroutineScope LoreNetworkOutcome(biography, true)
+                when (val article = fetchRichArticle(title, articleLanguage)) {
+                    is RichArticleResult.Success -> {
+                        val summary = article.summary
+                        if (summary != null) {
+                            val candidate = LoreCandidate(
+                                pageTitle = summary.pageTitle,
+                                pageId = summary.pageId,
+                                entityId = summary.entityId.ifBlank { record.entityId },
+                                description = summary.description.ifBlank { record.descriptionFor(articleLanguage) },
+                                extract = summary.extract,
+                                thumbnailUrl = summary.thumbnailUrl,
+                                originalImageUrl = summary.originalImageUrl,
+                                sourceUrl = summary.sourceUrl.ifBlank { wikipediaPageUrl(articleLanguage, summary.pageTitle) },
+                                baseScore = score,
+                                finalScore = score
+                            )
+                            val biography = candidate.toBiography(articleLanguage, scoreToConfidence(score))
+                            if (biography != null) return@coroutineScope LoreNetworkOutcome(biography, true)
+                        }
+                    }
+                    RichArticleResult.Failure -> articleTransientFailure = true
                 }
                 when (val exact = queryExactCandidates(title, articleLanguage)) {
                     is JsonResult.Success -> {
@@ -406,7 +428,7 @@ class ArtistLoreRepository(context: Context?) {
         return getJson(url, languageCode)
     }
 
-    private suspend fun fetchRichArticle(pageTitle: String, languageCode: String): LoreSummary? {
+    private suspend fun fetchRichArticle(pageTitle: String, languageCode: String): RichArticleResult {
         val url = "https://$languageCode.wikipedia.org/w/api.php".toHttpUrl().newBuilder()
             .addQueryParameter("action", "query")
             .addQueryParameter("redirects", "1")
@@ -425,8 +447,8 @@ class ArtistLoreRepository(context: Context?) {
             .addQueryParameter("formatversion", "2")
             .build()
         return when (val result = getJson(url, languageCode)) {
-            is JsonResult.Success -> result.value.toRichSummary(languageCode)
-            JsonResult.Failure -> null
+            is JsonResult.Success -> RichArticleResult.Success(result.value.toRichSummary(languageCode))
+            JsonResult.Failure -> RichArticleResult.Failure
         }
     }
 
@@ -1197,6 +1219,11 @@ private data class LoreEntityRecord(
 private sealed interface EntityRecordsResult {
     data class Success(val records: List<LoreEntityRecord>) : EntityRecordsResult
     data object Failure : EntityRecordsResult
+}
+
+private sealed interface RichArticleResult {
+    data class Success(val summary: LoreSummary?) : RichArticleResult
+    data object Failure : RichArticleResult
 }
 
 private sealed interface JsonResult {
