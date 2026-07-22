@@ -12458,7 +12458,13 @@ private fun SettingsOverlay(
         SettingsCategory("app", Icons.Rounded.Info, LevyraCyan, strings.app, if (isItalian) "Aggiornamenti e versione" else "Updates and version")
     )
     val settingsListState = rememberLazyListState()
-    LaunchedEffect(openCategory) { settingsListState.scrollToItem(0) }
+    var lastCategory by remember { mutableStateOf(openCategory) }
+    LaunchedEffect(openCategory) {
+        if (openCategory != lastCategory) {
+            lastCategory = openCategory
+            settingsListState.scrollToItem(0)
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
