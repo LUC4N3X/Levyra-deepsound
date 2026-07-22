@@ -75,7 +75,8 @@ const makeBadge = ({ label, value, color, icon }) => {
 
 const repositoryData = await requestJson(`https://api.github.com/repos/${repository}`)
 const releases = (await listReleases()).filter(release => !release.draft)
-const latestRelease = [...releases].sort((left, right) => {
+const stableReleases = releases.filter(release => !release.prerelease)
+const latestRelease = [...stableReleases].sort((left, right) => {
   const leftDate = new Date(left.published_at ?? left.created_at).getTime()
   const rightDate = new Date(right.published_at ?? right.created_at).getTime()
   return rightDate - leftDate
