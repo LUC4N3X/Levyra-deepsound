@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.AppUpdateRepository
 import com.luc4n3x.levyra.data.ArtistRepository
 import com.luc4n3x.levyra.data.ChartsRepository
@@ -2172,6 +2173,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun checkForUpdates(silent: Boolean = false) {
+        if (!BuildConfig.UPSTREAM_UPDATES_ENABLED) return
         if (updateJob?.isActive == true) return
         updateJob = viewModelScope.launch {
             _state.update {

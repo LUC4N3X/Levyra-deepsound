@@ -104,6 +104,25 @@ jobs:
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
 
+      - name: F-Droid Release Compile
+        shell: bash
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: ""
+          LEVYRA_KEYSTORE_FILE: ""
+          LEVYRA_KEYSTORE_PASSWORD: ""
+          LEVYRA_KEY_ALIAS: ""
+          LEVYRA_KEY_PASSWORD: ""
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease \
+            -PlevyraFdroidBuild=true
+          FDROID_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "${FDROID_APK}"
+          if "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify "${FDROID_APK}" >/dev/null 2>&1; then
+            echo "F-Droid source build must remain unsigned."
+            exit 1
+          fi
+
       - name: Collect Reports
         if: always()
         shell: bash
