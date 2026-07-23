@@ -47,6 +47,7 @@ object HomeEditorialEngine {
         quickPickTracks: List<Track>,
         fallbackSections: List<List<Track>>,
         chartTracks: List<Track>,
+        preferenceScore: (Track) -> Int = { 0 },
         nowMillis: Long = System.currentTimeMillis()
     ): List<HomeSpotlightCandidate> {
         val sourcePriority = LinkedHashMap<String, Int>()
@@ -105,11 +106,12 @@ object HomeEditorialEngine {
             }
             val metadataScore = track.metadataConfidence.coerceIn(0, 100) * 2
             val engagementScore = (track.replayScore + track.cacheScore + track.energy / 2).coerceIn(0, 260)
+            val preferenceBoost = preferenceScore(track).coerceIn(0, 6_000)
             val stableDailyJitter = stableHash("$daySeed|${track.id}|${track.title}|${track.artist}") % 97
             HomeSpotlightCandidate(
                 track = track,
                 kind = kind,
-                score = freshnessScore + sourcePriority.getValue(key) + artworkScore + metadataScore + engagementScore + stableDailyJitter,
+                score = freshnessScore + sourcePriority.getValue(key) + artworkScore + metadataScore + engagementScore + preferenceBoost + stableDailyJitter,
                 releaseAgeDays = ageDays
             )
         }
