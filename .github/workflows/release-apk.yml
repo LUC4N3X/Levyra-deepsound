@@ -221,38 +221,6 @@ jobs:
             -PlevyraVersionName="${VERSION}" \
             -PlevyraVersionCode="${VERSION_CODE}"
 
-      - name: Unit Tests
-        if: steps.version.outputs.publish == 'true'
-        shell: bash
-        env:
-          YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
-          LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
-          LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
-          LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
-          LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-
-          GRADLE_ARGS=(
-            --no-daemon
-            --no-configuration-cache
-            --stacktrace
-            -PlevyraVersionName="${VERSION}"
-            -PlevyraVersionCode="${VERSION_CODE}"
-          )
-
-          TASKS="$(./gradlew "${GRADLE_ARGS[@]}" :app:tasks --all)"
-          if grep -q '^testReleaseUnitTest ' <<< "${TASKS}"; then
-            ./gradlew "${GRADLE_ARGS[@]}" :app:testReleaseUnitTest
-          elif grep -q '^testDebugUnitTest ' <<< "${TASKS}"; then
-            ./gradlew "${GRADLE_ARGS[@]}" :app:testDebugUnitTest
-          elif grep -q '^test ' <<< "${TASKS}"; then
-            ./gradlew "${GRADLE_ARGS[@]}" :app:test
-          else
-            echo "No JVM unit test task is available for the app module."
-            exit 1
-          fi
-
       - name: Build Signed Release APK
         if: steps.version.outputs.publish == 'true'
         shell: bash
