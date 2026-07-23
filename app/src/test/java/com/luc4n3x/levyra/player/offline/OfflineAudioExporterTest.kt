@@ -122,13 +122,13 @@ class OfflineAudioExporterTest {
         assertEquals(-1L, audioContentLengthFromUrl("https://example.com/audio.m4a"))
     }
     @Test
-    fun longDownloadsUseLargeParallelChunksAndHighConcurrency() {
+    fun longDownloadsUseAdaptiveChunksAndHighConcurrency() {
         val oneMb = 1024L * 1024L
 
-        assertEquals(8L * oneMb, parallelAudioChunkSize(70L * oneMb))
-        assertEquals(8, parallelAudioConcurrency(70L * oneMb))
-        assertEquals(12L * oneMb, parallelAudioChunkSize(140L * oneMb))
-        assertEquals(10, parallelAudioConcurrency(140L * oneMb))
+        assertEquals(9L * 256L * 1024L, parallelAudioChunkSize(70L * oneMb))
+        assertEquals(16, parallelAudioConcurrency(70L * oneMb))
+        assertEquals(14L * 256L * 1024L, parallelAudioChunkSize(140L * oneMb))
+        assertEquals(20, parallelAudioConcurrency(140L * oneMb))
     }
 
     @Test
