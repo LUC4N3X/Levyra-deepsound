@@ -2,6 +2,7 @@
 package com.luc4n3x.levyra.ui
 
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.basicMarquee
@@ -5196,12 +5197,20 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     var homeAccentEnd by remember { mutableStateOf(Color(0xFF160E24)) }
     val animatedHomeAccentStart by animateColorAsState(
         targetValue = homeAccentStart,
-        animationSpec = tween(520, easing = FastOutSlowInEasing),
+        animationSpec = if (state.animationsEnabled) {
+            tween(520, easing = FastOutSlowInEasing)
+        } else {
+            snap()
+        },
         label = "homeAccentStart"
     )
     val animatedHomeAccentEnd by animateColorAsState(
         targetValue = homeAccentEnd,
-        animationSpec = tween(520, easing = FastOutSlowInEasing),
+        animationSpec = if (state.animationsEnabled) {
+            tween(520, easing = FastOutSlowInEasing)
+        } else {
+            snap()
+        },
         label = "homeAccentEnd"
     )
     val visiblePersonalTracks = remember(personalTracks, spotlightCandidate?.track?.id) {
