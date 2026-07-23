@@ -10,15 +10,17 @@ import com.luc4n3x.levyra.domain.Track
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import kotlin.math.absoluteValue
 
 object HomeEditorialEngine {
     private const val collectionTrackLimit = 18
     private const val minimumCollectionSize = 4
-    private const val millisecondsPerDay = 86_400_000L
 
     fun localDayKey(nowMillis: Long = System.currentTimeMillis()): Int {
         val calendar = Calendar.getInstance().apply { timeInMillis = nowMillis }
@@ -35,7 +37,6 @@ object HomeEditorialEngine {
         quickPickTracks: List<Track>,
         fallbackSections: List<List<Track>>,
         chartTracks: List<Track>,
-        currentTrackId: String?,
         nowMillis: Long = System.currentTimeMillis()
     ): List<HomeSpotlightCandidate> {
         val sourcePriority = LinkedHashMap<String, Int>()
@@ -44,7 +45,7 @@ object HomeEditorialEngine {
         fun append(tracks: List<Track>, priority: Int) {
             tracks.forEach { track ->
                 val key = identityKey(track)
-                if (key.isBlank() || !isReliableCandidate(track) || track.id == currentTrackId) return@forEach
+                if (key.isBlank() || !isReliableCandidate(track)) return@forEach
                 if (key !in candidates) candidates[key] = track
                 val previous = sourcePriority[key] ?: Int.MIN_VALUE
                 if (priority > previous) sourcePriority[key] = priority
@@ -58,24 +59,26 @@ object HomeEditorialEngine {
         append(quickPickTracks, 3_500)
         fallbackSections.forEachIndexed { index, tracks -> append(tracks, 3_000 - index.coerceAtMost(10) * 50) }
 
-        val todayStart = startOfLocalDay(nowMillis)
-        val newReleaseKeys = newReleaseTracks.asSequence().map(::identityKey).toHashSet()
+        val today = localDate(nowMillis)
+        val newReleaseKeys = if (showNewReleases) {
+            newReleaseTracks.asSequence().map(::identityKey).toHashSet()
+        } else {
+            emptySet()
+        }
         val chartKeys = chartTracks.asSequence().map(::identityKey).toHashSet()
         val daySeed = localDayKey(nowMillis)
 
         return candidates.map { (key, track) ->
-            val releaseMillis = parseReleaseDate(track.releaseDate, nowMillis)
-            val ageDays = releaseMillis?.let { ((todayStart - startOfLocalDay(it)) / millisecondsPerDay).toInt() }
+            val releaseMillis = if (showNewReleases) parseReleaseDate(track.releaseDate) else null
+            val ageDays = releaseMillis?.let { calendarDayAge(localDate(it), today) }
                 ?.takeIf { it >= 0 }
             val inNewReleases = key in newReleaseKeys
             val inCharts = key in chartKeys
-            val formatKind = inferReleaseKind(track)
             val kind = when {
                 ageDays == 0 -> HomeSpotlightKind.ReleasedToday
-                ageDays != null && ageDays <= 7 && formatKind == HomeSpotlightKind.NewAlbum -> HomeSpotlightKind.NewAlbum
-                ageDays != null && ageDays <= 7 && formatKind == HomeSpotlightKind.NewSingle -> HomeSpotlightKind.NewSingle
+                ageDays != null && ageDays <= 7 -> HomeSpotlightKind.JustReleased
                 inNewReleases -> HomeSpotlightKind.JustReleased
-                inCharts -> HomeSpotlightKind.TrendingToday
+                inCharts -> HomeSpotlightKind.ChartTrending
                 else -> HomeSpotlightKind.LevyraSelect
             }
             val freshnessScore = when {
@@ -115,6 +118,7 @@ object HomeEditorialEngine {
         chartTracks: List<Track>,
         favorites: List<Track>,
         libraryTracks: List<Track>,
+        includeFresh: Boolean = true,
         nowMillis: Long = System.currentTimeMillis()
     ): List<HomeEditorialCollection> {
         val pool = buildList {
@@ -134,11 +138,14 @@ object HomeEditorialEngine {
 
         if (pool.size < minimumCollectionSize) return emptyList()
 
-        val todayStart = startOfLocalDay(nowMillis)
-        val fresh = pool.filter { track ->
-            val releaseMillis = parseReleaseDate(track.releaseDate, nowMillis) ?: return@filter false
-            val ageDays = ((todayStart - startOfLocalDay(releaseMillis)) / millisecondsPerDay).toInt()
-            ageDays in 0..14
+        val today = localDate(nowMillis)
+        val fresh = if (includeFresh) {
+            pool.filter { track ->
+                val releaseMillis = parseReleaseDate(track.releaseDate) ?: return@filter false
+                calendarDayAge(localDate(releaseMillis), today) in 0..14
+            }
+        } else {
+            emptyList()
         }
         val newReleaseKeys = newReleaseTracks.asSequence().map(::identityKey).toHashSet()
         val local = pool.filter { "local" in normalizedTags(it) }
@@ -214,15 +221,17 @@ object HomeEditorialEngine {
             )
         }
 
-        addCollection(
-            id = "fresh",
-            kind = HomeCollectionKind.Fresh,
-            tracks = (fresh + newReleaseTracks),
-            source = HomeCollectionSource.Editorial,
-            updatedToday = fresh.any { track ->
-                parseReleaseDate(track.releaseDate, nowMillis)?.let { startOfLocalDay(it) == todayStart } == true
-            }
-        )
+        if (includeFresh) {
+            addCollection(
+                id = "fresh",
+                kind = HomeCollectionKind.Fresh,
+                tracks = fresh + newReleaseTracks,
+                source = HomeCollectionSource.Editorial,
+                updatedToday = fresh.any { track ->
+                    parseReleaseDate(track.releaseDate)?.let { localDate(it) == today } == true
+                }
+            )
+        }
         addCollection("local", HomeCollectionKind.Local, tracks = local, source = HomeCollectionSource.Editorial)
         addCollection("workout", HomeCollectionKind.Workout, tracks = workout, source = HomeCollectionSource.Levyra)
         addCollection("chill", HomeCollectionKind.Chill, tracks = chill, source = HomeCollectionSource.Levyra)
@@ -252,15 +261,7 @@ object HomeEditorialEngine {
             .take(7)
     }
 
-    private fun inferReleaseKind(track: Track): HomeSpotlightKind {
-        val albumName = track.album.trim()
-        val albumLike = track.albumBrowseId.isNotBlank() || track.trackNumber > 0 ||
-            albumName.isNotBlank() && !albumName.equals(track.title, ignoreCase = true) &&
-            !albumName.equals("YouTube Music", ignoreCase = true)
-        return if (albumLike) HomeSpotlightKind.NewAlbum else HomeSpotlightKind.NewSingle
-    }
-
-    private fun parseReleaseDate(value: String, nowMillis: Long): Long? {
+    private fun parseReleaseDate(value: String): Long? {
         val clean = value.trim()
         if (clean.isBlank()) return null
         val formats = listOf(
@@ -281,29 +282,15 @@ object HomeEditorialEngine {
             val parsed = parser.parse(clean, position)
             if (parsed != null && position.index == clean.length) return parsed.time
         }
-        if (clean.matches(Regex("^(19|20)\\d{2}$"))) {
-            val year = clean.toIntOrNull() ?: return null
-            val currentYear = Calendar.getInstance().apply { timeInMillis = nowMillis }.get(Calendar.YEAR)
-            if (year == currentYear) {
-                return Calendar.getInstance().apply {
-                    clear()
-                    set(Calendar.YEAR, year)
-                    set(Calendar.MONTH, Calendar.JANUARY)
-                    set(Calendar.DAY_OF_MONTH, 1)
-                }.timeInMillis
-            }
-        }
         return null
     }
 
-    private fun startOfLocalDay(value: Long): Long {
-        return Calendar.getInstance().apply {
-            time = Date(value)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+    private fun localDate(value: Long, zoneId: ZoneId = ZoneId.systemDefault()): LocalDate {
+        return Instant.ofEpochMilli(value).atZone(zoneId).toLocalDate()
+    }
+
+    private fun calendarDayAge(releaseDate: LocalDate, today: LocalDate): Int {
+        return ChronoUnit.DAYS.between(releaseDate, today).toInt()
     }
 
     private fun normalizedTags(track: Track): Set<String> {
