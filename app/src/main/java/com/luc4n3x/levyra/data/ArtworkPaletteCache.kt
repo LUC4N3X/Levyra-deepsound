@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.util.LruCache
 import java.security.MessageDigest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -20,7 +22,8 @@ internal object ArtworkPaletteCache {
     private const val persistentLimit = 128
     private const val memoryLimit = 96
     private val memory = LruCache<String, ArtworkPalette>(memoryLimit)
-    private val lock = Any()
+    private val memoryLock = Any()
+    private val diskLock = Any()
 
     fun key(
         trackId: String,
@@ -32,39 +35,53 @@ internal object ArtworkPaletteCache {
         return digest.joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xFF) }
     }
 
-    fun get(context: Context, key: String): ArtworkPalette? {
-        synchronized(lock) {
-            memory.get(key)?.let { return it }
-            val encoded = context.applicationContext
-                .getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-                .getString(key, null)
-                ?: return null
-            val palette = decode(encoded) ?: return null
-            memory.put(key, palette)
-            return palette
+    fun peek(key: String): ArtworkPalette? {
+        return synchronized(memoryLock) {
+            memory.get(key)
         }
     }
 
-    fun put(context: Context, key: String, palette: ArtworkPalette) {
-        synchronized(lock) {
-            memory.put(key, palette)
-            val preferences = context.applicationContext
-                .getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-            val currentOrder = preferences
-                .getString(orderKey, "")
-                .orEmpty()
-                .split(',')
-                .filter { it.isNotBlank() && it != key }
-            val newOrder = buildList {
-                add(key)
-                addAll(currentOrder.take(persistentLimit - 1))
+    suspend fun load(context: Context, key: String): ArtworkPalette? {
+        peek(key)?.let { return it }
+        val palette = withContext(Dispatchers.IO) {
+            synchronized(diskLock) {
+                val encoded = context.applicationContext
+                    .getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+                    .getString(key, null)
+                    ?: return@synchronized null
+                decode(encoded)
             }
-            val evicted = currentOrder.drop(persistentLimit - 1)
-            preferences.edit().apply {
-                putString(key, encode(palette))
-                putString(orderKey, newOrder.joinToString(","))
-                evicted.forEach { remove(it) }
-            }.apply()
+        } ?: return null
+        synchronized(memoryLock) {
+            memory.put(key, palette)
+        }
+        return palette
+    }
+
+    suspend fun store(context: Context, key: String, palette: ArtworkPalette) {
+        synchronized(memoryLock) {
+            memory.put(key, palette)
+        }
+        withContext(Dispatchers.IO) {
+            synchronized(diskLock) {
+                val preferences = context.applicationContext
+                    .getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+                val currentOrder = preferences
+                    .getString(orderKey, "")
+                    .orEmpty()
+                    .split(',')
+                    .filter { it.isNotBlank() && it != key }
+                val newOrder = buildList {
+                    add(key)
+                    addAll(currentOrder.take(persistentLimit - 1))
+                }
+                val evicted = currentOrder.drop(persistentLimit - 1)
+                preferences.edit().apply {
+                    putString(key, encode(palette))
+                    putString(orderKey, newOrder.joinToString(","))
+                    evicted.forEach { remove(it) }
+                }.apply()
+            }
         }
     }
 
