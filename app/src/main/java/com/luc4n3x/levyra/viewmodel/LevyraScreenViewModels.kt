@@ -340,7 +340,8 @@ private data class HomeDerivedInput(
     val currentTrack: Track?,
     val showNewReleases: Boolean,
     val showPersonalOrbit: Boolean,
-    val showResonance: Boolean
+    val showResonance: Boolean,
+    val showCharts: Boolean
 )
 
 internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
@@ -377,7 +378,8 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.similarArtists === current.similarArtists &&
         previous.interfaceSettings.showNewReleases == current.interfaceSettings.showNewReleases &&
         previous.interfaceSettings.showPersonalOrbit == current.interfaceSettings.showPersonalOrbit &&
-        previous.interfaceSettings.showResonance == current.interfaceSettings.showResonance
+        previous.interfaceSettings.showResonance == current.interfaceSettings.showResonance &&
+        previous.interfaceSettings.showCharts == current.interfaceSettings.showCharts
 }
 
 private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
@@ -396,17 +398,20 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         currentTrack = currentTrack,
         showNewReleases = interfaceSettings.showNewReleases,
         showPersonalOrbit = interfaceSettings.showPersonalOrbit,
-        showResonance = interfaceSettings.showResonance
+        showResonance = interfaceSettings.showResonance,
+        showCharts = interfaceSettings.showCharts
     )
 }
 
 private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     val quickPicks = buildQuickPicks(input)
-    val newReleases = input.homeSections.firstOrNull { isVerifiedHomeReleaseSectionTitle(it.title) }
+    val newReleases = input.homeSections.firstOrNull {
+        isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode)
+    }
     val otherSections = input.homeSections.filter {
-        !isVerifiedHomeReleaseSectionTitle(it.title) &&
+        !isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode) &&
             !isHomeQuickPicksSectionTitle(it.title) &&
-            !isHomePersonalOrbitSectionTitle(it.title)
+            !isHomePersonalOrbitSectionTitle(it.title, input.languageCode)
     }
     val contentAvailability = HomeContentAvailability(
         trackCount = input.tracks.size,
@@ -429,18 +434,21 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         resonanceTracks = resonanceTracks,
         quickPickTracks = quickPicks?.tracks.orEmpty(),
         fallbackSections = otherSections.map { it.tracks },
-        chartTracks = input.charts,
-        currentTrackId = input.currentTrack?.id
+        chartTracks = if (input.showCharts) input.charts else emptyList()
     )
+    val visibleCollectionSections = input.homeSections.filter { section ->
+        isHomeSectionVisible(section.title, input)
+    }
     val editorialCollections = HomeEditorialEngine.buildCollections(
-        homeSections = input.homeSections,
+        homeSections = visibleCollectionSections,
         newReleaseTracks = if (input.showNewReleases) newReleases?.tracks.orEmpty() else emptyList(),
         personalTracks = if (input.showPersonalOrbit) input.personalOrbitTracks else emptyList(),
         resonanceTracks = if (input.showResonance) resonanceTracks else emptyList(),
         quickPickTracks = quickPicks?.tracks.orEmpty(),
-        chartTracks = input.charts,
+        chartTracks = if (input.showCharts) input.charts else emptyList(),
         favorites = input.favorites,
-        libraryTracks = input.tracks
+        libraryTracks = input.tracks,
+        includeFresh = input.showNewReleases
     )
     return HomeDerivedState(
         resonanceTracks = resonanceTracks,
@@ -472,9 +480,13 @@ private fun buildQuickPicks(input: HomeDerivedInput): HomeSection? {
             ?.let(::addAll)
         input.homeSections
             .asSequence()
-            .filterNot { isHomeQuickPicksSectionTitle(it.title) || isHomePersonalOrbitSectionTitle(it.title) }
+            .filter { section -> isHomeSectionVisible(section.title, input) }
+            .filterNot {
+                isHomeQuickPicksSectionTitle(it.title) ||
+                    isHomePersonalOrbitSectionTitle(it.title, input.languageCode)
+            }
             .forEach { section -> addAll(section.tracks) }
-        addAll(input.charts)
+        if (input.showCharts) addAll(input.charts)
         addAll(input.recentListens)
         addAll(input.favorites)
         addAll(input.tracks)
@@ -592,9 +604,11 @@ private fun isReliableHomeMusicCandidate(track: Track): Boolean {
     return !isLikelyHomePlaylistOrCompilation(track)
 }
 
-private fun isVerifiedHomeReleaseSectionTitle(title: String): Boolean {
-    val normalized = title.lowercase(Locale.ROOT)
-    return normalized.contains("novità") ||
+private fun isVerifiedHomeReleaseSectionTitle(title: String, languageCode: String = "en"): Boolean {
+    val normalized = title.trim().lowercase(Locale.ROOT)
+    val localized = LevyraStrings.forCode(languageCode).newReleases.trim().lowercase(Locale.ROOT)
+    return normalized == localized ||
+        normalized.contains("novità") ||
         normalized.contains("nuove uscite") ||
         normalized.contains("appena usciti") ||
         normalized.contains("ultime uscite") ||
@@ -616,9 +630,11 @@ private fun isHomeQuickPicksSectionTitle(title: String): Boolean {
         normalized.contains("scelte per te")
 }
 
-private fun isHomePersonalOrbitSectionTitle(title: String): Boolean {
-    val normalized = title.lowercase(Locale.ROOT)
-    return normalized.contains("nella tua orbita") ||
+private fun isHomePersonalOrbitSectionTitle(title: String, languageCode: String = "en"): Boolean {
+    val normalized = title.trim().lowercase(Locale.ROOT)
+    val localized = LevyraStrings.forCode(languageCode).personalOrbitTitle.trim().lowercase(Locale.ROOT)
+    return normalized == localized ||
+        normalized.contains("nella tua orbita") ||
         normalized.contains("la tua orbita") ||
         normalized.contains("your orbit") ||
         normalized.contains("in your orbit") ||
@@ -627,6 +643,24 @@ private fun isHomePersonalOrbitSectionTitle(title: String): Boolean {
         normalized.contains("deine umlaufbahn") ||
         normalized.contains("jouw baan") ||
         normalized.contains("twoja orbita")
+}
+
+private fun isHomeSectionVisible(title: String, input: HomeDerivedInput): Boolean {
+    if (!input.showNewReleases && isVerifiedHomeReleaseSectionTitle(title, input.languageCode)) return false
+    if (!input.showPersonalOrbit && isHomePersonalOrbitSectionTitle(title, input.languageCode)) return false
+    if (!input.showResonance && isHomeResonanceSectionTitle(title, input.languageCode)) return false
+    return true
+}
+
+private fun isHomeResonanceSectionTitle(title: String, languageCode: String): Boolean {
+    val normalized = title.trim().lowercase(Locale.ROOT)
+    val localized = LevyraStrings.forCode(languageCode).voicesTitle.trim().lowercase(Locale.ROOT)
+    return normalized == localized ||
+        normalized.contains("voices that resonate") ||
+        normalized.contains("voci che risuonano") ||
+        normalized.contains("voces que resuenan") ||
+        normalized.contains("voix qui résonnent") ||
+        normalized.contains("stimmen, die nachklingen")
 }
 
 private fun isLikelyHomePlaylistOrCompilation(track: Track): Boolean {
