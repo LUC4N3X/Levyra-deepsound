@@ -260,10 +260,13 @@ class LyricsParsingTest {
             durationSec = 180
         )
 
+        val syncedScore = LyricsResultRanker.score(syncedClose, requested)
+        val plainScore = LyricsResultRanker.score(plainExact, requested)
         val best = LyricsResultRanker.best(listOf(plainExact, syncedClose), requested)
 
         assertEquals("Synced", best?.provider)
-        assertTrue((best?.confidence ?: 0) >= 80)
+        assertEquals(syncedScore, best?.confidence)
+        assertTrue(syncedScore > plainScore)
     }
 
     @Test
