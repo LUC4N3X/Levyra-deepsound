@@ -39,6 +39,30 @@ class HomeEditorialEngineTest {
     }
 
     @Test
+    fun moodPreferenceScoreChangesSpotlightSelection() {
+        val gym = track("gym", tags = setOf("gym"), energy = 96)
+        val chill = track("chill", tags = setOf("chill"), energy = 42)
+        val tracks = listOf(gym, chill)
+
+        fun candidates(preferredId: String) = HomeEditorialEngine.buildSpotlightCandidates(
+            showNewReleases = false,
+            newReleaseTracks = emptyList(),
+            showPersonalOrbit = false,
+            personalTracks = emptyList(),
+            showResonance = false,
+            resonanceTracks = emptyList(),
+            quickPickTracks = tracks,
+            fallbackSections = emptyList(),
+            chartTracks = emptyList(),
+            preferenceScore = { track -> if (track.id == preferredId) 6_000 else 0 },
+            nowMillis = 1_753_276_800_000L
+        )
+
+        assertEquals("gym", candidates("gym").first().track.id)
+        assertEquals("chill", candidates("chill").first().track.id)
+    }
+
+    @Test
     fun hiddenSectionsDoNotFeedSpotlight() {
         val candidates = HomeEditorialEngine.buildSpotlightCandidates(
             showNewReleases = false,
