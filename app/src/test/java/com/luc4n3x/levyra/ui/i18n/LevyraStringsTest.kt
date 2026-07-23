@@ -45,6 +45,21 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun editorialCollectionsUseNeutralProfessionalCopyInEveryLanguage() {
+        val externalBrands = listOf("Spotify", "Amazon Music", "YouTube Music")
+        LevyraStrings.all().forEach { strings ->
+            val subtitle = strings.collectionsSubtitle
+            assertTrue("Missing collections subtitle for ${strings.code}", subtitle.isNotBlank())
+            externalBrands.forEach { brand ->
+                assertFalse(
+                    "Collections subtitle for ${strings.code} exposes external brand $brand",
+                    subtitle.contains(brand, ignoreCase = true)
+                )
+            }
+        }
+    }
+
+    @Test
     fun newlyAddedLanguagesContainNativeCoreCopy() {
         val russian = LevyraStrings.forCode("ru")
         val turkish = LevyraStrings.forCode("tr")
