@@ -5100,8 +5100,9 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     val editorialCollections = homeDerivedState.editorialCollections
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
-    val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
+    val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId, state.currentTrack?.id) {
         spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+            ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
             ?: spotlightCandidates.firstOrNull()
     }
     LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
@@ -5179,7 +5180,10 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                         isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
                         isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
                         animationsEnabled = state.animationsEnabled,
-                        onOpen = { viewModel.playFrom(spotlightTracks, heroTrack) }
+                        onOpen = {
+                            stableSpotlightId = heroTrack.id
+                            viewModel.playFrom(spotlightTracks, heroTrack)
+                        }
                     )
                 }
             }
@@ -5409,30 +5413,24 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
 private fun homeSpotlightBadge(strings: LevyraStrings, candidate: HomeSpotlightCandidate): String {
     return when (candidate.kind) {
         HomeSpotlightKind.ReleasedToday -> strings.releasedToday
-        HomeSpotlightKind.NewAlbum -> strings.newAlbum
-        HomeSpotlightKind.NewSingle -> strings.newSingle
         HomeSpotlightKind.JustReleased -> strings.justReleased
-        HomeSpotlightKind.TrendingToday -> strings.trendingToday
+        HomeSpotlightKind.ChartTrending -> strings.chartTrending
         HomeSpotlightKind.LevyraSelect -> strings.levyraSelection
     }
 }
 
 private fun homeSpotlightDetail(strings: LevyraStrings, candidate: HomeSpotlightCandidate): String {
     val track = candidate.track
-    val albumLike = track.albumBrowseId.isNotBlank() || track.trackNumber > 0 ||
-        track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true) &&
-        !track.album.equals("YouTube Music", ignoreCase = true)
     return when (candidate.kind) {
-        HomeSpotlightKind.ReleasedToday -> listOf(
-            if (albumLike) strings.newAlbum else strings.newSingle,
-            strings.availableToday
-        ).joinToString(" • ")
-        HomeSpotlightKind.NewAlbum,
-        HomeSpotlightKind.NewSingle -> strings.releasedThisWeek
-        HomeSpotlightKind.JustReleased -> track.album
-            .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
-            ?: strings.newReleases
-        HomeSpotlightKind.TrendingToday -> strings.enteredChartsToday
+        HomeSpotlightKind.ReleasedToday -> strings.availableToday
+        HomeSpotlightKind.JustReleased -> if (candidate.releaseAgeDays != null && candidate.releaseAgeDays <= 7) {
+            strings.releasedThisWeek
+        } else {
+            track.album
+                .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
+                ?: strings.newReleases
+        }
+        HomeSpotlightKind.ChartTrending -> strings.popularInCharts
         HomeSpotlightKind.LevyraSelect -> track.album
             .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
             ?: strings.selectedForYou
