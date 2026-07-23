@@ -5192,6 +5192,18 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
         }
     }
     val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
+    var homeAccentStart by remember { mutableStateOf(Color(0xFF071019)) }
+    var homeAccentEnd by remember { mutableStateOf(Color(0xFF160E24)) }
+    val animatedHomeAccentStart by animateColorAsState(
+        targetValue = homeAccentStart,
+        animationSpec = tween(520, easing = FastOutSlowInEasing),
+        label = "homeAccentStart"
+    )
+    val animatedHomeAccentEnd by animateColorAsState(
+        targetValue = homeAccentEnd,
+        animationSpec = tween(520, easing = FastOutSlowInEasing),
+        label = "homeAccentEnd"
+    )
     val visiblePersonalTracks = remember(personalTracks, spotlightCandidate?.track?.id) {
         personalTracks.filterNot { it.id == spotlightCandidate?.track?.id }
     }
@@ -5204,6 +5216,12 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     val chartChunks = homeDerivedState.chartChunks
     val homeContent = homeDerivedState.contentAvailability
     val homeFingerprint = homeDerivedState.contentFingerprint
+    var showDeferredHomeSections by remember(homeFingerprint) { mutableStateOf(false) }
+    LaunchedEffect(homeFingerprint) {
+        showDeferredHomeSections = false
+        delay(180L)
+        showDeferredHomeSections = true
+    }
     val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
     val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
     LaunchedEffect(homeFingerprint) {
@@ -5236,7 +5254,22 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
     }
-    LazyColumn(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(430.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            animatedHomeAccentStart.copy(alpha = 0.28f),
+                            animatedHomeAccentEnd.copy(alpha = 0.14f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
         contentPadding = PaddingValues(top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
@@ -5260,6 +5293,10 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                         isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
                         isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
                         animationsEnabled = state.animationsEnabled,
+                        onPaletteChanged = { start, end ->
+                            homeAccentStart = start
+                            homeAccentEnd = end
+                        },
                         onOpen = {
                             stableSpotlightId = heroTrack.id
                             viewModel.playFrom(spotlightTracks, heroTrack)
@@ -5297,7 +5334,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 )
             }
         }
-        if (state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()) {
+        if (showDeferredHomeSections && state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()) {
             item(key = "home-resonance", contentType = "home-shelf") {
                 ResonanceShelf(
                     tracks = resonanceTracks,
@@ -5309,7 +5346,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 )
             }
         }
-        if (quickPicks != null && quickPicks.tracks.isNotEmpty()) {
+        if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
             item(key = "home-quick-picks", contentType = "home-dense-shelf") {
                 HomeQuickPicksShelf(
                     title = quickPicks.title.ifBlank { strings.quickPicks },
@@ -5335,7 +5372,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 )
             }
         }
-        if (state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
+        if (showDeferredHomeSections && state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
             item(key = "sec-similar-artists-header", contentType = "home-section-header") {
                 HomeSectionInset { HomeSectionHeader(strings.similarToFollowed) }
             }
@@ -5347,7 +5384,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 )
             }
         }
-        if (state.interfaceSettings.showNewReleases && newReleases != null && newReleases.tracks.isNotEmpty()) {
+        if (showDeferredHomeSections && state.interfaceSettings.showNewReleases && newReleases != null && newReleases.tracks.isNotEmpty()) {
             item(key = "sec-new-releases-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionHeaderAction(strings.newReleases, onPlayAll = { viewModel.playAll(newReleases.tracks) }) }
             }
@@ -5360,7 +5397,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 )
             }
         }
-        if (state.interfaceSettings.showAlbumsForYou && (homeAlbums.isNotEmpty() || showHomeAlbumShimmer)) {
+        if (showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou && (homeAlbums.isNotEmpty() || showHomeAlbumShimmer)) {
             item(key = "sec-home-albums-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(homeAlbums) }) }
             }
@@ -5377,7 +5414,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
         if (
-            state.interfaceSettings.showTrendingArtists &&
+            showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
             (state.homeArtists.isNotEmpty() || state.homeArtistsLoading)
         ) {
             item(key = "home-trending-artists", contentType = "home-shelf") {
@@ -5388,7 +5425,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 )
             }
         }
-        otherSections.forEachIndexed { sectionIndex, section ->
+        if (showDeferredHomeSections) otherSections.forEachIndexed { sectionIndex, section ->
             if (section.tracks.isNotEmpty()) {
                 val sectionKey = homeSectionLazyKey(
                     position = sectionIndex,
@@ -5408,7 +5445,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 }
             }
         }
-        if (state.interfaceSettings.showCharts) {
+        if (showDeferredHomeSections && state.interfaceSettings.showCharts) {
             item(key = "home-chart-title", contentType = "home-section-header") {
                 val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
                 HomeSectionInset {
@@ -5472,6 +5509,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             HomeSectionInset { StatusBlock(state) }
         }
     }
+    }
 
     addTarget?.let { track ->
         AddToPlaylistDialog(
@@ -5524,6 +5562,7 @@ private fun HomeEditorialSpotlight(
     isPlaying: Boolean,
     isResolving: Boolean,
     animationsEnabled: Boolean,
+    onPaletteChanged: (Color, Color) -> Unit,
     onOpen: () -> Unit
 ) {
     val track = candidate.track
@@ -5618,6 +5657,9 @@ private fun HomeEditorialSpotlight(
         animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
         label = "homeSpotlightAccentEnd"
     )
+    LaunchedEffect(accentStart, accentEnd) {
+        onPaletteChanged(accentStart, accentEnd)
+    }
     val badge = homeSpotlightBadge(strings, candidate)
     val detail = homeSpotlightDetail(strings, candidate)
 
