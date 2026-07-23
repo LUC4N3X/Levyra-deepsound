@@ -187,6 +187,14 @@ android {
     }
 
     packaging {
+        jniLibs {
+            if (isFdroidBuild) {
+                // F-Droid's build server has no NDK strip tool, while GitHub's
+                // runner does. Preserve this prebuilt library in both builds so
+                // the upstream-signed and F-Droid-rebuilt APKs are identical.
+                keepDebugSymbols += "**/libdatastore_shared_counter.so"
+            }
+        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/versions/**"
