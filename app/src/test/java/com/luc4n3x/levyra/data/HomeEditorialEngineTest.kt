@@ -207,6 +207,83 @@ class HomeEditorialEngineTest {
         assertEquals(HomeSpotlightKind.ChartTrending, candidate.kind)
     }
 
+
+    @Test
+    fun utcReleaseTimestampUsesUtcBeforeConvertingToLocalDate() {
+        val previousZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"))
+        try {
+            val now = Calendar.getInstance().apply {
+                set(2026, Calendar.JULY, 22, 20, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val release = track("utc", releaseDate = "2026-07-23T00:30:00Z")
+
+            val candidate = HomeEditorialEngine.buildSpotlightCandidates(
+                showNewReleases = true,
+                newReleaseTracks = listOf(release),
+                showPersonalOrbit = false,
+                personalTracks = emptyList(),
+                showResonance = false,
+                resonanceTracks = emptyList(),
+                quickPickTracks = emptyList(),
+                fallbackSections = emptyList(),
+                chartTracks = emptyList(),
+                nowMillis = now
+            ).first()
+
+            assertEquals(0, candidate.releaseAgeDays)
+            assertEquals(HomeSpotlightKind.ReleasedToday, candidate.kind)
+        } finally {
+            TimeZone.setDefault(previousZone)
+        }
+    }
+
+    @Test
+    fun collectionTailRotatesAcrossCalendarDays() {
+        val fresh = (1..4).map { track("fresh$it", releaseDate = "2026-07-23", tags = setOf("fresh")) }
+        val local = (1..4).map { track("local$it", tags = setOf("local")) }
+        val workout = (1..4).map { track("workout$it", tags = setOf("gym"), energy = 94) }
+        val chill = (1..4).map { track("chill$it", tags = setOf("chill"), energy = 48) }
+        val rap = (1..4).map { track("rap$it", tags = setOf("rap"), energy = 78) }
+        val party = (1..4).map { track("party$it", tags = setOf("party"), energy = 90) }
+        val focus = (1..4).map { track("focus$it", tags = setOf("focus"), energy = 74) }
+        val pop = (1..4).map { track("pop$it", tags = setOf("pop"), energy = 76) }
+        val editorialOne = (1..4).map { track("editorialA$it", tags = setOf("editorial"), energy = 76) }
+        val editorialTwo = (1..4).map { track("editorialB$it", tags = setOf("editorial"), energy = 76) }
+        val allTracks = fresh + local + workout + chill + rap + party + focus + pop
+        val start = Calendar.getInstance().apply {
+            set(2026, Calendar.JULY, 23, 12, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val observedKinds = LinkedHashSet<HomeCollectionKind>()
+
+        repeat(16) { dayOffset ->
+            val now = (start.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, dayOffset) }.timeInMillis
+            val collections = HomeEditorialEngine.buildCollections(
+                homeSections = listOf(
+                    HomeSection("Editorial A", editorialOne),
+                    HomeSection("Editorial B", editorialTwo)
+                ),
+                newReleaseTracks = fresh,
+                personalTracks = emptyList(),
+                resonanceTracks = emptyList(),
+                quickPickTracks = allTracks,
+                chartTracks = emptyList(),
+                favorites = emptyList(),
+                libraryTracks = emptyList(),
+                includeFresh = true,
+                nowMillis = now
+            )
+            assertTrue(collections.size <= 7)
+            observedKinds += collections.map { it.kind }
+        }
+
+        assertTrue(observedKinds.contains(HomeCollectionKind.Pop))
+        assertTrue(observedKinds.contains(HomeCollectionKind.Editorial))
+        assertTrue(observedKinds.contains(HomeCollectionKind.Discovery))
+    }
+
     @Test
     fun collectionsRequirePlayableVarietyAndBuildThemedGroups() {
         val tracks = listOf(
