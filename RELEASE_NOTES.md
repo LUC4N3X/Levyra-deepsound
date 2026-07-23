@@ -69,7 +69,21 @@ Levyra 2.3.16 brings a major Home experience upgrade focused on discovery, perso
 
 This release includes extensive Home UI and recommendation-engine changes. Existing libraries, downloads, playback state, and user settings remain compatible.
 
-## Release details
+## Versioning
 
 - Version name: `2.3.16`
 - Version code: `2031600`
+
+## Validation
+
+- The F-Droid release build completed successfully with `-PlevyraFdroidBuild=true`.
+- Release notes and Fastlane changelogs were updated for version code `2031600`.
+- Existing release signing and GitHub/F-Droid update compatibility remain unchanged.
+
+## Upgrade notes
+
+No migration is required. Existing libraries, downloads, playback state, and user settings remain compatible after updating.
+
+## Final note
+
+Levyra 2.3.16 makes Home faster, more adaptive, and more useful while preserving the playback and library behavior users already rely on.
