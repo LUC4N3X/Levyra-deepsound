@@ -210,6 +210,13 @@ android {
     }
 }
 
+ruler {
+    abi.set("arm64-v8a")
+    locale.set("en")
+    screenDensity.set(480)
+    sdkVersion.set(35)
+}
+
 kotlin {
     jvmToolchain(if (isFdroidBuild) 21 else 17)
 }
