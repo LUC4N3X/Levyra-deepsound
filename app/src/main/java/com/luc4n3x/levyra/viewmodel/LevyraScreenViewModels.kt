@@ -408,15 +408,21 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
 
 private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     val mood = input.selectedMood
+    fun moodPreferenceScore(track: Track): Int {
+        if (mood == null) return 0
+        val tagMatches = track.moodTags.count { tag ->
+            mood.tags.any { moodTag -> moodTag.equals(tag, ignoreCase = true) }
+        }
+        val energyFit = 100 - kotlin.math.abs(track.energy - mood.energyTarget).coerceIn(0, 100)
+        return (
+            tagMatches * 900 +
+                energyFit * 28 +
+                track.replayScore.coerceIn(0, 100) * 3
+        ).coerceIn(0, 6_000)
+    }
     fun moodRank(tracks: List<Track>): List<Track> {
         if (mood == null || tracks.size < 2) return tracks
-        return tracks.sortedByDescending { track ->
-            val tagMatches = track.moodTags.count { tag ->
-                mood.tags.any { moodTag -> moodTag.equals(tag, ignoreCase = true) }
-            }
-            val energyFit = 100 - kotlin.math.abs(track.energy - mood.energyTarget).coerceIn(0, 100)
-            tagMatches * 220 + energyFit * 2 + track.replayScore.coerceIn(0, 100)
-        }
+        return tracks.sortedByDescending(::moodPreferenceScore)
     }
     val quickPicks = buildQuickPicks(input)?.let { it.copy(tracks = moodRank(it.tracks)) }
     val newReleases = input.homeSections.firstOrNull {
@@ -448,7 +454,8 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         resonanceTracks = moodRank(resonanceTracks),
         quickPickTracks = moodRank(quickPicks?.tracks.orEmpty()),
         fallbackSections = otherSections.map { moodRank(it.tracks) },
-        chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList()
+        chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
+        preferenceScore = ::moodPreferenceScore
     )
     val visibleCollectionSections = input.homeSections.filter { section ->
         isHomeSectionVisible(section.title, input)
