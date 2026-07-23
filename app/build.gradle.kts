@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.licensee)
-    alias(libs.plugins.ruler)
     alias(libs.plugins.androidx.baselineprofile)
 }
 
@@ -210,12 +209,6 @@ android {
     }
 }
 
-ruler {
-    abi.set("arm64-v8a")
-    locale.set("en")
-    screenDensity.set(480)
-    sdkVersion.set(35)
-}
 
 kotlin {
     jvmToolchain(if (isFdroidBuild) 21 else 17)
