@@ -68,3 +68,8 @@ Levyra 2.3.16 brings a major Home experience upgrade focused on discovery, perso
 ## Notes
 
 This release includes extensive Home UI and recommendation-engine changes. Existing libraries, downloads, playback state, and user settings remain compatible.
+
+## Release details
+
+- Version name: `2.3.16`
+- Version code: `2031600`
