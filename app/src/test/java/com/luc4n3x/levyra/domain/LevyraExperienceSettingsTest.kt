@@ -63,8 +63,8 @@ class LevyraExperienceSettingsTest {
 
         assertEquals(0, invalid.maxRateKbps)
         assertEquals(0, dataSaver.effectiveRateKbps)
-        assertEquals(4, dataSaver.maxParallelFragments)
+        assertEquals(16, dataSaver.maxParallelFragments)
         assertEquals(4096, highQuality.effectiveRateKbps)
-        assertEquals(12, highQuality.maxParallelFragments)
+        assertEquals(24, highQuality.maxParallelFragments)
     }
 }
