@@ -1,0 +1,1 @@
+Rinnova la Home con selezioni editoriali giornaliere, consigli basati sull'umore, raccolte curate, colori adattivi, caricamento progressivo e una sezione Artisti ridisegnata. Migliora inoltre localizzazione e testi sulle uscite, correggendo date UTC e ora legale, rotazione delle raccolte, animazioni disattivate e un errore di compilazione.

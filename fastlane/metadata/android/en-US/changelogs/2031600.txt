@@ -1,0 +1,1 @@
+Upgrades Home with daily editorial spotlights, mood-aware recommendations, curated collections, adaptive artwork colors, progressive loading, and a redesigned Artists section. Also improves localization and factual release labels, while fixing UTC and daylight-saving date handling, collection rotation, disabled-animation behavior, and an Artists compilation error.
