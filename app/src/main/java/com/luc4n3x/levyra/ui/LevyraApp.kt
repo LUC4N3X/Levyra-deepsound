@@ -6416,7 +6416,8 @@ private fun TrendingArtistsShelf(
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
             itemsIndexed(
@@ -6424,99 +6425,10 @@ private fun TrendingArtistsShelf(
                 key = { index, artist -> "trending-artist-$index-${artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }}" },
                 contentType = { _, _ -> "trending-artist" }
             ) { _, artist ->
-                val accentStart = Color(artist.accentStart)
-                val accentEnd = Color(artist.accentEnd)
-                Surface(
-                    color = LevyraAdaptiveCard,
-                    border = BorderStroke(1.dp, LevyraAdaptiveSoftHairline),
-                    shape = RoundedCornerShape(24.dp),
-                    shadowElevation = 8.dp,
-                    modifier = Modifier
-                        .width(132.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { onArtistClick(artist) }
-                        )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(98.dp)
-                                .shadow(
-                                    elevation = 18.dp,
-                                    shape = CircleShape,
-                                    clip = false,
-                                    ambientColor = accentStart.copy(alpha = 0.22f),
-                                    spotColor = accentEnd.copy(alpha = 0.24f)
-                                )
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.linearGradient(
-                                        listOf(
-                                            accentStart.copy(alpha = 0.96f),
-                                            accentEnd.copy(alpha = 0.90f)
-                                        )
-                                    )
-                                )
-                                .padding(2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (artist.thumbnailUrl.isNotBlank()) {
-                                StableRemoteArtwork(
-                                    url = artist.thumbnailUrl,
-                                    contentDescription = artist.name,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                        .background(CinematicGlassDeep)
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Rounded.Person,
-                                    contentDescription = artist.name,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(38.dp)
-                                )
-                            }
-                        }
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = artist.name,
-                                color = LevyraText,
-                                fontSize = 13.5.sp,
-                                lineHeight = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.Center,
-                                minLines = 2
-                            )
-                            Surface(
-                                color = accentStart.copy(alpha = 0.14f),
-                                shape = RoundedCornerShape(999.dp)
-                            ) {
-                                Text(
-                                    text = strings.artistLabel.uppercase(Locale.ROOT),
-                                    color = accentStart.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color.copy(alpha = 0.96f),
-                                    fontSize = 10.sp,
-                                    lineHeight = 12.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = 1.sp,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                    }
-                }
+                PremiumHomeArtistItem(
+                    artist = artist,
+                    onClick = { onArtistClick(artist) }
+                )
             }
             items(
                 count = loadingSlots,
@@ -6529,44 +6441,151 @@ private fun TrendingArtistsShelf(
     }
 }
 
+@Composable
+private fun PremiumHomeArtistItem(
+    artist: ArtistHit,
+    onClick: () -> Unit
+) {
+    val accentStart = Color(artist.accentStart)
+    val accentEnd = Color(artist.accentEnd)
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Column(
+        modifier = Modifier
+            .width(122.dp)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(11.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(114.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = CircleShape,
+                    clip = false,
+                    ambientColor = accentStart.copy(alpha = 0.18f),
+                    spotColor = accentEnd.copy(alpha = 0.22f)
+                )
+                .background(
+                    brush = Brush.sweepGradient(
+                        listOf(
+                            accentStart.copy(alpha = 0.94f),
+                            Color.White.copy(alpha = 0.42f),
+                            accentEnd.copy(alpha = 0.92f),
+                            accentStart.copy(alpha = 0.94f)
+                        )
+                    ),
+                    shape = CircleShape
+                )
+                .padding(1.5.dp)
+                .background(LevyraBackground.copy(alpha = 0.96f), CircleShape)
+                .padding(3.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (artist.thumbnailUrl.isNotBlank()) {
+                StableRemoteArtwork(
+                    url = artist.thumbnailUrl,
+                    contentDescription = artist.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(CinematicGlassDeep)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    accentStart.copy(alpha = 0.34f),
+                                    CinematicGlassDeep,
+                                    accentEnd.copy(alpha = 0.26f)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Person,
+                        contentDescription = artist.name,
+                        tint = Color.White.copy(alpha = 0.92f),
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 7.dp)
+                    .width(34.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                accentStart.copy(alpha = 0.84f),
+                                accentEnd.copy(alpha = 0.84f)
+                            )
+                        )
+                    )
+            )
+        }
+
+        Text(
+            text = artist.name,
+            color = LevyraText,
+            fontSize = 14.sp,
+            lineHeight = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            minLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            letterSpacing = (-0.2).sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
 
 @Composable
 private fun TrendingArtistLoadingItem() {
-    Surface(
-        color = LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, LevyraAdaptiveSoftHairline),
-        shape = RoundedCornerShape(24.dp),
-        modifier = Modifier.width(132.dp)
+    Column(
+        modifier = Modifier.width(122.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(11.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(98.dp)
-                    .clip(CircleShape)
-                    .shimmer()
-                    .background(CinematicGlassDeep)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.78f)
-                    .height(14.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .shimmer()
-                    .background(CinematicGlassDeep)
-            )
-            Box(
-                modifier = Modifier
-                    .width(62.dp)
-                    .height(22.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .shimmer()
-                    .background(CinematicGlassDeep)
-            )
-        }
+        Box(
+            modifier = Modifier
+                .size(114.dp)
+                .clip(CircleShape)
+                .shimmer()
+                .background(CinematicGlassDeep)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.78f)
+                .height(15.dp)
+                .clip(RoundedCornerShape(99.dp))
+                .shimmer()
+                .background(CinematicGlassDeep)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.58f)
+                .height(12.dp)
+                .clip(RoundedCornerShape(99.dp))
+                .shimmer()
+                .background(CinematicGlassDeep)
+        )
     }
 }
 
