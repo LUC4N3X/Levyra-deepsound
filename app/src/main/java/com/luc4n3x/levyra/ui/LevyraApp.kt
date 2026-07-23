@@ -693,6 +693,86 @@ private fun SectionTitle(title: String) {
         overflow = TextOverflow.Ellipsis
     )
 }
+
+private val HomeSectionEdgeSymbols = Regex(
+    "^[\\p{So}\\p{Sk}\\u200D\\uFE0E\\uFE0F\\s]+|[\\p{So}\\p{Sk}\\u200D\\uFE0E\\uFE0F\\s]+$"
+)
+
+private fun cleanHomeSectionTitle(title: String): String {
+    val cleaned = title.replace(HomeSectionEdgeSymbols, "").trim()
+    return cleaned.ifBlank { title.trim() }
+}
+
+@Composable
+private fun HomeSectionHeader(
+    title: String,
+    subtitle: String? = null,
+    onPlayAll: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val displayTitle = remember(title) { cleanHomeSectionTitle(title) }
+    val displaySubtitle = subtitle?.trim().orEmpty()
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(11.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(Dp.Hairline)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            LevyraAdaptiveSoftHairline,
+                            LevyraAdaptiveHairline.copy(alpha = 0.64f),
+                            LevyraAdaptiveSoftHairline,
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = if (displaySubtitle.isBlank()) Alignment.CenterVertically else Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            SectionAccentBar(
+                height = if (displaySubtitle.isBlank()) 24.dp else 34.dp,
+                width = 4.dp
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = displayTitle,
+                    color = LevyraText,
+                    fontSize = 23.sp,
+                    lineHeight = 26.sp,
+                    letterSpacing = (-0.70).sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (displaySubtitle.isNotBlank()) {
+                    Text(
+                        text = displaySubtitle,
+                        color = LevyraMuted,
+                        fontSize = 12.5.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            onPlayAll?.let { action ->
+                HomePlayAllButton(onClick = action, size = 34.dp)
+            }
+        }
+    }
+}
 @Composable
 private fun CoverImage(
     track: Track,
@@ -5245,7 +5325,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
 
         if (state.interfaceSettings.showNewReleases && state.releaseRadar.isNotEmpty()) {
             item(key = "sec-release-radar-header", contentType = "home-section-header") {
-                HomeSectionInset { SectionTitle(strings.releaseRadar) }
+                HomeSectionInset { HomeSectionHeader(strings.releaseRadar) }
             }
             item(key = "sec-release-radar-row", contentType = "home-horizontal-row") {
                 ReleaseRadarRow(
@@ -5257,7 +5337,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
         }
         if (state.interfaceSettings.showTrendingArtists && state.similarArtists.isNotEmpty()) {
             item(key = "sec-similar-artists-header", contentType = "home-section-header") {
-                HomeSectionInset { SectionTitle(strings.similarToFollowed) }
+                HomeSectionInset { HomeSectionHeader(strings.similarToFollowed) }
             }
             item(key = "sec-similar-artists-row", contentType = "home-horizontal-row") {
                 ArtistHitRow(
@@ -5332,7 +5412,7 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             item(key = "home-chart-title", contentType = "home-section-header") {
                 val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
                 HomeSectionInset {
-                    SectionHeaderAction("Top 50 ${region?.label ?: "Global"} ${region?.emoji ?: ""}", onPlayAll = { viewModel.playAll(state.charts) })
+                    SectionHeaderAction("Top 50 ${region?.label ?: "Global"}", onPlayAll = { viewModel.playAll(state.charts) })
                 }
             }
             item(key = "home-chart-regions", contentType = "home-horizontal-row") {
@@ -5714,8 +5794,8 @@ private fun HomeEditorialSpotlight(
 }
 
 private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditorialCollection): String {
-    if (collection.titleOverride.isNotBlank()) return collection.titleOverride
-    return when (collection.kind) {
+    if (collection.titleOverride.isNotBlank()) return cleanHomeSectionTitle(collection.titleOverride)
+    val title = when (collection.kind) {
         HomeCollectionKind.Fresh -> strings.collectionFresh
         HomeCollectionKind.Local -> strings.collectionLocal
         HomeCollectionKind.Workout -> strings.collectionWorkout
@@ -5727,6 +5807,7 @@ private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditoria
         HomeCollectionKind.Discovery -> strings.collectionDiscovery
         HomeCollectionKind.Editorial -> strings.collectionEditorial
     }
+    return cleanHomeSectionTitle(title)
 }
 
 @Composable
@@ -5737,39 +5818,11 @@ private fun HomeEditorialCollectionsShelf(
 ) {
     val strings = LocalLevyraStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = HomeHorizontalInset),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SectionAccentBar(height = 34.dp, width = 4.dp)
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Text(
-                    text = strings.collectionsTitle,
-                    color = LevyraText,
-                    fontSize = 24.sp,
-                    lineHeight = 27.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-0.65).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = strings.collectionsSubtitle,
-                    color = LevyraMuted,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
+        HomeSectionHeader(
+            title = strings.collectionsTitle,
+            subtitle = strings.collectionsSubtitle,
+            modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+        )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -6307,21 +6360,10 @@ private fun TrendingArtistsShelf(
 ) {
     val strings = LocalLevyraStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(
-            modifier = Modifier.padding(horizontal = HomeHorizontalInset),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SectionAccentBar(height = 22.dp, width = 4.dp)
-            Text(
-                text = strings.artists,
-                color = LevyraText,
-                fontSize = 21.sp,
-                lineHeight = 23.sp,
-                letterSpacing = (-0.55).sp,
-                fontWeight = FontWeight.Black
-            )
-        }
+        HomeSectionHeader(
+            title = strings.artists,
+            modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+        )
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
@@ -6488,52 +6530,12 @@ private fun ResonanceShelf(
 ) {
     val strings = LocalLevyraStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = HomeHorizontalInset),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                SectionAccentBar(height = 32.dp, width = 4.dp)
-                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text(
-                            text = strings.voicesTitle,
-                            color = LevyraText,
-                            fontSize = 24.sp,
-                            lineHeight = 27.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.55).sp
-                        )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = LevyraMuted,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                    Text(
-                        text = strings.voicesSubtitle,
-                        color = LevyraMuted,
-                        fontSize = 12.5.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            HomePlayAllButton(onClick = onPlayAll)
-        }
+        HomeSectionHeader(
+            title = strings.voicesTitle,
+            subtitle = strings.voicesSubtitle,
+            onPlayAll = onPlayAll,
+            modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+        )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -6740,52 +6742,12 @@ private fun PersonalListeningShelf(
     val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = HomeHorizontalInset),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                SectionAccentBar(height = 34.dp, width = 4.dp)
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Text(
-                            text = strings.personalOrbitTitle,
-                            color = LevyraText,
-                            fontSize = 26.sp,
-                            lineHeight = 29.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = (-0.65).sp
-                        )
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = LevyraMuted,
-                            modifier = Modifier.size(23.dp)
-                        )
-                    }
-                    Text(
-                        text = strings.personalOrbitSubtitle,
-                        color = LevyraMuted,
-                        fontSize = 12.5.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            HomePlayAllButton(onClick = onPlayAll)
-        }
+        HomeSectionHeader(
+            title = strings.personalOrbitTitle,
+            subtitle = strings.personalOrbitSubtitle,
+            onPlayAll = onPlayAll,
+            modifier = Modifier.padding(horizontal = HomeHorizontalInset)
+        )
 
         HorizontalPager(
             state = pagerState,
@@ -14588,24 +14550,10 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
 
 @Composable
 private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = title,
-            color = LevyraText,
-            fontSize = 23.sp,
-            lineHeight = 26.sp,
-            letterSpacing = (-0.75).sp,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        HomePlayAllButton(onClick = onPlayAll, size = 34.dp)
-    }
+    HomeSectionHeader(
+        title = title,
+        onPlayAll = onPlayAll
+    )
 }
 
 @Composable
