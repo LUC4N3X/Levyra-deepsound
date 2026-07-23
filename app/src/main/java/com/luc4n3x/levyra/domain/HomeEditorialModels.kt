@@ -2,10 +2,8 @@ package com.luc4n3x.levyra.domain
 
 enum class HomeSpotlightKind {
     ReleasedToday,
-    NewAlbum,
-    NewSingle,
     JustReleased,
-    TrendingToday,
+    ChartTrending,
     LevyraSelect
 }
 
