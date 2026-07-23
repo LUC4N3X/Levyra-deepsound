@@ -5422,19 +5422,19 @@ private fun HomeEditorialSpotlight(
     val cachedPalette = remember(paletteKey) {
         ArtworkPaletteCache.get(context, paletteKey)
     }
-    var artworkPalette by remember(paletteKey) {
-        mutableStateOf(cachedPalette ?: fallbackPalette)
+    val artworkPaletteState = remember(paletteKey) {
+        mutableStateOf<ArtworkPalette>(cachedPalette ?: fallbackPalette)
     }
     var paletteExtractionStarted by remember(paletteKey) {
         mutableStateOf(cachedPalette != null)
     }
     val accentStart by animateColorAsState(
-        targetValue = Color(artworkPalette.start),
+        targetValue = Color(artworkPaletteState.value.start),
         animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
         label = "homeSpotlightAccentStart"
     )
     val accentEnd by animateColorAsState(
-        targetValue = Color(artworkPalette.end),
+        targetValue = Color(artworkPaletteState.value.end),
         animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
         label = "homeSpotlightAccentEnd"
     )
@@ -5488,20 +5488,36 @@ private fun HomeEditorialSpotlight(
                 if (!paletteExtractionStarted) {
                     paletteExtractionStarted = true
                     scope.launch {
-                        val extracted = withContext(Dispatchers.Default) {
-                            runCatching {
-                                ArtworkPaletteCache.extract(
-                                    bitmap = image.toBitmap(96, 96, android.graphics.Bitmap.Config.ARGB_8888),
-                                    fallbackStart = fallbackPalette.start,
-                                    fallbackEnd = fallbackPalette.end
-                                )
+                        val extracted: ArtworkPalette? = withContext(Dispatchers.Default) {
+                            runCatching<ArtworkPalette> {
+                                val sourceBitmap = image.toBitmap()
+                                val resizedBitmap = if (sourceBitmap.width == 96 && sourceBitmap.height == 96) {
+                                    sourceBitmap
+                                } else {
+                                    android.graphics.Bitmap.createScaledBitmap(sourceBitmap, 96, 96, true)
+                                }
+                                val paletteBitmap = if (resizedBitmap.config == android.graphics.Bitmap.Config.ARGB_8888) {
+                                    resizedBitmap
+                                } else {
+                                    resizedBitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, false) ?: resizedBitmap
+                                }
+                                try {
+                                    ArtworkPaletteCache.extract(
+                                        bitmap = paletteBitmap,
+                                        fallbackStart = fallbackPalette.start,
+                                        fallbackEnd = fallbackPalette.end
+                                    )
+                                } finally {
+                                    if (paletteBitmap !== resizedBitmap) paletteBitmap.recycle()
+                                    if (resizedBitmap !== sourceBitmap) resizedBitmap.recycle()
+                                }
                             }.getOrNull()
                         }
                         if (extracted != null) {
                             withContext(Dispatchers.IO) {
                                 ArtworkPaletteCache.put(context, paletteKey, extracted)
                             }
-                            artworkPalette = extracted
+                            artworkPaletteState.value = extracted
                         }
                     }
                 }
@@ -13738,11 +13754,9 @@ private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
 @Composable
 private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit) {
     val strings = LocalLevyraStrings.current
-    val greeting = remember(userName) {
-        strings.formatGreeting(
-            userName,
-            java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        )
+    val greetingHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    val greeting = remember(userName, strings, greetingHour) {
+        strings.formatGreeting(userName, greetingHour)
     }
     Row(
         modifier = Modifier
@@ -13802,43 +13816,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .shadow(
-                            elevation = 16.dp,
-                            shape = RoundedCornerShape(15.dp),
-                            clip = false,
-                            ambientColor = LevyraCyan.copy(alpha = 0.22f),
-                            spotColor = LevyraViolet.copy(alpha = 0.24f)
-                        )
-                        .clip(RoundedCornerShape(15.dp))
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    Color(0xFF0E1220),
-                                    LevyraCyan.copy(alpha = 0.84f),
-                                    LevyraViolet.copy(alpha = 0.90f)
-                                )
-                            )
-                        )
-                        .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(15.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(18.dp)
-                            .background(Color.White.copy(alpha = 0.13f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.MusicNote,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(12.dp)
-                        )
-                    }
-                }
+                LevyraLogoMark(size = 46.dp)
                 LevyraWordmark(fontSize = 31.sp, dotSize = 5.dp)
             }
         }
