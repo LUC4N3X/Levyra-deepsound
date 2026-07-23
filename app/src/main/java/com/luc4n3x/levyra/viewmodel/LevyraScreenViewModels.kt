@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.luc4n3x.levyra.data.HomeContentAvailability
+import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -13,6 +14,8 @@ import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.ExploreZone
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.HomeSection
+import com.luc4n3x.levyra.domain.HomeEditorialCollection
+import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.LevyraTab
@@ -315,6 +318,8 @@ internal data class HomeDerivedState(
     val quickPicks: HomeSection?,
     val newReleases: HomeSection?,
     val otherSections: List<HomeSection>,
+    val spotlightCandidates: List<HomeSpotlightCandidate>,
+    val editorialCollections: List<HomeEditorialCollection>,
     val chartChunks: List<List<Track>>,
     val contentAvailability: HomeContentAvailability,
     val contentFingerprint: String
@@ -332,7 +337,10 @@ private data class HomeDerivedInput(
     val cachedResonanceTracks: List<Track>,
     val releaseRadar: List<ReleaseRadarEntry>,
     val similarArtists: List<ArtistHit>,
-    val currentTrack: Track?
+    val currentTrack: Track?,
+    val showNewReleases: Boolean,
+    val showPersonalOrbit: Boolean,
+    val showResonance: Boolean
 )
 
 internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
@@ -366,7 +374,10 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.charts === current.charts &&
         previous.homeResonanceTracks === current.homeResonanceTracks &&
         previous.releaseRadar === current.releaseRadar &&
-        previous.similarArtists === current.similarArtists
+        previous.similarArtists === current.similarArtists &&
+        previous.interfaceSettings.showNewReleases == current.interfaceSettings.showNewReleases &&
+        previous.interfaceSettings.showPersonalOrbit == current.interfaceSettings.showPersonalOrbit &&
+        previous.interfaceSettings.showResonance == current.interfaceSettings.showResonance
 }
 
 private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
@@ -382,7 +393,10 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         cachedResonanceTracks = homeResonanceTracks,
         releaseRadar = releaseRadar,
         similarArtists = similarArtists,
-        currentTrack = currentTrack
+        currentTrack = currentTrack,
+        showNewReleases = interfaceSettings.showNewReleases,
+        showPersonalOrbit = interfaceSettings.showPersonalOrbit,
+        showResonance = interfaceSettings.showResonance
     )
 }
 
@@ -405,12 +419,37 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
         similarArtistCount = input.similarArtists.size,
         hasCurrentTrack = input.currentTrack != null
     )
+    val resonanceTracks = input.cachedResonanceTracks.ifEmpty { buildHomeResonanceTracks(input) }
+    val spotlightCandidates = HomeEditorialEngine.buildSpotlightCandidates(
+        showNewReleases = input.showNewReleases,
+        newReleaseTracks = newReleases?.tracks.orEmpty(),
+        showPersonalOrbit = input.showPersonalOrbit,
+        personalTracks = input.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT),
+        showResonance = input.showResonance,
+        resonanceTracks = resonanceTracks,
+        quickPickTracks = quickPicks?.tracks.orEmpty(),
+        fallbackSections = otherSections.map { it.tracks },
+        chartTracks = input.charts,
+        currentTrackId = input.currentTrack?.id
+    )
+    val editorialCollections = HomeEditorialEngine.buildCollections(
+        homeSections = input.homeSections,
+        newReleaseTracks = if (input.showNewReleases) newReleases?.tracks.orEmpty() else emptyList(),
+        personalTracks = if (input.showPersonalOrbit) input.personalOrbitTracks else emptyList(),
+        resonanceTracks = if (input.showResonance) resonanceTracks else emptyList(),
+        quickPickTracks = quickPicks?.tracks.orEmpty(),
+        chartTracks = input.charts,
+        favorites = input.favorites,
+        libraryTracks = input.tracks
+    )
     return HomeDerivedState(
-        resonanceTracks = input.cachedResonanceTracks.ifEmpty { buildHomeResonanceTracks(input) },
+        resonanceTracks = resonanceTracks,
         artistRefreshFingerprint = buildHomeArtistRefreshFingerprint(input),
         quickPicks = quickPicks,
         newReleases = newReleases,
         otherSections = otherSections,
+        spotlightCandidates = spotlightCandidates,
+        editorialCollections = editorialCollections,
         chartChunks = input.charts.chunked(4),
         contentAvailability = contentAvailability,
         contentFingerprint = buildHomeContentFingerprint(input, contentAvailability)
