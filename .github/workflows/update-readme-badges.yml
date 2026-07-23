@@ -32,6 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
@@ -47,4 +50,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add README.md docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg docs/assets/levyra-license.svg docs/assets/levyra-stars.svg
           git commit -m "chore: update README badges"
-          git push
+          git push origin HEAD:main
