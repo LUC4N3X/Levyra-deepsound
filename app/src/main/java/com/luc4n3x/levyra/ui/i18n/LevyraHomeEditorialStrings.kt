@@ -1,605 +1,628 @@
 package com.luc4n3x.levyra.ui.i18n
 
-internal fun homeEditorialLocalizationEntries(code: String): Map<String, String> {
-    return when (code) {
-        "en" -> mapOf(
-            "levyraSelection" to "Levyra Selection",
-            "releasedToday" to "Released today",
-            "justReleased" to "Just released",
-            "chartTrending" to "Chart trending",
-            "selectedForYou" to "Selected for you",
-            "availableToday" to "Available today",
-            "releasedThisWeek" to "Released this week",
-            "popularInCharts" to "Popular in the charts",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Curated playlists for every moment, shaped around the music you love",
-            "collectionFresh" to "Fresh right now",
-            "collectionLocal" to "Local essentials",
-            "collectionWorkout" to "Workout energy",
-            "collectionChill" to "After hours",
-            "collectionFocus" to "Deep focus",
-            "collectionParty" to "Party mode",
-            "collectionRap" to "Rap rotation",
-            "collectionPop" to "Pop pulse",
-            "collectionDiscovery" to "Discover something new",
-            "collectionUpdatedToday" to "Updated today",
-            "collectionEditorial" to "Editorial collection"
-        )
-        "it" -> mapOf(
-            "levyraSelection" to "Selezione Levyra",
-            "releasedToday" to "Uscita oggi",
-            "justReleased" to "Appena uscito",
-            "chartTrending" to "In classifica",
-            "selectedForYou" to "Scelto per te",
-            "availableToday" to "Disponibile da oggi",
-            "releasedThisWeek" to "Uscito questa settimana",
-            "popularInCharts" to "Tra i brani in classifica",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Playlist curate per ogni momento, costruite intorno alla musica che ami",
-            "collectionFresh" to "Novità del momento",
-            "collectionLocal" to "Essenziali locali",
-            "collectionWorkout" to "Energia per allenarti",
-            "collectionChill" to "Dopo il tramonto",
-            "collectionFocus" to "Concentrazione profonda",
-            "collectionParty" to "Modalità festa",
-            "collectionRap" to "Rotazione rap",
-            "collectionPop" to "Impulso pop",
-            "collectionDiscovery" to "Scopri qualcosa di nuovo",
-            "collectionUpdatedToday" to "Aggiornata oggi",
-            "collectionEditorial" to "Collezione editoriale"
-        )
-        "es" -> mapOf(
-            "levyraSelection" to "Selección Levyra",
-            "releasedToday" to "Lanzamiento de hoy",
-            "justReleased" to "Recién lanzado",
-            "chartTrending" to "En las listas",
-            "selectedForYou" to "Elegido para ti",
-            "availableToday" to "Disponible desde hoy",
-            "releasedThisWeek" to "Lanzado esta semana",
-            "popularInCharts" to "Popular en las listas",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Playlists seleccionadas para cada momento, creadas alrededor de la música que te gusta",
-            "collectionFresh" to "Novedades del momento",
-            "collectionLocal" to "Esenciales locales",
-            "collectionWorkout" to "Energía para entrenar",
-            "collectionChill" to "Después del anochecer",
-            "collectionFocus" to "Concentración profunda",
-            "collectionParty" to "Modo fiesta",
-            "collectionRap" to "Rotación de rap",
-            "collectionPop" to "Pulso pop",
-            "collectionDiscovery" to "Descubre algo nuevo",
-            "collectionUpdatedToday" to "Actualizada hoy",
-            "collectionEditorial" to "Colección editorial"
-        )
-        "fr" -> mapOf(
-            "levyraSelection" to "Sélection Levyra",
-            "releasedToday" to "Sortie aujourd’hui",
-            "justReleased" to "Tout juste sorti",
-            "chartTrending" to "Dans les classements",
-            "selectedForYou" to "Choisi pour vous",
-            "availableToday" to "Disponible dès aujourd’hui",
-            "releasedThisWeek" to "Sorti cette semaine",
-            "popularInCharts" to "Populaire dans les classements",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Des playlists soigneusement sélectionnées pour chaque moment, pensées autour de la musique que vous aimez",
-            "collectionFresh" to "Nouveautés du moment",
-            "collectionLocal" to "Essentiels locaux",
-            "collectionWorkout" to "Énergie pour l’entraînement",
-            "collectionChill" to "Après la tombée de la nuit",
-            "collectionFocus" to "Concentration profonde",
-            "collectionParty" to "Mode fête",
-            "collectionRap" to "Rotation rap",
-            "collectionPop" to "Pouls pop",
-            "collectionDiscovery" to "Découvrez quelque chose de nouveau",
-            "collectionUpdatedToday" to "Mise à jour aujourd’hui",
-            "collectionEditorial" to "Collection éditoriale"
-        )
-        "de" -> mapOf(
-            "levyraSelection" to "Levyra-Auswahl",
-            "releasedToday" to "Heute veröffentlicht",
-            "justReleased" to "Gerade erschienen",
-            "chartTrending" to "In den Charts",
-            "selectedForYou" to "Für dich ausgewählt",
-            "availableToday" to "Ab heute verfügbar",
-            "releasedThisWeek" to "Diese Woche erschienen",
-            "popularInCharts" to "Beliebt in den Charts",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Kuratierte Playlists für jeden Moment, abgestimmt auf die Musik, die du liebst",
-            "collectionFresh" to "Gerade neu",
-            "collectionLocal" to "Lokale Essentials",
-            "collectionWorkout" to "Workout-Energie",
-            "collectionChill" to "Nach Einbruch der Dunkelheit",
-            "collectionFocus" to "Tiefe Konzentration",
-            "collectionParty" to "Partymodus",
-            "collectionRap" to "Rap-Rotation",
-            "collectionPop" to "Pop-Puls",
-            "collectionDiscovery" to "Entdecke etwas Neues",
-            "collectionUpdatedToday" to "Heute aktualisiert",
-            "collectionEditorial" to "Redaktionelle Sammlung"
-        )
-        "pt" -> mapOf(
-            "levyraSelection" to "Seleção Levyra",
-            "releasedToday" to "Lançado hoje",
-            "justReleased" to "Acabou de sair",
-            "chartTrending" to "Nos tops",
-            "selectedForYou" to "Escolhido para você",
-            "availableToday" to "Disponível a partir de hoje",
-            "releasedThisWeek" to "Lançado esta semana",
-            "popularInCharts" to "Popular nos tops",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Playlists selecionadas para cada momento, pensadas em torno da música que você ama",
-            "collectionFresh" to "Novidades do momento",
-            "collectionLocal" to "Essenciais locais",
-            "collectionWorkout" to "Energia para treinar",
-            "collectionChill" to "Depois do anoitecer",
-            "collectionFocus" to "Foco profundo",
-            "collectionParty" to "Modo festa",
-            "collectionRap" to "Rotação de rap",
-            "collectionPop" to "Pulso pop",
-            "collectionDiscovery" to "Descubra algo novo",
-            "collectionUpdatedToday" to "Atualizada hoje",
-            "collectionEditorial" to "Coleção editorial"
-        )
-        "nl" -> mapOf(
-            "levyraSelection" to "Levyra-selectie",
-            "releasedToday" to "Vandaag uitgebracht",
-            "justReleased" to "Net uitgebracht",
-            "chartTrending" to "In de hitlijsten",
-            "selectedForYou" to "Voor jou gekozen",
-            "availableToday" to "Vanaf vandaag beschikbaar",
-            "releasedThisWeek" to "Deze week uitgebracht",
-            "popularInCharts" to "Populair in de hitlijsten",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Samengestelde playlists voor elk moment, afgestemd op de muziek waar je van houdt",
-            "collectionFresh" to "Nu vers",
-            "collectionLocal" to "Lokale essentials",
-            "collectionWorkout" to "Workoutenergie",
-            "collectionChill" to "Na zonsondergang",
-            "collectionFocus" to "Diepe focus",
-            "collectionParty" to "Feestmodus",
-            "collectionRap" to "Raprotatie",
-            "collectionPop" to "Poppuls",
-            "collectionDiscovery" to "Ontdek iets nieuws",
-            "collectionUpdatedToday" to "Vandaag bijgewerkt",
-            "collectionEditorial" to "Redactionele collectie"
-        )
-        "pl" -> mapOf(
-            "levyraSelection" to "Wybór Levyra",
-            "releasedToday" to "Premiera dzisiaj",
-            "justReleased" to "Właśnie wydane",
-            "chartTrending" to "Na listach",
-            "selectedForYou" to "Wybrane dla Ciebie",
-            "availableToday" to "Dostępne od dzisiaj",
-            "releasedThisWeek" to "Wydane w tym tygodniu",
-            "popularInCharts" to "Popularne na listach",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Starannie wybrane playlisty na każdą chwilę, dopasowane do muzyki, którą lubisz",
-            "collectionFresh" to "Świeże teraz",
-            "collectionLocal" to "Lokalne klasyki",
-            "collectionWorkout" to "Energia do treningu",
-            "collectionChill" to "Po zmroku",
-            "collectionFocus" to "Głębokie skupienie",
-            "collectionParty" to "Tryb imprezy",
-            "collectionRap" to "Rotacja rapu",
-            "collectionPop" to "Puls popu",
-            "collectionDiscovery" to "Odkryj coś nowego",
-            "collectionUpdatedToday" to "Zaktualizowano dzisiaj",
-            "collectionEditorial" to "Kolekcja redakcyjna"
-        )
-        "ro" -> mapOf(
-            "levyraSelection" to "Selecția Levyra",
-            "releasedToday" to "Lansat astăzi",
-            "justReleased" to "Tocmai lansat",
-            "chartTrending" to "În topuri",
-            "selectedForYou" to "Ales pentru tine",
-            "availableToday" to "Disponibil de astăzi",
-            "releasedThisWeek" to "Lansat săptămâna aceasta",
-            "popularInCharts" to "Popular în topuri",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Playlisturi atent selectate pentru fiecare moment, create în jurul muzicii pe care o iubești",
-            "collectionFresh" to "Noutăți acum",
-            "collectionLocal" to "Esențiale locale",
-            "collectionWorkout" to "Energie pentru antrenament",
-            "collectionChill" to "După lăsarea serii",
-            "collectionFocus" to "Concentrare profundă",
-            "collectionParty" to "Mod petrecere",
-            "collectionRap" to "Rotație rap",
-            "collectionPop" to "Puls pop",
-            "collectionDiscovery" to "Descoperă ceva nou",
-            "collectionUpdatedToday" to "Actualizat astăzi",
-            "collectionEditorial" to "Colecție editorială"
-        )
-        "el" -> mapOf(
-            "levyraSelection" to "Επιλογή Levyra",
-            "releasedToday" to "Κυκλοφόρησε σήμερα",
-            "justReleased" to "Μόλις κυκλοφόρησε",
-            "chartTrending" to "Στα charts",
-            "selectedForYou" to "Επιλεγμένο για εσένα",
-            "availableToday" to "Διαθέσιμο από σήμερα",
-            "releasedThisWeek" to "Κυκλοφόρησε αυτή την εβδομάδα",
-            "popularInCharts" to "Δημοφιλές στα charts",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Επιμελημένες λίστες για κάθε στιγμή, προσαρμοσμένες στη μουσική που αγαπάς",
-            "collectionFresh" to "Φρέσκα τώρα",
-            "collectionLocal" to "Τοπικά απαραίτητα",
-            "collectionWorkout" to "Ενέργεια για προπόνηση",
-            "collectionChill" to "Μετά τη δύση",
-            "collectionFocus" to "Βαθιά συγκέντρωση",
-            "collectionParty" to "Λειτουργία πάρτι",
-            "collectionRap" to "Rap rotation",
-            "collectionPop" to "Pop pulse",
-            "collectionDiscovery" to "Ανακάλυψε κάτι νέο",
-            "collectionUpdatedToday" to "Ενημερώθηκε σήμερα",
-            "collectionEditorial" to "Επιμελημένη συλλογή"
-        )
-        "sv" -> mapOf(
-            "levyraSelection" to "Levyra-val",
-            "releasedToday" to "Släppt idag",
-            "justReleased" to "Precis släppt",
-            "chartTrending" to "På topplistorna",
-            "selectedForYou" to "Utvalt för dig",
-            "availableToday" to "Tillgängligt från idag",
-            "releasedThisWeek" to "Släppt den här veckan",
-            "popularInCharts" to "Populär på topplistorna",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Utvalda spellistor för varje stund, formade kring musiken du älskar",
-            "collectionFresh" to "Nytt just nu",
-            "collectionLocal" to "Lokala måsten",
-            "collectionWorkout" to "Träningsenergi",
-            "collectionChill" to "Efter mörkrets inbrott",
-            "collectionFocus" to "Djup fokus",
-            "collectionParty" to "Festläge",
-            "collectionRap" to "Raprotation",
-            "collectionPop" to "Poppuls",
-            "collectionDiscovery" to "Upptäck något nytt",
-            "collectionUpdatedToday" to "Uppdaterad idag",
-            "collectionEditorial" to "Redaktionell samling"
-        )
-        "da" -> mapOf(
-            "levyraSelection" to "Levyra-udvalg",
-            "releasedToday" to "Udgivet i dag",
-            "justReleased" to "Netop udgivet",
-            "chartTrending" to "På hitlisterne",
-            "selectedForYou" to "Udvalgt til dig",
-            "availableToday" to "Tilgængelig fra i dag",
-            "releasedThisWeek" to "Udgivet i denne uge",
-            "popularInCharts" to "Populær på hitlisterne",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Håndplukkede playlister til ethvert øjeblik, tilpasset den musik du elsker",
-            "collectionFresh" to "Nyt lige nu",
-            "collectionLocal" to "Lokale favoritter",
-            "collectionWorkout" to "Træningsenergi",
-            "collectionChill" to "Efter mørkets frembrud",
-            "collectionFocus" to "Dyb fokus",
-            "collectionParty" to "Festtilstand",
-            "collectionRap" to "Raprotation",
-            "collectionPop" to "Poppuls",
-            "collectionDiscovery" to "Opdag noget nyt",
-            "collectionUpdatedToday" to "Opdateret i dag",
-            "collectionEditorial" to "Redaktionel samling"
-        )
-        "cs" -> mapOf(
-            "levyraSelection" to "Výběr Levyra",
-            "releasedToday" to "Vydáno dnes",
-            "justReleased" to "Právě vydáno",
-            "chartTrending" to "V žebříčcích",
-            "selectedForYou" to "Vybráno pro vás",
-            "availableToday" to "Dostupné ode dneška",
-            "releasedThisWeek" to "Vydáno tento týden",
-            "popularInCharts" to "Populární v žebříčcích",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Pečlivě vybrané playlisty pro každý okamžik, sestavené podle hudby, kterou máš rád",
-            "collectionFresh" to "Čerstvé novinky",
-            "collectionLocal" to "Místní essentials",
-            "collectionWorkout" to "Energie na trénink",
-            "collectionChill" to "Po setmění",
-            "collectionFocus" to "Hluboké soustředění",
-            "collectionParty" to "Párty režim",
-            "collectionRap" to "Rapová rotace",
-            "collectionPop" to "Popový puls",
-            "collectionDiscovery" to "Objevte něco nového",
-            "collectionUpdatedToday" to "Aktualizováno dnes",
-            "collectionEditorial" to "Redakční kolekce"
-        )
-        "uk" -> mapOf(
-            "levyraSelection" to "Вибір Levyra",
-            "releasedToday" to "Вийшло сьогодні",
-            "justReleased" to "Щойно вийшло",
-            "chartTrending" to "У чартах",
-            "selectedForYou" to "Обрано для вас",
-            "availableToday" to "Доступно від сьогодні",
-            "releasedThisWeek" to "Вийшло цього тижня",
-            "popularInCharts" to "Популярне в чартах",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Добірні плейлисти для кожного моменту, створені навколо музики, яку ви любите",
-            "collectionFresh" to "Свіже зараз",
-            "collectionLocal" to "Місцеві хіти",
-            "collectionWorkout" to "Енергія для тренування",
-            "collectionChill" to "Після заходу сонця",
-            "collectionFocus" to "Глибока концентрація",
-            "collectionParty" to "Режим вечірки",
-            "collectionRap" to "Реп-ротація",
-            "collectionPop" to "Поп-пульс",
-            "collectionDiscovery" to "Відкрийте щось нове",
-            "collectionUpdatedToday" to "Оновлено сьогодні",
-            "collectionEditorial" to "Редакційна колекція"
-        )
-        "ru" -> mapOf(
-            "levyraSelection" to "Выбор Levyra",
-            "releasedToday" to "Вышло сегодня",
-            "justReleased" to "Только что вышло",
-            "chartTrending" to "В чартах",
-            "selectedForYou" to "Выбрано для вас",
-            "availableToday" to "Доступно с сегодняшнего дня",
-            "releasedThisWeek" to "Вышло на этой неделе",
-            "popularInCharts" to "Популярно в чартах",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Тщательно подобранные плейлисты для любого момента, созданные вокруг любимой музыки",
-            "collectionFresh" to "Свежее сейчас",
-            "collectionLocal" to "Местные хиты",
-            "collectionWorkout" to "Энергия для тренировки",
-            "collectionChill" to "После заката",
-            "collectionFocus" to "Глубокая концентрация",
-            "collectionParty" to "Режим вечеринки",
-            "collectionRap" to "Рэп-ротация",
-            "collectionPop" to "Поп-пульс",
-            "collectionDiscovery" to "Откройте что-то новое",
-            "collectionUpdatedToday" to "Обновлено сегодня",
-            "collectionEditorial" to "Редакционная коллекция"
-        )
-        "tr" -> mapOf(
-            "levyraSelection" to "Levyra Seçkisi",
-            "releasedToday" to "Bugün yayınlandı",
-            "justReleased" to "Yeni yayınlandı",
-            "chartTrending" to "Listelerde",
-            "selectedForYou" to "Senin için seçildi",
-            "availableToday" to "Bugünden itibaren kullanılabilir",
-            "releasedThisWeek" to "Bu hafta yayınlandı",
-            "popularInCharts" to "Listelerde popüler",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Her ana özel, sevdiğin müziğe göre hazırlanmış seçkin çalma listeleri",
-            "collectionFresh" to "Şu an yeni",
-            "collectionLocal" to "Yerel vazgeçilmezler",
-            "collectionWorkout" to "Antrenman enerjisi",
-            "collectionChill" to "Gün batımından sonra",
-            "collectionFocus" to "Derin odak",
-            "collectionParty" to "Parti modu",
-            "collectionRap" to "Rap rotasyonu",
-            "collectionPop" to "Pop nabzı",
-            "collectionDiscovery" to "Yeni bir şey keşfet",
-            "collectionUpdatedToday" to "Bugün güncellendi",
-            "collectionEditorial" to "Editoryal koleksiyon"
-        )
-        "ar" -> mapOf(
-            "levyraSelection" to "اختيار Levyra",
-            "releasedToday" to "صدر اليوم",
-            "justReleased" to "صدر للتو",
-            "chartTrending" to "في القوائم",
-            "selectedForYou" to "مختار لك",
-            "availableToday" to "متاح ابتداءً من اليوم",
-            "releasedThisWeek" to "صدر هذا الأسبوع",
-            "popularInCharts" to "رائج في القوائم",
-            "collectionsTitle" to "مجموعات Levyra",
-            "collectionsSubtitle" to "قوائم تشغيل مختارة لكل لحظة، مصممة حول الموسيقى التي تحبها",
-            "collectionFresh" to "جديد الآن",
-            "collectionLocal" to "أساسيات محلية",
-            "collectionWorkout" to "طاقة للتمرين",
-            "collectionChill" to "بعد الغروب",
-            "collectionFocus" to "تركيز عميق",
-            "collectionParty" to "وضع الحفلة",
-            "collectionRap" to "دوران الراب",
-            "collectionPop" to "نبض البوب",
-            "collectionDiscovery" to "اكتشف شيئًا جديدًا",
-            "collectionUpdatedToday" to "تم التحديث اليوم",
-            "collectionEditorial" to "مجموعة تحريرية"
-        )
-        "zh" -> mapOf(
-            "levyraSelection" to "Levyra 精选",
-            "releasedToday" to "今日发行",
-            "justReleased" to "刚刚发行",
-            "chartTrending" to "榜单热门",
-            "selectedForYou" to "为你精选",
-            "availableToday" to "今日起可听",
-            "releasedThisWeek" to "本周发行",
-            "popularInCharts" to "榜单中的热门歌曲",
-            "collectionsTitle" to "Levyra 合集",
-            "collectionsSubtitle" to "为每个时刻精心挑选的歌单，围绕你喜爱的音乐打造",
-            "collectionFresh" to "此刻新鲜",
-            "collectionLocal" to "本地精选",
-            "collectionWorkout" to "训练能量",
-            "collectionChill" to "入夜之后",
-            "collectionFocus" to "深度专注",
-            "collectionParty" to "派对模式",
-            "collectionRap" to "说唱轮播",
-            "collectionPop" to "流行脉动",
-            "collectionDiscovery" to "发现新声音",
-            "collectionUpdatedToday" to "今日更新",
-            "collectionEditorial" to "编辑合集"
-        )
-        "ja" -> mapOf(
-            "levyraSelection" to "Levyra セレクション",
-            "releasedToday" to "本日リリース",
-            "justReleased" to "リリースされたばかり",
-            "chartTrending" to "チャートで人気",
-            "selectedForYou" to "あなたへのおすすめ",
-            "availableToday" to "本日より配信",
-            "releasedThisWeek" to "今週リリース",
-            "popularInCharts" to "チャートで注目",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "あらゆる時間に寄り添う、あなたの好きな音楽を中心に選んだプレイリスト",
-            "collectionFresh" to "今すぐ聴きたい新曲",
-            "collectionLocal" to "ローカル定番",
-            "collectionWorkout" to "ワークアウト・エナジー",
-            "collectionChill" to "日暮れのあと",
-            "collectionFocus" to "ディープフォーカス",
-            "collectionParty" to "パーティーモード",
-            "collectionRap" to "ラップ・ローテーション",
-            "collectionPop" to "ポップ・パルス",
-            "collectionDiscovery" to "新しい音に出会う",
-            "collectionUpdatedToday" to "本日更新",
-            "collectionEditorial" to "編集コレクション"
-        )
-        "ko" -> mapOf(
-            "levyraSelection" to "Levyra 셀렉션",
-            "releasedToday" to "오늘 발매",
-            "justReleased" to "방금 공개됨",
-            "chartTrending" to "차트 인기곡",
-            "selectedForYou" to "나를 위한 추천",
-            "availableToday" to "오늘부터 감상 가능",
-            "releasedThisWeek" to "이번 주 발매",
-            "popularInCharts" to "차트에서 인기",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "모든 순간을 위한 엄선된 플레이리스트, 좋아하는 음악을 중심으로 구성했습니다",
-            "collectionFresh" to "지금 막 나온 음악",
-            "collectionLocal" to "로컬 필수곡",
-            "collectionWorkout" to "운동 에너지",
-            "collectionChill" to "해가 진 뒤",
-            "collectionFocus" to "깊은 집중",
-            "collectionParty" to "파티 모드",
-            "collectionRap" to "랩 로테이션",
-            "collectionPop" to "팝 펄스",
-            "collectionDiscovery" to "새로운 음악 발견",
-            "collectionUpdatedToday" to "오늘 업데이트",
-            "collectionEditorial" to "에디토리얼 컬렉션"
-        )
-        "hi" -> mapOf(
-            "levyraSelection" to "Levyra चयन",
-            "releasedToday" to "आज रिलीज़",
-            "justReleased" to "अभी-अभी रिलीज़",
-            "chartTrending" to "चार्ट में लोकप्रिय",
-            "selectedForYou" to "आपके लिए चुना गया",
-            "availableToday" to "आज से उपलब्ध",
-            "releasedThisWeek" to "इस सप्ताह रिलीज़",
-            "popularInCharts" to "चार्ट में लोकप्रिय गीत",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "हर पल के लिए चुनी गई प्लेलिस्ट, आपके पसंदीदा संगीत के आसपास तैयार",
-            "collectionFresh" to "अभी नया",
-            "collectionLocal" to "स्थानीय पसंदीदा",
-            "collectionWorkout" to "वर्कआउट ऊर्जा",
-            "collectionChill" to "शाम के बाद",
-            "collectionFocus" to "गहरा फोकस",
-            "collectionParty" to "पार्टी मोड",
-            "collectionRap" to "रैप रोटेशन",
-            "collectionPop" to "पॉप पल्स",
-            "collectionDiscovery" to "कुछ नया खोजें",
-            "collectionUpdatedToday" to "आज अपडेट किया गया",
-            "collectionEditorial" to "संपादकीय संग्रह"
-        )
-        "id" -> mapOf(
-            "levyraSelection" to "Pilihan Levyra",
-            "releasedToday" to "Rilis hari ini",
-            "justReleased" to "Baru saja dirilis",
-            "chartTrending" to "Di tangga lagu",
-            "selectedForYou" to "Dipilih untukmu",
-            "availableToday" to "Tersedia mulai hari ini",
-            "releasedThisWeek" to "Dirilis minggu ini",
-            "popularInCharts" to "Populer di tangga lagu",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Playlist pilihan untuk setiap suasana, disusun berdasarkan musik yang kamu sukai",
-            "collectionFresh" to "Baru saat ini",
-            "collectionLocal" to "Esensial lokal",
-            "collectionWorkout" to "Energi olahraga",
-            "collectionChill" to "Setelah senja",
-            "collectionFocus" to "Fokus mendalam",
-            "collectionParty" to "Mode pesta",
-            "collectionRap" to "Rotasi rap",
-            "collectionPop" to "Denyut pop",
-            "collectionDiscovery" to "Temukan sesuatu yang baru",
-            "collectionUpdatedToday" to "Diperbarui hari ini",
-            "collectionEditorial" to "Koleksi editorial"
-        )
-        "vi" -> mapOf(
-            "levyraSelection" to "Tuyển chọn Levyra",
-            "releasedToday" to "Phát hành hôm nay",
-            "justReleased" to "Vừa phát hành",
-            "chartTrending" to "Đang nổi trên bảng xếp hạng",
-            "selectedForYou" to "Chọn riêng cho bạn",
-            "availableToday" to "Có từ hôm nay",
-            "releasedThisWeek" to "Phát hành tuần này",
-            "popularInCharts" to "Phổ biến trên bảng xếp hạng",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Playlist được tuyển chọn cho từng khoảnh khắc, xây dựng quanh âm nhạc bạn yêu thích",
-            "collectionFresh" to "Mới ngay lúc này",
-            "collectionLocal" to "Tinh hoa địa phương",
-            "collectionWorkout" to "Năng lượng luyện tập",
-            "collectionChill" to "Sau hoàng hôn",
-            "collectionFocus" to "Tập trung sâu",
-            "collectionParty" to "Chế độ tiệc",
-            "collectionRap" to "Vòng quay rap",
-            "collectionPop" to "Nhịp pop",
-            "collectionDiscovery" to "Khám phá điều mới",
-            "collectionUpdatedToday" to "Cập nhật hôm nay",
-            "collectionEditorial" to "Bộ sưu tập biên tập"
-        )
-        "th" -> mapOf(
-            "levyraSelection" to "Levyra คัดสรร",
-            "releasedToday" to "เปิดตัววันนี้",
-            "justReleased" to "เพิ่งเปิดตัว",
-            "chartTrending" to "มาแรงในชาร์ต",
-            "selectedForYou" to "คัดสรรเพื่อคุณ",
-            "availableToday" to "ฟังได้ตั้งแต่วันนี้",
-            "releasedThisWeek" to "เปิดตัวสัปดาห์นี้",
-            "popularInCharts" to "เพลงยอดนิยมในชาร์ต",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "เพลย์ลิสต์คัดสรรสำหรับทุกช่วงเวลา จัดขึ้นจากเพลงที่คุณชื่นชอบ",
-            "collectionFresh" to "เพลงใหม่ตอนนี้",
-            "collectionLocal" to "เพลงท้องถิ่นที่ต้องฟัง",
-            "collectionWorkout" to "พลังสำหรับออกกำลังกาย",
-            "collectionChill" to "หลังพระอาทิตย์ตก",
-            "collectionFocus" to "โฟกัสลึก",
-            "collectionParty" to "โหมดปาร์ตี้",
-            "collectionRap" to "แร็ปหมุนเวียน",
-            "collectionPop" to "จังหวะป๊อป",
-            "collectionDiscovery" to "ค้นพบสิ่งใหม่",
-            "collectionUpdatedToday" to "อัปเดตวันนี้",
-            "collectionEditorial" to "คอลเลกชันบรรณาธิการ"
-        )
-        "fil" -> mapOf(
-            "levyraSelection" to "Levyra Selection",
-            "releasedToday" to "Inilabas ngayong araw",
-            "justReleased" to "Kakalabas lang",
-            "chartTrending" to "Sikat sa charts",
-            "selectedForYou" to "Pinili para sa iyo",
-            "availableToday" to "Available simula ngayon",
-            "releasedThisWeek" to "Inilabas ngayong linggo",
-            "popularInCharts" to "Popular sa charts",
-            "collectionsTitle" to "Levyra Collections",
-            "collectionsSubtitle" to "Mga piling playlist para sa bawat sandali, binuo ayon sa musikang gusto mo",
-            "collectionFresh" to "Bagong-bago ngayon",
-            "collectionLocal" to "Lokal na essentials",
-            "collectionWorkout" to "Enerhiya sa workout",
-            "collectionChill" to "Pagkatapos ng dilim",
-            "collectionFocus" to "Malalim na focus",
-            "collectionParty" to "Party mode",
-            "collectionRap" to "Rap rotation",
-            "collectionPop" to "Pop pulse",
-            "collectionDiscovery" to "Tumuklas ng bago",
-            "collectionUpdatedToday" to "Na-update ngayong araw",
-            "collectionEditorial" to "Editorial collection"
-        )
-        "he" -> mapOf(
-            "levyraSelection" to "בחירת Levyra",
-            "releasedToday" to "יצא היום",
-            "justReleased" to "יצא ממש עכשיו",
-            "chartTrending" to "פופולרי במצעדים",
-            "selectedForYou" to "נבחר בשבילך",
-            "availableToday" to "זמין מהיום",
-            "releasedThisWeek" to "יצא השבוע",
-            "popularInCharts" to "בין השירים הפופולריים במצעדים",
-            "collectionsTitle" to "אוספי Levyra",
-            "collectionsSubtitle" to "פלייליסטים שנבחרו בקפידה לכל רגע, סביב המוזיקה שאתם אוהבים",
-            "collectionFresh" to "חדש עכשיו",
-            "collectionLocal" to "מקומיים חיוניים",
-            "collectionWorkout" to "אנרגיה לאימון",
-            "collectionChill" to "אחרי השקיעה",
-            "collectionFocus" to "ריכוז עמוק",
-            "collectionParty" to "מצב מסיבה",
-            "collectionRap" to "סבב ראפ",
-            "collectionPop" to "דופק פופ",
-            "collectionDiscovery" to "לגלות משהו חדש",
-            "collectionUpdatedToday" to "עודכן היום",
-            "collectionEditorial" to "אוסף ערוך"
-        )
-        else -> homeEditorialLocalizationEntries("en")
+private val homeEditorialKeys = listOf(
+    "levyraSelection",
+    "releasedToday",
+    "justReleased",
+    "chartTrending",
+    "selectedForYou",
+    "availableToday",
+    "releasedThisWeek",
+    "popularInCharts",
+    "collectionsTitle",
+    "collectionsSubtitle",
+    "collectionFresh",
+    "collectionLocal",
+    "collectionWorkout",
+    "collectionChill",
+    "collectionFocus",
+    "collectionParty",
+    "collectionRap",
+    "collectionPop",
+    "collectionDiscovery",
+    "collectionUpdatedToday",
+    "collectionEditorial"
+)
+
+private val homeEditorialCatalog = """
+@@en
+Levyra Selection
+Released today
+Just released
+Chart trending
+Selected for you
+Available today
+Released this week
+Popular in the charts
+Levyra Collections
+Curated playlists for every moment, shaped around the music you love
+Fresh right now
+Local essentials
+Workout energy
+After hours
+Deep focus
+Party mode
+Rap rotation
+Pop pulse
+Discover something new
+Updated today
+Editorial collection
+@@it
+Selezione Levyra
+Uscita oggi
+Appena uscito
+In classifica
+Scelto per te
+Disponibile da oggi
+Uscito questa settimana
+Tra i brani in classifica
+Levyra Collections
+Playlist curate per ogni momento, costruite intorno alla musica che ami
+Novità del momento
+Essenziali locali
+Energia per allenarti
+Dopo il tramonto
+Concentrazione profonda
+Modalità festa
+Rotazione rap
+Impulso pop
+Scopri qualcosa di nuovo
+Aggiornata oggi
+Collezione editoriale
+@@es
+Selección Levyra
+Lanzamiento de hoy
+Recién lanzado
+En las listas
+Elegido para ti
+Disponible desde hoy
+Lanzado esta semana
+Popular en las listas
+Levyra Collections
+Playlists seleccionadas para cada momento, creadas alrededor de la música que te gusta
+Novedades del momento
+Esenciales locales
+Energía para entrenar
+Después del anochecer
+Concentración profunda
+Modo fiesta
+Rotación de rap
+Pulso pop
+Descubre algo nuevo
+Actualizada hoy
+Colección editorial
+@@fr
+Sélection Levyra
+Sortie aujourd’hui
+Tout juste sorti
+Dans les classements
+Choisi pour vous
+Disponible dès aujourd’hui
+Sorti cette semaine
+Populaire dans les classements
+Levyra Collections
+Des playlists soigneusement sélectionnées pour chaque moment, pensées autour de la musique que vous aimez
+Nouveautés du moment
+Essentiels locaux
+Énergie pour l’entraînement
+Après la tombée de la nuit
+Concentration profonde
+Mode fête
+Rotation rap
+Pouls pop
+Découvrez quelque chose de nouveau
+Mise à jour aujourd’hui
+Collection éditoriale
+@@de
+Levyra-Auswahl
+Heute veröffentlicht
+Gerade erschienen
+In den Charts
+Für dich ausgewählt
+Ab heute verfügbar
+Diese Woche erschienen
+Beliebt in den Charts
+Levyra Collections
+Kuratierte Playlists für jeden Moment, abgestimmt auf die Musik, die du liebst
+Gerade neu
+Lokale Essentials
+Workout-Energie
+Nach Einbruch der Dunkelheit
+Tiefe Konzentration
+Partymodus
+Rap-Rotation
+Pop-Puls
+Entdecke etwas Neues
+Heute aktualisiert
+Redaktionelle Sammlung
+@@pt
+Seleção Levyra
+Lançado hoje
+Acabou de sair
+Nos tops
+Escolhido para você
+Disponível a partir de hoje
+Lançado esta semana
+Popular nos tops
+Levyra Collections
+Playlists selecionadas para cada momento, pensadas em torno da música que você ama
+Novidades do momento
+Essenciais locais
+Energia para treinar
+Depois do anoitecer
+Foco profundo
+Modo festa
+Rotação de rap
+Pulso pop
+Descubra algo novo
+Atualizada hoje
+Coleção editorial
+@@nl
+Levyra-selectie
+Vandaag uitgebracht
+Net uitgebracht
+In de hitlijsten
+Voor jou gekozen
+Vanaf vandaag beschikbaar
+Deze week uitgebracht
+Populair in de hitlijsten
+Levyra Collections
+Samengestelde playlists voor elk moment, afgestemd op de muziek waar je van houdt
+Nu vers
+Lokale essentials
+Workoutenergie
+Na zonsondergang
+Diepe focus
+Feestmodus
+Raprotatie
+Poppuls
+Ontdek iets nieuws
+Vandaag bijgewerkt
+Redactionele collectie
+@@pl
+Wybór Levyra
+Premiera dzisiaj
+Właśnie wydane
+Na listach
+Wybrane dla Ciebie
+Dostępne od dzisiaj
+Wydane w tym tygodniu
+Popularne na listach
+Levyra Collections
+Starannie wybrane playlisty na każdą chwilę, dopasowane do muzyki, którą lubisz
+Świeże teraz
+Lokalne klasyki
+Energia do treningu
+Po zmroku
+Głębokie skupienie
+Tryb imprezy
+Rotacja rapu
+Puls popu
+Odkryj coś nowego
+Zaktualizowano dzisiaj
+Kolekcja redakcyjna
+@@ro
+Selecția Levyra
+Lansat astăzi
+Tocmai lansat
+În topuri
+Ales pentru tine
+Disponibil de astăzi
+Lansat săptămâna aceasta
+Popular în topuri
+Levyra Collections
+Playlisturi atent selectate pentru fiecare moment, create în jurul muzicii pe care o iubești
+Noutăți acum
+Esențiale locale
+Energie pentru antrenament
+După lăsarea serii
+Concentrare profundă
+Mod petrecere
+Rotație rap
+Puls pop
+Descoperă ceva nou
+Actualizat astăzi
+Colecție editorială
+@@el
+Επιλογή Levyra
+Κυκλοφόρησε σήμερα
+Μόλις κυκλοφόρησε
+Στα charts
+Επιλεγμένο για εσένα
+Διαθέσιμο από σήμερα
+Κυκλοφόρησε αυτή την εβδομάδα
+Δημοφιλές στα charts
+Levyra Collections
+Επιμελημένες λίστες για κάθε στιγμή, προσαρμοσμένες στη μουσική που αγαπάς
+Φρέσκα τώρα
+Τοπικά απαραίτητα
+Ενέργεια για προπόνηση
+Μετά τη δύση
+Βαθιά συγκέντρωση
+Λειτουργία πάρτι
+Ροή ραπ
+Παλμός ποπ
+Ανακάλυψε κάτι νέο
+Ενημερώθηκε σήμερα
+Επιμελημένη συλλογή
+@@sv
+Levyra-val
+Släppt idag
+Precis släppt
+På topplistorna
+Utvalt för dig
+Tillgängligt från idag
+Släppt den här veckan
+Populär på topplistorna
+Levyra Collections
+Utvalda spellistor för varje stund, formade kring musiken du älskar
+Nytt just nu
+Lokala måsten
+Träningsenergi
+Efter mörkrets inbrott
+Djup fokus
+Festläge
+Raprotation
+Poppuls
+Upptäck något nytt
+Uppdaterad idag
+Redaktionell samling
+@@da
+Levyra-udvalg
+Udgivet i dag
+Netop udgivet
+På hitlisterne
+Udvalgt til dig
+Tilgængelig fra i dag
+Udgivet i denne uge
+Populær på hitlisterne
+Levyra Collections
+Håndplukkede playlister til ethvert øjeblik, tilpasset den musik du elsker
+Nyt lige nu
+Lokale favoritter
+Træningsenergi
+Efter mørkets frembrud
+Dyb fokus
+Festtilstand
+Raprotation
+Poppuls
+Opdag noget nyt
+Opdateret i dag
+Redaktionel samling
+@@cs
+Výběr Levyra
+Vydáno dnes
+Právě vydáno
+V žebříčcích
+Vybráno pro vás
+Dostupné ode dneška
+Vydáno tento týden
+Populární v žebříčcích
+Levyra Collections
+Pečlivě vybrané playlisty pro každý okamžik, sestavené podle hudby, kterou máš rád
+Čerstvé novinky
+Místní essentials
+Energie na trénink
+Po setmění
+Hluboké soustředění
+Párty režim
+Rapová rotace
+Popový puls
+Objevte něco nového
+Aktualizováno dnes
+Redakční kolekce
+@@uk
+Вибір Levyra
+Вийшло сьогодні
+Щойно вийшло
+У чартах
+Обрано для вас
+Доступно від сьогодні
+Вийшло цього тижня
+Популярне в чартах
+Levyra Collections
+Добірні плейлисти для кожного моменту, створені навколо музики, яку ви любите
+Свіже зараз
+Місцеві хіти
+Енергія для тренування
+Після заходу сонця
+Глибока концентрація
+Режим вечірки
+Реп-ротація
+Поп-пульс
+Відкрийте щось нове
+Оновлено сьогодні
+Редакційна колекція
+@@ru
+Выбор Levyra
+Вышло сегодня
+Только что вышло
+В чартах
+Выбрано для вас
+Доступно с сегодняшнего дня
+Вышло на этой неделе
+Популярно в чартах
+Levyra Collections
+Тщательно подобранные плейлисты для любого момента, созданные вокруг любимой музыки
+Свежее сейчас
+Местные хиты
+Энергия для тренировки
+После заката
+Глубокая концентрация
+Режим вечеринки
+Рэп-ротация
+Поп-пульс
+Откройте что-то новое
+Обновлено сегодня
+Редакционная коллекция
+@@tr
+Levyra Seçkisi
+Bugün yayınlandı
+Yeni yayınlandı
+Listelerde
+Senin için seçildi
+Bugünden itibaren kullanılabilir
+Bu hafta yayınlandı
+Listelerde popüler
+Levyra Collections
+Her ana özel, sevdiğin müziğe göre hazırlanmış seçkin çalma listeleri
+Şu an yeni
+Yerel vazgeçilmezler
+Antrenman enerjisi
+Gün batımından sonra
+Derin odak
+Parti modu
+Rap rotasyonu
+Pop nabzı
+Yeni bir şey keşfet
+Bugün güncellendi
+Editoryal koleksiyon
+@@ar
+اختيار Levyra
+صدر اليوم
+صدر للتو
+في القوائم
+مختار لك
+متاح ابتداءً من اليوم
+صدر هذا الأسبوع
+رائج في القوائم
+مجموعات Levyra
+قوائم تشغيل مختارة لكل لحظة، مصممة حول الموسيقى التي تحبها
+جديد الآن
+أساسيات محلية
+طاقة للتمرين
+بعد الغروب
+تركيز عميق
+وضع الحفلة
+دوران الراب
+نبض البوب
+اكتشف شيئًا جديدًا
+تم التحديث اليوم
+مجموعة تحريرية
+@@zh
+Levyra 精选
+今日发行
+刚刚发行
+榜单热门
+为你精选
+今日起可听
+本周发行
+榜单中的热门歌曲
+Levyra 合集
+为每个时刻精心挑选的歌单，围绕你喜爱的音乐打造
+此刻新鲜
+本地精选
+训练能量
+入夜之后
+深度专注
+派对模式
+说唱轮播
+流行脉动
+发现新声音
+今日更新
+编辑合集
+@@ja
+Levyra セレクション
+本日リリース
+リリースされたばかり
+チャートで人気
+あなたへのおすすめ
+本日より配信
+今週リリース
+チャートで注目
+Levyra Collections
+あらゆる時間に寄り添う、あなたの好きな音楽を中心に選んだプレイリスト
+今すぐ聴きたい新曲
+ローカル定番
+ワークアウト・エナジー
+日暮れのあと
+ディープフォーカス
+パーティーモード
+ラップ・ローテーション
+ポップ・パルス
+新しい音に出会う
+本日更新
+編集コレクション
+@@ko
+Levyra 셀렉션
+오늘 발매
+방금 공개됨
+차트 인기곡
+나를 위한 추천
+오늘부터 감상 가능
+이번 주 발매
+차트에서 인기
+Levyra Collections
+모든 순간을 위한 엄선된 플레이리스트, 좋아하는 음악을 중심으로 구성했습니다
+지금 막 나온 음악
+로컬 필수곡
+운동 에너지
+해가 진 뒤
+깊은 집중
+파티 모드
+랩 로테이션
+팝 펄스
+새로운 음악 발견
+오늘 업데이트
+에디토리얼 컬렉션
+@@hi
+Levyra चयन
+आज रिलीज़
+अभी-अभी रिलीज़
+चार्ट में लोकप्रिय
+आपके लिए चुना गया
+आज से उपलब्ध
+इस सप्ताह रिलीज़
+चार्ट में लोकप्रिय गीत
+Levyra Collections
+हर पल के लिए चुनी गई प्लेलिस्ट, आपके पसंदीदा संगीत के आसपास तैयार
+अभी नया
+स्थानीय पसंदीदा
+वर्कआउट ऊर्जा
+शाम के बाद
+गहरा फोकस
+पार्टी मोड
+रैप रोटेशन
+पॉप पल्स
+कुछ नया खोजें
+आज अपडेट किया गया
+संपादकीय संग्रह
+@@id
+Pilihan Levyra
+Rilis hari ini
+Baru saja dirilis
+Di tangga lagu
+Dipilih untukmu
+Tersedia mulai hari ini
+Dirilis minggu ini
+Populer di tangga lagu
+Levyra Collections
+Playlist pilihan untuk setiap suasana, disusun berdasarkan musik yang kamu sukai
+Baru saat ini
+Esensial lokal
+Energi olahraga
+Setelah senja
+Fokus mendalam
+Mode pesta
+Rotasi rap
+Denyut pop
+Temukan sesuatu yang baru
+Diperbarui hari ini
+Koleksi editorial
+@@vi
+Tuyển chọn Levyra
+Phát hành hôm nay
+Vừa phát hành
+Đang nổi trên bảng xếp hạng
+Chọn riêng cho bạn
+Có từ hôm nay
+Phát hành tuần này
+Phổ biến trên bảng xếp hạng
+Levyra Collections
+Playlist được tuyển chọn cho từng khoảnh khắc, xây dựng quanh âm nhạc bạn yêu thích
+Mới ngay lúc này
+Tinh hoa địa phương
+Năng lượng luyện tập
+Sau hoàng hôn
+Tập trung sâu
+Chế độ tiệc
+Vòng quay rap
+Nhịp pop
+Khám phá điều mới
+Cập nhật hôm nay
+Bộ sưu tập biên tập
+@@th
+Levyra คัดสรร
+เปิดตัววันนี้
+เพิ่งเปิดตัว
+มาแรงในชาร์ต
+คัดสรรเพื่อคุณ
+ฟังได้ตั้งแต่วันนี้
+เปิดตัวสัปดาห์นี้
+เพลงยอดนิยมในชาร์ต
+Levyra Collections
+เพลย์ลิสต์คัดสรรสำหรับทุกช่วงเวลา จัดขึ้นจากเพลงที่คุณชื่นชอบ
+เพลงใหม่ตอนนี้
+เพลงท้องถิ่นที่ต้องฟัง
+พลังสำหรับออกกำลังกาย
+หลังพระอาทิตย์ตก
+โฟกัสลึก
+โหมดปาร์ตี้
+แร็ปหมุนเวียน
+จังหวะป๊อป
+ค้นพบสิ่งใหม่
+อัปเดตวันนี้
+คอลเลกชันบรรณาธิการ
+@@fil
+Levyra Selection
+Inilabas ngayong araw
+Kakalabas lang
+Sikat sa charts
+Pinili para sa iyo
+Available simula ngayon
+Inilabas ngayong linggo
+Popular sa charts
+Levyra Collections
+Mga piling playlist para sa bawat sandali, binuo ayon sa musikang gusto mo
+Bagong-bago ngayon
+Lokal na essentials
+Enerhiya sa workout
+Pagkatapos ng dilim
+Malalim na focus
+Party mode
+Ikot ng rap
+Tibok ng pop
+Tumuklas ng bago
+Na-update ngayong araw
+Editorial collection
+@@he
+בחירת Levyra
+יצא היום
+יצא ממש עכשיו
+פופולרי במצעדים
+נבחר בשבילך
+זמין מהיום
+יצא השבוע
+בין השירים הפופולריים במצעדים
+אוספי Levyra
+פלייליסטים שנבחרו בקפידה לכל רגע, סביב המוזיקה שאתם אוהבים
+חדש עכשיו
+מקומיים חיוניים
+אנרגיה לאימון
+אחרי השקיעה
+ריכוז עמוק
+מצב מסיבה
+סבב ראפ
+דופק פופ
+לגלות משהו חדש
+עודכן היום
+אוסף ערוך
+""".trimIndent()
+
+private val homeEditorialEntries = buildMap {
+    var activeCode = ""
+    val values = ArrayList<String>(homeEditorialKeys.size)
+
+    fun storeActiveBundle() {
+        if (activeCode.isBlank()) return
+        require(values.size == homeEditorialKeys.size) {
+            "Invalid home editorial bundle for $activeCode: ${values.size}/${homeEditorialKeys.size}"
+        }
+        put(activeCode, homeEditorialKeys.zip(values).toMap())
+        values.clear()
     }
+
+    homeEditorialCatalog.lineSequence().forEach { line ->
+        if (line.startsWith("@@")) {
+            storeActiveBundle()
+            activeCode = line.removePrefix("@@")
+        } else {
+            values += line
+        }
+    }
+    storeActiveBundle()
+}
+
+internal fun homeEditorialLocalizationEntries(code: String): Map<String, String> {
+    return homeEditorialEntries[code] ?: homeEditorialEntries.getValue("en")
 }
