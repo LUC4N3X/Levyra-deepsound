@@ -7,20 +7,30 @@ import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
 import com.luc4n3x.levyra.domain.HomeSpotlightKind
 import com.luc4n3x.levyra.domain.Track
-import java.text.ParsePosition
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import java.util.TimeZone
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.ResolverStyle
 import java.time.temporal.ChronoUnit
 import kotlin.math.absoluteValue
 
 object HomeEditorialEngine {
     private const val collectionTrackLimit = 18
     private const val minimumCollectionSize = 4
+    private const val maximumCollectionCount = 7
+    private const val stableCollectionSlots = 3
+
+    private val localReleaseDateFormatters = listOf(
+        DateTimeFormatter.ISO_LOCAL_DATE.withResolverStyle(ResolverStyle.STRICT),
+        DateTimeFormatter.ofPattern("uuuu/MM/dd", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT),
+        DateTimeFormatter.ofPattern("uuuu.MM.dd", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT),
+        DateTimeFormatter.ofPattern("dd/MM/uuuu", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT),
+        DateTimeFormatter.ofPattern("MM/dd/uuuu", Locale.ROOT).withResolverStyle(ResolverStyle.STRICT)
+    )
 
     fun localDayKey(nowMillis: Long = System.currentTimeMillis()): Int {
         val calendar = Calendar.getInstance().apply { timeInMillis = nowMillis }
@@ -180,7 +190,7 @@ object HomeEditorialEngine {
                 .thenBy { stableHash(identityKey(it)) }
         )
 
-        val result = ArrayList<HomeEditorialCollection>(8)
+        val result = ArrayList<HomeEditorialCollection>(12)
         val usedCollectionIds = HashSet<String>()
 
         fun addCollection(
@@ -256,31 +266,94 @@ object HomeEditorialEngine {
 
         addCollection("discovery", HomeCollectionKind.Discovery, tracks = discovery, source = HomeCollectionSource.Levyra)
 
-        return result
+        val distinctCollections = result
             .distinctBy { collection -> collection.tracks.take(6).joinToString("|") { identityKey(it) } }
-            .take(7)
+        return selectCollectionsForDay(distinctCollections, nowMillis)
+    }
+
+    private fun selectCollectionsForDay(
+        collections: List<HomeEditorialCollection>,
+        nowMillis: Long
+    ): List<HomeEditorialCollection> {
+        if (collections.size <= maximumCollectionCount) return collections
+
+        val featuredFresh = collections.firstOrNull {
+            it.kind == HomeCollectionKind.Fresh && it.updatedToday
+        }
+        val remaining = collections
+            .filterNot { collection -> collection.id == featuredFresh?.id }
+            .sortedWith(
+                compareByDescending<HomeEditorialCollection>(::collectionQuality)
+                    .thenBy { stableHash(it.id) }
+            )
+
+        val selected = ArrayList<HomeEditorialCollection>(maximumCollectionCount)
+        if (featuredFresh != null) selected += featuredFresh
+
+        val stableCount = minOf(
+            stableCollectionSlots,
+            maximumCollectionCount - selected.size,
+            remaining.size
+        )
+        selected += remaining.take(stableCount)
+
+        val rotationPool = remaining.drop(stableCount)
+        val rotatingSlots = maximumCollectionCount - selected.size
+        if (rotatingSlots > 0 && rotationPool.isNotEmpty()) {
+            val offset = Math.floorMod(localDayKey(nowMillis), rotationPool.size)
+            val rotated = rotationPool.drop(offset) + rotationPool.take(offset)
+            selected += rotated.take(rotatingSlots)
+        }
+
+        return selected
+    }
+
+    private fun collectionQuality(collection: HomeEditorialCollection): Int {
+        val tracks = collection.tracks
+        if (tracks.isEmpty()) return 0
+        val averageMetadata = tracks.sumOf { it.metadataConfidence.coerceIn(0, 100) } / tracks.size
+        val artworkCount = tracks.count { it.largeThumbnailUrl.isNotBlank() || it.thumbnailUrl.isNotBlank() }
+        val uniqueArtists = tracks
+            .asSequence()
+            .map { it.artist.trim().lowercase(Locale.ROOT) }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .count()
+        val sourceBoost = when (collection.source) {
+            HomeCollectionSource.Editorial -> 90
+            HomeCollectionSource.Charts -> 80
+            HomeCollectionSource.Levyra -> 70
+        }
+        val freshnessBoost = if (collection.updatedToday) 900 else 0
+        return freshnessBoost +
+            averageMetadata * 3 +
+            artworkCount * 12 +
+            uniqueArtists * 18 +
+            tracks.size.coerceAtMost(collectionTrackLimit) * 8 +
+            sourceBoost
     }
 
     private fun parseReleaseDate(value: String): Long? {
         val clean = value.trim()
         if (clean.isBlank()) return null
-        val formats = listOf(
-            "yyyy-MM-dd'T'HH:mm:ssXXX",
-            "yyyy-MM-dd'T'HH:mm:ss'Z'",
-            "yyyy-MM-dd",
-            "yyyy/MM/dd",
-            "yyyy.MM.dd",
-            "dd/MM/yyyy",
-            "MM/dd/yyyy"
-        )
-        formats.forEach { pattern ->
-            val parser = SimpleDateFormat(pattern, Locale.ROOT).apply {
-                isLenient = false
-                timeZone = TimeZone.getDefault()
-            }
-            val position = ParsePosition(0)
-            val parsed = parser.parse(clean, position)
-            if (parsed != null && position.index == clean.length) return parsed.time
+
+        runCatching { Instant.parse(clean).toEpochMilli() }
+            .getOrNull()
+            ?.let { return it }
+        runCatching {
+            OffsetDateTime.parse(clean, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                .toInstant()
+                .toEpochMilli()
+        }
+            .getOrNull()
+            ?.let { return it }
+
+        localReleaseDateFormatters.forEach { formatter ->
+            val parsed = runCatching { LocalDate.parse(clean, formatter) }.getOrNull() ?: return@forEach
+            return parsed
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
         }
         return null
     }
