@@ -338,6 +338,7 @@ private data class HomeDerivedInput(
     val releaseRadar: List<ReleaseRadarEntry>,
     val similarArtists: List<ArtistHit>,
     val currentTrack: Track?,
+    val selectedMood: Mood?,
     val showNewReleases: Boolean,
     val showPersonalOrbit: Boolean,
     val showResonance: Boolean,
@@ -376,6 +377,7 @@ private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiStat
         previous.homeResonanceTracks === current.homeResonanceTracks &&
         previous.releaseRadar === current.releaseRadar &&
         previous.similarArtists === current.similarArtists &&
+        previous.selectedMood == current.selectedMood &&
         previous.interfaceSettings.showNewReleases == current.interfaceSettings.showNewReleases &&
         previous.interfaceSettings.showPersonalOrbit == current.interfaceSettings.showPersonalOrbit &&
         previous.interfaceSettings.showResonance == current.interfaceSettings.showResonance &&
@@ -396,6 +398,7 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
         releaseRadar = releaseRadar,
         similarArtists = similarArtists,
         currentTrack = currentTrack,
+        selectedMood = selectedMood,
         showNewReleases = interfaceSettings.showNewReleases,
         showPersonalOrbit = interfaceSettings.showPersonalOrbit,
         showResonance = interfaceSettings.showResonance,
@@ -404,10 +407,27 @@ private fun LevyraUiState.toHomeDerivedInput(): HomeDerivedInput {
 }
 
 private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
-    val quickPicks = buildQuickPicks(input)
+    val mood = input.selectedMood
+    fun moodPreferenceScore(track: Track): Int {
+        if (mood == null) return 0
+        val tagMatches = track.moodTags.count { tag ->
+            mood.tags.any { moodTag -> moodTag.equals(tag, ignoreCase = true) }
+        }
+        val energyFit = 100 - kotlin.math.abs(track.energy - mood.energyTarget).coerceIn(0, 100)
+        return (
+            tagMatches * 900 +
+                energyFit * 28 +
+                track.replayScore.coerceIn(0, 100) * 3
+        ).coerceIn(0, 6_000)
+    }
+    fun moodRank(tracks: List<Track>): List<Track> {
+        if (mood == null || tracks.size < 2) return tracks
+        return tracks.sortedByDescending(::moodPreferenceScore)
+    }
+    val quickPicks = buildQuickPicks(input)?.let { it.copy(tracks = moodRank(it.tracks)) }
     val newReleases = input.homeSections.firstOrNull {
         isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode)
-    }
+    }?.let { it.copy(tracks = moodRank(it.tracks)) }
     val otherSections = input.homeSections.filter {
         !isVerifiedHomeReleaseSectionTitle(it.title, input.languageCode) &&
             !isHomeQuickPicksSectionTitle(it.title) &&
@@ -427,25 +447,26 @@ private fun buildHomeDerivedState(input: HomeDerivedInput): HomeDerivedState {
     val resonanceTracks = input.cachedResonanceTracks.ifEmpty { buildHomeResonanceTracks(input) }
     val spotlightCandidates = HomeEditorialEngine.buildSpotlightCandidates(
         showNewReleases = input.showNewReleases,
-        newReleaseTracks = newReleases?.tracks.orEmpty(),
+        newReleaseTracks = moodRank(newReleases?.tracks.orEmpty()),
         showPersonalOrbit = input.showPersonalOrbit,
-        personalTracks = input.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT),
+        personalTracks = moodRank(input.personalOrbitTracks.take(LevyraPersonalOrbit.DISPLAY_LIMIT)),
         showResonance = input.showResonance,
-        resonanceTracks = resonanceTracks,
-        quickPickTracks = quickPicks?.tracks.orEmpty(),
-        fallbackSections = otherSections.map { it.tracks },
-        chartTracks = if (input.showCharts) input.charts else emptyList()
+        resonanceTracks = moodRank(resonanceTracks),
+        quickPickTracks = moodRank(quickPicks?.tracks.orEmpty()),
+        fallbackSections = otherSections.map { moodRank(it.tracks) },
+        chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
+        preferenceScore = ::moodPreferenceScore
     )
     val visibleCollectionSections = input.homeSections.filter { section ->
         isHomeSectionVisible(section.title, input)
     }
     val editorialCollections = HomeEditorialEngine.buildCollections(
         homeSections = visibleCollectionSections,
-        newReleaseTracks = if (input.showNewReleases) newReleases?.tracks.orEmpty() else emptyList(),
-        personalTracks = if (input.showPersonalOrbit) input.personalOrbitTracks else emptyList(),
-        resonanceTracks = if (input.showResonance) resonanceTracks else emptyList(),
-        quickPickTracks = quickPicks?.tracks.orEmpty(),
-        chartTracks = if (input.showCharts) input.charts else emptyList(),
+        newReleaseTracks = if (input.showNewReleases) moodRank(newReleases?.tracks.orEmpty()) else emptyList(),
+        personalTracks = if (input.showPersonalOrbit) moodRank(input.personalOrbitTracks) else emptyList(),
+        resonanceTracks = if (input.showResonance) moodRank(resonanceTracks) else emptyList(),
+        quickPickTracks = moodRank(quickPicks?.tracks.orEmpty()),
+        chartTracks = if (input.showCharts) moodRank(input.charts) else emptyList(),
         favorites = input.favorites,
         libraryTracks = input.tracks,
         includeFresh = input.showNewReleases
