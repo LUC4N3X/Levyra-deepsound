@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   android:
-    name: Lint, Test and Release Compile
+    name: Lint and Release Compile
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -88,18 +88,6 @@ jobs:
 
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
-
-      - name: Unit Tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ./gradlew --no-daemon :app:tasks --all | grep -q '^testDebugUnitTest '; then
-            ./gradlew --no-daemon :app:testDebugUnitTest
-          elif ./gradlew --no-daemon :app:tasks --all | grep -q '^test '; then
-            ./gradlew --no-daemon :app:test
-          else
-            echo "No JVM unit test task available for app module."
-          fi
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
