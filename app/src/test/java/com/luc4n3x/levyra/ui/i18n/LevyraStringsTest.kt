@@ -59,6 +59,18 @@ class LevyraStringsTest {
         }
     }
 
+
+    @Test
+    fun greekAndFilipinoCollectionLabelsStayLocalized() {
+        val greek = LevyraStrings.forCode("el")
+        val filipino = LevyraStrings.forCode("fil")
+
+        assertEquals("Ροή ραπ", greek.collectionRap)
+        assertEquals("Παλμός ποπ", greek.collectionPop)
+        assertEquals("Ikot ng rap", filipino.collectionRap)
+        assertEquals("Tibok ng pop", filipino.collectionPop)
+    }
+
     @Test
     fun newlyAddedLanguagesContainNativeCoreCopy() {
         val russian = LevyraStrings.forCode("ru")
