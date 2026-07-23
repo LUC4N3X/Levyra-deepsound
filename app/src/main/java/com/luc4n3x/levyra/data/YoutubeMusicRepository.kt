@@ -1459,6 +1459,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                         .orEmpty()
                         .cleanAlbumArtistLabel()
                 }
+                .ifBlank {
+                    renderer.optJSONObject("text")
+                        ?.optJSONArray("runs")
+                        ?.joinText()
+                        .orEmpty()
+                        .cleanAlbumArtistLabel()
+                }
                 .ifBlank { preferredName.cleanAlbumArtistLabel() }
             if (title.isBlank()) return null
             return YoutubeMusicArtistReference(name = title, browseId = browseId)
@@ -1482,6 +1489,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                     directReference(renderer)?.let { return it }
                 }
             }
+        }
+
+        val nestedButtons = mutableListOf<JSONObject>()
+        collectObjectsByKey(value, "button", nestedButtons)
+        collectObjectsByKey(value, "musicNavigationButtonRenderer", nestedButtons)
+        nestedButtons.forEach { button ->
+            directReference(button)?.let { return it }
         }
 
         return extractYoutubeMusicArtistReferences(value, preferredName).firstOrNull()
