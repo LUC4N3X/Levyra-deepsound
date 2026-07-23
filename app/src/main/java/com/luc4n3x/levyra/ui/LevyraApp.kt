@@ -6483,7 +6483,7 @@ private fun PremiumHomeArtistItem(
                     shape = CircleShape
                 )
                 .padding(1.5.dp)
-                .background(LevyraBackground.copy(alpha = 0.96f), CircleShape)
+                .background(LevyraAdaptiveCardDeep.copy(alpha = 0.96f), CircleShape)
                 .padding(3.dp),
             contentAlignment = Alignment.Center
         ) {
