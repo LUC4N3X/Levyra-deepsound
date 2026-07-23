@@ -177,6 +177,11 @@ android {
         buildConfig = true
     }
 
+    dependenciesInfo {
+        includeInApk = !isFdroidBuild
+        includeInBundle = !isFdroidBuild
+    }
+
     lint {
         // The whole player layer is built on media3, whose APIs are annotated
         // @UnstableApi. UnsafeOptInUsageError targets library authors who expose
