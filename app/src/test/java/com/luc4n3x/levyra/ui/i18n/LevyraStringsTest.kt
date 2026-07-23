@@ -45,6 +45,33 @@ class LevyraStringsTest {
     }
 
     @Test
+    fun editorialCollectionsUseNeutralProfessionalCopyInEveryLanguage() {
+        val externalBrands = listOf("Spotify", "Amazon Music", "YouTube Music")
+        LevyraStrings.all().forEach { strings ->
+            val subtitle = strings.collectionsSubtitle
+            assertTrue("Missing collections subtitle for ${strings.code}", subtitle.isNotBlank())
+            externalBrands.forEach { brand ->
+                assertFalse(
+                    "Collections subtitle for ${strings.code} exposes external brand $brand",
+                    subtitle.contains(brand, ignoreCase = true)
+                )
+            }
+        }
+    }
+
+
+    @Test
+    fun greekAndFilipinoCollectionLabelsStayLocalized() {
+        val greek = LevyraStrings.forCode("el")
+        val filipino = LevyraStrings.forCode("fil")
+
+        assertEquals("Ροή ραπ", greek.collectionRap)
+        assertEquals("Παλμός ποπ", greek.collectionPop)
+        assertEquals("Ikot ng rap", filipino.collectionRap)
+        assertEquals("Tibok ng pop", filipino.collectionPop)
+    }
+
+    @Test
     fun newlyAddedLanguagesContainNativeCoreCopy() {
         val russian = LevyraStrings.forCode("ru")
         val turkish = LevyraStrings.forCode("tr")
