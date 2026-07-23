@@ -198,7 +198,7 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(if (isFdroidBuild) 21 else 17)
 }
 
 configurations.configureEach {

@@ -104,6 +104,12 @@ jobs:
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
 
+      - name: Setup Java 21 for F-Droid
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - name: F-Droid Release Compile
         shell: bash
         env:
