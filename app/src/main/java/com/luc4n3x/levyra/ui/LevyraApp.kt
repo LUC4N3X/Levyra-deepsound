@@ -5408,7 +5408,6 @@ private fun HomeEditorialSpotlight(
     )
     val shape = RoundedCornerShape(28.dp)
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val fallbackPalette = remember(track.accentStart, track.accentEnd) {
         ArtworkPalette(track.accentStart, track.accentEnd)
     }
@@ -5419,14 +5418,65 @@ private fun HomeEditorialSpotlight(
             largeThumbnailUrl = track.largeThumbnailUrl
         )
     }
-    val cachedPalette = remember(paletteKey) {
-        ArtworkPaletteCache.get(context, paletteKey)
+    val memoryPalette = remember(paletteKey) {
+        ArtworkPaletteCache.peek(paletteKey)
     }
     val artworkPaletteState = remember(paletteKey) {
-        mutableStateOf<ArtworkPalette>(cachedPalette ?: fallbackPalette)
+        mutableStateOf(memoryPalette ?: fallbackPalette)
+    }
+    var cacheLookupComplete by remember(paletteKey) {
+        mutableStateOf(memoryPalette != null)
     }
     var paletteExtractionStarted by remember(paletteKey) {
-        mutableStateOf(cachedPalette != null)
+        mutableStateOf(memoryPalette != null)
+    }
+    var loadedArtworkBitmap by remember(paletteKey) {
+        mutableStateOf<android.graphics.Bitmap?>(null)
+    }
+    LaunchedEffect(paletteKey) {
+        if (memoryPalette == null) {
+            val persistedPalette = ArtworkPaletteCache.load(context, paletteKey)
+            if (persistedPalette != null) {
+                artworkPaletteState.value = persistedPalette
+                paletteExtractionStarted = true
+                loadedArtworkBitmap = null
+            }
+            cacheLookupComplete = true
+        }
+    }
+    LaunchedEffect(paletteKey, cacheLookupComplete, loadedArtworkBitmap) {
+        val sourceBitmap = loadedArtworkBitmap ?: return@LaunchedEffect
+        if (!cacheLookupComplete || paletteExtractionStarted) return@LaunchedEffect
+        paletteExtractionStarted = true
+        val extracted = withContext(Dispatchers.Default) {
+            runCatching<ArtworkPalette> {
+                val resizedBitmap = if (sourceBitmap.width == 96 && sourceBitmap.height == 96) {
+                    sourceBitmap
+                } else {
+                    android.graphics.Bitmap.createScaledBitmap(sourceBitmap, 96, 96, true)
+                }
+                val paletteBitmap = if (resizedBitmap.config == android.graphics.Bitmap.Config.ARGB_8888) {
+                    resizedBitmap
+                } else {
+                    resizedBitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, false) ?: resizedBitmap
+                }
+                try {
+                    ArtworkPaletteCache.extract(
+                        bitmap = paletteBitmap,
+                        fallbackStart = fallbackPalette.start,
+                        fallbackEnd = fallbackPalette.end
+                    )
+                } finally {
+                    if (paletteBitmap !== resizedBitmap) paletteBitmap.recycle()
+                    if (resizedBitmap !== sourceBitmap) resizedBitmap.recycle()
+                }
+            }.getOrNull()
+        }
+        if (extracted != null) {
+            artworkPaletteState.value = extracted
+            ArtworkPaletteCache.store(context, paletteKey, extracted)
+        }
+        loadedArtworkBitmap = null
     }
     val accentStart by animateColorAsState(
         targetValue = Color(artworkPaletteState.value.start),
@@ -5485,41 +5535,8 @@ private fun HomeEditorialSpotlight(
             highRes = true,
             zoom = 1.04f,
             onImageLoaded = { image ->
-                if (!paletteExtractionStarted) {
-                    paletteExtractionStarted = true
-                    scope.launch {
-                        val extracted: ArtworkPalette? = withContext(Dispatchers.Default) {
-                            runCatching<ArtworkPalette> {
-                                val sourceBitmap = image.toBitmap()
-                                val resizedBitmap = if (sourceBitmap.width == 96 && sourceBitmap.height == 96) {
-                                    sourceBitmap
-                                } else {
-                                    android.graphics.Bitmap.createScaledBitmap(sourceBitmap, 96, 96, true)
-                                }
-                                val paletteBitmap = if (resizedBitmap.config == android.graphics.Bitmap.Config.ARGB_8888) {
-                                    resizedBitmap
-                                } else {
-                                    resizedBitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, false) ?: resizedBitmap
-                                }
-                                try {
-                                    ArtworkPaletteCache.extract(
-                                        bitmap = paletteBitmap,
-                                        fallbackStart = fallbackPalette.start,
-                                        fallbackEnd = fallbackPalette.end
-                                    )
-                                } finally {
-                                    if (paletteBitmap !== resizedBitmap) paletteBitmap.recycle()
-                                    if (resizedBitmap !== sourceBitmap) resizedBitmap.recycle()
-                                }
-                            }.getOrNull()
-                        }
-                        if (extracted != null) {
-                            withContext(Dispatchers.IO) {
-                                ArtworkPaletteCache.put(context, paletteKey, extracted)
-                            }
-                            artworkPaletteState.value = extracted
-                        }
-                    }
+                if (!paletteExtractionStarted && loadedArtworkBitmap == null) {
+                    loadedArtworkBitmap = image.toBitmap()
                 }
             }
         )
