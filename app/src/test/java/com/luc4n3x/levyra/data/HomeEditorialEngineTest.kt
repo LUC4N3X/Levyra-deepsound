@@ -9,6 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
+import java.util.TimeZone
 
 class HomeEditorialEngineTest {
     @Test
@@ -30,7 +31,6 @@ class HomeEditorialEngineTest {
             quickPickTracks = emptyList(),
             fallbackSections = emptyList(),
             chartTracks = listOf(chart),
-            currentTrackId = null,
             nowMillis = now
         )
 
@@ -49,11 +49,162 @@ class HomeEditorialEngineTest {
             resonanceTracks = listOf(track("resonance")),
             quickPickTracks = listOf(track("quick")),
             fallbackSections = emptyList(),
-            chartTracks = emptyList(),
-            currentTrackId = null
+            chartTracks = emptyList()
         )
 
         assertEquals(listOf("quick"), candidates.map { it.track.id })
+    }
+
+
+    @Test
+    fun playingSpotlightRemainsAvailableAfterPlaybackStarts() {
+        val now = Calendar.getInstance().apply {
+            set(2026, Calendar.JULY, 23, 12, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val spotlight = track("spotlight", releaseDate = "2026-07-23")
+
+        val candidates = HomeEditorialEngine.buildSpotlightCandidates(
+            showNewReleases = true,
+            newReleaseTracks = listOf(spotlight),
+            showPersonalOrbit = false,
+            personalTracks = emptyList(),
+            showResonance = false,
+            resonanceTracks = emptyList(),
+            quickPickTracks = emptyList(),
+            fallbackSections = emptyList(),
+            chartTracks = emptyList(),
+            nowMillis = now
+        )
+
+        assertTrue(candidates.any { it.track.id == "spotlight" })
+    }
+
+
+    @Test
+    fun hiddenNewReleasesDoNotApplyFreshnessLabelsThroughOtherSources() {
+        val now = Calendar.getInstance().apply {
+            set(2026, Calendar.JULY, 23, 12, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val freshQuickPick = track("freshQuick", releaseDate = "2026-07-23")
+
+        val candidate = HomeEditorialEngine.buildSpotlightCandidates(
+            showNewReleases = false,
+            newReleaseTracks = listOf(freshQuickPick),
+            showPersonalOrbit = false,
+            personalTracks = emptyList(),
+            showResonance = false,
+            resonanceTracks = emptyList(),
+            quickPickTracks = listOf(freshQuickPick),
+            fallbackSections = emptyList(),
+            chartTracks = emptyList(),
+            nowMillis = now
+        ).first()
+
+        assertEquals(HomeSpotlightKind.LevyraSelect, candidate.kind)
+        assertEquals(null, candidate.releaseAgeDays)
+    }
+
+    @Test
+    fun disabledNewReleasesDoNotProduceFreshOrEditorialCollections() {
+        val releases = listOf(
+            track("release1", releaseDate = "2026-07-23"),
+            track("release2", releaseDate = "2026-07-22"),
+            track("release3", releaseDate = "2026-07-21"),
+            track("release4", releaseDate = "2026-07-20")
+        )
+
+        val collections = HomeEditorialEngine.buildCollections(
+            homeSections = emptyList(),
+            newReleaseTracks = emptyList(),
+            personalTracks = emptyList(),
+            resonanceTracks = emptyList(),
+            quickPickTracks = releases,
+            chartTracks = emptyList(),
+            favorites = emptyList(),
+            libraryTracks = emptyList(),
+            includeFresh = false
+        )
+
+        assertFalse(collections.any { it.kind == HomeCollectionKind.Fresh })
+    }
+
+    @Test
+    fun releaseAgeUsesCalendarDaysAcrossDst() {
+        val previousZone = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("America/New_York"))
+        try {
+            val now = Calendar.getInstance().apply {
+                set(2026, Calendar.MARCH, 9, 12, 0, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val release = track("dst", releaseDate = "2026-03-08")
+
+            val candidate = HomeEditorialEngine.buildSpotlightCandidates(
+                showNewReleases = true,
+                newReleaseTracks = listOf(release),
+                showPersonalOrbit = false,
+                personalTracks = emptyList(),
+                showResonance = false,
+                resonanceTracks = emptyList(),
+                quickPickTracks = emptyList(),
+                fallbackSections = emptyList(),
+                chartTracks = emptyList(),
+                nowMillis = now
+            ).first()
+
+            assertEquals(1, candidate.releaseAgeDays)
+            assertEquals(HomeSpotlightKind.JustReleased, candidate.kind)
+        } finally {
+            TimeZone.setDefault(previousZone)
+        }
+    }
+
+    @Test
+    fun ordinaryAlbumMetadataDoesNotClaimNewAlbum() {
+        val now = Calendar.getInstance().apply {
+            set(2026, Calendar.JULY, 23, 12, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val release = track("single", releaseDate = "2026-07-22").copy(
+            albumBrowseId = "MPREb_single_container",
+            trackNumber = 1
+        )
+
+        val candidate = HomeEditorialEngine.buildSpotlightCandidates(
+            showNewReleases = true,
+            newReleaseTracks = listOf(release),
+            showPersonalOrbit = false,
+            personalTracks = emptyList(),
+            showResonance = false,
+            resonanceTracks = emptyList(),
+            quickPickTracks = emptyList(),
+            fallbackSections = emptyList(),
+            chartTracks = emptyList(),
+            nowMillis = now
+        ).first()
+
+        assertEquals(HomeSpotlightKind.JustReleased, candidate.kind)
+    }
+
+    @Test
+    fun chartPresenceUsesGenericChartLabel() {
+        val chart = track("chart")
+
+        val candidate = HomeEditorialEngine.buildSpotlightCandidates(
+            showNewReleases = false,
+            newReleaseTracks = emptyList(),
+            showPersonalOrbit = false,
+            personalTracks = emptyList(),
+            showResonance = false,
+            resonanceTracks = emptyList(),
+            quickPickTracks = emptyList(),
+            fallbackSections = emptyList(),
+            chartTracks = listOf(chart)
+        ).first()
+
+        assertEquals(HomeSpotlightKind.ChartTrending, candidate.kind)
     }
 
     @Test
