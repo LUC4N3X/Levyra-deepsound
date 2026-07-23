@@ -29,7 +29,7 @@ class YoutubeEngagementIdentityTest {
 
     @Test
     fun malformedIdentifiersAreRejected() {
-        assertEquals("", youtubeEngagementVideoId(track(id = "not-a-video")))
+        assertEquals("", youtubeEngagementVideoId(track(id = "invalid id!")))
     }
 
     @Test
