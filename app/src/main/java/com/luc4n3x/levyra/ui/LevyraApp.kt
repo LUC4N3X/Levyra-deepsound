@@ -265,6 +265,7 @@ import com.luc4n3x.levyra.data.ArtworkPalette
 import com.luc4n3x.levyra.data.ArtworkPaletteCache
 import com.luc4n3x.levyra.data.ArtworkRequestSource
 import com.luc4n3x.levyra.data.HomeLoadingPolicy
+import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
@@ -304,6 +305,10 @@ import com.luc4n3x.levyra.domain.Mood
 import com.luc4n3x.levyra.domain.MoodEngine
 import com.luc4n3x.levyra.domain.ReleaseRadarEntry
 import com.luc4n3x.levyra.domain.Taste
+import com.luc4n3x.levyra.domain.HomeCollectionKind
+import com.luc4n3x.levyra.domain.HomeEditorialCollection
+import com.luc4n3x.levyra.domain.HomeSpotlightCandidate
+import com.luc4n3x.levyra.domain.HomeSpotlightKind
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeComment
 import com.luc4n3x.levyra.domain.YoutubeCommentsState
@@ -5091,28 +5096,30 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             .distinctBy(::albumRecommendationDeduplicationKey)
     }
     val otherSections = homeDerivedState.otherSections
-    val spotlightTracks = remember(
-        newReleases,
-        personalTracks,
-        resonanceTracks,
-        quickPicks,
-        otherSections,
-        state.interfaceSettings.showNewReleases,
-        state.interfaceSettings.showPersonalOrbit,
-        state.interfaceSettings.showResonance
-    ) {
-        selectHomeSpotlightTracks(
-            showNewReleases = state.interfaceSettings.showNewReleases,
-            newReleaseTracks = newReleases?.tracks.orEmpty(),
-            showPersonalOrbit = state.interfaceSettings.showPersonalOrbit,
-            personalTracks = personalTracks,
-            showResonance = state.interfaceSettings.showResonance,
-            resonanceTracks = resonanceTracks,
-            quickPickTracks = quickPicks?.tracks.orEmpty(),
-            fallbackSections = otherSections.map { it.tracks }
-        )
+    val spotlightCandidates = homeDerivedState.spotlightCandidates
+    val editorialCollections = homeDerivedState.editorialCollections
+    val spotlightDayKey = HomeEditorialEngine.localDayKey()
+    var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
+    val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
+        spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
+            ?: spotlightCandidates.firstOrNull()
     }
-    val spotlightTrack = spotlightTracks.firstOrNull()
+    LaunchedEffect(spotlightDayKey, spotlightCandidate?.track?.id, spotlightCandidates) {
+        val selectedStillAvailable = stableSpotlightId != null && spotlightCandidates.any { it.track.id == stableSpotlightId }
+        if (!selectedStillAvailable && spotlightCandidate != null) {
+            stableSpotlightId = spotlightCandidate.track.id
+        }
+    }
+    val spotlightTracks = remember(spotlightCandidates) { spotlightCandidates.map { it.track } }
+    val visiblePersonalTracks = remember(personalTracks, spotlightCandidate?.track?.id) {
+        personalTracks.filterNot { it.id == spotlightCandidate?.track?.id }
+    }
+    val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
+        editorialCollections.mapNotNull { collection ->
+            val filteredTracks = collection.tracks.filterNot { it.id == spotlightCandidate?.track?.id }
+            collection.copy(tracks = filteredTracks).takeIf { filteredTracks.size >= 4 }
+        }
+    }
     val chartChunks = homeDerivedState.chartChunks
     val homeContent = homeDerivedState.contentAvailability
     val homeFingerprint = homeDerivedState.contentFingerprint
@@ -5162,11 +5169,12 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 }
             }
         }
-        spotlightTrack?.let { heroTrack ->
+        spotlightCandidate?.let { candidate ->
+            val heroTrack = candidate.track
             item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
                 HomeSectionInset {
                     HomeEditorialSpotlight(
-                        track = heroTrack,
+                        candidate = candidate,
                         isCurrent = heroTrack.id == state.currentTrack?.id,
                         isPlaying = state.isPlaying && heroTrack.id == state.currentTrack?.id,
                         isResolving = state.isResolving && heroTrack.id == state.currentTrack?.id,
@@ -5176,15 +5184,24 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                 }
             }
         }
-        if (state.interfaceSettings.showPersonalOrbit && personalTracks.isNotEmpty()) {
+        if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
             item(key = "home-personal", contentType = "home-shelf") {
                 PersonalListeningShelf(
-                    tracks = personalTracks,
+                    tracks = visiblePersonalTracks,
                     currentId = state.currentTrack?.id,
                     isPlaying = state.isPlaying,
                     isResolving = state.isResolving,
-                    onPlay = { track -> viewModel.playFrom(personalTracks, track) },
-                    onPlayAll = { viewModel.playAll(personalTracks) }
+                    onPlay = { track -> viewModel.playFrom(visiblePersonalTracks, track) },
+                    onPlayAll = { viewModel.playAll(visiblePersonalTracks) }
+                )
+            }
+        }
+        if (visibleEditorialCollections.isNotEmpty()) {
+            item(key = "home-editorial-collections", contentType = "home-collections") {
+                HomeEditorialCollectionsShelf(
+                    collections = visibleEditorialCollections,
+                    animationsEnabled = state.animationsEnabled,
+                    onOpen = { collection -> viewModel.playAll(collection.tracks) }
                 )
             }
         }
@@ -5389,15 +5406,50 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
     }
 }
 
+private fun homeSpotlightBadge(strings: LevyraStrings, candidate: HomeSpotlightCandidate): String {
+    return when (candidate.kind) {
+        HomeSpotlightKind.ReleasedToday -> strings.releasedToday
+        HomeSpotlightKind.NewAlbum -> strings.newAlbum
+        HomeSpotlightKind.NewSingle -> strings.newSingle
+        HomeSpotlightKind.JustReleased -> strings.justReleased
+        HomeSpotlightKind.TrendingToday -> strings.trendingToday
+        HomeSpotlightKind.LevyraSelect -> strings.levyraSelection
+    }
+}
+
+private fun homeSpotlightDetail(strings: LevyraStrings, candidate: HomeSpotlightCandidate): String {
+    val track = candidate.track
+    val albumLike = track.albumBrowseId.isNotBlank() || track.trackNumber > 0 ||
+        track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true) &&
+        !track.album.equals("YouTube Music", ignoreCase = true)
+    return when (candidate.kind) {
+        HomeSpotlightKind.ReleasedToday -> listOf(
+            if (albumLike) strings.newAlbum else strings.newSingle,
+            strings.availableToday
+        ).joinToString(" • ")
+        HomeSpotlightKind.NewAlbum,
+        HomeSpotlightKind.NewSingle -> strings.releasedThisWeek
+        HomeSpotlightKind.JustReleased -> track.album
+            .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
+            ?: strings.newReleases
+        HomeSpotlightKind.TrendingToday -> strings.enteredChartsToday
+        HomeSpotlightKind.LevyraSelect -> track.album
+            .takeIf { it.isNotBlank() && !it.equals(track.title, ignoreCase = true) && !it.equals("YouTube Music", ignoreCase = true) }
+            ?: strings.selectedForYou
+    }
+}
+
 @Composable
 private fun HomeEditorialSpotlight(
-    track: Track,
+    candidate: HomeSpotlightCandidate,
     isCurrent: Boolean,
     isPlaying: Boolean,
     isResolving: Boolean,
     animationsEnabled: Boolean,
     onOpen: () -> Unit
 ) {
+    val track = candidate.track
+    val strings = LocalLevyraStrings.current
     val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
     val interaction = remember { MutableInteractionSource() }
     val isPressed by interaction.collectIsPressedAsState()
@@ -5488,9 +5540,8 @@ private fun HomeEditorialSpotlight(
         animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
         label = "homeSpotlightAccentEnd"
     )
-    val detail = track.album
-        .takeIf { it.isNotBlank() && it != track.title && it != "YouTube Music" }
-        ?: LocalLevyraStrings.current.discoveryFlow
+    val badge = homeSpotlightBadge(strings, candidate)
+    val detail = homeSpotlightDetail(strings, candidate)
 
     BoxWithConstraints(
         modifier = Modifier
@@ -5590,7 +5641,7 @@ private fun HomeEditorialSpotlight(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "LEVYRA SELECT",
+                text = badge.uppercase(Locale.ROOT),
                 color = accentStart.copy(alpha = 0.92f),
                 fontSize = 10.sp,
                 lineHeight = 12.sp,
@@ -5652,13 +5703,291 @@ private fun HomeEditorialSpotlight(
                         )
                     }
                     Text(
-                        text = LocalLevyraStrings.current.activeIndicator,
+                        text = strings.activeIndicator,
                         color = Color.White.copy(alpha = 0.78f),
                         fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
                 }
+            }
+        }
+    }
+}
+
+private fun homeCollectionTitle(strings: LevyraStrings, collection: HomeEditorialCollection): String {
+    if (collection.titleOverride.isNotBlank()) return collection.titleOverride
+    return when (collection.kind) {
+        HomeCollectionKind.Fresh -> strings.collectionFresh
+        HomeCollectionKind.Local -> strings.collectionLocal
+        HomeCollectionKind.Workout -> strings.collectionWorkout
+        HomeCollectionKind.Chill -> strings.collectionChill
+        HomeCollectionKind.Focus -> strings.collectionFocus
+        HomeCollectionKind.Party -> strings.collectionParty
+        HomeCollectionKind.Rap -> strings.collectionRap
+        HomeCollectionKind.Pop -> strings.collectionPop
+        HomeCollectionKind.Discovery -> strings.collectionDiscovery
+        HomeCollectionKind.Editorial -> strings.collectionEditorial
+    }
+}
+
+@Composable
+private fun HomeEditorialCollectionsShelf(
+    collections: List<HomeEditorialCollection>,
+    animationsEnabled: Boolean,
+    onOpen: (HomeEditorialCollection) -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = HomeHorizontalInset),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            SectionAccentBar(height = 34.dp, width = 4.dp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text(
+                    text = strings.collectionsTitle,
+                    color = LevyraText,
+                    fontSize = 24.sp,
+                    lineHeight = 27.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.65).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = strings.collectionsSubtitle,
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(
+                start = HomeHorizontalInset,
+                end = HomeHorizontalShelfEndPadding
+            )
+        ) {
+            itemsIndexed(
+                items = collections,
+                key = { _, collection -> "home-collection-${collection.id}" },
+                contentType = { index, _ -> if (index == 0) "home-collection-featured" else "home-collection" }
+            ) { index, collection ->
+                HomeEditorialCollectionCard(
+                    collection = collection,
+                    featured = index == 0,
+                    animationsEnabled = animationsEnabled,
+                    onOpen = { onOpen(collection) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeEditorialCollectionCard(
+    collection: HomeEditorialCollection,
+    featured: Boolean,
+    animationsEnabled: Boolean,
+    onOpen: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
+    val interaction = remember { MutableInteractionSource() }
+    val isPressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && effectiveAnimationsEnabled) 0.978f else 1f,
+        animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        label = "homeCollectionScale"
+    )
+    val accentStart = Color(collection.accentStart)
+    val accentEnd = Color(collection.accentEnd)
+    val shape = RoundedCornerShape(if (featured) 26.dp else 22.dp)
+    val cardWidth = if (featured) 286.dp else 214.dp
+    val cardHeight = if (featured) 204.dp else 190.dp
+    val artists = remember(collection.tracks) {
+        collection.tracks
+            .asSequence()
+            .map { it.artist.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .take(if (featured) 3 else 2)
+            .joinToString(" • ")
+    }
+    Box(
+        modifier = Modifier
+            .width(cardWidth)
+            .height(cardHeight)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(
+                elevation = if (featured) 22.dp else 14.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = accentStart.copy(alpha = 0.18f),
+                spotColor = accentEnd.copy(alpha = 0.22f)
+            )
+            .clip(shape)
+            .background(Color(0xFF0A0B0F))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+                onClick = onOpen
+            )
+    ) {
+        CollectionArtworkMosaic(
+            tracks = collection.tracks.take(4),
+            modifier = Modifier.matchParentSize()
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            Color.Black.copy(alpha = if (featured) 0.24f else 0.18f),
+                            accentStart.copy(alpha = 0.08f),
+                            accentEnd.copy(alpha = 0.22f)
+                        )
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.08f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.88f)
+                        )
+                    )
+                )
+        )
+        Surface(
+            color = Color.Black.copy(alpha = 0.38f),
+            border = BorderStroke(Dp.Hairline, Color.White.copy(alpha = 0.13f)),
+            shape = RoundedCornerShape(999.dp),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp)
+        ) {
+            Text(
+                text = if (collection.updatedToday) strings.collectionUpdatedToday else strings.collectionEditorial,
+                color = Color.White.copy(alpha = 0.92f),
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 0.85.sp,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 15.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(
+                text = homeCollectionTitle(strings, collection),
+                color = Color.White,
+                fontSize = if (featured) 22.sp else 18.sp,
+                lineHeight = if (featured) 24.sp else 21.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-0.45).sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (artists.isNotBlank()) {
+                Text(
+                    text = artists,
+                    color = Color.White.copy(alpha = 0.70f),
+                    fontSize = 11.5.sp,
+                    lineHeight = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CollectionArtworkMosaic(
+    tracks: List<Track>,
+    modifier: Modifier = Modifier
+) {
+    val items = remember(tracks) {
+        when {
+            tracks.size >= 4 -> tracks.take(4)
+            tracks.isNotEmpty() -> List(4) { index -> tracks[index % tracks.size] }
+            else -> emptyList()
+        }
+    }
+    if (items.isEmpty()) {
+        Box(
+            modifier = modifier.background(
+                Brush.linearGradient(
+                    listOf(
+                        LevyraCyan.copy(alpha = 0.34f),
+                        LevyraViolet.copy(alpha = 0.30f),
+                        Color(0xFF0A0B0F)
+                    )
+                )
+            ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.PlaylistPlay,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.82f),
+                modifier = Modifier.size(46.dp)
+            )
+        }
+        return
+    }
+    Column(modifier = modifier) {
+        Row(modifier = Modifier.weight(1f)) {
+            items.take(2).forEach { track ->
+                CoverImage(
+                    track = track,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    highRes = false,
+                    zoom = 1.03f
+                )
+            }
+        }
+        Row(modifier = Modifier.weight(1f)) {
+            items.drop(2).take(2).forEach { track ->
+                CoverImage(
+                    track = track,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    highRes = false,
+                    zoom = 1.03f
+                )
             }
         }
     }
@@ -16120,7 +16449,7 @@ private fun VideoGlassCard(
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
-                        text = "VIDEO",
+                        text = LocalLevyraStrings.current.video.uppercase(Locale.ROOT),
                         color = Color.White.copy(alpha = 0.90f),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
