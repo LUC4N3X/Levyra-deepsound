@@ -280,14 +280,15 @@ internal fun buildStableHomeRenderSnapshot(
 }
 
 private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
+    val sameChartRegion = selectedChartId == previous.selectedChartId
     return copy(
         tracks = previous.tracks,
         recentSearches = previous.recentSearches,
         recentListens = previous.recentListens,
         personalOrbitTracks = previous.personalOrbitTracks,
         favorites = previous.favorites,
-        charts = previous.charts,
-        isLoadingCharts = previous.isLoadingCharts,
+        charts = if (sameChartRegion) previous.charts else charts,
+        isLoadingCharts = if (sameChartRegion) previous.isLoadingCharts else isLoadingCharts,
         homeSections = previous.homeSections,
         homeAlbums = previous.homeAlbums,
         homeArtists = previous.homeArtists,
