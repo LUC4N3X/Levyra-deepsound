@@ -1,16 +1,26 @@
 package com.luc4n3x.levyra.data
 
+import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
+import java.io.IOException
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.resume
 import kotlin.math.absoluteValue
 
 /**
@@ -21,10 +31,24 @@ import kotlin.math.absoluteValue
  */
 class ChartsRepository {
 
-    suspend fun topSongs(country: String, limit: Int = 50): List<Track> = withContext(Dispatchers.IO) {
-        val modern = runCatching { fetchModern(country, limit) }.getOrDefault(emptyList())
-        if (modern.isNotEmpty()) return@withContext modern
-        runCatching { fetchClassic(country, limit) }.getOrDefault(emptyList())
+    suspend fun topSongs(country: String, limit: Int = 50): List<Track> = coroutineScope {
+        val normalizedCountry = country.trim().lowercase().takeIf { it.length == 2 } ?: "it"
+        val normalizedLimit = limit.coerceIn(1, 100)
+        val modern = async(Dispatchers.Default) {
+            runCatching { fetchModern(normalizedCountry, normalizedLimit) }.getOrDefault(emptyList())
+        }
+        val classic = async(Dispatchers.Default) {
+            runCatching { fetchClassic(normalizedCountry, normalizedLimit) }.getOrDefault(emptyList())
+        }
+        val first = select<Pair<Boolean, List<Track>>> {
+            modern.onAwait { true to it }
+            classic.onAwait { false to it }
+        }
+        if (first.second.isNotEmpty()) {
+            if (first.first) classic.cancel() else modern.cancel()
+            return@coroutineScope first.second
+        }
+        if (first.first) classic.await() else modern.await()
     }
 
     suspend fun officialArtwork(title: String, artist: String, country: String): String? = withContext(Dispatchers.IO) {
@@ -55,7 +79,7 @@ class ChartsRepository {
         bestArtwork.takeIf { bestScore >= 95 }?.let(::upgradeArtwork)
     }
 
-    private fun fetchModern(country: String, limit: Int): List<Track> {
+    private suspend fun fetchModern(country: String, limit: Int): List<Track> {
         val url = "https://rss.marketingtools.apple.com/api/v2/$country/music/most-played/$limit/songs.json"
         val body = httpGet(url) ?: return emptyList()
         val results = JSONObject(body).optJSONObject("feed")?.optJSONArray("results") ?: return emptyList()
@@ -71,7 +95,7 @@ class ChartsRepository {
         return tracks
     }
 
-    private fun fetchClassic(country: String, limit: Int): List<Track> {
+    private suspend fun fetchClassic(country: String, limit: Int): List<Track> {
         val url = "https://itunes.apple.com/$country/rss/topsongs/limit=$limit/json"
         val body = httpGet(url) ?: return emptyList()
         val entries = JSONObject(body).optJSONObject("feed")?.optJSONArray("entry") ?: return emptyList()
@@ -90,22 +114,32 @@ class ChartsRepository {
         return tracks
     }
 
-    private fun httpGet(url: String): String? {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 12000
-            readTimeout = 15000
-            instanceFollowRedirects = true
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+    private suspend fun httpGet(url: String): String? = suspendCancellableCoroutine { continuation ->
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "application/json")
+            .header("User-Agent", "Levyra/${BuildConfig.VERSION_NAME} Android")
+            .build()
+        val call = httpClient.newCall(request)
+        val completed = AtomicBoolean(false)
+        continuation.invokeOnCancellation {
+            completed.set(true)
+            call.cancel()
         }
-        return try {
-            val code = connection.responseCode
-            if (code !in 200..299) return null
-            BufferedReader(InputStreamReader(connection.inputStream, StandardCharsets.UTF_8)).use { it.readText() }
-        } finally {
-            connection.disconnect()
-        }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, error: IOException) {
+                if (completed.compareAndSet(false, true)) continuation.resume(null)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val body = runCatching {
+                    response.use { current ->
+                        if (!current.isSuccessful) null else current.body?.string()?.takeIf { it.isNotBlank() }
+                    }
+                }.getOrNull()
+                if (completed.compareAndSet(false, true)) continuation.resume(body)
+            }
+        })
     }
 
     private fun upgradeArtwork(url: String): String {
@@ -194,4 +228,14 @@ class ChartsRepository {
         )
         return palettes[seed % palettes.size]
     }
+
+    private companion object {
+        val httpClient: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(7, TimeUnit.SECONDS)
+            .callTimeout(8, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
 }
