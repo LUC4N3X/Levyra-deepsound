@@ -325,6 +325,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var homeAlbumsJob: Job? = null
     private var homeArtistsJob: Job? = null
     private var chartsJob: Job? = null
+    private var chartPrefetchJob: Job? = null
     private var homeSnapshotJob: Job? = null
     private var homeResonanceJob: Job? = null
     private var homeArtistsFingerprint: String = ""
@@ -408,6 +409,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val homeFeedRequestGeneration = AtomicLong(0L)
     private val homeAlbumsRequestGeneration = AtomicLong(0L)
     private val chartsRequestGeneration = AtomicLong(0L)
+    private val chartsByRegion = java.util.concurrent.ConcurrentHashMap<String, List<Track>>()
+    private val chartsFreshAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    private fun chartsCacheKey(languageCode: String, regionId: String): String = "$languageCode/$regionId"
+
+    private fun isChartCacheFresh(cacheKey: String, now: Long = System.currentTimeMillis()): Boolean {
+        val cachedAt = chartsFreshAt[cacheKey] ?: return false
+        return chartsByRegion[cacheKey].orEmpty().isNotEmpty() && now - cachedAt < CHART_CACHE_FRESH_MS
+    }
     private val pendingHomeSectionsSnapshot = AtomicReference<List<com.luc4n3x.levyra.domain.HomeSection>?>(null)
     private val deferredHomeSnapshotApplyScheduled = AtomicBoolean(false)
     @Volatile private var homeScreenActive = false
@@ -566,6 +576,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) },
             settings.languageCode
         )
+        if (startupCharts.isNotEmpty()) {
+            chartsByRegion[chartsCacheKey(settings.languageCode, defaultChartRegion.id)] = startupCharts
+        }
         val startupResonanceTracks = instantSnapshot?.resonanceTracks.orEmpty()
         val startupResonanceUpdatedAt = instantSnapshot?.resonanceUpdatedAt ?: 0L
         val rawCachedOrbitTracks = LevyraStartupCatalog.repairTracks(
@@ -834,6 +847,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             loadHomeFeed(deferUntilHomeIdle = true)
             homeFeedJob?.join()
             refreshHomeResonanceIfStale()
+        }
+        viewModelScope.launch {
+            delay(450L)
+            prefetchChartRegions(_state.value.selectedChartId)
         }
         viewModelScope.launch {
             delay(startupPlan.secondaryStartDelayMs)
@@ -2534,9 +2551,73 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectChart(regionId: String) {
-        if (regionId == _state.value.selectedChartId && _state.value.charts.isNotEmpty()) return
-        _state.update { it.copy(selectedChartId = regionId) }
-        loadCharts(regionId)
+        val normalizedRegionId = ChartsCatalog.region(regionId).id
+        if (normalizedRegionId == _state.value.selectedChartId && _state.value.charts.isNotEmpty()) return
+        val languageCode = _state.value.languageCode
+        val cached = chartsByRegion[chartsCacheKey(languageCode, normalizedRegionId)].orEmpty()
+        _state.update {
+            it.copy(
+                selectedChartId = normalizedRegionId,
+                charts = cached,
+                isLoadingCharts = cached.isEmpty()
+            )
+        }
+        loadCharts(normalizedRegionId)
+        prefetchChartRegions(normalizedRegionId)
+    }
+
+    private fun prefetchChartRegions(anchorRegionId: String) {
+        val languageCode = _state.value.languageCode
+        val regions = ChartsCatalog.regions
+        val anchorIndex = regions.indexOfFirst { it.id == anchorRegionId }.coerceAtLeast(0)
+        val candidateIds = buildList {
+            addAll(regions.drop(anchorIndex + 1).take(4).map { it.id })
+            addAll(regions.take(anchorIndex).takeLast(2).map { it.id })
+            addAll(listOf("it", "us", "gb", "es", "fr", "de"))
+        }
+            .asSequence()
+            .distinct()
+            .filter { it != anchorRegionId }
+            .take(8)
+            .toList()
+        if (candidateIds.isEmpty()) return
+        chartPrefetchJob?.cancel()
+        val appContext = getApplication<Application>().applicationContext
+        chartPrefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            val semaphore = Semaphore(3)
+            candidateIds.map { regionId ->
+                async {
+                    semaphore.withPermit {
+                        if (!isActive || _state.value.languageCode != languageCode) return@withPermit
+                        val cacheKey = chartsCacheKey(languageCode, regionId)
+                        if (chartsByRegion[cacheKey].orEmpty().isNotEmpty()) return@withPermit
+                        val stored = preferences.loadChartTracks(languageCode, regionId)
+                        if (stored.isNotEmpty()) {
+                            chartsByRegion[cacheKey] = stored
+                            LevyraArtworkCache.preloadHome(appContext, stored, 8)
+                            publishPrefetchedCharts(languageCode, regionId, stored)
+                            return@withPermit
+                        }
+                        val region = ChartsCatalog.region(regionId)
+                        val result = runCatching { chartsRepository.topSongs(region.country) }.getOrDefault(emptyList())
+                        if (result.isEmpty() || !isActive || _state.value.languageCode != languageCode) return@withPermit
+                        chartsByRegion[cacheKey] = result
+                        chartsFreshAt[cacheKey] = System.currentTimeMillis()
+                        preferences.saveChartTracks(result, languageCode, regionId)
+                        LevyraArtworkCache.preloadHome(appContext, result, 8)
+                        publishPrefetchedCharts(languageCode, regionId, result)
+                    }
+                }
+            }.awaitAll()
+        }
+    }
+
+    private fun publishPrefetchedCharts(languageCode: String, regionId: String, charts: List<Track>) {
+        if (_state.value.languageCode != languageCode || _state.value.selectedChartId != regionId) return
+        _state.update { current ->
+            if (current.languageCode != languageCode || current.selectedChartId != regionId) current
+            else current.copy(charts = charts, isLoadingCharts = false)
+        }
     }
 
     private fun loadCharts(regionId: String = _state.value.selectedChartId, deferUntilHomeIdle: Boolean = false) {
@@ -2545,11 +2626,40 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         chartsJob = viewModelScope.launch {
             val initialState = _state.value
             val languageCode = initialState.languageCode
+            val cacheKey = chartsCacheKey(languageCode, regionId)
             val hasVisibleCharts = initialState.charts.isNotEmpty()
+            val hasRegionData = chartsByRegion.containsKey(cacheKey)
             if (!isActive || _state.value.languageCode != languageCode || _state.value.selectedChartId != regionId) return@launch
             _state.update { current ->
                 if (current.selectedChartId != regionId) current
-                else current.copy(isLoadingCharts = !hasVisibleCharts)
+                else current.copy(isLoadingCharts = current.isLoadingCharts || !hasVisibleCharts)
+            }
+
+            if (isChartCacheFresh(cacheKey)) {
+                val cached = chartsByRegion[cacheKey].orEmpty()
+                _state.update { current ->
+                    if (current.selectedChartId != regionId || cached.isEmpty()) current
+                    else current.copy(charts = cached, isLoadingCharts = false)
+                }
+                return@launch
+            }
+
+            if (!hasRegionData) {
+                val stored = withContext(Dispatchers.IO) { preferences.loadChartTracks(languageCode, regionId) }
+                if (stored.isNotEmpty()) {
+                    chartsByRegion[chartsCacheKey(languageCode, regionId)] = stored
+                    if (
+                        isActive &&
+                        chartsRequestGeneration.get() == requestGeneration &&
+                        _state.value.languageCode == languageCode &&
+                        _state.value.selectedChartId == regionId
+                    ) {
+                        _state.update { current ->
+                            if (current.selectedChartId != regionId) current
+                            else current.copy(charts = stored, isLoadingCharts = false)
+                        }
+                    }
+                }
             }
 
             val region = ChartsCatalog.region(regionId)
@@ -2575,6 +2685,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
+            chartsByRegion[cacheKey] = result
+            chartsFreshAt[cacheKey] = System.currentTimeMillis()
             withContext(Dispatchers.IO) {
                 preferences.saveChartTracks(result, languageCode, regionId)
             }
@@ -5623,6 +5735,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
+        private const val CHART_CACHE_FRESH_MS = 15L * 60L * 1000L
         private const val HOME_ARTIST_SHELF_SIZE = 13
         private const val HOME_ARTIST_HISTORY_LIMIT = 48
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
@@ -5681,6 +5794,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeArtistsJob?.cancel()
         homeResonanceJob?.cancel()
         chartsJob?.cancel()
+        chartPrefetchJob?.cancel()
         homeSnapshotJob?.cancel()
         super.onCleared()
     }
