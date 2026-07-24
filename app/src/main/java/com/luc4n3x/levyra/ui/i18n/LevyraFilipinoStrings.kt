@@ -50,7 +50,7 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "librarySubtitle" to "Mga playlist, paborito, download, at history",
     "playlists" to "🎵 Mga playlist mo",
     "newItem" to "Bago",
-    "downloads" to "⬇️ Mga offline download",
+    "downloads" to "Mga offline download",
     "favorites" to "❤️ Mga paborito",
     "recent" to "🕒 Kamakailang nahanap",
     "quickPicks" to "Mabilis na pili",

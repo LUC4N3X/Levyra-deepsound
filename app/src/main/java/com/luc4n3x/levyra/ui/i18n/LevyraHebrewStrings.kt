@@ -50,7 +50,7 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "librarySubtitle" to "פלייליסטים, מועדפים, הורדות והיסטוריה",
     "playlists" to "🎵 הפלייליסטים שלך",
     "newItem" to "חדש",
-    "downloads" to "⬇️ הורדות אופליין",
+    "downloads" to "הורדות אופליין",
     "favorites" to "❤️ מועדפים",
     "recent" to "🕒 נמצאו לאחרונה",
     "quickPicks" to "בחירות מהירות",

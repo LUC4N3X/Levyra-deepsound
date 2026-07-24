@@ -13231,15 +13231,17 @@ private fun SettingsOverlay(
         onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
     }
     BackHandler(enabled = activeCategory != null) { activeCategory = null }
+    val categoryLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
+    fun categoryTitle(value: String): String = value.uppercase(categoryLocale)
     val categories = listOf(
-        SettingsCategoryMeta("design", strings.design, "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
-        SettingsCategoryMeta("home", strings.homeInterfaceSection, "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet),
-        SettingsCategoryMeta("player", strings.player, "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
-        SettingsCategoryMeta("downloads", strings.downloads, "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
-        SettingsCategoryMeta("lyrics", strings.lyricsAnalysisSection, strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
-        SettingsCategoryMeta("backup", strings.backupRestoreSection, "${strings.createDataBackup} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
-        SettingsCategoryMeta("system", strings.preferences, "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
-        SettingsCategoryMeta("app", strings.app, "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
+        SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
+        SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet),
+        SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
+        SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
+        SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
+        SettingsCategoryMeta("backup", categoryTitle(strings.backupRestoreSection), "${strings.createDataBackup} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
+        SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
+        SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
     )
     Box(
         modifier = Modifier
@@ -13774,7 +13776,15 @@ private fun SettingsCategoryCard(meta: SettingsCategoryMeta, showDivider: Boolea
                 Icon(meta.icon, null, tint = meta.accent, modifier = Modifier.size(19.dp))
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(meta.title, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    meta.title,
+                    color = LevyraText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.6.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(
                     meta.summary,
                     color = LevyraMuted,
