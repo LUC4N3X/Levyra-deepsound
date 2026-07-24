@@ -945,6 +945,14 @@ private fun Modifier.pressable(
         )
 }
 
+private fun Modifier.blockTouchPassThrough(): Modifier = pointerInput(Unit) {
+    awaitPointerEventScope {
+        while (true) {
+            awaitPointerEvent().changes.forEach { it.consume() }
+        }
+    }
+}
+
 @Composable
 fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
@@ -1693,7 +1701,6 @@ private fun AlbumOverlay(
     onOpenPlayer: () -> Unit,
     onClose: () -> Unit
 ) {
-    val blocker = remember { MutableInteractionSource() }
     val detail = state.albumDetail
     val album = detail?.album
     val tracks = detail?.tracks.orEmpty()
@@ -1716,7 +1723,7 @@ private fun AlbumOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .clickable(interactionSource = blocker, indication = null) {}
+            .blockTouchPassThrough()
     ) {
         LevyraBackground(accentTrack?.accentStart, accentTrack?.accentEnd)
         Box(
@@ -2344,7 +2351,6 @@ private fun ArtistOverlay(
     onOpenRelease: (ArtistRelease, String) -> Unit,
     onClose: () -> Unit
 ) {
-    val blocker = remember { MutableInteractionSource() }
     val profile = state.artistProfile
     val isFollowed = profile != null && (
         (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) ||
@@ -2361,7 +2367,7 @@ private fun ArtistOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .clickable(interactionSource = blocker, indication = null) {}
+            .blockTouchPassThrough()
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -3364,7 +3370,6 @@ private fun UpdateAvailableOverlay(
     onLater: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val blocker = remember { MutableInteractionSource() }
     val notes = remember(update.releaseNotes, update.latestVersionName) {
         cleanedUpdateNotes(update.releaseNotes, update.latestVersionName)
     }
@@ -3372,7 +3377,7 @@ private fun UpdateAvailableOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.86f))
-            .clickable(interactionSource = blocker, indication = null) {}
+            .blockTouchPassThrough()
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -3607,12 +3612,11 @@ private fun QueueOverlay(
     onClose: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val blocker = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-            .clickable(interactionSource = blocker, indication = null) {}
+            .blockTouchPassThrough()
     ) {
         LazyColumn(
             modifier = Modifier
@@ -3834,7 +3838,6 @@ private fun LyricsOverlay(
     val track = state.currentTrack
     val accentStart = if (track != null) Color(track.accentStart) else LevyraCyan
     val accentEnd = if (track != null) Color(track.accentEnd) else LevyraViolet
-    val blocker = remember { MutableInteractionSource() }
     val listState = rememberLazyListState()
     val haptics = LocalHapticFeedback.current
     var viewMode by remember(track?.id) { mutableStateOf(LyricsViewMode.CINEMA) }
@@ -3937,7 +3940,7 @@ private fun LyricsOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clickable(interactionSource = blocker, indication = null) {}
+            .blockTouchPassThrough()
     ) {
         LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
         Box(
@@ -9017,18 +9020,14 @@ private fun ListeningHistoryRecapCard(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(
-                            text = if (strings.code == "it") "LA TUA SCIA RECENTE" else "YOUR RECENT TRAIL",
+                            text = strings.trailTitle,
                             color = primary.playerMix(Color.White, 0.62f),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.15.sp
                         )
                         Text(
-                            text = if (strings.code == "it") {
-                                "${tracks.size} passaggi · $uniqueArtists artisti"
-                            } else {
-                                "${tracks.size} plays · $uniqueArtists artists"
-                            },
+                            text = "${tracks.size} ${strings.trailPlays} · $uniqueArtists ${strings.statArtists}",
                             color = Color.White.copy(alpha = 0.60f),
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
@@ -9040,7 +9039,7 @@ private fun ListeningHistoryRecapCard(
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
                     ) {
                         Text(
-                            text = if (strings.code == "it") "$uniqueTracks unici" else "$uniqueTracks unique",
+                            text = "$uniqueTracks ${strings.trailUnique}",
                             color = Color.White.copy(alpha = 0.78f),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -9090,7 +9089,7 @@ private fun ListeningHistoryRecapCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = if (strings.code == "it") "Ultimo ascolto" else "Last played",
+                            text = strings.trailLastPlayed,
                             color = Color.White.copy(alpha = 0.48f),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
@@ -9154,21 +9153,21 @@ private fun ListeningHistoryRecapCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Rounded.Headphones,
                         value = tracks.size.toString(),
-                        label = if (strings.code == "it") "ascolti" else "plays",
+                        label = strings.statPlays,
                         accent = primary
                     )
                     ListeningHistoryMetric(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Rounded.Person,
                         value = uniqueArtists.toString(),
-                        label = if (strings.code == "it") "artisti" else "artists",
+                        label = strings.statArtists,
                         accent = secondary
                     )
                     ListeningHistoryMetric(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Rounded.MusicNote,
                         value = uniqueTracks.toString(),
-                        label = if (strings.code == "it") "tracce" else "tracks",
+                        label = strings.statTracks,
                         accent = primary.playerMix(secondary, 0.5f)
                     )
                 }
@@ -12840,7 +12839,6 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
     val moodEngine = remember { MoodEngine() }
     val tastes = remember(languageCode) { moodEngine.tastesForLanguage(languageCode) }
     val strings = LevyraStrings.forCode(languageCode)
-    val blocker = remember { MutableInteractionSource() }
     val primaryEnabled = onboardingPrimaryEnabled(step, selected.size)
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
@@ -12848,7 +12846,7 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFF030304))
-                .clickable(interactionSource = blocker, indication = null) {}
+                .blockTouchPassThrough()
         ) {
         Box(
             modifier = Modifier
@@ -13216,7 +13214,6 @@ private fun SettingsOverlay(
     val strings = LocalLevyraStrings.current
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
-    val blocker = remember { MutableInteractionSource() }
     val batteryContext = LocalContext.current
     val batteryLifecycleOwner = LocalLifecycleOwner.current
     var batteryCheckToken by remember { mutableStateOf(0) }
@@ -13246,7 +13243,7 @@ private fun SettingsOverlay(
         modifier = Modifier
         .fillMaxSize()
         .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-        .clickable(interactionSource = blocker, indication = null) {}
+        .blockTouchPassThrough()
     ) {
         AnimatedContent(
             targetState = activeCategory,
@@ -13456,12 +13453,12 @@ private fun SettingsOverlay(
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.Speed,
-                                    title = if (strings.code == "it") "Preset qualità" else "Quality preset",
-                                    subtitle = if (strings.code == "it") "Bilancia qualità, velocità e consumo dati" else "Balance quality, speed and data usage",
+                                    title = strings.downloadQualityPreset,
+                                    subtitle = strings.downloadQualityPresetSubtitle,
                                     options = listOf(
-                                        LevyraDownloadPreset.Automatic.name to if (strings.code == "it") "Automatico" else "Automatic",
-                                        LevyraDownloadPreset.HighQuality.name to if (strings.code == "it") "Alta qualità" else "High quality",
-                                        LevyraDownloadPreset.DataSaver.name to if (strings.code == "it") "Risparmio dati" else "Data saver"
+                                        LevyraDownloadPreset.Automatic.name to strings.downloadPresetAutomatic,
+                                        LevyraDownloadPreset.HighQuality.name to strings.downloadPresetHighQuality,
+                                        LevyraDownloadPreset.DataSaver.name to strings.downloadPresetDataSaver
                                     ),
                                     selected = downloadSettings.preset.name,
                                     onSelect = { value -> onDownloadSettings(downloadSettings.copy(preset = LevyraDownloadPreset.valueOf(value))) }
@@ -13470,12 +13467,12 @@ private fun SettingsOverlay(
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.Album,
-                                    title = if (strings.code == "it") "Organizzazione cartelle" else "Folder organization",
-                                    subtitle = if (strings.code == "it") "Salva per artista e album senza duplicare i file" else "Save by artist and album without duplicating files",
+                                    title = strings.downloadFolderOrganization,
+                                    subtitle = strings.downloadFolderOrganizationSubtitle,
                                     options = listOf(
-                                        LevyraDownloadFolderMode.Flat.name to if (strings.code == "it") "Levyra" else "Levyra",
-                                        LevyraDownloadFolderMode.Artist.name to if (strings.code == "it") "Artista" else "Artist",
-                                        LevyraDownloadFolderMode.ArtistAlbum.name to if (strings.code == "it") "Artista / Album" else "Artist / Album"
+                                        LevyraDownloadFolderMode.Flat.name to "Levyra",
+                                        LevyraDownloadFolderMode.Artist.name to strings.downloadFolderArtist,
+                                        LevyraDownloadFolderMode.ArtistAlbum.name to strings.downloadFolderArtistAlbum
                                     ),
                                     selected = downloadSettings.folderMode.name,
                                     onSelect = { value -> onDownloadSettings(downloadSettings.copy(folderMode = LevyraDownloadFolderMode.valueOf(value))) }
@@ -13484,10 +13481,10 @@ private fun SettingsOverlay(
                             item {
                                 SettingsChoiceRow(
                                     icon = Icons.Rounded.Speed,
-                                    title = if (strings.code == "it") "Limite velocità" else "Speed limit",
-                                    subtitle = if (strings.code == "it") "Riduce l'uso della rete durante i download" else "Limit network usage while downloading",
+                                    title = strings.downloadSpeedLimit,
+                                    subtitle = strings.downloadSpeedLimitSubtitle,
                                     options = listOf(
-                                        "0" to if (strings.code == "it") "Illimitato" else "Unlimited",
+                                        "0" to strings.downloadSpeedUnlimited,
                                         "512" to "512 Kbps",
                                         "1024" to "1 Mbps",
                                         "2048" to "2 Mbps",
@@ -13538,8 +13535,8 @@ private fun SettingsOverlay(
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Album,
-                                    title = if (strings.code == "it") "Metadati incorporati" else "Embedded metadata",
-                                    subtitle = if (strings.code == "it") "Scrive titolo, artista e album nel file" else "Write title, artist and album into the file",
+                                    title = strings.downloadEmbedMetadata,
+                                    subtitle = strings.downloadEmbedMetadataSubtitle,
                                     checked = downloadSettings.embedMetadata,
                                     onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedMetadata = it)) }
                                 )
@@ -13547,8 +13544,8 @@ private fun SettingsOverlay(
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Palette,
-                                    title = if (strings.code == "it") "Copertina incorporata" else "Embedded artwork",
-                                    subtitle = if (strings.code == "it") "Inserisce la copertina ufficiale nel brano" else "Embed the official artwork into the track",
+                                    title = strings.downloadEmbedArtwork,
+                                    subtitle = strings.downloadEmbedArtworkSubtitle,
                                     checked = downloadSettings.embedArtwork,
                                     onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedArtwork = it)) }
                                 )
@@ -13556,8 +13553,8 @@ private fun SettingsOverlay(
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Verified,
-                                    title = if (strings.code == "it") "Verifica file" else "File verification",
-                                    subtitle = if (strings.code == "it") "Controlla firma, dimensione e leggibilità prima di completare" else "Validate signature, size and readability before completion",
+                                    title = strings.downloadVerifyFile,
+                                    subtitle = strings.downloadVerifyFileSubtitle,
                                     checked = downloadSettings.verifyFile,
                                     onCheckedChange = { onDownloadSettings(downloadSettings.copy(verifyFile = it)) }
                                 )
@@ -13565,8 +13562,8 @@ private fun SettingsOverlay(
                             item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.DownloadDone,
-                                    title = if (strings.code == "it") "Evita duplicati" else "Skip duplicates",
-                                    subtitle = if (strings.code == "it") "Riutilizza i download già presenti e validi" else "Reuse existing valid downloads",
+                                    title = strings.downloadSkipDuplicates,
+                                    subtitle = strings.downloadSkipDuplicatesSubtitle,
                                     checked = downloadSettings.skipExisting,
                                     onCheckedChange = { onDownloadSettings(downloadSettings.copy(skipExisting = it)) }
                                 )
@@ -16987,7 +16984,7 @@ private fun AudioQualityPanel(
                 .fillMaxWidth()
                 .fillMaxHeight(0.94f)
                 .navigationBarsPadding()
-                .clickable(interactionSource = blocker, indication = null) {}
+                .blockTouchPassThrough()
         ) {
             LazyColumn(
                 contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 24.dp),
