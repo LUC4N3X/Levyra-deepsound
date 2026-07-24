@@ -602,7 +602,7 @@ private fun buildHomeContentFingerprint(
     availability: HomeContentAvailability
 ): String {
     return buildString {
-        append(availability.fingerprint())
+        append(availability.copy(chartCount = 0).fingerprint())
         append('|')
         append(input.tracks.take(12).joinToString(",") { it.id })
         append('|')
@@ -613,8 +613,6 @@ private fun buildHomeContentFingerprint(
         )
         append('|')
         append(input.homeAlbums.take(10).joinToString(",") { it.browseId.ifBlank { "${it.title}:${it.artist}" } })
-        append('|')
-        append(input.charts.take(12).joinToString(",") { it.id })
     }
 }
 
