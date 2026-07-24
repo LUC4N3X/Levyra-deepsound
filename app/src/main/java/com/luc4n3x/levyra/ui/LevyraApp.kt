@@ -319,6 +319,7 @@ import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
+import com.luc4n3x.levyra.ui.theme.LevyraBlue
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import com.luc4n3x.levyra.ui.theme.LevyraOrange
