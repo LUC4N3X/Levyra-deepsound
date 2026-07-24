@@ -13248,7 +13248,17 @@ private fun SettingsOverlay(
         .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
         .clickable(interactionSource = blocker, indication = null) {}
     ) {
-        AnimatedContent(targetState = activeCategory, label = "settingsNav") { current ->
+        AnimatedContent(
+            targetState = activeCategory,
+            label = "settingsNav",
+            transitionSpec = {
+                if (animationsEnabled) {
+                    fadeIn() togetherWith fadeOut()
+                } else {
+                    EnterTransition.None togetherWith ExitTransition.None
+                }
+            }
+        ) { current ->
             val meta = categories.firstOrNull { it.id == current }
             LazyColumn(
                 modifier = Modifier
@@ -13273,7 +13283,8 @@ private fun SettingsOverlay(
                                 icon = Icons.Rounded.Close,
                                 tint = LevyraText,
                                 background = Color.White.copy(alpha = 0.08f),
-                                onClick = onClose
+                                onClick = onClose,
+                                contentDescription = strings.close
                             )
                         }
                     }
@@ -13811,7 +13822,15 @@ private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color
         ) {
             Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
         }
-        Text(title, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        Text(
+            title,
+            color = LevyraText,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
