@@ -945,14 +945,6 @@ private fun Modifier.pressable(
         )
 }
 
-private fun Modifier.blockTouchPassThrough(): Modifier = pointerInput(Unit) {
-    awaitPointerEventScope {
-        while (true) {
-            awaitPointerEvent().changes.forEach { it.consume() }
-        }
-    }
-}
-
 @Composable
 fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
@@ -1701,6 +1693,7 @@ private fun AlbumOverlay(
     onOpenPlayer: () -> Unit,
     onClose: () -> Unit
 ) {
+    val blocker = remember { MutableInteractionSource() }
     val detail = state.albumDetail
     val album = detail?.album
     val tracks = detail?.tracks.orEmpty()
@@ -1723,7 +1716,7 @@ private fun AlbumOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .blockTouchPassThrough()
+            .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LevyraBackground(accentTrack?.accentStart, accentTrack?.accentEnd)
         Box(
@@ -2351,6 +2344,7 @@ private fun ArtistOverlay(
     onOpenRelease: (ArtistRelease, String) -> Unit,
     onClose: () -> Unit
 ) {
+    val blocker = remember { MutableInteractionSource() }
     val profile = state.artistProfile
     val isFollowed = profile != null && (
         (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) ||
@@ -2367,7 +2361,7 @@ private fun ArtistOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .blockTouchPassThrough()
+            .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -3369,6 +3363,7 @@ private fun UpdateAvailableOverlay(
     onDownload: () -> Unit,
     onLater: () -> Unit
 ) {
+    val blocker = remember { MutableInteractionSource() }
     val strings = LocalLevyraStrings.current
     val notes = remember(update.releaseNotes, update.latestVersionName) {
         cleanedUpdateNotes(update.releaseNotes, update.latestVersionName)
@@ -3377,7 +3372,7 @@ private fun UpdateAvailableOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.86f))
-            .blockTouchPassThrough()
+            .clickable(interactionSource = blocker, indication = null) {}
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -3611,12 +3606,13 @@ private fun QueueOverlay(
     onToggleRadio: () -> Unit,
     onClose: () -> Unit
 ) {
+    val blocker = remember { MutableInteractionSource() }
     val strings = LocalLevyraStrings.current
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-            .blockTouchPassThrough()
+            .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LazyColumn(
             modifier = Modifier
@@ -3834,6 +3830,7 @@ private fun LyricsOverlay(
     onSeekToMs: (Long) -> Unit,
     onClose: () -> Unit
 ) {
+    val blocker = remember { MutableInteractionSource() }
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
     val accentStart = if (track != null) Color(track.accentStart) else LevyraCyan
@@ -3940,7 +3937,7 @@ private fun LyricsOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .blockTouchPassThrough()
+            .clickable(interactionSource = blocker, indication = null) {}
     ) {
         LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
         Box(
@@ -12831,6 +12828,7 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 
 @Composable
 private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
+    val blocker = remember { MutableInteractionSource() }
     val currentLocale = LocalLocale.current.platformLocale
     var selected by remember { mutableStateOf(setOf<String>()) }
     var name by remember { mutableStateOf("") }
@@ -12846,7 +12844,7 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFF030304))
-                .blockTouchPassThrough()
+                .clickable(interactionSource = blocker, indication = null) {}
         ) {
         Box(
             modifier = Modifier
@@ -13211,6 +13209,7 @@ private fun SettingsOverlay(
     onRedoQuestionnaire: () -> Unit,
     onClose: () -> Unit
 ) {
+    val blocker = remember { MutableInteractionSource() }
     val strings = LocalLevyraStrings.current
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
@@ -13243,7 +13242,7 @@ private fun SettingsOverlay(
         modifier = Modifier
         .fillMaxSize()
         .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-        .blockTouchPassThrough()
+        .clickable(interactionSource = blocker, indication = null) {}
     ) {
         AnimatedContent(
             targetState = activeCategory,
@@ -13263,7 +13262,7 @@ private fun SettingsOverlay(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
                 contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 40.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(if (current == null) 0.dp else 12.dp)
             ) {
                 if (current == null) {
                     item {
@@ -13284,9 +13283,13 @@ private fun SettingsOverlay(
                                 contentDescription = strings.close
                             )
                         }
+                        Spacer(modifier = Modifier.height(14.dp))
                     }
-                    items(categories, key = { it.id }) { category ->
-                        SettingsCategoryCard(meta = category) { activeCategory = category.id }
+                    itemsIndexed(categories, key = { _, item -> item.id }) { index, category ->
+                        SettingsCategoryCard(
+                            meta = category,
+                            showDivider = index < categories.lastIndex
+                        ) { activeCategory = category.id }
                     }
                     item { SettingsHubFooter() }
                 } else {
@@ -13749,40 +13752,31 @@ private data class SettingsCategoryMeta(
 )
 
 @Composable
-private fun SettingsCategoryCard(meta: SettingsCategoryMeta, onClick: () -> Unit) {
-    Surface(
-        color = LevyraAdaptiveCard,
-        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .pressable(onClick = onClick)
-    ) {
+private fun SettingsCategoryCard(meta: SettingsCategoryMeta, showDivider: Boolean, onClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .pressable(pressedScale = 0.99f, onClick = onClick)
+                .padding(vertical = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(46.dp)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(meta.accent.copy(alpha = 0.28f), meta.accent.copy(alpha = 0.10f))
-                        ),
-                        RoundedCornerShape(15.dp)
-                    ),
+                    .size(34.dp)
+                    .background(meta.accent.copy(alpha = 0.14f), RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(meta.icon, null, tint = meta.accent, modifier = Modifier.size(23.dp))
+                Icon(meta.icon, null, tint = meta.accent, modifier = Modifier.size(19.dp))
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(meta.title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(meta.title, color = LevyraText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 Text(
                     meta.summary,
                     color = LevyraMuted,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -13790,8 +13784,17 @@ private fun SettingsCategoryCard(meta: SettingsCategoryMeta, onClick: () -> Unit
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 null,
-                tint = LevyraMuted,
-                modifier = Modifier.size(22.dp)
+                tint = LevyraMuted.copy(alpha = 0.55f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        if (showDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 49.dp)
+                    .height(Dp.Hairline)
+                    .background(LevyraAdaptiveHairline)
             )
         }
     }
@@ -13831,6 +13834,7 @@ private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsChoiceRow(
     icon: ImageVector,
@@ -13859,8 +13863,11 @@ private fun SettingsChoiceRow(
                     Text(subtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(options, key = { it.first }) { option ->
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                options.forEach { option ->
                     val active = option.first == selected
                     Surface(
                         color = if (active) LevyraCyan.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.055f),
@@ -13947,10 +13954,14 @@ private fun SettingsSectionLabel(text: String) {
     Text(text, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 8.dp))
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ThemeSelector(selectedId: String, onSelect: (String) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(LevyraThemes.presets, key = { "theme-${it.id}" }) { preset ->
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        LevyraThemes.presets.forEach { preset ->
             ThemePresetCard(
                 preset = preset,
                 selected = preset.id == selectedId,
@@ -16984,7 +16995,7 @@ private fun AudioQualityPanel(
                 .fillMaxWidth()
                 .fillMaxHeight(0.94f)
                 .navigationBarsPadding()
-                .blockTouchPassThrough()
+                .clickable(interactionSource = blocker, indication = null) {}
         ) {
             LazyColumn(
                 contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 24.dp),
