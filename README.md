@@ -130,9 +130,9 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 <br>
 
-<img src="https://i.ibb.co/WNtLhLNz/Levyra-Git-Hub-Banner-Apple.png" alt="Levyra UI Preview" width="95%" />
+<img src="docs/assets/levyra-ui-preview-2026.webp" alt="Levyra 2026 interface preview — discovery, collections, player and private offline library" width="100%" />
 
-<sub>*Home, charts, genre spaces and artist pages in Levyra's dark-first interface.*</sub>
+<sub>*The redesigned Levyra experience: discovery, collections, immersive playback and a private offline library.*</sub>
 
 <br>
 
