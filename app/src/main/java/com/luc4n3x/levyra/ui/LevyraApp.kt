@@ -13214,13 +13214,14 @@ private fun SettingsOverlay(
 ) {
     val strings = LocalLevyraStrings.current
     var languageExpanded by remember { mutableStateOf(false) }
+    var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
     val blocker = remember { MutableInteractionSource() }
     val batteryContext = LocalContext.current
     val batteryLifecycleOwner = LocalLifecycleOwner.current
     var batteryCheckToken by remember { mutableStateOf(0) }
     val batteryUnrestricted = remember(batteryCheckToken) {
         batteryContext.getSystemService(PowerManager::class.java)
-            ?.isIgnoringBatteryOptimizations(batteryContext.packageName) == true
+        ?.isIgnoringBatteryOptimizations(batteryContext.packageName) == true
     }
     DisposableEffect(batteryLifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -13229,459 +13230,587 @@ private fun SettingsOverlay(
         batteryLifecycleOwner.lifecycle.addObserver(observer)
         onDispose { batteryLifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    BackHandler(enabled = activeCategory != null) { activeCategory = null }
+    val categories = listOf(
+        SettingsCategoryMeta("design", strings.design, "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
+        SettingsCategoryMeta("home", strings.homeInterfaceSection, "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet),
+        SettingsCategoryMeta("player", strings.player, "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
+        SettingsCategoryMeta("downloads", strings.downloads, "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
+        SettingsCategoryMeta("lyrics", strings.lyricsAnalysisSection, strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
+        SettingsCategoryMeta("backup", strings.backupRestoreSection, "${strings.createDataBackup} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
+        SettingsCategoryMeta("system", strings.preferences, "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
+        SettingsCategoryMeta("app", strings.app, "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
+    )
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-            .clickable(interactionSource = blocker, indication = null) {}
+        .fillMaxSize()
+        .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
+        .clickable(interactionSource = blocker, indication = null) {}
     ) {
-        LazyColumn(
-            modifier = Modifier
+        AnimatedContent(targetState = activeCategory, label = "settingsNav") { current ->
+            val meta = categories.firstOrNull { it.id == current }
+            LazyColumn(
+                modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 40.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(strings.settings, color = LevyraText, fontSize = 28.sp, fontWeight = FontWeight.Black)
-                        Text(strings.settingsSubtitle, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    CircleIconButton(
-                        icon = Icons.Rounded.Close,
-                        tint = LevyraText,
-                        background = Color.White.copy(alpha = 0.08f),
-                        onClick = onClose
-                    )
-                }
-            }
-            item { SettingsSectionLabel(strings.design) }
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(Icons.Rounded.Palette, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
-                        Column {
-                            Text(strings.theme, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
-                            Text(strings.themeSubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 40.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (current == null) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(strings.settings, color = LevyraText, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                                Text(strings.settingsSubtitle, color = LevyraMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            CircleIconButton(
+                                icon = Icons.Rounded.Close,
+                                tint = LevyraText,
+                                background = Color.White.copy(alpha = 0.08f),
+                                onClick = onClose
+                            )
                         }
                     }
-                    ThemeSelector(selectedId = themePreset, onSelect = onThemePreset)
-                }
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Bolt,
-                    title = strings.animations,
-                    subtitle = strings.animationsSubtitle,
-                    checked = animationsEnabled,
-                    onCheckedChange = onAnimations
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Album,
-                    title = strings.dynamicColor,
-                    subtitle = strings.dynamicColorSubtitle,
-                    checked = dynamicColor,
-                    onCheckedChange = onDynamicColor
-                )
-            }
-            item { SettingsSectionLabel(strings.homeInterfaceSection) }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Home,
-                    title = strings.compactHome,
-                    subtitle = strings.compactHomeSubtitle,
-                    checked = interfaceSettings.compactHome,
-                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(compactHome = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.MusicNote,
-                    title = strings.yourOrbitSetting,
-                    subtitle = strings.showPersonalListening,
-                    checked = interfaceSettings.showPersonalOrbit,
-                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showPersonalOrbit = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.GraphicEq,
-                    title = strings.voicesSetting,
-                    subtitle = strings.voicesSettingSubtitle,
-                    checked = interfaceSettings.showResonance,
-                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showResonance = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Notifications,
-                    title = strings.newReleasesSetting,
-                    subtitle = strings.showRecentReleases,
-                    checked = interfaceSettings.showNewReleases,
-                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showNewReleases = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Album,
-                    title = strings.albumsForYouSetting,
-                    subtitle = strings.showRecommendedAlbums,
-                    checked = interfaceSettings.showAlbumsForYou,
-                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showAlbumsForYou = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Person,
-                    title = strings.trendingArtists,
-                    subtitle = strings.showDiscoveredArtists,
-                    checked = interfaceSettings.showTrendingArtists,
-                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showTrendingArtists = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.LocalFireDepartment,
-                    title = strings.top50Charts,
-                    subtitle = strings.showChartsCountry,
-                    checked = interfaceSettings.showCharts,
-                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showCharts = it)) }
-                )
-            }
-            item { SettingsSectionLabel(strings.mobilePlayerSection) }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Speed,
-                    title = strings.advancedGestures,
-                    subtitle = strings.advancedGesturesSubtitle,
-                    checked = interfaceSettings.playerGesturesEnabled,
-                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(playerGesturesEnabled = it)) }
-                )
-            }
-            if (interfaceSettings.playerGesturesEnabled) {
-                item {
-                    SettingsChoiceRow(
-                        icon = Icons.Rounded.SkipNext,
-                        title = strings.doubleTapSeek,
-                        subtitle = strings.doubleTapSeekSubtitle,
-                        options = listOf("5" to "5 s", "10" to "10 s", "15" to "15 s", "30" to "30 s"),
-                        selected = interfaceSettings.doubleTapSeekSeconds.toString(),
-                        onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(doubleTapSeekSeconds = value.toInt())) }
-                    )
-                }
-                item {
-                    SettingsChoiceRow(
-                        icon = Icons.Rounded.Speed,
-                        title = strings.longPress,
-                        subtitle = strings.longPressSubtitle,
-                        options = listOf("1.5" to "1.5×", "2.0" to "2×", "2.5" to "2.5×", "3.0" to "3×"),
-                        selected = String.format(Locale.US, "%.1f", interfaceSettings.longPressSpeed),
-                        onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(longPressSpeed = value.toFloat())) }
-                    )
-                }
-            }
-            item { SettingsSectionLabel(strings.playback) }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.SkipNext,
-                    title = strings.sponsorBlock,
-                    subtitle = strings.sponsorBlockSubtitle,
-                    checked = sponsorBlock,
-                    onCheckedChange = onSponsorBlock
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Bedtime,
-                    title = strings.skipSilence,
-                    subtitle = strings.skipSilenceSubtitle,
-                    checked = skipSilence,
-                    onCheckedChange = onSkipSilence
-                )
-            }
-            item { SettingsSectionLabel(strings.downloadEngineSection) }
-            item {
-                SettingsChoiceRow(
-                    icon = Icons.Rounded.Speed,
-                    title = if (strings.code == "it") "Preset qualità" else "Quality preset",
-                    subtitle = if (strings.code == "it") "Bilancia qualità, velocità e consumo dati" else "Balance quality, speed and data usage",
-                    options = listOf(
-                        LevyraDownloadPreset.Automatic.name to if (strings.code == "it") "Automatico" else "Automatic",
-                        LevyraDownloadPreset.HighQuality.name to if (strings.code == "it") "Alta qualità" else "High quality",
-                        LevyraDownloadPreset.DataSaver.name to if (strings.code == "it") "Risparmio dati" else "Data saver"
-                    ),
-                    selected = downloadSettings.preset.name,
-                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(preset = LevyraDownloadPreset.valueOf(value))) }
-                )
-            }
-            item {
-                SettingsChoiceRow(
-                    icon = Icons.Rounded.Album,
-                    title = if (strings.code == "it") "Organizzazione cartelle" else "Folder organization",
-                    subtitle = if (strings.code == "it") "Salva per artista e album senza duplicare i file" else "Save by artist and album without duplicating files",
-                    options = listOf(
-                        LevyraDownloadFolderMode.Flat.name to if (strings.code == "it") "Levyra" else "Levyra",
-                        LevyraDownloadFolderMode.Artist.name to if (strings.code == "it") "Artista" else "Artist",
-                        LevyraDownloadFolderMode.ArtistAlbum.name to if (strings.code == "it") "Artista / Album" else "Artist / Album"
-                    ),
-                    selected = downloadSettings.folderMode.name,
-                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(folderMode = LevyraDownloadFolderMode.valueOf(value))) }
-                )
-            }
-            item {
-                SettingsChoiceRow(
-                    icon = Icons.Rounded.Speed,
-                    title = if (strings.code == "it") "Limite velocità" else "Speed limit",
-                    subtitle = if (strings.code == "it") "Riduce l'uso della rete durante i download" else "Limit network usage while downloading",
-                    options = listOf(
-                        "0" to if (strings.code == "it") "Illimitato" else "Unlimited",
-                        "512" to "512 Kbps",
-                        "1024" to "1 Mbps",
-                        "2048" to "2 Mbps",
-                        "4096" to "4 Mbps",
-                        "8192" to "8 Mbps"
-                    ),
-                    selected = downloadSettings.maxRateKbps.toString(),
-                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxRateKbps = value.toInt())) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Download,
-                    title = strings.wifiOnly,
-                    subtitle = strings.wifiOnlySubtitle,
-                    checked = downloadSettings.wifiOnly,
-                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(wifiOnly = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Bolt,
-                    title = strings.chargingOnly,
-                    subtitle = strings.chargingOnlySubtitle,
-                    checked = downloadSettings.chargingOnly,
-                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(chargingOnly = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.History,
-                    title = strings.automaticResume,
-                    subtitle = strings.partialDownloadResume,
-                    checked = downloadSettings.resumable,
-                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(resumable = it)) }
-                )
-            }
-            item {
-                SettingsChoiceRow(
-                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
-                    title = strings.simultaneousDownloads,
-                    subtitle = strings.simultaneousDownloadsSubtitle,
-                    options = listOf("1" to "1", "2" to "2", "3" to "3", "4" to "4"),
-                    selected = downloadSettings.maxConcurrentDownloads.toString(),
-                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxConcurrentDownloads = value.toInt())) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Album,
-                    title = if (strings.code == "it") "Metadati incorporati" else "Embedded metadata",
-                    subtitle = if (strings.code == "it") "Scrive titolo, artista e album nel file" else "Write title, artist and album into the file",
-                    checked = downloadSettings.embedMetadata,
-                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedMetadata = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Palette,
-                    title = if (strings.code == "it") "Copertina incorporata" else "Embedded artwork",
-                    subtitle = if (strings.code == "it") "Inserisce la copertina ufficiale nel brano" else "Embed the official artwork into the track",
-                    checked = downloadSettings.embedArtwork,
-                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedArtwork = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.Verified,
-                    title = if (strings.code == "it") "Verifica file" else "File verification",
-                    subtitle = if (strings.code == "it") "Controlla firma, dimensione e leggibilità prima di completare" else "Validate signature, size and readability before completion",
-                    checked = downloadSettings.verifyFile,
-                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(verifyFile = it)) }
-                )
-            }
-            item {
-                SettingsToggle(
-                    icon = Icons.Rounded.DownloadDone,
-                    title = if (strings.code == "it") "Evita duplicati" else "Skip duplicates",
-                    subtitle = if (strings.code == "it") "Riutilizza i download già presenti e validi" else "Reuse existing valid downloads",
-                    checked = downloadSettings.skipExisting,
-                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(skipExisting = it)) }
-                )
-            }
-            if (downloadQueue.isNotEmpty()) {
-                item {
-                    DownloadQueueSettingsCard(
-                        tasks = downloadQueue,
-                        onPause = onPauseDownload,
-                        onResume = onResumeDownload,
-                        onCancel = onCancelDownload
-                    )
-                }
-            }
-            item { SettingsSectionLabel(strings.lyricsAnalysisSection) }
-            item {
-                SettingsInfoCard(
-                    icon = Icons.Rounded.Insights,
-                    title = strings.lyricsAnalysisCompact,
-                    subtitle = strings.lyricsAnalysisCompactSubtitle
-                )
-            }
-            item { SettingsSectionLabel(strings.backupRestoreSection) }
-            item {
-                SettingsButton(
-                    icon = Icons.Rounded.Download,
-                    title = strings.createDataBackup,
-                    subtitle = strings.createDataBackupSubtitle,
-                    onClick = onCreateBackup
-                )
-            }
-            item {
-                SettingsButton(
-                    icon = Icons.Rounded.History,
-                    title = strings.restoreBackup,
-                    subtitle = strings.restoreBackupSubtitle,
-                    onClick = onRestoreBackup
-                )
-            }
-            item { SettingsSectionLabel(strings.playbackResilienceSection) }
-            item {
-                SettingsButton(
-                    icon = Icons.Rounded.Bolt,
-                    title = strings.batteryUnrestricted,
-                    subtitle = if (batteryUnrestricted) strings.batteryUnrestrictedActive else strings.batteryUnrestrictedSubtitle,
-                    onClick = {
-                        if (!batteryUnrestricted) {
-                            val request = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                                .setData(Uri.parse("package:${batteryContext.packageName}"))
-                            runCatching { batteryContext.startActivity(request) }.onFailure {
-                                runCatching {
-                                    batteryContext.startActivity(
-                                        Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    items(categories, key = { it.id }) { category ->
+                        SettingsCategoryCard(meta = category) { activeCategory = category.id }
+                    }
+                    item { SettingsHubFooter() }
+                } else {
+                    item {
+                        SettingsDetailHeader(
+                            title = meta?.title.orEmpty(),
+                            icon = meta?.icon ?: Icons.Rounded.Settings,
+                            accent = meta?.accent ?: LevyraCyan,
+                            onBack = { activeCategory = null }
+                        )
+                    }
+                    when (current) {
+                        "design" -> {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Icon(Icons.Rounded.Palette, null, tint = LevyraCyan, modifier = Modifier.size(20.dp))
+                                        Column {
+                                            Text(strings.theme, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black)
+                                            Text(strings.themeSubtitle, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+                                    ThemeSelector(selectedId = themePreset, onSelect = onThemePreset)
+                                }
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Bolt,
+                                    title = strings.animations,
+                                    subtitle = strings.animationsSubtitle,
+                                    checked = animationsEnabled,
+                                    onCheckedChange = onAnimations
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Album,
+                                    title = strings.dynamicColor,
+                                    subtitle = strings.dynamicColorSubtitle,
+                                    checked = dynamicColor,
+                                    onCheckedChange = onDynamicColor
+                                )
+                            }
+                        }
+                        "home" -> {
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Home,
+                                    title = strings.compactHome,
+                                    subtitle = strings.compactHomeSubtitle,
+                                    checked = interfaceSettings.compactHome,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(compactHome = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.MusicNote,
+                                    title = strings.yourOrbitSetting,
+                                    subtitle = strings.showPersonalListening,
+                                    checked = interfaceSettings.showPersonalOrbit,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showPersonalOrbit = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.GraphicEq,
+                                    title = strings.voicesSetting,
+                                    subtitle = strings.voicesSettingSubtitle,
+                                    checked = interfaceSettings.showResonance,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showResonance = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Notifications,
+                                    title = strings.newReleasesSetting,
+                                    subtitle = strings.showRecentReleases,
+                                    checked = interfaceSettings.showNewReleases,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showNewReleases = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Album,
+                                    title = strings.albumsForYouSetting,
+                                    subtitle = strings.showRecommendedAlbums,
+                                    checked = interfaceSettings.showAlbumsForYou,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showAlbumsForYou = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Person,
+                                    title = strings.trendingArtists,
+                                    subtitle = strings.showDiscoveredArtists,
+                                    checked = interfaceSettings.showTrendingArtists,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showTrendingArtists = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.LocalFireDepartment,
+                                    title = strings.top50Charts,
+                                    subtitle = strings.showChartsCountry,
+                                    checked = interfaceSettings.showCharts,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(showCharts = it)) }
+                                )
+                            }
+                        }
+                        "player" -> {
+                            item { SettingsSectionLabel(strings.mobilePlayerSection) }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Speed,
+                                    title = strings.advancedGestures,
+                                    subtitle = strings.advancedGesturesSubtitle,
+                                    checked = interfaceSettings.playerGesturesEnabled,
+                                    onCheckedChange = { onInterfaceSettings(interfaceSettings.copy(playerGesturesEnabled = it)) }
+                                )
+                            }
+                            if (interfaceSettings.playerGesturesEnabled) {
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.SkipNext,
+                                        title = strings.doubleTapSeek,
+                                        subtitle = strings.doubleTapSeekSubtitle,
+                                        options = listOf("5" to "5 s", "10" to "10 s", "15" to "15 s", "30" to "30 s"),
+                                        selected = interfaceSettings.doubleTapSeekSeconds.toString(),
+                                        onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(doubleTapSeekSeconds = value.toInt())) }
+                                    )
+                                }
+                                item {
+                                    SettingsChoiceRow(
+                                        icon = Icons.Rounded.Speed,
+                                        title = strings.longPress,
+                                        subtitle = strings.longPressSubtitle,
+                                        options = listOf("1.5" to "1.5×", "2.0" to "2×", "2.5" to "2.5×", "3.0" to "3×"),
+                                        selected = String.format(Locale.US, "%.1f", interfaceSettings.longPressSpeed),
+                                        onSelect = { value -> onInterfaceSettings(interfaceSettings.copy(longPressSpeed = value.toFloat())) }
+                                    )
+                                }
+                            }
+                            item { SettingsSectionLabel(strings.playback) }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.SkipNext,
+                                    title = strings.sponsorBlock,
+                                    subtitle = strings.sponsorBlockSubtitle,
+                                    checked = sponsorBlock,
+                                    onCheckedChange = onSponsorBlock
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Bedtime,
+                                    title = strings.skipSilence,
+                                    subtitle = strings.skipSilenceSubtitle,
+                                    checked = skipSilence,
+                                    onCheckedChange = onSkipSilence
+                                )
+                            }
+                        }
+                        "downloads" -> {
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Speed,
+                                    title = if (strings.code == "it") "Preset qualità" else "Quality preset",
+                                    subtitle = if (strings.code == "it") "Bilancia qualità, velocità e consumo dati" else "Balance quality, speed and data usage",
+                                    options = listOf(
+                                        LevyraDownloadPreset.Automatic.name to if (strings.code == "it") "Automatico" else "Automatic",
+                                        LevyraDownloadPreset.HighQuality.name to if (strings.code == "it") "Alta qualità" else "High quality",
+                                        LevyraDownloadPreset.DataSaver.name to if (strings.code == "it") "Risparmio dati" else "Data saver"
+                                    ),
+                                    selected = downloadSettings.preset.name,
+                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(preset = LevyraDownloadPreset.valueOf(value))) }
+                                )
+                            }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Album,
+                                    title = if (strings.code == "it") "Organizzazione cartelle" else "Folder organization",
+                                    subtitle = if (strings.code == "it") "Salva per artista e album senza duplicare i file" else "Save by artist and album without duplicating files",
+                                    options = listOf(
+                                        LevyraDownloadFolderMode.Flat.name to if (strings.code == "it") "Levyra" else "Levyra",
+                                        LevyraDownloadFolderMode.Artist.name to if (strings.code == "it") "Artista" else "Artist",
+                                        LevyraDownloadFolderMode.ArtistAlbum.name to if (strings.code == "it") "Artista / Album" else "Artist / Album"
+                                    ),
+                                    selected = downloadSettings.folderMode.name,
+                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(folderMode = LevyraDownloadFolderMode.valueOf(value))) }
+                                )
+                            }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.Speed,
+                                    title = if (strings.code == "it") "Limite velocità" else "Speed limit",
+                                    subtitle = if (strings.code == "it") "Riduce l'uso della rete durante i download" else "Limit network usage while downloading",
+                                    options = listOf(
+                                        "0" to if (strings.code == "it") "Illimitato" else "Unlimited",
+                                        "512" to "512 Kbps",
+                                        "1024" to "1 Mbps",
+                                        "2048" to "2 Mbps",
+                                        "4096" to "4 Mbps",
+                                        "8192" to "8 Mbps"
+                                    ),
+                                    selected = downloadSettings.maxRateKbps.toString(),
+                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxRateKbps = value.toInt())) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Download,
+                                    title = strings.wifiOnly,
+                                    subtitle = strings.wifiOnlySubtitle,
+                                    checked = downloadSettings.wifiOnly,
+                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(wifiOnly = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Bolt,
+                                    title = strings.chargingOnly,
+                                    subtitle = strings.chargingOnlySubtitle,
+                                    checked = downloadSettings.chargingOnly,
+                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(chargingOnly = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.History,
+                                    title = strings.automaticResume,
+                                    subtitle = strings.partialDownloadResume,
+                                    checked = downloadSettings.resumable,
+                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(resumable = it)) }
+                                )
+                            }
+                            item {
+                                SettingsChoiceRow(
+                                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                                    title = strings.simultaneousDownloads,
+                                    subtitle = strings.simultaneousDownloadsSubtitle,
+                                    options = listOf("1" to "1", "2" to "2", "3" to "3", "4" to "4"),
+                                    selected = downloadSettings.maxConcurrentDownloads.toString(),
+                                    onSelect = { value -> onDownloadSettings(downloadSettings.copy(maxConcurrentDownloads = value.toInt())) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Album,
+                                    title = if (strings.code == "it") "Metadati incorporati" else "Embedded metadata",
+                                    subtitle = if (strings.code == "it") "Scrive titolo, artista e album nel file" else "Write title, artist and album into the file",
+                                    checked = downloadSettings.embedMetadata,
+                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedMetadata = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Palette,
+                                    title = if (strings.code == "it") "Copertina incorporata" else "Embedded artwork",
+                                    subtitle = if (strings.code == "it") "Inserisce la copertina ufficiale nel brano" else "Embed the official artwork into the track",
+                                    checked = downloadSettings.embedArtwork,
+                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(embedArtwork = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.Verified,
+                                    title = if (strings.code == "it") "Verifica file" else "File verification",
+                                    subtitle = if (strings.code == "it") "Controlla firma, dimensione e leggibilità prima di completare" else "Validate signature, size and readability before completion",
+                                    checked = downloadSettings.verifyFile,
+                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(verifyFile = it)) }
+                                )
+                            }
+                            item {
+                                SettingsToggle(
+                                    icon = Icons.Rounded.DownloadDone,
+                                    title = if (strings.code == "it") "Evita duplicati" else "Skip duplicates",
+                                    subtitle = if (strings.code == "it") "Riutilizza i download già presenti e validi" else "Reuse existing valid downloads",
+                                    checked = downloadSettings.skipExisting,
+                                    onCheckedChange = { onDownloadSettings(downloadSettings.copy(skipExisting = it)) }
+                                )
+                            }
+                            if (downloadQueue.isNotEmpty()) {
+                                item {
+                                    DownloadQueueSettingsCard(
+                                        tasks = downloadQueue,
+                                        onPause = onPauseDownload,
+                                        onResume = onResumeDownload,
+                                        onCancel = onCancelDownload
                                     )
                                 }
                             }
                         }
-                    }
-                )
-            }
-            item {
-                SettingsButton(
-                    icon = Icons.Rounded.Share,
-                    title = strings.exportSafeDiagnostics,
-                    subtitle = if (playbackDiagnostics.isBlank()) strings.generateResolverTrace else strings.safeDiagnosticsSubtitle,
-                    onClick = onShareDiagnostics
-                )
-            }
-            item { SettingsSectionLabel(strings.preferences) }
-            item {
-                SettingsButton(
-                    icon = Icons.Rounded.Settings,
-                    title = strings.redoQuestionnaire,
-                    subtitle = strings.redoQuestionnaireSubtitle,
-                    onClick = onRedoQuestionnaire
-                )
-            }
-            item {
-                SettingsButton(
-                    icon = Icons.Rounded.Settings,
-                    title = strings.language,
-                    subtitle = "${strings.languageSubtitle}: ${LevyraLanguageCatalog.displayName(currentLanguageCode)}",
-                    onClick = { languageExpanded = !languageExpanded }
-                )
-            }
-            if (languageExpanded) {
-                item { LanguageSelector(selectedCode = currentLanguageCode, onSelect = onLanguage, modifier = Modifier.padding(bottom = 4.dp)) }
-            }
-            item { SettingsSectionLabel(strings.app) }
-            if (BuildConfig.UPSTREAM_UPDATES_ENABLED) {
-                item {
-                    SettingsUpdateCard(
-                        updateInfo = updateInfo,
-                        isChecking = isCheckingUpdates,
-                        onCheck = onCheckUpdates,
-                        onDownload = onDownloadUpdate
-                    )
-                }
-            }
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "LEVYRA ${BuildConfig.VERSION_NAME}",
-                        color = LevyraMuted,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            "${strings.madeWithBy} ",
-                            color = LevyraMuted,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Box(
-                            modifier = Modifier
-                                .height(28.dp)
-                                .padding(horizontal = 6.dp)
-                                .drawBehind {
-                                    drawCircle(
-                                        brush = Brush.radialGradient(
-                                            colors = listOf(
-                                                LevyraCyan.copy(alpha = 0.5f),
-                                                LevyraViolet.copy(alpha = 0.2f),
-                                                Color.Transparent
-                                            ),
-                                            radius = size.height * 1.5f
-                                        )
-                                    )
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AsyncImage(
-                                model = "https://github.com/LUC4N3X.png",
-                                contentDescription = "LUC4N3X",
-                                modifier = Modifier
-                                    .size(22.dp)
-                                    .clip(CircleShape)
-                                    .border(1.dp, LevyraCyan.copy(alpha = 0.3f), CircleShape)
-                            )
+                        "lyrics" -> {
+                            item {
+                                SettingsInfoCard(
+                                    icon = Icons.Rounded.Insights,
+                                    title = strings.lyricsAnalysisCompact,
+                                    subtitle = strings.lyricsAnalysisCompactSubtitle
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            "LUC4N3X",
-                            color = LevyraText,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        "backup" -> {
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Download,
+                                    title = strings.createDataBackup,
+                                    subtitle = strings.createDataBackupSubtitle,
+                                    onClick = onCreateBackup
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.History,
+                                    title = strings.restoreBackup,
+                                    subtitle = strings.restoreBackupSubtitle,
+                                    onClick = onRestoreBackup
+                                )
+                            }
+                        }
+                        "system" -> {
+                            item { SettingsSectionLabel(strings.playbackResilienceSection) }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Bolt,
+                                    title = strings.batteryUnrestricted,
+                                    subtitle = if (batteryUnrestricted) strings.batteryUnrestrictedActive else strings.batteryUnrestrictedSubtitle,
+                                    onClick = {
+                                        if (!batteryUnrestricted) {
+                                            val request = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                            .setData(Uri.parse("package:${batteryContext.packageName}"))
+                                            runCatching { batteryContext.startActivity(request) }.onFailure {
+                                                runCatching {
+                                                    batteryContext.startActivity(
+                                                        Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Share,
+                                    title = strings.exportSafeDiagnostics,
+                                    subtitle = if (playbackDiagnostics.isBlank()) strings.generateResolverTrace else strings.safeDiagnosticsSubtitle,
+                                    onClick = onShareDiagnostics
+                                )
+                            }
+                            item { SettingsSectionLabel(strings.preferences) }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Settings,
+                                    title = strings.redoQuestionnaire,
+                                    subtitle = strings.redoQuestionnaireSubtitle,
+                                    onClick = onRedoQuestionnaire
+                                )
+                            }
+                            item {
+                                SettingsButton(
+                                    icon = Icons.Rounded.Settings,
+                                    title = strings.language,
+                                    subtitle = "${strings.languageSubtitle}: ${LevyraLanguageCatalog.displayName(currentLanguageCode)}",
+                                    onClick = { languageExpanded = !languageExpanded }
+                                )
+                            }
+                            if (languageExpanded) {
+                                item { LanguageSelector(selectedCode = currentLanguageCode, onSelect = onLanguage, modifier = Modifier.padding(bottom = 4.dp)) }
+                            }
+                        }
+                        "app" -> {
+                            if (BuildConfig.UPSTREAM_UPDATES_ENABLED) {
+                                item {
+                                    SettingsUpdateCard(
+                                        updateInfo = updateInfo,
+                                        isChecking = isCheckingUpdates,
+                                        onCheck = onCheckUpdates,
+                                        onDownload = onDownloadUpdate
+                                    )
+                                }
+                            }
+                            item { SettingsHubFooter() }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SettingsHubFooter() {
+    val strings = LocalLevyraStrings.current
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "LEVYRA ${BuildConfig.VERSION_NAME}",
+            color = LevyraMuted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 2.sp
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "${strings.madeWithBy} ",
+                color = LevyraMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Box(
+                modifier = Modifier
+                .height(28.dp)
+                .padding(horizontal = 6.dp)
+                .drawBehind {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                LevyraCyan.copy(alpha = 0.5f),
+                                LevyraViolet.copy(alpha = 0.2f),
+                                Color.Transparent
+                            ),
+                            radius = size.height * 1.5f
+                        )
+                    )
+                },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = "https://github.com/LUC4N3X.png",
+                    contentDescription = "LUC4N3X",
+                    modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, LevyraCyan.copy(alpha = 0.3f), CircleShape)
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                "LUC4N3X",
+                color = LevyraText,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+private data class SettingsCategoryMeta(
+    val id: String,
+    val title: String,
+    val summary: String,
+    val icon: ImageVector,
+    val accent: Color
+)
+
+@Composable
+private fun SettingsCategoryCard(meta: SettingsCategoryMeta, onClick: () -> Unit) {
+    Surface(
+        color = LevyraAdaptiveCard,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(meta.accent.copy(alpha = 0.28f), meta.accent.copy(alpha = 0.10f))
+                        ),
+                        RoundedCornerShape(15.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(meta.icon, null, tint = meta.accent, modifier = Modifier.size(23.dp))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(meta.title, color = LevyraText, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                Text(
+                    meta.summary,
+                    color = LevyraMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                null,
+                tint = LevyraMuted,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsDetailHeader(title: String, icon: ImageVector, accent: Color, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        CircleIconButton(
+            icon = Icons.AutoMirrored.Rounded.ArrowBack,
+            tint = LevyraText,
+            background = Color.White.copy(alpha = 0.08f),
+            onClick = onBack,
+            contentDescription = LocalLevyraStrings.current.back
+        )
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .background(accent.copy(alpha = 0.18f), RoundedCornerShape(13.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = accent, modifier = Modifier.size(20.dp))
+        }
+        Text(title, color = LevyraText, fontSize = 22.sp, fontWeight = FontWeight.Black)
     }
 }
 
