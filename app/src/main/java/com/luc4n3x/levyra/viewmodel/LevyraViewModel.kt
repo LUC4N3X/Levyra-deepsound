@@ -408,6 +408,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val homeFeedRequestGeneration = AtomicLong(0L)
     private val homeAlbumsRequestGeneration = AtomicLong(0L)
     private val chartsRequestGeneration = AtomicLong(0L)
+    private val chartsByRegion = java.util.concurrent.ConcurrentHashMap<String, List<Track>>()
+
+    private fun chartsCacheKey(languageCode: String, regionId: String): String = "$languageCode/$regionId"
     private val pendingHomeSectionsSnapshot = AtomicReference<List<com.luc4n3x.levyra.domain.HomeSection>?>(null)
     private val deferredHomeSnapshotApplyScheduled = AtomicBoolean(false)
     @Volatile private var homeScreenActive = false
@@ -2535,7 +2538,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectChart(regionId: String) {
         if (regionId == _state.value.selectedChartId && _state.value.charts.isNotEmpty()) return
-        _state.update { it.copy(selectedChartId = regionId) }
+        val cached = chartsByRegion[chartsCacheKey(_state.value.languageCode, regionId)].orEmpty()
+        _state.update {
+            it.copy(
+                selectedChartId = regionId,
+                charts = cached,
+                isLoadingCharts = cached.isEmpty()
+            )
+        }
         loadCharts(regionId)
     }
 
@@ -2550,6 +2560,24 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             _state.update { current ->
                 if (current.selectedChartId != regionId) current
                 else current.copy(isLoadingCharts = !hasVisibleCharts)
+            }
+
+            if (!hasVisibleCharts) {
+                val stored = withContext(Dispatchers.IO) { preferences.loadChartTracks(languageCode, regionId) }
+                if (stored.isNotEmpty()) {
+                    chartsByRegion[chartsCacheKey(languageCode, regionId)] = stored
+                    if (
+                        isActive &&
+                        chartsRequestGeneration.get() == requestGeneration &&
+                        _state.value.languageCode == languageCode &&
+                        _state.value.selectedChartId == regionId
+                    ) {
+                        _state.update { current ->
+                            if (current.selectedChartId != regionId) current
+                            else current.copy(charts = stored, isLoadingCharts = false)
+                        }
+                    }
+                }
             }
 
             val region = ChartsCatalog.region(regionId)
@@ -2575,6 +2603,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
 
+            chartsByRegion[chartsCacheKey(languageCode, regionId)] = result
             withContext(Dispatchers.IO) {
                 preferences.saveChartTracks(result, languageCode, regionId)
             }
