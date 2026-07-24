@@ -280,14 +280,16 @@ internal fun buildStableHomeRenderSnapshot(
 }
 
 private fun LevyraUiState.withFrozenHomeContent(previous: LevyraUiState): LevyraUiState {
+    val sameChartIdentity = languageCode == previous.languageCode &&
+        selectedChartId == previous.selectedChartId
     return copy(
         tracks = previous.tracks,
         recentSearches = previous.recentSearches,
         recentListens = previous.recentListens,
         personalOrbitTracks = previous.personalOrbitTracks,
         favorites = previous.favorites,
-        charts = previous.charts,
-        isLoadingCharts = previous.isLoadingCharts,
+        charts = if (sameChartIdentity) previous.charts else charts,
+        isLoadingCharts = if (sameChartIdentity) previous.isLoadingCharts else isLoadingCharts,
         homeSections = previous.homeSections,
         homeAlbums = previous.homeAlbums,
         homeArtists = previous.homeArtists,
@@ -601,7 +603,7 @@ private fun buildHomeContentFingerprint(
     availability: HomeContentAvailability
 ): String {
     return buildString {
-        append(availability.fingerprint())
+        append(availability.copy(chartCount = 0).fingerprint())
         append('|')
         append(input.tracks.take(12).joinToString(",") { it.id })
         append('|')
@@ -612,8 +614,6 @@ private fun buildHomeContentFingerprint(
         )
         append('|')
         append(input.homeAlbums.take(10).joinToString(",") { it.browseId.ifBlank { "${it.title}:${it.artist}" } })
-        append('|')
-        append(input.charts.take(12).joinToString(",") { it.id })
     }
 }
 
