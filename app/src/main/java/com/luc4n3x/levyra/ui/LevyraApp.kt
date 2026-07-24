@@ -13232,7 +13232,9 @@ private fun SettingsOverlay(
     }
     BackHandler(enabled = activeCategory != null) { activeCategory = null }
     val categoryLocale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
-    fun categoryTitle(value: String): String = value.uppercase(categoryLocale)
+    fun categoryTitle(value: String): String = value.trim().lowercase(categoryLocale).replaceFirstChar { character ->
+        if (character.isLowerCase()) character.titlecase(categoryLocale) else character.toString()
+    }
     val categories = listOf(
         SettingsCategoryMeta("design", categoryTitle(strings.design), "${strings.theme} · ${strings.animations} · ${strings.dynamicColor}", Icons.Rounded.Palette, LevyraCyan),
         SettingsCategoryMeta("home", categoryTitle(strings.homeInterfaceSection), "${strings.compactHome} · ${strings.newReleases} · ${strings.top50Charts}", Icons.Rounded.Home, LevyraViolet),
@@ -13247,7 +13249,6 @@ private fun SettingsOverlay(
         modifier = Modifier
         .fillMaxSize()
         .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-        .consumeOverlayTouches()
     ) {
         AnimatedContent(
             targetState = activeCategory,
@@ -13261,7 +13262,9 @@ private fun SettingsOverlay(
             }
         ) { current ->
             val meta = categories.firstOrNull { it.id == current }
+            val settingsListState = remember(current) { LazyListState() }
             LazyColumn(
+                state = settingsListState,
                 modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
@@ -13964,7 +13967,14 @@ private fun DownloadQueueSettingsCard(
 
 @Composable
 private fun SettingsSectionLabel(text: String) {
-    Text(text, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = 8.dp))
+    val strings = LocalLevyraStrings.current
+    val locale = remember(strings.code) { Locale.forLanguageTag(strings.code.replace('_', '-')) }
+    val title = remember(text, locale) {
+        text.trim().lowercase(locale).replaceFirstChar { character ->
+            if (character.isLowerCase()) character.titlecase(locale) else character.toString()
+        }
+    }
+    Text(title, color = LevyraMuted, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 0.4.sp, modifier = Modifier.padding(top = 8.dp))
 }
 
 @OptIn(ExperimentalLayoutApi::class)
