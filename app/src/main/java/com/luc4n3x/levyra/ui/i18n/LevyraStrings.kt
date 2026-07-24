@@ -4201,7 +4201,7 @@ class LevyraStrings private constructor(
             "downloadSkipDuplicates" to "Evită duplicatele",
             "downloadSkipDuplicatesSubtitle" to "Refolosește descărcările valide existente",
             "trailTitle" to "URMA TA RECENTĂ",
-            "trailPlays" to "redabile",
+            "trailPlays" to "redări",
             "trailUnique" to "unice",
             "trailLastPlayed" to "Ultima ascultare",
             "statPlays" to "redări",
