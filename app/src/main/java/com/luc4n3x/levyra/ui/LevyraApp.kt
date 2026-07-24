@@ -945,6 +945,16 @@ private fun Modifier.pressable(
         )
 }
 
+private fun Modifier.consumeOverlayTouches(): Modifier = pointerInput(Unit) {
+    awaitPointerEventScope {
+        while (true) {
+            awaitPointerEvent().changes.forEach { change ->
+                if (!change.isConsumed) change.consume()
+            }
+        }
+    }
+}
+
 @Composable
 fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {
     val screenViewModelFactory = remember(viewModel) { LevyraScreenViewModelFactory(viewModel) }
@@ -1693,7 +1703,6 @@ private fun AlbumOverlay(
     onOpenPlayer: () -> Unit,
     onClose: () -> Unit
 ) {
-    val blocker = remember { MutableInteractionSource() }
     val detail = state.albumDetail
     val album = detail?.album
     val tracks = detail?.tracks.orEmpty()
@@ -1716,7 +1725,7 @@ private fun AlbumOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .clickable(interactionSource = blocker, indication = null) {}
+            .consumeOverlayTouches()
     ) {
         LevyraBackground(accentTrack?.accentStart, accentTrack?.accentEnd)
         Box(
@@ -2344,7 +2353,6 @@ private fun ArtistOverlay(
     onOpenRelease: (ArtistRelease, String) -> Unit,
     onClose: () -> Unit
 ) {
-    val blocker = remember { MutableInteractionSource() }
     val profile = state.artistProfile
     val isFollowed = profile != null && (
         (profile.browseId.isNotBlank() && profile.browseId in state.followedArtistKeys) ||
@@ -2361,7 +2369,7 @@ private fun ArtistOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .clickable(interactionSource = blocker, indication = null) {}
+            .consumeOverlayTouches()
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -3363,7 +3371,6 @@ private fun UpdateAvailableOverlay(
     onDownload: () -> Unit,
     onLater: () -> Unit
 ) {
-    val blocker = remember { MutableInteractionSource() }
     val strings = LocalLevyraStrings.current
     val notes = remember(update.releaseNotes, update.latestVersionName) {
         cleanedUpdateNotes(update.releaseNotes, update.latestVersionName)
@@ -3372,7 +3379,7 @@ private fun UpdateAvailableOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.86f))
-            .clickable(interactionSource = blocker, indication = null) {}
+            .consumeOverlayTouches()
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -3606,13 +3613,12 @@ private fun QueueOverlay(
     onToggleRadio: () -> Unit,
     onClose: () -> Unit
 ) {
-    val blocker = remember { MutableInteractionSource() }
     val strings = LocalLevyraStrings.current
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-            .clickable(interactionSource = blocker, indication = null) {}
+            .consumeOverlayTouches()
     ) {
         LazyColumn(
             modifier = Modifier
@@ -3830,7 +3836,6 @@ private fun LyricsOverlay(
     onSeekToMs: (Long) -> Unit,
     onClose: () -> Unit
 ) {
-    val blocker = remember { MutableInteractionSource() }
     val strings = LocalLevyraStrings.current
     val track = state.currentTrack
     val accentStart = if (track != null) Color(track.accentStart) else LevyraCyan
@@ -3937,7 +3942,7 @@ private fun LyricsOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clickable(interactionSource = blocker, indication = null) {}
+            .consumeOverlayTouches()
     ) {
         LevyraBackground(accentStart = track?.accentStart, accentEnd = track?.accentEnd)
         Box(
@@ -12828,7 +12833,6 @@ private fun LanguageSelector(selectedCode: String, onSelect: (String) -> Unit, m
 
 @Composable
 private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set<String>, String) -> Unit) {
-    val blocker = remember { MutableInteractionSource() }
     val currentLocale = LocalLocale.current.platformLocale
     var selected by remember { mutableStateOf(setOf<String>()) }
     var name by remember { mutableStateOf("") }
@@ -12844,7 +12848,7 @@ private fun OnboardingOverlay(selectedLanguageCode: String, onDone: (String, Set
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFF030304))
-                .clickable(interactionSource = blocker, indication = null) {}
+                .consumeOverlayTouches()
         ) {
         Box(
             modifier = Modifier
@@ -13209,7 +13213,6 @@ private fun SettingsOverlay(
     onRedoQuestionnaire: () -> Unit,
     onClose: () -> Unit
 ) {
-    val blocker = remember { MutableInteractionSource() }
     val strings = LocalLevyraStrings.current
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
@@ -13242,7 +13245,7 @@ private fun SettingsOverlay(
         modifier = Modifier
         .fillMaxSize()
         .background(Brush.verticalGradient(listOf(LevyraInk, LevyraBlack)))
-        .clickable(interactionSource = blocker, indication = null) {}
+        .consumeOverlayTouches()
     ) {
         AnimatedContent(
             targetState = activeCategory,
@@ -16995,7 +16998,7 @@ private fun AudioQualityPanel(
                 .fillMaxWidth()
                 .fillMaxHeight(0.94f)
                 .navigationBarsPadding()
-                .clickable(interactionSource = blocker, indication = null) {}
+                .consumeOverlayTouches()
         ) {
             LazyColumn(
                 contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 24.dp),
