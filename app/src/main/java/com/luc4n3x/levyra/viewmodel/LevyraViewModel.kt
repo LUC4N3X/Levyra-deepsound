@@ -2542,7 +2542,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update {
             it.copy(
                 selectedChartId = regionId,
-                charts = cached,
+                charts = if (cached.isNotEmpty()) cached else it.charts,
                 isLoadingCharts = cached.isEmpty()
             )
         }
@@ -2556,13 +2556,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             val initialState = _state.value
             val languageCode = initialState.languageCode
             val hasVisibleCharts = initialState.charts.isNotEmpty()
+            val hasRegionData = chartsByRegion.containsKey(chartsCacheKey(languageCode, regionId))
             if (!isActive || _state.value.languageCode != languageCode || _state.value.selectedChartId != regionId) return@launch
             _state.update { current ->
                 if (current.selectedChartId != regionId) current
-                else current.copy(isLoadingCharts = !hasVisibleCharts)
+                else current.copy(isLoadingCharts = current.isLoadingCharts || !hasVisibleCharts)
             }
 
-            if (!hasVisibleCharts) {
+            if (!hasRegionData) {
                 val stored = withContext(Dispatchers.IO) { preferences.loadChartTracks(languageCode, regionId) }
                 if (stored.isNotEmpty()) {
                     chartsByRegion[chartsCacheKey(languageCode, regionId)] = stored
