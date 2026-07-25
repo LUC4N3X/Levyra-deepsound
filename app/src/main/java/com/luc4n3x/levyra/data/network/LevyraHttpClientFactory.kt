@@ -3,14 +3,19 @@ package com.luc4n3x.levyra.data.network
 import android.content.Context
 import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.luc4n3x.levyra.BuildConfig
+import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.brotli.BrotliInterceptor
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 object LevyraHttpClientFactory {
+    private const val FEED_CACHE_DIRECTORY = "levyra_feed_http"
+    private const val FEED_CACHE_BYTES = 8L * 1024L * 1024L
+
     private val mediaConnectionPool = ConnectionPool(24, 5, TimeUnit.MINUTES)
     private val mediaDispatcher = Dispatcher().apply {
         maxRequests = 40
@@ -38,6 +43,29 @@ object LevyraHttpClientFactory {
 
     @Volatile
     private var downloadClient: OkHttpClient? = null
+
+    @Volatile
+    private var feedClient: OkHttpClient? = null
+
+    /**
+     * Client for small public JSON feeds (charts, catalog lookups).
+     *
+     * It reuses the media connection pool and dispatcher instead of adding another one, and owns a
+     * bounded HTTP cache so a repeated feed read can be answered from disk — or revalidated with a
+     * 304 — instead of downloading the whole payload again.
+     */
+    fun feeds(context: Context): OkHttpClient {
+        return feedClient ?: synchronized(this) {
+            feedClient ?: media(context).newBuilder()
+                .connectTimeout(4, TimeUnit.SECONDS)
+                .readTimeout(7, TimeUnit.SECONDS)
+                .callTimeout(9, TimeUnit.SECONDS)
+                .addInterceptor(BrotliInterceptor)
+                .cache(Cache(File(context.applicationContext.cacheDir, FEED_CACHE_DIRECTORY), FEED_CACHE_BYTES))
+                .build()
+                .also { feedClient = it }
+        }
+    }
 
     fun media(context: Context? = null): OkHttpClient {
         return mediaClient ?: synchronized(this) {
