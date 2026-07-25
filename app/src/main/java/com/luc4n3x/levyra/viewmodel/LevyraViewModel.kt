@@ -582,11 +582,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             .distinctBy { it.browseId.lowercase() }
             .take(HOME_ARTIST_SHELF_SIZE)
-        val cachedCharts = instantSnapshot?.charts?.takeIf { it.isNotEmpty() } ?: preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
-        val startupCharts = LevyraStartupCatalog.repairTracks(
-            cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) },
-            settings.languageCode
-        )
+        val snapshotCharts = instantSnapshot
+            ?.takeIf { it.chartRegionId == defaultChartRegion.id }
+            ?.charts
+            .orEmpty()
+        val cachedCharts = snapshotCharts.ifEmpty {
+            preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
+        }
+        val startupCharts = LevyraStartupCatalog.repairTracks(cachedCharts, settings.languageCode)
         if (startupCharts.isNotEmpty()) {
             chartsByRegion[chartsCacheKey(settings.languageCode, defaultChartRegion.id)] = startupCharts
         }
@@ -658,7 +661,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 charts = startupCharts,
                 selectedChartId = defaultChartRegion.id,
                 isSearching = false,
-                isLoadingCharts = false,
+                isLoadingCharts = startupCharts.isEmpty(),
                 cacheReport = repository.cacheReport(),
                 userName = settings.userName,
                 languageCode = settings.languageCode,
@@ -864,9 +867,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             prefetchChartRegions(_state.value.selectedChartId)
         }
         viewModelScope.launch {
-            delay(startupPlan.secondaryStartDelayMs)
-            awaitHomeUiIdle(startupPlan)
-            loadCharts(deferUntilHomeIdle = true)
+            if (_state.value.charts.isNotEmpty()) delay(350L)
+            loadCharts(deferUntilHomeIdle = false)
         }
         viewModelScope.launch {
             delay(3_200L)
@@ -902,6 +904,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeSnapshotCache.save(
             languageCode = normalizedLanguage,
             homeSections = pendingHomeSectionsSnapshot.get() ?: snapshot.homeSections,
+            chartRegionId = snapshot.selectedChartId,
             charts = snapshot.charts,
             personalOrbit = snapshot.personalOrbitTracks,
             homeArtists = deferredHomeArtistsSnapshot.get() ?: snapshot.homeArtists,
@@ -2411,9 +2414,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
         val homeTracks = homeSections.flatMap { it.tracks }.distinctBy { it.id }
         val chartTracks = LevyraStartupCatalog.repairTracks(
-            preferences.loadChartTracks(languageCode, defaultChartRegion.id).ifEmpty { LevyraStartupCatalog.chartTracks(languageCode) },
+            preferences.loadChartTracks(languageCode, defaultChartRegion.id),
             languageCode
         )
+        val chartCacheKey = chartsCacheKey(languageCode, defaultChartRegion.id)
+        if (chartTracks.isEmpty()) {
+            chartsByRegion.remove(chartCacheKey)
+            chartsFreshAt.remove(chartCacheKey)
+        } else {
+            chartsByRegion[chartCacheKey] = chartTracks
+        }
         val cachedOrbit = LevyraStartupCatalog.repairTracks(preferences.loadPersonalOrbitTracks(languageCode), languageCode)
         val seed = mergeTracks(cachedOrbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
         val orbit = LevyraPersonalOrbit.build(
@@ -2480,7 +2490,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 searchData = SearchResults(),
                 searchError = null,
                 isSearching = false,
-                isLoadingCharts = false,
+                isLoadingCharts = refreshRemote && chartTracks.isEmpty(),
                 exploreZoneId = null,
                 exploreTracks = emptyList(),
                 exploreVideos = emptyList()
