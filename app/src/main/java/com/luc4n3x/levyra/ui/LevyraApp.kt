@@ -2365,13 +2365,19 @@ private fun ArtistOverlay(
         hasError = state.artistError != null,
         hasProfile = profile != null
     )
+    val artistListState = rememberSaveable(
+        state.artistListStateKey,
+        saver = LazyListState.Saver
+    ) {
+        LazyListState()
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .consumeOverlayTouches()
     ) {
         LazyColumn(
+            state = artistListState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 200.dp else 110.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
