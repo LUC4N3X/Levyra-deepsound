@@ -13,6 +13,7 @@ import com.luc4n3x.levyra.desktop.player.PlaybackStatus
 import com.luc4n3x.levyra.desktop.player.PlayerEvent
 import com.luc4n3x.levyra.desktop.player.PlayerQueue
 import com.luc4n3x.levyra.desktop.player.RepeatMode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -67,6 +68,7 @@ class PlaybackController(
     private var eventJob: Job? = null
     private var persistJob: Job? = null
     private var retriedTrackId: String = ""
+    private var consecutiveFailures: Int = 0
     private var pendingResumeMs: Long = 0L
 
     val state: StateFlow<PlaybackUiState> = internalState.asStateFlow()
@@ -148,7 +150,7 @@ class PlaybackController(
         val current = internalState.value
         if (current.queue.isEmpty) return
         when (current.status) {
-            PlaybackStatus.PLAYING -> {
+            PlaybackStatus.PLAYING, PlaybackStatus.BUFFERING -> {
                 player?.pause()
                 internalState.value = current.copy(status = PlaybackStatus.PAUSED)
                 persistSession()
@@ -159,7 +161,9 @@ class PlaybackController(
                 internalState.value = current.copy(status = PlaybackStatus.PLAYING)
             }
 
-            else -> startCurrent(pendingResumeMs)
+            PlaybackStatus.OPENING -> Unit
+
+            PlaybackStatus.IDLE, PlaybackStatus.ENDED, PlaybackStatus.FAILED -> startCurrent(pendingResumeMs)
         }
     }
 
@@ -204,8 +208,10 @@ class PlaybackController(
 
     fun setVolume(volume: Int) {
         val safe = volume.coerceIn(0, 100)
+        val muted = safe == 0
         player?.setVolume(safe)
-        internalState.value = internalState.value.copy(volume = safe, muted = safe == 0)
+        player?.setMuted(muted)
+        internalState.value = internalState.value.copy(volume = safe, muted = muted)
         settingsStore.update { it.copy(volume = safe) }
     }
 
@@ -274,9 +280,11 @@ class PlaybackController(
                 activePlayer.stop()
             }
             val settings = settingsStore.current
-            val resolved = runCatching {
+            val resolved = try {
                 resolver.resolve(track, settings.audioQuality, settings.preferredCodec)
-            }.getOrElse { error ->
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
                 internalState.value = internalState.value.copy(preparingTrackId = "")
                 messageFlow.tryEmit(error.message ?: "Impossibile risolvere lo stream")
                 skipAfterFailure(track)
@@ -315,17 +323,32 @@ class PlaybackController(
     private fun skipAfterFailure(track: Track) {
         resolver.invalidate(track)
         val queue = internalState.value.queue
-        if (queue.items.size <= 1) {
+        consecutiveFailures += 1
+        if (queue.items.size <= 1 || consecutiveFailures >= queue.items.size) {
+            consecutiveFailures = 0
             stop()
             return
         }
-        next(automatic = true)
+        val advanced = queue.advance(automatic = false)
+        if (advanced == null) {
+            consecutiveFailures = 0
+            stop()
+            return
+        }
+        internalState.value = internalState.value.copy(queue = advanced)
+        startCurrent(0L)
     }
 
     private fun extendWithRadio() {
         val seed = internalState.value.queue.items.lastOrNull() ?: return
         playerScope.launch {
-            val tracks = runCatching { catalog.radio(seed) }.getOrDefault(emptyList())
+            val tracks = try {
+                catalog.radio(seed)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                emptyList()
+            }
             if (tracks.isEmpty()) {
                 stop()
                 return@launch
@@ -380,6 +403,7 @@ class PlaybackController(
 
             is PlayerEvent.Playing -> {
                 retriedTrackId = ""
+                consecutiveFailures = 0
                 internalState.value = internalState.value.copy(status = PlaybackStatus.PLAYING)
             }
 

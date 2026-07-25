@@ -89,10 +89,13 @@ class CatalogRepository(
             id = CatalogMapper.collectionIdOf(normalized),
             title = normalized,
             url = normalized,
-            kind = if (normalized.contains("/channel/")) CollectionKind.ARTIST else CollectionKind.PLAYLIST
+            kind = if (isChannelUrl(normalized)) CollectionKind.ARTIST else CollectionKind.PLAYLIST
         )
         collection(ref)
     }
+
+    private fun isChannelUrl(url: String): Boolean =
+        runCatching { service.channelLHFactory.acceptUrl(url) }.getOrDefault(false)
 
     suspend fun radio(track: Track, limit: Int = 25): List<Track> = withContext(dispatcher) {
         val info = StreamInfo.getInfo(service, track.videoUrl)
