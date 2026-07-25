@@ -10,12 +10,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -41,14 +43,11 @@ class ChartsRepository(context: Context) {
 
     private val appContext = context.applicationContext
     private val httpClient: OkHttpClient by lazy { LevyraHttpClientFactory.feeds(appContext) }
-
-    // Chart feeds are shared, idempotent and cheap to keep alive: running them in a
-    // repository-owned scope lets a fetch survive the region switch that started it, so a
-    // cancelled selection still warms the cache for the next tap instead of being thrown away.
+    private val youtubeMusicCharts = YoutubeMusicChartsRepository(appContext)
+    private val chartArtworkResolver = ChartOfficialArtworkResolver(appContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inFlight = ConcurrentHashMap<String, Deferred<List<Track>>>()
 
-    /** Stops any fetch still running when the owner goes away, so nothing outlives it unowned. */
     fun close() {
         scope.cancel()
         inFlight.clear()
@@ -63,7 +62,7 @@ class ChartsRepository(context: Context) {
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Throwable) {
-            Timber.w(error, "Chart feed request failed for %s", normalizedCountry)
+            Timber.w(error, "Chart request failed for %s", normalizedCountry)
             emptyList()
         }
     }
@@ -109,49 +108,93 @@ class ChartsRepository(context: Context) {
         return created
     }
 
-    /**
-     * The classic RSS endpoint is only a fallback, but chaining it after the modern feed meant a
-     * stalled primary cost two full timeouts back to back. This keeps the fast path untouched and
-     * separates the two failure shapes: a conclusive failure starts the fallback at once, while a
-     * merely slow primary is raced against it and the first usable feed wins.
-     */
-    private suspend fun fetchTopSongs(country: String, limit: Int): List<Track> = coroutineScope {
-        val winner = CompletableDeferred<List<Track>>()
-        val remaining = AtomicInteger(2)
+    private suspend fun fetchTopSongs(country: String, limit: Int): List<Track> {
+        val ranked = selectTopSongs(country, limit)
+        if (ranked.isEmpty() || ranked.none(::isYoutubeMusicChartTrack)) return ranked
+        return chartArtworkResolver.enrich(ranked, country)
+    }
 
-        fun dispatch(attempt: suspend () -> List<Track>) = launch {
-            val outcome: List<Track> = try {
-                attempt()
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Throwable) {
-                Timber.w(error, "Chart feed attempt failed for %s", country)
-                emptyList()
-            }
-            if (outcome.isNotEmpty()) {
-                winner.complete(outcome)
-            } else if (remaining.decrementAndGet() == 0) {
-                winner.complete(emptyList())
-            }
+    private suspend fun selectTopSongs(country: String, limit: Int): List<Track> = coroutineScope {
+        val youtube = async { fetchYoutubeTopSongs(country, limit) }
+        val youtubeWithinBudget = withTimeoutOrNull(YOUTUBE_PRIMARY_BUDGET_MS) { youtube.await() }
+        if (youtubeWithinBudget != null) {
+            if (youtubeWithinBudget.isNotEmpty()) return@coroutineScope youtubeWithinBudget
+            return@coroutineScope fetchAppleTopSongs(country, limit)
         }
 
-        val modern = dispatch { fetchModern(country, limit) }
+        val apple = async { fetchAppleTopSongs(country, limit) }
+        val first = select<Pair<Boolean, List<Track>>> {
+            youtube.onAwait { true to it }
+            apple.onAwait { false to it }
+        }
+        if (first.second.isNotEmpty()) {
+            if (first.first) apple.cancel() else youtube.cancel()
+            return@coroutineScope first.second
+        }
+        if (first.first) apple.await() else youtube.await()
+    }
+
+    private suspend fun fetchYoutubeTopSongs(country: String, limit: Int): List<Track> {
+        return try {
+            youtubeMusicCharts.topTracks(country, limit)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Throwable) {
+            Timber.w(error, "YouTube Music charts failed for %s", country)
+            emptyList()
+        }
+    }
+
+    private fun isYoutubeMusicChartTrack(track: Track): Boolean {
+        return track.source.equals(YOUTUBE_CHART_SOURCE, ignoreCase = true)
+    }
+
+    private suspend fun fetchAppleTopSongs(country: String, limit: Int): List<Track> = coroutineScope {
+        val winner = CompletableDeferred<List<Track>>()
+        val remaining = AtomicInteger(2)
+        val modern = dispatchAppleAttempt(country, winner, remaining) {
+            fetchAppleModern(country, limit)
+        }
         launch {
-            withTimeoutOrNull(FEED_HEDGE_BUDGET_MS) { modern.join() }
-            if (!winner.isCompleted) dispatch { fetchClassic(country, limit) }
+            withTimeoutOrNull(APPLE_FEED_HEDGE_BUDGET_MS) { modern.join() }
+            if (!winner.isCompleted) {
+                dispatchAppleAttempt(country, winner, remaining) {
+                    fetchAppleClassic(country, limit)
+                }
+            }
         }
         val result = winner.await()
         coroutineContext.cancelChildren()
         result
     }
 
-    private suspend fun fetchModern(country: String, limit: Int): List<Track> {
+    private fun CoroutineScope.dispatchAppleAttempt(
+        country: String,
+        winner: CompletableDeferred<List<Track>>,
+        remaining: AtomicInteger,
+        attempt: suspend () -> List<Track>
+    ): Job = launch {
+        val outcome = try {
+            attempt()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Throwable) {
+            Timber.w(error, "Apple chart feed attempt failed for %s", country)
+            emptyList()
+        }
+        when {
+            outcome.isNotEmpty() -> winner.complete(outcome)
+            remaining.decrementAndGet() == 0 -> winner.complete(emptyList())
+        }
+    }
+
+    private suspend fun fetchAppleModern(country: String, limit: Int): List<Track> {
         val url = "https://rss.marketingtools.apple.com/api/v2/$country/music/most-played/$limit/songs.json"
         val body = httpGet(url) ?: return emptyList()
         return ChartFeedParser.modern(body, limit)
     }
 
-    private suspend fun fetchClassic(country: String, limit: Int): List<Track> {
+    private suspend fun fetchAppleClassic(country: String, limit: Int): List<Track> {
         val url = "https://itunes.apple.com/$country/rss/topsongs/limit=$limit/json"
         val body = httpGet(url) ?: return emptyList()
         return ChartFeedParser.classic(body, limit)
@@ -208,11 +251,11 @@ class ChartsRepository(context: Context) {
     }
 
     private companion object {
-        const val FEED_HEDGE_BUDGET_MS = 900L
+        const val YOUTUBE_PRIMARY_BUDGET_MS = 3_500L
+        const val APPLE_FEED_HEDGE_BUDGET_MS = 900L
         const val FEED_MAX_STALE_MINUTES = 30
+        const val YOUTUBE_CHART_SOURCE = "YouTube Music Charts"
 
-        // Charts move once a day at most, so a short stale window turns repeated region taps and
-        // warm app starts into cache hits instead of full round trips.
         val FEED_CACHE_CONTROL: CacheControl = CacheControl.Builder()
             .maxStale(FEED_MAX_STALE_MINUTES, TimeUnit.MINUTES)
             .build()
@@ -284,15 +327,14 @@ internal object ChartFeedParser {
             id = "chart-${identity.id}",
             title = title,
             artist = artist.ifBlank { "Vari artisti" },
-            album = "Chart",
+            album = "Apple Music Charts",
             durationMs = 0L,
             streamUrl = "",
-            // No YouTube id yet: playback resolves a match by searching title + artist.
             videoUrl = "",
             thumbnailUrl = artwork,
             largeThumbnailUrl = artwork,
-            source = "Classifica",
-            moodTags = setOf("hit"),
+            source = "Apple Music Charts",
+            moodTags = setOf("hit", "chart"),
             energy = 70,
             vocal = 55,
             replayScore = 90,
@@ -302,10 +344,6 @@ internal object ChartFeedParser {
         )
     }
 
-    // One digest per entry instead of two: the seed and the persisted id are both derived from
-    // the same SHA-256 of "title|artist", so stored chart ids stay byte-for-byte identical.
-    // The sign bit is masked rather than negated: Int.MIN_VALUE.absoluteValue is still negative,
-    // which would index the palette out of bounds for a digest starting with 0x80000000.
     private fun chartIdentity(value: String): ChartIdentity {
         val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8))
         val seed = digest.take(4).fold(0) { acc, byte -> (acc shl 8) or (byte.toInt() and 0xFF) } and Int.MAX_VALUE
