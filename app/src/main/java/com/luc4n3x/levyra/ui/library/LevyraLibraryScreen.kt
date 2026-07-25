@@ -102,6 +102,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -111,6 +112,8 @@ import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.ListeningPulse
 import com.luc4n3x.levyra.domain.Playlist
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.components.LevyraArtistAvatar
+import com.luc4n3x.levyra.ui.components.levyraArtistAccent
 import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraInk
@@ -2197,7 +2200,7 @@ private fun LibraryArtistRow(
         modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)
     ) {
         Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LibraryArtwork(artist.artworkUrl, artist.name, Modifier.size(64.dp), CircleShape, selected)
+            LibraryArtistAvatar(artist = artist, size = 64.dp, selected = selected)
             Spacer(Modifier.width(13.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(artist.name, color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -2370,7 +2373,7 @@ private fun LibraryArtistGridCard(
 ) {
     Column(modifier = modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick), horizontalAlignment = Alignment.CenterHorizontally) {
         Box {
-            LibraryArtwork(artist.artworkUrl, artist.name, Modifier.size(152.dp), CircleShape, selected)
+            LibraryArtistAvatar(artist = artist, size = 152.dp, selected = selected)
             if (selectionActive) {
                 Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, contentDescription = null, tint = if (selected) LevyraCyan else Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.TopEnd).padding(8.dp))
             }
@@ -2379,6 +2382,23 @@ private fun LibraryArtistGridCard(
         Text(artist.name, color = LevyraText, fontSize = 14.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(if (isItalian) "${artist.tracks.size} brani" else "${artist.tracks.size} tracks", color = LevyraMuted, fontSize = 11.sp)
     }
+}
+
+@Composable
+private fun LibraryArtistAvatar(
+    artist: LibraryArtist,
+    size: Dp,
+    selected: Boolean
+) {
+    val accent = levyraArtistAccent(artist.browseId.ifBlank { artist.key })
+    LevyraArtistAvatar(
+        name = artist.name,
+        thumbnailUrl = artist.artworkUrl,
+        accentStart = accent.first,
+        accentEnd = accent.second,
+        size = size,
+        ringOverride = if (selected) LevyraCyan else null
+    )
 }
 
 @Composable
