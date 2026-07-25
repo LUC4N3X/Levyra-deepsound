@@ -3,9 +3,6 @@ package com.luc4n3x.levyra.data
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -23,32 +20,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.math.absoluteValue
 
-/**
- * Real, reliable music charts from Apple's public RSS feeds (no auth needed).
- * Tries the modern marketing-tools feed first, then the classic iTunes feed.
- * Entries carry real titles, artists and cover art; a playable YouTube match is
- * resolved on demand when the user taps the song.
- */
 class ChartsRepository {
 
-    suspend fun topSongs(country: String, limit: Int = 50): List<Track> = coroutineScope {
+    suspend fun topSongs(country: String, limit: Int = 50): List<Track> {
         val normalizedCountry = country.trim().lowercase().takeIf { it.length == 2 } ?: "it"
         val normalizedLimit = limit.coerceIn(1, 100)
-        val modern = async(Dispatchers.Default) {
-            runCatching { fetchModern(normalizedCountry, normalizedLimit) }.getOrDefault(emptyList())
-        }
-        val classic = async(Dispatchers.Default) {
-            runCatching { fetchClassic(normalizedCountry, normalizedLimit) }.getOrDefault(emptyList())
-        }
-        val first = select<Pair<Boolean, List<Track>>> {
-            modern.onAwait { true to it }
-            classic.onAwait { false to it }
-        }
-        if (first.second.isNotEmpty()) {
-            if (first.first) classic.cancel() else modern.cancel()
-            return@coroutineScope first.second
-        }
-        if (first.first) classic.await() else modern.await()
+        val modern = runCatching { fetchModern(normalizedCountry, normalizedLimit) }.getOrDefault(emptyList())
+        if (modern.isNotEmpty()) return modern
+        return runCatching { fetchClassic(normalizedCountry, normalizedLimit) }.getOrDefault(emptyList())
     }
 
     suspend fun officialArtwork(title: String, artist: String, country: String): String? = withContext(Dispatchers.IO) {
@@ -118,6 +97,7 @@ class ChartsRepository {
         val request = Request.Builder()
             .url(url)
             .header("Accept", "application/json")
+            .header("Cache-Control", "no-cache")
             .header("User-Agent", "Levyra/${BuildConfig.VERSION_NAME} Android")
             .build()
         val call = httpClient.newCall(request)
