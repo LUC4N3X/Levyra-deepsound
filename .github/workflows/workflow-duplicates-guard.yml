@@ -38,7 +38,7 @@ jobs:
                     SectionHeaderAction("Top ${state.charts.size.takeIf { it in 1 until 50 } ?: 50} ${region?.label ?: "Global"}", onPlayAll = { viewModel.playAll(state.charts) })
                 }
             }
-'''
+          '''
           new = '''            if (state.charts.isNotEmpty()) {
                 item(key = "home-chart-title", contentType = "home-section-header") {
                     val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
@@ -47,7 +47,7 @@ jobs:
                     }
                 }
             }
-'''
+          '''
           if old in text:
               path.write_text(text.replace(old, new, 1), encoding="utf-8")
           elif new not in text:
@@ -55,7 +55,7 @@ jobs:
           PY
           git show origin/main:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
           git show origin/main:.github/workflows/apk-size-ruler.yml > .github/workflows/apk-size-ruler.yml
-          git show origin/main^:.github/workflows/workflow-duplicates-guard.yml > .github/workflows/workflow-duplicates-guard.yml
+          git show origin/main:.github/workflows/workflow-duplicates-guard.yml > .github/workflows/workflow-duplicates-guard.yml
           rm -rf .github/chart-payload .github/chart-patch-trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
