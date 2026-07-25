@@ -5473,10 +5473,12 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
             }
         }
         if (showDeferredHomeSections && state.interfaceSettings.showCharts) {
-            item(key = "home-chart-title", contentType = "home-section-header") {
-                val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
-                HomeSectionInset {
-                    SectionHeaderAction("Top 50 ${region?.label ?: "Global"}", onPlayAll = { viewModel.playAll(state.charts) })
+            if (state.charts.isNotEmpty()) {
+                item(key = "home-chart-title", contentType = "home-section-header") {
+                    val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
+                    HomeSectionInset {
+                        SectionHeaderAction("Top ${state.charts.size.coerceAtMost(50)} ${region?.label ?: "Global"}", onPlayAll = { viewModel.playAll(state.charts) })
+                    }
                 }
             }
             item(key = "home-chart-regions", contentType = "home-horizontal-row") {
