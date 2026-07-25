@@ -2365,7 +2365,12 @@ private fun ArtistOverlay(
         hasError = state.artistError != null,
         hasProfile = profile != null
     )
-    val artistListState = remember(profile?.browseId, profile?.name) { LazyListState() }
+    val artistListState = rememberSaveable(
+        state.artistListStateKey,
+        saver = LazyListState.Saver
+    ) {
+        LazyListState()
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
