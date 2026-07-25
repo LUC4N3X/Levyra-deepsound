@@ -983,7 +983,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
-    var miniPlayerPlaylistTarget by remember { mutableStateOf<Track?>(null) }
     val createBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         uri?.let(viewModel::createBackup)
     }
@@ -1168,7 +1167,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                             progress = progressOf(state.positionMs, state.durationMs),
                             onOpen = { viewModel.selectTab(LevyraTab.Player) },
                             onToggle = viewModel::togglePlay,
-                            onAddToPlaylist = { miniPlayerPlaylistTarget = track },
                             onNext = viewModel::next,
                             onClose = viewModel::closePlayer
                         )
@@ -1185,22 +1183,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         onSelect = viewModel::selectTab
                     )
                 }
-            }
-
-            miniPlayerPlaylistTarget?.let { target ->
-                AddToPlaylistDialog(
-                    track = target,
-                    playlists = state.playlists,
-                    onDismiss = { miniPlayerPlaylistTarget = null },
-                    onAddTo = { playlistId ->
-                        viewModel.addToPlaylist(playlistId, target)
-                        miniPlayerPlaylistTarget = null
-                    },
-                    onCreateWith = { name ->
-                        viewModel.createPlaylist(name, target)
-                        miniPlayerPlaylistTarget = null
-                    }
-                )
             }
 
             AnimatedVisibility(
@@ -15921,7 +15903,6 @@ private fun MiniPlayer(
     progress: Float,
     onOpen: () -> Unit,
     onToggle: () -> Unit,
-    onAddToPlaylist: () -> Unit,
     onNext: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -16028,16 +16009,6 @@ private fun MiniPlayer(
                     isResolving = isResolving,
                     buttonColor = miniPrimaryContent,
                     onToggle = onToggle
-                )
-                PlayerRoundIconButton(
-                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
-                    contentDescription = LocalLevyraStrings.current.addToPlaylist,
-                    size = 38.dp,
-                    iconSize = 20.dp,
-                    tint = miniPrimaryContent,
-                    background = miniPrimaryContent.copy(alpha = 0.08f),
-                    borderColor = miniPrimaryContent.copy(alpha = 0.16f),
-                    onClick = onAddToPlaylist
                 )
                 PlayerRoundIconButton(
                     icon = Icons.Rounded.SkipNext,
