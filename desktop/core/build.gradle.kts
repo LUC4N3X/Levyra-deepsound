@@ -9,6 +9,7 @@ dependencies {
     api(libs.kotlinx.serialization.json)
     api(libs.okhttp)
     implementation(libs.okhttp.brotli)
+    runtimeOnly(libs.json)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
