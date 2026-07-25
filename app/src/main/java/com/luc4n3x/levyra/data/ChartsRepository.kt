@@ -12,6 +12,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -35,7 +36,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
-import kotlin.math.absoluteValue
 
 class ChartsRepository(context: Context) {
 
@@ -47,6 +47,12 @@ class ChartsRepository(context: Context) {
     // cancelled selection still warms the cache for the next tap instead of being thrown away.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inFlight = ConcurrentHashMap<String, Deferred<List<Track>>>()
+
+    /** Stops any fetch still running when the owner goes away, so nothing outlives it unowned. */
+    fun close() {
+        scope.cancel()
+        inFlight.clear()
+    }
 
     suspend fun topSongs(country: String, limit: Int = 50): List<Track> {
         val normalizedCountry = country.trim().lowercase().takeIf { it.length == 2 } ?: "it"
@@ -298,9 +304,11 @@ internal object ChartFeedParser {
 
     // One digest per entry instead of two: the seed and the persisted id are both derived from
     // the same SHA-256 of "title|artist", so stored chart ids stay byte-for-byte identical.
+    // The sign bit is masked rather than negated: Int.MIN_VALUE.absoluteValue is still negative,
+    // which would index the palette out of bounds for a digest starting with 0x80000000.
     private fun chartIdentity(value: String): ChartIdentity {
         val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(StandardCharsets.UTF_8))
-        val seed = digest.take(4).fold(0) { acc, byte -> (acc shl 8) or (byte.toInt() and 0xFF) }.absoluteValue
+        val seed = digest.take(4).fold(0) { acc, byte -> (acc shl 8) or (byte.toInt() and 0xFF) } and Int.MAX_VALUE
         val id = digest.take(8).joinToString("") { "%02x".format(it) }
         return ChartIdentity(seed = seed, id = id)
     }
