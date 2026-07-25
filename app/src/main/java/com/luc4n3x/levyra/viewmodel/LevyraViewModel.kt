@@ -227,7 +227,7 @@ private fun playbackArtistTokens(value: String): List<String> {
 class LevyraViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = YoutubeMusicRepository(application.applicationContext)
     private val artistRepository = ArtistRepository(repository, application.applicationContext)
-    private val chartsRepository = ChartsRepository()
+    private val chartsRepository = ChartsRepository(application.applicationContext)
     private val officialArtworkRepository = OfficialArtworkRepository(application.applicationContext)
     private val motionArtworkEngine = MotionArtworkEngine(application.applicationContext)
     private val database = LevyraDatabase.get(application.applicationContext)
@@ -326,6 +326,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var homeArtistsJob: Job? = null
     private var chartsJob: Job? = null
     private var chartPrefetchJob: Job? = null
+    private var chartMemoryWarmJob: Job? = null
     private var homeSnapshotJob: Job? = null
     private var homeResonanceJob: Job? = null
     private var homeArtistsFingerprint: String = ""
@@ -582,11 +583,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
             .distinctBy { it.browseId.lowercase() }
             .take(HOME_ARTIST_SHELF_SIZE)
-        val cachedCharts = instantSnapshot?.charts?.takeIf { it.isNotEmpty() } ?: preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
-        val startupCharts = LevyraStartupCatalog.repairTracks(
-            cachedCharts.ifEmpty { LevyraStartupCatalog.chartTracks(settings.languageCode) },
-            settings.languageCode
-        )
+        val snapshotCharts = instantSnapshot
+            ?.takeIf { it.chartRegionId == defaultChartRegion.id }
+            ?.charts
+            .orEmpty()
+        val cachedCharts = snapshotCharts.ifEmpty {
+            preferences.loadChartTracks(settings.languageCode, defaultChartRegion.id)
+        }
+        val startupCharts = LevyraStartupCatalog.repairTracks(cachedCharts, settings.languageCode)
         if (startupCharts.isNotEmpty()) {
             chartsByRegion[chartsCacheKey(settings.languageCode, defaultChartRegion.id)] = startupCharts
         }
@@ -658,7 +662,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 charts = startupCharts,
                 selectedChartId = defaultChartRegion.id,
                 isSearching = false,
-                isLoadingCharts = false,
+                isLoadingCharts = startupCharts.isEmpty(),
                 cacheReport = repository.cacheReport(),
                 userName = settings.userName,
                 languageCode = settings.languageCode,
@@ -864,9 +868,13 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             prefetchChartRegions(_state.value.selectedChartId)
         }
         viewModelScope.launch {
-            delay(startupPlan.secondaryStartDelayMs)
+            delay(1_200L)
             awaitHomeUiIdle(startupPlan)
-            loadCharts(deferUntilHomeIdle = true)
+            warmChartRegionMemoryCache()
+        }
+        viewModelScope.launch {
+            if (_state.value.charts.isNotEmpty()) delay(350L)
+            loadCharts(deferUntilHomeIdle = false)
         }
         viewModelScope.launch {
             delay(3_200L)
@@ -902,6 +910,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeSnapshotCache.save(
             languageCode = normalizedLanguage,
             homeSections = pendingHomeSectionsSnapshot.get() ?: snapshot.homeSections,
+            chartRegionId = snapshot.selectedChartId,
             charts = snapshot.charts,
             personalOrbit = snapshot.personalOrbitTracks,
             homeArtists = deferredHomeArtistsSnapshot.get() ?: snapshot.homeArtists,
@@ -2411,9 +2420,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         )
         val homeTracks = homeSections.flatMap { it.tracks }.distinctBy { it.id }
         val chartTracks = LevyraStartupCatalog.repairTracks(
-            preferences.loadChartTracks(languageCode, defaultChartRegion.id).ifEmpty { LevyraStartupCatalog.chartTracks(languageCode) },
+            preferences.loadChartTracks(languageCode, defaultChartRegion.id),
             languageCode
         )
+        val chartCacheKey = chartsCacheKey(languageCode, defaultChartRegion.id)
+        if (chartTracks.isEmpty()) {
+            chartsByRegion.remove(chartCacheKey)
+            chartsFreshAt.remove(chartCacheKey)
+        } else {
+            chartsByRegion[chartCacheKey] = chartTracks
+        }
         val cachedOrbit = LevyraStartupCatalog.repairTracks(preferences.loadPersonalOrbitTracks(languageCode), languageCode)
         val seed = mergeTracks(cachedOrbit + _state.value.recentSearches + _state.value.favorites, homeTracks + chartTracks)
         val orbit = LevyraPersonalOrbit.build(
@@ -2480,7 +2496,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 searchData = SearchResults(),
                 searchError = null,
                 isSearching = false,
-                isLoadingCharts = false,
+                isLoadingCharts = refreshRemote && chartTracks.isEmpty(),
                 exploreZoneId = null,
                 exploreTracks = emptyList(),
                 exploreVideos = emptyList()
@@ -2494,6 +2510,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             loadHomeFeed()
             loadCharts(defaultChartRegion.id)
         }
+        warmChartRegionMemoryCache()
     }
 
     fun restartOnboarding() {
@@ -2575,6 +2592,35 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         loadCharts(normalizedRegionId)
         prefetchChartRegions(normalizedRegionId)
+    }
+
+    /**
+     * Loads the persisted chart regions into the in-memory map in a single DataStore snapshot
+     * read, so tapping a region chip renders from memory instead of showing a shimmer while disk
+     * is read. Entries are intentionally left without a freshness stamp: they are shown at once and
+     * still revalidated by [loadCharts] when the region is selected. The region count is capped so
+     * the resident track list stays bounded, and trimmed further on low-RAM devices.
+     */
+    private fun warmChartRegionMemoryCache() {
+        val lowRam = adaptivePlaybackPolicy.current(videoMode = false).lowRam
+        val budget = if (lowRam) CHART_WARM_REGION_LIMIT_LOW_RAM else CHART_WARM_REGION_LIMIT
+        chartMemoryWarmJob?.cancel()
+        chartMemoryWarmJob = viewModelScope.launch(Dispatchers.IO) {
+            val languageCode = _state.value.languageCode
+            val missing = ChartsCatalog.regions
+                .map { it.id }
+                .filter { regionId -> chartsByRegion[chartsCacheKey(languageCode, regionId)].isNullOrEmpty() }
+                .take(budget)
+            if (missing.isEmpty()) return@launch
+            val stored = preferences.loadChartTracksByRegion(languageCode, missing)
+            if (stored.isEmpty() || !isActive || _state.value.languageCode != languageCode) return@launch
+            stored.forEach { (regionId, tracks) ->
+                val repaired = LevyraStartupCatalog.repairTracks(tracks, languageCode)
+                if (repaired.isNotEmpty()) {
+                    chartsByRegion.putIfAbsent(chartsCacheKey(languageCode, regionId), repaired)
+                }
+            }
+        }
     }
 
     private fun prefetchChartRegions(anchorRegionId: String) {
@@ -5762,7 +5808,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private companion object {
-        private const val CHART_CACHE_FRESH_MS = 15L * 60L * 1000L
+        // Apple publishes the most-played feed about once a day, so a region fetched within the
+        // last hour is served straight from memory instead of paying for another round trip.
+        private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
+        private const val CHART_WARM_REGION_LIMIT = 14
+        private const val CHART_WARM_REGION_LIMIT_LOW_RAM = 6
         private const val HOME_ARTIST_SHELF_SIZE = 13
         private const val HOME_ARTIST_HISTORY_LIMIT = 48
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
@@ -5800,6 +5850,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         youtubeCommentContinuationHistory.clear()
         returnYoutubeDislikeRepository.close()
         youtubeCommentsRepository.close()
+        chartsRepository.close()
         cancelBackgroundWarmups()
         orbitArtworkJob?.cancel()
         officialMetadataSignal.close()
