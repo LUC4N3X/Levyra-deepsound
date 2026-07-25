@@ -26,7 +26,12 @@ class LevyraHomeSnapshotCache(context: Context) {
             if (storedLanguage != normalized) return null
             val createdAt = rootJson.optLong("createdAt", 0L)
             val parsedHomeSections = parseHomeSections(rootJson.optJSONArray("homeSections") ?: JSONArray())
-            val parsedCharts = parseTracks(rootJson.optJSONArray("charts") ?: JSONArray())
+            val chartRegionId = if (schema >= 13) rootJson.optString("chartRegionId").trim().lowercase() else ""
+            val parsedCharts = if (chartRegionId.isNotBlank()) {
+                parseTracks(rootJson.optJSONArray("charts") ?: JSONArray())
+            } else {
+                emptyList()
+            }
             val parsedPersonalOrbit = parseTracks(rootJson.optJSONArray("personalOrbit") ?: JSONArray())
             val parsedResonance = if (schema >= 12) parseTracks(rootJson.optJSONArray("resonanceTracks") ?: JSONArray()) else emptyList()
             val homeSections = if (schema >= 7) parsedHomeSections else parsedHomeSections.map { section ->
@@ -40,6 +45,7 @@ class LevyraHomeSnapshotCache(context: Context) {
                 languageCode = storedLanguage,
                 createdAt = createdAt,
                 homeSections = homeSections,
+                chartRegionId = chartRegionId,
                 charts = charts,
                 personalOrbit = personalOrbit,
                 homeArtists = homeArtists,
@@ -52,6 +58,7 @@ class LevyraHomeSnapshotCache(context: Context) {
     fun save(
         languageCode: String,
         homeSections: List<HomeSection>,
+        chartRegionId: String,
         charts: List<Track>,
         personalOrbit: List<Track>,
         homeArtists: List<ArtistHit>,
@@ -59,6 +66,7 @@ class LevyraHomeSnapshotCache(context: Context) {
         resonanceUpdatedAt: Long
     ) {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        val normalizedChartRegionId = chartRegionId.trim().lowercase()
         if (homeSections.isEmpty() && charts.isEmpty() && personalOrbit.isEmpty() && homeArtists.isEmpty() && resonanceTracks.isEmpty()) return
         runCatching {
             val json = JSONObject()
@@ -66,7 +74,8 @@ class LevyraHomeSnapshotCache(context: Context) {
                 .put("languageCode", normalized)
                 .put("createdAt", System.currentTimeMillis())
                 .put("homeSections", homeSectionsToJson(homeSections.take(12)))
-                .put("charts", tracksToJson(charts.take(60)))
+                .put("chartRegionId", normalizedChartRegionId)
+                .put("charts", tracksToJson(if (normalizedChartRegionId.isBlank()) emptyList() else charts.take(60)))
                 .put("personalOrbit", tracksToJson(personalOrbit.take(40)))
                 .put("homeArtists", artistsToJson(homeArtists.take(HOME_ARTIST_LIMIT)))
                 .put("resonanceTracks", tracksToJson(resonanceTracks.take(RESONANCE_TRACK_LIMIT)))
@@ -182,7 +191,7 @@ class LevyraHomeSnapshotCache(context: Context) {
         const val HOME_ARTIST_LIMIT = 13
         const val RESONANCE_TRACK_LIMIT = 8
         const val MIN_SUPPORTED_SCHEMA = 5
-        const val SCHEMA = 12
+        const val SCHEMA = 13
         const val MAX_STALE_MS = 21L * 24L * 60L * 60L * 1000L
     }
 }
@@ -191,6 +200,7 @@ data class LevyraHomeSnapshot(
     val languageCode: String,
     val createdAt: Long,
     val homeSections: List<HomeSection>,
+    val chartRegionId: String,
     val charts: List<Track>,
     val personalOrbit: List<Track>,
     val homeArtists: List<ArtistHit>,

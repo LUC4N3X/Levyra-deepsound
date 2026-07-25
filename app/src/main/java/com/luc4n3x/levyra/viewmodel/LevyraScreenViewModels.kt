@@ -161,6 +161,8 @@ class SearchViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::sea
 }
 
 class ExploreViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::exploreProjection) {
+    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
+    fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun ensureExplore(strings: LevyraStrings) = root.ensureExplore(strings)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun selectExploreZone(zone: ExploreZone) = root.selectExploreZone(zone)
@@ -213,7 +215,9 @@ class LibraryViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::li
 }
 
 class PlayerViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::playerProjection) {
+    fun addToPlaylist(playlistId: String, track: Track) = root.addToPlaylist(playlistId, track)
     fun closePlayer() = root.closePlayer()
+    fun createPlaylist(name: String, firstTrack: Track? = null) = root.createPlaylist(name, firstTrack)
     fun cycleSleepTimer() = root.cycleSleepTimer()
     fun cycleSpeed() = root.cycleSpeed()
     fun exportCurrentTrack() = root.exportCurrentTrack()
