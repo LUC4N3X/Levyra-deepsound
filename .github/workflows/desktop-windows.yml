@@ -1,0 +1,112 @@
+name: Desktop Windows Build
+
+on:
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "third_party/LevyraExtractor/**"
+      - ".github/workflows/desktop-windows.yml"
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "desktop/**"
+      - "third_party/LevyraExtractor/**"
+      - ".github/workflows/desktop-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Compile and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Compile modules and run tests
+        shell: bash
+        working-directory: desktop
+        run: ./gradlew --no-daemon --stacktrace assemble check
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-desktop-test-reports
+          path: |
+            desktop/core/build/reports/tests
+            desktop/player/build/reports/tests
+          retention-days: 7
+          if-no-files-found: ignore
+
+  installer:
+    name: Windows installer
+    runs-on: windows-latest
+    needs: verify
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          choco install wixtoolset --version 3.14.1 --no-progress --yes
+          $wix = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          if (Test-Path $wix) {
+            Add-Content -Path $env:GITHUB_PATH -Value $wix
+          } else {
+            Write-Host "WiX directory not found at $wix"
+            Get-ChildItem "C:\Program Files (x86)" -Filter "WiX*" | ForEach-Object { Write-Host $_.FullName }
+          }
+
+      - name: Build portable distribution
+        shell: pwsh
+        working-directory: desktop
+        run: .\gradlew.bat --no-daemon --stacktrace createReleaseDistributable
+
+      - name: Build installers
+        shell: pwsh
+        working-directory: desktop
+        run: .\gradlew.bat --no-daemon --stacktrace packageReleaseMsi packageReleaseExe
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-desktop-windows
+          path: |
+            desktop/app/build/compose/binaries/main-release/msi/*.msi
+            desktop/app/build/compose/binaries/main-release/exe/*.exe
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload portable build
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-desktop-windows-portable
+          path: desktop/app/build/compose/binaries/main-release/app
+          retention-days: 14
+          if-no-files-found: warn
