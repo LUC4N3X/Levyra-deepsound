@@ -10472,6 +10472,7 @@ private fun PlayerUtilityDock(
     compact: Boolean,
     onQueue: () -> Unit,
     onLyrics: () -> Unit,
+    onAddToPlaylist: () -> Unit,
     onDownload: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
@@ -10501,6 +10502,13 @@ private fun PlayerUtilityDock(
                 tint = if (lyricsAvailable) activeColor else Color.White.copy(alpha = 0.70f),
                 compact = compact,
                 onClick = onLyrics
+            )
+            PlayerDockAction(
+                icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                label = strings.addToPlaylist,
+                tint = Color.White.copy(alpha = 0.82f),
+                compact = compact,
+                onClick = onAddToPlaylist
             )
             PlayerDockAction(
                 icon = if (isDownloaded) Icons.Rounded.DownloadDone else Icons.Rounded.Download,
@@ -10576,6 +10584,7 @@ private fun compactYoutubeCount(value: Long): String {
         .replace(Regex("[,.]0$"), "") + suffix
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlayerYoutubeEngagementRow(
     track: Track,
@@ -10597,130 +10606,126 @@ private fun PlayerYoutubeEngagementRow(
         enter = fadeIn(animationSpec = tween(220)) + slideInVertically(initialOffsetY = { it / 3 }),
         exit = fadeOut(animationSpec = tween(140))
     ) {
-        Column(
-            modifier = Modifier.padding(top = if (compact) 9.dp else 11.dp),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 6.dp)
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = if (compact) 9.dp else 11.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 9.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 8.dp)
         ) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 9.dp),
-                contentPadding = PaddingValues(end = 10.dp)
+            Surface(
+                color = Color.White.copy(alpha = 0.085f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.105f)),
+                shape = CircleShape
             ) {
-                item(key = "youtube-votes") {
-                    Surface(
-                        color = Color.White.copy(alpha = 0.085f),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.105f)),
-                        shape = CircleShape
+                Row(
+                    modifier = Modifier.height(if (compact) 40.dp else 42.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.padding(
+                            start = if (compact) 12.dp else 13.dp,
+                            end = if (compact) 10.dp else 11.dp
+                        ),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.height(if (compact) 40.dp else 42.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(
-                                    start = if (compact) 12.dp else 13.dp,
-                                    end = if (compact) 10.dp else 11.dp
-                                ),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(7.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ThumbUp,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(alpha = if (hasLikes) 0.94f else 0.48f),
-                                    modifier = Modifier.size(if (compact) 19.dp else 20.dp)
-                                )
-                                if (hasLikes) {
-                                    Text(
-                                        text = compactYoutubeCount(track.youtubeLikeCount),
-                                        color = Color.White.copy(alpha = 0.94f),
-                                        fontSize = if (compact) 12.5.sp else 13.sp,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .width(1.dp)
-                                    .height(if (compact) 23.dp else 24.dp)
-                                    .background(Color.White.copy(alpha = 0.14f))
+                        Icon(
+                            imageVector = Icons.Rounded.ThumbUp,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = if (hasLikes) 0.94f else 0.48f),
+                            modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                        )
+                        if (hasLikes) {
+                            Text(
+                                text = compactYoutubeCount(track.youtubeLikeCount),
+                                color = Color.White.copy(alpha = 0.94f),
+                                fontSize = if (compact) 12.5.sp else 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1
                             )
-                            Row(
-                                modifier = Modifier.padding(
-                                    start = if (compact) 10.dp else 11.dp,
-                                    end = if (compact) 12.dp else 13.dp
-                                ),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(7.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ThumbDown,
-                                    contentDescription = null,
-                                    tint = if (hasDislikeEstimate) {
-                                        secondary.playerMix(Color.White, 0.58f)
-                                    } else {
-                                        Color.White.copy(alpha = 0.48f)
-                                    },
-                                    modifier = Modifier.size(if (compact) 19.dp else 20.dp)
-                                )
-                                when {
-                                    engagement.dislikeEstimateLoading -> CircularProgressIndicator(
-                                        modifier = Modifier.size(if (compact) 12.dp else 13.dp),
-                                        strokeWidth = 1.8.dp,
-                                        color = secondary.playerMix(Color.White, 0.58f)
-                                    )
-                                    hasDislikeEstimate -> Text(
-                                        text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
-                                        color = Color.White.copy(alpha = 0.90f),
-                                        fontSize = if (compact) 12.5.sp else 13.sp,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                }
-                            }
                         }
                     }
-                }
-
-                item(key = "youtube-comments") {
-                    Surface(
-                        color = Color.White.copy(alpha = 0.085f),
-                        border = BorderStroke(
-                            1.dp,
-                            if (comments.visible) primary.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.105f)
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(if (compact) 23.dp else 24.dp)
+                            .background(Color.White.copy(alpha = 0.14f))
+                    )
+                    Row(
+                        modifier = Modifier.padding(
+                            start = if (compact) 10.dp else 11.dp,
+                            end = if (compact) 12.dp else 13.dp
                         ),
-                        shape = CircleShape,
-                        modifier = Modifier.pressable(enabled = canOpenComments, onClick = onComments)
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .height(if (compact) 40.dp else 42.dp)
-                                .padding(horizontal = if (compact) 13.dp else 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.ChatBubbleOutline,
-                                contentDescription = null,
-                                tint = if (canOpenComments) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.42f),
-                                modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                        Icon(
+                            imageVector = Icons.Rounded.ThumbDown,
+                            contentDescription = null,
+                            tint = if (hasDislikeEstimate) {
+                                secondary.playerMix(Color.White, 0.58f)
+                            } else {
+                                Color.White.copy(alpha = 0.48f)
+                            },
+                            modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                        )
+                        when {
+                            engagement.dislikeEstimateLoading -> CircularProgressIndicator(
+                                modifier = Modifier.size(if (compact) 12.dp else 13.dp),
+                                strokeWidth = 1.8.dp,
+                                color = secondary.playerMix(Color.White, 0.58f)
                             )
-                            when {
-                                comments.loading && !comments.loaded -> CircularProgressIndicator(
-                                    modifier = Modifier.size(if (compact) 12.dp else 13.dp),
-                                    strokeWidth = 1.8.dp,
-                                    color = primary.playerMix(Color.White, 0.52f)
-                                )
-                                commentBadge.isNotBlank() -> Text(
-                                    text = commentBadge,
-                                    color = Color.White.copy(alpha = 0.92f),
-                                    fontSize = if (compact) 12.5.sp else 13.sp,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                            }
+                            hasDislikeEstimate -> Text(
+                                text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
+                                color = Color.White.copy(alpha = 0.90f),
+                                fontSize = if (compact) 12.5.sp else 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
             }
 
+            Surface(
+                color = Color.White.copy(alpha = 0.085f),
+                border = BorderStroke(
+                    1.dp,
+                    if (comments.visible) primary.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.105f)
+                ),
+                shape = CircleShape,
+                modifier = Modifier.pressable(enabled = canOpenComments, onClick = onComments)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .height(if (compact) 40.dp else 42.dp)
+                        .padding(horizontal = if (compact) 13.dp else 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ChatBubbleOutline,
+                        contentDescription = null,
+                        tint = if (canOpenComments) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.42f),
+                        modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                    )
+                    when {
+                        comments.loading && !comments.loaded -> CircularProgressIndicator(
+                            modifier = Modifier.size(if (compact) 12.dp else 13.dp),
+                            strokeWidth = 1.8.dp,
+                            color = primary.playerMix(Color.White, 0.52f)
+                        )
+                        commentBadge.isNotBlank() -> Text(
+                            text = commentBadge,
+                            color = Color.White.copy(alpha = 0.92f),
+                            fontSize = if (compact) 12.5.sp else 13.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -10746,7 +10751,8 @@ private fun PlayerAdvancedControlsPanel(
     secondaryContent: Color,
     compact: Boolean,
     strings: LevyraStrings,
-    viewModel: PlayerViewModel
+    viewModel: PlayerViewModel,
+    onAddToPlaylist: () -> Unit
 ) {
     AnimatedVisibility(
         visible = expanded,
@@ -10772,6 +10778,7 @@ private fun PlayerAdvancedControlsPanel(
                 compact = compact,
                 onQueue = viewModel::openQueue,
                 onLyrics = viewModel::openLyrics,
+                onAddToPlaylist = onAddToPlaylist,
                 onDownload = viewModel::exportCurrentTrack
             )
             PlayerOptionsRow(
@@ -10960,6 +10967,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     var mediaSeekFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
     var gestureFeedback by remember(track?.id) { mutableStateOf("") }
     var gestureFeedbackEvent by remember(track?.id) { mutableStateOf(0) }
+    var playlistTarget by remember(track?.id) { mutableStateOf<Track?>(null) }
 
     BackHandler(enabled = state.youtubeEngagement.comments.visible) {
         viewModel.closeYoutubeComments()
@@ -11343,61 +11351,77 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                     }
                 }
                 item {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(
                                 horizontal = 4.dp,
                                 vertical = if (compactPlayer) 1.dp else 2.dp
-                            ),
-                        verticalAlignment = Alignment.CenterVertically
+                            )
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = track.title,
-                                color = Color.White,
-                                fontSize = if (compactPlayer) 24.sp else 25.sp,
-                                lineHeight = if (compactPlayer) 28.sp else 29.sp,
-                                fontWeight = FontWeight.Black,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(if (compactPlayer) 3.dp else 4.dp))
-                            Text(
-                                text = track.artist,
-                                color = Color.White.copy(alpha = 0.68f),
-                                fontSize = if (compactPlayer) 14.sp else 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.clickable { viewModel.openArtist(track) }
-                            )
-                            PlayerYoutubeEngagementRow(
-                                track = track,
-                                engagement = state.youtubeEngagement,
-                                primary = primary,
-                                secondary = secondary,
-                                compact = compactPlayer,
-                                onComments = viewModel::openYoutubeComments
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        val isFavorite = track.id in state.favoriteIds
-                        PlayerRoundIconButton(
-                            icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                            contentDescription = strings.favoritesPlain,
-                            size = if (compactPlayer) 44.dp else 46.dp,
-                            iconSize = if (compactPlayer) 23.dp else 24.dp,
-                            tint = if (isFavorite) {
-                                Color.White.playerContentColor(
-                                    listOf(primary.copy(alpha = 0.46f).playerCompositeOver(PlayerDarkSurface))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = track.title,
+                                    color = Color.White,
+                                    fontSize = if (compactPlayer) 24.sp else 25.sp,
+                                    lineHeight = if (compactPlayer) 28.sp else 29.sp,
+                                    fontWeight = FontWeight.Black,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                            } else {
-                                Color.White.copy(alpha = 0.78f)
-                            },
-                            background = if (isFavorite) primary.copy(alpha = 0.46f) else Color.Black.copy(alpha = 0.20f),
-                            borderColor = if (isFavorite) primary.playerMix(Color.White, 0.25f).copy(alpha = 0.62f) else Color.White.copy(alpha = 0.12f),
-                            onClick = { viewModel.toggleFavorite(track) }
+                                Spacer(modifier = Modifier.height(if (compactPlayer) 3.dp else 4.dp))
+                                Text(
+                                    text = track.artist,
+                                    color = Color.White.copy(alpha = 0.68f),
+                                    fontSize = if (compactPlayer) 14.sp else 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.clickable { viewModel.openArtist(track) }
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                PlayerRoundIconButton(
+                                    icon = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                                    contentDescription = strings.addToPlaylist,
+                                    size = if (compactPlayer) 44.dp else 46.dp,
+                                    iconSize = if (compactPlayer) 22.dp else 23.dp,
+                                    tint = Color.White.copy(alpha = 0.82f),
+                                    background = Color.Black.copy(alpha = 0.20f),
+                                    borderColor = Color.White.copy(alpha = 0.12f),
+                                    onClick = { playlistTarget = track }
+                                )
+                                val isFavorite = track.id in state.favoriteIds
+                                PlayerRoundIconButton(
+                                    icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                    contentDescription = strings.favoritesPlain,
+                                    size = if (compactPlayer) 44.dp else 46.dp,
+                                    iconSize = if (compactPlayer) 23.dp else 24.dp,
+                                    tint = if (isFavorite) {
+                                        Color.White.playerContentColor(
+                                            listOf(primary.copy(alpha = 0.46f).playerCompositeOver(PlayerDarkSurface))
+                                        )
+                                    } else {
+                                        Color.White.copy(alpha = 0.78f)
+                                    },
+                                    background = if (isFavorite) primary.copy(alpha = 0.46f) else Color.Black.copy(alpha = 0.20f),
+                                    borderColor = if (isFavorite) primary.playerMix(Color.White, 0.25f).copy(alpha = 0.62f) else Color.White.copy(alpha = 0.12f),
+                                    onClick = { viewModel.toggleFavorite(track) }
+                                )
+                            }
+                        }
+                        PlayerYoutubeEngagementRow(
+                            track = track,
+                            engagement = state.youtubeEngagement,
+                            primary = primary,
+                            secondary = secondary,
+                            compact = compactPlayer,
+                            onComments = viewModel::openYoutubeComments
                         )
                     }
                 }
@@ -11450,11 +11474,28 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         secondaryContent = secondaryContent,
                         compact = compactPlayer,
                         strings = strings,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        onAddToPlaylist = { playlistTarget = track }
                     )
                 }
                 item { PlayerError(state.playerError) }
             }
+        }
+
+        playlistTarget?.let { target ->
+            AddToPlaylistDialog(
+                track = target,
+                playlists = state.playlists,
+                onDismiss = { playlistTarget = null },
+                onAddTo = { playlistId ->
+                    viewModel.addToPlaylist(playlistId, target)
+                    playlistTarget = null
+                },
+                onCreateWith = { name ->
+                    viewModel.createPlaylist(name, target)
+                    playlistTarget = null
+                }
+            )
         }
 
         if (state.youtubeEngagement.comments.visible) {
@@ -16138,6 +16179,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
     val strings = LocalLevyraStrings.current
     LaunchedEffect(Unit) { viewModel.ensureExplore(strings) }
     val context = LocalContext.current
+    var addToPlaylistTarget by remember { mutableStateOf<Track?>(null) }
 
     Box(
         modifier = Modifier
@@ -16186,7 +16228,7 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                                     }
                                     context.startActivity(Intent.createChooser(intent, strings.shareVia))
                                 },
-                                onAddToPlaylist = {}
+                                onAddToPlaylist = { addToPlaylistTarget = track }
                             )
                         }
                     }
@@ -16236,6 +16278,22 @@ private fun ExploreScreen(viewModel: ExploreViewModel, state: LevyraUiState) {
                     }
                 }
             }
+        }
+
+        addToPlaylistTarget?.let { target ->
+            AddToPlaylistDialog(
+                track = target,
+                playlists = state.playlists,
+                onDismiss = { addToPlaylistTarget = null },
+                onAddTo = { playlistId ->
+                    viewModel.addToPlaylist(playlistId, target)
+                    addToPlaylistTarget = null
+                },
+                onCreateWith = { name ->
+                    viewModel.createPlaylist(name, target)
+                    addToPlaylistTarget = null
+                }
+            )
         }
     }
 }

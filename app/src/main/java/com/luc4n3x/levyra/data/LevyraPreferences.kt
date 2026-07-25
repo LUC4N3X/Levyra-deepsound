@@ -365,6 +365,31 @@ class LevyraPreferences(context: Context) {
         }
     }
 
+    /**
+     * Reads several chart regions from a single DataStore snapshot. Calling [loadChartTracks] once
+     * per region blocks a thread on its own snapshot read each time, which is too expensive when
+     * warming every region up front.
+     */
+    fun loadChartTracksByRegion(
+        languageCode: String = languageCode(),
+        regionIds: List<String>
+    ): Map<String, List<Track>> {
+        if (regionIds.isEmpty()) return emptyMap()
+        val normalized = LevyraLanguageCatalog.normalize(languageCode)
+        return read<Map<String, List<Track>>>(emptyMap()) { preferences ->
+            val out = LinkedHashMap<String, List<Track>>(regionIds.size)
+            regionIds.forEach { regionId ->
+                val region = regionId.trim().lowercase()
+                if (region.isBlank() || out.containsKey(region)) return@forEach
+                val raw = preferences[chartTracksKey(normalized, region)].orEmpty()
+                if (raw.isBlank()) return@forEach
+                val tracks = parseTrackList(raw)
+                if (tracks.isNotEmpty()) out[region] = tracks
+            }
+            out
+        }
+    }
+
     fun saveChartTracks(tracks: List<Track>, languageCode: String = languageCode(), regionId: String = "") {
         val array = JSONArray()
         tracks.take(50).forEach { track -> array.put(TrackJson.toJson(track)) }
