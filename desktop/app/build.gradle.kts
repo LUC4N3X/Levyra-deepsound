@@ -32,6 +32,10 @@ compose.desktop {
     application {
         mainClass = "com.luc4n3x.levyra.desktop.app.MainKt"
 
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
+
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             packageName = "Levyra"
