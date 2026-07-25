@@ -21,6 +21,44 @@ private fun PathBuilder.circle(centerX: Float, centerY: Float, radius: Float) {
     close()
 }
 
+private fun PathBuilder.repeatLoop() {
+    moveTo(5f, 11f)
+    lineTo(5f, 9f)
+    curveTo(5f, 7.9f, 5.9f, 7f, 7f, 7f)
+    lineTo(17f, 7f)
+    moveTo(15f, 4.8f)
+    lineTo(17.2f, 7f)
+    lineTo(15f, 9.2f)
+    moveTo(19f, 13f)
+    lineTo(19f, 15f)
+    curveTo(19f, 16.1f, 18.1f, 17f, 17f, 17f)
+    lineTo(7f, 17f)
+    moveTo(9f, 14.8f)
+    lineTo(6.8f, 17f)
+    lineTo(9f, 19.2f)
+}
+
+private fun PathBuilder.heartShape() {
+    moveTo(12f, 19.2f)
+    curveTo(6.4f, 15.4f, 3.8f, 12.6f, 3.8f, 9.5f)
+    curveTo(3.8f, 6.9f, 5.8f, 5f, 8.2f, 5f)
+    curveTo(9.9f, 5f, 11.2f, 5.9f, 12f, 7.2f)
+    curveTo(12.8f, 5.9f, 14.1f, 5f, 15.8f, 5f)
+    curveTo(18.2f, 5f, 20.2f, 6.9f, 20.2f, 9.5f)
+    curveTo(20.2f, 12.6f, 17.6f, 15.4f, 12f, 19.2f)
+    close()
+}
+
+private fun PathBuilder.speakerShape() {
+    moveTo(4f, 9.5f)
+    lineTo(7.2f, 9.5f)
+    lineTo(11.2f, 5.8f)
+    lineTo(11.2f, 18.2f)
+    lineTo(7.2f, 14.5f)
+    lineTo(4f, 14.5f)
+    close()
+}
+
 private fun strokeIcon(name: String, block: PathBuilder.() -> Unit): ImageVector =
     ImageVector.Builder(
         name = name,
@@ -124,40 +162,12 @@ object LevyraIcons {
     }
 
     val Repeat: ImageVector by lazy {
-        strokeIcon("LevyraRepeat") {
-            moveTo(5f, 11f)
-            lineTo(5f, 9f)
-            curveTo(5f, 7.9f, 5.9f, 7f, 7f, 7f)
-            lineTo(17f, 7f)
-            moveTo(15f, 4.8f)
-            lineTo(17.2f, 7f)
-            lineTo(15f, 9.2f)
-            moveTo(19f, 13f)
-            lineTo(19f, 15f)
-            curveTo(19f, 16.1f, 18.1f, 17f, 17f, 17f)
-            lineTo(7f, 17f)
-            moveTo(9f, 14.8f)
-            lineTo(6.8f, 17f)
-            lineTo(9f, 19.2f)
-        }
+        strokeIcon("LevyraRepeat") { repeatLoop() }
     }
 
     val RepeatOne: ImageVector by lazy {
         strokeIcon("LevyraRepeatOne") {
-            moveTo(5f, 11f)
-            lineTo(5f, 9f)
-            curveTo(5f, 7.9f, 5.9f, 7f, 7f, 7f)
-            lineTo(17f, 7f)
-            moveTo(15f, 4.8f)
-            lineTo(17.2f, 7f)
-            lineTo(15f, 9.2f)
-            moveTo(19f, 13f)
-            lineTo(19f, 15f)
-            curveTo(19f, 16.1f, 18.1f, 17f, 17f, 17f)
-            lineTo(7f, 17f)
-            moveTo(9f, 14.8f)
-            lineTo(6.8f, 17f)
-            lineTo(9f, 19.2f)
+            repeatLoop()
             moveTo(11f, 11.4f)
             lineTo(12.2f, 10.4f)
             lineTo(12.2f, 14.2f)
@@ -166,13 +176,7 @@ object LevyraIcons {
 
     val VolumeHigh: ImageVector by lazy {
         strokeIcon("LevyraVolumeHigh") {
-            moveTo(4f, 9.5f)
-            lineTo(7.2f, 9.5f)
-            lineTo(11.2f, 5.8f)
-            lineTo(11.2f, 18.2f)
-            lineTo(7.2f, 14.5f)
-            lineTo(4f, 14.5f)
-            close()
+            speakerShape()
             moveTo(14.6f, 9.4f)
             curveTo(16f, 10.8f, 16f, 13.2f, 14.6f, 14.6f)
             moveTo(17.2f, 7f)
@@ -182,13 +186,7 @@ object LevyraIcons {
 
     val VolumeMuted: ImageVector by lazy {
         strokeIcon("LevyraVolumeMuted") {
-            moveTo(4f, 9.5f)
-            lineTo(7.2f, 9.5f)
-            lineTo(11.2f, 5.8f)
-            lineTo(11.2f, 18.2f)
-            lineTo(7.2f, 14.5f)
-            lineTo(4f, 14.5f)
-            close()
+            speakerShape()
             moveTo(14.5f, 9.8f)
             lineTo(19.5f, 14.4f)
             moveTo(19.5f, 9.8f)
@@ -249,29 +247,11 @@ object LevyraIcons {
     }
 
     val Heart: ImageVector by lazy {
-        strokeIcon("LevyraHeart") {
-            moveTo(12f, 19.2f)
-            curveTo(6.4f, 15.4f, 3.8f, 12.6f, 3.8f, 9.5f)
-            curveTo(3.8f, 6.9f, 5.8f, 5f, 8.2f, 5f)
-            curveTo(9.9f, 5f, 11.2f, 5.9f, 12f, 7.2f)
-            curveTo(12.8f, 5.9f, 14.1f, 5f, 15.8f, 5f)
-            curveTo(18.2f, 5f, 20.2f, 6.9f, 20.2f, 9.5f)
-            curveTo(20.2f, 12.6f, 17.6f, 15.4f, 12f, 19.2f)
-            close()
-        }
+        strokeIcon("LevyraHeart") { heartShape() }
     }
 
     val HeartFilled: ImageVector by lazy {
-        filledIcon("LevyraHeartFilled") {
-            moveTo(12f, 19.2f)
-            curveTo(6.4f, 15.4f, 3.8f, 12.6f, 3.8f, 9.5f)
-            curveTo(3.8f, 6.9f, 5.8f, 5f, 8.2f, 5f)
-            curveTo(9.9f, 5f, 11.2f, 5.9f, 12f, 7.2f)
-            curveTo(12.8f, 5.9f, 14.1f, 5f, 15.8f, 5f)
-            curveTo(18.2f, 5f, 20.2f, 6.9f, 20.2f, 9.5f)
-            curveTo(20.2f, 12.6f, 17.6f, 15.4f, 12f, 19.2f)
-            close()
-        }
+        filledIcon("LevyraHeartFilled") { heartShape() }
     }
 
     val Add: ImageVector by lazy {
