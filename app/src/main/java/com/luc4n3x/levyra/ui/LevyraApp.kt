@@ -316,6 +316,12 @@ import com.luc4n3x.levyra.domain.YoutubeCommentsState
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
 import com.luc4n3x.levyra.LevyraLaunchActions
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
+import com.luc4n3x.levyra.ui.components.LevyraArtistAvatarSize
+import com.luc4n3x.levyra.ui.components.LevyraArtistItemWidth
+import com.luc4n3x.levyra.ui.components.LevyraArtistNameSpacing
+import com.luc4n3x.levyra.ui.components.LevyraArtistShelfItem
+import com.luc4n3x.levyra.ui.components.LevyraArtistShelfSpacing
+import com.luc4n3x.levyra.ui.components.levyraArtistAccent
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraInk
 import com.luc4n3x.levyra.ui.theme.LevyraPanel
@@ -6390,14 +6396,17 @@ private fun pickHeroUpdate(state: LevyraUiState): HomeHeroUpdate? {
 }
 
 @Composable
-private fun StableRemoteArtwork(
+internal fun StableRemoteArtwork(
     url: String,
     contentDescription: String,
     modifier: Modifier,
-    contentScale: ContentScale
+    contentScale: ContentScale,
+    highRes: Boolean = false
 ) {
     val context = LocalContext.current
-    val resizedUrl = remember(url) { LevyraArtworkCache.small(url) }
+    val resizedUrl = remember(url, highRes) {
+        if (highRes) LevyraArtworkCache.large(url) else LevyraArtworkCache.small(url)
+    }
     val request = remember(context, resizedUrl) {
         ImageRequest.Builder(context)
             .data(resizedUrl)
@@ -6429,7 +6438,7 @@ private fun TrendingArtistsShelf(
         )
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing),
             contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding)
         ) {
             itemsIndexed(
@@ -6437,7 +6446,7 @@ private fun TrendingArtistsShelf(
                 key = { index, artist -> "trending-artist-$index-${artist.browseId.ifBlank { artist.name.trim().lowercase(Locale.ROOT) }}" },
                 contentType = { _, _ -> "trending-artist" }
             ) { _, artist ->
-                PremiumHomeArtistItem(
+                ArtistHitShelfItem(
                     artist = artist,
                     onClick = { onArtistClick(artist) }
                 )
@@ -6454,130 +6463,35 @@ private fun TrendingArtistsShelf(
 }
 
 @Composable
-private fun PremiumHomeArtistItem(
+private fun ArtistHitShelfItem(
     artist: ArtistHit,
     onClick: () -> Unit
 ) {
-    val accentStart = Color(artist.accentStart)
-    val accentEnd = Color(artist.accentEnd)
-    val interactionSource = remember { MutableInteractionSource() }
+    val accent = levyraArtistAccent(
+        key = artist.browseId.ifBlank { artist.name },
+        accentStart = artist.accentStart,
+        accentEnd = artist.accentEnd
+    )
 
-    Column(
-        modifier = Modifier
-            .width(122.dp)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(11.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(114.dp)
-                .shadow(
-                    elevation = 16.dp,
-                    shape = CircleShape,
-                    clip = false,
-                    ambientColor = accentStart.copy(alpha = 0.18f),
-                    spotColor = accentEnd.copy(alpha = 0.22f)
-                )
-                .background(
-                    brush = Brush.sweepGradient(
-                        listOf(
-                            accentStart.copy(alpha = 0.94f),
-                            Color.White.copy(alpha = 0.42f),
-                            accentEnd.copy(alpha = 0.92f),
-                            accentStart.copy(alpha = 0.94f)
-                        )
-                    ),
-                    shape = CircleShape
-                )
-                .padding(1.5.dp)
-                .background(LevyraAdaptiveCardDeep.copy(alpha = 0.96f), CircleShape)
-                .padding(3.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (artist.thumbnailUrl.isNotBlank()) {
-                StableRemoteArtwork(
-                    url = artist.thumbnailUrl,
-                    contentDescription = artist.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .background(CinematicGlassDeep)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    accentStart.copy(alpha = 0.34f),
-                                    CinematicGlassDeep,
-                                    accentEnd.copy(alpha = 0.26f)
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Person,
-                        contentDescription = artist.name,
-                        tint = Color.White.copy(alpha = 0.92f),
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 7.dp)
-                    .width(34.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                accentStart.copy(alpha = 0.84f),
-                                accentEnd.copy(alpha = 0.84f)
-                            )
-                        )
-                    )
-            )
-        }
-
-        Text(
-            text = artist.name,
-            color = LevyraText,
-            fontSize = 14.sp,
-            lineHeight = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            minLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            letterSpacing = (-0.2).sp,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
+    LevyraArtistShelfItem(
+        name = artist.name,
+        thumbnailUrl = artist.thumbnailUrl,
+        accentStart = accent.first,
+        accentEnd = accent.second,
+        onClick = onClick
+    )
 }
 
 @Composable
 private fun TrendingArtistLoadingItem() {
     Column(
-        modifier = Modifier.width(122.dp),
+        modifier = Modifier.width(LevyraArtistItemWidth),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(11.dp)
+        verticalArrangement = Arrangement.spacedBy(LevyraArtistNameSpacing)
     ) {
         Box(
             modifier = Modifier
-                .size(114.dp)
+                .size(LevyraArtistAvatarSize)
                 .clip(CircleShape)
                 .shimmer()
                 .background(CinematicGlassDeep)
@@ -9572,42 +9486,16 @@ private fun PulseArtistsRow(artists: List<PulseArtist>, label: String, minuteSho
 
 @Composable
 private fun FollowedArtistsRow(artists: List<FollowedArtist>, onOpen: (FollowedArtist) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing)) {
         items(artists, key = { "followed-${it.key}" }) { artist ->
-            Column(
-                modifier = Modifier.width(96.dp).clickable { onOpen(artist) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(CinematicGold.copy(alpha = 0.3f), LevyraViolet.copy(alpha = 0.28f))))
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (artist.thumbnailUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current).data(artist.thumbnailUrl).crossfade(true).build(),
-                            contentDescription = artist.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.matchParentSize().clip(CircleShape)
-                        )
-                    } else {
-                        Icon(Icons.Rounded.Person, null, tint = LevyraText, modifier = Modifier.size(38.dp))
-                    }
-                }
-                Text(
-                    text = artist.name,
-                    color = LevyraText,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
-                )
-            }
+            val accent = levyraArtistAccent(artist.key)
+            LevyraArtistShelfItem(
+                name = artist.name,
+                thumbnailUrl = artist.thumbnailUrl,
+                accentStart = accent.first,
+                accentEnd = accent.second,
+                onClick = { onOpen(artist) }
+            )
         }
     }
 }
@@ -15800,7 +15688,7 @@ private fun ArtistHitRow(
     onClick: (ArtistHit) -> Unit
 ) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(LevyraArtistShelfSpacing),
         contentPadding = contentPadding
     ) {
         itemsIndexed(
@@ -15808,75 +15696,10 @@ private fun ArtistHitRow(
             key = { index, hit -> "artist-hit-$index-${hit.browseId.ifBlank { hit.name.trim().lowercase(Locale.ROOT) }}" },
             contentType = { _, _ -> "artist-hit" }
         ) { _, hit ->
-            val accentStart = Color(hit.accentStart)
-            val accentEnd = Color(hit.accentEnd)
-            Surface(
-                color = LevyraAdaptiveCard,
-                border = BorderStroke(1.dp, LevyraAdaptiveSoftHairline),
-                shape = RoundedCornerShape(24.dp),
-                modifier = Modifier
-                    .width(136.dp)
-                    .clickable { onClick(hit) }
-            ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(104.dp)
-                            .shadow(
-                                elevation = 18.dp,
-                                shape = CircleShape,
-                                clip = false,
-                                ambientColor = accentStart.copy(alpha = 0.22f),
-                                spotColor = accentEnd.copy(alpha = 0.24f)
-                            )
-                            .clip(CircleShape)
-                            .background(Brush.linearGradient(listOf(accentStart, accentEnd)))
-                            .padding(2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (hit.thumbnailUrl.isNotBlank()) {
-                            StableRemoteArtwork(
-                                url = hit.thumbnailUrl,
-                                contentDescription = hit.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .clip(CircleShape)
-                            )
-                        } else {
-                            Icon(Icons.Rounded.Person, null, tint = Color.White, modifier = Modifier.size(40.dp))
-                        }
-                    }
-                    Text(
-                        text = hit.name,
-                        color = LevyraText,
-                        fontSize = 13.5.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        minLines = 2
-                    )
-                    Surface(
-                        color = accentStart.copy(alpha = 0.14f),
-                        shape = RoundedCornerShape(999.dp)
-                    ) {
-                        Text(
-                            text = LocalLevyraStrings.current.artistLabel.uppercase(Locale.ROOT),
-                            color = accentStart.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color.copy(alpha = 0.96f),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-            }
+            ArtistHitShelfItem(
+                artist = hit,
+                onClick = { onClick(hit) }
+            )
         }
     }
 }
