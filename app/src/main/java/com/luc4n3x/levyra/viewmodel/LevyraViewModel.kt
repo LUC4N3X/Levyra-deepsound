@@ -337,7 +337,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private sealed interface DetailPage {
         data class AlbumPage(val detail: AlbumDetail) : DetailPage
-        data class ArtistPage(val profile: ArtistProfile) : DetailPage
+        data class ArtistPage(val profile: ArtistProfile, val listStateKey: String) : DetailPage
     }
 
     private val detailBackStack = ArrayDeque<DetailPage>()
@@ -346,6 +346,15 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         detailBackStack.addLast(page)
         while (detailBackStack.size > 12) {
             detailBackStack.removeFirst()
+        }
+    }
+
+    private fun nextArtistListStateKey(browseId: String): String {
+        val stableBrowseId = browseId.trim()
+        return if (stableBrowseId.isNotBlank()) {
+            "browse:$stableBrowseId"
+        } else {
+            "fallback:${artistListStateGeneration.incrementAndGet()}"
         }
     }
 
@@ -371,6 +380,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         artistLoading = false,
                         artistError = null,
                         artistProfile = page.profile,
+                        artistListStateKey = page.listStateKey,
                         showAlbum = false,
                         albumLoading = false,
                         albumError = null,
@@ -409,6 +419,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val homeFeedRequestGeneration = AtomicLong(0L)
     private val homeAlbumsRequestGeneration = AtomicLong(0L)
     private val chartsRequestGeneration = AtomicLong(0L)
+    private val artistListStateGeneration = AtomicLong(0L)
     private val chartsByRegion = java.util.concurrent.ConcurrentHashMap<String, List<Track>>()
     private val chartsFreshAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
@@ -2856,6 +2867,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val clean = name.trim()
         val normalizedBrowseId = browseId.trim()
         if (clean.length < 2 || clean.equals("YouTube Music", ignoreCase = true) || clean.equals("YouTube", ignoreCase = true)) return
+        val requestedArtistListStateKey = nextArtistListStateKey(normalizedBrowseId)
         artistJob?.cancel()
         artistLoreJob?.cancel()
         val previous = _state.value
@@ -2871,7 +2883,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (previous.showAlbum && previousAlbum != null) {
             pushDetailPage(DetailPage.AlbumPage(previousAlbum))
         } else if (previous.showArtist && previousProfile != null && !previousProfileMatches) {
-            pushDetailPage(DetailPage.ArtistPage(previousProfile))
+            pushDetailPage(
+                DetailPage.ArtistPage(
+                    profile = previousProfile,
+                    listStateKey = previous.artistListStateKey.ifBlank {
+                        nextArtistListStateKey(previousProfile.browseId)
+                    }
+                )
+            )
         }
         _state.update { current ->
             val sameProfile = current.artistProfile?.let { profile ->
@@ -2887,6 +2906,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 artistLoading = true,
                 artistError = null,
                 artistProfile = current.artistProfile?.takeIf { sameProfile && it.hasBio },
+                artistListStateKey = requestedArtistListStateKey,
                 openPlaylist = null,
                 detailReturnTarget = DetailReturnTarget.None
             )
@@ -3014,7 +3034,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         if (previous.showAlbum && current != null && !sameAlbum) {
             pushDetailPage(DetailPage.AlbumPage(current))
         } else if (!keepsArtistParent && previous.showArtist && previous.artistProfile != null) {
-            pushDetailPage(DetailPage.ArtistPage(previous.artistProfile))
+            pushDetailPage(
+                DetailPage.ArtistPage(
+                    profile = previous.artistProfile,
+                    listStateKey = previous.artistListStateKey.ifBlank {
+                        nextArtistListStateKey(previous.artistProfile.browseId)
+                    }
+                )
+            )
         }
         _state.update { state ->
             val keepArtistParent = returnTarget == DetailReturnTarget.Artist && state.showArtist
