@@ -222,6 +222,27 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
+private fun <T> ChoiceRow(
+    title: String,
+    selected: T,
+    options: List<Pair<T, String>>,
+    onSelect: (T) -> Unit,
+    body: String = ""
+) {
+    SettingsRow(title = title, body = body) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { (value, label) ->
+                LevyraChip(
+                    label = label,
+                    selected = value == selected,
+                    onClick = { onSelect(value) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SettingsRow(
     title: String,
     body: String = "",
