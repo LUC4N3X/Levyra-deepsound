@@ -74,14 +74,24 @@ jobs:
       - name: Install WiX Toolset
         shell: pwsh
         run: |
-          choco install wixtoolset --version 3.14.1 --no-progress --yes
-          $wix = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
-          if (Test-Path $wix) {
-            Add-Content -Path $env:GITHUB_PATH -Value $wix
-          } else {
-            Write-Host "WiX directory not found at $wix"
-            Get-ChildItem "C:\Program Files (x86)" -Filter "WiX*" | ForEach-Object { Write-Host $_.FullName }
+          function Find-WixBin {
+            Get-ChildItem "C:\Program Files (x86)" -Filter "WiX Toolset v3*" -Directory -ErrorAction SilentlyContinue |
+              Sort-Object Name -Descending |
+              ForEach-Object { Join-Path $_.FullName "bin" } |
+              Where-Object { Test-Path (Join-Path $_ "candle.exe") } |
+              Select-Object -First 1
           }
+
+          $bin = Find-WixBin
+          if (-not $bin) {
+            choco install wixtoolset --no-progress --yes
+            $bin = Find-WixBin
+          }
+          if (-not $bin) {
+            throw "WiX Toolset 3 non disponibile sul runner"
+          }
+          Write-Host "WiX Toolset: $bin"
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
 
       - name: Build portable distribution
         shell: pwsh

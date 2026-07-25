@@ -55,44 +55,26 @@ fun SettingsScreen(
 
         item {
             SettingsSection(title = strings.settingsAudio) {
-                SettingsRow(title = strings.settingsAudioQuality) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LevyraChip(
-                            label = strings.settingsQualityLow,
-                            selected = settings.audioQuality == AudioQuality.LOW,
-                            onClick = { onUpdate { it.copy(audioQuality = AudioQuality.LOW) } }
-                        )
-                        LevyraChip(
-                            label = strings.settingsQualityBalanced,
-                            selected = settings.audioQuality == AudioQuality.BALANCED,
-                            onClick = { onUpdate { it.copy(audioQuality = AudioQuality.BALANCED) } }
-                        )
-                        LevyraChip(
-                            label = strings.settingsQualityHigh,
-                            selected = settings.audioQuality == AudioQuality.HIGH,
-                            onClick = { onUpdate { it.copy(audioQuality = AudioQuality.HIGH) } }
-                        )
-                    }
-                }
-                SettingsRow(title = strings.settingsCodec) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LevyraChip(
-                            label = strings.settingsCodecAuto,
-                            selected = settings.preferredCodec == PreferredCodec.AUTO,
-                            onClick = { onUpdate { it.copy(preferredCodec = PreferredCodec.AUTO) } }
-                        )
-                        LevyraChip(
-                            label = strings.settingsCodecOpus,
-                            selected = settings.preferredCodec == PreferredCodec.OPUS,
-                            onClick = { onUpdate { it.copy(preferredCodec = PreferredCodec.OPUS) } }
-                        )
-                        LevyraChip(
-                            label = strings.settingsCodecAac,
-                            selected = settings.preferredCodec == PreferredCodec.AAC,
-                            onClick = { onUpdate { it.copy(preferredCodec = PreferredCodec.AAC) } }
-                        )
-                    }
-                }
+                ChoiceRow(
+                    title = strings.settingsAudioQuality,
+                    selected = settings.audioQuality,
+                    options = listOf(
+                        AudioQuality.LOW to strings.settingsQualityLow,
+                        AudioQuality.BALANCED to strings.settingsQualityBalanced,
+                        AudioQuality.HIGH to strings.settingsQualityHigh
+                    ),
+                    onSelect = { value -> onUpdate { it.copy(audioQuality = value) } }
+                )
+                ChoiceRow(
+                    title = strings.settingsCodec,
+                    selected = settings.preferredCodec,
+                    options = listOf(
+                        PreferredCodec.AUTO to strings.settingsCodecAuto,
+                        PreferredCodec.OPUS to strings.settingsCodecOpus,
+                        PreferredCodec.AAC to strings.settingsCodecAac
+                    ),
+                    onSelect = { value -> onUpdate { it.copy(preferredCodec = value) } }
+                )
                 SettingsToggle(
                     title = strings.settingsAutoplayRadio,
                     body = strings.settingsAutoplayRadioBody,
@@ -104,39 +86,25 @@ fun SettingsScreen(
 
         item {
             SettingsSection(title = strings.settingsInterface) {
-                SettingsRow(title = strings.settingsTheme) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LevyraChip(
-                            label = strings.settingsThemeSystem,
-                            selected = settings.themeMode == ThemeMode.SYSTEM,
-                            onClick = { onUpdate { it.copy(themeMode = ThemeMode.SYSTEM) } }
-                        )
-                        LevyraChip(
-                            label = strings.settingsThemeLight,
-                            selected = settings.themeMode == ThemeMode.LIGHT,
-                            onClick = { onUpdate { it.copy(themeMode = ThemeMode.LIGHT) } }
-                        )
-                        LevyraChip(
-                            label = strings.settingsThemeDark,
-                            selected = settings.themeMode == ThemeMode.DARK,
-                            onClick = { onUpdate { it.copy(themeMode = ThemeMode.DARK) } }
-                        )
-                    }
-                }
-                SettingsRow(title = strings.settingsLanguage) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        LevyraChip(
-                            label = "Italiano",
-                            selected = settings.language == AppLanguage.ITALIAN,
-                            onClick = { onUpdate { it.copy(language = AppLanguage.ITALIAN) } }
-                        )
-                        LevyraChip(
-                            label = "English",
-                            selected = settings.language == AppLanguage.ENGLISH,
-                            onClick = { onUpdate { it.copy(language = AppLanguage.ENGLISH) } }
-                        )
-                    }
-                }
+                ChoiceRow(
+                    title = strings.settingsTheme,
+                    selected = settings.themeMode,
+                    options = listOf(
+                        ThemeMode.SYSTEM to strings.settingsThemeSystem,
+                        ThemeMode.LIGHT to strings.settingsThemeLight,
+                        ThemeMode.DARK to strings.settingsThemeDark
+                    ),
+                    onSelect = { value -> onUpdate { it.copy(themeMode = value) } }
+                )
+                ChoiceRow(
+                    title = strings.settingsLanguage,
+                    selected = settings.language,
+                    options = listOf(
+                        AppLanguage.ITALIAN to "Italiano",
+                        AppLanguage.ENGLISH to "English"
+                    ),
+                    onSelect = { value -> onUpdate { it.copy(language = value) } }
+                )
                 SettingsRow(title = strings.settingsCountry, body = strings.settingsCountryBody) {
                     OutlinedTextField(
                         value = settings.contentCountry,
