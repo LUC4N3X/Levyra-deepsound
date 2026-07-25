@@ -143,6 +143,7 @@ data class LevyraUiState(
     val artistLoading: Boolean = false,
     val artistError: String? = null,
     val artistProfile: ArtistProfile? = null,
+    val artistListStateKey: String = "",
     val searchData: SearchResults = SearchResults(),
     val searchFilter: SearchFilter = SearchFilter.All,
     val themePreset: String = LevyraThemes.COSMIC,
