@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.player
 
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
 import java.nio.file.Path
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -71,7 +72,7 @@ class VlcAudioPlayer private constructor(
             add(":http-referrer=https://www.youtube.com/")
             add(":no-video")
             if (startAtMs > 0L) {
-                add(":start-time=${startAtMs / 1000L}")
+                add(":start-time=%.3f".format(Locale.ROOT, startAtMs / 1000.0))
             }
         }
         mediaPlayer.media().play(url, *options.toTypedArray())
@@ -168,7 +169,8 @@ class VlcAudioPlayer private constructor(
                 MediaPlayerFactory(*FACTORY_ARGUMENTS)
             } catch (error: Throwable) {
                 throw AudioPlayerUnavailableException(
-                    "Impossibile inizializzare libvlc da ${discovery.path}: ${error.message.orEmpty()}"
+                    "Impossibile inizializzare libvlc da ${discovery.path}: ${error.message.orEmpty()}",
+                    error
                 )
             }
             return VlcAudioPlayer(factory, discovery.path)

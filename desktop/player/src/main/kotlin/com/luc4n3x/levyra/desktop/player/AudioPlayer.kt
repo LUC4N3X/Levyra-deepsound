@@ -28,4 +28,7 @@ interface AudioPlayer : AutoCloseable {
     fun isPlaying(): Boolean
 }
 
-class AudioPlayerUnavailableException(message: String) : Exception(message)
+class AudioPlayerUnavailableException(
+    message: String,
+    cause: Throwable? = null
+) : Exception(message, cause)

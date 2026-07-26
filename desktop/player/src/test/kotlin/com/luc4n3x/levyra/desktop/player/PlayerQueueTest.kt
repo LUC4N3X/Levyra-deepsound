@@ -110,6 +110,34 @@ class PlayerQueueTest {
     }
 
     @Test
+    fun `trim played drops the oldest entries and keeps the current track`() {
+        val many = (1..10).map { track("t$it") }
+        val queue = PlayerQueue().replace(many, startIndex = 9).trimPlayed(maxSize = 4)
+
+        assertEquals(4, queue.items.size)
+        assertEquals("t10", queue.current?.id)
+        assertEquals(listOf("t7", "t8", "t9", "t10"), queue.items.map { it.id })
+        assertEquals(listOf("t7", "t8", "t9", "t10"), queue.original.map { it.id })
+    }
+
+    @Test
+    fun `trim played never drops upcoming tracks`() {
+        val many = (1..10).map { track("t$it") }
+        val queue = PlayerQueue().replace(many, startIndex = 2).trimPlayed(maxSize = 4)
+
+        assertEquals(8, queue.items.size)
+        assertEquals("t3", queue.current?.id)
+        assertEquals(0, queue.index)
+    }
+
+    @Test
+    fun `trim played leaves short queues untouched`() {
+        val queue = PlayerQueue().replace(tracks, startIndex = 2)
+        assertEquals(queue, queue.trimPlayed(maxSize = 5))
+        assertEquals(queue, queue.trimPlayed(maxSize = 0))
+    }
+
+    @Test
     fun `jump to track selects the matching entry`() {
         val queue = PlayerQueue().replace(tracks).jumpToTrack("c")
         assertEquals(2, queue.index)

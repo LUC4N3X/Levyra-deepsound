@@ -10,6 +10,8 @@ import org.schabi.newpipe.extractor.downloader.Downloader
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
 
+class ExtractorRateLimitException(message: String) : IOException(message)
+
 class DesktopDownloader(
     private val client: OkHttpClient = ExtractorHttp.client
 ) : Downloader() {
@@ -71,7 +73,7 @@ class DesktopDownloader(
     private fun toExtractorResponse(response: okhttp3.Response): Response {
         val bytes = response.body.bytes()
         if (response.code == 429) {
-            throw IOException("YouTube ha limitato temporaneamente le richieste")
+            throw ExtractorRateLimitException("YouTube ha limitato temporaneamente le richieste")
         }
         return Response(
             response.code,

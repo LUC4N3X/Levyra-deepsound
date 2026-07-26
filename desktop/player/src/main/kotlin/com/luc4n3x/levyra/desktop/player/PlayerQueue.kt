@@ -46,17 +46,17 @@ data class PlayerQueue(
     fun withShuffle(enabled: Boolean, random: Random = Random.Default): PlayerQueue {
         if (enabled == shuffle) return this
         if (items.isEmpty()) return copy(shuffle = enabled)
-        val playing = current
+        val playing = current ?: return copy(shuffle = enabled)
         return if (enabled) {
-            val rest = items.filter { it.id != playing?.id }.shuffled(random)
+            val rest = items.filter { it.id != playing.id }.shuffled(random)
             copy(
                 shuffle = true,
-                items = listOfNotNull(playing) + rest,
+                items = listOf(playing) + rest,
                 index = 0
             )
         } else {
             val restored = original.filter { track -> items.any { it.id == track.id } }
-            val restoredIndex = restored.indexOfFirst { it.id == playing?.id }
+            val restoredIndex = restored.indexOfFirst { it.id == playing.id }
             copy(
                 shuffle = false,
                 items = restored,
@@ -129,6 +129,17 @@ data class PlayerQueue(
             else -> index
         }
         return copy(items = updatedItems, original = updatedOriginal, index = updatedIndex)
+    }
+
+    fun trimPlayed(maxSize: Int): PlayerQueue {
+        if (maxSize <= 0 || items.size <= maxSize || index <= 0) return this
+        val excess = (items.size - maxSize).coerceAtMost(index)
+        val dropped = items.take(excess).map { it.id }.toSet()
+        return copy(
+            items = items.drop(excess),
+            original = original.filterNot { it.id in dropped },
+            index = index - excess
+        )
     }
 
     fun clear(): PlayerQueue = copy(items = emptyList(), original = emptyList(), index = -1)

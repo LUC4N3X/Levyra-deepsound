@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
+import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRateLimitException
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
 import com.luc4n3x.levyra.desktop.core.storage.SessionData
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -72,6 +74,7 @@ class PlaybackController(
     private var retriedTrackId: String = ""
     private var consecutiveFailures: Int = 0
     private var pendingResumeMs: Long = 0L
+    private var lastAudibleVolume: Int = settingsStore.current.volume.takeIf { it > 0 } ?: DEFAULT_VOLUME
 
     val state: StateFlow<PlaybackUiState> = internalState.asStateFlow()
     val messages: SharedFlow<String> = messageFlow.asSharedFlow()
@@ -98,17 +101,19 @@ class PlaybackController(
             repeat = RepeatMode.fromName(session.repeat)
         )
         pendingResumeMs = session.positionMs.coerceAtLeast(0L)
-        internalState.value = internalState.value.copy(
-            queue = queue,
-            positionMs = pendingResumeMs,
-            durationMs = queue.current?.durationMs ?: 0L
-        )
+        internalState.update { state ->
+            state.copy(
+                queue = queue,
+                positionMs = pendingResumeMs,
+                durationMs = queue.current?.durationMs ?: 0L
+            )
+        }
     }
 
     fun playTracks(tracks: List<Track>, startIndex: Int = 0) {
         if (tracks.isEmpty()) return
         val queue = internalState.value.queue.replace(tracks, startIndex)
-        internalState.value = internalState.value.copy(queue = queue)
+        internalState.update { state -> state.copy(queue = queue) }
         startCurrent(0L)
     }
 
@@ -117,28 +122,28 @@ class PlaybackController(
     fun playShuffled(tracks: List<Track>) {
         if (tracks.isEmpty()) return
         val shuffled = internalState.value.queue.copy(shuffle = true).replace(tracks, 0)
-        internalState.value = internalState.value.copy(queue = shuffled)
+        internalState.update { state -> state.copy(queue = shuffled) }
         startCurrent(0L)
     }
 
     fun enqueueNext(tracks: List<Track>) {
         val queue = internalState.value.queue
         val wasEmpty = queue.isEmpty
-        internalState.value = internalState.value.copy(queue = queue.enqueueNext(tracks))
+        internalState.update { state -> state.copy(queue = queue.enqueueNext(tracks)) }
         if (wasEmpty) startCurrent(0L) else persistSession()
     }
 
     fun enqueueLast(tracks: List<Track>) {
         val queue = internalState.value.queue
         val wasEmpty = queue.isEmpty
-        internalState.value = internalState.value.copy(queue = queue.enqueueLast(tracks))
+        internalState.update { state -> state.copy(queue = queue.enqueueLast(tracks)) }
         if (wasEmpty) startCurrent(0L) else persistSession()
     }
 
     fun jumpTo(position: Int) {
         val queue = internalState.value.queue.jumpTo(position)
         if (queue == internalState.value.queue && internalState.value.status != PlaybackStatus.IDLE) return
-        internalState.value = internalState.value.copy(queue = queue)
+        internalState.update { state -> state.copy(queue = queue) }
         startCurrent(0L)
     }
 
@@ -146,7 +151,7 @@ class PlaybackController(
         val previous = internalState.value.queue
         val playingRemoved = position == previous.index
         val queue = previous.removeAt(position)
-        internalState.value = internalState.value.copy(queue = queue)
+        internalState.update { state -> state.copy(queue = queue) }
         when {
             queue.isEmpty -> stop()
             playingRemoved -> startCurrent(0L)
@@ -155,7 +160,7 @@ class PlaybackController(
     }
 
     fun clearQueue() {
-        internalState.value = internalState.value.copy(queue = internalState.value.queue.clear())
+        internalState.update { state -> state.copy(queue = state.queue.clear()) }
         stop()
     }
 
@@ -165,13 +170,13 @@ class PlaybackController(
         when (current.status) {
             PlaybackStatus.PLAYING, PlaybackStatus.BUFFERING -> {
                 player?.pause()
-                internalState.value = current.copy(status = PlaybackStatus.PAUSED)
+                internalState.update { state -> state.copy(status = PlaybackStatus.PAUSED) }
                 persistSession()
             }
 
             PlaybackStatus.PAUSED -> {
                 player?.resume()
-                internalState.value = current.copy(status = PlaybackStatus.PLAYING)
+                internalState.update { state -> state.copy(status = PlaybackStatus.PLAYING) }
             }
 
             PlaybackStatus.OPENING -> Unit
@@ -193,7 +198,7 @@ class PlaybackController(
             return
         }
         val repeatingSame = automatic && advanced.index == current.queue.index
-        internalState.value = current.copy(queue = advanced)
+        internalState.update { state -> state.copy(queue = advanced) }
         startCurrent(0L, forceRestart = repeatingSame)
     }
 
@@ -208,7 +213,7 @@ class PlaybackController(
             seekTo(0L)
             return
         }
-        internalState.value = current.copy(queue = rewound)
+        internalState.update { state -> state.copy(queue = rewound) }
         startCurrent(0L)
     }
 
@@ -216,44 +221,54 @@ class PlaybackController(
         val safe = positionMs.coerceAtLeast(0L)
         pendingResumeMs = safe
         player?.seekTo(safe)
-        internalState.value = internalState.value.copy(positionMs = safe)
+        internalState.update { state -> state.copy(positionMs = safe) }
     }
 
     fun setVolume(volume: Int) {
         val safe = volume.coerceIn(0, 100)
         val muted = safe == 0
+        if (safe > 0) {
+            lastAudibleVolume = safe
+        }
         player?.setVolume(safe)
         player?.setMuted(muted)
-        internalState.value = internalState.value.copy(volume = safe, muted = muted)
+        internalState.update { state -> state.copy(volume = safe, muted = muted) }
         settingsStore.update { it.copy(volume = safe) }
     }
 
     fun toggleMuted() {
-        val muted = !internalState.value.muted
+        val current = internalState.value
+        val muted = !current.muted
+        if (!muted && current.volume == 0) {
+            setVolume(lastAudibleVolume)
+            return
+        }
         player?.setMuted(muted)
-        internalState.value = internalState.value.copy(muted = muted)
+        internalState.update { state -> state.copy(muted = muted) }
     }
 
     fun toggleShuffle() {
         val queue = internalState.value.queue
-        internalState.value = internalState.value.copy(queue = queue.withShuffle(!queue.shuffle))
+        internalState.update { state -> state.copy(queue = queue.withShuffle(!queue.shuffle)) }
         persistSession()
     }
 
     fun cycleRepeat() {
         val queue = internalState.value.queue
-        internalState.value = internalState.value.copy(queue = queue.withRepeat(queue.repeat.next()))
+        internalState.update { state -> state.copy(queue = queue.withRepeat(queue.repeat.next())) }
         persistSession()
     }
 
     fun stop() {
         playbackJob?.cancel()
         player?.stop()
-        internalState.value = internalState.value.copy(
-            status = PlaybackStatus.IDLE,
-            positionMs = 0L,
-            preparingTrackId = ""
-        )
+        internalState.update { state ->
+            state.copy(
+                status = PlaybackStatus.IDLE,
+                positionMs = 0L,
+                preparingTrackId = ""
+            )
+        }
         pendingResumeMs = 0L
         persistSession()
     }
@@ -273,20 +288,21 @@ class PlaybackController(
         val track = internalState.value.queue.current ?: return
         playbackJob?.cancel()
         pendingResumeMs = startAtMs
-        internalState.value = internalState.value.copy(
-            preparingTrackId = track.id,
-            status = PlaybackStatus.OPENING,
-            positionMs = startAtMs,
-            durationMs = track.durationMs,
-            streamLabel = ""
-        )
+        internalState.update { state ->
+            state.copy(
+                preparingTrackId = track.id,
+                status = PlaybackStatus.OPENING,
+                positionMs = startAtMs,
+                durationMs = track.durationMs,
+                streamLabel = ""
+            )
+        }
         playbackJob = playerScope.launch {
             val activePlayer = ensurePlayer()
             if (activePlayer == null) {
-                internalState.value = internalState.value.copy(
-                    preparingTrackId = "",
-                    status = PlaybackStatus.FAILED
-                )
+                internalState.update { state ->
+                    state.copy(preparingTrackId = "", status = PlaybackStatus.FAILED)
+                }
                 return@launch
             }
             if (forceRestart) {
@@ -298,10 +314,14 @@ class PlaybackController(
                 } catch (cancellation: CancellationException) {
                     throw cancellation
                 } catch (error: Exception) {
+                    if (isRateLimited(error)) {
+                        reportRateLimit(error)
+                        return@launch
+                    }
                     null
                 }
                 if (located == null) {
-                    internalState.value = internalState.value.copy(preparingTrackId = "")
+                    internalState.update { state -> state.copy(preparingTrackId = "") }
                     messageFlow.tryEmit("Nessuna versione riproducibile trovata per ${track.title}")
                     skipAfterFailure(track)
                     return@launch
@@ -321,7 +341,11 @@ class PlaybackController(
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Exception) {
-                internalState.value = internalState.value.copy(preparingTrackId = "")
+                if (isRateLimited(error)) {
+                    reportRateLimit(error)
+                    return@launch
+                }
+                internalState.update { state -> state.copy(preparingTrackId = "") }
                 messageFlow.tryEmit(error.message ?: "Impossibile risolvere lo stream")
                 skipAfterFailure(track)
                 return@launch
@@ -336,12 +360,14 @@ class PlaybackController(
             activePlayer.play(resolved.url, startAtMs)
             activePlayer.setVolume(internalState.value.volume)
             activePlayer.setMuted(internalState.value.muted)
-            internalState.value = internalState.value.copy(
-                preparingTrackId = "",
-                status = PlaybackStatus.BUFFERING,
-                streamLabel = resolved.label,
-                durationMs = if (resolved.durationMs > 0L) resolved.durationMs else internalState.value.durationMs
-            )
+            internalState.update { state ->
+                state.copy(
+                    preparingTrackId = "",
+                    status = PlaybackStatus.BUFFERING,
+                    streamLabel = resolved.label,
+                    durationMs = if (resolved.durationMs > 0L) resolved.durationMs else state.durationMs
+                )
+            }
             libraryStore.recordPlayback(enriched)
             persistSession()
         }
@@ -353,7 +379,27 @@ class PlaybackController(
         if (position < 0) return
         val items = queue.items.toMutableList().apply { set(position, track) }
         val original = queue.original.map { if (it.id == track.id) track else it }
-        internalState.value = internalState.value.copy(queue = queue.copy(items = items, original = original))
+        internalState.update { state -> state.copy(queue = queue.copy(items = items, original = original)) }
+    }
+
+    private fun isRateLimited(error: Throwable): Boolean {
+        var current: Throwable? = error
+        var depth = 0
+        while (current != null && depth < MAX_CAUSE_DEPTH) {
+            if (current is ExtractorRateLimitException) return true
+            val next = current.cause
+            if (next === current) return false
+            current = next
+            depth += 1
+        }
+        return false
+    }
+
+    private fun reportRateLimit(error: Throwable) {
+        consecutiveFailures = 0
+        internalState.update { state -> state.copy(preparingTrackId = "") }
+        messageFlow.tryEmit(error.message ?: "Richieste temporaneamente limitate")
+        stop()
     }
 
     private fun skipAfterFailure(track: Track) {
@@ -371,7 +417,7 @@ class PlaybackController(
             stop()
             return
         }
-        internalState.value = internalState.value.copy(queue = advanced)
+        internalState.update { state -> state.copy(queue = advanced) }
         startCurrent(0L)
     }
 
@@ -389,13 +435,15 @@ class PlaybackController(
                 stop()
                 return@launch
             }
-            val queue = internalState.value.queue.enqueueLast(tracks)
+            val queue = internalState.value.queue
+                .trimPlayed(MAX_QUEUE_SIZE)
+                .enqueueLast(tracks)
             val advanced = queue.advance(automatic = false)
             if (advanced == null) {
                 stop()
                 return@launch
             }
-            internalState.value = internalState.value.copy(queue = advanced)
+            internalState.update { state -> state.copy(queue = advanced) }
             startCurrent(0L)
         }
     }
@@ -409,15 +457,15 @@ class PlaybackController(
             startPersistLoop()
             val equalizer = settingsStore.current.equalizer
             created.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
-            internalState.value = internalState.value.copy(unavailableReason = "")
+            internalState.update { state -> state.copy(unavailableReason = "") }
             created
         } catch (error: AudioPlayerUnavailableException) {
-            internalState.value = internalState.value.copy(unavailableReason = error.message.orEmpty())
+            internalState.update { state -> state.copy(unavailableReason = error.message.orEmpty()) }
             messageFlow.tryEmit(error.message.orEmpty())
             null
         } catch (error: Throwable) {
             val reason = error.message ?: "Motore audio non disponibile"
-            internalState.value = internalState.value.copy(unavailableReason = reason)
+            internalState.update { state -> state.copy(unavailableReason = reason) }
             messageFlow.tryEmit(reason)
             null
         }
@@ -432,21 +480,21 @@ class PlaybackController(
 
     private fun handleEvent(event: PlayerEvent) {
         when (event) {
-            is PlayerEvent.Opening -> internalState.value =
-                internalState.value.copy(status = PlaybackStatus.OPENING)
+            is PlayerEvent.Opening ->
+                internalState.update { state -> state.copy(status = PlaybackStatus.OPENING) }
 
             is PlayerEvent.Buffering -> if (internalState.value.status != PlaybackStatus.PLAYING) {
-                internalState.value = internalState.value.copy(status = PlaybackStatus.BUFFERING)
+                internalState.update { state -> state.copy(status = PlaybackStatus.BUFFERING) }
             }
 
             is PlayerEvent.Playing -> {
                 retriedTrackId = ""
                 consecutiveFailures = 0
-                internalState.value = internalState.value.copy(status = PlaybackStatus.PLAYING)
+                internalState.update { state -> state.copy(status = PlaybackStatus.PLAYING) }
             }
 
-            is PlayerEvent.Paused -> internalState.value =
-                internalState.value.copy(status = PlaybackStatus.PAUSED)
+            is PlayerEvent.Paused ->
+                internalState.update { state -> state.copy(status = PlaybackStatus.PAUSED) }
 
             is PlayerEvent.Stopped -> Unit
 
@@ -456,11 +504,11 @@ class PlaybackController(
 
             is PlayerEvent.TimeChanged -> {
                 pendingResumeMs = event.positionMs
-                internalState.value = internalState.value.copy(positionMs = event.positionMs)
+                internalState.update { state -> state.copy(positionMs = event.positionMs) }
             }
 
             is PlayerEvent.LengthChanged -> if (event.durationMs > 0L) {
-                internalState.value = internalState.value.copy(durationMs = event.durationMs)
+                internalState.update { state -> state.copy(durationMs = event.durationMs) }
             }
         }
     }
@@ -511,5 +559,8 @@ class PlaybackController(
     private companion object {
         const val RESTART_THRESHOLD_MS = 4_000L
         const val PERSIST_INTERVAL_MS = 15_000L
+        const val MAX_QUEUE_SIZE = 200
+        const val MAX_CAUSE_DEPTH = 8
+        const val DEFAULT_VOLUME = 60
     }
 }

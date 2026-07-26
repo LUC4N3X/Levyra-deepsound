@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.desktop.app.ui.theme
 import androidx.compose.ui.graphics.Color
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
 import java.awt.image.BufferedImage
+import java.util.Optional
 import java.util.concurrent.ConcurrentHashMap
 import javax.imageio.ImageIO
 import kotlinx.coroutines.Dispatchers
@@ -16,16 +17,16 @@ object ArtworkPalette {
     private const val MIN_BRIGHTNESS = 0.18f
     private const val MAX_BRIGHTNESS = 0.96f
 
-    private val cache = ConcurrentHashMap<String, Color>()
+    private val cache = ConcurrentHashMap<String, Optional<Color>>()
 
     suspend fun accentFor(url: String): Color? {
         if (url.isBlank()) return null
-        cache[url]?.let { return it }
+        cache[url]?.let { return it.orElse(null) }
         val accent = withContext(Dispatchers.IO) {
             val image = download(url) ?: return@withContext null
             dominant(image)
-        } ?: return null
-        cache[url] = accent
+        }
+        cache[url] = Optional.ofNullable(accent)
         return accent
     }
 

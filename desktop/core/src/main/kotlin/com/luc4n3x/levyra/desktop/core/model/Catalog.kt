@@ -38,11 +38,15 @@ data class CatalogPage(
 ) {
     val isEmpty: Boolean get() = tracks.isEmpty() && collections.isEmpty()
 
-    fun mergedWith(other: CatalogPage): CatalogPage = CatalogPage(
-        tracks = tracks + other.tracks,
-        collections = collections + other.collections,
-        cursor = other.cursor
-    )
+    fun mergedWith(other: CatalogPage): CatalogPage {
+        val knownTracks = tracks.mapTo(HashSet()) { it.id }
+        val knownCollections = collections.mapTo(HashSet()) { it.id }
+        return CatalogPage(
+            tracks = tracks + other.tracks.filterNot { it.id in knownTracks },
+            collections = collections + other.collections.filterNot { it.id in knownCollections },
+            cursor = other.cursor
+        )
+    }
 }
 
 data class CollectionDetail(

@@ -61,6 +61,33 @@ class PlayableMatcherTest {
     }
 
     @Test
+    fun `same title from another artist is rejected`() {
+        val best = PlayableMatcher.best(
+            reference,
+            listOf(candidate("a", "Notte Fonda", "Cantante Diverso"))
+        )
+        assertNull(best)
+    }
+
+    @Test
+    fun `uploader channel name still matches the artist`() {
+        val best = PlayableMatcher.best(
+            reference,
+            listOf(candidate("a", "Notte Fonda", "ArtistaUnoVEVO"))
+        )
+        assertEquals("a", best?.id)
+    }
+
+    @Test
+    fun `candidates without an artist are not discarded`() {
+        val best = PlayableMatcher.best(
+            reference,
+            listOf(candidate("a", "Notte Fonda", ""))
+        )
+        assertEquals("a", best?.id)
+    }
+
+    @Test
     fun `very long uploads are penalised`() {
         val short = candidate("a", "Notte Fonda", "Artista Uno", durationMs = 210_000L)
         val long = candidate("b", "Notte Fonda", "Artista Uno", durationMs = 3_600_000L)
