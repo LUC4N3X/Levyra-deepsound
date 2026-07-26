@@ -10,9 +10,12 @@ data class Track(
     val album: String = "",
     val videoUrl: String,
     val artworkUrl: String = "",
-    val durationMs: Long = 0L
+    val durationMs: Long = 0L,
+    val offlinePath: String = "",
+    val offlineMediaLabel: String = ""
 ) {
     val hasArtwork: Boolean get() = artworkUrl.isNotBlank()
+    val isOffline: Boolean get() = offlinePath.isNotBlank()
 
     val displaySubtitle: String
         get() = listOf(artist, album).filter { it.isNotBlank() }.joinToString(" · ")
