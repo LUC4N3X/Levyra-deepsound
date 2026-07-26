@@ -5,7 +5,6 @@ on:
     paths:
       - "desktop/**"
       - "third_party/LevyraExtractor/**"
-      - "gradle.properties"
       - ".github/workflows/desktop-windows.yml"
   push:
     branches:
@@ -14,7 +13,6 @@ on:
     paths:
       - "desktop/**"
       - "third_party/LevyraExtractor/**"
-      - "gradle.properties"
       - ".github/workflows/desktop-windows.yml"
   workflow_dispatch:
 
@@ -77,6 +75,7 @@ jobs:
           path: |
             desktop/core/build/reports/tests
             desktop/player/build/reports/tests
+            desktop/app/build/reports/tests
           retention-days: 7
           if-no-files-found: ignore
 
@@ -98,20 +97,24 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Resolve Levyra version
+      - name: Resolve desktop version
         id: version
         shell: pwsh
         run: |
-          $line = Get-Content gradle.properties | Where-Object { $_ -match '^levyraVersionName=' } | Select-Object -First 1
+          $versionFile = "desktop/version.properties"
+          if (-not (Test-Path $versionFile)) {
+            throw "$versionFile non trovato"
+          }
+          $line = Get-Content $versionFile | Where-Object { $_ -match '^levyraDesktopVersion=' } | Select-Object -First 1
           if (-not $line) {
-            throw "levyraVersionName non trovato in gradle.properties"
+            throw "levyraDesktopVersion non trovato in $versionFile"
           }
           $version = ($line -split '=', 2)[1].Trim()
           if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$') {
-            throw "Versione Levyra non valida: $version"
+            throw "Versione Levyra Desktop non valida: $version"
           }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          Write-Host "Levyra Windows version: $version"
+          Write-Host "Levyra Desktop version: $version"
 
       - name: Install WiX Toolset
         shell: pwsh
@@ -189,28 +192,33 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      - name: Add Windows assets to Levyra release
+      - name: Publish independent desktop release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = "${{ steps.version.outputs.version }}"
-          $tag = "v$version"
+          $tag = "desktop-v$version"
           $repo = $env:GITHUB_REPOSITORY
-          $release = $null
+          $releaseJson = gh api "repos/$repo/releases/tags/$tag" 2>$null
 
-          for ($attempt = 1; $attempt -le 12; $attempt++) {
-            $releaseJson = gh api "repos/$repo/releases/tags/$tag" 2>$null
-            if ($LASTEXITCODE -eq 0) {
-              $release = $releaseJson | ConvertFrom-Json
-              break
+          if ($LASTEXITCODE -eq 0) {
+            $release = $releaseJson | ConvertFrom-Json
+          } else {
+            gh release create $tag \
+              --repo $repo \
+              --target $env:GITHUB_SHA \
+              --title "Levyra Desktop $version" \
+              --notes "Release Windows indipendente di Levyra Desktop $version. La versione Android mantiene il proprio versioning e le proprie release."
+            if ($LASTEXITCODE -ne 0) {
+              throw "Impossibile creare la release desktop $tag"
             }
-            Start-Sleep -Seconds 10
-          }
-
-          if (-not $release) {
-            throw "Release $tag non trovata: impossibile aggiungere i file Windows"
+            $releaseJson = gh api "repos/$repo/releases/tags/$tag"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Release desktop $tag creata ma non rileggibile"
+            }
+            $release = $releaseJson | ConvertFrom-Json
           }
 
           $assets = Get-ChildItem release-assets -File | Sort-Object Name
@@ -220,7 +228,7 @@ jobs:
 
           $existingJson = gh api "repos/$repo/releases/$($release.id)/assets?per_page=100"
           if ($LASTEXITCODE -ne 0) {
-            throw "Impossibile leggere gli asset esistenti della release"
+            throw "Impossibile leggere gli asset esistenti della release desktop"
           }
           $existing = $existingJson | ConvertFrom-Json
 
