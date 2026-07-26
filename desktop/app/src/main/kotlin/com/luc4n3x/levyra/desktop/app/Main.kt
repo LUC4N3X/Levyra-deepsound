@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,95 +41,169 @@ import com.luc4n3x.levyra.desktop.app.ui.DesktopUpdateDialogHost
 import com.luc4n3x.levyra.desktop.app.ui.LevyraRoot
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
+import com.luc4n3x.levyra.desktop.app.ui.player.MiniPlayerWindow
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
 import com.luc4n3x.levyra.desktop.core.storage.WindowPlacement as StoredPlacement
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okio.Path.Companion.toOkioPath
 
-fun main() = application {
-    val container = remember { AppContainer() }
-    val stored = remember { container.windowPlacementStore.read() }
-    val windowState = rememberWindowState(
-        size = DpSize(stored.width.dp, stored.height.dp),
-        position = if (stored.hasPosition) {
-            WindowPosition(stored.x.dp, stored.y.dp)
-        } else {
-            WindowPosition.PlatformDefault
-        },
-        placement = if (stored.maximized) {
-            WindowPlacement.Maximized
-        } else {
-            WindowPlacement.Floating
-        }
-    )
-    var windowVisible by remember { mutableStateOf(true) }
-    val settings by container.settingsStore.settings.collectAsState()
-    val strings = stringsFor(settings.language)
+fun main(args: Array<String>) {
+    DesktopCrashHandler.install()
+    val initialPayload = DesktopLinkRouter.launchPayload(args)
+    val instanceManager = DesktopInstanceManager.acquire(initialPayload) ?: return
 
-    setSingletonImageLoaderFactory { context ->
-        ImageLoader.Builder(context)
-            .diskCache {
-                DiskCache.Builder()
-                    .directory(container.paths.artworkCache.toOkioPath())
-                    .maxSizeBytes(ARTWORK_CACHE_BYTES)
-                    .build()
+    application {
+        val container = remember { AppContainer() }
+        val stored = remember { container.windowPlacementStore.read() }
+        val windowState = rememberWindowState(
+            size = DpSize(stored.width.dp, stored.height.dp),
+            position = if (stored.hasPosition) {
+                WindowPosition(stored.x.dp, stored.y.dp)
+            } else {
+                WindowPosition.PlatformDefault
+            },
+            placement = if (stored.maximized) {
+                WindowPlacement.Maximized
+            } else {
+                WindowPlacement.Floating
             }
-            .crossfade(true)
-            .build()
-    }
+        )
+        var windowVisible by remember { mutableStateOf(true) }
+        var miniPlayerVisible by remember { mutableStateOf(false) }
+        var restorePulse by remember { mutableIntStateOf(0) }
+        val settings by container.settingsStore.settings.collectAsState()
+        val library by container.libraryStore.library.collectAsState()
+        val playback by container.playbackController.state.collectAsState()
+        val strings = stringsFor(settings.language)
 
-    fun persistWindow() = persistPlacement(container, windowState)
+        setSingletonImageLoaderFactory { context ->
+            ImageLoader.Builder(context)
+                .diskCache {
+                    DiskCache.Builder()
+                        .directory(container.paths.artworkCache.toOkioPath())
+                        .maxSizeBytes(ARTWORK_CACHE_BYTES)
+                        .build()
+                }
+                .crossfade(true)
+                .build()
+        }
 
-    fun quit() {
-        persistWindow()
-        container.shutdown()
-        exitApplication()
-    }
+        fun persistWindow() = persistPlacement(container, windowState)
 
-    fun closeWindow() {
-        if (settings.minimizeToTray) {
+        fun showMainWindow() {
+            windowVisible = true
+            windowState.isMinimized = false
+            restorePulse += 1
+        }
+
+        fun quit() {
             persistWindow()
-            windowVisible = false
-        } else {
-            quit()
-        }
-    }
-
-    LevyraTray(
-        strings = strings,
-        playbackController = container.playbackController,
-        onShow = { windowVisible = true },
-        onQuit = ::quit
-    )
-
-    Window(
-        onCloseRequest = ::closeWindow,
-        state = windowState,
-        visible = windowVisible,
-        title = strings.appName,
-        icon = painterResource(APP_ICON),
-        onKeyEvent = { event ->
-            handleShortcut(event, container.playbackController)
-        }
-    ) {
-        val systemDark = isSystemInDarkTheme()
-        val darkWindow = when (settings.themeMode) {
-            ThemeMode.DARK -> true
-            ThemeMode.LIGHT -> false
-            ThemeMode.SYSTEM -> systemDark
+            instanceManager.close()
+            container.shutdown()
+            exitApplication()
         }
 
-        DisposableEffect(window, darkWindow) {
-            WindowsWindowStyling.apply(window, darkWindow)
-            onDispose { persistWindow() }
+        fun closeWindow() {
+            if (settings.minimizeToTray) {
+                persistWindow()
+                windowVisible = false
+            } else {
+                quit()
+            }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            LevyraRoot(model = container.appModel)
-            DesktopUpdateDialogHost(
-                controller = container.updateController,
-                language = settings.language,
-                enabled = settings.onboardingCompleted,
-                onInstallReady = ::quit
+        DisposableEffect(instanceManager) {
+            onDispose { instanceManager.close() }
+        }
+
+        LaunchedEffect(instanceManager) {
+            instanceManager.requests.collect { payload ->
+                showMainWindow()
+                if (payload.isNotBlank()) {
+                    DesktopLinkRouter.route(payload, container.appModel)
+                }
+            }
+        }
+
+        LaunchedEffect(container) {
+            withContext(Dispatchers.IO) { DesktopProtocolRegistrar.register() }
+            if (initialPayload.isNotBlank()) {
+                DesktopLinkRouter.route(initialPayload, container.appModel)
+            }
+        }
+
+        LaunchedEffect(playback.current?.id) {
+            if (playback.current == null) miniPlayerVisible = false
+        }
+
+        LevyraTray(
+            strings = strings,
+            playbackController = container.playbackController,
+            miniPlayerVisible = miniPlayerVisible,
+            playerAvailable = playback.current != null,
+            onShow = ::showMainWindow,
+            onToggleMiniPlayer = { miniPlayerVisible = !miniPlayerVisible },
+            onQuit = ::quit
+        )
+
+        Window(
+            onCloseRequest = ::closeWindow,
+            state = windowState,
+            visible = windowVisible,
+            title = strings.appName,
+            icon = painterResource(APP_ICON),
+            onKeyEvent = { event ->
+                handleShortcut(event, container.playbackController)
+            }
+        ) {
+            val systemDark = isSystemInDarkTheme()
+            val darkWindow = when (settings.themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> systemDark
+            }
+
+            DisposableEffect(window, darkWindow) {
+                WindowsWindowStyling.apply(window, darkWindow)
+                onDispose { persistWindow() }
+            }
+
+            LaunchedEffect(restorePulse, windowVisible) {
+                if (windowVisible) {
+                    window.toFront()
+                    window.requestFocus()
+                }
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                LevyraRoot(model = container.appModel)
+                DesktopUpdateDialogHost(
+                    controller = container.updateController,
+                    language = settings.language,
+                    enabled = settings.onboardingCompleted,
+                    onInstallReady = ::quit
+                )
+            }
+        }
+
+        if (miniPlayerVisible && playback.current != null) {
+            val current = playback.current
+            MiniPlayerWindow(
+                state = playback,
+                strings = strings,
+                themeMode = settings.themeMode,
+                isFavorite = current?.let { track ->
+                    library.favorites.any { it.id == track.id }
+                } ?: false,
+                onPlayPause = container.playbackController::togglePlayPause,
+                onPrevious = container.playbackController::previous,
+                onNext = { container.playbackController.next(automatic = false) },
+                onToggleFavorite = {
+                    current?.let(container.appModel::toggleFavorite)
+                },
+                onOpenMain = ::showMainWindow,
+                onClose = { miniPlayerVisible = false }
             )
         }
     }
@@ -137,7 +213,10 @@ fun main() = application {
 private fun ApplicationScope.LevyraTray(
     strings: LevyraStrings,
     playbackController: PlaybackController,
+    miniPlayerVisible: Boolean,
+    playerAvailable: Boolean,
     onShow: () -> Unit,
+    onToggleMiniPlayer: () -> Unit,
     onQuit: () -> Unit
 ) {
     Tray(
@@ -156,6 +235,16 @@ private fun ApplicationScope.LevyraTray(
                     playbackController.next(automatic = false)
                 }
             )
+            if (playerAvailable) {
+                Item(
+                    if (miniPlayerVisible) {
+                        "${strings.close} · Mini ${strings.navNowPlaying}"
+                    } else {
+                        "${strings.settingsOpenFolder} · Mini ${strings.navNowPlaying}"
+                    },
+                    onClick = onToggleMiniPlayer
+                )
+            }
             Separator()
             Item(strings.trayQuit, onClick = onQuit)
         }
@@ -226,6 +315,6 @@ private fun handleShortcut(
 }
 
 private const val APP_ICON = "icons/levyra.svg"
-private const val ARTWORK_CACHE_BYTES = 256L * 1024L * 1024L
+private const val ARTWORK_CACHE_BYTES = 512L * 1024L * 1024L
 private const val MIN_WINDOW_WIDTH = 960
 private const val MIN_WINDOW_HEIGHT = 640
