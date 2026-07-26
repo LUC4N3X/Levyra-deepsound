@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.swing.Swing
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -156,55 +158,67 @@ internal class DesktopUpdateController(
 
     private fun fetchLatestRelease(): DesktopRelease? {
         val request = Request.Builder()
-            .url(LATEST_RELEASE_URL)
+            .url(DESKTOP_RELEASES_URL)
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "Levyra-Desktop/$currentVersion")
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw IllegalStateException("GitHub release check failed: HTTP ${response.code}")
+                throw IllegalStateException("GitHub desktop release check failed: HTTP ${response.code}")
             }
-            val root = Json.parseToJsonElement(response.body.string()).jsonObject
-            val version = root["tag_name"]
-                ?.jsonPrimitive
-                ?.contentOrNull
-                .orEmpty()
-                .trim()
-                .removePrefix("v")
-            if (version.isBlank()) return null
-            val assets = root["assets"]?.jsonArray.orEmpty().mapNotNull { element ->
-                val asset = element.jsonObject
-                val name = asset["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                val url = asset["browser_download_url"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                if (name.isBlank() || url.isBlank()) {
-                    null
-                } else {
-                    DesktopReleaseAsset(
-                        name = name,
-                        url = url,
-                        size = asset["size"]?.jsonPrimitive?.longOrNull ?: 0L
-                    )
+            return Json.parseToJsonElement(response.body.string())
+                .jsonArray
+                .mapNotNull { parseDesktopRelease(it.jsonObject) }
+                .reduceOrNull { newest, candidate ->
+                    if (DesktopVersion.isNewer(candidate.version, newest.version)) candidate else newest
                 }
-            }
-            val expectedName = "LEVYRA-Windows-$version-x64.msi"
-            val installer = assets.firstOrNull { it.name.equals(expectedName, ignoreCase = true) }
-                ?: assets.firstOrNull { asset ->
-                    val normalized = asset.name.lowercase(Locale.ROOT)
-                    normalized.startsWith("levyra-windows-") && normalized.endsWith("-x64.msi")
-                }
-                ?: return null
-            val checksum = assets.firstOrNull {
-                it.name.equals("${installer.name}.sha256", ignoreCase = true)
-            }
-            return DesktopRelease(
-                version = version,
-                name = root["name"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank { "Levyra $version" },
-                notes = root["body"]?.jsonPrimitive?.contentOrNull.orEmpty().trim(),
-                installer = installer,
-                checksum = checksum
-            )
         }
+    }
+
+    private fun parseDesktopRelease(root: JsonObject): DesktopRelease? {
+        if (root["draft"]?.jsonPrimitive?.booleanOrNull == true) return null
+        if (root["prerelease"]?.jsonPrimitive?.booleanOrNull == true) return null
+
+        val tag = root["tag_name"]
+            ?.jsonPrimitive
+            ?.contentOrNull
+            .orEmpty()
+            .trim()
+        if (!tag.startsWith(DESKTOP_RELEASE_TAG_PREFIX)) return null
+
+        val version = tag.removePrefix(DESKTOP_RELEASE_TAG_PREFIX).trim()
+        if (version.isBlank()) return null
+
+        val assets = root["assets"]?.jsonArray.orEmpty().mapNotNull { element ->
+            val asset = element.jsonObject
+            val name = asset["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            val url = asset["browser_download_url"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            if (name.isBlank() || url.isBlank()) {
+                null
+            } else {
+                DesktopReleaseAsset(
+                    name = name,
+                    url = url,
+                    size = asset["size"]?.jsonPrimitive?.longOrNull ?: 0L
+                )
+            }
+        }
+        val expectedName = "LEVYRA-Windows-$version-x64.msi"
+        val installer = assets.firstOrNull { it.name.equals(expectedName, ignoreCase = true) }
+            ?: return null
+        val checksum = assets.firstOrNull {
+            it.name.equals("${installer.name}.sha256", ignoreCase = true)
+        }
+        return DesktopRelease(
+            version = version,
+            name = root["name"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank {
+                "Levyra Desktop $version"
+            },
+            notes = root["body"]?.jsonPrimitive?.contentOrNull.orEmpty().trim(),
+            installer = installer,
+            checksum = checksum
+        )
     }
 
     private suspend fun downloadInstaller(release: DesktopRelease): Path = withContext(Dispatchers.IO) {
@@ -258,7 +272,10 @@ internal class DesktopUpdateController(
                         throw IllegalStateException("Aggiornamento incompleto: $downloaded di $total byte")
                     }
                     internalState.update {
-                        it.copy(bytesDownloaded = downloaded, totalBytes = total.takeIf { value -> value > 0L } ?: downloaded)
+                        it.copy(
+                            bytesDownloaded = downloaded,
+                            totalBytes = total.takeIf { value -> value > 0L } ?: downloaded
+                        )
                     }
                 }
             }
@@ -385,7 +402,9 @@ exit ${'$'}process.ExitCode
     }
 
     private companion object {
-        const val LATEST_RELEASE_URL = "https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases/latest"
+        const val DESKTOP_RELEASES_URL =
+            "https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases?per_page=50"
+        const val DESKTOP_RELEASE_TAG_PREFIX = "desktop-v"
         const val UPDATE_DIRECTORY = "updates"
         const val BUFFER_SIZE = 64 * 1024
         const val PROGRESS_INTERVAL_BYTES = 256 * 1024L
