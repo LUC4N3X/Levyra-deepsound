@@ -46,7 +46,7 @@ fun LanguagePicker(
     var expanded by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
         PickerSurface(
-            flag = selected.flag,
+            countryCode = selected.defaultCountry,
             label = label,
             value = selected.nativeName,
             contentDescription = contentDescription,
@@ -56,7 +56,7 @@ fun LanguagePicker(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier
-                .width(320.dp)
+                .width(330.dp)
                 .heightIn(max = 520.dp)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
@@ -69,7 +69,10 @@ fun LanguagePicker(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(language.flag)
+                            CountryFlag(
+                                countryCode = language.defaultCountry,
+                                modifier = Modifier.width(38.dp).height(25.dp)
+                            )
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = language.nativeName,
@@ -117,7 +120,7 @@ fun CountryPicker(
     val selected = LocaleCatalog.country(selectedCode)
     Box(modifier = modifier) {
         PickerSurface(
-            flag = selected.flag,
+            countryCode = selected.code,
             label = label,
             value = selected.nativeName,
             contentDescription = contentDescription,
@@ -127,7 +130,7 @@ fun CountryPicker(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier
-                .width(320.dp)
+                .width(330.dp)
                 .heightIn(max = 520.dp)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
@@ -140,7 +143,10 @@ fun CountryPicker(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(country.flag)
+                            CountryFlag(
+                                countryCode = country.code,
+                                modifier = Modifier.width(38.dp).height(25.dp)
+                            )
                             Text(
                                 text = country.nativeName,
                                 style = MaterialTheme.typography.bodyMedium,
@@ -173,7 +179,7 @@ fun CountryPicker(
 
 @Composable
 private fun PickerSurface(
-    flag: String,
+    countryCode: String,
     label: String,
     value: String,
     contentDescription: String,
@@ -181,19 +187,23 @@ private fun PickerSurface(
 ) {
     Surface(
         modifier = Modifier
-            .width(260.dp)
-            .height(52.dp)
+            .width(270.dp)
+            .height(56.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(15.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 4.dp
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
         ) {
-            Text(flag, style = MaterialTheme.typography.titleMedium)
+            CountryFlag(
+                countryCode = countryCode,
+                modifier = Modifier.width(40.dp).height(27.dp)
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = label,
