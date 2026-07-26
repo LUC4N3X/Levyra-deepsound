@@ -21,6 +21,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.okio)
+    implementation(libs.jna)
+    implementation(libs.jna.platform)
 
     runtimeOnly(libs.slf4j.simple)
 
