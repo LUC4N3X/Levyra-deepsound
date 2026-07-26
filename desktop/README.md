@@ -1,8 +1,7 @@
 # Levyra Desktop
 
 Client desktop di Levyra per Windows, scritto in Kotlin con Compose Multiplatform.
-Condivide l'estrattore YouTube del progetto Android (`third_party/LevyraExtractor`)
-tramite composite build, riusa lo stesso catalogo di localizzazione e riproduce l'audio con libvlc.
+Condivide l'estrattore YouTube del progetto Android (`third_party/LevyraExtractor`), riusa lo stesso catalogo di localizzazione e riproduce l'audio con libvlc.
 
 ## Funzioni
 
@@ -17,6 +16,11 @@ tramite composite build, riusa lo stesso catalogo di localizzazione e riproduce 
 - Testi sincronizzati da LRCLIB, con la riga corrente evidenziata durante l'ascolto
 - Coda con shuffle e ripetizione, radio automatica a fine coda
 - Player desktop completo, chiudibile e dotato di comando per il download offline
+- Mini player separato, ridimensionabile e sempre in primo piano
+- Protezione single-instance: una seconda apertura riporta in primo piano la finestra già attiva
+- Protocollo `levyra://` e apertura diretta di link YouTube e YouTube Music
+- Controllo automatico degli aggiornamenti Windows con verifica SHA-256
+- Rapporto di arresto imprevisto salvato localmente e copiabile dalla finestra di errore
 - Colore d'accento estratto dalla copertina, tema chiaro e scuro e barra titolo Windows coordinata
 - Icona ufficiale Levyra in finestra, tray, sidebar e installer
 
@@ -58,6 +62,64 @@ Il motore di download:
 - preferisce automaticamente il file locale durante la riproduzione.
 
 I download incompleti restano disponibili per la ripresa dopo la chiusura o un riavvio dell'app. I file completati vengono riprodotti senza richiedere una nuova risoluzione dello stream.
+
+## Mini player e lifecycle desktop
+
+Il mini player è una finestra separata sempre in primo piano. Condivide in tempo reale lo stato del player principale, ricorda posizione e dimensione e supporta:
+
+- play e pausa;
+- brano precedente e successivo;
+- preferiti;
+- avanzamento del brano;
+- apertura della finestra principale;
+- scorciatoie Spazio, Freccia sinistra, Freccia destra ed Esc.
+
+Levyra mantiene una sola istanza attiva. Una seconda apertura non inizializza nuovamente libreria, download o player: invia una richiesta locale all'istanza già attiva e la riporta in primo piano.
+
+## Link diretti
+
+Su Windows viene registrato il protocollo utente `levyra://` senza richiedere privilegi amministrativi.
+
+Esempi:
+
+```text
+levyra://open?url=https%3A%2F%2Fmusic.youtube.com%2Fplaylist%3Flist%3D...
+levyra://search?q=artista
+levyra://watch?v=VIDEO_ID
+```
+
+Sono accettati anche URL diretti di YouTube, YouTube Music e `youtu.be`. Se Levyra è già aperta, il link viene inoltrato all'istanza esistente.
+
+## Aggiornamenti Windows
+
+Android e Desktop hanno versionamento completamente separato.
+
+La versione Windows si modifica soltanto nel file:
+
+```properties
+# desktop/version.properties
+levyraDesktopVersion=2.3.16
+```
+
+Il valore Android `levyraVersionName` nel `gradle.properties` principale non controlla, non avvia e non pubblica la build Desktop.
+
+Le release Windows usano tag indipendenti:
+
+```text
+desktop-v2.3.16
+desktop-v2.3.17
+```
+
+L'app controlla esclusivamente le release con prefisso `desktop-v`. Quando trova una versione superiore:
+
+1. mostra la notifica tradotta;
+2. scarica l'MSI Windows corretto;
+3. verifica il file `.sha256` pubblicato insieme all'installer;
+4. chiude l'app;
+5. installa la nuova versione sopra quella esistente;
+6. riapre Levyra.
+
+Il valore stabile `upgradeUuid` identifica tutte le versioni Windows come la stessa applicazione installata.
 
 ## Lingue
 
@@ -101,16 +163,16 @@ Arabo ed ebraico attivano il layout RTL nell'onboarding e nell'intera interfacci
 | VLC | 3.0.x a 64 bit, oppure runtime libvlc distribuito con l'app |
 | WiX Toolset | 3.14 (solo per generare `.msi` e `.exe`) |
 
-La build è indipendente da quella Android: `desktop/` ha il proprio
-`settings.gradle.kts`, il proprio catalogo delle dipendenze e il proprio wrapper.
+La build è indipendente da quella Android: `desktop/` ha il proprio `settings.gradle.kts`, il proprio catalogo delle dipendenze, il proprio wrapper e il proprio file di versione.
 
 ## Struttura
 
-```
+```text
 desktop/
+  version.properties
   core/      modelli, estrattore YouTube, risoluzione stream, download e persistenza
   player/    astrazione del player audio e implementazione libvlc, coda di riproduzione
-  app/       interfaccia Compose, onboarding, libreria, stato applicativo, packaging Windows
+  app/       interfaccia Compose, onboarding, libreria, lifecycle, aggiornamenti e packaging Windows
   packaging/ icona Windows usata da jpackage
 ```
 
@@ -133,15 +195,14 @@ Su Windows usare `gradlew.bat` al posto di `./gradlew`.
 
 ```bash
 cd desktop
-./gradlew createReleaseDistributable -PlevyraDesktopVersion=2.3.16
-./gradlew packageReleaseMsi -PlevyraDesktopVersion=2.3.16
-./gradlew packageReleaseExe -PlevyraDesktopVersion=2.3.16
+./gradlew createReleaseDistributable
+./gradlew packageReleaseMsi
+./gradlew packageReleaseExe
 ```
 
-Gli artefatti finiscono in `app/build/compose/binaries/main-release/`.
-Il workflow legge automaticamente `levyraVersionName` dal `gradle.properties` principale.
+Gli artefatti finiscono in `app/build/compose/binaries/main-release/`. Il workflow legge automaticamente `levyraDesktopVersion` da `desktop/version.properties`.
 
-Dopo il merge su `main`, MSI, EXE, ZIP portabile e checksum SHA-256 vengono aggiunti alla release GitHub già esistente della stessa versione, accanto all'APK Android. La PR genera soltanto artefatti temporanei.
+Dopo il merge su `main`, MSI, EXE, ZIP portabile e checksum SHA-256 vengono pubblicati nella release indipendente `desktop-v<versione>`. Le release Android `v<versione>` restano separate e non vengono modificate dal workflow Desktop. La PR genera soltanto artefatti temporanei.
 
 ## Runtime VLC
 
@@ -152,14 +213,11 @@ All'avvio della riproduzione Levyra cerca libvlc in questo ordine:
 3. variabili d'ambiente `LEVYRA_VLC_PATH` e `VLC_HOME`;
 4. installazioni standard in `Program Files\VideoLAN\VLC`.
 
-Per distribuire l'app senza chiedere l'installazione di VLC, copiare
-`libvlc.dll`, `libvlccore.dll` e la cartella `plugins` di una installazione VLC
-a 64 bit dentro `desktop/app/resources/windows-x64/vlc/` prima del packaging.
+Per distribuire l'app senza chiedere l'installazione di VLC, copiare `libvlc.dll`, `libvlccore.dll` e la cartella `plugins` di una installazione VLC a 64 bit dentro `desktop/app/resources/windows-x64/vlc/` prima del packaging.
 
 ## Dati locali
 
-Preferenze, libreria, download e cache delle copertine sono salvati in
-`%APPDATA%\Levyra` su Windows:
+Preferenze, libreria, download e cache delle copertine sono salvati in `%APPDATA%\Levyra` su Windows:
 
 | Percorso | Contenuto |
 |---|---|
@@ -167,8 +225,10 @@ Preferenze, libreria, download e cache delle copertine sono salvati in
 | `library.json` | preferiti, playlist locali, cronologia, ricerche recenti |
 | `downloads.json` | coda, stato, avanzamento e metadati dei download offline |
 | `offline/` | file audio completati e file temporanei ripristinabili |
+| `updates/` | installer temporanei, checksum e log degli aggiornamenti |
+| `crash-reports/` | rapporti locali degli arresti imprevisti |
 | `session.json` | coda e posizione dell'ultima sessione |
-| `window.json` | dimensione e posizione della finestra |
+| `window.json` | dimensione e posizione della finestra principale |
 | `cache/artwork` | cache su disco delle copertine |
 
 ## Scorciatoie
@@ -176,8 +236,15 @@ Preferenze, libreria, download e cache delle copertine sono salvati in
 | Tasto | Azione |
 |---|---|
 | `Spazio` | play o pausa |
-| `Ctrl` + `→` | brano successivo |
-| `Ctrl` + `←` | brano precedente o riavvio |
+| `Ctrl` + `→` | brano successivo nella finestra principale |
+| `Ctrl` + `←` | brano precedente nella finestra principale |
+| `→` | brano successivo nel mini player |
+| `←` | brano precedente nel mini player |
+| `Esc` | chiude il mini player |
+
+## Riferimenti tecnici
+
+Il rafforzamento del lifecycle Desktop ha preso come riferimento architetturale il progetto GPL-3.0 SimpMusic, in particolare i pattern relativi a single-instance, mini player, gestione dei crash, deep link e packaging desktop. L'implementazione Levyra è stata riscritta e adattata al proprio stato, al proprio player libvlc e al proprio sistema di persistenza.
 
 ## Vincoli di design
 
