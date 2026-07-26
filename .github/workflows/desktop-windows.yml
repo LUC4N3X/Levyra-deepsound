@@ -176,6 +176,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $false
           $version = "${{ steps.version.outputs.version }}"
           $tag = "desktop-v$version"
           $repo = $env:GITHUB_REPOSITORY
@@ -185,6 +186,7 @@ jobs:
           $msiName = "LEVYRA-Windows-$version-x64.msi"
           $exeName = "LEVYRA-Windows-$version-x64.exe"
           $zipName = "LEVYRA-Windows-$version-portable-x64.zip"
+          $remoteAssetsByName = @{}
 
           function Resolve-TagCommit([string]$tagName) {
             git fetch --force $remote "refs/tags/$tagName:refs/tags/$tagName" *> $null
@@ -213,6 +215,10 @@ jobs:
           }
 
           function Download-ReleaseAsset([string]$assetName, [string]$directory) {
+            $metadata = $remoteAssetsByName[$assetName]
+            if ($null -eq $metadata) {
+              throw "Metadati GitHub mancanti per l'asset $assetName"
+            }
             New-Item -ItemType Directory -Force -Path $directory | Out-Null
             gh release download $tag --repo $repo --pattern $assetName --dir $directory
             if ($LASTEXITCODE -ne 0) {
@@ -221,6 +227,14 @@ jobs:
             $path = Join-Path $directory $assetName
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
               throw "GitHub non ha restituito l'asset esistente $assetName"
+            }
+            if ($null -eq $metadata.size) {
+              throw "Dimensione GitHub mancante per l'asset $assetName"
+            }
+            $declaredSize = [int64]$metadata.size
+            $downloadedSize = [int64](Get-Item -LiteralPath $path).Length
+            if ($downloadedSize -ne $declaredSize) {
+              throw "Asset $assetName incompleto: GitHub dichiara $declaredSize byte, scaricati $downloadedSize byte"
             }
             return $path
           }
@@ -245,7 +259,11 @@ jobs:
 
           $releaseJson = gh release view $tag --repo $repo --json assets
           if ($LASTEXITCODE -ne 0) { throw "Impossibile leggere gli asset esistenti di $tag" }
-          $existingNames = @((($releaseJson | ConvertFrom-Json).assets | ForEach-Object { $_.name }))
+          $remoteAssets = @((($releaseJson | ConvertFrom-Json).assets))
+          foreach ($remoteAsset in $remoteAssets) {
+            $remoteAssetsByName[[string]$remoteAsset.name] = $remoteAsset
+          }
+          $existingNames = @($remoteAssetsByName.Keys)
 
           $pairs = @(
             [pscustomobject]@{ Artifact = $msiName; Checksum = "$msiName.sha256" },
