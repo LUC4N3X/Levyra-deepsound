@@ -48,7 +48,7 @@ fun PlaylistScreen(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
-    var renaming by remember { mutableStateOf(false) }
+    var renaming by remember(playlist?.id) { mutableStateOf(false) }
     var draftName by remember(playlist?.id) { mutableStateOf(playlist?.name.orEmpty()) }
 
     if (playlist == null) {

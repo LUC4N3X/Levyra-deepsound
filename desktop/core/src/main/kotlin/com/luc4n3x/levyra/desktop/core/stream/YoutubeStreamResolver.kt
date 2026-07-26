@@ -35,6 +35,7 @@ class YoutubeStreamResolver(
             cache[key]?.takeIf { it.isFresh(nowMillis() + FRESHNESS_MARGIN_MS) }?.let { return@withLock it }
             val resolved = withContext(dispatcher) { fetch(track, quality, codec) }
             cache[key] = resolved
+            cache.entries.removeIf { !it.value.isFresh(nowMillis()) }
             resolved
         }
     }
@@ -42,6 +43,7 @@ class YoutubeStreamResolver(
     override fun invalidate(track: Track) {
         val prefix = "${track.videoId}|"
         cache.keys.removeIf { it.startsWith(prefix) }
+        locks.keys.removeIf { it.startsWith(prefix) }
     }
 
     private fun fetch(track: Track, quality: AudioQuality, codec: PreferredCodec): ResolvedAudio {

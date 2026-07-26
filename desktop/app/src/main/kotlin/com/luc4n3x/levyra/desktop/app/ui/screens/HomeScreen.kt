@@ -190,7 +190,7 @@ fun HomeScreen(
             item {
                 SectionHeader(title = strings.homeFavorites)
             }
-            itemsIndexed(library.favorites) { index, track ->
+            itemsIndexed(library.favorites, key = { _, track -> track.id }) { index, track ->
                 TrackRow(
                     track = track,
                     isCurrent = track.id == actions.currentTrackId,

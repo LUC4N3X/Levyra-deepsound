@@ -87,7 +87,7 @@ fun NowPlayingScreen(
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = LevyraIcons.ChevronDown,
-                        contentDescription = null,
+                        contentDescription = strings.playbackCollapse,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -194,8 +194,8 @@ private fun LyricsPanel(
     val activeIndex = lyrics?.activeIndex(positionMs) ?: -1
 
     LaunchedEffect(activeIndex) {
-        if (activeIndex >= 0) {
-            listState.animateScrollToItem(index = activeIndex.coerceAtLeast(0))
+        if (activeIndex >= 0 && !listState.isScrollInProgress) {
+            listState.animateScrollToItem(index = activeIndex)
         }
     }
 

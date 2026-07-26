@@ -23,6 +23,9 @@ concurrency:
   group: desktop-windows-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
 jobs:
   verify:
     name: Compile and test
@@ -32,6 +35,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -42,7 +47,7 @@ jobs:
       - name: Compile modules and run tests
         shell: bash
         working-directory: desktop
-        run: ./gradlew --no-daemon --stacktrace assemble check
+        run: ./gradlew --stacktrace assemble check
 
       - name: Upload test reports
         if: always()
@@ -64,6 +69,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -96,12 +103,12 @@ jobs:
       - name: Build portable distribution
         shell: pwsh
         working-directory: desktop
-        run: .\gradlew.bat --no-daemon --stacktrace createReleaseDistributable
+        run: .\gradlew.bat --stacktrace createReleaseDistributable
 
       - name: Build installers
         shell: pwsh
         working-directory: desktop
-        run: .\gradlew.bat --no-daemon --stacktrace packageReleaseMsi packageReleaseExe
+        run: .\gradlew.bat --stacktrace packageReleaseMsi packageReleaseExe
 
       - name: Upload installers
         uses: actions/upload-artifact@v7
