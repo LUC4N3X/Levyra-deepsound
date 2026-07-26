@@ -9,16 +9,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,20 +28,21 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.AppInfo
 import com.luc4n3x.levyra.desktop.app.state.Destination
@@ -62,6 +64,7 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
+import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.player.VlcNativeLocator
 import java.awt.Desktop
@@ -109,7 +112,10 @@ fun LevyraRoot(model: LevyraAppModel) {
         }
     }
 
-    val accent by animateColorAsState(targetValue = artworkAccent, animationSpec = tween(durationMillis = 500))
+    val accent by animateColorAsState(
+        targetValue = artworkAccent,
+        animationSpec = tween(durationMillis = 500)
+    )
 
     val actions = TrackActions(
         currentTrackId = playback.current?.id.orEmpty(),
@@ -122,128 +128,211 @@ fun LevyraRoot(model: LevyraAppModel) {
     )
 
     LevyraTheme(themeMode = settings.themeMode) {
-        CompositionLocalProvider(LocalStrings provides strings, LocalAccentColor provides accent) {
-            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        CompositionLocalProvider(
+            LocalStrings provides strings,
+            LocalAccentColor provides accent
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        NavigationRail(
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        NavigationSidebar(
                             destination = destination,
                             onNavigate = model::navigate
                         )
-                        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            Crossfade(targetState = destination, animationSpec = tween(durationMillis = 220)) { screen ->
-                            when (screen) {
-                                Destination.HOME -> HomeScreen(
-                                    library = library,
-                                    actions = actions,
-                                    onOpenPlaylist = model::openPlaylist,
-                                    onCreatePlaylist = { name -> model.libraryStore.createPlaylist(name) },
-                                    onImportUrl = model::openCollectionFromUrl,
-                                    onClearHistory = { model.libraryStore.clearHistory() }
-                                )
 
-                                Destination.DISCOVER -> DiscoverScreen(
-                                    state = discover,
-                                    actions = actions,
-                                    onCountryChange = { value ->
-                                        model.updateSettings { it.copy(contentCountry = value) }
-                                    },
-                                    onRefresh = model::refreshDiscover,
-                                    onPlayAll = {
-                                        model.playbackController.playTracks(discover.tracks, 0)
-                                    },
-                                    onShuffleAll = {
-                                        model.playbackController.playShuffled(discover.tracks)
-                                    }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(top = 10.dp, end = if (queueVisible) 0.dp else 10.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            accent.copy(alpha = 0.055f),
+                                            MaterialTheme.colorScheme.surface,
+                                            MaterialTheme.colorScheme.surface
+                                        )
+                                    )
                                 )
-
-                                Destination.SEARCH -> SearchScreen(
-                                    state = search,
-                                    recentSearches = library.recentSearches,
-                                    actions = actions,
-                                    onQueryChange = model.catalogController::onQueryChange,
-                                    onSubmit = model.catalogController::submit,
-                                    onFilterChange = model.catalogController::setFilter,
-                                    onLoadMore = model.catalogController::loadMoreSearch,
-                                    onOpenCollection = model::openCollection,
-                                    onClearRecent = { model.libraryStore.clearRecentSearches() }
-                                )
-
-                                Destination.COLLECTION -> CollectionScreen(
-                                    state = collection,
-                                    actions = actions,
-                                    onBack = model::back,
-                                    onLoadMore = model.catalogController::loadMoreCollection,
-                                    onPlayAll = {
-                                        model.playbackController.playTracks(collection.page.tracks, 0)
-                                    },
-                                    onShuffleAll = {
-                                        model.playbackController.playShuffled(collection.page.tracks)
-                                    },
-                                    onEnqueueAll = {
-                                        model.playbackController.enqueueLast(collection.page.tracks)
-                                    },
-                                    onOpenCollection = model::openCollection
-                                )
-
-                                Destination.PLAYLIST -> {
-                                    val playlist = library.playlists.firstOrNull { it.id == openPlaylistId }
-                                    PlaylistScreen(
-                                        playlist = playlist,
+                        ) {
+                            Crossfade(
+                                targetState = destination,
+                                animationSpec = tween(durationMillis = 190)
+                            ) { screen ->
+                                when (screen) {
+                                    Destination.HOME -> HomeScreen(
+                                        library = library,
+                                        discover = discover,
                                         actions = actions,
-                                        onBack = model::back,
+                                        onOpenSearch = { model.navigate(Destination.SEARCH) },
+                                        onOpenDiscover = { model.navigate(Destination.DISCOVER) },
+                                        onOpenNewReleases = {
+                                            model.catalogController.clearSearch()
+                                            model.catalogController.setFilter(SearchFilter.ALBUMS)
+                                            model.catalogController.onQueryChange(strings.homeNewReleasesQuery)
+                                            model.catalogController.submit(strings.homeNewReleasesQuery)
+                                            model.navigate(Destination.SEARCH)
+                                        },
+                                        onPlayMix = model.playbackController::playShuffled,
+                                        onOpenPlaylist = model::openPlaylist,
+                                        onCreatePlaylist = { name ->
+                                            model.libraryStore.createPlaylist(name)
+                                        },
+                                        onImportUrl = model::openCollectionFromUrl,
+                                        onClearHistory = { model.libraryStore.clearHistory() }
+                                    )
+
+                                    Destination.DISCOVER -> DiscoverScreen(
+                                        state = discover,
+                                        actions = actions,
+                                        onCountryChange = { value ->
+                                            model.updateSettings {
+                                                it.copy(contentCountry = value)
+                                            }
+                                        },
+                                        onRefresh = model::refreshDiscover,
                                         onPlayAll = {
-                                            playlist?.let { model.playbackController.playTracks(it.tracks, 0) }
+                                            model.playbackController.playTracks(discover.tracks, 0)
                                         },
                                         onShuffleAll = {
-                                            playlist?.let { model.playbackController.playShuffled(it.tracks) }
+                                            model.playbackController.playShuffled(discover.tracks)
+                                        }
+                                    )
+
+                                    Destination.SEARCH -> SearchScreen(
+                                        state = search,
+                                        recentSearches = library.recentSearches,
+                                        actions = actions,
+                                        onQueryChange = model.catalogController::onQueryChange,
+                                        onSubmit = model.catalogController::submit,
+                                        onFilterChange = model.catalogController::setFilter,
+                                        onLoadMore = model.catalogController::loadMoreSearch,
+                                        onOpenCollection = model::openCollection,
+                                        onClearRecent = {
+                                            model.libraryStore.clearRecentSearches()
+                                        }
+                                    )
+
+                                    Destination.COLLECTION -> CollectionScreen(
+                                        state = collection,
+                                        actions = actions,
+                                        onBack = model::back,
+                                        onLoadMore = model.catalogController::loadMoreCollection,
+                                        onPlayAll = {
+                                            model.playbackController.playTracks(
+                                                collection.page.tracks,
+                                                0
+                                            )
                                         },
-                                        onRename = { name ->
-                                            playlist?.let { model.libraryStore.renamePlaylist(it.id, name) }
+                                        onShuffleAll = {
+                                            model.playbackController.playShuffled(
+                                                collection.page.tracks
+                                            )
                                         },
-                                        onDelete = {
-                                            playlist?.let { model.libraryStore.deletePlaylist(it.id) }
-                                            model.navigate(Destination.HOME)
+                                        onEnqueueAll = {
+                                            model.playbackController.enqueueLast(
+                                                collection.page.tracks
+                                            )
                                         },
-                                        onRemoveTrack = { trackId ->
-                                            playlist?.let { model.libraryStore.removeFromPlaylist(it.id, trackId) }
+                                        onOpenCollection = model::openCollection
+                                    )
+
+                                    Destination.PLAYLIST -> {
+                                        val playlist = library.playlists.firstOrNull {
+                                            it.id == openPlaylistId
+                                        }
+                                        PlaylistScreen(
+                                            playlist = playlist,
+                                            actions = actions,
+                                            onBack = model::back,
+                                            onPlayAll = {
+                                                playlist?.let {
+                                                    model.playbackController.playTracks(
+                                                        it.tracks,
+                                                        0
+                                                    )
+                                                }
+                                            },
+                                            onShuffleAll = {
+                                                playlist?.let {
+                                                    model.playbackController.playShuffled(
+                                                        it.tracks
+                                                    )
+                                                }
+                                            },
+                                            onRename = { name ->
+                                                playlist?.let {
+                                                    model.libraryStore.renamePlaylist(
+                                                        it.id,
+                                                        name
+                                                    )
+                                                }
+                                            },
+                                            onDelete = {
+                                                playlist?.let {
+                                                    model.libraryStore.deletePlaylist(it.id)
+                                                }
+                                                model.navigate(Destination.HOME)
+                                            },
+                                            onRemoveTrack = { trackId ->
+                                                playlist?.let {
+                                                    model.libraryStore.removeFromPlaylist(
+                                                        it.id,
+                                                        trackId
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
+
+                                    Destination.NOW_PLAYING -> NowPlayingScreen(
+                                        state = playback,
+                                        lyricsState = lyrics,
+                                        actions = actions,
+                                        onBack = model::back,
+                                        onJumpTo = model.playbackController::jumpTo
+                                    )
+
+                                    Destination.SETTINGS -> SettingsScreen(
+                                        settings = settings,
+                                        dataDirectory = model.paths.root.toString(),
+                                        vlcStatus = vlcStatus,
+                                        appVersion = AppInfo.version(),
+                                        onUpdate = model::updateSettings,
+                                        onBrowseVlc = {
+                                            scope.launch {
+                                                val selected = chooseDirectory()
+                                                if (selected.isNotBlank()) {
+                                                    model.updateSettings {
+                                                        it.copy(vlcDirectory = selected)
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        onVerifyVlc = {
+                                            scope.launch {
+                                                vlcStatus = verifyVlc(
+                                                    settings.vlcDirectory,
+                                                    strings.settingsVlcDetected,
+                                                    strings.settingsVlcMissing
+                                                )
+                                            }
+                                        },
+                                        onOpenDataFolder = {
+                                            scope.launch {
+                                                openDirectory(model.paths.root.toString())
+                                            }
                                         }
                                     )
                                 }
-
-                                Destination.NOW_PLAYING -> NowPlayingScreen(
-                                    state = playback,
-                                    lyricsState = lyrics,
-                                    actions = actions,
-                                    onBack = model::back,
-                                    onJumpTo = model.playbackController::jumpTo
-                                )
-
-                                Destination.SETTINGS -> SettingsScreen(
-                                    settings = settings,
-                                    dataDirectory = model.paths.root.toString(),
-                                    vlcStatus = vlcStatus,
-                                    appVersion = AppInfo.version(),
-                                    onUpdate = model::updateSettings,
-                                    onBrowseVlc = {
-                                        scope.launch {
-                                            val selected = chooseDirectory()
-                                            if (selected.isNotBlank()) {
-                                                model.updateSettings { it.copy(vlcDirectory = selected) }
-                                            }
-                                        }
-                                    },
-                                    onVerifyVlc = {
-                                        scope.launch {
-                                            vlcStatus = verifyVlc(settings.vlcDirectory, strings.settingsVlcDetected, strings.settingsVlcMissing)
-                                        }
-                                    },
-                                    onOpenDataFolder = {
-                                        scope.launch { openDirectory(model.paths.root.toString()) }
-                                    }
-                                )
-                            }
                             }
                         }
 
@@ -253,12 +342,13 @@ fun LevyraRoot(model: LevyraAppModel) {
                                 onJumpTo = model.playbackController::jumpTo,
                                 onRemove = model.playbackController::removeFromQueue,
                                 onClear = model.playbackController::clearQueue,
-                                onClose = model::toggleQueue
+                                onClose = model::toggleQueue,
+                                modifier = Modifier
+                                    .padding(top = 10.dp, end = 10.dp)
+                                    .clip(RoundedCornerShape(18.dp))
                             )
                         }
                     }
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                     PlayerBar(
                         state = playback,
@@ -267,7 +357,9 @@ fun LevyraRoot(model: LevyraAppModel) {
                         } ?: false,
                         queueVisible = queueVisible,
                         onPlayPause = model.playbackController::togglePlayPause,
-                        onNext = { model.playbackController.next(automatic = false) },
+                        onNext = {
+                            model.playbackController.next(automatic = false)
+                        },
                         onPrevious = model.playbackController::previous,
                         onSeek = model.playbackController::seekTo,
                         onVolumeChange = model.playbackController::setVolume,
@@ -276,14 +368,30 @@ fun LevyraRoot(model: LevyraAppModel) {
                         onCycleRepeat = model.playbackController::cycleRepeat,
                         onToggleQueue = model::toggleQueue,
                         onToggleFavorite = {
-                            playback.current?.let { track -> model.toggleFavorite(track) }
+                            playback.current?.let { track ->
+                                model.toggleFavorite(track)
+                            }
                         },
-                        onOpenNowPlaying = { model.navigate(Destination.NOW_PLAYING) }
+                        onOpenNowPlaying = {
+                            model.navigate(Destination.NOW_PLAYING)
+                        },
+                        modifier = Modifier.padding(
+                            start = 10.dp,
+                            end = 10.dp,
+                            top = 10.dp,
+                            bottom = 10.dp
+                        )
                     )
                 }
 
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                    SnackbarHost(hostState = snackbarState, modifier = Modifier.padding(bottom = 120.dp))
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    SnackbarHost(
+                        hostState = snackbarState,
+                        modifier = Modifier.padding(bottom = 118.dp)
+                    )
                 }
             }
 
@@ -300,12 +408,18 @@ fun LevyraRoot(model: LevyraAppModel) {
                                     style = MaterialTheme.typography.bodyLarge,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(RoundedCornerShape(9.dp))
                                         .clickable {
-                                            model.libraryStore.addToPlaylist(playlist.id, listOf(pending))
+                                            model.libraryStore.addToPlaylist(
+                                                playlist.id,
+                                                listOf(pending)
+                                            )
                                             pendingPlaylistTrack = null
                                         }
-                                        .padding(horizontal = 10.dp, vertical = 10.dp)
+                                        .padding(
+                                            horizontal = 12.dp,
+                                            vertical = 10.dp
+                                        )
                                 )
                             }
                             OutlinedTextField(
@@ -320,8 +434,13 @@ fun LevyraRoot(model: LevyraAppModel) {
                     confirmButton = {
                         Button(
                             onClick = {
-                                val playlistId = model.libraryStore.createPlaylist(newPlaylistName)
-                                model.libraryStore.addToPlaylist(playlistId, listOf(pending))
+                                val playlistId = model.libraryStore.createPlaylist(
+                                    newPlaylistName
+                                )
+                                model.libraryStore.addToPlaylist(
+                                    playlistId,
+                                    listOf(pending)
+                                )
                                 newPlaylistName = ""
                                 pendingPlaylistTrack = null
                             },
@@ -331,7 +450,9 @@ fun LevyraRoot(model: LevyraAppModel) {
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { pendingPlaylistTrack = null }) {
+                        TextButton(
+                            onClick = { pendingPlaylistTrack = null }
+                        ) {
                             Text(strings.cancel)
                         }
                     }
@@ -342,51 +463,92 @@ fun LevyraRoot(model: LevyraAppModel) {
 }
 
 @Composable
-private fun NavigationRail(
+private fun NavigationSidebar(
     destination: Destination,
     onNavigate: (Destination) -> Unit
 ) {
     val strings = LocalStrings.current
     Column(
         modifier = Modifier
-            .width(96.dp)
+            .width(220.dp)
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 14.dp, vertical = 16.dp)
     ) {
-        Text(
-            text = strings.appName,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-        RailItem(
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                LevyraBrand.cyan,
+                                LevyraBrand.violet
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = LevyraIcons.Disc,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Text(
+                text = strings.appName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(26.dp))
+        SidebarSectionLabel(strings.navSectionExplore)
+        Spacer(modifier = Modifier.height(7.dp))
+
+        SidebarItem(
             icon = LevyraIcons.Home,
             label = strings.navHome,
-            selected = destination == Destination.HOME || destination == Destination.PLAYLIST,
+            selected = destination == Destination.HOME ||
+                destination == Destination.PLAYLIST,
             onClick = { onNavigate(Destination.HOME) }
         )
-        RailItem(
+        SidebarItem(
             icon = LevyraIcons.Chart,
             label = strings.navDiscover,
             selected = destination == Destination.DISCOVER,
             onClick = { onNavigate(Destination.DISCOVER) }
         )
-        RailItem(
+        SidebarItem(
             icon = LevyraIcons.Search,
             label = strings.navSearch,
-            selected = destination == Destination.SEARCH || destination == Destination.COLLECTION,
+            selected = destination == Destination.SEARCH ||
+                destination == Destination.COLLECTION,
             onClick = { onNavigate(Destination.SEARCH) }
         )
-        RailItem(
+
+        Spacer(modifier = Modifier.height(22.dp))
+        SidebarSectionLabel(strings.navSectionLibrary)
+        Spacer(modifier = Modifier.height(7.dp))
+
+        SidebarItem(
             icon = LevyraIcons.Disc,
             label = strings.navNowPlaying,
             selected = destination == Destination.NOW_PLAYING,
             onClick = { onNavigate(Destination.NOW_PLAYING) }
         )
-        RailItem(
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        SidebarItem(
             icon = LevyraIcons.Settings,
             label = strings.navSettings,
             selected = destination == Destination.SETTINGS,
@@ -396,39 +558,64 @@ private fun NavigationRail(
 }
 
 @Composable
-private fun RailItem(
+private fun SidebarSectionLabel(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 12.dp)
+    )
+}
+
+@Composable
+private fun SidebarItem(
     icon: ImageVector,
     label: String,
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val contentColor = if (selected) {
+    val background = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+    } else {
+        MaterialTheme.colorScheme.background
+    }
+    val iconColor = if (selected) {
         MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Column(
+    val textColor = if (selected) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Row(
         modifier = Modifier
-            .width(76.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainer
-            )
+            .fillMaxWidth()
+            .height(46.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .background(background)
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = contentColor,
+            tint = iconColor,
             modifier = Modifier.size(20.dp)
         )
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = contentColor
+            style = MaterialTheme.typography.labelLarge,
+            color = textColor,
+            fontWeight = if (selected) {
+                FontWeight.SemiBold
+            } else {
+                FontWeight.Medium
+            }
         )
     }
 }
@@ -445,15 +632,18 @@ private suspend fun chooseDirectory(): String = withContext(Dispatchers.Swing) {
     }
 }
 
-private suspend fun verifyVlc(directory: String, detectedLabel: String, missingLabel: String): String =
-    withContext(Dispatchers.Default) {
-        val discovery = VlcNativeLocator.discover(directory)
-        if (discovery.available) {
-            "$detectedLabel: ${discovery.path}"
-        } else {
-            "$missingLabel: ${discovery.searchedDirectories.joinToString(", ")}"
-        }
+private suspend fun verifyVlc(
+    directory: String,
+    detectedLabel: String,
+    missingLabel: String
+): String = withContext(Dispatchers.Default) {
+    val discovery = VlcNativeLocator.discover(directory)
+    if (discovery.available) {
+        "$detectedLabel: ${discovery.path}"
+    } else {
+        "$missingLabel: ${discovery.searchedDirectories.joinToString(", ")}"
     }
+}
 
 private suspend fun openDirectory(path: String) = withContext(Dispatchers.IO) {
     runCatching {
