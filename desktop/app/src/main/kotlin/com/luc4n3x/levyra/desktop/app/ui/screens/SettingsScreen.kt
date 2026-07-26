@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.ui.components.EqualizerBars
 import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
@@ -191,16 +192,32 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    var vlcDraft by remember(settings.vlcDirectory) {
+                        mutableStateOf(settings.vlcDirectory)
+                    }
+                    fun commitVlcDirectory() {
+                        val trimmed = vlcDraft.trim()
+                        if (trimmed != settings.vlcDirectory) {
+                            onUpdate { it.copy(vlcDirectory = trimmed) }
+                        }
+                    }
                     OutlinedTextField(
-                        value = settings.vlcDirectory,
-                        onValueChange = { value -> onUpdate { it.copy(vlcDirectory = value) } },
+                        value = vlcDraft,
+                        onValueChange = { value -> vlcDraft = value },
                         singleLine = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged { focus -> if (!focus.isFocused) commitVlcDirectory() }
                     )
                     OutlinedButton(onClick = onBrowseVlc) {
                         Text(strings.settingsVlcBrowse)
                     }
-                    Button(onClick = onVerifyVlc) {
+                    Button(
+                        onClick = {
+                            commitVlcDirectory()
+                            onVerifyVlc()
+                        }
+                    ) {
                         Text(strings.settingsVlcVerify)
                     }
                 }

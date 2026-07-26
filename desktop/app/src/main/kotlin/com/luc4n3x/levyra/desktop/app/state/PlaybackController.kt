@@ -7,6 +7,7 @@ import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
 import com.luc4n3x.levyra.desktop.core.storage.SessionData
 import com.luc4n3x.levyra.desktop.core.storage.SessionStore
 import com.luc4n3x.levyra.desktop.core.storage.SettingsStore
+import com.luc4n3x.levyra.desktop.core.stream.ResolvedAudio
 import com.luc4n3x.levyra.desktop.core.stream.StreamResolver
 import com.luc4n3x.levyra.desktop.player.AudioPlayer
 import com.luc4n3x.levyra.desktop.player.AudioPlayerUnavailableException
@@ -297,80 +298,97 @@ class PlaybackController(
                 streamLabel = ""
             )
         }
-        playbackJob = playerScope.launch {
-            val activePlayer = ensurePlayer()
-            if (activePlayer == null) {
-                internalState.update { state ->
-                    state.copy(preparingTrackId = "", status = PlaybackStatus.FAILED)
-                }
-                return@launch
-            }
-            if (forceRestart) {
-                activePlayer.stop()
-            }
-            val playable = if (track.videoUrl.isBlank()) {
-                val located = try {
-                    catalog.findPlayable(track)
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (error: Exception) {
-                    if (isRateLimited(error)) {
-                        reportRateLimit(error)
-                        return@launch
-                    }
-                    null
-                }
-                if (located == null) {
-                    internalState.update { state -> state.copy(preparingTrackId = "") }
-                    messageFlow.tryEmit("Nessuna versione riproducibile trovata per ${track.title}")
-                    skipAfterFailure(track)
-                    return@launch
-                }
-                val merged = track.copy(
-                    videoUrl = located.videoUrl,
-                    durationMs = if (located.durationMs > 0L) located.durationMs else track.durationMs
-                )
-                updateTrackMetadata(merged)
-                merged
-            } else {
-                track
-            }
-            val settings = settingsStore.current
-            val resolved = try {
-                resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Exception) {
-                if (isRateLimited(error)) {
-                    reportRateLimit(error)
-                    return@launch
-                }
-                internalState.update { state -> state.copy(preparingTrackId = "") }
-                messageFlow.tryEmit(error.message ?: "Impossibile risolvere lo stream")
-                skipAfterFailure(track)
-                return@launch
-            }
-            val enriched = track.copy(
-                title = resolved.title.ifBlank { track.title },
-                artist = resolved.artist.ifBlank { track.artist },
-                artworkUrl = resolved.artworkUrl.ifBlank { track.artworkUrl },
-                durationMs = if (resolved.durationMs > 0L) resolved.durationMs else track.durationMs
-            )
-            updateTrackMetadata(enriched)
-            activePlayer.play(resolved.url, startAtMs)
-            activePlayer.setVolume(internalState.value.volume)
-            activePlayer.setMuted(internalState.value.muted)
+        playbackJob = playerScope.launch { runPlayback(track, startAtMs, forceRestart) }
+    }
+
+    private suspend fun runPlayback(track: Track, startAtMs: Long, forceRestart: Boolean) {
+        val activePlayer = ensurePlayer()
+        if (activePlayer == null) {
             internalState.update { state ->
-                state.copy(
-                    preparingTrackId = "",
-                    status = PlaybackStatus.BUFFERING,
-                    streamLabel = resolved.label,
-                    durationMs = if (resolved.durationMs > 0L) resolved.durationMs else state.durationMs
-                )
+                state.copy(preparingTrackId = "", status = PlaybackStatus.FAILED)
             }
-            libraryStore.recordPlayback(enriched)
-            persistSession()
+            return
         }
+        if (forceRestart) {
+            activePlayer.stop()
+        }
+        val playable = resolvePlayable(track) ?: return
+        val resolved = resolveStream(playable, track) ?: return
+        beginPlayback(activePlayer, track, resolved, startAtMs)
+    }
+
+    private suspend fun resolvePlayable(track: Track): Track? {
+        if (track.videoUrl.isNotBlank()) return track
+        val located = try {
+            catalog.findPlayable(track)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            if (isRateLimited(error)) {
+                reportRateLimit(error)
+                return null
+            }
+            null
+        }
+        if (located == null) {
+            internalState.update { state -> state.copy(preparingTrackId = "") }
+            messageFlow.tryEmit("Nessuna versione riproducibile trovata per ${track.title}")
+            skipAfterFailure(track)
+            return null
+        }
+        val merged = track.copy(
+            videoUrl = located.videoUrl,
+            durationMs = if (located.durationMs > 0L) located.durationMs else track.durationMs
+        )
+        updateTrackMetadata(merged)
+        return merged
+    }
+
+    private suspend fun resolveStream(playable: Track, track: Track): ResolvedAudio? {
+        val settings = settingsStore.current
+        return try {
+            resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            if (isRateLimited(error)) {
+                reportRateLimit(error)
+                return null
+            }
+            internalState.update { state -> state.copy(preparingTrackId = "") }
+            messageFlow.tryEmit(error.message ?: "Impossibile risolvere lo stream")
+            skipAfterFailure(track)
+            null
+        }
+    }
+
+    private fun beginPlayback(
+        activePlayer: AudioPlayer,
+        track: Track,
+        resolved: ResolvedAudio,
+        startAtMs: Long
+    ) {
+        val enriched = track.copy(
+            title = resolved.title.ifBlank { track.title },
+            artist = resolved.artist.ifBlank { track.artist },
+            artworkUrl = resolved.artworkUrl.ifBlank { track.artworkUrl },
+            durationMs = if (resolved.durationMs > 0L) resolved.durationMs else track.durationMs
+        )
+        updateTrackMetadata(enriched)
+        activePlayer.play(resolved.url, startAtMs)
+        val current = internalState.value
+        activePlayer.setVolume(current.volume)
+        activePlayer.setMuted(current.muted)
+        internalState.update { state ->
+            state.copy(
+                preparingTrackId = "",
+                status = PlaybackStatus.BUFFERING,
+                streamLabel = resolved.label,
+                durationMs = if (resolved.durationMs > 0L) resolved.durationMs else state.durationMs
+            )
+        }
+        libraryStore.recordPlayback(enriched)
+        persistSession()
     }
 
     private fun updateTrackMetadata(track: Track) {
