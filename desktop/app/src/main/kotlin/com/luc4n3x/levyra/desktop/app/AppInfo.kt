@@ -1,7 +1,7 @@
 package com.luc4n3x.levyra.desktop.app
 
 object AppInfo {
-    const val FALLBACK_VERSION = "1.0.0"
+    const val FALLBACK_VERSION = "2.3.16"
 
     fun version(): String {
         val packaged = System.getProperty("jpackage.app-version").orEmpty()
