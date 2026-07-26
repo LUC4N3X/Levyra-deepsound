@@ -177,11 +177,11 @@ class OfflineDownloadController(
         Files.createDirectories(paths.downloadsDirectory)
 
         val existingRecord = store.record(id) ?: return
-        if (existingRecord.temporaryPath.isNotBlank() && existingRecord.temporaryPath != temporary.toString()) {
-            runCatching { Files.deleteIfExists(Path.of(existingRecord.temporaryPath)) }
-        }
-
-        var resumedBytes = runCatching { Files.size(temporary) }.getOrDefault(0L)
+        var resumedBytes = OfflinePartialFileMigration.prepare(
+            downloadsDirectory = paths.downloadsDirectory,
+            recordedPath = existingRecord.temporaryPath,
+            targetPath = temporary
+        )
         val requestBuilder = Request.Builder()
             .url(resolved.url)
             .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
@@ -309,6 +309,76 @@ class OfflineDownloadController(
         private const val PROGRESS_BYTES_INTERVAL = 512 * 1024L
         private const val PROGRESS_TIME_INTERVAL_NANOS = 250_000_000L
     }
+}
+
+internal object OfflinePartialFileMigration {
+    fun prepare(downloadsDirectory: Path, recordedPath: String, targetPath: Path): Long {
+        val root = downloadsDirectory.toAbsolutePath().normalize()
+        val target = targetPath.toAbsolutePath().normalize()
+        require(target.startsWith(root)) { "Il file temporaneo deve restare nella cartella download" }
+        Files.createDirectories(target.parent)
+
+        val source = recordedPath
+            .takeIf { it.isNotBlank() }
+            ?.let { raw ->
+                runCatching {
+                    val parsed = Path.of(raw)
+                    (if (parsed.isAbsolute) parsed else root.resolve(parsed)).toAbsolutePath().normalize()
+                }.getOrNull()
+            }
+
+        if (
+            source != null &&
+            source != target &&
+            source.startsWith(root) &&
+            !Files.isSymbolicLink(source) &&
+            Files.isRegularFile(source)
+        ) {
+            if (partialExtension(source) == partialExtension(target) && partialExtension(target).isNotBlank()) {
+                migrateCompatiblePartial(source, target)
+            } else {
+                Files.deleteIfExists(source)
+            }
+        }
+
+        return runCatching { Files.size(target) }.getOrDefault(0L)
+    }
+
+    private fun migrateCompatiblePartial(source: Path, target: Path) {
+        if (Files.isRegularFile(target) && !Files.isSymbolicLink(target)) {
+            if (Files.size(source) > Files.size(target)) {
+                moveAtomically(source, target)
+            } else {
+                Files.deleteIfExists(source)
+            }
+        } else {
+            Files.deleteIfExists(target)
+            moveAtomically(source, target)
+        }
+    }
+
+    private fun partialExtension(path: Path): String {
+        val name = path.fileName.toString()
+        if (!name.endsWith(".part", ignoreCase = true)) return ""
+        return name.dropLast(PART_SUFFIX_LENGTH)
+            .substringAfterLast('.', "")
+            .lowercase(Locale.ROOT)
+    }
+
+    private fun moveAtomically(source: Path, target: Path) {
+        runCatching {
+            Files.move(
+                source,
+                target,
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
+            )
+        }.getOrElse {
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+
+    private const val PART_SUFFIX_LENGTH = 5
 }
 
 internal object OfflineFileName {
