@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.language.jvm.tasks.ProcessResources
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -7,16 +8,40 @@ plugins {
     alias(libs.plugins.compose)
 }
 
-val repositoryProperties = Properties().apply {
-    val propertiesFile = rootProject.file("../gradle.properties")
-    if (propertiesFile.isFile) {
-        propertiesFile.inputStream().use(::load)
+val desktopVersionFile = rootProject.file("version.properties")
+val desktopVersionProperties = Properties().apply {
+    require(desktopVersionFile.isFile) {
+        "desktop/version.properties non trovato"
     }
+    desktopVersionFile.inputStream().use(::load)
 }
 
 val levyraDesktopVersion = providers.gradleProperty("levyraDesktopVersion").getOrElse(
-    repositoryProperties.getProperty("levyraVersionName") ?: "1.0.0"
+    desktopVersionProperties.getProperty("levyraDesktopVersion")
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+        ?: error("levyraDesktopVersion non trovato in desktop/version.properties")
 )
+
+require(levyraDesktopVersion.matches(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+([-.+][0-9A-Za-z.-]+)?$"))) {
+    "Versione Levyra Desktop non valida: $levyraDesktopVersion"
+}
+
+val generatedVersionResources = layout.buildDirectory.dir("generated/resources/desktopVersion")
+val generateDesktopVersionResource by tasks.registering {
+    inputs.property("levyraDesktopVersion", levyraDesktopVersion)
+    outputs.dir(generatedVersionResources)
+    doLast {
+        val output = generatedVersionResources.get().file("levyra-desktop-version.properties").asFile
+        output.parentFile.mkdirs()
+        output.writeText("levyraDesktopVersion=$levyraDesktopVersion\n")
+    }
+}
+
+tasks.named<ProcessResources>("processResources") {
+    dependsOn(generateDesktopVersionResource)
+    from(generatedVersionResources)
+}
 
 kotlin {
     sourceSets.named("main") {
