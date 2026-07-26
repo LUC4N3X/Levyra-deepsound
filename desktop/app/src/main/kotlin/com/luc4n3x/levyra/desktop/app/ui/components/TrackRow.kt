@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -32,8 +33,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
+import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.core.model.Track
+import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
 
 data class TrackRowAction(val label: String, val onClick: () -> Unit)
 
@@ -52,6 +55,8 @@ fun TrackRow(
     position: Int? = null
 ) {
     val strings = LocalStrings.current
+    val downloadActions = LocalDownloadActions.current
+    val downloadRecord = downloadActions?.recordFor?.invoke(track)
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     var menuExpanded by remember { mutableStateOf(false) }
@@ -103,6 +108,25 @@ fun TrackRow(
             }
         }
 
+        when (downloadRecord?.status) {
+            DownloadStatus.QUEUED,
+            DownloadStatus.RESOLVING,
+            DownloadStatus.DOWNLOADING -> CircularProgressIndicator(
+                progress = { downloadRecord.progress },
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp
+            )
+
+            DownloadStatus.COMPLETED -> Icon(
+                imageVector = OfflineIcons.Check,
+                contentDescription = strings.downloadOfflineBadge,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+
+            else -> Unit
+        }
+
         Text(
             text = Format.duration(track.durationMs),
             style = MaterialTheme.typography.bodySmall,
@@ -149,6 +173,72 @@ fun TrackRow(
                         onAddToPlaylist()
                     }
                 )
+                if (downloadActions != null) {
+                    when (downloadRecord?.status) {
+                        DownloadStatus.QUEUED,
+                        DownloadStatus.RESOLVING,
+                        DownloadStatus.DOWNLOADING -> DropdownMenuItem(
+                            text = { Text(strings.downloadCancel) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = LevyraIcons.Close,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                downloadActions.onCancel(downloadRecord.id)
+                            }
+                        )
+
+                        DownloadStatus.COMPLETED -> DropdownMenuItem(
+                            text = { Text(strings.downloadRemove) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = LevyraIcons.Trash,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                downloadActions.onDelete(downloadRecord.id)
+                            }
+                        )
+
+                        DownloadStatus.FAILED,
+                        DownloadStatus.CANCELLED -> DropdownMenuItem(
+                            text = { Text(strings.downloadRetry) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = LevyraIcons.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                downloadActions.onRetry(downloadRecord.id)
+                            }
+                        )
+
+                        null -> DropdownMenuItem(
+                            text = { Text(strings.downloadAction) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = OfflineIcons.Download,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                downloadActions.onDownload(track)
+                            }
+                        )
+                    }
+                }
                 if (extraAction != null) {
                     DropdownMenuItem(
                         text = { Text(extraAction.label) },
