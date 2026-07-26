@@ -305,7 +305,7 @@ internal class DesktopUpdateController(
         target
     }
 
-    private suspend fun verifyChecksum(release: DesktopRelease, installer: Path) {
+    internal suspend fun verifyChecksum(release: DesktopRelease, installer: Path) {
         try {
             val request = Request.Builder()
                 .url(release.checksum.url)
