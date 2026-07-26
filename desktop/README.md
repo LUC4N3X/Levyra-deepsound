@@ -8,13 +8,15 @@ tramite composite build, riusa lo stesso catalogo di localizzazione e riproduce 
 
 - Home musicale come schermata iniziale
 - Prima configurazione guidata con lingua, nome, gusti musicali e Paese dei contenuti
-- Libreria locale con preferiti, playlist, cronologia e ripresa della sessione
+- Libreria completa con playlist, preferiti, download offline e cronologia
+- Download audio persistenti con avanzamento, pausa tramite annullamento, ripresa, nuovo tentativo e cancellazione
+- Riproduzione automatica del file locale quando un brano è già disponibile offline
 - Ricerca YouTube Music per brani, video, album, playlist e artisti, con suggerimenti e paginazione
 - Suggerimenti rapidi, artisti e atmosfere localizzati in base alla lingua e al Paese
 - Classifiche Top 50 selezionabili tramite bandiera e nome del Paese
 - Testi sincronizzati da LRCLIB, con la riga corrente evidenziata durante l'ascolto
 - Coda con shuffle e ripetizione, radio automatica a fine coda
-- Player desktop completo e chiudibile
+- Player desktop completo, chiudibile e dotato di comando per il download offline
 - Colore d'accento estratto dalla copertina, tema chiaro e scuro e barra titolo Windows coordinata
 - Icona ufficiale Levyra in finestra, tray, sidebar e installer
 
@@ -27,7 +29,35 @@ Quando non esiste ancora un profilo completato, Levyra mostra la configurazione 
 3. scelta di almeno tre gusti musicali;
 4. scelta del Paese usato per contenuti e Top 50.
 
-Il profilo viene salvato in locale. Nome, lingua e Paese possono essere modificati in Impostazioni e il questionario può essere riaperto senza cancellare libreria, playlist o cronologia.
+Il profilo viene salvato in locale. Nome, lingua e Paese possono essere modificati in Impostazioni e il questionario può essere riaperto senza cancellare libreria, playlist, download o cronologia.
+
+## Libreria
+
+La voce Libreria nella barra laterale raccoglie le quattro aree personali dell'app:
+
+- playlist locali;
+- brani preferiti;
+- download offline;
+- cronologia degli ascolti.
+
+Ogni sezione mostra il proprio conteggio e permette di riprodurre, aggiungere alla coda, aggiungere a una playlist o gestire il contenuto senza tornare alla Home.
+
+## Download offline
+
+Il comando di download è disponibile nel menu di ogni riga brano e direttamente nel player. I download vengono salvati in `%APPDATA%\Levyra\offline` e registrati in `downloads.json`.
+
+Il motore di download:
+
+- esegue al massimo due trasferimenti contemporaneamente;
+- salva l'avanzamento su disco;
+- usa file temporanei `.part`;
+- riprende i trasferimenti interrotti tramite richieste HTTP Range;
+- finalizza il file con spostamento atomico;
+- permette annullamento, nuovo tentativo e cancellazione;
+- verifica all'avvio che i file completati esistano ancora;
+- preferisce automaticamente il file locale durante la riproduzione.
+
+I download incompleti restano disponibili per la ripresa dopo la chiusura o un riavvio dell'app. I file completati vengono riprodotti senza richiedere una nuova risoluzione dello stream.
 
 ## Lingue
 
@@ -78,9 +108,9 @@ La build è indipendente da quella Android: `desktop/` ha il proprio
 
 ```
 desktop/
-  core/      modelli, estrattore YouTube, risoluzione stream, persistenza
+  core/      modelli, estrattore YouTube, risoluzione stream, download e persistenza
   player/    astrazione del player audio e implementazione libvlc, coda di riproduzione
-  app/       interfaccia Compose, onboarding, stato applicativo, packaging Windows
+  app/       interfaccia Compose, onboarding, libreria, stato applicativo, packaging Windows
   packaging/ icona Windows usata da jpackage
 ```
 
@@ -128,13 +158,15 @@ a 64 bit dentro `desktop/app/resources/windows-x64/vlc/` prima del packaging.
 
 ## Dati locali
 
-Preferenze, libreria e cache delle copertine sono salvate in
+Preferenze, libreria, download e cache delle copertine sono salvati in
 `%APPDATA%\Levyra` su Windows:
 
-| File | Contenuto |
+| Percorso | Contenuto |
 |---|---|
 | `settings.json` | profilo, onboarding, gusti, audio, tema, lingua, Paese e percorso VLC |
 | `library.json` | preferiti, playlist locali, cronologia, ricerche recenti |
+| `downloads.json` | coda, stato, avanzamento e metadati dei download offline |
+| `offline/` | file audio completati e file temporanei ripristinabili |
 | `session.json` | coda e posizione dell'ultima sessione |
 | `window.json` | dimensione e posizione della finestra |
 | `cache/artwork` | cache su disco delle copertine |
@@ -149,4 +181,4 @@ Preferenze, libreria e cache delle copertine sono salvate in
 
 ## Vincoli di design
 
-L'interfaccia mantiene l'icona ufficiale Levyra, l'onboarding localizzato, i menu Paese con bandiera e nome nativo, il layout RTL per arabo ed ebraico e il player chiudibile. Non vengono introdotti campi manuali per i codici Paese né cataloghi di traduzione desktop separati che possano divergere dall'APK.
+L'interfaccia mantiene l'icona ufficiale Levyra, l'onboarding localizzato, i menu Paese con bandiera e nome nativo, il layout RTL per arabo ed ebraico, la libreria integrata e il player chiudibile. Non vengono introdotti campi manuali per i codici Paese né cataloghi di traduzione desktop separati che possano divergere dall'APK.
