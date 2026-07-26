@@ -23,6 +23,7 @@ data class DownloadRecord(
     val bytesDownloaded: Long = 0L,
     val totalBytes: Long = 0L,
     val mediaLabel: String = "",
+    val streamIdentity: String = "",
     val error: String = "",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L
