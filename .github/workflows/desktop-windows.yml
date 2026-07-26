@@ -220,11 +220,12 @@ jobs:
               throw "Metadati GitHub mancanti per l'asset $assetName"
             }
             New-Item -ItemType Directory -Force -Path $directory | Out-Null
+            $path = Join-Path $directory $assetName
+            Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
             gh release download $tag --repo $repo --pattern $assetName --dir $directory
             if ($LASTEXITCODE -ne 0) {
               throw "Impossibile scaricare l'asset esistente $assetName"
             }
-            $path = Join-Path $directory $assetName
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
               throw "GitHub non ha restituito l'asset esistente $assetName"
             }
@@ -300,6 +301,9 @@ jobs:
               $existingArtifact = Download-ReleaseAsset $pair.Artifact $pairDirectory
               $existingDigest = Get-FileDigest $existingArtifact
               $recoveryChecksum = Join-Path $pairDirectory $pair.Checksum
+              if ($existingDigest -ne $localDigest) {
+                Write-Host "::warning::L'asset pubblicato $($pair.Artifact) differisce dal build corrente; il checksum viene ricostruito dall'asset immutabile già pubblicato."
+              }
               "$existingDigest  $($pair.Artifact)" | Set-Content -LiteralPath $recoveryChecksum -Encoding ascii -NoNewline
               gh release upload $tag $recoveryChecksum --repo $repo
               if ($LASTEXITCODE -ne 0) {
