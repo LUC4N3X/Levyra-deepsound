@@ -17,6 +17,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -170,7 +171,7 @@ class OfflineDownloadController(
         resolved: ResolvedAudio
     ) {
         val extension = extensionFor(resolved.label)
-        val baseName = fileBaseName(track)
+        val baseName = OfflineFileName.baseName(track)
         val target = paths.downloadsDirectory.resolve("$baseName.$extension")
         val temporary = paths.downloadsDirectory.resolve("$baseName.$extension.part")
         Files.createDirectories(paths.downloadsDirectory)
@@ -289,20 +290,6 @@ class OfflineDownloadController(
         }
     }
 
-    private fun fileBaseName(track: Track): String {
-        val artist = safeComponent(track.artist.ifBlank { "Levyra" })
-        val title = safeComponent(track.title.ifBlank { track.id })
-        val suffix = safeComponent(track.id).takeLast(10).ifBlank { track.hashCode().toUInt().toString(16) }
-        return "$artist - $title [$suffix]".take(MAX_FILE_NAME_LENGTH)
-    }
-
-    private fun safeComponent(value: String): String = value
-        .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), " ")
-        .replace(Regex("\\s+"), " ")
-        .trim()
-        .trimEnd('.')
-        .ifBlank { "track" }
-
     private fun extensionFor(label: String): String {
         val normalized = label.lowercase(Locale.ROOT)
         return when {
@@ -321,6 +308,49 @@ class OfflineDownloadController(
         private const val BUFFER_SIZE = 64 * 1024
         private const val PROGRESS_BYTES_INTERVAL = 512 * 1024L
         private const val PROGRESS_TIME_INTERVAL_NANOS = 250_000_000L
-        private const val MAX_FILE_NAME_LENGTH = 180
     }
+}
+
+internal object OfflineFileName {
+    private const val MAX_FILE_NAME_LENGTH = 180
+    private const val HASH_BYTES = 8
+
+    fun baseName(track: Track): String {
+        val artist = safeComponent(track.artist.ifBlank { "Levyra" })
+        val title = safeComponent(track.title.ifBlank { track.id })
+        val suffixBlock = " [${stableSuffix(track)}]"
+        val availableDescriptionLength =
+            (MAX_FILE_NAME_LENGTH - suffixBlock.length).coerceAtLeast(1)
+        val description = "$artist - $title"
+            .take(availableDescriptionLength)
+            .trimEnd(' ', '.', '-')
+            .ifBlank { "track" }
+        return description + suffixBlock
+    }
+
+    private fun stableSuffix(track: Track): String {
+        val identity = track.id.ifBlank {
+            buildString {
+                append(track.title.trim().lowercase(Locale.ROOT))
+                append('|')
+                append(track.artist.trim().lowercase(Locale.ROOT))
+                append('|')
+                append(track.videoUrl.trim())
+            }
+        }
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(identity.toByteArray(Charsets.UTF_8))
+        return digest
+            .take(HASH_BYTES)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+    }
+
+    private fun safeComponent(value: String): String = value
+        .replace(Regex("[\\/:*?\"<>|\\p{Cntrl}]"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .trimEnd('.')
+        .ifBlank { "track" }
 }
