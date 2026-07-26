@@ -54,7 +54,7 @@ internal data class DesktopRelease(
     val name: String,
     val notes: String,
     val installer: DesktopReleaseAsset,
-    val checksum: DesktopReleaseAsset?
+    val checksum: DesktopReleaseAsset
 )
 
 internal data class DesktopUpdateUiState(
@@ -209,7 +209,7 @@ internal class DesktopUpdateController(
             ?: return null
         val checksum = assets.firstOrNull {
             it.name.equals("${installer.name}.sha256", ignoreCase = true)
-        }
+        } ?: return null
         return DesktopRelease(
             version = version,
             name = root["name"]?.jsonPrimitive?.contentOrNull.orEmpty().ifBlank {
@@ -281,40 +281,43 @@ internal class DesktopUpdateController(
             }
         }
 
+        verifyChecksum(release, temporary)
         moveAtomically(temporary, target)
-        verifyChecksum(release, target)
         target
     }
 
     private fun verifyChecksum(release: DesktopRelease, installer: Path) {
-        val checksumAsset = release.checksum ?: return
-        val request = Request.Builder()
-            .url(checksumAsset.url)
-            .header("Accept", "text/plain")
-            .header("User-Agent", "Levyra-Desktop/$currentVersion")
-            .build()
-        val expected = client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IllegalStateException("Checksum aggiornamento non disponibile: HTTP ${response.code}")
+        try {
+            val request = Request.Builder()
+                .url(release.checksum.url)
+                .header("Accept", "text/plain")
+                .header("User-Agent", "Levyra-Desktop/$currentVersion")
+                .build()
+            val expected = client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IllegalStateException("Checksum aggiornamento non disponibile: HTTP ${response.code}")
+                }
+                response.body.string().trim().substringBefore(' ').lowercase(Locale.ROOT)
             }
-            response.body.string().trim().substringBefore(' ').lowercase(Locale.ROOT)
-        }
-        if (!expected.matches(Regex("^[0-9a-f]{64}$"))) {
-            throw IllegalStateException("Checksum aggiornamento non valido")
-        }
-        val digest = MessageDigest.getInstance("SHA-256")
-        Files.newInputStream(installer).buffered(BUFFER_SIZE).use { input ->
-            val buffer = ByteArray(BUFFER_SIZE)
-            while (true) {
-                val read = input.read(buffer)
-                if (read < 0) break
-                digest.update(buffer, 0, read)
+            if (!expected.matches(Regex("^[0-9a-f]{64}$"))) {
+                throw IllegalStateException("Checksum aggiornamento non valido")
             }
-        }
-        val actual = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
-        if (!actual.equals(expected, ignoreCase = true)) {
+            val digest = MessageDigest.getInstance("SHA-256")
+            Files.newInputStream(installer).buffered(BUFFER_SIZE).use { input ->
+                val buffer = ByteArray(BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            val actual = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+            if (!actual.equals(expected, ignoreCase = true)) {
+                throw IllegalStateException("Verifica SHA-256 dell'aggiornamento non riuscita")
+            }
+        } catch (error: Throwable) {
             Files.deleteIfExists(installer)
-            throw IllegalStateException("Verifica SHA-256 dell'aggiornamento non riuscita")
+            throw error
         }
     }
 
