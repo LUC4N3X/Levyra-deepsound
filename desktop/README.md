@@ -146,3 +146,7 @@ Preferenze, libreria e cache delle copertine sono salvate in
 | `Spazio` | play o pausa |
 | `Ctrl` + `→` | brano successivo |
 | `Ctrl` + `←` | brano precedente o riavvio |
+
+## Vincoli di design
+
+L'interfaccia mantiene l'icona ufficiale Levyra, l'onboarding localizzato, i menu Paese con bandiera e nome nativo, il layout RTL per arabo ed ebraico e il player chiudibile. Non vengono introdotti campi manuali per i codici Paese né cataloghi di traduzione desktop separati che possano divergere dall'APK.
