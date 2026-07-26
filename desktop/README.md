@@ -4,6 +4,15 @@ Client desktop di Levyra per Windows, scritto in Kotlin con Compose Multiplatfor
 Condivide l'estrattore YouTube del progetto Android (`third_party/LevyraExtractor`)
 tramite composite build e riproduce l'audio con libvlc.
 
+## Funzioni
+
+- Libreria locale con preferiti, playlist, cronologia e ripresa della sessione
+- Ricerca YouTube Music per brani, video, album, playlist e artisti, con suggerimenti e paginazione
+- Classifiche dei brani più ascoltati per paese, con risoluzione automatica su YouTube alla riproduzione
+- Testi sincronizzati da LRCLIB, con la riga corrente evidenziata durante l'ascolto
+- Coda con shuffle e ripetizione, radio automatica a fine coda
+- Interfaccia con colore d'accento estratto dalla copertina in riproduzione, tema chiaro e scuro, italiano e inglese
+
 ## Requisiti
 
 | Componente | Versione |

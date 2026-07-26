@@ -6,6 +6,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -88,6 +89,8 @@ object LevyraBrand {
     val violet: Color get() = LevyraViolet
     val deepBlue: Color get() = LevyraDeepBlue
 }
+
+val LocalAccentColor = compositionLocalOf { LevyraCyan }
 
 @Composable
 fun LevyraTheme(themeMode: ThemeMode, content: @Composable () -> Unit) {

@@ -322,6 +322,19 @@ object LevyraIcons {
         }
     }
 
+    val Chart: ImageVector by lazy {
+        strokeIcon("LevyraChart") {
+            moveTo(4f, 19.5f)
+            lineTo(20f, 19.5f)
+            moveTo(6.5f, 19.5f)
+            lineTo(6.5f, 12f)
+            moveTo(11.5f, 19.5f)
+            lineTo(11.5f, 6.5f)
+            moveTo(16.5f, 19.5f)
+            lineTo(16.5f, 9.5f)
+        }
+    }
+
     val Refresh: ImageVector by lazy {
         strokeIcon("LevyraRefresh") {
             moveTo(19f, 12f)

@@ -279,9 +279,32 @@ class PlaybackController(
             if (forceRestart) {
                 activePlayer.stop()
             }
+            val playable = if (track.videoUrl.isBlank()) {
+                val located = try {
+                    catalog.findPlayable(track)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (error: Exception) {
+                    null
+                }
+                if (located == null) {
+                    internalState.value = internalState.value.copy(preparingTrackId = "")
+                    messageFlow.tryEmit("Nessuna versione riproducibile trovata per ${track.title}")
+                    skipAfterFailure(track)
+                    return@launch
+                }
+                val merged = track.copy(
+                    videoUrl = located.videoUrl,
+                    durationMs = if (located.durationMs > 0L) located.durationMs else track.durationMs
+                )
+                updateTrackMetadata(merged)
+                merged
+            } else {
+                track
+            }
             val settings = settingsStore.current
             val resolved = try {
-                resolver.resolve(track, settings.audioQuality, settings.preferredCodec)
+                resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Exception) {
