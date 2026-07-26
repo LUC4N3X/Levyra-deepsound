@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -57,6 +58,7 @@ import com.luc4n3x.levyra.desktop.core.storage.LocalPlaylist
 fun HomeScreen(
     library: LibraryData,
     discover: DiscoverUiState,
+    currentTrack: Track?,
     actions: TrackActions,
     onOpenSearch: () -> Unit,
     onOpenDiscover: () -> Unit,
@@ -74,12 +76,29 @@ fun HomeScreen(
     var importUrl by remember { mutableStateOf("") }
 
     val historyTracks = remember(library.history) {
-        library.history.map { it.track }.distinctBy { it.id }
+        library.history
+            .sortedByDescending { it.playedAt }
+            .map { it.track }
+            .distinctBy(::trackIdentity)
     }
-    val mixTracks = remember(library.favorites, historyTracks, discover.tracks) {
-        (library.favorites + historyTracks + discover.tracks.take(20)).distinctBy { it.id }
+    val orbitTracks = remember(currentTrack, historyTracks, library.favorites, discover.tracks) {
+        buildList {
+            currentTrack?.let(::add)
+            addAll(historyTracks)
+            addAll(library.favorites)
+            addAll(discover.tracks)
+        }
+            .asSequence()
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+            .distinctBy(::trackIdentity)
+            .take(ORBIT_LIMIT)
+            .toList()
     }
-    val featuredQueue = historyTracks.ifEmpty { discover.tracks }
+    val mixTracks = remember(library.favorites, historyTracks, discover.tracks, orbitTracks) {
+        (orbitTracks + library.favorites + historyTracks + discover.tracks.take(20))
+            .distinctBy(::trackIdentity)
+    }
+    val featuredQueue = orbitTracks.ifEmpty { historyTracks.ifEmpty { discover.tracks } }
     val featured = featuredQueue.firstOrNull()
 
     ScrollableColumn(
@@ -175,6 +194,21 @@ fun HomeScreen(
                     enabled = true,
                     onClick = onOpenDiscover,
                     modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        if (orbitTracks.isNotEmpty()) {
+            item {
+                PersonalOrbitPanel(
+                    tracks = orbitTracks,
+                    currentTrackId = currentTrack?.id.orEmpty(),
+                    accent = accent,
+                    title = strings.homeOrbitTitle,
+                    subtitle = strings.homeOrbitSubtitle,
+                    playLabel = strings.playAll,
+                    onPlayAll = { actions.onPlay(orbitTracks, 0) },
+                    onPlayTrack = { index -> actions.onPlay(orbitTracks, index) }
                 )
             }
         }
@@ -394,8 +428,189 @@ private fun FeaturedPanel(
                     Icon(
                         imageVector = LevyraIcons.Disc,
                         contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(54.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(44.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonalOrbitPanel(
+    tracks: List<Track>,
+    currentTrackId: String,
+    accent: Color,
+    title: String,
+    subtitle: String,
+    playLabel: String,
+    onPlayAll: () -> Unit,
+    onPlayTrack: (Int) -> Unit
+) {
+    val columns = tracks.chunked(2)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.28f)),
+        shadowElevation = 12.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            accent.copy(alpha = 0.17f),
+                            LevyraBrand.violet.copy(alpha = 0.1f),
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            MaterialTheme.colorScheme.surfaceContainer
+                        )
+                    )
+                )
+                .padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(
+                                        accent.copy(alpha = 0.95f),
+                                        LevyraBrand.violet.copy(alpha = 0.7f)
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = LevyraIcons.Disc,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(23.dp)
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Button(onClick = onPlayAll) {
+                    Icon(
+                        imageVector = LevyraIcons.Play,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(playLabel)
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                columns.forEachIndexed { columnIndex, columnTracks ->
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        columnTracks.forEachIndexed { rowIndex, track ->
+                            val index = columnIndex * 2 + rowIndex
+                            OrbitTrackTile(
+                                track = track,
+                                position = index + 1,
+                                isCurrent = track.id == currentTrackId,
+                                accent = accent,
+                                onClick = { onPlayTrack(index) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OrbitTrackTile(
+    track: Track,
+    position: Int,
+    isCurrent: Boolean,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(74.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isCurrent) accent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.62f),
+        border = BorderStroke(
+            1.dp,
+            if (isCurrent) accent.copy(alpha = 0.68f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Artwork(
+                url = track.artworkUrl,
+                modifier = Modifier.size(58.dp),
+                cornerRadius = 11.dp,
+                iconSize = 22.dp
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = track.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = track.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Surface(
+                modifier = Modifier.size(28.dp),
+                shape = CircleShape,
+                color = if (isCurrent) accent else MaterialTheme.colorScheme.surfaceContainerHighest
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = position.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isCurrent) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
@@ -629,3 +844,11 @@ private fun LibraryTools(
         }
     }
 }
+
+private fun trackIdentity(track: Track): String = buildString {
+    append(track.title.trim().lowercase())
+    append('|')
+    append(track.artist.trim().lowercase())
+}
+
+private const val ORBIT_LIMIT = 8
