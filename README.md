@@ -264,7 +264,7 @@ data:
   client: "OkHttp 5 (Brotli)"
   image_cache: "Coil 3"
   database: "Room (SQLite) + DataStore"
-  downloads: "WorkManager Daemon"
+  downloads: "WorkManager background work scheduler"
 build:
   engine: "Gradle Kotlin DSL + KSP"
   size_audit: "Spotify Ruler"
@@ -291,7 +291,7 @@ desktop:
 * **Room Database and DataStore**: Local SQLite and key-value storage for Android player history and preferences.
 * **Desktop local stores**: JSON state, artwork cache and offline files under `%APPDATA%\Levyra`.
 * **Coil 3**: Asynchronous image loading optimized for Jetpack Compose.
-* **WorkManager**: A background daemon that schedules and runs Android offline audio downloads.
+* **WorkManager**: An OS-managed background work scheduler for Android offline audio downloads.
 
 ### 🛠️ Build and bundle tools
 * **Gradle Kotlin DSL**: Build configuration using version catalogs, KSP, and Kotlin script files.
@@ -370,7 +370,7 @@ levyraDesktopVersion=1.0.1
 
 Android publishes `v<version>` releases and remains the repository's **Latest** channel. Windows publishes immutable `desktop-v<version>` releases with MSI, EXE, portable ZIP and SHA-256 files. Increasing the Android version never starts or publishes the Desktop build, and increasing the Desktop version never modifies Android or F-Droid releases.
 
-`versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build` — calculated sequentially so no two Android deployments ever collide. The APK Artifact workflow verifies the signed APK independently from the Desktop Windows workflow.
+`versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`, with every component bounded by the build logic and `build` restricted to `0–99`. The APK Artifact workflow verifies the signed APK independently from the Desktop Windows workflow.
 
 ---
 
