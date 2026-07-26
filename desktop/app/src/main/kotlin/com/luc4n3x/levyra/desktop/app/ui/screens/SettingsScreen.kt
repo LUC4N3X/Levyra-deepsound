@@ -27,12 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.desktop.app.ui.components.CountryPicker
 import com.luc4n3x.levyra.desktop.app.ui.components.EqualizerBars
+import com.luc4n3x.levyra.desktop.app.ui.components.LanguagePicker
 import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
-import com.luc4n3x.levyra.desktop.core.model.AppLanguage
 import com.luc4n3x.levyra.desktop.core.model.AudioQuality
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.EqualizerSettings
@@ -60,6 +61,104 @@ fun SettingsScreen(
     ) {
         item {
             Text(text = strings.navSettings, style = MaterialTheme.typography.displaySmall)
+        }
+
+        item {
+            SettingsSection(title = strings.settingsProfile) {
+                var nameDraft by remember(settings.displayName) {
+                    mutableStateOf(settings.displayName)
+                }
+                fun commitName() {
+                    val clean = nameDraft.trim().take(DesktopSettings.MAX_DISPLAY_NAME_LENGTH)
+                    if (clean != settings.displayName) {
+                        onUpdate { it.copy(displayName = clean) }
+                    }
+                }
+                SettingsRow(
+                    title = strings.settingsProfileName,
+                    body = strings.onboardingNameQuestion
+                ) {
+                    OutlinedTextField(
+                        value = nameDraft,
+                        onValueChange = {
+                            nameDraft = it.take(DesktopSettings.MAX_DISPLAY_NAME_LENGTH)
+                        },
+                        placeholder = { Text(strings.onboardingNamePlaceholder) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .widthIn(max = 480.dp)
+                            .onFocusChanged { state ->
+                                if (!state.isFocused) commitName()
+                            }
+                    )
+                }
+                OutlinedButton(
+                    onClick = {
+                        commitName()
+                        onUpdate { it.copy(onboardingCompleted = false) }
+                    }
+                ) {
+                    Text(strings.settingsRedoOnboarding)
+                }
+                Text(
+                    text = strings.settingsRedoOnboardingBody,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        item {
+            SettingsSection(title = strings.settingsInterface) {
+                ChoiceRow(
+                    title = strings.settingsTheme,
+                    selected = settings.themeMode,
+                    options = listOf(
+                        ThemeMode.SYSTEM to strings.settingsThemeSystem,
+                        ThemeMode.LIGHT to strings.settingsThemeLight,
+                        ThemeMode.DARK to strings.settingsThemeDark
+                    ),
+                    onSelect = { value -> onUpdate { it.copy(themeMode = value) } }
+                )
+                SettingsRow(
+                    title = strings.settingsLanguage,
+                    body = strings.onboardingLanguageQuestion
+                ) {
+                    LanguagePicker(
+                        selected = settings.language,
+                        label = strings.settingsLanguage,
+                        contentDescription = strings.onboardingLanguageQuestion,
+                        onSelected = { language ->
+                            onUpdate {
+                                it.copy(
+                                    language = language,
+                                    contentCountry = if (
+                                        it.contentCountry.equals(it.language.defaultCountry, ignoreCase = true)
+                                    ) {
+                                        language.defaultCountry
+                                    } else {
+                                        it.contentCountry
+                                    }
+                                )
+                            }
+                        }
+                    )
+                }
+                SettingsRow(
+                    title = strings.settingsCountry,
+                    body = strings.settingsCountryBody
+                ) {
+                    CountryPicker(
+                        selectedCode = settings.contentCountry,
+                        label = strings.chartsCountry,
+                        contentDescription = strings.chartsSelectCountry,
+                        onSelected = { country ->
+                            onUpdate { it.copy(contentCountry = country) }
+                        }
+                    )
+                }
+            }
         }
 
         item {
@@ -134,36 +233,6 @@ fun SettingsScreen(
         }
 
         item {
-            SettingsSection(title = strings.settingsInterface) {
-                ChoiceRow(
-                    title = strings.settingsTheme,
-                    selected = settings.themeMode,
-                    options = listOf(
-                        ThemeMode.SYSTEM to strings.settingsThemeSystem,
-                        ThemeMode.LIGHT to strings.settingsThemeLight,
-                        ThemeMode.DARK to strings.settingsThemeDark
-                    ),
-                    onSelect = { value -> onUpdate { it.copy(themeMode = value) } }
-                )
-                ChoiceRow(
-                    title = strings.settingsLanguage,
-                    selected = settings.language,
-                    options = listOf(
-                        AppLanguage.ITALIAN to "Italiano",
-                        AppLanguage.ENGLISH to "English"
-                    ),
-                    onSelect = { value -> onUpdate { it.copy(language = value) } }
-                )
-                SettingsRow(title = strings.settingsCountry, body = strings.settingsCountryBody) {
-                    CountryField(
-                        value = settings.contentCountry,
-                        onCommit = { value -> onUpdate { it.copy(contentCountry = value) } }
-                    )
-                }
-            }
-        }
-
-        item {
             SettingsSection(title = strings.settingsPlayback) {
                 SettingsToggle(
                     title = strings.settingsResume,
@@ -207,7 +276,9 @@ fun SettingsScreen(
                         singleLine = true,
                         modifier = Modifier
                             .weight(1f)
-                            .onFocusChanged { focus -> if (!focus.isFocused) commitVlcDirectory() }
+                            .onFocusChanged { focus ->
+                                if (!focus.isFocused) commitVlcDirectory()
+                            }
                     )
                     OutlinedButton(onClick = onBrowseVlc) {
                         Text(strings.settingsVlcBrowse)
@@ -270,29 +341,13 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun CountryField(value: String, onCommit: (String) -> Unit) {
-    var draft by remember(value) { mutableStateOf(value) }
-    OutlinedTextField(
-        value = draft,
-        onValueChange = { input ->
-            draft = input.filter { it.isLetter() }.take(COUNTRY_CODE_LENGTH).uppercase()
-            if (draft.length == COUNTRY_CODE_LENGTH && draft != value) {
-                onCommit(draft)
-            }
-        },
-        singleLine = true,
-        modifier = Modifier.widthIn(max = 120.dp)
-    )
-}
-
-@Composable
 private fun SettingsSection(title: String, content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(20.dp),
+            .padding(22.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(text = title, style = MaterialTheme.typography.titleMedium)
@@ -352,16 +407,19 @@ private fun SettingsToggle(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Text(text = title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (body.isNotBlank()) {
+                Text(
+                    text = body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
-
-private const val COUNTRY_CODE_LENGTH = 2
