@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.app
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -34,6 +35,7 @@ import com.luc4n3x.levyra.desktop.app.state.PlaybackController
 import com.luc4n3x.levyra.desktop.app.ui.LevyraRoot
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
+import com.luc4n3x.levyra.desktop.core.model.ThemeMode
 import com.luc4n3x.levyra.desktop.core.storage.WindowPlacement as StoredPlacement
 import okio.Path.Companion.toOkioPath
 
@@ -47,7 +49,11 @@ fun main() = application {
         } else {
             WindowPosition.PlatformDefault
         },
-        placement = if (stored.maximized) WindowPlacement.Maximized else WindowPlacement.Floating
+        placement = if (stored.maximized) {
+            WindowPlacement.Maximized
+        } else {
+            WindowPlacement.Floating
+        }
     )
     var windowVisible by remember { mutableStateOf(true) }
     val settings by container.settingsStore.settings.collectAsState()
@@ -73,6 +79,15 @@ fun main() = application {
         exitApplication()
     }
 
+    fun closeWindow() {
+        if (settings.minimizeToTray) {
+            persistWindow()
+            windowVisible = false
+        } else {
+            quit()
+        }
+    }
+
     LevyraTray(
         strings = strings,
         playbackController = container.playbackController,
@@ -81,23 +96,27 @@ fun main() = application {
     )
 
     Window(
-        onCloseRequest = {
-            if (settings.minimizeToTray) {
-                persistWindow()
-                windowVisible = false
-            } else {
-                quit()
-            }
-        },
+        onCloseRequest = ::closeWindow,
         state = windowState,
         visible = windowVisible,
         title = strings.appName,
         icon = painterResource(TRAY_ICON),
-        onKeyEvent = { event -> handleShortcut(event, container.playbackController) }
+        onKeyEvent = { event ->
+            handleShortcut(event, container.playbackController)
+        }
     ) {
-        DisposableEffect(Unit) {
+        val systemDark = isSystemInDarkTheme()
+        val darkWindow = when (settings.themeMode) {
+            ThemeMode.DARK -> true
+            ThemeMode.LIGHT -> false
+            ThemeMode.SYSTEM -> systemDark
+        }
+
+        DisposableEffect(window, darkWindow) {
+            WindowsWindowStyling.apply(window, darkWindow)
             onDispose { persistWindow() }
         }
+
         LevyraRoot(model = container.appModel)
     }
 }
@@ -115,36 +134,64 @@ private fun ApplicationScope.LevyraTray(
         onAction = onShow,
         menu = {
             Item(strings.trayShow, onClick = onShow)
-            Item(strings.trayPlayPause, onClick = playbackController::togglePlayPause)
-            Item(strings.trayNext, onClick = { playbackController.next(automatic = false) })
+            Item(
+                strings.trayPlayPause,
+                onClick = playbackController::togglePlayPause
+            )
+            Item(
+                strings.trayNext,
+                onClick = {
+                    playbackController.next(automatic = false)
+                }
+            )
             Separator()
             Item(strings.trayQuit, onClick = onQuit)
         }
     )
 }
 
-private fun persistPlacement(container: AppContainer, windowState: WindowState) {
+private fun persistPlacement(
+    container: AppContainer,
+    windowState: WindowState
+) {
     runCatching {
         val current = container.windowPlacementStore.read()
         if (windowState.placement == WindowPlacement.Maximized) {
-            container.windowPlacementStore.write(current.copy(maximized = true))
+            container.windowPlacementStore.write(
+                current.copy(maximized = true)
+            )
             return@runCatching
         }
         val position = windowState.position
         val hasPosition = position.x.isSpecified && position.y.isSpecified
         container.windowPlacementStore.write(
             StoredPlacement(
-                width = windowState.size.width.value.toInt().coerceAtLeast(MIN_WINDOW_WIDTH),
-                height = windowState.size.height.value.toInt().coerceAtLeast(MIN_WINDOW_HEIGHT),
-                x = if (hasPosition) position.x.value.toInt() else current.x,
-                y = if (hasPosition) position.y.value.toInt() else current.y,
+                width = windowState.size.width.value
+                    .toInt()
+                    .coerceAtLeast(MIN_WINDOW_WIDTH),
+                height = windowState.size.height.value
+                    .toInt()
+                    .coerceAtLeast(MIN_WINDOW_HEIGHT),
+                x = if (hasPosition) {
+                    position.x.value.toInt()
+                } else {
+                    current.x
+                },
+                y = if (hasPosition) {
+                    position.y.value.toInt()
+                } else {
+                    current.y
+                },
                 maximized = false
             )
         )
     }
 }
 
-private fun handleShortcut(event: KeyEvent, playbackController: PlaybackController): Boolean {
+private fun handleShortcut(
+    event: KeyEvent,
+    playbackController: PlaybackController
+): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     return when {
         event.key == Key.Spacebar && !event.isCtrlPressed -> {
