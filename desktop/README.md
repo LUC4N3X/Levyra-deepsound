@@ -2,16 +2,65 @@
 
 Client desktop di Levyra per Windows, scritto in Kotlin con Compose Multiplatform.
 Condivide l'estrattore YouTube del progetto Android (`third_party/LevyraExtractor`)
-tramite composite build e riproduce l'audio con libvlc.
+tramite composite build, riusa lo stesso catalogo di localizzazione e riproduce l'audio con libvlc.
 
 ## Funzioni
 
+- Home musicale come schermata iniziale
+- Prima configurazione guidata con lingua, nome, gusti musicali e Paese dei contenuti
 - Libreria locale con preferiti, playlist, cronologia e ripresa della sessione
 - Ricerca YouTube Music per brani, video, album, playlist e artisti, con suggerimenti e paginazione
-- Classifiche dei brani più ascoltati per paese, con risoluzione automatica su YouTube alla riproduzione
+- Suggerimenti rapidi, artisti e atmosfere localizzati in base alla lingua e al Paese
+- Classifiche Top 50 selezionabili tramite bandiera e nome del Paese
 - Testi sincronizzati da LRCLIB, con la riga corrente evidenziata durante l'ascolto
 - Coda con shuffle e ripetizione, radio automatica a fine coda
-- Interfaccia con colore d'accento estratto dalla copertina in riproduzione, tema chiaro e scuro, italiano e inglese
+- Player desktop completo e chiudibile
+- Colore d'accento estratto dalla copertina, tema chiaro e scuro e barra titolo Windows coordinata
+- Icona ufficiale Levyra in finestra, tray, sidebar e installer
+
+## Prima apertura
+
+Quando non esiste ancora un profilo completato, Levyra mostra la configurazione iniziale prima della Home:
+
+1. scelta della lingua;
+2. nome visualizzato nell'app;
+3. scelta di almeno tre gusti musicali;
+4. scelta del Paese usato per contenuti e Top 50.
+
+Il profilo viene salvato in locale. Nome, lingua e Paese possono essere modificati in Impostazioni e il questionario può essere riaperto senza cancellare libreria, playlist o cronologia.
+
+## Lingue
+
+La versione desktop compila direttamente lo stesso catalogo di traduzioni dell'APK Android. Sono supportate 26 lingue:
+
+- English
+- Italiano
+- Español
+- Français
+- Deutsch
+- Português
+- Nederlands
+- Polski
+- Română
+- Ελληνικά
+- Svenska
+- Dansk
+- Čeština
+- Українська
+- Русский
+- Türkçe
+- العربية
+- 简体中文
+- 日本語
+- 한국어
+- हिन्दी
+- Bahasa Indonesia
+- Tiếng Việt
+- ไทย
+- Filipino
+- עברית
+
+Arabo ed ebraico attivano il layout RTL nell'onboarding e nell'intera interfaccia desktop.
 
 ## Requisiti
 
@@ -31,22 +80,21 @@ La build è indipendente da quella Android: `desktop/` ha il proprio
 desktop/
   core/      modelli, estrattore YouTube, risoluzione stream, persistenza
   player/    astrazione del player audio e implementazione libvlc, coda di riproduzione
-  app/       interfaccia Compose, stato applicativo, packaging Windows
+  app/       interfaccia Compose, onboarding, stato applicativo, packaging Windows
   packaging/ icona Windows usata da jpackage
 ```
 
 - `core` non dipende da Compose: è puro Kotlin/JVM e contiene la logica testabile.
-- `player` espone `AudioPlayer` e `PlayerQueue`; `VlcAudioPlayer` è l'unica classe
-  che tocca le API native.
-- `app` collega tutto in `AppContainer` e non contiene logica di dominio.
+- `player` espone `AudioPlayer` e `PlayerQueue`; `VlcAudioPlayer` è l'unica classe che tocca le API native.
+- `app` collega tutto in `AppContainer`, riusa il catalogo i18n Android e contiene l'interfaccia desktop.
 
 ## Sviluppo
 
 ```bash
 cd desktop
-./gradlew run              # avvia l'app
-./gradlew check            # test di core e player
-./gradlew assemble check   # compilazione completa piu test
+./gradlew run
+./gradlew check
+./gradlew assemble check
 ```
 
 Su Windows usare `gradlew.bat` al posto di `./gradlew`.
@@ -55,16 +103,15 @@ Su Windows usare `gradlew.bat` al posto di `./gradlew`.
 
 ```bash
 cd desktop
-./gradlew createReleaseDistributable   # cartella eseguibile, nessun installer richiesto
-./gradlew packageReleaseMsi            # installer .msi
-./gradlew packageReleaseExe            # installer .exe
+./gradlew createReleaseDistributable -PlevyraDesktopVersion=2.3.16
+./gradlew packageReleaseMsi -PlevyraDesktopVersion=2.3.16
+./gradlew packageReleaseExe -PlevyraDesktopVersion=2.3.16
 ```
 
 Gli artefatti finiscono in `app/build/compose/binaries/main-release/`.
-La versione del pacchetto si imposta con `-PlevyraDesktopVersion=1.2.0`.
+Il workflow legge automaticamente `levyraVersionName` dal `gradle.properties` principale.
 
-La stessa sequenza gira in CI nel workflow `Desktop Windows Build`, che pubblica
-installer e build portabile come artefatti.
+Dopo il merge su `main`, MSI, EXE, ZIP portabile e checksum SHA-256 vengono aggiunti alla release GitHub già esistente della stessa versione, accanto all'APK Android. La PR genera soltanto artefatti temporanei.
 
 ## Runtime VLC
 
@@ -77,18 +124,16 @@ All'avvio della riproduzione Levyra cerca libvlc in questo ordine:
 
 Per distribuire l'app senza chiedere l'installazione di VLC, copiare
 `libvlc.dll`, `libvlccore.dll` e la cartella `plugins` di una installazione VLC
-a 64 bit dentro `desktop/app/resources/windows-x64/vlc/` prima del packaging:
-il contenuto viene incluso nell'installer e rilevato automaticamente.
+a 64 bit dentro `desktop/app/resources/windows-x64/vlc/` prima del packaging.
 
 ## Dati locali
 
 Preferenze, libreria e cache delle copertine sono salvate in
-`%APPDATA%\Levyra` (su Linux `~/.local/share/Levyra`, su macOS
-`~/Library/Application Support/Levyra`):
+`%APPDATA%\Levyra` su Windows:
 
 | File | Contenuto |
 |---|---|
-| `settings.json` | preferenze audio, tema, lingua, percorso VLC |
+| `settings.json` | profilo, onboarding, gusti, audio, tema, lingua, Paese e percorso VLC |
 | `library.json` | preferiti, playlist locali, cronologia, ricerche recenti |
 | `session.json` | coda e posizione dell'ultima sessione |
 | `window.json` | dimensione e posizione della finestra |
