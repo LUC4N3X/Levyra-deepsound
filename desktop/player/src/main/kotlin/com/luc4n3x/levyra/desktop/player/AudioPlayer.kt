@@ -19,6 +19,8 @@ interface AudioPlayer : AutoCloseable {
 
     fun setMuted(muted: Boolean)
 
+    fun applyEqualizer(enabled: Boolean, preamp: Float, amps: List<Float>)
+
     fun positionMs(): Long
 
     fun durationMs(): Long

@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.app.ui
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -131,7 +132,8 @@ fun LevyraRoot(model: LevyraAppModel) {
                         )
                         VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            when (destination) {
+                            Crossfade(targetState = destination, animationSpec = tween(durationMillis = 220)) { screen ->
+                            when (screen) {
                                 Destination.HOME -> HomeScreen(
                                     library = library,
                                     actions = actions,
@@ -241,6 +243,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                         scope.launch { openDirectory(model.paths.root.toString()) }
                                     }
                                 )
+                            }
                             }
                         }
 

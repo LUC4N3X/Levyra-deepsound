@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -73,6 +75,17 @@ class PlaybackController(
 
     val state: StateFlow<PlaybackUiState> = internalState.asStateFlow()
     val messages: SharedFlow<String> = messageFlow.asSharedFlow()
+
+    init {
+        playerScope.launch {
+            settingsStore.settings
+                .map { it.equalizer }
+                .distinctUntilChanged()
+                .collect { equalizer ->
+                    player?.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
+                }
+        }
+    }
 
     fun restoreSession() {
         val session = sessionStore.read()
@@ -394,6 +407,8 @@ class PlaybackController(
             player = created
             observeEvents(created)
             startPersistLoop()
+            val equalizer = settingsStore.current.equalizer
+            created.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
             internalState.value = internalState.value.copy(unavailableReason = "")
             created
         } catch (error: AudioPlayerUnavailableException) {
