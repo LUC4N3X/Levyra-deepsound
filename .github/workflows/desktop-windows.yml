@@ -47,7 +47,25 @@ jobs:
       - name: Compile modules and run tests
         shell: bash
         working-directory: desktop
-        run: ./gradlew --stacktrace assemble check
+        run: |
+          set +e
+          ./gradlew --stacktrace assemble check > gradle-build.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "Desktop Gradle build failed. Last 240 lines:"
+            tail -n 240 gradle-build.log
+            exit "$status"
+          fi
+          tail -n 80 gradle-build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: levyra-desktop-build-log
+          path: desktop/gradle-build.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload test reports
         if: always()
