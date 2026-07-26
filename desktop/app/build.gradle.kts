@@ -18,6 +18,12 @@ val levyraDesktopVersion = providers.gradleProperty("levyraDesktopVersion").getO
     repositoryProperties.getProperty("levyraVersionName") ?: "1.0.0"
 )
 
+kotlin {
+    sourceSets.named("main") {
+        kotlin.srcDir(rootProject.file("../app/src/main/java/com/luc4n3x/levyra/ui/i18n"))
+    }
+}
+
 dependencies {
     implementation(project(":core"))
     implementation(project(":player"))
