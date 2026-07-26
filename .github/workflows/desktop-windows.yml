@@ -83,6 +83,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -148,6 +149,19 @@ jobs:
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $($_.Name)" | Set-Content -Path "$($_.FullName).sha256" -Encoding ascii -NoNewline
           }
+          $expected = @(
+            $msiName,
+            "$msiName.sha256",
+            $exeName,
+            "$exeName.sha256",
+            $zipName,
+            "$zipName.sha256"
+          )
+          foreach ($name in $expected) {
+            if (-not (Test-Path (Join-Path $output $name))) {
+              throw "Asset Windows obbligatorio non trovato: $name"
+            }
+          }
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -155,7 +169,7 @@ jobs:
           path: release-assets/*
           retention-days: 14
           if-no-files-found: error
-      - name: Publish independent desktop release
+      - name: Publish immutable desktop release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
@@ -164,10 +178,51 @@ jobs:
           $version = "${{ steps.version.outputs.version }}"
           $tag = "desktop-v$version"
           $repo = $env:GITHUB_REPOSITORY
+          $remote = "https://github.com/$repo.git"
+
+          function Resolve-TagCommit([string]$tagName) {
+            git fetch --force $remote "refs/tags/$tagName:refs/tags/$tagName" *> $null
+            if ($LASTEXITCODE -ne 0) { return $null }
+            $resolved = (git rev-list -n 1 $tagName).Trim()
+            if ([string]::IsNullOrWhiteSpace($resolved)) { return $null }
+            return $resolved
+          }
+
           gh release view $tag --repo $repo *> $null
-          if ($LASTEXITCODE -ne 0) {
+          $releaseExists = $LASTEXITCODE -eq 0
+          $remoteTag = git ls-remote --tags $remote "refs/tags/$tag"
+          $tagExists = -not [string]::IsNullOrWhiteSpace(($remoteTag | Out-String).Trim())
+
+          if ($tagExists) {
+            $tagCommit = Resolve-TagCommit $tag
+            if (-not $tagCommit) { throw "Impossibile risolvere il commit del tag $tag" }
+            if ($tagCommit -ne $env:GITHUB_SHA) {
+              throw "La versione Desktop $version è già legata al commit $tagCommit. Incrementare desktop/version.properties prima di pubblicare un nuovo build."
+            }
+          }
+
+          if (-not $releaseExists) {
             gh release create $tag --repo $repo --target $env:GITHUB_SHA --title "Levyra Desktop $version" --notes "Release Windows indipendente. Android e Desktop mantengono versioni e release separate." --latest=false
             if ($LASTEXITCODE -ne 0) { throw "Impossibile creare la release desktop $tag" }
           }
-          gh release upload $tag "release-assets/*" --repo $repo --clobber
-          if ($LASTEXITCODE -ne 0) { throw "Upload degli asset desktop non riuscito" }
+
+          $existingNames = @()
+          if ($releaseExists) {
+            $releaseJson = gh release view $tag --repo $repo --json assets
+            if ($LASTEXITCODE -ne 0) { throw "Impossibile leggere gli asset esistenti di $tag" }
+            $existingNames = @((($releaseJson | ConvertFrom-Json).assets | ForEach-Object { $_.name }))
+          }
+
+          $assets = @(Get-ChildItem release-assets -File | Sort-Object Name)
+          $missingAssets = @($assets | Where-Object { $_.Name -notin $existingNames })
+          if ($missingAssets.Count -eq 0) {
+            Write-Host "La release $tag è già completa per il commit corrente; nessun asset è stato sostituito."
+            exit 0
+          }
+
+          foreach ($asset in $missingAssets) {
+            gh release upload $tag $asset.FullName --repo $repo
+            if ($LASTEXITCODE -ne 0) {
+              throw "Upload non riuscito per $($asset.Name). Gli asset esistenti non vengono mai sostituiti: incrementare la versione per un nuovo build."
+            }
+          }
