@@ -21,6 +21,8 @@ class DesktopStringsTest {
                 strings.searchExploreTitle,
                 strings.homeGreeting,
                 strings.homeSubtitle,
+                strings.homeOrbitTitle,
+                strings.homeOrbitSubtitle,
                 strings.homeTop50,
                 strings.playbackPlay,
                 strings.playbackClose,
@@ -31,6 +33,8 @@ class DesktopStringsTest {
                 strings.onboardingLanguageQuestion,
                 strings.onboardingNameQuestion,
                 strings.onboardingTasteQuestion,
+                strings.onboardingContinue,
+                strings.onboardingSkip,
                 strings.onboardingStart
             )
             assertTrue("Missing desktop translation for ${language.tag}", required.all { it.isNotBlank() })
