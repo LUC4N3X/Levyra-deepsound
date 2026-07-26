@@ -177,18 +177,19 @@ jobs:
         run: |
           $version = "${{ steps.version.outputs.version }}"
           $tag = "v$version"
-          $releaseFound = $false
+          $repo = $env:GITHUB_REPOSITORY
+          $release = $null
 
           for ($attempt = 1; $attempt -le 12; $attempt++) {
-            gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+            $releaseJson = gh api "repos/$repo/releases/tags/$tag" 2>$null
             if ($LASTEXITCODE -eq 0) {
-              $releaseFound = $true
+              $release = $releaseJson | ConvertFrom-Json
               break
             }
             Start-Sleep -Seconds 10
           }
 
-          if (-not $releaseFound) {
+          if (-not $release) {
             throw "Release $tag non trovata: impossibile aggiungere i file Windows"
           }
 
@@ -197,10 +198,30 @@ jobs:
             throw "Nessun asset Windows da pubblicare"
           }
 
-          $arguments = @("release", "upload", $tag)
-          $arguments += $assets.FullName
-          $arguments += @("--clobber", "--repo", $env:GITHUB_REPOSITORY)
-          & gh @arguments
+          $existingJson = gh api "repos/$repo/releases/$($release.id)/assets?per_page=100"
           if ($LASTEXITCODE -ne 0) {
-            throw "Upload degli asset Windows non riuscito"
+            throw "Impossibile leggere gli asset esistenti della release"
+          }
+          $existing = $existingJson | ConvertFrom-Json
+
+          foreach ($asset in $assets) {
+            $old = $existing | Where-Object { $_.name -eq $asset.Name } | Select-Object -First 1
+            if ($old) {
+              gh api --method DELETE "repos/$repo/releases/assets/$($old.id)" *> $null
+              if ($LASTEXITCODE -ne 0) {
+                throw "Impossibile sostituire $($asset.Name)"
+              }
+            }
+
+            $mime = switch -Regex ($asset.Extension.ToLowerInvariant()) {
+              '^\.msi$' { 'application/x-msi'; break }
+              '^\.exe$' { 'application/vnd.microsoft.portable-executable'; break }
+              '^\.zip$' { 'application/zip'; break }
+              default { 'text/plain'; break }
+            }
+            $encodedName = [System.Uri]::EscapeDataString($asset.Name)
+            gh api --hostname uploads.github.com --method POST -H "Content-Type: $mime" --input $asset.FullName "repos/$repo/releases/$($release.id)/assets?name=$encodedName" *> $null
+            if ($LASTEXITCODE -ne 0) {
+              throw "Upload non riuscito per $($asset.Name)"
+            }
           }
