@@ -100,7 +100,7 @@ fun main() = application {
         state = windowState,
         visible = windowVisible,
         title = strings.appName,
-        icon = painterResource(TRAY_ICON),
+        icon = painterResource(APP_ICON),
         onKeyEvent = { event ->
             handleShortcut(event, container.playbackController)
         }
@@ -129,7 +129,7 @@ private fun ApplicationScope.LevyraTray(
     onQuit: () -> Unit
 ) {
     Tray(
-        icon = painterResource(TRAY_ICON),
+        icon = painterResource(APP_ICON),
         tooltip = strings.appName,
         onAction = onShow,
         menu = {
@@ -213,7 +213,7 @@ private fun handleShortcut(
     }
 }
 
-private const val TRAY_ICON = "icons/levyra.png"
+private const val APP_ICON = "icons/levyra.svg"
 private const val ARTWORK_CACHE_BYTES = 256L * 1024L * 1024L
 private const val MIN_WINDOW_WIDTH = 960
 private const val MIN_WINDOW_HEIGHT = 640
