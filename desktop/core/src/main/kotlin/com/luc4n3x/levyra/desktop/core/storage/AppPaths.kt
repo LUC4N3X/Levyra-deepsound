@@ -10,11 +10,14 @@ class AppPaths(val root: Path) {
     val libraryFile: Path get() = root.resolve("library.json")
     val sessionFile: Path get() = root.resolve("session.json")
     val windowFile: Path get() = root.resolve("window.json")
+    val downloadsFile: Path get() = root.resolve("downloads.json")
     val artworkCache: Path get() = root.resolve("cache").resolve("artwork")
+    val downloadsDirectory: Path get() = root.resolve("offline")
 
     fun prepare(): AppPaths {
         Files.createDirectories(root)
         Files.createDirectories(artworkCache)
+        Files.createDirectories(downloadsDirectory)
         return this
     }
 
