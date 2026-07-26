@@ -16,8 +16,8 @@ class SettingsStore(private val store: JsonFileStore<DesktopSettings>) {
     fun update(transform: (DesktopSettings) -> DesktopSettings) {
         val updated = transform(state.value).sanitized()
         if (updated == state.value) return
-        state.value = updated
         store.write(updated)
+        state.value = updated
     }
 
     companion object {

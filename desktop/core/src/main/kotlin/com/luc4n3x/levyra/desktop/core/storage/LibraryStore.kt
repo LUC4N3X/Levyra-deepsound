@@ -107,8 +107,8 @@ class LibraryStore(
     private fun mutate(transform: (LibraryData) -> LibraryData) {
         val updated = transform(state.value)
         if (updated == state.value) return
-        state.value = updated
         store.write(updated)
+        state.value = updated
     }
 
     companion object {

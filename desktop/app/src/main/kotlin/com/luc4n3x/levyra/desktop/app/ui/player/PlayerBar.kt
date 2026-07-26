@@ -115,7 +115,11 @@ fun PlayerBar(
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
                             imageVector = if (isFavorite) LevyraIcons.HeartFilled else LevyraIcons.Heart,
-                            contentDescription = null,
+                            contentDescription = if (isFavorite) {
+                                strings.removeFromFavorites
+                            } else {
+                                strings.addToFavorites
+                            },
                             tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
@@ -134,7 +138,7 @@ fun PlayerBar(
                     IconButton(onClick = onToggleShuffle) {
                         Icon(
                             imageVector = LevyraIcons.Shuffle,
-                            contentDescription = null,
+                            contentDescription = strings.playbackShuffle,
                             tint = if (state.queue.shuffle) {
                                 MaterialTheme.colorScheme.primary
                             } else {
@@ -146,7 +150,7 @@ fun PlayerBar(
                     IconButton(onClick = onPrevious, enabled = track != null) {
                         Icon(
                             imageVector = LevyraIcons.SkipPrevious,
-                            contentDescription = null,
+                            contentDescription = strings.playbackPrevious,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -160,7 +164,11 @@ fun PlayerBar(
                     ) {
                         Icon(
                             imageVector = if (state.isPlaying) LevyraIcons.Pause else LevyraIcons.Play,
-                            contentDescription = null,
+                            contentDescription = if (state.isPlaying) {
+                                strings.playbackPause
+                            } else {
+                                strings.playbackPlay
+                            },
                             tint = accent,
                             modifier = Modifier.size(26.dp)
                         )
@@ -168,7 +176,7 @@ fun PlayerBar(
                     IconButton(onClick = onNext, enabled = track != null) {
                         Icon(
                             imageVector = LevyraIcons.SkipNext,
-                            contentDescription = null,
+                            contentDescription = strings.playbackNext,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -179,7 +187,7 @@ fun PlayerBar(
                             } else {
                                 LevyraIcons.Repeat
                             },
-                            contentDescription = null,
+                            contentDescription = strings.playbackRepeat,
                             tint = if (state.queue.repeat == RepeatMode.OFF) {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             } else {
@@ -238,14 +246,11 @@ fun PlayerBar(
                         modifier = Modifier.padding(end = 8.dp)
                     )
                 }
+                val muted = state.muted || state.volume == 0
                 IconButton(onClick = onToggleMute) {
                     Icon(
-                        imageVector = if (state.muted || state.volume == 0) {
-                            LevyraIcons.VolumeMuted
-                        } else {
-                            LevyraIcons.VolumeHigh
-                        },
-                        contentDescription = null,
+                        imageVector = if (muted) LevyraIcons.VolumeMuted else LevyraIcons.VolumeHigh,
+                        contentDescription = if (muted) strings.playbackUnmute else strings.playbackMute,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(18.dp)
                     )
