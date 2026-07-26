@@ -166,7 +166,7 @@ jobs:
           $repo = $env:GITHUB_REPOSITORY
           gh release view $tag --repo $repo *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $repo --target $env:GITHUB_SHA --title "Levyra Desktop $version" --notes "Release Windows indipendente. Android e Desktop mantengono versioni e release separate."
+            gh release create $tag --repo $repo --target $env:GITHUB_SHA --title "Levyra Desktop $version" --notes "Release Windows indipendente. Android e Desktop mantengono versioni e release separate." --latest=false
             if ($LASTEXITCODE -ne 0) { throw "Impossibile creare la release desktop $tag" }
           }
           gh release upload $tag "release-assets/*" --repo $repo --clobber
