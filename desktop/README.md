@@ -9,7 +9,7 @@ tramite composite build, riusa lo stesso catalogo di localizzazione e riproduce 
 - Home musicale come schermata iniziale
 - Prima configurazione guidata con lingua, nome, gusti musicali e Paese dei contenuti
 - Libreria completa con playlist, preferiti, download offline e cronologia
-- Download audio persistenti con avanzamento, pausa tramite annullamento, ripresa, nuovo tentativo e cancellazione
+- Download audio persistenti con avanzamento, annullamento, ripresa, nuovo tentativo e cancellazione
 - Riproduzione automatica del file locale quando un brano è già disponibile offline
 - Ricerca YouTube Music per brani, video, album, playlist e artisti, con suggerimenti e paginazione
 - Suggerimenti rapidi, artisti e atmosfere localizzati in base alla lingua e al Paese
