@@ -36,6 +36,9 @@ class AppContainer {
     val downloadStore: DownloadStore = DownloadStore.create(paths)
     val windowPlacementStore: WindowPlacementStore = WindowPlacementStore.create(paths)
 
+    private val initialSettings = settingsStore.current.also { settings ->
+        ExtractorRuntime.ensureInitialized(settings.language, settings.contentCountry)
+    }
     private val catalogRepository = CatalogRepository()
     private val streamResolver = YoutubeStreamResolver()
     private val chartsRepository = ChartsRepository()
@@ -89,9 +92,7 @@ class AppContainer {
     )
 
     init {
-        val settings = settingsStore.current
-        ExtractorRuntime.ensureInitialized(settings.language, settings.contentCountry)
-        if (settings.resumeOnStartup) {
+        if (initialSettings.resumeOnStartup) {
             playbackController.restoreSession()
         }
     }
