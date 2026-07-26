@@ -5,6 +5,8 @@ import com.luc4n3x.levyra.desktop.core.model.AudioQuality
 import com.luc4n3x.levyra.desktop.core.model.PreferredCodec
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.model.videoId
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,7 @@ class YoutubeStreamResolver(
         quality: AudioQuality,
         codec: PreferredCodec
     ): ResolvedAudio {
+        resolveOffline(track)?.let { return it }
         val key = cacheKey(track, quality, codec)
         cache[key]?.takeIf { it.isFresh(nowMillis() + FRESHNESS_MARGIN_MS) }?.let { return it }
         val mutex = locks.computeIfAbsent(key) { Mutex() }
@@ -44,6 +47,24 @@ class YoutubeStreamResolver(
         val prefix = "${track.videoId}|"
         cache.keys.removeIf { it.startsWith(prefix) }
         locks.keys.removeIf { it.startsWith(prefix) }
+    }
+
+    private fun resolveOffline(track: Track): ResolvedAudio? {
+        if (track.offlinePath.isBlank()) return null
+        val file = runCatching { Path.of(track.offlinePath) }.getOrNull()
+            ?: throw StreamResolutionException("Percorso offline non valido")
+        if (!Files.isRegularFile(file)) {
+            throw StreamResolutionException("File offline non disponibile")
+        }
+        return ResolvedAudio(
+            url = file.toUri().toString(),
+            label = track.offlineMediaLabel.ifBlank { "Offline" },
+            expiresAtMillis = 0L,
+            durationMs = track.durationMs,
+            artworkUrl = track.artworkUrl,
+            title = track.title,
+            artist = track.artist
+        )
     }
 
     private fun fetch(track: Track, quality: AudioQuality, codec: PreferredCodec): ResolvedAudio {
