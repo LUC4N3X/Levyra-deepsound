@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +55,7 @@ fun PlayerBar(
     onCycleRepeat: () -> Unit,
     onToggleQueue: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onClose: () -> Unit,
     onOpenNowPlaying: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,13 +73,10 @@ fun PlayerBar(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
-        ),
-        shadowElevation = 14.dp
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 18.dp
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
@@ -96,17 +95,17 @@ fun PlayerBar(
                         url = track?.artworkUrl.orEmpty(),
                         modifier = Modifier
                             .size(54.dp)
-                            .clip(RoundedCornerShape(11.dp))
+                            .clip(RoundedCornerShape(13.dp))
                             .clickable(
                                 enabled = track != null,
                                 onClick = onOpenNowPlaying
                             ),
-                        cornerRadius = 11.dp,
+                        cornerRadius = 13.dp,
                         iconSize = 21.dp
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = track?.title ?: strings.nowPlayingEmpty,
+                            text = track?.title.orEmpty(),
                             style = MaterialTheme.typography.titleSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -120,27 +119,25 @@ fun PlayerBar(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-                    if (track != null) {
-                        IconButton(onClick = onToggleFavorite) {
-                            Icon(
-                                imageVector = if (isFavorite) {
-                                    LevyraIcons.HeartFilled
-                                } else {
-                                    LevyraIcons.Heart
-                                },
-                                contentDescription = if (isFavorite) {
-                                    strings.removeFromFavorites
-                                } else {
-                                    strings.addToFavorites
-                                },
-                                tint = if (isFavorite) {
-                                    accent
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+                    IconButton(onClick = onToggleFavorite, enabled = track != null) {
+                        Icon(
+                            imageVector = if (isFavorite) {
+                                LevyraIcons.HeartFilled
+                            } else {
+                                LevyraIcons.Heart
+                            },
+                            contentDescription = if (isFavorite) {
+                                strings.removeFromFavorites
+                            } else {
+                                strings.addToFavorites
+                            },
+                            tint = if (isFavorite) {
+                                accent
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
 
@@ -174,42 +171,38 @@ fun PlayerBar(
                                 modifier = Modifier.size(21.dp)
                             )
                         }
-                        IconButton(
-                            onClick = onPlayPause,
-                            enabled = track != null,
+                        Surface(
                             modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(22.dp))
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .clickable(enabled = track != null, onClick = onPlayPause),
+                            shape = CircleShape,
+                            color = if (track != null) {
+                                accent
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
+                            shadowElevation = if (track != null) 8.dp else 0.dp
                         ) {
-                            Surface(
-                                modifier = Modifier.size(44.dp),
-                                shape = RoundedCornerShape(22.dp),
-                                color = if (track != null) {
-                                    accent
-                                } else {
-                                    MaterialTheme.colorScheme.surfaceContainerHighest
-                                }
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = if (state.isPlaying) {
-                                            LevyraIcons.Pause
-                                        } else {
-                                            LevyraIcons.Play
-                                        },
-                                        contentDescription = if (state.isPlaying) {
-                                            strings.playbackPause
-                                        } else {
-                                            strings.playbackPlay
-                                        },
-                                        tint = if (track != null) {
-                                            MaterialTheme.colorScheme.onPrimary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                        modifier = Modifier.size(23.dp)
-                                    )
-                                }
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (state.isPlaying) {
+                                        LevyraIcons.Pause
+                                    } else {
+                                        LevyraIcons.Play
+                                    },
+                                    contentDescription = if (state.isPlaying) {
+                                        strings.playbackPause
+                                    } else {
+                                        strings.playbackPlay
+                                    },
+                                    tint = if (track != null) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.size(23.dp)
+                                )
                             }
                         }
                         IconButton(
@@ -224,17 +217,13 @@ fun PlayerBar(
                         }
                         IconButton(onClick = onCycleRepeat) {
                             Icon(
-                                imageVector = if (
-                                    state.queue.repeat == RepeatMode.ONE
-                                ) {
+                                imageVector = if (state.queue.repeat == RepeatMode.ONE) {
                                     LevyraIcons.RepeatOne
                                 } else {
                                     LevyraIcons.Repeat
                                 },
                                 contentDescription = strings.playbackRepeat,
-                                tint = if (
-                                    state.queue.repeat == RepeatMode.OFF
-                                ) {
+                                tint = if (state.queue.repeat == RepeatMode.OFF) {
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 } else {
                                     accent
@@ -255,18 +244,10 @@ fun PlayerBar(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Slider(
-                            value = if (duration > 0L) {
-                                position.toFloat()
-                            } else {
-                                0f
-                            },
-                            onValueChange = { value ->
-                                dragPosition = value
-                            },
+                            value = if (duration > 0L) position.toFloat() else 0f,
+                            onValueChange = { value -> dragPosition = value },
                             onValueChangeFinished = {
-                                dragPosition?.let { value ->
-                                    onSeek(value.toLong())
-                                }
+                                dragPosition?.let { value -> onSeek(value.toLong()) }
                                 dragPosition = null
                             },
                             valueRange = 0f..if (duration > 0L) {
@@ -278,9 +259,7 @@ fun PlayerBar(
                             colors = SliderDefaults.colors(
                                 thumbColor = accent,
                                 activeTrackColor = accent,
-                                inactiveTrackColor = MaterialTheme
-                                    .colorScheme
-                                    .surfaceContainerHighest
+                                inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                             ),
                             modifier = Modifier.weight(1f)
                         )
@@ -293,7 +272,7 @@ fun PlayerBar(
                 }
 
                 Row(
-                    modifier = Modifier.width(250.dp),
+                    modifier = Modifier.width(286.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
@@ -326,16 +305,12 @@ fun PlayerBar(
                     }
                     Slider(
                         value = state.volume.toFloat(),
-                        onValueChange = { value ->
-                            onVolumeChange(value.toInt())
-                        },
+                        onValueChange = { value -> onVolumeChange(value.toInt()) },
                         valueRange = 0f..100f,
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.onSurface,
                             activeTrackColor = MaterialTheme.colorScheme.onSurface,
-                            inactiveTrackColor = MaterialTheme
-                                .colorScheme
-                                .surfaceContainerHighest
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         ),
                         modifier = Modifier.width(92.dp)
                     )
@@ -349,6 +324,14 @@ fun PlayerBar(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
                             modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            imageVector = LevyraIcons.Close,
+                            contentDescription = strings.playbackClose,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                 }
