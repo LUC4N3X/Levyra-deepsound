@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.core.model
 
+import java.util.Locale
 import kotlinx.serialization.Serializable
 
 enum class AudioQuality {
@@ -20,13 +21,60 @@ enum class ThemeMode {
     DARK
 }
 
-enum class AppLanguage(val tag: String) {
-    ITALIAN("it"),
-    ENGLISH("en");
+enum class AppLanguage(
+    val tag: String,
+    val flag: String,
+    val nativeName: String,
+    val englishName: String,
+    val defaultCountry: String,
+    val isRtl: Boolean = false
+) {
+    ENGLISH("en", "🇬🇧", "English", "English", "GB"),
+    ITALIAN("it", "🇮🇹", "Italiano", "Italian", "IT"),
+    SPANISH("es", "🇪🇸", "Español", "Spanish", "ES"),
+    FRENCH("fr", "🇫🇷", "Français", "French", "FR"),
+    GERMAN("de", "🇩🇪", "Deutsch", "German", "DE"),
+    PORTUGUESE("pt", "🇵🇹", "Português", "Portuguese", "PT"),
+    DUTCH("nl", "🇳🇱", "Nederlands", "Dutch", "NL"),
+    POLISH("pl", "🇵🇱", "Polski", "Polish", "PL"),
+    ROMANIAN("ro", "🇷🇴", "Română", "Romanian", "RO"),
+    GREEK("el", "🇬🇷", "Ελληνικά", "Greek", "GR"),
+    SWEDISH("sv", "🇸🇪", "Svenska", "Swedish", "SE"),
+    DANISH("da", "🇩🇰", "Dansk", "Danish", "DK"),
+    CZECH("cs", "🇨🇿", "Čeština", "Czech", "CZ"),
+    UKRAINIAN("uk", "🇺🇦", "Українська", "Ukrainian", "UA"),
+    RUSSIAN("ru", "🇷🇺", "Русский", "Russian", "RU"),
+    TURKISH("tr", "🇹🇷", "Türkçe", "Turkish", "TR"),
+    ARABIC("ar", "🇸🇦", "العربية", "Arabic", "SA", true),
+    CHINESE("zh", "🇨🇳", "简体中文", "Chinese (Simplified)", "CN"),
+    JAPANESE("ja", "🇯🇵", "日本語", "Japanese", "JP"),
+    KOREAN("ko", "🇰🇷", "한국어", "Korean", "KR"),
+    HINDI("hi", "🇮🇳", "हिन्दी", "Hindi", "IN"),
+    INDONESIAN("id", "🇮🇩", "Bahasa Indonesia", "Indonesian", "ID"),
+    VIETNAMESE("vi", "🇻🇳", "Tiếng Việt", "Vietnamese", "VN"),
+    THAI("th", "🇹🇭", "ไทย", "Thai", "TH"),
+    FILIPINO("fil", "🇵🇭", "Filipino", "Filipino", "PH"),
+    HEBREW("he", "🇮🇱", "עברית", "Hebrew", "IL", true);
+
+    val displayLabel: String get() = "$flag $nativeName"
 
     companion object {
-        fun fromTag(tag: String): AppLanguage =
-            entries.firstOrNull { it.tag.equals(tag, ignoreCase = true) } ?: ENGLISH
+        fun fromTag(tag: String): AppLanguage {
+            val normalized = tag
+                .trim()
+                .replace('_', '-')
+                .substringBefore('-')
+                .lowercase(Locale.ROOT)
+            val canonical = when (normalized) {
+                "in" -> "id"
+                "tl" -> "fil"
+                "iw" -> "he"
+                else -> normalized
+            }
+            return entries.firstOrNull { it.tag == canonical } ?: ENGLISH
+        }
+
+        fun deviceDefault(): AppLanguage = fromTag(Locale.getDefault().language)
     }
 }
 
@@ -69,8 +117,11 @@ data class DesktopSettings(
     val audioQuality: AudioQuality = AudioQuality.HIGH,
     val preferredCodec: PreferredCodec = PreferredCodec.AUTO,
     val themeMode: ThemeMode = ThemeMode.DARK,
-    val language: AppLanguage = AppLanguage.ITALIAN,
-    val contentCountry: String = "IT",
+    val language: AppLanguage = AppLanguage.deviceDefault(),
+    val contentCountry: String = AppLanguage.deviceDefault().defaultCountry,
+    val displayName: String = "",
+    val selectedTasteIds: Set<String> = emptySet(),
+    val onboardingCompleted: Boolean = false,
     val volume: Int = 80,
     val autoplayRadio: Boolean = true,
     val resumeOnStartup: Boolean = true,
@@ -79,9 +130,31 @@ data class DesktopSettings(
     val equalizer: EqualizerSettings = EqualizerSettings()
 ) {
     fun sanitized(): DesktopSettings = copy(
-        contentCountry = contentCountry.trim().uppercase().take(2).ifBlank { "IT" },
+        contentCountry = contentCountry.trim().uppercase(Locale.ROOT).take(2).ifBlank { language.defaultCountry },
+        displayName = displayName.trim().take(MAX_DISPLAY_NAME_LENGTH),
+        selectedTasteIds = selectedTasteIds.map { it.trim().lowercase(Locale.ROOT) }
+            .filter { it in VALID_TASTE_IDS }
+            .toSet(),
         volume = volume.coerceIn(0, 100),
         vlcDirectory = vlcDirectory.trim(),
         equalizer = equalizer.sanitized()
     )
+
+    companion object {
+        const val MAX_DISPLAY_NAME_LENGTH = 40
+        val VALID_TASTE_IDS = setOf(
+            "hits",
+            "rap",
+            "local",
+            "pop",
+            "gym",
+            "chill",
+            "focus",
+            "sad",
+            "party",
+            "rock",
+            "electro",
+            "rnb"
+        )
+    }
 }
