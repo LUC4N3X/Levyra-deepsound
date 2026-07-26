@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="196" height="36" viewBox="0 0 196 36" role="img" aria-label="Android: v2.3.16">
+  <title>Android: v2.3.16</title>
+  <rect x="0.75" y="0.75" width="194.5" height="34.5" rx="8" fill="#0d1117" stroke="#303b4d"/>
+  <path d="M87 1h101a8 8 0 0 1 8 8v18a8 8 0 0 1-8 8H87Z" fill="#3ddc84"/>
+  <path d="M87 6v24" stroke="#ffffff" stroke-opacity=".16"/>
+  <g fill="#ffffff" transform="translate(12 9)">
+    <path d="M4.3 5.2 2.8 2.6l1-.6 1.6 2.7A8 8 0 0 1 9 4c1.3 0 2.5.3 3.6.7L14.2 2l1 .6-1.5 2.6A7.8 7.8 0 0 1 17 11H1a7.8 7.8 0 0 1 3.3-5.8ZM5 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/>
+    <path d="M1 12h16v2.5A2.5 2.5 0 0 1 14.5 17h-11A2.5 2.5 0 0 1 1 14.5V12Z"/>
+  </g>
+  <text x="36" y="22.5" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="11.5" font-weight="700">Android</text>
+  <text x="141" y="22.5" fill="#07160d" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="800">v2.3.16</text>
+</svg>
