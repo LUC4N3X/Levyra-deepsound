@@ -22,6 +22,7 @@ enum class Destination {
     DISCOVER,
     SEARCH,
     COLLECTION,
+    LIBRARY,
     PLAYLIST,
     SETTINGS,
     NOW_PLAYING
@@ -35,7 +36,8 @@ class LevyraAppModel(
     val catalogController: CatalogController,
     val discoverController: DiscoverController,
     val lyricsController: LyricsController,
-    val playbackController: PlaybackController
+    val playbackController: PlaybackController,
+    val downloadController: OfflineDownloadController
 ) {
     private val destinationState = MutableStateFlow(Destination.HOME)
     private val previousDestination = MutableStateFlow(Destination.HOME)
