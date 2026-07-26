@@ -5,6 +5,7 @@ on:
     paths:
       - "desktop/**"
       - "third_party/LevyraExtractor/**"
+      - "gradle.properties"
       - ".github/workflows/desktop-windows.yml"
   push:
     branches:
@@ -13,6 +14,7 @@ on:
     paths:
       - "desktop/**"
       - "third_party/LevyraExtractor/**"
+      - "gradle.properties"
       - ".github/workflows/desktop-windows.yml"
   workflow_dispatch:
 
