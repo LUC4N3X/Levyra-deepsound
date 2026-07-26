@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.app.AppInfo
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
+import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -86,7 +87,13 @@ internal class DesktopUpdateController(
         .followSslRedirects(true)
         .build()
 ) {
-    private val client = baseClient.newBuilder()
+    private val metadataClient = baseClient.newBuilder()
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
+        .callTimeout(30, TimeUnit.SECONDS)
+        .build()
+    private val downloadClient = baseClient.newBuilder()
         .callTimeout(0L, TimeUnit.MILLISECONDS)
         .readTimeout(0L, TimeUnit.MILLISECONDS)
         .build()
@@ -156,23 +163,29 @@ internal class DesktopUpdateController(
         installJob?.cancel()
     }
 
-    private fun fetchLatestRelease(): DesktopRelease? {
+    private suspend fun fetchLatestRelease(): DesktopRelease? {
         val request = Request.Builder()
             .url(DESKTOP_RELEASES_URL)
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "Levyra-Desktop/$currentVersion")
             .build()
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IllegalStateException("GitHub desktop release check failed: HTTP ${response.code}")
-            }
-            return Json.parseToJsonElement(response.body.string())
-                .jsonArray
-                .mapNotNull { parseDesktopRelease(it.jsonObject) }
-                .reduceOrNull { newest, candidate ->
-                    if (DesktopVersion.isNewer(candidate.version, newest.version)) candidate else newest
+        val call = metadataClient.newCall(request)
+        val cancellationHandle = currentCoroutineContext()[Job]?.invokeOnCompletion { call.cancel() }
+        return try {
+            call.execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IllegalStateException("GitHub desktop release check failed: HTTP ${response.code}")
                 }
+                Json.parseToJsonElement(response.body.string())
+                    .jsonArray
+                    .mapNotNull { parseDesktopRelease(it.jsonObject) }
+                    .reduceOrNull { newest, candidate ->
+                        if (DesktopVersion.isNewer(candidate.version, newest.version)) candidate else newest
+                    }
+            }
+        } finally {
+            cancellationHandle?.dispose()
         }
     }
 
@@ -193,8 +206,10 @@ internal class DesktopUpdateController(
         val assets = root["assets"]?.jsonArray.orEmpty().mapNotNull { element ->
             val asset = element.jsonObject
             val name = asset["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
-            val url = asset["browser_download_url"]?.jsonPrimitive?.contentOrNull.orEmpty()
-            if (name.isBlank() || url.isBlank()) {
+            val url = trustedReleaseAssetUrl(
+                asset["browser_download_url"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            )
+            if (name.isBlank() || url == null) {
                 null
             } else {
                 DesktopReleaseAsset(
@@ -234,51 +249,55 @@ internal class DesktopUpdateController(
             .header("Accept", "application/octet-stream")
             .header("User-Agent", "Levyra-Desktop/$currentVersion")
             .build()
-        val call = client.newCall(request)
-        currentCoroutineContext()[Job]?.invokeOnCompletion { call.cancel() }
-        call.execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IllegalStateException("Download aggiornamento non disponibile: HTTP ${response.code}")
-            }
-            val body = response.body
-            val responseLength = body.contentLength().coerceAtLeast(0L)
-            val total = release.installer.size.takeIf { it > 0L } ?: responseLength
-            internalState.update { it.copy(totalBytes = total) }
-            body.byteStream().buffered(BUFFER_SIZE).use { input ->
-                Files.newOutputStream(
-                    temporary,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.TRUNCATE_EXISTING
-                ).buffered(BUFFER_SIZE).use { output ->
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var downloaded = 0L
-                    var lastPublished = 0L
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        output.write(buffer, 0, read)
-                        downloaded += read
-                        if (downloaded - lastPublished >= PROGRESS_INTERVAL_BYTES || downloaded == total) {
-                            internalState.update {
-                                it.copy(bytesDownloaded = downloaded, totalBytes = total)
+        val call = downloadClient.newCall(request)
+        val cancellationHandle = currentCoroutineContext()[Job]?.invokeOnCompletion { call.cancel() }
+        try {
+            call.execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IllegalStateException("Download aggiornamento non disponibile: HTTP ${response.code}")
+                }
+                val body = response.body
+                val responseLength = body.contentLength().coerceAtLeast(0L)
+                val total = release.installer.size.takeIf { it > 0L } ?: responseLength
+                internalState.update { it.copy(totalBytes = total) }
+                body.byteStream().buffered(BUFFER_SIZE).use { input ->
+                    Files.newOutputStream(
+                        temporary,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.TRUNCATE_EXISTING
+                    ).buffered(BUFFER_SIZE).use { output ->
+                        val buffer = ByteArray(BUFFER_SIZE)
+                        var downloaded = 0L
+                        var lastPublished = 0L
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            output.write(buffer, 0, read)
+                            downloaded += read
+                            if (downloaded - lastPublished >= PROGRESS_INTERVAL_BYTES || downloaded == total) {
+                                internalState.update {
+                                    it.copy(bytesDownloaded = downloaded, totalBytes = total)
+                                }
+                                lastPublished = downloaded
                             }
-                            lastPublished = downloaded
                         }
-                    }
-                    output.flush()
-                    if (total > 0L && downloaded != total) {
-                        throw IllegalStateException("Aggiornamento incompleto: $downloaded di $total byte")
-                    }
-                    internalState.update {
-                        it.copy(
-                            bytesDownloaded = downloaded,
-                            totalBytes = total.takeIf { value -> value > 0L } ?: downloaded
-                        )
+                        output.flush()
+                        if (total > 0L && downloaded != total) {
+                            throw IllegalStateException("Aggiornamento incompleto: $downloaded di $total byte")
+                        }
+                        internalState.update {
+                            it.copy(
+                                bytesDownloaded = downloaded,
+                                totalBytes = total.takeIf { value -> value > 0L } ?: downloaded
+                            )
+                        }
                     }
                 }
             }
+        } finally {
+            cancellationHandle?.dispose()
         }
 
         verifyChecksum(release, temporary)
@@ -286,18 +305,24 @@ internal class DesktopUpdateController(
         target
     }
 
-    private fun verifyChecksum(release: DesktopRelease, installer: Path) {
+    private suspend fun verifyChecksum(release: DesktopRelease, installer: Path) {
         try {
             val request = Request.Builder()
                 .url(release.checksum.url)
                 .header("Accept", "text/plain")
                 .header("User-Agent", "Levyra-Desktop/$currentVersion")
                 .build()
-            val expected = client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw IllegalStateException("Checksum aggiornamento non disponibile: HTTP ${response.code}")
+            val call = metadataClient.newCall(request)
+            val cancellationHandle = currentCoroutineContext()[Job]?.invokeOnCompletion { call.cancel() }
+            val expected = try {
+                call.execute().use { response ->
+                    if (!response.isSuccessful) {
+                        throw IllegalStateException("Checksum aggiornamento non disponibile: HTTP ${response.code}")
+                    }
+                    response.body.string().trim().substringBefore(' ').lowercase(Locale.ROOT)
                 }
-                response.body.string().trim().substringBefore(' ').lowercase(Locale.ROOT)
+            } finally {
+                cancellationHandle?.dispose()
             }
             if (!expected.matches(Regex("^[0-9a-f]{64}$"))) {
                 throw IllegalStateException("Checksum aggiornamento non valido")
@@ -306,6 +331,7 @@ internal class DesktopUpdateController(
             Files.newInputStream(installer).buffered(BUFFER_SIZE).use { input ->
                 val buffer = ByteArray(BUFFER_SIZE)
                 while (true) {
+                    currentCoroutineContext().ensureActive()
                     val read = input.read(buffer)
                     if (read < 0) break
                     digest.update(buffer, 0, read)
@@ -320,6 +346,17 @@ internal class DesktopUpdateController(
             throw error
         }
     }
+
+    private fun trustedReleaseAssetUrl(raw: String): String? = runCatching {
+        val uri = URI(raw.trim())
+        require(uri.scheme.equals("https", ignoreCase = true))
+        require(uri.host.equals("github.com", ignoreCase = true))
+        require(uri.rawUserInfo == null)
+        require(uri.port == -1 || uri.port == 443)
+        require(uri.rawQuery == null && uri.rawFragment == null)
+        require(uri.path.orEmpty().startsWith(RELEASE_ASSET_PATH_PREFIX))
+        uri.toASCIIString()
+    }.getOrNull()
 
     private fun launchInstaller(release: DesktopRelease, installer: Path) {
         val osName = System.getProperty("os.name").orEmpty().lowercase(Locale.ROOT)
@@ -408,6 +445,7 @@ exit ${'$'}process.ExitCode
         const val DESKTOP_RELEASES_URL =
             "https://api.github.com/repos/LUC4N3X/Levyra-deepsound/releases?per_page=50"
         const val DESKTOP_RELEASE_TAG_PREFIX = "desktop-v"
+        const val RELEASE_ASSET_PATH_PREFIX = "/LUC4N3X/Levyra-deepsound/releases/download/"
         const val UPDATE_DIRECTORY = "updates"
         const val BUFFER_SIZE = 64 * 1024
         const val PROGRESS_INTERVAL_BYTES = 256 * 1024L
