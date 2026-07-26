@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.desktop.app.ui
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.AppInfo
@@ -97,6 +99,7 @@ fun LevyraRoot(model: LevyraAppModel) {
     var artworkAccent by remember { mutableStateOf(LevyraBrand.cyan) }
 
     val currentArtwork = playback.current?.artworkUrl.orEmpty()
+    val playerVisible = !playback.queue.isEmpty
 
     LaunchedEffect(model) {
         model.notices.collect { message -> snackbarState.showSnackbar(message) }
@@ -152,11 +155,11 @@ fun LevyraRoot(model: LevyraAppModel) {
                                 .weight(1f)
                                 .fillMaxHeight()
                                 .padding(top = 10.dp, end = if (queueVisible) 0.dp else 10.dp)
-                                .clip(RoundedCornerShape(18.dp))
+                                .clip(RoundedCornerShape(22.dp))
                                 .background(
                                     Brush.verticalGradient(
                                         listOf(
-                                            accent.copy(alpha = 0.055f),
+                                            accent.copy(alpha = 0.06f),
                                             MaterialTheme.colorScheme.surface,
                                             MaterialTheme.colorScheme.surface
                                         )
@@ -183,9 +186,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                         },
                                         onPlayMix = model.playbackController::playShuffled,
                                         onOpenPlaylist = model::openPlaylist,
-                                        onCreatePlaylist = { name ->
-                                            model.libraryStore.createPlaylist(name)
-                                        },
+                                        onCreatePlaylist = { name -> model.libraryStore.createPlaylist(name) },
                                         onImportUrl = model::openCollectionFromUrl,
                                         onClearHistory = { model.libraryStore.clearHistory() }
                                     )
@@ -194,9 +195,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                         state = discover,
                                         actions = actions,
                                         onCountryChange = { value ->
-                                            model.updateSettings {
-                                                it.copy(contentCountry = value)
-                                            }
+                                            model.updateSettings { it.copy(contentCountry = value) }
                                         },
                                         onRefresh = model::refreshDiscover,
                                         onPlayAll = {
@@ -210,15 +209,14 @@ fun LevyraRoot(model: LevyraAppModel) {
                                     Destination.SEARCH -> SearchScreen(
                                         state = search,
                                         recentSearches = library.recentSearches,
+                                        contentCountry = settings.contentCountry,
                                         actions = actions,
                                         onQueryChange = model.catalogController::onQueryChange,
                                         onSubmit = model.catalogController::submit,
                                         onFilterChange = model.catalogController::setFilter,
                                         onLoadMore = model.catalogController::loadMoreSearch,
                                         onOpenCollection = model::openCollection,
-                                        onClearRecent = {
-                                            model.libraryStore.clearRecentSearches()
-                                        }
+                                        onClearRecent = { model.libraryStore.clearRecentSearches() }
                                     )
 
                                     Destination.COLLECTION -> CollectionScreen(
@@ -233,14 +231,10 @@ fun LevyraRoot(model: LevyraAppModel) {
                                             )
                                         },
                                         onShuffleAll = {
-                                            model.playbackController.playShuffled(
-                                                collection.page.tracks
-                                            )
+                                            model.playbackController.playShuffled(collection.page.tracks)
                                         },
                                         onEnqueueAll = {
-                                            model.playbackController.enqueueLast(
-                                                collection.page.tracks
-                                            )
+                                            model.playbackController.enqueueLast(collection.page.tracks)
                                         },
                                         onOpenCollection = model::openCollection
                                     )
@@ -255,25 +249,17 @@ fun LevyraRoot(model: LevyraAppModel) {
                                             onBack = model::back,
                                             onPlayAll = {
                                                 playlist?.let {
-                                                    model.playbackController.playTracks(
-                                                        it.tracks,
-                                                        0
-                                                    )
+                                                    model.playbackController.playTracks(it.tracks, 0)
                                                 }
                                             },
                                             onShuffleAll = {
                                                 playlist?.let {
-                                                    model.playbackController.playShuffled(
-                                                        it.tracks
-                                                    )
+                                                    model.playbackController.playShuffled(it.tracks)
                                                 }
                                             },
                                             onRename = { name ->
                                                 playlist?.let {
-                                                    model.libraryStore.renamePlaylist(
-                                                        it.id,
-                                                        name
-                                                    )
+                                                    model.libraryStore.renamePlaylist(it.id, name)
                                                 }
                                             },
                                             onDelete = {
@@ -284,10 +270,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                             },
                                             onRemoveTrack = { trackId ->
                                                 playlist?.let {
-                                                    model.libraryStore.removeFromPlaylist(
-                                                        it.id,
-                                                        trackId
-                                                    )
+                                                    model.libraryStore.removeFromPlaylist(it.id, trackId)
                                                 }
                                             }
                                         )
@@ -345,43 +328,48 @@ fun LevyraRoot(model: LevyraAppModel) {
                                 onClose = model::toggleQueue,
                                 modifier = Modifier
                                     .padding(top = 10.dp, end = 10.dp)
-                                    .clip(RoundedCornerShape(18.dp))
+                                    .clip(RoundedCornerShape(22.dp))
                             )
                         }
                     }
 
-                    PlayerBar(
-                        state = playback,
-                        isFavorite = playback.current?.let { current ->
-                            library.favorites.any { it.id == current.id }
-                        } ?: false,
-                        queueVisible = queueVisible,
-                        onPlayPause = model.playbackController::togglePlayPause,
-                        onNext = {
-                            model.playbackController.next(automatic = false)
-                        },
-                        onPrevious = model.playbackController::previous,
-                        onSeek = model.playbackController::seekTo,
-                        onVolumeChange = model.playbackController::setVolume,
-                        onToggleMute = model.playbackController::toggleMuted,
-                        onToggleShuffle = model.playbackController::toggleShuffle,
-                        onCycleRepeat = model.playbackController::cycleRepeat,
-                        onToggleQueue = model::toggleQueue,
-                        onToggleFavorite = {
-                            playback.current?.let { track ->
-                                model.toggleFavorite(track)
-                            }
-                        },
-                        onOpenNowPlaying = {
-                            model.navigate(Destination.NOW_PLAYING)
-                        },
-                        modifier = Modifier.padding(
-                            start = 10.dp,
-                            end = 10.dp,
-                            top = 10.dp,
-                            bottom = 10.dp
+                    if (playerVisible) {
+                        PlayerBar(
+                            state = playback,
+                            isFavorite = playback.current?.let { current ->
+                                library.favorites.any { it.id == current.id }
+                            } ?: false,
+                            queueVisible = queueVisible,
+                            onPlayPause = model.playbackController::togglePlayPause,
+                            onNext = { model.playbackController.next(automatic = false) },
+                            onPrevious = model.playbackController::previous,
+                            onSeek = model.playbackController::seekTo,
+                            onVolumeChange = model.playbackController::setVolume,
+                            onToggleMute = model.playbackController::toggleMuted,
+                            onToggleShuffle = model.playbackController::toggleShuffle,
+                            onCycleRepeat = model.playbackController::cycleRepeat,
+                            onToggleQueue = model::toggleQueue,
+                            onToggleFavorite = {
+                                playback.current?.let { track -> model.toggleFavorite(track) }
+                            },
+                            onClose = {
+                                if (queueVisible) model.toggleQueue()
+                                model.playbackController.clearQueue()
+                                if (destination == Destination.NOW_PLAYING) {
+                                    model.navigate(Destination.HOME)
+                                }
+                            },
+                            onOpenNowPlaying = {
+                                model.navigate(Destination.NOW_PLAYING)
+                            },
+                            modifier = Modifier.padding(
+                                start = 10.dp,
+                                end = 10.dp,
+                                top = 10.dp,
+                                bottom = 10.dp
+                            )
                         )
-                    )
+                    }
                 }
 
                 Box(
@@ -390,7 +378,9 @@ fun LevyraRoot(model: LevyraAppModel) {
                 ) {
                     SnackbarHost(
                         hostState = snackbarState,
-                        modifier = Modifier.padding(bottom = 118.dp)
+                        modifier = Modifier.padding(
+                            bottom = if (playerVisible) 118.dp else 18.dp
+                        )
                     )
                 }
             }
@@ -416,10 +406,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                             )
                                             pendingPlaylistTrack = null
                                         }
-                                        .padding(
-                                            horizontal = 12.dp,
-                                            vertical = 10.dp
-                                        )
+                                        .padding(horizontal = 12.dp, vertical = 10.dp)
                                 )
                             }
                             OutlinedTextField(
@@ -434,9 +421,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                     confirmButton = {
                         Button(
                             onClick = {
-                                val playlistId = model.libraryStore.createPlaylist(
-                                    newPlaylistName
-                                )
+                                val playlistId = model.libraryStore.createPlaylist(newPlaylistName)
                                 model.libraryStore.addToPlaylist(
                                     playlistId,
                                     listOf(pending)
@@ -450,9 +435,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                         }
                     },
                     dismissButton = {
-                        TextButton(
-                            onClick = { pendingPlaylistTrack = null }
-                        ) {
+                        TextButton(onClick = { pendingPlaylistTrack = null }) {
                             Text(strings.cancel)
                         }
                     }
@@ -482,27 +465,11 @@ private fun NavigationSidebar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(11.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                LevyraBrand.cyan,
-                                LevyraBrand.violet
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = LevyraIcons.Disc,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            Image(
+                painter = painterResource("icons/levyra.svg"),
+                contentDescription = strings.appName,
+                modifier = Modifier.size(40.dp)
+            )
             Text(
                 text = strings.appName,
                 style = MaterialTheme.typography.titleLarge,
@@ -517,8 +484,7 @@ private fun NavigationSidebar(
         SidebarItem(
             icon = LevyraIcons.Home,
             label = strings.navHome,
-            selected = destination == Destination.HOME ||
-                destination == Destination.PLAYLIST,
+            selected = destination == Destination.HOME || destination == Destination.PLAYLIST,
             onClick = { onNavigate(Destination.HOME) }
         )
         SidebarItem(
@@ -530,8 +496,7 @@ private fun NavigationSidebar(
         SidebarItem(
             icon = LevyraIcons.Search,
             label = strings.navSearch,
-            selected = destination == Destination.SEARCH ||
-                destination == Destination.COLLECTION,
+            selected = destination == Destination.SEARCH || destination == Destination.COLLECTION,
             onClick = { onNavigate(Destination.SEARCH) }
         )
 
@@ -594,7 +559,7 @@ private fun SidebarItem(
         modifier = Modifier
             .fillMaxWidth()
             .height(46.dp)
-            .clip(RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(background)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
@@ -611,11 +576,7 @@ private fun SidebarItem(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             color = textColor,
-            fontWeight = if (selected) {
-                FontWeight.SemiBold
-            } else {
-                FontWeight.Medium
-            }
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
         )
     }
 }
