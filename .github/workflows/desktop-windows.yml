@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: desktop-windows-${{ github.ref }}
@@ -78,6 +78,21 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Resolve Levyra version
+        id: version
+        shell: pwsh
+        run: |
+          $line = Get-Content gradle.properties | Where-Object { $_ -match '^levyraVersionName=' } | Select-Object -First 1
+          if (-not $line) {
+            throw "levyraVersionName non trovato in gradle.properties"
+          }
+          $version = ($line -split '=', 2)[1].Trim()
+          if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$') {
+            throw "Versione Levyra non valida: $version"
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Levyra Windows version: $version"
+
       - name: Install WiX Toolset
         shell: pwsh
         run: |
@@ -103,27 +118,89 @@ jobs:
       - name: Build portable distribution
         shell: pwsh
         working-directory: desktop
-        run: .\gradlew.bat --stacktrace createReleaseDistributable
+        run: .\gradlew.bat --stacktrace createReleaseDistributable -PlevyraDesktopVersion="${{ steps.version.outputs.version }}"
 
       - name: Build installers
         shell: pwsh
         working-directory: desktop
-        run: .\gradlew.bat --stacktrace packageReleaseMsi packageReleaseExe
+        run: .\gradlew.bat --stacktrace packageReleaseMsi packageReleaseExe -PlevyraDesktopVersion="${{ steps.version.outputs.version }}"
 
-      - name: Upload installers
+      - name: Prepare Windows release assets
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $output = Join-Path $PWD "release-assets"
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+
+          $msi = Get-ChildItem "desktop/app/build/compose/binaries/main-release/msi" -Filter "*.msi" | Select-Object -First 1
+          $exe = Get-ChildItem "desktop/app/build/compose/binaries/main-release/exe" -Filter "*.exe" | Select-Object -First 1
+          $portable = "desktop/app/build/compose/binaries/main-release/app"
+
+          if (-not $msi) {
+            throw "Installer MSI non trovato"
+          }
+          if (-not $exe) {
+            throw "Installer EXE non trovato"
+          }
+          if (-not (Test-Path $portable)) {
+            throw "Distribuzione portabile non trovata"
+          }
+
+          $msiName = "LEVYRA-Windows-$version-x64.msi"
+          $exeName = "LEVYRA-Windows-$version-x64.exe"
+          $zipName = "LEVYRA-Windows-$version-portable-x64.zip"
+
+          Copy-Item $msi.FullName (Join-Path $output $msiName)
+          Copy-Item $exe.FullName (Join-Path $output $exeName)
+          Compress-Archive -Path "$portable\*" -DestinationPath (Join-Path $output $zipName) -CompressionLevel Optimal -Force
+
+          Get-ChildItem $output -File | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Set-Content -Path "$($_.FullName).sha256" -Encoding ascii -NoNewline
+          }
+
+          Get-ChildItem $output | Format-Table Name, Length
+
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: levyra-desktop-windows
-          path: |
-            desktop/app/build/compose/binaries/main-release/msi/*.msi
-            desktop/app/build/compose/binaries/main-release/exe/*.exe
+          name: levyra-desktop-windows-${{ steps.version.outputs.version }}
+          path: release-assets/*
           retention-days: 14
-          if-no-files-found: warn
+          if-no-files-found: error
 
-      - name: Upload portable build
-        uses: actions/upload-artifact@v7
-        with:
-          name: levyra-desktop-windows-portable
-          path: desktop/app/build/compose/binaries/main-release/app
-          retention-days: 14
-          if-no-files-found: warn
+      - name: Add Windows assets to Levyra release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $tag = "v$version"
+          $releaseFound = $false
+
+          for ($attempt = 1; $attempt -le 12; $attempt++) {
+            gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+            if ($LASTEXITCODE -eq 0) {
+              $releaseFound = $true
+              break
+            }
+            Start-Sleep -Seconds 10
+          }
+
+          if (-not $releaseFound) {
+            throw "Release $tag non trovata: impossibile aggiungere i file Windows"
+          }
+
+          $assets = Get-ChildItem release-assets -File | Sort-Object Name
+          if ($assets.Count -eq 0) {
+            throw "Nessun asset Windows da pubblicare"
+          }
+
+          $arguments = @("release", "upload", $tag)
+          $arguments += $assets.FullName
+          $arguments += @("--clobber", "--repo", $env:GITHUB_REPOSITORY)
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "Upload degli asset Windows non riuscito"
+          }
