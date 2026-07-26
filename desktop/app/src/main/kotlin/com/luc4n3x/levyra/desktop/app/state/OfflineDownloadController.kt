@@ -14,6 +14,9 @@ import com.luc4n3x.levyra.desktop.core.stream.StreamResolver
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.IOException
+import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -179,13 +182,16 @@ class OfflineDownloadController(
         val baseName = OfflineFileName.baseName(track)
         val target = paths.downloadsDirectory.resolve("$baseName.$extension")
         val temporary = paths.downloadsDirectory.resolve("$baseName.$extension.part")
+        val currentStreamIdentity = OfflineStreamIdentity.from(track, resolved)
         Files.createDirectories(paths.downloadsDirectory)
 
         val existingRecord = store.record(id) ?: return
         var resumedBytes = OfflinePartialFileMigration.prepare(
             downloadsDirectory = paths.downloadsDirectory,
             recordedPath = existingRecord.temporaryPath,
-            targetPath = temporary
+            targetPath = temporary,
+            recordedIdentity = existingRecord.streamIdentity,
+            currentIdentity = currentStreamIdentity
         )
         val requestBuilder = Request.Builder()
             .url(resolved.url)
@@ -203,6 +209,7 @@ class OfflineDownloadController(
                 filePath = "",
                 bytesDownloaded = resumedBytes,
                 mediaLabel = resolved.label,
+                streamIdentity = currentStreamIdentity,
                 error = ""
             )
         }
@@ -275,6 +282,7 @@ class OfflineDownloadController(
                 bytesDownloaded = completedSize,
                 totalBytes = completedSize,
                 mediaLabel = resolved.label,
+                streamIdentity = currentStreamIdentity,
                 error = ""
             )
         }
@@ -302,7 +310,13 @@ class OfflineDownloadController(
 }
 
 internal object OfflinePartialFileMigration {
-    fun prepare(downloadsDirectory: Path, recordedPath: String, targetPath: Path): Long {
+    fun prepare(
+        downloadsDirectory: Path,
+        recordedPath: String,
+        targetPath: Path,
+        recordedIdentity: String,
+        currentIdentity: String
+    ): Long {
         val root = downloadsDirectory.toAbsolutePath().normalize()
         val target = targetPath.toAbsolutePath().normalize()
         require(target.startsWith(root)) { "Il file temporaneo deve restare nella cartella download" }
@@ -317,6 +331,17 @@ internal object OfflinePartialFileMigration {
                 }.getOrNull()
             }
 
+        val identitiesMatch = recordedIdentity.isNotBlank() &&
+            currentIdentity.isNotBlank() &&
+            recordedIdentity == currentIdentity
+        if (!identitiesMatch) {
+            source
+                ?.takeIf { it.startsWith(root) }
+                ?.let { Files.deleteIfExists(it) }
+            Files.deleteIfExists(target)
+            return 0L
+        }
+
         if (
             source != null &&
             source != target &&
@@ -328,10 +353,14 @@ internal object OfflinePartialFileMigration {
                 migrateCompatiblePartial(source, target)
             } else {
                 Files.deleteIfExists(source)
+                Files.deleteIfExists(target)
             }
         }
 
-        return runCatching { Files.size(target) }.getOrDefault(0L)
+        return target
+            .takeIf { !Files.isSymbolicLink(it) && Files.isRegularFile(it) }
+            ?.let(Files::size)
+            ?: 0L
     }
 
     private fun migrateCompatiblePartial(source: Path, target: Path) {
@@ -356,6 +385,51 @@ internal object OfflinePartialFileMigration {
     }
 
     private const val PART_SUFFIX_LENGTH = 5
+}
+
+internal object OfflineStreamIdentity {
+    private val stableQueryKeys = listOf("itag", "clen", "dur", "lmt", "mime", "id")
+    private const val HASH_BYTES = 16
+
+    fun from(track: Track, resolved: ResolvedAudio): String {
+        val query = runCatching { URI(resolved.url).rawQuery }.getOrNull().orEmpty()
+        val parameters = query
+            .split('&')
+            .asSequence()
+            .filter { it.isNotBlank() }
+            .mapNotNull { entry ->
+                val key = decode(entry.substringBefore('=', "")).lowercase(Locale.ROOT)
+                val value = decode(entry.substringAfter('=', ""))
+                key.takeIf { it.isNotBlank() && value.isNotBlank() }?.let { it to value }
+            }
+            .toMap()
+        val itag = parameters["itag"].orEmpty()
+        val validator = parameters["clen"].orEmpty()
+            .ifBlank { parameters["lmt"].orEmpty() }
+            .ifBlank { parameters["id"].orEmpty() }
+        if (itag.isBlank() || validator.isBlank()) return ""
+
+        val stableQuery = stableQueryKeys.joinToString("&") { key ->
+            "$key=${parameters[key].orEmpty()}"
+        }
+        val payload = buildString {
+            append(track.id.ifBlank { track.videoUrl })
+            append('|')
+            append(resolved.label.trim().lowercase(Locale.ROOT))
+            append('|')
+            append(stableQuery)
+        }
+        return MessageDigest.getInstance("SHA-256")
+            .digest(payload.toByteArray(StandardCharsets.UTF_8))
+            .take(HASH_BYTES)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+    }
+
+    private fun decode(value: String): String = runCatching {
+        URLDecoder.decode(value, StandardCharsets.UTF_8)
+    }.getOrDefault(value)
 }
 
 internal object OfflineFileName {
