@@ -31,19 +31,16 @@ jobs:
     name: Compile and test
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
-
       - name: Compile modules and run tests
         shell: bash
         working-directory: desktop
@@ -57,7 +54,6 @@ jobs:
             exit "$status"
           fi
           tail -n 80 gradle-build.log
-
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v7
@@ -66,7 +62,6 @@ jobs:
           path: desktop/gradle-build.log
           retention-days: 7
           if-no-files-found: ignore
-
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -84,38 +79,28 @@ jobs:
     runs-on: windows-latest
     needs: verify
     timeout-minutes: 60
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
-
       - name: Resolve desktop version
         id: version
         shell: pwsh
         run: |
           $versionFile = "desktop/version.properties"
-          if (-not (Test-Path $versionFile)) {
-            throw "$versionFile non trovato"
-          }
+          if (-not (Test-Path $versionFile)) { throw "$versionFile non trovato" }
           $line = Get-Content $versionFile | Where-Object { $_ -match '^levyraDesktopVersion=' } | Select-Object -First 1
-          if (-not $line) {
-            throw "levyraDesktopVersion non trovato in $versionFile"
-          }
+          if (-not $line) { throw "levyraDesktopVersion non trovato in $versionFile" }
           $version = ($line -split '=', 2)[1].Trim()
-          if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$') {
-            throw "Versione Levyra Desktop non valida: $version"
-          }
+          if ($version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$') { throw "Versione Levyra Desktop non valida: $version" }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host "Levyra Desktop version: $version"
-
       - name: Install WiX Toolset
         shell: pwsh
         run: |
@@ -126,64 +111,43 @@ jobs:
               Where-Object { Test-Path (Join-Path $_ "candle.exe") } |
               Select-Object -First 1
           }
-
           $bin = Find-WixBin
           if (-not $bin) {
             choco install wixtoolset --no-progress --yes
             $bin = Find-WixBin
           }
-          if (-not $bin) {
-            throw "WiX Toolset 3 non disponibile sul runner"
-          }
-          Write-Host "WiX Toolset: $bin"
+          if (-not $bin) { throw "WiX Toolset 3 non disponibile sul runner" }
           Add-Content -Path $env:GITHUB_PATH -Value $bin
-
       - name: Build portable distribution
         shell: pwsh
         working-directory: desktop
         run: .\gradlew.bat --stacktrace createReleaseDistributable -PlevyraDesktopVersion="${{ steps.version.outputs.version }}"
-
       - name: Build installers
         shell: pwsh
         working-directory: desktop
         run: .\gradlew.bat --stacktrace packageReleaseMsi packageReleaseExe -PlevyraDesktopVersion="${{ steps.version.outputs.version }}"
-
       - name: Prepare Windows release assets
         shell: pwsh
         run: |
           $version = "${{ steps.version.outputs.version }}"
           $output = Join-Path $PWD "release-assets"
           New-Item -ItemType Directory -Force -Path $output | Out-Null
-
           $msi = Get-ChildItem "desktop/app/build/compose/binaries/main-release/msi" -Filter "*.msi" | Select-Object -First 1
           $exe = Get-ChildItem "desktop/app/build/compose/binaries/main-release/exe" -Filter "*.exe" | Select-Object -First 1
           $portable = "desktop/app/build/compose/binaries/main-release/app"
-
-          if (-not $msi) {
-            throw "Installer MSI non trovato"
-          }
-          if (-not $exe) {
-            throw "Installer EXE non trovato"
-          }
-          if (-not (Test-Path $portable)) {
-            throw "Distribuzione portabile non trovata"
-          }
-
+          if (-not $msi) { throw "Installer MSI non trovato" }
+          if (-not $exe) { throw "Installer EXE non trovato" }
+          if (-not (Test-Path $portable)) { throw "Distribuzione portabile non trovata" }
           $msiName = "LEVYRA-Windows-$version-x64.msi"
           $exeName = "LEVYRA-Windows-$version-x64.exe"
           $zipName = "LEVYRA-Windows-$version-portable-x64.zip"
-
           Copy-Item $msi.FullName (Join-Path $output $msiName)
           Copy-Item $exe.FullName (Join-Path $output $exeName)
           Compress-Archive -Path "$portable\*" -DestinationPath (Join-Path $output $zipName) -CompressionLevel Optimal -Force
-
           Get-ChildItem $output -File | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $($_.Name)" | Set-Content -Path "$($_.FullName).sha256" -Encoding ascii -NoNewline
           }
-
-          Get-ChildItem $output | Format-Table Name, Length
-
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -191,7 +155,6 @@ jobs:
           path: release-assets/*
           retention-days: 14
           if-no-files-found: error
-
       - name: Publish independent desktop release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
@@ -201,55 +164,10 @@ jobs:
           $version = "${{ steps.version.outputs.version }}"
           $tag = "desktop-v$version"
           $repo = $env:GITHUB_REPOSITORY
-          $releaseJson = gh api "repos/$repo/releases/tags/$tag" 2>$null
-
-          if ($LASTEXITCODE -eq 0) {
-            $release = $releaseJson | ConvertFrom-Json
-          } else {
-            gh release create $tag \
-              --repo $repo \
-              --target $env:GITHUB_SHA \
-              --title "Levyra Desktop $version" \
-              --notes "Release Windows indipendente di Levyra Desktop $version. La versione Android mantiene il proprio versioning e le proprie release."
-            if ($LASTEXITCODE -ne 0) {
-              throw "Impossibile creare la release desktop $tag"
-            }
-            $releaseJson = gh api "repos/$repo/releases/tags/$tag"
-            if ($LASTEXITCODE -ne 0) {
-              throw "Release desktop $tag creata ma non rileggibile"
-            }
-            $release = $releaseJson | ConvertFrom-Json
-          }
-
-          $assets = Get-ChildItem release-assets -File | Sort-Object Name
-          if ($assets.Count -eq 0) {
-            throw "Nessun asset Windows da pubblicare"
-          }
-
-          $existingJson = gh api "repos/$repo/releases/$($release.id)/assets?per_page=100"
+          gh release view $tag --repo $repo *> $null
           if ($LASTEXITCODE -ne 0) {
-            throw "Impossibile leggere gli asset esistenti della release desktop"
+            gh release create $tag --repo $repo --target $env:GITHUB_SHA --title "Levyra Desktop $version" --notes "Release Windows indipendente. Android e Desktop mantengono versioni e release separate."
+            if ($LASTEXITCODE -ne 0) { throw "Impossibile creare la release desktop $tag" }
           }
-          $existing = $existingJson | ConvertFrom-Json
-
-          foreach ($asset in $assets) {
-            $old = $existing | Where-Object { $_.name -eq $asset.Name } | Select-Object -First 1
-            if ($old) {
-              gh api --method DELETE "repos/$repo/releases/assets/$($old.id)" *> $null
-              if ($LASTEXITCODE -ne 0) {
-                throw "Impossibile sostituire $($asset.Name)"
-              }
-            }
-
-            $mime = switch -Regex ($asset.Extension.ToLowerInvariant()) {
-              '^\.msi$' { 'application/x-msi'; break }
-              '^\.exe$' { 'application/vnd.microsoft.portable-executable'; break }
-              '^\.zip$' { 'application/zip'; break }
-              default { 'text/plain'; break }
-            }
-            $encodedName = [System.Uri]::EscapeDataString($asset.Name)
-            gh api --hostname uploads.github.com --method POST -H "Content-Type: $mime" --input $asset.FullName "repos/$repo/releases/$($release.id)/assets?name=$encodedName" *> $null
-            if ($LASTEXITCODE -ne 0) {
-              throw "Upload non riuscito per $($asset.Name)"
-            }
-          }
+          gh release upload $tag "release-assets/*" --repo $repo --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Upload degli asset desktop non riuscito" }
