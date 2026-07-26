@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,10 +34,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.state.PlaybackUiState
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
+import com.luc4n3x.levyra.desktop.app.ui.components.LocalDownloadActions
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
+import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
+import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
 import com.luc4n3x.levyra.desktop.player.RepeatMode
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -62,6 +66,8 @@ fun PlayerBar(
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
     val track = state.current
+    val downloadActions = LocalDownloadActions.current
+    val downloadRecord = track?.let { downloadActions?.recordFor?.invoke(it) }
     var dragPosition by remember(track?.id) { mutableStateOf<Float?>(null) }
 
     val duration = state.durationMs.coerceAtLeast(0L)
@@ -87,7 +93,7 @@ fun PlayerBar(
                 horizontalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Row(
-                    modifier = Modifier.width(300.dp),
+                    modifier = Modifier.width(350.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -138,6 +144,54 @@ fun PlayerBar(
                             },
                             modifier = Modifier.size(18.dp)
                         )
+                    }
+                    if (track != null && downloadActions != null) {
+                        IconButton(
+                            onClick = {
+                                when (downloadRecord?.status) {
+                                    DownloadStatus.QUEUED,
+                                    DownloadStatus.RESOLVING,
+                                    DownloadStatus.DOWNLOADING -> downloadActions.onCancel(downloadRecord.id)
+                                    DownloadStatus.FAILED,
+                                    DownloadStatus.CANCELLED -> downloadActions.onRetry(downloadRecord.id)
+                                    DownloadStatus.COMPLETED -> Unit
+                                    null -> downloadActions.onDownload(track)
+                                }
+                            },
+                            enabled = downloadRecord?.status != DownloadStatus.COMPLETED
+                        ) {
+                            when (downloadRecord?.status) {
+                                DownloadStatus.QUEUED,
+                                DownloadStatus.RESOLVING,
+                                DownloadStatus.DOWNLOADING -> CircularProgressIndicator(
+                                    progress = { downloadRecord.progress },
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp
+                                )
+
+                                DownloadStatus.COMPLETED -> Icon(
+                                    imageVector = OfflineIcons.Check,
+                                    contentDescription = strings.downloadOfflineBadge,
+                                    tint = accent,
+                                    modifier = Modifier.size(19.dp)
+                                )
+
+                                DownloadStatus.FAILED,
+                                DownloadStatus.CANCELLED -> Icon(
+                                    imageVector = LevyraIcons.Refresh,
+                                    contentDescription = strings.downloadRetry,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+
+                                null -> Icon(
+                                    imageVector = OfflineIcons.Download,
+                                    contentDescription = strings.downloadAction,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
