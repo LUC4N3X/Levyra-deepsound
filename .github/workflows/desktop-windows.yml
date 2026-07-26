@@ -83,6 +83,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -148,6 +149,19 @@ jobs:
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $($_.Name)" | Set-Content -Path "$($_.FullName).sha256" -Encoding ascii -NoNewline
           }
+          $expected = @(
+            $msiName,
+            "$msiName.sha256",
+            $exeName,
+            "$exeName.sha256",
+            $zipName,
+            "$zipName.sha256"
+          )
+          foreach ($name in $expected) {
+            if (-not (Test-Path (Join-Path $output $name))) {
+              throw "Asset Windows obbligatorio non trovato: $name"
+            }
+          }
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -155,19 +169,183 @@ jobs:
           path: release-assets/*
           retention-days: 14
           if-no-files-found: error
-      - name: Publish independent desktop release
+      - name: Publish immutable desktop release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          LEVYRA_DESKTOP_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          $version = "${{ steps.version.outputs.version }}"
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $false
+          $version = $env:LEVYRA_DESKTOP_VERSION
           $tag = "desktop-v$version"
           $repo = $env:GITHUB_REPOSITORY
+          $remote = "https://github.com/$repo.git"
+          $releaseAssets = Join-Path $PWD "release-assets"
+          $downloadRoot = Join-Path $env:RUNNER_TEMP "levyra-existing-release-$version"
+          $msiName = "LEVYRA-Windows-$version-x64.msi"
+          $exeName = "LEVYRA-Windows-$version-x64.exe"
+          $zipName = "LEVYRA-Windows-$version-portable-x64.zip"
+          $remoteAssetsByName = @{}
+
+          function Resolve-TagCommit([string]$tagName) {
+            git fetch --force $remote "refs/tags/$tagName:refs/tags/$tagName" *> $null
+            if ($LASTEXITCODE -ne 0) { return $null }
+            $resolved = (git rev-list -n 1 $tagName).Trim()
+            if ([string]::IsNullOrWhiteSpace($resolved)) { return $null }
+            return $resolved
+          }
+
+          function Get-FileDigest([string]$path) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "File non trovato per la verifica SHA-256: $path"
+            }
+            return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+
+          function Read-Checksum([string]$path) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Checksum non trovato: $path"
+            }
+            $value = ((Get-Content -LiteralPath $path -Raw).Trim() -split '\s+')[0].ToLowerInvariant()
+            if ($value -notmatch '^[0-9a-f]{64}$') {
+              throw "Checksum SHA-256 non valido in $path"
+            }
+            return $value
+          }
+
+          function Download-ReleaseAsset([string]$assetName, [string]$directory) {
+            $metadata = $remoteAssetsByName[$assetName]
+            if ($null -eq $metadata) {
+              throw "Metadati GitHub mancanti per l'asset $assetName"
+            }
+            New-Item -ItemType Directory -Force -Path $directory | Out-Null
+            $path = Join-Path $directory $assetName
+            Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+            gh release download $tag --repo $repo --pattern $assetName --dir $directory
+            if ($LASTEXITCODE -ne 0) {
+              throw "Impossibile scaricare l'asset esistente $assetName"
+            }
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "GitHub non ha restituito l'asset esistente $assetName"
+            }
+            if ($null -eq $metadata.size) {
+              throw "Dimensione GitHub mancante per l'asset $assetName"
+            }
+            $declaredSize = [int64]$metadata.size
+            $downloadedSize = [int64](Get-Item -LiteralPath $path).Length
+            if ($downloadedSize -ne $declaredSize) {
+              throw "Asset $assetName incompleto: GitHub dichiara $declaredSize byte, scaricati $downloadedSize byte"
+            }
+            return $path
+          }
+
           gh release view $tag --repo $repo *> $null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $repo --target $env:GITHUB_SHA --title "Levyra Desktop $version" --notes "Release Windows indipendente. Android e Desktop mantengono versioni e release separate." --latest=false
+          $releaseExists = $LASTEXITCODE -eq 0
+          $remoteTag = git ls-remote --exit-code --tags $remote "refs/tags/$tag" 2>$null
+          $tagQueryExit = $LASTEXITCODE
+          $tagExists = switch ($tagQueryExit) {
+            0 { $true }
+            2 { $false }
+            default { throw "Impossibile verificare l'esistenza del tag remoto $tag (git ls-remote exit $tagQueryExit)" }
+          }
+
+          if ($tagExists) {
+            $tagCommit = Resolve-TagCommit $tag
+            if (-not $tagCommit) { throw "Impossibile risolvere il commit del tag $tag" }
+            if ($tagCommit -ne $env:GITHUB_SHA) {
+              throw "La versione Desktop $version è già legata al commit $tagCommit. Incrementare desktop/version.properties prima di pubblicare un nuovo build."
+            }
+          }
+
+          if (-not $releaseExists) {
+            gh release create $tag --repo $repo --target $env:GITHUB_SHA --title "Levyra Desktop $version" --notes "Independent Windows release. Android and Desktop keep separate versions and release channels." --latest=false
             if ($LASTEXITCODE -ne 0) { throw "Impossibile creare la release desktop $tag" }
           }
-          gh release upload $tag "release-assets/*" --repo $repo --clobber
-          if ($LASTEXITCODE -ne 0) { throw "Upload degli asset desktop non riuscito" }
+
+          $releaseJson = gh release view $tag --repo $repo --json assets
+          if ($LASTEXITCODE -ne 0) { throw "Impossibile leggere gli asset esistenti di $tag" }
+          $remoteAssets = @((($releaseJson | ConvertFrom-Json).assets))
+          foreach ($remoteAsset in $remoteAssets) {
+            $remoteAssetsByName[[string]$remoteAsset.name] = $remoteAsset
+          }
+          $existingNames = @($remoteAssetsByName.Keys)
+
+          $pairs = @(
+            [pscustomobject]@{ Artifact = $msiName; Checksum = "$msiName.sha256" },
+            [pscustomobject]@{ Artifact = $exeName; Checksum = "$exeName.sha256" },
+            [pscustomobject]@{ Artifact = $zipName; Checksum = "$zipName.sha256" }
+          )
+
+          foreach ($pair in $pairs) {
+            $localArtifact = Join-Path $releaseAssets $pair.Artifact
+            $localChecksum = Join-Path $releaseAssets $pair.Checksum
+            $localDigest = Get-FileDigest $localArtifact
+            $declaredLocalDigest = Read-Checksum $localChecksum
+            if ($localDigest -ne $declaredLocalDigest) {
+              throw "La coppia locale $($pair.Artifact) / $($pair.Checksum) non è coerente"
+            }
+
+            $artifactExists = $pair.Artifact -in $existingNames
+            $checksumExists = $pair.Checksum -in $existingNames
+            $pairDirectory = Join-Path $downloadRoot ([IO.Path]::GetFileNameWithoutExtension($pair.Artifact))
+
+            if ($artifactExists -and $checksumExists) {
+              $existingArtifact = Download-ReleaseAsset $pair.Artifact $pairDirectory
+              $existingChecksum = Download-ReleaseAsset $pair.Checksum $pairDirectory
+              $existingDigest = Get-FileDigest $existingArtifact
+              $declaredExistingDigest = Read-Checksum $existingChecksum
+              if ($existingDigest -ne $declaredExistingDigest) {
+                throw "La release $tag contiene una coppia non valida: $($pair.Artifact) / $($pair.Checksum). Gli asset pubblicati non vengono sostituiti."
+              }
+              Write-Host "Coppia già pubblicata e verificata: $($pair.Artifact)"
+              continue
+            }
+
+            if ($artifactExists -and -not $checksumExists) {
+              $existingArtifact = Download-ReleaseAsset $pair.Artifact $pairDirectory
+              $existingDigest = Get-FileDigest $existingArtifact
+              $recoveryChecksum = Join-Path $pairDirectory $pair.Checksum
+              if ($existingDigest -ne $localDigest) {
+                Write-Host "::warning::L'asset pubblicato $($pair.Artifact) differisce dal build corrente; il checksum viene ricostruito dall'asset immutabile già pubblicato."
+              }
+              "$existingDigest  $($pair.Artifact)" | Set-Content -LiteralPath $recoveryChecksum -Encoding ascii -NoNewline
+              gh release upload $tag $recoveryChecksum --repo $repo
+              if ($LASTEXITCODE -ne 0) {
+                throw "Impossibile completare la coppia pubblicata per $($pair.Artifact)"
+              }
+              Write-Host "Checksum ricostruito dall'asset già pubblicato: $($pair.Checksum)"
+              continue
+            }
+
+            if (-not $artifactExists -and $checksumExists) {
+              $existingChecksum = Download-ReleaseAsset $pair.Checksum $pairDirectory
+              $declaredExistingDigest = Read-Checksum $existingChecksum
+              if ($localDigest -ne $declaredExistingDigest) {
+                throw "La release $tag contiene $($pair.Checksum) per un build differente. Incrementare desktop/version.properties o rimuovere manualmente l'asset orfano."
+              }
+              gh release upload $tag $localArtifact --repo $repo
+              if ($LASTEXITCODE -ne 0) {
+                throw "Impossibile completare la coppia pubblicata per $($pair.Checksum)"
+              }
+              Write-Host "Artifact compatibile aggiunto al checksum esistente: $($pair.Artifact)"
+              continue
+            }
+
+            gh release upload $tag $localArtifact $localChecksum --repo $repo
+            if ($LASTEXITCODE -ne 0) {
+              throw "Upload non riuscito per la coppia $($pair.Artifact) / $($pair.Checksum)"
+            }
+            Write-Host "Coppia pubblicata: $($pair.Artifact) / $($pair.Checksum)"
+          }
+
+          $finalJson = gh release view $tag --repo $repo --json assets
+          if ($LASTEXITCODE -ne 0) { throw "Impossibile verificare la release finale $tag" }
+          $finalNames = @((($finalJson | ConvertFrom-Json).assets | ForEach-Object { $_.name }))
+          foreach ($pair in $pairs) {
+            if ($pair.Artifact -notin $finalNames -or $pair.Checksum -notin $finalNames) {
+              throw "Release incompleta: manca la coppia $($pair.Artifact) / $($pair.Checksum)"
+            }
+          }
+          Write-Host "Release immutabile $tag completa: tutte le coppie artifact/checksum sono presenti e coerenti."

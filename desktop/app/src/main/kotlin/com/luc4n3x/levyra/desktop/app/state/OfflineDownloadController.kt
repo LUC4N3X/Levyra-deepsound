@@ -13,10 +13,15 @@ import com.luc4n3x.levyra.desktop.core.stream.ResolvedAudio
 import com.luc4n3x.levyra.desktop.core.stream.StreamResolver
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
+import java.io.IOException
+import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -27,11 +32,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 
 class OfflineDownloadController(
     private val scope: CoroutineScope,
@@ -170,17 +179,20 @@ class OfflineDownloadController(
         resolved: ResolvedAudio
     ) {
         val extension = extensionFor(resolved.label)
-        val baseName = fileBaseName(track)
+        val baseName = OfflineFileName.baseName(track)
         val target = paths.downloadsDirectory.resolve("$baseName.$extension")
         val temporary = paths.downloadsDirectory.resolve("$baseName.$extension.part")
+        val currentStreamIdentity = OfflineStreamIdentity.from(track, resolved)
         Files.createDirectories(paths.downloadsDirectory)
 
         val existingRecord = store.record(id) ?: return
-        if (existingRecord.temporaryPath.isNotBlank() && existingRecord.temporaryPath != temporary.toString()) {
-            runCatching { Files.deleteIfExists(Path.of(existingRecord.temporaryPath)) }
-        }
-
-        var resumedBytes = runCatching { Files.size(temporary) }.getOrDefault(0L)
+        var resumedBytes = OfflinePartialFileMigration.prepare(
+            downloadsDirectory = paths.downloadsDirectory,
+            recordedPath = existingRecord.temporaryPath,
+            targetPath = temporary,
+            recordedIdentity = existingRecord.streamIdentity,
+            currentIdentity = currentStreamIdentity
+        )
         val requestBuilder = Request.Builder()
             .url(resolved.url)
             .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
@@ -197,13 +209,12 @@ class OfflineDownloadController(
                 filePath = "",
                 bytesDownloaded = resumedBytes,
                 mediaLabel = resolved.label,
+                streamIdentity = currentStreamIdentity,
                 error = ""
             )
         }
 
-        val call = client.newCall(requestBuilder.build())
-        kotlinx.coroutines.currentCoroutineContext()[Job]?.invokeOnCompletion { call.cancel() }
-        call.execute().use { response ->
+        client.newCall(requestBuilder.build()).awaitResponse().use { response ->
             if (!response.isSuccessful) {
                 throw IllegalStateException("Download non disponibile: HTTP ${response.code}")
             }
@@ -271,37 +282,11 @@ class OfflineDownloadController(
                 bytesDownloaded = completedSize,
                 totalBytes = completedSize,
                 mediaLabel = resolved.label,
+                streamIdentity = currentStreamIdentity,
                 error = ""
             )
         }
     }
-
-    private fun moveAtomically(source: Path, target: Path) {
-        runCatching {
-            Files.move(
-                source,
-                target,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE
-            )
-        }.getOrElse {
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
-        }
-    }
-
-    private fun fileBaseName(track: Track): String {
-        val artist = safeComponent(track.artist.ifBlank { "Levyra" })
-        val title = safeComponent(track.title.ifBlank { track.id })
-        val suffix = safeComponent(track.id).takeLast(10).ifBlank { track.hashCode().toUInt().toString(16) }
-        return "$artist - $title [$suffix]".take(MAX_FILE_NAME_LENGTH)
-    }
-
-    private fun safeComponent(value: String): String = value
-        .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), " ")
-        .replace(Regex("\\s+"), " ")
-        .trim()
-        .trimEnd('.')
-        .ifBlank { "track" }
 
     private fun extensionFor(label: String): String {
         val normalized = label.lowercase(Locale.ROOT)
@@ -321,6 +306,199 @@ class OfflineDownloadController(
         private const val BUFFER_SIZE = 64 * 1024
         private const val PROGRESS_BYTES_INTERVAL = 512 * 1024L
         private const val PROGRESS_TIME_INTERVAL_NANOS = 250_000_000L
-        private const val MAX_FILE_NAME_LENGTH = 180
+    }
+}
+
+internal object OfflinePartialFileMigration {
+    fun prepare(
+        downloadsDirectory: Path,
+        recordedPath: String,
+        targetPath: Path,
+        recordedIdentity: String,
+        currentIdentity: String
+    ): Long {
+        val root = downloadsDirectory.toAbsolutePath().normalize()
+        val target = targetPath.toAbsolutePath().normalize()
+        require(target.startsWith(root)) { "Il file temporaneo deve restare nella cartella download" }
+        Files.createDirectories(target.parent)
+
+        val source = recordedPath
+            .takeIf { it.isNotBlank() }
+            ?.let { raw ->
+                runCatching {
+                    val parsed = Path.of(raw)
+                    (if (parsed.isAbsolute) parsed else root.resolve(parsed)).toAbsolutePath().normalize()
+                }.getOrNull()
+            }
+
+        val identitiesMatch = recordedIdentity.isNotBlank() &&
+            currentIdentity.isNotBlank() &&
+            recordedIdentity == currentIdentity
+        if (!identitiesMatch) {
+            source
+                ?.takeIf { it.startsWith(root) }
+                ?.let { Files.deleteIfExists(it) }
+            Files.deleteIfExists(target)
+            return 0L
+        }
+
+        if (
+            source != null &&
+            source != target &&
+            source.startsWith(root) &&
+            !Files.isSymbolicLink(source) &&
+            Files.isRegularFile(source)
+        ) {
+            if (partialExtension(source) == partialExtension(target) && partialExtension(target).isNotBlank()) {
+                migrateCompatiblePartial(source, target)
+            } else {
+                Files.deleteIfExists(source)
+                Files.deleteIfExists(target)
+            }
+        }
+
+        return target
+            .takeIf { !Files.isSymbolicLink(it) && Files.isRegularFile(it) }
+            ?.let(Files::size)
+            ?: 0L
+    }
+
+    private fun migrateCompatiblePartial(source: Path, target: Path) {
+        if (Files.isRegularFile(target) && !Files.isSymbolicLink(target)) {
+            if (Files.size(source) > Files.size(target)) {
+                moveAtomically(source, target)
+            } else {
+                Files.deleteIfExists(source)
+            }
+        } else {
+            Files.deleteIfExists(target)
+            moveAtomically(source, target)
+        }
+    }
+
+    private fun partialExtension(path: Path): String {
+        val name = path.fileName.toString()
+        if (!name.endsWith(".part", ignoreCase = true)) return ""
+        return name.dropLast(PART_SUFFIX_LENGTH)
+            .substringAfterLast('.', "")
+            .lowercase(Locale.ROOT)
+    }
+
+    private const val PART_SUFFIX_LENGTH = 5
+}
+
+internal object OfflineStreamIdentity {
+    private val stableQueryKeys = listOf("itag", "clen", "dur", "lmt", "mime", "id")
+    private const val HASH_BYTES = 16
+
+    fun from(track: Track, resolved: ResolvedAudio): String {
+        val query = runCatching { URI(resolved.url).rawQuery }.getOrNull().orEmpty()
+        val parameters = query
+            .split('&')
+            .asSequence()
+            .filter { it.isNotBlank() }
+            .mapNotNull { entry ->
+                val key = decode(entry.substringBefore('=', "")).lowercase(Locale.ROOT)
+                val value = decode(entry.substringAfter('=', ""))
+                key.takeIf { it.isNotBlank() && value.isNotBlank() }?.let { it to value }
+            }
+            .toMap()
+        val itag = parameters["itag"].orEmpty()
+        val validator = parameters["clen"].orEmpty()
+            .ifBlank { parameters["lmt"].orEmpty() }
+            .ifBlank { parameters["id"].orEmpty() }
+        if (itag.isBlank() || validator.isBlank()) return ""
+
+        val stableQuery = stableQueryKeys.joinToString("&") { key ->
+            "$key=${parameters[key].orEmpty()}"
+        }
+        val payload = buildString {
+            append(track.id.ifBlank { track.videoUrl })
+            append('|')
+            append(resolved.label.trim().lowercase(Locale.ROOT))
+            append('|')
+            append(stableQuery)
+        }
+        return MessageDigest.getInstance("SHA-256")
+            .digest(payload.toByteArray(StandardCharsets.UTF_8))
+            .take(HASH_BYTES)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+    }
+
+    private fun decode(value: String): String = runCatching {
+        URLDecoder.decode(value, StandardCharsets.UTF_8)
+    }.getOrDefault(value)
+}
+
+internal object OfflineFileName {
+    private const val MAX_FILE_NAME_LENGTH = 180
+    private const val HASH_BYTES = 8
+    private val invalidFileNameChars = Regex("""[\\/:*?"<>|\p{Cntrl}]""")
+
+    fun baseName(track: Track): String {
+        val artist = safeComponent(track.artist.ifBlank { "Levyra" })
+        val title = safeComponent(track.title.ifBlank { track.id })
+        val suffixBlock = " [${stableSuffix(track)}]"
+        val availableDescriptionLength =
+            (MAX_FILE_NAME_LENGTH - suffixBlock.length).coerceAtLeast(1)
+        val description = "$artist - $title"
+            .take(availableDescriptionLength)
+            .trimEnd(' ', '.', '-')
+            .ifBlank { "track" }
+        return description + suffixBlock
+    }
+
+    private fun stableSuffix(track: Track): String {
+        val identity = track.id.ifBlank {
+            buildString {
+                append(track.title.trim().lowercase(Locale.ROOT))
+                append('|')
+                append(track.artist.trim().lowercase(Locale.ROOT))
+                append('|')
+                append(track.videoUrl.trim())
+            }
+        }
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(identity.toByteArray(Charsets.UTF_8))
+        return digest
+            .take(HASH_BYTES)
+            .joinToString("") { byte ->
+                (byte.toInt() and 0xff).toString(16).padStart(2, '0')
+            }
+    }
+
+    private fun safeComponent(value: String): String = value
+        .replace(invalidFileNameChars, " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .trimEnd('.')
+        .ifBlank { "track" }
+}
+
+private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
+    continuation.invokeOnCancellation { cancel() }
+    enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            continuation.resumeWith(Result.failure(e))
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            continuation.resume(response) { _, value, _ -> value.close() }
+        }
+    })
+}
+
+private fun moveAtomically(source: Path, target: Path) {
+    runCatching {
+        Files.move(
+            source,
+            target,
+            StandardCopyOption.REPLACE_EXISTING,
+            StandardCopyOption.ATOMIC_MOVE
+        )
+    }.getOrElse {
+        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
     }
 }

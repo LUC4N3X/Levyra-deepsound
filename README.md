@@ -6,7 +6,8 @@
 
 ### Stream everything. Keep what you love. Own every note.
 
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest Levyra release"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-android-platform.svg" alt="Download Levyra for Android"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=desktop-v&expanded=true"><img src="docs/assets/levyra-windows-platform.svg" alt="Download Levyra for Windows"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>
 <a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>
@@ -14,10 +15,13 @@
 <br>
 
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
-  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="520" />
+  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="370" />
+</a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=desktop-v&expanded=true">
+  <img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="370" />
 </a>
 
-<sub>**One APK. No Play Store. No account. No ads.** · Official signed build · Android 8.0+</sub>
+<sub>**Android and Windows. No account. No ads.** · Signed APK · MSI / EXE / Portable ZIP</sub>
 
 </div>
 
@@ -28,12 +32,12 @@
 
 <div align="center">
 
-🎵 **Levyra** isn't another website wearing an app icon. It's a native Android music client,<br>
-written from the ground up in 100% Kotlin, for people who are tired of renting their own music library.
+🎵 **Levyra** isn't another website wearing an app icon. It is a native music client for **Android and Windows**,<br>
+built in Kotlin for people who want fast streaming, a private library and real offline playback.
 
-It streams instantly, plays flawlessly in the background, and when you hit download it gives you<br>
-something almost no app dares to anymore: a **real M4A file**, tagged and covered, sitting in<br>
-`Music/Levyra` where it belongs. **Yours. In any player. Forever.**
+On Android, downloads can become tagged **M4A files** in `Music/Levyra`. On Windows, Levyra keeps a persistent<br>
+offline library with resumable downloads and automatically prefers the verified local file during playback.
+**Your music experience stays on your device — whichever screen you use.**
 
 <sub>*Every screen, every animation, every retry-on-bad-wifi was built by one developer who actually uses this app every day — and it shows.*</sub>
 
@@ -41,15 +45,52 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 🛡️ &nbsp;**Privacy by Default** &nbsp;—&nbsp; <sub>Listening stats stay in a local database. No trackers, no telemetry, no analytics.</sub>
 
-📥 &nbsp;**Real Files, Really Yours** &nbsp;—&nbsp; <sub>Tagged M4A exports with embedded artwork, not cache blobs locked inside the app.</sub>
+📥 &nbsp;**Real Files, Really Yours** &nbsp;—&nbsp; <sub>Tagged Android exports and persistent Windows offline files, not disposable cache blobs.</sub>
 
-⚡ &nbsp;**Native Audio Engine** &nbsp;—&nbsp; <sub>Media3 / ExoPlayer foreground service. Screen off, pocket, music never stops.</sub>
+⚡ &nbsp;**Native Audio Engines** &nbsp;—&nbsp; <sub>Media3 / ExoPlayer on Android and libvlc on Windows.</sub>
 
 <br>
 
-`100% Kotlin` &nbsp;·&nbsp; `Jetpack Compose` &nbsp;·&nbsp; `Material 3`
+`Kotlin` &nbsp;·&nbsp; `Jetpack Compose` &nbsp;·&nbsp; `Compose Multiplatform` &nbsp;·&nbsp; `Media3` &nbsp;·&nbsp; `libvlc`
 
 </div>
+
+---
+
+## ✦ Available on Android and Windows
+
+<table width="100%">
+<tr>
+<td width="50%" valign="top">
+
+### 🤖 Android
+
+- Signed APK for Android 8.0+
+- Media3 / ExoPlayer background playback
+- Public tagged M4A exports
+- Pulse listening statistics
+- F-Droid reproducible-build support
+
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><strong>Download the latest Android APK →</strong></a>
+
+</td>
+<td width="50%" valign="top">
+
+### 🪟 Windows
+
+- Native Compose Desktop interface
+- libvlc audio engine and system tray controls
+- Persistent offline downloads with resume
+- Full player plus always-on-top mini player
+- MSI, EXE and portable ZIP packages
+
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=desktop-v&expanded=true"><strong>Download Levyra Desktop for Windows →</strong></a>
+
+</td>
+</tr>
+</table>
+
+> Android remains the repository's **Latest** release. Windows builds use independent `desktop-v*` releases and are always available through the dedicated Windows badge above.
 
 ---
 
@@ -63,15 +104,16 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 **Dark-First, OLED-True:** Deep blacks and high contrast, built dark from day one — not dimmed as an afterthought.
 **Fluid Navigation:** Home, Search, Library and Player tied together by custom micro-animations.
-**Dual-State Player:** A discreet mini-player one swipe away from an immersive fullscreen experience.
-**Dynamic Material 3:** Optional system-wide dynamic color so the app matches your phone, not the other way around.
+**Platform-Native Layouts:** Mobile-first navigation on Android and a full desktop sidebar, player dock and window lifecycle on Windows.
+**Dual-State Player:** Immersive mobile playback on Android and a separate always-on-top mini player on Windows.
+**Adaptive Styling:** Dynamic Material 3 on Android, coordinated light/dark surfaces and native title-bar styling on Windows.
 
 </td>
 <td width="50%" valign="top">
 
 ### ⚡ Rock-Solid Playback
 
-**True Background Service:** Media3 + MediaSession keep playing with the screen off and the app minimized.
+**Native Playback:** Media3 + MediaSession on Android; libvlc, tray controls and single-instance lifecycle on Windows.
 **Total Control:** Loop all/single, shuffle, playback speed tuning, sleep timers (15/30/60m).
 **Audio Tuning:** In-app normalization, silence skipping, quality selectors (Auto/High/Low).
 **SponsorBlock Built In:** Non-music and sponsored segments skipped automatically, in real time.
@@ -83,10 +125,10 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 ### 📥 Downloads Done Right
 
-**Real Media Files:** Exported straight to the public `Music/Levyra` directory. Move them, back them up, keep them.
-**Pure-Kotlin Tagging:** High-res covers, titles, albums and artists embedded on completion.
-**Unstoppable Pipeline:** WorkManager downloads survive reboots and network drops, then retry on their own.
-**Truncation Shield:** Strict Content-Length checks discard corrupted files and re-queue them automatically.
+**Android Exports:** Tagged M4A files written to the public `Music/Levyra` directory. Move them, back them up, keep them.
+**Windows Offline Library:** Persistent local files with progress, cancellation, retry and HTTP Range resume.
+**Reliable Completion:** Atomic finalization prevents half-written files from being treated as complete.
+**Local-First Playback:** Levyra automatically uses the verified offline copy when it is available.
 
 </td>
 <td width="50%" valign="top">
@@ -115,7 +157,7 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 ### 🎵 Synced Lyrics
 
 **LRCLIB Integration:** Synced and static lyrics fetched instantly from track metadata.
-**Live Tracker:** Karaoke-precise scrolling locked to the ExoPlayer position.
+**Live Tracker:** Karaoke-precise scrolling synchronized with the active Android or Windows player.
 **Graceful Fallback:** No timestamps? Clean static text. Never a blank screen.
 
 </td>
@@ -142,10 +184,10 @@ something almost no app dares to anymore: a **real M4A file**, tagged and covere
 
 ## ✦ Architecture
 
-Levyra runs on strict unidirectional data flow: Compose renders, a central ViewModel owns state, and decoupled repositories and services make sure no network call or database write ever touches the main thread.
+Levyra ships two native clients from one repository. Android uses strict unidirectional data flow around a central ViewModel, while Windows is isolated under `desktop/` with its own Kotlin/JVM modules, state controllers, persistence, packaging and release channel. Both clients reuse LevyraExtractor and the shared localization catalog.
 
 ```text
-📦 Application Specifications
+📦 Android Application Specifications
 ├── Package Name      com.luc4n3x.levyra
 ├── Target SDK        35 (Android 15)
 ├── Min SDK           26 (Android 8.0)
@@ -191,11 +233,24 @@ graph TD
 | **Background Exports** | WorkManager pipeline, metadata tagging, MediaStore registrations | [`player/offline/`](app/src/main/java/com/luc4n3x/levyra/player/offline) |
 | **Local Cache** | SQLite database, Room entities, and key-value preference stores | [`data/local/`](app/src/main/java/com/luc4n3x/levyra/data/local) |
 
+### Windows Desktop architecture
+
+```text
+desktop/
+├── core/       catalog, stream resolution, downloads and persistence
+├── player/     queue model and libvlc audio implementation
+├── app/        Compose UI, onboarding, library, updater and lifecycle
+├── packaging/  Windows icon and jpackage resources
+└── version.properties  independent Desktop version
+```
+
+The Windows client includes a persistent library, offline downloads, single-instance protection, `levyra://` deep links, crash reports, a mini player and verified in-place updates. See [`desktop/README.md`](desktop/README.md) for the complete Desktop documentation.
+
 ---
 
 ## ✦ Technical stack
 
-Levyra is built natively for Android, focusing on a light runtime footprint and direct local data ownership.
+Levyra is built natively for Android and Windows, with platform-specific playback engines and a shared focus on fast startup, local ownership and private listening data.
 
 ```yaml
 system:
@@ -209,42 +264,51 @@ data:
   client: "OkHttp 5 (Brotli)"
   image_cache: "Coil 3"
   database: "Room (SQLite) + DataStore"
-  downloads: "WorkManager Daemon"
+  downloads: "WorkManager background work scheduler"
 build:
   engine: "Gradle Kotlin DSL + KSP"
   size_audit: "Spotify Ruler"
+desktop:
+  interface: "Compose Multiplatform"
+  audio: "libvlc"
+  storage: "%APPDATA%/Levyra"
+  packaging: "jpackage + WiX"
 ```
 
 ### 📱 Core and UI
 * **Kotlin 2.4.0**: A 100% native codebase built with coroutines and flow APIs for asynchronous streaming.
 * **Jetpack Compose** (via Compose BOM): Declarative layouts with Material 3 components and system-wide dynamic color adaptation.
 * **Mobius architecture**: A unidirectional data flow design (Model-Event-Effect-Update) for reliable player state transitions.
+* **Compose Multiplatform Desktop**: Native Windows layouts, lifecycle, onboarding, library and player surfaces.
 
 ### 🎧 Audio pipeline
-* **Media3 and ExoPlayer**: A foreground playback service that handles HTTP live streaming, ExoPlayer caching, and background controller sync.
+* **Media3 and ExoPlayer**: Android foreground playback with HTTP live streaming, caching and background controller sync.
+* **libvlc**: Windows playback, system tray controls and local-file-first offline playback.
 * **LevyraExtractor**: A custom resolver hosted on JitPack to parse playback streams from InnerTube endpoints.
 
 ### 📦 Storage and networking
 * **OkHttp 5**: The underlying network client, using Brotli compression to save mobile bandwidth.
-* **Room Database and DataStore**: Local SQLite and key-value storage for player history (Pulse metrics) and user preferences.
+* **Room Database and DataStore**: Local SQLite and key-value storage for Android player history and preferences.
+* **Desktop local stores**: JSON state, artwork cache and offline files under `%APPDATA%\Levyra`.
 * **Coil 3**: Asynchronous image loading optimized for Jetpack Compose.
-* **WorkManager**: A background daemon that schedules and runs offline audio downloads, resuming automatically if the device restarts.
+* **WorkManager**: An OS-managed background work scheduler for Android offline audio downloads.
 
 ### 🛠️ Build and bundle tools
 * **Gradle Kotlin DSL**: Build configuration using version catalogs, KSP, and Kotlin script files.
 * **Spotify Ruler**: A build analyzer that runs size audits and tracks dependency weights to keep the APK compact.
+* **jpackage + WiX**: MSI, EXE and portable Windows distributions.
 
 ---
 
 ## ✦ Building from Source
 
-### Prerequisites
-*   Android Studio Jellyfish (or newer)
-*   Java Development Kit (JDK) 17
-*   Android SDK Platform 37 (`compileSdk = 37`, `targetSdk = 35`)
-*   Gradle 9.6.1 through the repository Gradle Wrapper
+### Android prerequisites
+* Android Studio Jellyfish (or newer)
+* Java Development Kit (JDK) 17
+* Android SDK Platform 37 (`compileSdk = 37`, `targetSdk = 35`)
+* Gradle 9.6.1 through the repository Gradle Wrapper
 
-### Build & Install
+### Android build and install
 
 ```bash
 # Clone the repository
@@ -263,6 +327,20 @@ cd Levyra-deepsound
 
 The release APK lands in `app/build/outputs/apk/release/app-release.apk`.
 
+### Windows build
+
+Requirements: JDK 21, Windows x64, VLC 3.0.x/libvlc and WiX Toolset 3.14 for installers.
+
+```powershell
+git clone https://github.com/LUC4N3X/Levyra-deepsound.git
+cd Levyra-deepsound\desktop
+.\gradlew.bat check
+.\gradlew.bat createReleaseDistributable
+.\gradlew.bat packageReleaseMsi packageReleaseExe
+```
+
+Desktop artifacts are written to `desktop/app/build/compose/binaries/main-release/`.
+
 For F-Droid reproducible-build verification, use the dedicated source-build
 switch. It keeps the standard application ID, produces the unsigned rebuild
 that F-Droid compares with Levyra's upstream-signed F-Droid APK, uses the
@@ -279,37 +357,43 @@ Architecture and size-control notes live in `docs/APK_SIZE_RULER.md` and `docs/P
 
 ### Versioning & CI
 
-Version numbering is centralized in `gradle.properties`:
+Android and Windows use independent version sources and release tags.
 
 ```properties
+# Android — gradle.properties
 levyraVersionName=2.3.16
 levyraVersionCode=2031600
+
+# Windows — desktop/version.properties
+levyraDesktopVersion=1.0.1
 ```
 
-`versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build` — calculated sequentially so no two deployments ever collide. The APK Artifact workflow parses this schema, verifies target versions with `aapt`, checks structural integrity, compiles the signed binary and publishes it as `LEVYRA-<version>.apk`.
+Android publishes `v<version>` releases and remains the repository's **Latest** channel. Windows publishes immutable `desktop-v<version>` releases with MSI, EXE, portable ZIP and SHA-256 files. Increasing the Android version never starts or publishes the Desktop build, and increasing the Desktop version never modifies Android or F-Droid releases.
+
+`versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`, with every component bounded by the build logic and `build` restricted to `0–99`. The APK Artifact workflow verifies the signed APK independently from the Desktop Windows workflow.
 
 ---
 
-## ✦  Privacy & data collection
+## ✦ Privacy & data collection
 
 Your listening habits are nobody's business, including mine.
 
 * **No analytics frameworks**: There are no tracking SDKs or developer-operated telemetry services.
-* **On-device statistics**: Every history entry and Pulse statistic is stored locally inside your Room database.
+* **On-device statistics**: History, Pulse data, preferences and Desktop library state stay on the user's device.
 * **Network interactions**: Actions like searching, loading artwork, showing SponsorBlock segments, fetching lyrics, or using account features contact third-party endpoints. These connections send standard client data, including your IP address, device headers, and cookies where applicable.
 
-### Declared manifest permissions
+### Declared Android manifest permissions
 
 ```text
 INTERNET & ACCESS_NETWORK_STATE       Streams music data and queries metadata.
 FOREGROUND_SERVICE_MEDIA_PLAYBACK     Keeps audio playing when the app is backgrounded.
-POST_NOTIFICATIONS                     Displays the playback controller notification.
-WAKE_LOCK                              Prevents playback stutter when the CPU goes to sleep.
+POST_NOTIFICATIONS                    Displays the playback controller notification.
+WAKE_LOCK                             Prevents playback stutter when the CPU goes to sleep.
 WRITE_EXTERNAL_STORAGE (≤ SDK 28)     Saves offline files on older Android versions.
 ```
 
 ---
-## ✦  Contributing
+## ✦ Contributing
 
 Contributions are welcome. If you want to report a bug, suggest a feature, or submit a pull request, follow these steps:
 
@@ -332,7 +416,7 @@ Contributions are welcome. If you want to report a bug, suggest a feature, or su
 
 If you build and distribute your own version of Levyra, please respect these rules:
 * **Signing keys**: Generate your own Android keystores. Do not reuse existing keys.
-* **Build names**: Follow the release naming schema `LEVYRA-<version>.apk` rather than standard Gradle outputs.
+* **Build names**: Follow the release naming schema `LEVYRA-<version>.apk` for Android and `LEVYRA-Windows-<version>-x64` for Windows.
 * **Execution dispatching**: Run all database, storage, and network requests on background thread pools (`Dispatchers.IO`), keeping the UI thread responsive.
 * **Resiliency**: Handle query timeouts gracefully with clear fallback routes.
 
@@ -351,7 +435,7 @@ If you build and distribute your own version of Levyra, please respect these rul
       <h3>LUC4N3X</h3>
       <strong>Creator · Lead Architect · Design Lead</strong>
       <br>
-      <sub>System architecture · ExoPlayer orchestration · WorkManager export pipeline · Automated release CI · UI/UX</sub>
+      <sub>Android and Desktop architecture · Media3 and libvlc orchestration · Offline pipelines · Automated release CI · UI/UX</sub>
       <br>
       <sub><em>One developer. No team, no shortcuts — every line, every pixel.</em></sub>
       <br><br>
@@ -382,6 +466,10 @@ If you build and distribute your own version of Levyra, please respect these rul
   <tr>
     <td><a href="https://github.com/InfinityLoop1308/PipePipeExtractor"><strong>PipePipeExtractor</strong></a></td>
     <td>Upstream extractor foundation from the NewPipe/PipePipe ecosystem</td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/maxrave-dev/SimpMusic"><strong>SimpMusic</strong></a></td>
+    <td>Architectural reference for selected Desktop lifecycle patterns</td>
   </tr>
 </table>
 
