@@ -45,7 +45,7 @@ class AppContainer {
     private val chartsRepository = ChartsRepository()
     private val lyricsRepository = LyricsRepository()
 
-    val updateController: DesktopUpdateController = DesktopUpdateController(
+    internal val updateController: DesktopUpdateController = DesktopUpdateController(
         scope = scope,
         paths = paths
     )
