@@ -314,6 +314,7 @@ class OfflineDownloadController(
 internal object OfflineFileName {
     private const val MAX_FILE_NAME_LENGTH = 180
     private const val HASH_BYTES = 8
+    private val invalidFileNameChars = Regex("""[\\/:*?"<>|\p{Cntrl}]""")
 
     fun baseName(track: Track): String {
         val artist = safeComponent(track.artist.ifBlank { "Levyra" })
@@ -348,7 +349,7 @@ internal object OfflineFileName {
     }
 
     private fun safeComponent(value: String): String = value
-        .replace(Regex("[\\/:*?\"<>|\\p{Cntrl}]"), " ")
+        .replace(invalidFileNameChars, " ")
         .replace(Regex("\\s+"), " ")
         .trim()
         .trimEnd('.')
