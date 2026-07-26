@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.desktop.app.di
 
 import com.luc4n3x.levyra.desktop.app.state.CatalogController
+import com.luc4n3x.levyra.desktop.app.state.DesktopUpdateController
 import com.luc4n3x.levyra.desktop.app.state.DiscoverController
 import com.luc4n3x.levyra.desktop.app.state.LevyraAppModel
 import com.luc4n3x.levyra.desktop.app.state.LyricsController
@@ -43,6 +44,11 @@ class AppContainer {
     private val streamResolver = YoutubeStreamResolver()
     private val chartsRepository = ChartsRepository()
     private val lyricsRepository = LyricsRepository()
+
+    val updateController: DesktopUpdateController = DesktopUpdateController(
+        scope = scope,
+        paths = paths
+    )
 
     val playbackController: PlaybackController = PlaybackController(
         scope = scope,
@@ -98,6 +104,7 @@ class AppContainer {
     }
 
     fun shutdown() {
+        updateController.shutdown()
         downloadController.shutdown()
         playbackController.shutdown()
         scope.cancel()
