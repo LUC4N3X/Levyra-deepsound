@@ -243,8 +243,13 @@ jobs:
 
           gh release view $tag --repo $repo *> $null
           $releaseExists = $LASTEXITCODE -eq 0
-          $remoteTag = git ls-remote --tags $remote "refs/tags/$tag"
-          $tagExists = -not [string]::IsNullOrWhiteSpace(($remoteTag | Out-String).Trim())
+          $remoteTag = git ls-remote --exit-code --tags $remote "refs/tags/$tag" 2>$null
+          $tagQueryExit = $LASTEXITCODE
+          $tagExists = switch ($tagQueryExit) {
+            0 { $true }
+            2 { $false }
+            default { throw "Impossibile verificare l'esistenza del tag remoto $tag (git ls-remote exit $tagQueryExit)" }
+          }
 
           if ($tagExists) {
             $tagCommit = Resolve-TagCommit $tag
