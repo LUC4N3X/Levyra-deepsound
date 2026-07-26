@@ -123,7 +123,7 @@ class OfflinePartialFileMigrationTest {
 
     @Test
     fun streamIdentityIgnoresExpiringSignatureButTracksMediaVariant() {
-        val track = Track(id = "video-id", title = "Track", artist = "Artist")
+        val track = Track(id = "video-id", title = "Track", artist = "Artist", videoUrl = "")
         val first = resolved(
             "https://r1.googlevideo.com/videoplayback?itag=140&clen=123456&lmt=1710000000000000&dur=180.0&mime=audio%2Fmp4&expire=1&sig=first"
         )
@@ -145,7 +145,7 @@ class OfflinePartialFileMigrationTest {
 
     @Test
     fun streamIdentityRequiresFormatAndContentValidator() {
-        val track = Track(id = "video-id", title = "Track", artist = "Artist")
+        val track = Track(id = "video-id", title = "Track", artist = "Artist", videoUrl = "")
         val unresolved = resolved("https://example.com/audio?expire=1&sig=value")
 
         assertEquals("", OfflineStreamIdentity.from(track, unresolved))
