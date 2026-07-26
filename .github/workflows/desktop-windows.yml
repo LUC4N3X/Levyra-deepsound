@@ -174,10 +174,11 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          LEVYRA_DESKTOP_VERSION: ${{ steps.version.outputs.version }}
         run: |
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $false
-          $version = "${{ steps.version.outputs.version }}"
+          $version = $env:LEVYRA_DESKTOP_VERSION
           $tag = "desktop-v$version"
           $repo = $env:GITHUB_REPOSITORY
           $remote = "https://github.com/$repo.git"
