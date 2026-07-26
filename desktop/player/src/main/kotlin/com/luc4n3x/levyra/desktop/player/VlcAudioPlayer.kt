@@ -108,6 +108,23 @@ class VlcAudioPlayer private constructor(
         mediaPlayer.audio().setMute(muted)
     }
 
+    override fun applyEqualizer(enabled: Boolean, preamp: Float, amps: List<Float>) {
+        if (released.get()) return
+        if (!enabled) {
+            runCatching { mediaPlayer.audio().setEqualizer(null) }
+            return
+        }
+        runCatching {
+            val equalizer = factory.equalizer().newEqualizer()
+            equalizer.setPreamp(preamp)
+            val bandCount = equalizer.bandCount()
+            for (band in 0 until bandCount) {
+                equalizer.setAmp(band, amps.getOrElse(band) { 0f })
+            }
+            mediaPlayer.audio().setEqualizer(equalizer)
+        }
+    }
+
     override fun positionMs(): Long = if (released.get()) 0L else mediaPlayer.status().time().coerceAtLeast(0L)
 
     override fun durationMs(): Long = if (released.get()) 0L else mediaPlayer.status().length().coerceAtLeast(0L)
