@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.EmptyState
 import com.luc4n3x.levyra.desktop.app.ui.components.SectionHeader
+import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
@@ -57,7 +57,7 @@ fun HomeScreen(
 
     val historyTracks = library.history.map { it.track }
 
-    LazyColumn(
+    ScrollableColumn(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = 28.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)

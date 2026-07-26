@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.EmptyState
+import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRowAction
@@ -56,7 +56,7 @@ fun PlaylistScreen(
         return
     }
 
-    LazyColumn(
+    ScrollableColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 28.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)

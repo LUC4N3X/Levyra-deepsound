@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -31,6 +30,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.CollectionCard
 import com.luc4n3x.levyra.desktop.app.ui.components.EmptyState
 import com.luc4n3x.levyra.desktop.app.ui.components.ErrorBanner
 import com.luc4n3x.levyra.desktop.app.ui.components.LoadingRow
+import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
@@ -52,7 +52,7 @@ fun CollectionScreen(
     val strings = LocalStrings.current
     val tracks = state.page.tracks
 
-    LazyColumn(
+    ScrollableColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 28.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)

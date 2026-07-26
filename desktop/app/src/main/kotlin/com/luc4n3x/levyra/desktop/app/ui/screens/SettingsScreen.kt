@@ -9,12 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,11 +22,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.desktop.app.ui.components.EqualizerBars
 import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
+import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
+import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.AppLanguage
 import com.luc4n3x.levyra.desktop.core.model.AudioQuality
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
+import com.luc4n3x.levyra.desktop.core.model.EqualizerSettings
 import com.luc4n3x.levyra.desktop.core.model.PreferredCodec
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
 
@@ -44,7 +48,7 @@ fun SettingsScreen(
 ) {
     val strings = LocalStrings.current
 
-    LazyColumn(
+    ScrollableColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 28.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -81,6 +85,46 @@ fun SettingsScreen(
                     checked = settings.autoplayRadio,
                     onCheckedChange = { value -> onUpdate { it.copy(autoplayRadio = value) } }
                 )
+            }
+        }
+
+        item {
+            SettingsSection(title = strings.settingsEqualizer) {
+                Text(
+                    text = strings.settingsEqualizerBody,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                SettingsToggle(
+                    title = strings.settingsEqualizerEnable,
+                    body = "",
+                    checked = settings.equalizer.enabled,
+                    onCheckedChange = { value ->
+                        onUpdate { it.copy(equalizer = it.equalizer.copy(enabled = value)) }
+                    }
+                )
+                EqualizerBars(
+                    amps = settings.equalizer.amps,
+                    accent = LocalAccentColor.current,
+                    onChange = { index, gain ->
+                        onUpdate { it.copy(equalizer = it.equalizer.withAmp(index, gain)) }
+                    }
+                )
+                SettingsRow(title = strings.settingsEqualizerPreamp) {
+                    Slider(
+                        value = settings.equalizer.preamp,
+                        onValueChange = { value ->
+                            onUpdate { it.copy(equalizer = it.equalizer.copy(preamp = value)) }
+                        },
+                        valueRange = EqualizerSettings.MIN_GAIN..EqualizerSettings.MAX_GAIN,
+                        modifier = Modifier.widthIn(max = 320.dp)
+                    )
+                }
+                OutlinedButton(
+                    onClick = { onUpdate { it.copy(equalizer = it.equalizer.flattened()) } }
+                ) {
+                    Text(strings.settingsEqualizerReset)
+                }
             }
         }
 

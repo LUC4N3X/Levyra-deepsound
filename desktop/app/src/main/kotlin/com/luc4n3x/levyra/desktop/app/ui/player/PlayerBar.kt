@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.desktop.app.ui.player
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,10 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,15 +26,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.state.PlaybackUiState
 import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
+import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.player.RepeatMode
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PlayerBar(
     state: PlaybackUiState,
@@ -50,6 +58,7 @@ fun PlayerBar(
     modifier: Modifier = Modifier
 ) {
     val strings = LocalStrings.current
+    val accent = LocalAccentColor.current
     val track = state.current
     var dragPosition by remember { mutableStateOf<Float?>(null) }
 
@@ -59,7 +68,15 @@ fun PlayerBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        accent.copy(alpha = 0.10f),
+                        MaterialTheme.colorScheme.surfaceContainer,
+                        accent.copy(alpha = 0.06f)
+                    )
+                )
+            )
             .padding(horizontal = 20.dp, vertical = 10.dp)
     ) {
         Row(
@@ -83,7 +100,8 @@ fun PlayerBar(
                         text = track?.title ?: strings.nowPlayingEmpty,
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.basicMarquee()
                     )
                     Text(
                         text = track?.displaySubtitle.orEmpty(),
@@ -132,12 +150,19 @@ fun PlayerBar(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-                    IconButton(onClick = onPlayPause, enabled = track != null) {
+                    IconButton(
+                        onClick = onPlayPause,
+                        enabled = track != null,
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(23.dp))
+                            .background(accent.copy(alpha = if (track != null) 0.20f else 0.06f))
+                    ) {
                         Icon(
                             imageVector = if (state.isPlaying) LevyraIcons.Pause else LevyraIcons.Play,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(30.dp)
+                            tint = accent,
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                     IconButton(onClick = onNext, enabled = track != null) {
@@ -184,6 +209,10 @@ fun PlayerBar(
                         },
                         valueRange = 0f..(if (duration > 0L) duration.toFloat() else 1f),
                         enabled = track != null && duration > 0L,
+                        colors = SliderDefaults.colors(
+                            thumbColor = accent,
+                            activeTrackColor = accent
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                     Text(
