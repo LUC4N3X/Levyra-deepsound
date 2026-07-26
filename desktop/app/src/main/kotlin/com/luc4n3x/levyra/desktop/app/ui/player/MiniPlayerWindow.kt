@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,13 +36,13 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.WindowDraggableArea
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
@@ -56,7 +57,9 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
 import java.awt.Dimension
 import java.awt.Point
+import java.awt.Window as AwtWindow
 import java.util.prefs.Preferences
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -148,19 +151,18 @@ fun MiniPlayerWindow(
                 LocalStrings provides strings,
                 LocalAccentColor provides LevyraBrand.cyan
             ) {
-                WindowDraggableArea {
-                    MiniPlayerContent(
-                        state = state,
-                        strings = strings,
-                        isFavorite = isFavorite,
-                        onPlayPause = onPlayPause,
-                        onPrevious = onPrevious,
-                        onNext = onNext,
-                        onToggleFavorite = onToggleFavorite,
-                        onOpenMain = onOpenMain,
-                        onClose = onClose
-                    )
-                }
+                MiniPlayerContent(
+                    window = window,
+                    state = state,
+                    strings = strings,
+                    isFavorite = isFavorite,
+                    onPlayPause = onPlayPause,
+                    onPrevious = onPrevious,
+                    onNext = onNext,
+                    onToggleFavorite = onToggleFavorite,
+                    onOpenMain = onOpenMain,
+                    onClose = onClose
+                )
             }
         }
     }
@@ -168,6 +170,7 @@ fun MiniPlayerWindow(
 
 @Composable
 private fun MiniPlayerContent(
+    window: AwtWindow,
     state: PlaybackUiState,
     strings: LevyraStrings,
     isFavorite: Boolean,
@@ -193,8 +196,9 @@ private fun MiniPlayerContent(
         shadowElevation = 24.dp
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            MiniPlayerDragHandle(window)
             Row(
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -283,8 +287,33 @@ private fun MiniPlayerContent(
     }
 }
 
+@Composable
+private fun MiniPlayerDragHandle(window: AwtWindow) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(13.dp)
+            .pointerInput(window) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    window.setLocation(
+                        window.x + dragAmount.x.roundToInt(),
+                        window.y + dragAmount.y.roundToInt()
+                    )
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.width(42.dp).height(3.dp),
+            shape = RoundedCornerShape(999.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+        ) { }
+    }
+}
+
 private const val PREFERENCES_NODE = "Levyra/MiniPlayer"
 private const val DEFAULT_WIDTH = 520
-private const val DEFAULT_HEIGHT = 104
+private const val DEFAULT_HEIGHT = 112
 private const val MIN_WIDTH = 420
-private const val MIN_HEIGHT = 92
+private const val MIN_HEIGHT = 100
