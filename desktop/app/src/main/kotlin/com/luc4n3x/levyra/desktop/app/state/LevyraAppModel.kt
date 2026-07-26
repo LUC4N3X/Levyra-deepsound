@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 
 enum class Destination {
     HOME,
+    DISCOVER,
     SEARCH,
     COLLECTION,
     PLAYLIST,
@@ -32,6 +33,8 @@ class LevyraAppModel(
     private val settingsStore: SettingsStore,
     val libraryStore: LibraryStore,
     val catalogController: CatalogController,
+    val discoverController: DiscoverController,
+    val lyricsController: LyricsController,
     val playbackController: PlaybackController
 ) {
     private val destinationState = MutableStateFlow(Destination.HOME)
@@ -52,6 +55,7 @@ class LevyraAppModel(
         scope.launch {
             settingsStore.settings.collect { value ->
                 ExtractorRuntime.ensureInitialized(value.language, value.contentCountry)
+                discoverController.load(value.contentCountry)
             }
         }
         scope.launch {
@@ -80,6 +84,10 @@ class LevyraAppModel(
 
     fun openCollectionFromUrl(url: String) {
         catalogController.openCollectionFromUrl(url) { navigate(Destination.COLLECTION) }
+    }
+
+    fun refreshDiscover() {
+        discoverController.load(settingsStore.current.contentCountry, force = true)
     }
 
     fun openPlaylist(playlistId: String) {

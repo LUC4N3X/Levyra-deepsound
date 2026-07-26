@@ -1,10 +1,14 @@
 package com.luc4n3x.levyra.desktop.app.di
 
 import com.luc4n3x.levyra.desktop.app.state.CatalogController
+import com.luc4n3x.levyra.desktop.app.state.DiscoverController
 import com.luc4n3x.levyra.desktop.app.state.LevyraAppModel
+import com.luc4n3x.levyra.desktop.app.state.LyricsController
 import com.luc4n3x.levyra.desktop.app.state.PlaybackController
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
+import com.luc4n3x.levyra.desktop.core.charts.ChartsRepository
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRuntime
+import com.luc4n3x.levyra.desktop.core.lyrics.LyricsRepository
 import com.luc4n3x.levyra.desktop.core.storage.AppPaths
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
 import com.luc4n3x.levyra.desktop.core.storage.SessionStore
@@ -31,6 +35,8 @@ class AppContainer {
 
     private val catalogRepository = CatalogRepository()
     private val streamResolver = YoutubeStreamResolver()
+    private val chartsRepository = ChartsRepository()
+    private val lyricsRepository = LyricsRepository()
 
     val playbackController: PlaybackController = PlaybackController(
         scope = scope,
@@ -48,12 +54,24 @@ class AppContainer {
         libraryStore = libraryStore
     )
 
+    private val discoverController = DiscoverController(
+        scope = scope,
+        charts = chartsRepository
+    )
+
+    private val lyricsController = LyricsController(
+        scope = scope,
+        repository = lyricsRepository
+    )
+
     val appModel: LevyraAppModel = LevyraAppModel(
         scope = scope,
         paths = paths,
         settingsStore = settingsStore,
         libraryStore = libraryStore,
         catalogController = catalogController,
+        discoverController = discoverController,
+        lyricsController = lyricsController,
         playbackController = playbackController
     )
 

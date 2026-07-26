@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.core.catalog
 
+import com.luc4n3x.levyra.desktop.core.charts.PlayableMatcher
 import com.luc4n3x.levyra.desktop.core.model.CatalogPage
 import com.luc4n3x.levyra.desktop.core.model.CollectionDetail
 import com.luc4n3x.levyra.desktop.core.model.CollectionKind
@@ -96,6 +97,26 @@ class CatalogRepository(
 
     private fun isChannelUrl(url: String): Boolean =
         runCatching { service.channelLHFactory.acceptUrl(url) }.getOrDefault(false)
+
+    suspend fun findPlayable(track: Track): Track? = withContext(dispatcher) {
+        if (track.videoUrl.isNotBlank()) return@withContext track
+        val query = listOf(track.title, track.artist)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+            .trim()
+        if (query.isEmpty()) return@withContext null
+        val songs = runCatching { search(query, SearchFilter.SONGS).tracks }.getOrDefault(emptyList())
+        val candidates = songs.ifEmpty {
+            runCatching { search(query, SearchFilter.VIDEOS).tracks }.getOrDefault(emptyList())
+        }
+        val match = PlayableMatcher.best(track, candidates) ?: return@withContext null
+        match.copy(
+            title = track.title.ifBlank { match.title },
+            artist = track.artist.ifBlank { match.artist },
+            album = track.album.ifBlank { match.album },
+            artworkUrl = track.artworkUrl.ifBlank { match.artworkUrl }
+        )
+    }
 
     suspend fun radio(track: Track, limit: Int = 25): List<Track> = withContext(dispatcher) {
         val info = StreamInfo.getInfo(service, track.videoUrl)

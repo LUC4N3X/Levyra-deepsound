@@ -1,5 +1,7 @@
 package com.luc4n3x.levyra.desktop.app.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,12 +51,16 @@ import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.player.PlayerBar
 import com.luc4n3x.levyra.desktop.app.ui.player.QueuePanel
 import com.luc4n3x.levyra.desktop.app.ui.screens.CollectionScreen
+import com.luc4n3x.levyra.desktop.app.ui.screens.DiscoverScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.HomeScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.NowPlayingScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.PlaylistScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SearchScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SettingsScreen
+import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
+import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraTheme
+import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.player.VlcNativeLocator
 import java.awt.Desktop
@@ -74,6 +80,8 @@ fun LevyraRoot(model: LevyraAppModel) {
     val playback by model.playbackController.state.collectAsState()
     val search by model.catalogController.search.collectAsState()
     val collection by model.catalogController.collection.collectAsState()
+    val discover by model.discoverController.discover.collectAsState()
+    val lyrics by model.lyricsController.lyrics.collectAsState()
 
     val strings = stringsFor(settings.language)
     val snackbarState = remember { SnackbarHostState() }
@@ -82,10 +90,25 @@ fun LevyraRoot(model: LevyraAppModel) {
     var pendingPlaylistTrack by remember { mutableStateOf<Track?>(null) }
     var newPlaylistName by remember { mutableStateOf("") }
     var vlcStatus by remember { mutableStateOf("") }
+    var artworkAccent by remember { mutableStateOf(LevyraBrand.cyan) }
+
+    val currentArtwork = playback.current?.artworkUrl.orEmpty()
 
     LaunchedEffect(model) {
         model.notices.collect { message -> snackbarState.showSnackbar(message) }
     }
+
+    LaunchedEffect(currentArtwork) {
+        artworkAccent = ArtworkPalette.accentFor(currentArtwork) ?: LevyraBrand.cyan
+    }
+
+    LaunchedEffect(playback.current?.id, destination) {
+        if (destination == Destination.NOW_PLAYING) {
+            model.lyricsController.requestFor(playback.current)
+        }
+    }
+
+    val accent by animateColorAsState(targetValue = artworkAccent, animationSpec = tween(durationMillis = 500))
 
     val actions = TrackActions(
         currentTrackId = playback.current?.id.orEmpty(),
@@ -98,7 +121,7 @@ fun LevyraRoot(model: LevyraAppModel) {
     )
 
     LevyraTheme(themeMode = settings.themeMode) {
-        CompositionLocalProvider(LocalStrings provides strings) {
+        CompositionLocalProvider(LocalStrings provides strings, LocalAccentColor provides accent) {
             Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -116,6 +139,21 @@ fun LevyraRoot(model: LevyraAppModel) {
                                     onCreatePlaylist = { name -> model.libraryStore.createPlaylist(name) },
                                     onImportUrl = model::openCollectionFromUrl,
                                     onClearHistory = { model.libraryStore.clearHistory() }
+                                )
+
+                                Destination.DISCOVER -> DiscoverScreen(
+                                    state = discover,
+                                    actions = actions,
+                                    onCountryChange = { value ->
+                                        model.updateSettings { it.copy(contentCountry = value) }
+                                    },
+                                    onRefresh = model::refreshDiscover,
+                                    onPlayAll = {
+                                        model.playbackController.playTracks(discover.tracks, 0)
+                                    },
+                                    onShuffleAll = {
+                                        model.playbackController.playShuffled(discover.tracks)
+                                    }
                                 )
 
                                 Destination.SEARCH -> SearchScreen(
@@ -174,6 +212,7 @@ fun LevyraRoot(model: LevyraAppModel) {
 
                                 Destination.NOW_PLAYING -> NowPlayingScreen(
                                     state = playback,
+                                    lyricsState = lyrics,
                                     actions = actions,
                                     onBack = model::back,
                                     onJumpTo = model.playbackController::jumpTo
@@ -325,6 +364,12 @@ private fun NavigationRail(
             label = strings.navHome,
             selected = destination == Destination.HOME || destination == Destination.PLAYLIST,
             onClick = { onNavigate(Destination.HOME) }
+        )
+        RailItem(
+            icon = LevyraIcons.Chart,
+            label = strings.navDiscover,
+            selected = destination == Destination.DISCOVER,
+            onClick = { onNavigate(Destination.DISCOVER) }
         )
         RailItem(
             icon = LevyraIcons.Search,
