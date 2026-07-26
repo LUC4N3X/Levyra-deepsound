@@ -1,129 +1,132 @@
 # Levyra Desktop
 
-Client desktop di Levyra per Windows, scritto in Kotlin con Compose Multiplatform.
-Condivide l'estrattore YouTube del progetto Android (`third_party/LevyraExtractor`), riusa lo stesso catalogo di localizzazione e riproduce l'audio con libvlc.
+Levyra's desktop client for Windows, written in Kotlin with Compose Multiplatform.
 
-## Funzioni
+It shares the Android project's YouTube extractor (`third_party/LevyraExtractor`), reuses the same localization catalog, and plays audio through libvlc.
 
-- Home musicale come schermata iniziale
-- Prima configurazione guidata con lingua, nome, gusti musicali e Paese dei contenuti
-- Libreria completa con playlist, preferiti, download offline e cronologia
-- Download audio persistenti con avanzamento, annullamento, ripresa, nuovo tentativo e cancellazione
-- Riproduzione automatica del file locale quando un brano è già disponibile offline
-- Ricerca YouTube Music per brani, video, album, playlist e artisti, con suggerimenti e paginazione
-- Suggerimenti rapidi, artisti e atmosfere localizzati in base alla lingua e al Paese
-- Classifiche Top 50 selezionabili tramite bandiera e nome del Paese
-- Testi sincronizzati da LRCLIB, con la riga corrente evidenziata durante l'ascolto
-- Coda con shuffle e ripetizione, radio automatica a fine coda
-- Player desktop completo, chiudibile e dotato di comando per il download offline
-- Mini player separato, ridimensionabile e sempre in primo piano
-- Protezione single-instance: una seconda apertura riporta in primo piano la finestra già attiva
-- Protocollo `levyra://` e apertura diretta di link YouTube e YouTube Music
-- Controllo automatico degli aggiornamenti Windows con verifica SHA-256
-- Rapporto di arresto imprevisto salvato localmente e copiabile dalla finestra di errore
-- Colore d'accento estratto dalla copertina, tema chiaro e scuro e barra titolo Windows coordinata
-- Icona ufficiale Levyra in finestra, tray, sidebar e installer
+## Features
 
-## Prima apertura
+- Music-first Home screen
+- Guided first-run setup for language, display name, music preferences, and content country
+- Complete Library with playlists, favorites, offline downloads, and listening history
+- Persistent audio downloads with progress, cancellation, resume, retry, and deletion
+- Automatic local-file playback whenever a track is already available offline
+- YouTube Music search for songs, videos, albums, playlists, and artists, with suggestions and pagination
+- Quick suggestions, artists, and moods localized according to the selected language and country
+- Top 50 charts selectable by country flag and country name
+- Synced lyrics from LRCLIB, with the current line highlighted during playback
+- Queue with shuffle and repeat, plus automatic radio when the queue ends
+- Full desktop player with a close action and direct offline-download control
+- Separate resizable mini player that can stay always on top
+- Single-instance protection: opening Levyra again brings the existing window to the foreground
+- `levyra://` protocol support and direct opening of YouTube and YouTube Music links
+- Automatic Windows update checks with SHA-256 verification
+- Local crash reports that can be copied directly from the error dialog
+- Artwork-derived accent color, light and dark themes, and a coordinated Windows title bar
+- Official Levyra icon in the window, tray, sidebar, and installer
 
-Quando non esiste ancora un profilo completato, Levyra mostra la configurazione iniziale prima della Home:
+## First Launch
 
-1. scelta della lingua;
-2. nome visualizzato nell'app;
-3. scelta di almeno tre gusti musicali;
-4. scelta del Paese usato per contenuti e Top 50.
+When no completed profile exists, Levyra displays the initial setup before opening Home:
 
-Il profilo viene salvato in locale. Nome, lingua e Paese possono essere modificati in Impostazioni e il questionario può essere riaperto senza cancellare libreria, playlist, download o cronologia.
+1. choose the app language;
+2. enter the display name used in the app;
+3. select at least three music preferences;
+4. choose the country used for content and Top 50 charts.
 
-## Libreria
+The profile is stored locally. Name, language, and country can be changed later in Settings, and the onboarding questionnaire can be reopened without deleting the Library, playlists, downloads, or listening history.
 
-La voce Libreria nella barra laterale raccoglie le quattro aree personali dell'app:
+## Library
 
-- playlist locali;
-- brani preferiti;
-- download offline;
-- cronologia degli ascolti.
+The Library item in the sidebar groups the app's four personal areas:
 
-Ogni sezione mostra il proprio conteggio e permette di riprodurre, aggiungere alla coda, aggiungere a una playlist o gestire il contenuto senza tornare alla Home.
+- local playlists;
+- favorite tracks;
+- offline downloads;
+- listening history.
 
-## Download offline
+Each section displays its own count and allows users to play, add to the queue, add to a playlist, or manage content without returning to Home.
 
-Il comando di download è disponibile nel menu di ogni riga brano e direttamente nel player. I download vengono salvati in `%APPDATA%\Levyra\offline` e registrati in `downloads.json`.
+## Offline Downloads
 
-Il motore di download:
+The download action is available from every track-row menu and directly from the player. Downloads are stored in `%APPDATA%\Levyra\offline` and tracked in `downloads.json`.
 
-- esegue al massimo due trasferimenti contemporaneamente;
-- salva l'avanzamento su disco;
-- usa file temporanei `.part`;
-- riprende i trasferimenti interrotti tramite richieste HTTP Range;
-- finalizza il file con spostamento atomico;
-- permette annullamento, nuovo tentativo e cancellazione;
-- verifica all'avvio che i file completati esistano ancora;
-- preferisce automaticamente il file locale durante la riproduzione.
+The download engine:
 
-I download incompleti restano disponibili per la ripresa dopo la chiusura o un riavvio dell'app. I file completati vengono riprodotti senza richiedere una nuova risoluzione dello stream.
+- runs no more than two transfers at the same time;
+- persists progress to disk;
+- uses temporary `.part` files;
+- resumes interrupted transfers through HTTP Range requests;
+- finalizes files with an atomic move;
+- supports cancellation, retry, and deletion;
+- verifies at startup that completed files still exist;
+- automatically prefers the local file during playback.
 
-## Mini player e lifecycle desktop
+Incomplete downloads remain available for resuming after the app is closed or restarted. Completed files can be played without resolving the online stream again.
 
-Il mini player è una finestra separata sempre in primo piano. Condivide in tempo reale lo stato del player principale, ricorda posizione e dimensione e supporta:
+## Mini Player and Desktop Lifecycle
 
-- play e pausa;
-- brano precedente e successivo;
-- preferiti;
-- avanzamento del brano;
-- apertura della finestra principale;
-- scorciatoie Spazio, Freccia sinistra, Freccia destra ed Esc.
+The mini player is a separate always-on-top window. It shares the main player's state in real time, remembers its position and size, and supports:
 
-Levyra mantiene una sola istanza attiva. Una seconda apertura non inizializza nuovamente libreria, download o player: invia una richiesta locale all'istanza già attiva e la riporta in primo piano.
+- play and pause;
+- previous and next track;
+- favorites;
+- track progress;
+- opening the main window;
+- Space, Left Arrow, Right Arrow, and Esc shortcuts.
 
-## Link diretti
+Levyra keeps only one active instance. A second launch does not initialize the Library, downloads, or player again. Instead, it sends a local request to the already-running instance and brings it to the foreground.
 
-Su Windows viene registrato il protocollo utente `levyra://` senza richiedere privilegi amministrativi.
+## Deep Links
 
-Esempi:
+On Windows, Levyra registers the user-level `levyra://` protocol without requiring administrator privileges.
+
+Examples:
 
 ```text
 levyra://open?url=https%3A%2F%2Fmusic.youtube.com%2Fplaylist%3Flist%3D...
-levyra://search?q=artista
+levyra://search?q=artist
 levyra://watch?v=VIDEO_ID
 ```
 
-Sono accettati anche URL diretti di YouTube, YouTube Music e `youtu.be`. Se Levyra è già aperta, il link viene inoltrato all'istanza esistente.
+Direct YouTube, YouTube Music, and `youtu.be` URLs are also accepted. When Levyra is already running, the link is forwarded to the existing instance.
 
-## Aggiornamenti Windows
+## Windows Updates
 
-Android e Desktop hanno versionamento completamente separato.
+Android and Desktop use completely separate versioning.
 
-La versione Windows si modifica soltanto nel file:
+The Windows version is changed only in:
 
 ```properties
 # desktop/version.properties
-levyraDesktopVersion=2.3.16
+levyraDesktopVersion=1.0.0
 ```
 
-Il valore Android `levyraVersionName` nel `gradle.properties` principale non controlla, non avvia e non pubblica la build Desktop.
+The Android `levyraVersionName` value in the root `gradle.properties` file does not control, trigger, or publish the Desktop build.
 
-Le release Windows usano tag indipendenti:
+Windows releases use independent tags:
 
 ```text
-desktop-v2.3.16
-desktop-v2.3.17
+desktop-v1.0.0
+desktop-v1.0.1
 ```
 
-L'app controlla esclusivamente le release con prefisso `desktop-v`. Quando trova una versione superiore:
+The app checks only releases whose tag starts with `desktop-v`. When a newer version is available, Levyra:
 
-1. mostra la notifica tradotta;
-2. scarica l'MSI Windows corretto;
-3. verifica il file `.sha256` pubblicato insieme all'installer;
-4. chiude l'app;
-5. installa la nuova versione sopra quella esistente;
-6. riapre Levyra.
+1. displays a translated update notification;
+2. downloads the correct Windows MSI;
+3. verifies the `.sha256` file published with the installer;
+4. closes the app;
+5. installs the new version over the existing installation;
+6. reopens Levyra.
 
-Il valore stabile `upgradeUuid` identifica tutte le versioni Windows come la stessa applicazione installata.
+The stable `upgradeUuid` identifies every Windows version as the same installed application.
 
-## Lingue
+Desktop releases are created with `--latest=false`, so the Android release remains the repository's Latest release.
 
-La versione desktop compila direttamente lo stesso catalogo di traduzioni dell'APK Android. Sono supportate 26 lingue:
+## Languages
+
+The desktop version compiles the same localization catalog used by the Android APK. Twenty-six languages are supported:
 
 - English
 - Italiano
@@ -152,35 +155,35 @@ La versione desktop compila direttamente lo stesso catalogo di traduzioni dell'A
 - Filipino
 - עברית
 
-Arabo ed ebraico attivano il layout RTL nell'onboarding e nell'intera interfaccia desktop.
+Arabic and Hebrew enable RTL layout in both onboarding and the entire desktop interface.
 
-## Requisiti
+## Requirements
 
-| Componente | Versione |
+| Component | Version |
 |---|---|
-| JDK | 21 (Temurin consigliato) |
-| Gradle | wrapper incluso (9.6.1) |
-| VLC | 3.0.x a 64 bit, oppure runtime libvlc distribuito con l'app |
-| WiX Toolset | 3.14 (solo per generare `.msi` e `.exe`) |
+| JDK | 21 (Temurin recommended) |
+| Gradle | Included wrapper (9.6.1) |
+| VLC | 64-bit 3.0.x, or a libvlc runtime bundled with the app |
+| WiX Toolset | 3.14, required only to generate `.msi` and `.exe` packages |
 
-La build è indipendente da quella Android: `desktop/` ha il proprio `settings.gradle.kts`, il proprio catalogo delle dipendenze, il proprio wrapper e il proprio file di versione.
+The Desktop build is independent from Android. The `desktop/` directory has its own `settings.gradle.kts`, dependency catalog, Gradle wrapper, and version file.
 
-## Struttura
+## Project Structure
 
 ```text
 desktop/
   version.properties
-  core/      modelli, estrattore YouTube, risoluzione stream, download e persistenza
-  player/    astrazione del player audio e implementazione libvlc, coda di riproduzione
-  app/       interfaccia Compose, onboarding, libreria, lifecycle, aggiornamenti e packaging Windows
-  packaging/ icona Windows usata da jpackage
+  core/      models, YouTube extractor, stream resolution, downloads, and persistence
+  player/    audio-player abstraction, libvlc implementation, and playback queue
+  app/       Compose UI, onboarding, Library, lifecycle, updates, and Windows packaging
+  packaging/ Windows icon used by jpackage
 ```
 
-- `core` non dipende da Compose: è puro Kotlin/JVM e contiene la logica testabile.
-- `player` espone `AudioPlayer` e `PlayerQueue`; `VlcAudioPlayer` è l'unica classe che tocca le API native.
-- `app` collega tutto in `AppContainer`, riusa il catalogo i18n Android e contiene l'interfaccia desktop.
+- `core` does not depend on Compose. It is pure Kotlin/JVM and contains testable application logic.
+- `player` exposes `AudioPlayer` and `PlayerQueue`; `VlcAudioPlayer` is the only class that accesses native APIs.
+- `app` connects everything through `AppContainer`, reuses the Android i18n catalog, and contains the desktop interface.
 
-## Sviluppo
+## Development
 
 ```bash
 cd desktop
@@ -189,9 +192,9 @@ cd desktop
 ./gradlew assemble check
 ```
 
-Su Windows usare `gradlew.bat` al posto di `./gradlew`.
+On Windows, use `gradlew.bat` instead of `./gradlew`.
 
-## Pacchetti Windows
+## Windows Packages
 
 ```bash
 cd desktop
@@ -200,52 +203,54 @@ cd desktop
 ./gradlew packageReleaseExe
 ```
 
-Gli artefatti finiscono in `app/build/compose/binaries/main-release/`. Il workflow legge automaticamente `levyraDesktopVersion` da `desktop/version.properties`.
+Artifacts are generated in `app/build/compose/binaries/main-release/`. The workflow automatically reads `levyraDesktopVersion` from `desktop/version.properties`.
 
-Dopo il merge su `main`, MSI, EXE, ZIP portabile e checksum SHA-256 vengono pubblicati nella release indipendente `desktop-v<versione>`. Le release Android `v<versione>` restano separate e non vengono modificate dal workflow Desktop. La PR genera soltanto artefatti temporanei.
+After a merge into `main`, the MSI, EXE, portable ZIP, and SHA-256 checksums are published to the independent `desktop-v<version>` release. Android `v<version>` releases remain separate and are never modified by the Desktop workflow. Pull requests generate only temporary workflow artifacts.
 
-## Runtime VLC
+## VLC Runtime
 
-All'avvio della riproduzione Levyra cerca libvlc in questo ordine:
+When playback starts, Levyra looks for libvlc in this order:
 
-1. cartella indicata in Impostazioni (`vlcDirectory`);
-2. cartella `vlc` distribuita con l'applicazione;
-3. variabili d'ambiente `LEVYRA_VLC_PATH` e `VLC_HOME`;
-4. installazioni standard in `Program Files\VideoLAN\VLC`.
+1. the directory selected in Settings (`vlcDirectory`);
+2. the `vlc` directory bundled with the application;
+3. the `LEVYRA_VLC_PATH` and `VLC_HOME` environment variables;
+4. standard installations under `Program Files\VideoLAN\VLC`.
 
-Per distribuire l'app senza chiedere l'installazione di VLC, copiare `libvlc.dll`, `libvlccore.dll` e la cartella `plugins` di una installazione VLC a 64 bit dentro `desktop/app/resources/windows-x64/vlc/` prima del packaging.
+To distribute Levyra without requiring users to install VLC, copy `libvlc.dll`, `libvlccore.dll`, and the `plugins` directory from a 64-bit VLC installation into `desktop/app/resources/windows-x64/vlc/` before packaging.
 
-## Dati locali
+## Local Data
 
-Preferenze, libreria, download e cache delle copertine sono salvati in `%APPDATA%\Levyra` su Windows:
+Preferences, Library data, downloads, and artwork cache are stored in `%APPDATA%\Levyra` on Windows:
 
-| Percorso | Contenuto |
+| Path | Contents |
 |---|---|
-| `settings.json` | profilo, onboarding, gusti, audio, tema, lingua, Paese e percorso VLC |
-| `library.json` | preferiti, playlist locali, cronologia, ricerche recenti |
-| `downloads.json` | coda, stato, avanzamento e metadati dei download offline |
-| `offline/` | file audio completati e file temporanei ripristinabili |
-| `updates/` | installer temporanei, checksum e log degli aggiornamenti |
-| `crash-reports/` | rapporti locali degli arresti imprevisti |
-| `session.json` | coda e posizione dell'ultima sessione |
-| `window.json` | dimensione e posizione della finestra principale |
-| `cache/artwork` | cache su disco delle copertine |
+| `settings.json` | profile, onboarding, music preferences, audio settings, theme, language, country, and VLC path |
+| `library.json` | favorites, local playlists, listening history, and recent searches |
+| `downloads.json` | offline download queue, status, progress, and metadata |
+| `offline/` | completed audio files and resumable temporary files |
+| `updates/` | temporary installers, checksums, and update logs |
+| `crash-reports/` | local crash reports |
+| `session.json` | queue and position from the last session |
+| `window.json` | main-window size and position |
+| `cache/artwork` | on-disk artwork cache |
 
-## Scorciatoie
+## Keyboard Shortcuts
 
-| Tasto | Azione |
+| Key | Action |
 |---|---|
-| `Spazio` | play o pausa |
-| `Ctrl` + `→` | brano successivo nella finestra principale |
-| `Ctrl` + `←` | brano precedente nella finestra principale |
-| `→` | brano successivo nel mini player |
-| `←` | brano precedente nel mini player |
-| `Esc` | chiude il mini player |
+| `Space` | play or pause |
+| `Ctrl` + `→` | next track in the main window |
+| `Ctrl` + `←` | previous track in the main window |
+| `→` | next track in the mini player |
+| `←` | previous track in the mini player |
+| `Esc` | close the mini player |
 
-## Riferimenti tecnici
+## Technical References
 
-Il rafforzamento del lifecycle Desktop ha preso come riferimento architetturale il progetto GPL-3.0 SimpMusic, in particolare i pattern relativi a single-instance, mini player, gestione dei crash, deep link e packaging desktop. L'implementazione Levyra è stata riscritta e adattata al proprio stato, al proprio player libvlc e al proprio sistema di persistenza.
+The Desktop lifecycle hardening used the GPL-3.0 SimpMusic project as an architectural reference, especially for single-instance handling, the mini player, crash handling, deep links, and desktop packaging patterns. Levyra's implementation was rewritten and adapted to its own state model, libvlc player, and persistence system.
 
-## Vincoli di design
+## Design Constraints
 
-L'interfaccia mantiene l'icona ufficiale Levyra, l'onboarding localizzato, i menu Paese con bandiera e nome nativo, il layout RTL per arabo ed ebraico, la libreria integrata e il player chiudibile. Non vengono introdotti campi manuali per i codici Paese né cataloghi di traduzione desktop separati che possano divergere dall'APK.
+The interface preserves the official Levyra icon, localized onboarding, country menus with real flags and native country names, RTL layout for Arabic and Hebrew, the integrated Library, and a closable player.
+
+It does not introduce manual country-code fields or a separate Desktop translation catalog that could drift away from the Android APK.
