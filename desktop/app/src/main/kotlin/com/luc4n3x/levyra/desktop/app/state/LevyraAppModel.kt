@@ -54,8 +54,10 @@ class LevyraAppModel(
     init {
         scope.launch {
             settingsStore.settings.collect { value ->
-                ExtractorRuntime.ensureInitialized(value.language, value.contentCountry)
-                discoverController.load(value.contentCountry)
+                if (value.onboardingCompleted) {
+                    ExtractorRuntime.ensureInitialized(value.language, value.contentCountry)
+                    discoverController.load(value.contentCountry)
+                }
             }
         }
         scope.launch {
@@ -77,6 +79,10 @@ class LevyraAppModel(
         queueVisibleState.value = !queueVisibleState.value
     }
 
+    fun closeQueue() {
+        queueVisibleState.value = false
+    }
+
     fun openCollection(ref: CollectionRef) {
         catalogController.openCollection(ref)
         navigate(Destination.COLLECTION)
@@ -87,7 +93,9 @@ class LevyraAppModel(
     }
 
     fun refreshDiscover() {
-        discoverController.load(settingsStore.current.contentCountry, force = true)
+        if (settingsStore.current.onboardingCompleted) {
+            discoverController.load(settingsStore.current.contentCountry, force = true)
+        }
     }
 
     fun openPlaylist(playlistId: String) {
