@@ -13,6 +13,7 @@ import com.luc4n3x.levyra.desktop.core.stream.ResolvedAudio
 import com.luc4n3x.levyra.desktop.core.stream.StreamResolver
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -28,11 +29,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 
 class OfflineDownloadController(
     private val scope: CoroutineScope,
@@ -202,9 +207,7 @@ class OfflineDownloadController(
             )
         }
 
-        val call = client.newCall(requestBuilder.build())
-        kotlinx.coroutines.currentCoroutineContext()[Job]?.invokeOnCompletion { call.cancel() }
-        call.execute().use { response ->
+        client.newCall(requestBuilder.build()).awaitResponse().use { response ->
             if (!response.isSuccessful) {
                 throw IllegalStateException("Download non disponibile: HTTP ${response.code}")
             }
@@ -274,19 +277,6 @@ class OfflineDownloadController(
                 mediaLabel = resolved.label,
                 error = ""
             )
-        }
-    }
-
-    private fun moveAtomically(source: Path, target: Path) {
-        runCatching {
-            Files.move(
-                source,
-                target,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE
-            )
-        }.getOrElse {
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
         }
     }
 
@@ -365,19 +355,6 @@ internal object OfflinePartialFileMigration {
             .lowercase(Locale.ROOT)
     }
 
-    private fun moveAtomically(source: Path, target: Path) {
-        runCatching {
-            Files.move(
-                source,
-                target,
-                StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE
-            )
-        }.getOrElse {
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
-        }
-    }
-
     private const val PART_SUFFIX_LENGTH = 5
 }
 
@@ -424,4 +401,30 @@ internal object OfflineFileName {
         .trim()
         .trimEnd('.')
         .ifBlank { "track" }
+}
+
+private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
+    continuation.invokeOnCancellation { cancel() }
+    enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            continuation.resumeWith(Result.failure(e))
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            continuation.resume(response) { _, value, _ -> value.close() }
+        }
+    })
+}
+
+private fun moveAtomically(source: Path, target: Path) {
+    runCatching {
+        Files.move(
+            source,
+            target,
+            StandardCopyOption.REPLACE_EXISTING,
+            StandardCopyOption.ATOMIC_MOVE
+        )
+    }.getOrElse {
+        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
+    }
 }
