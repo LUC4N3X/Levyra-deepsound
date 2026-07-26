@@ -101,15 +101,19 @@ await Promise.all([
   writeFile('docs/assets/levyra-stars.svg', makeBadge({ label: 'Stars', value: starsValue, color: '#F2A900', icon: icons.stars }), 'utf8')
 ])
 
-const badgeBlock = `<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest Levyra release"></a>
+const badgeBlock = `<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-android-platform.svg" alt="Download Levyra for Android"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=desktop-v&expanded=true"><img src="docs/assets/levyra-windows-platform.svg" alt="Download Levyra for Windows"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>
 <a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>`
-const badgePattern = /<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\/latest"><img[^>]+><\/a>\n<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases"><img[^>]+><\/a>\n<a href="LICENSE"><img[^>]+><\/a>\n<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound(?:\/stargazers)?"><img[^>]+><\/a>/
+const badgePattern = /<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\/latest"><img[^>]+><\/a>\n(?:<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\?q=desktop-v&expanded=true"><img[^>]+><\/a>\n)?<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases"><img[^>]+><\/a>\n<a href="LICENSE"><img[^>]+><\/a>\n<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound(?:\/stargazers)?"><img[^>]+><\/a>/
 const downloadBlock = `<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
-  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="520" />
+  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="370" />
+</a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=desktop-v&expanded=true">
+  <img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="370" />
 </a>`
-const downloadPattern = /<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\/latest">\n\s*<img src="docs\/assets\/levyra-github-download\.svg"[^>]*>\n<\/a>/
+const downloadPattern = /<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\/latest">\n\s*<img src="docs\/assets\/levyra-github-download\.svg"[^>]*>\n<\/a>\n(?:<a href="https:\/\/github\.com\/LUC4N3X\/Levyra-deepsound\/releases\?q=desktop-v&expanded=true">\n\s*<img src="docs\/assets\/levyra-windows-download\.svg"[^>]*>\n<\/a>)?/
 const readme = await readFile('README.md', 'utf8')
 const badgesUpdated = readme.replace(badgePattern, badgeBlock)
 const updatedReadme = badgesUpdated.replace(downloadPattern, downloadBlock)
