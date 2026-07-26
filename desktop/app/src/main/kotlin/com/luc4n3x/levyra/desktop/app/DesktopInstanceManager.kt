@@ -29,7 +29,7 @@ internal class DesktopInstanceManager private constructor(
     private val server: ServerSocket
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val requestFlow = MutableSharedFlow<String>(extraBufferCapacity = 16)
+    private val requestFlow = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 15)
 
     val requests: SharedFlow<String> = requestFlow.asSharedFlow()
 
