@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -6,7 +7,16 @@ plugins {
     alias(libs.plugins.compose)
 }
 
-val levyraDesktopVersion = providers.gradleProperty("levyraDesktopVersion").getOrElse("1.0.0")
+val repositoryProperties = Properties().apply {
+    val propertiesFile = rootProject.file("../gradle.properties")
+    if (propertiesFile.isFile) {
+        propertiesFile.inputStream().use(::load)
+    }
+}
+
+val levyraDesktopVersion = providers.gradleProperty("levyraDesktopVersion").getOrElse(
+    repositoryProperties.getProperty("levyraVersionName") ?: "1.0.0"
+)
 
 dependencies {
     implementation(project(":core"))
