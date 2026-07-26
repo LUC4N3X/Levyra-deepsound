@@ -18,6 +18,10 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -150,11 +154,9 @@ fun SettingsScreen(
                     onSelect = { value -> onUpdate { it.copy(language = value) } }
                 )
                 SettingsRow(title = strings.settingsCountry, body = strings.settingsCountryBody) {
-                    OutlinedTextField(
+                    CountryField(
                         value = settings.contentCountry,
-                        onValueChange = { value -> onUpdate { it.copy(contentCountry = value) } },
-                        singleLine = true,
-                        modifier = Modifier.widthIn(max = 120.dp)
+                        onCommit = { value -> onUpdate { it.copy(contentCountry = value) } }
                     )
                 }
             }
@@ -199,7 +201,7 @@ fun SettingsScreen(
                         Text(strings.settingsVlcBrowse)
                     }
                     Button(onClick = onVerifyVlc) {
-                        Text(strings.retry)
+                        Text(strings.settingsVlcVerify)
                     }
                 }
                 if (vlcStatus.isNotBlank()) {
@@ -248,6 +250,22 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun CountryField(value: String, onCommit: (String) -> Unit) {
+    var draft by remember(value) { mutableStateOf(value) }
+    OutlinedTextField(
+        value = draft,
+        onValueChange = { input ->
+            draft = input.filter { it.isLetter() }.take(COUNTRY_CODE_LENGTH).uppercase()
+            if (draft.length == COUNTRY_CODE_LENGTH && draft != value) {
+                onCommit(draft)
+            }
+        },
+        singleLine = true,
+        modifier = Modifier.widthIn(max = 120.dp)
+    )
 }
 
 @Composable
@@ -328,3 +346,5 @@ private fun SettingsToggle(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
+
+private const val COUNTRY_CODE_LENGTH = 2

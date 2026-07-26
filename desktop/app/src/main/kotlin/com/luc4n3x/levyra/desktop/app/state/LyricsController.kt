@@ -32,7 +32,8 @@ class LyricsController(
             state.value = LyricsUiState()
             return
         }
-        if (track.id == state.value.trackId) return
+        val known = state.value
+        if (track.id == known.trackId && (known.loading || known.lyrics != null)) return
         job?.cancel()
         state.value = LyricsUiState(trackId = track.id, loading = true)
         job = scope.launch {
