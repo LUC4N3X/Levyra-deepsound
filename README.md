@@ -467,10 +467,6 @@ If you build and distribute your own version of Levyra, please respect these rul
     <td><a href="https://github.com/InfinityLoop1308/PipePipeExtractor"><strong>PipePipeExtractor</strong></a></td>
     <td>Upstream extractor foundation from the NewPipe/PipePipe ecosystem</td>
   </tr>
-  <tr>
-    <td><a href="https://github.com/maxrave-dev/SimpMusic"><strong>SimpMusic</strong></a></td>
-    <td>Architectural reference for selected Desktop lifecycle patterns</td>
-  </tr>
 </table>
 
 ---
