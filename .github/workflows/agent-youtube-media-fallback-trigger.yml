@@ -1,0 +1,144 @@
+name: Build YouTube media fallback
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-youtube-media-fallback-trigger
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'agent/youtube-media-fallback' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/youtube-media-fallback
+          fetch-depth: 0
+
+      - name: Materialize and verify implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import base64
+          import gzip
+          import re
+
+          carrier = Path('.github/workflows/agent-youtube-media-fallback.yml').read_text()
+
+          def payload(name: str) -> bytes:
+              match = re.search(rf'^\s*{name}:\s*(\S+)\s*$', carrier, re.MULTILINE)
+              if match is None:
+                  raise SystemExit(f'Missing {name} payload')
+              return gzip.decompress(base64.b64decode(match.group(1)))
+
+          helper = payload('HELPER_GZ_B64').decode()
+          helper = helper.replace(
+              '        when (kind) {\n        when (kind) {\n',
+              '        when (kind) {\n',
+              1,
+          )
+          if helper.count('        when (kind) {\n        when (kind) {\n') != 0:
+              raise SystemExit('Duplicate request-kind branch remains')
+
+          helper_path = Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClient.kt')
+          test_path = Path('app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClientTest.kt')
+          helper_path.write_text(helper)
+          test_path.parent.mkdir(parents=True, exist_ok=True)
+          test_path.write_bytes(payload('TEST_GZ_B64'))
+
+          repository_path = Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt')
+          text = repository_path.read_text()
+          field = '    private val watchRepository = YoutubeMusicWatchRepository(context)\n'
+          if text.count(field) != 1:
+              raise SystemExit('Expected watchRepository field exactly once')
+          if 'private val resilienceClient = YoutubeMusicResilienceClient' in text:
+              raise SystemExit('Resilience client is already integrated')
+          text = text.replace(
+              field,
+              field + '    private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)\n',
+              1,
+          )
+
+          start = text.index('    private fun searchInnerTubeRaw(')
+          end = text.index('\n    suspend fun home(', start)
+          text = text[:start] + '''    private fun searchInnerTubeRaw(query: String, languageCode: String): JSONObject? {
+              return resilienceClient.search(query, languageCode)
+          }
+          ''' + text[end:]
+
+          start = text.index('    private fun requestMusicBrowseRoot(')
+          end = text.index('\n    private fun homeFeedInnerTube', start)
+          text = text[:start] + '''    private fun requestMusicBrowseRoot(
+              languageCode: String,
+              browseId: String,
+              params: String = "",
+              continuation: String = ""
+          ): JSONObject? {
+              return resilienceClient.browse(languageCode, browseId, params, continuation)
+          }
+          ''' + text[end:]
+
+          start = text.index('    private fun searchInnerTube(query: String, limit: Int, languageCode: String): List<Track> {')
+          end = text.index('\n    private fun searchYoutubeExtractor', start)
+          text = text[:start] + '''    private fun searchInnerTube(query: String, limit: Int, languageCode: String): List<Track> {
+              val root = searchInnerTubeRaw(query, languageCode) ?: return emptyList()
+              val renderers = mutableListOf<JSONObject>()
+              collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
+              val tracks = LinkedHashMap<String, Track>()
+              renderers.forEach { renderer ->
+                  val track = parseMusicRenderer(renderer, query)
+                  if (track != null && !tracks.containsKey(track.id)) tracks[track.id] = track
+              }
+              if (tracks.isEmpty()) {
+                  val videoRenderers = mutableListOf<JSONObject>()
+                  collectObjectsByKey(root, "videoRenderer", videoRenderers)
+                  videoRenderers.forEach { renderer ->
+                      val track = parseVideoRenderer(renderer, query)
+                      if (track != null && !tracks.containsKey(track.id)) tracks[track.id] = track
+                  }
+              }
+              return tracks.values.take(limit)
+          }
+          ''' + text[end:]
+
+          if text.count('private val resilienceClient =') != 1:
+              raise SystemExit('Unexpected resilience client field count')
+          if '/youtubei/v1/search?key=' in text or '/youtubei/v1/browse?key=' in text:
+              raise SystemExit('Legacy direct request implementation still present')
+          repository_path.write_text(text)
+          PYCODE
+
+          rm -f \
+            .github/workflows/agent-youtube-media-fallback.yml \
+            .github/workflows/agent-youtube-media-fallback-trigger.yml
+
+          git diff --check
+          test ! -e .github/workflows/agent-youtube-media-fallback.yml
+          test ! -e .github/workflows/agent-youtube-media-fallback-trigger.yml
+          grep -q 'private val resilienceClient = YoutubeMusicResilienceClient' app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt
+          ! grep -q '/youtubei/v1/search?key=' app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt
+          ! grep -q '/youtubei/v1/browse?key=' app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt
+
+      - name: Compile focused unit tests
+        shell: bash
+        run: ./gradlew :app:testDebugUnitTest --tests com.luc4n3x.levyra.data.YoutubeMusicResilienceClientTest --stacktrace
+
+      - name: Publish implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: add resilient YouTube Music fallback'
+          git push origin HEAD:agent/youtube-media-fallback
