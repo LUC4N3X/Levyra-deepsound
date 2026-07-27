@@ -20,7 +20,7 @@ import timber.log.Timber
 
 class PersistentQueueEngine private constructor(context: Context) {
     private val store = PlaybackQueueStore(context.applicationContext)
-    private val resonanceStore = LevyraSmartMusicProfileStore(context.applicationContext)
+    private val resonanceStore = LevyraSmartMusicProfileStore.get(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
     private val _state = MutableStateFlow(PlaybackQueueSnapshot())
@@ -270,25 +270,26 @@ class PersistentQueueEngine private constructor(context: Context) {
         mutate(immediatePersist = true) { current ->
             if (current.tracks.isEmpty()) return@mutate current
             val history = current.history.toMutableList()
-            var target: Int? = null
-            while (history.isNotEmpty() && target == null) {
-                val candidate = history.removeAt(history.lastIndex)
-                if (candidate in current.tracks.indices && candidate != current.currentIndex) target = candidate
-            }
-            if (target == null && !current.shuffleEnabled) {
-                target = when {
-                    current.currentIndex > 0 -> current.currentIndex - 1
-                    current.repeatMode == RepeatMode.All -> current.tracks.lastIndex
-                    else -> current.currentIndex.takeIf { it in current.tracks.indices }
-                }
-            }
-            val index = target ?: return@mutate current.copy(history = history)
+            val index = resolvePreviousIndex(current, history) ?: return@mutate current.copy(history = history)
             if (index != current.currentIndex) transition = current
             result = current.tracks[index]
             selectSnapshot(current.copy(history = history), index, 0L, rememberCurrent = false)
         }
         transition?.let(::scheduleTransition)
         return result
+    }
+
+    private fun resolvePreviousIndex(current: PlaybackQueueSnapshot, history: MutableList<Int>): Int? {
+        while (history.isNotEmpty()) {
+            val candidate = history.removeAt(history.lastIndex)
+            if (candidate in current.tracks.indices && candidate != current.currentIndex) return candidate
+        }
+        if (current.shuffleEnabled) return null
+        return when {
+            current.currentIndex > 0 -> current.currentIndex - 1
+            current.repeatMode == RepeatMode.All -> current.tracks.lastIndex
+            else -> current.currentIndex.takeIf { it in current.tracks.indices }
+        }
     }
 
     fun updatePosition(positionMs: Long) {
@@ -334,14 +335,13 @@ class PersistentQueueEngine private constructor(context: Context) {
         return indices.mapNotNull(current.tracks::getOrNull)
     }
 
-    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot {
+    suspend fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot {
         val snapshot = _state.value
         val ranked = runCatching {
             resonanceStore.rankRadioCandidates(
                 candidates = tracks,
                 currentQueue = snapshot.tracks,
-                currentTrack = snapshot.currentTrack,
-                limit = 20
+                currentTrack = snapshot.currentTrack
             )
         }.onFailure { Timber.w(it, "Resonance radio ranking failed") }
             .getOrDefault(tracks)
@@ -351,7 +351,7 @@ class PersistentQueueEngine private constructor(context: Context) {
                 .filter { it.title.isNotBlank() }
                 .filter { existing.add(playbackQueueIdentity(it)) }
                 .map { it.queueStoredCopy() }
-                .take(20)
+                .take(LEVYRA_RADIO_APPEND_LIMIT)
             if (additions.isEmpty()) return@mutate current
             rebuildAfterStructureChange(current, current.tracks + additions, current.currentIndex)
         }
@@ -361,8 +361,10 @@ class PersistentQueueEngine private constructor(context: Context) {
         persistJob?.cancel()
         positionPersistJob?.cancel()
         val snapshot = _state.value.toPersistent()
-        runCatching { store.save(snapshot) }
-            .onFailure { Timber.w(it, "Persistent queue flush failed") }
+        runCatching {
+            store.save(snapshot)
+            resonanceStore.flush()
+        }.onFailure { Timber.w(it, "Persistent queue flush failed") }
     }
 
     fun flushBlocking() {
@@ -542,6 +544,8 @@ class PersistentQueueEngine private constructor(context: Context) {
     private data class QueueRemoval(val track: Track, val index: Int)
 
     companion object {
+        private const val LEVYRA_RADIO_APPEND_LIMIT = 20
+
         @Volatile
         private var instance: PersistentQueueEngine? = null
 

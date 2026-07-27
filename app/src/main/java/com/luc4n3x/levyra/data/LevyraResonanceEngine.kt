@@ -10,6 +10,10 @@ import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+internal const val LEVYRA_MAX_RANK_LIMIT = 20
+internal const val LEVYRA_RECENT_TRACK_LIMIT = 24
+internal const val LEVYRA_RECENT_ARTIST_LIMIT = 18
+
 internal data class ResonanceNode(
     var weight: Double = 0.0,
     var halfLifeDays: Double = 30.0,
@@ -77,8 +81,8 @@ internal class LevyraResonanceEngine(
             recentArtistCount == 0 -> (state.session.repetitionTolerance + 0.025).coerceIn(0.05, 0.95)
             else -> state.session.repetitionTolerance
         }
-        appendBounded(state.recentTrackIds, trackIdentity(track), 24)
-        if (artist.isNotBlank()) appendBounded(state.recentArtists, artist, 18)
+        appendBounded(state.recentTrackIds, trackIdentity(track), LEVYRA_RECENT_TRACK_LIMIT)
+        if (artist.isNotBlank()) appendBounded(state.recentArtists, artist, LEVYRA_RECENT_ARTIST_LIMIT)
         state.session.explorationPressure = (
             0.42 +
                 state.session.averageCompletion * 0.28 -
@@ -147,8 +151,10 @@ internal class LevyraResonanceEngine(
         durationMs: Long = track.durationMs
     ) {
         val safeDuration = durationMs.takeIf { it > 0L } ?: return
-        val ratio = (positionMs.coerceAtLeast(0L).toDouble() / safeDuration.toDouble()).coerceIn(0.0, 1.0)
-        if (ratio >= COMPLETION_TRANSITION_THRESHOLD) return
+        val safePosition = positionMs.coerceIn(0L, safeDuration)
+        val ratio = (safePosition.toDouble() / safeDuration.toDouble()).coerceIn(0.0, 1.0)
+        val remainingMs = (safeDuration - safePosition).coerceAtLeast(0L)
+        if (ratio >= COMPLETION_TRANSITION_THRESHOLD || remainingMs <= NATURAL_END_GRACE_MS) return
         val now = clock()
         ensureSession(state, now)
         val rejection = (1.0 - ratio).coerceIn(0.15, 1.0)
@@ -226,46 +232,44 @@ internal class LevyraResonanceEngine(
         candidates: List<Track>,
         currentQueue: List<Track>,
         currentTrack: Track?,
-        limit: Int = 20
+        limit: Int = LEVYRA_MAX_RANK_LIMIT
     ): List<Track> {
+        val safeLimit = limit.coerceIn(0, LEVYRA_MAX_RANK_LIMIT)
+        if (safeLimit == 0) return emptyList()
         val distinct = candidates
             .asSequence()
             .filter { it.title.isNotBlank() }
             .distinctBy(::trackIdentity)
             .toList()
-        if (distinct.size <= 1) return distinct.take(limit.coerceAtLeast(0))
+        if (distinct.size <= 1) return distinct.take(safeLimit)
         val now = clock()
         val maxima = GraphMaxima(
             artist = state.artists.maxEffective(now),
             album = state.albums.maxEffective(now),
             mood = state.moods.maxEffective(now)
         )
-        val queueTail = currentQueue.takeLast(8)
+        val queueTail = currentQueue.takeLast(8).map(::candidateShape)
         val recoveryMode = state.session.consecutiveSkips >= 3 || state.session.skipMomentum >= 0.64
         val scored = distinct.map { track ->
-            val artist = artistKey(track)
-            val album = albumKey(track)
-            val identity = trackIdentity(track)
-            val artistAffinity = normalizedNodeScore(state.artists, artist, maxima.artist, now)
-            val albumAffinity = normalizedNodeScore(state.albums, album, maxima.album, now)
-            val moodAffinity = track.moodTags
-                .map(::cleanSeed)
-                .filter(String::isNotBlank)
+            val shape = candidateShape(track)
+            val artistAffinity = normalizedNodeScore(state.artists, shape.artist, maxima.artist, now)
+            val albumAffinity = normalizedNodeScore(state.albums, shape.album, maxima.album, now)
+            val moodAffinity = shape.moods
                 .map { normalizedNodeScore(state.moods, it, maxima.mood, now) }
                 .averageOrZero()
             val tasteAffinity = (artistAffinity * 0.55 + albumAffinity * 0.3 + moodAffinity * 0.15)
                 .coerceIn(0.0, 1.0)
             val continuity = sessionContinuity(state.session, currentTrack, track)
-            val completion = completionProbability(state, track, artist)
+            val completion = completionProbability(state, track, shape.artist)
             val context = contextAffinity(currentTrack, track)
-            val wasRecent = identity in state.recentTrackIds
+            val wasRecent = shape.identity in state.recentTrackIds
             val discovery = ((1.0 - artistAffinity) * 0.7 + if (wasRecent) 0.0 else 0.3).coerceIn(0.0, 1.0)
             val offline = offlineAvailability(track)
             val resolver = resolverReliability(state, track.source, now)
             val freshness = if (wasRecent) 0.0 else 1.0
-            val recentArtistPenalty = recentArtistPenalty(state, artist)
-            val rejectionPenalty = rejectionPenalty(state, artist, now)
-            val queueSimilarity = queueTail.maxOfOrNull { similarity(track, it) } ?: 0.0
+            val recentArtistPenalty = recentArtistPenalty(state, shape.artist)
+            val rejectionPenalty = rejectionPenalty(state, shape.artist, now)
+            val queueSimilarity = queueTail.maxOfOrNull { similarity(shape, it) } ?: 0.0
             var score =
                 tasteAffinity * 0.27 +
                     continuity * 0.19 +
@@ -284,16 +288,14 @@ internal class LevyraResonanceEngine(
             }
             RankedCandidate(
                 track = track,
-                identity = identity,
-                artist = artist,
+                shape = shape,
                 baseScore = score,
                 tasteAffinity = tasteAffinity,
                 completionProbability = completion,
-                offlineAvailability = offline,
-                discoveryValue = discovery
+                offlineAvailability = offline
             )
         }
-        return diversify(scored, currentTrack, recoveryMode, limit.coerceIn(0, 20)).map(RankedCandidate::track)
+        return diversify(scored, currentTrack, recoveryMode, safeLimit).map(RankedCandidate::track)
     }
 
     private fun diversify(
@@ -309,29 +311,40 @@ internal class LevyraResonanceEngine(
             val safest = remaining.maxWithOrNull(
                 compareBy<RankedCandidate> {
                     it.baseScore + it.tasteAffinity * 0.2 + it.completionProbability * 0.14 + it.offlineAvailability * 0.08
-                }.thenByDescending { it.identity }
+                }.thenByDescending { it.shape.identity }
             )
             if (safest != null) {
                 selected += safest
                 remaining.remove(safest)
             }
         }
+        val initialArtist = currentTrack?.let(::artistKey).orEmpty()
         while (remaining.isNotEmpty() && selected.size < limit) {
-            val previous = selected.lastOrNull()?.track ?: currentTrack
-            val chosen = remaining.maxWithOrNull(
-                compareBy<RankedCandidate> { candidate ->
-                    val selectedSimilarity = selected.maxOfOrNull { similarity(candidate.track, it.track) } ?: 0.0
-                    val adjacentArtistPenalty = if (
-                        previous != null &&
-                        artistKey(previous).isNotBlank() &&
-                        artistKey(previous) == candidate.artist &&
-                        remaining.any { it.artist != candidate.artist }
-                    ) 0.34 else 0.0
-                    candidate.baseScore - selectedSimilarity * 0.22 - adjacentArtistPenalty
-                }.thenByDescending { it.identity }
-            ) ?: break
-            selected += chosen
-            remaining.remove(chosen)
+            val previousArtist = selected.lastOrNull()?.shape?.artist ?: initialArtist
+            val alternativeArtistAvailable = previousArtist.isNotBlank() && remaining.any { it.shape.artist != previousArtist }
+            var chosen: RankedCandidate? = null
+            var chosenScore = Double.NEGATIVE_INFINITY
+            for (candidate in remaining) {
+                val selectedSimilarity = selected.maxOfOrNull { similarity(candidate.shape, it.shape) } ?: 0.0
+                val adjacentArtistPenalty = if (
+                    alternativeArtistAvailable &&
+                    candidate.shape.artist.isNotBlank() &&
+                    candidate.shape.artist == previousArtist
+                ) 0.34 else 0.0
+                val candidateScore = candidate.baseScore - selectedSimilarity * 0.22 - adjacentArtistPenalty
+                val currentBest = chosen
+                if (
+                    currentBest == null ||
+                    candidateScore > chosenScore ||
+                    candidateScore == chosenScore && candidate.shape.identity < currentBest.shape.identity
+                ) {
+                    chosen = candidate
+                    chosenScore = candidateScore
+                }
+            }
+            val next = chosen ?: break
+            selected += next
+            remaining.remove(next)
         }
         return selected
     }
@@ -465,11 +478,19 @@ internal class LevyraResonanceEngine(
         return (track.cacheScore.coerceIn(0, 100) / 100.0 * 0.75).coerceIn(0.0, 0.75)
     }
 
-    private fun similarity(first: Track, second: Track): Double {
-        if (trackIdentity(first) == trackIdentity(second)) return 1.0
-        val sameArtist = artistKey(first).isNotBlank() && artistKey(first) == artistKey(second)
-        val sameAlbum = albumKey(first).isNotBlank() && albumKey(first) == albumKey(second)
-        val moods = jaccard(first.moodTags.map(::cleanSeed).toSet(), second.moodTags.map(::cleanSeed).toSet())
+    private fun candidateShape(track: Track): CandidateShape = CandidateShape(
+        identity = trackIdentity(track),
+        artist = artistKey(track),
+        album = albumKey(track),
+        moods = track.moodTags.asSequence().map(::cleanSeed).filter(String::isNotBlank).toSet(),
+        energy = track.energy
+    )
+
+    private fun similarity(first: CandidateShape, second: CandidateShape): Double {
+        if (first.identity == second.identity) return 1.0
+        val sameArtist = first.artist.isNotBlank() && first.artist == second.artist
+        val sameAlbum = first.album.isNotBlank() && first.album == second.album
+        val moods = jaccard(first.moods, second.moods)
         val energy = if (first.energy in 0..100 && second.energy in 0..100) {
             (1.0 - abs(first.energy - second.energy) / 100.0).coerceIn(0.0, 1.0)
         } else 0.0
@@ -532,8 +553,8 @@ internal class LevyraResonanceEngine(
 
     private fun cleanSeed(value: String): String = value
         .trim()
-        .replace(Regex("\\s+"), " ")
-        .replace(Regex("(?i)\\s*[(\\[].*?(official|video|lyrics|audio|prod\\.|feat\\.).*?[)\\]]"), "")
+        .replace(WHITESPACE_REGEX, " ")
+        .replace(BRACKETED_METADATA_REGEX, "")
         .trim(' ', '.', '-', '_', '•')
         .take(80)
         .lowercase(Locale.ROOT)
@@ -568,21 +589,30 @@ internal class LevyraResonanceEngine(
         val mood: Double
     )
 
-    private data class RankedCandidate(
-        val track: Track,
+    private data class CandidateShape(
         val identity: String,
         val artist: String,
+        val album: String,
+        val moods: Set<String>,
+        val energy: Int
+    )
+
+    private data class RankedCandidate(
+        val track: Track,
+        val shape: CandidateShape,
         val baseScore: Double,
         val tasteAffinity: Double,
         val completionProbability: Double,
-        val offlineAvailability: Double,
-        val discoveryValue: Double
+        val offlineAvailability: Double
     )
 
     private companion object {
         const val DAY_MS = 86_400_000L
         const val SESSION_BREAK_MS = 30L * 60L * 1_000L
         const val COMPLETION_TRANSITION_THRESHOLD = 0.82
+        const val NATURAL_END_GRACE_MS = 8_000L
         const val LN_2 = 0.6931471805599453
+        val WHITESPACE_REGEX = Regex("\\s+")
+        val BRACKETED_METADATA_REGEX = Regex("(?i)\\s*[(\\[].*?(official|video|lyrics|audio|prod\\.|feat\\.).*?[)\\]]")
     }
 }
