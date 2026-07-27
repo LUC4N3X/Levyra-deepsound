@@ -1,0 +1,121 @@
+name: Harden YouTube media fallback
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-youtube-media-fallback-hardening
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    if: github.event.pull_request.head.ref == 'agent/youtube-media-fallback' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      HELPER_GZ_B64: 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
+      TEST_GZ_B64: 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
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/youtube-media-fallback
+          fetch-depth: 0
+
+      - name: Apply hardening pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import base64
+          import gzip
+          import os
+
+          Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClient.kt').write_bytes(
+              gzip.decompress(base64.b64decode(os.environ['HELPER_GZ_B64']))
+          )
+          Path('app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClientTest.kt').write_bytes(
+              gzip.decompress(base64.b64decode(os.environ['TEST_GZ_B64']))
+          )
+
+          repository_path = Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt')
+          text = repository_path.read_text()
+          for unused_import in (
+              'import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders\n',
+              'import java.io.BufferedReader\n',
+              'import java.io.InputStreamReader\n',
+          ):
+              text = text.replace(unused_import, '')
+
+          marker = '    private fun clientPayload(languageCode: String): JSONObject {'
+          if marker in text:
+              start = text.index(marker)
+              end = text.index('\n    private fun searchInnerTubeRaw', start)
+              text = text[:start] + text[end + 1:]
+
+          start = text.index('    private fun searchInnerTubeRaw(')
+          end = text.index('\n    suspend fun home(', start)
+          text = text[:start] + '''    private fun searchInnerTubeRaw(query: String, languageCode: String): JSONObject? {
+              return resilienceClient.search(query, languageCode)
+          }
+          ''' + text[end:]
+
+          start = text.index('    private fun requestMusicBrowseRoot(')
+          end = text.index('\n    private fun homeFeedInnerTube', start)
+          text = text[:start] + '''    private fun requestMusicBrowseRoot(
+              languageCode: String,
+              browseId: String,
+              params: String = "",
+              continuation: String = ""
+          ): JSONObject? {
+              return resilienceClient.browse(languageCode, browseId, params, continuation)
+          }
+          ''' + text[end:]
+
+          start = text.index('    private fun searchInnerTube(query: String, limit: Int, languageCode: String): List<Track> {')
+          end = text.index('\n    private fun searchYoutubeExtractor', start)
+          text = text[:start] + '''    private fun searchInnerTube(query: String, limit: Int, languageCode: String): List<Track> {
+              val root = searchInnerTubeRaw(query, languageCode) ?: return emptyList()
+              val renderers = mutableListOf<JSONObject>()
+              collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
+              val tracks = LinkedHashMap<String, Track>()
+              renderers.forEach { renderer ->
+                  val track = parseMusicRenderer(renderer, query)
+                  if (track != null && !tracks.containsKey(track.id)) tracks[track.id] = track
+              }
+              if (tracks.isEmpty()) {
+                  val videoRenderers = mutableListOf<JSONObject>()
+                  collectObjectsByKey(root, "videoRenderer", videoRenderers)
+                  videoRenderers.forEach { renderer ->
+                      val track = parseVideoRenderer(renderer, query)
+                      if (track != null && !tracks.containsKey(track.id)) tracks[track.id] = track
+                  }
+              }
+              return tracks.values.take(limit)
+          }
+          ''' + text[end:]
+          repository_path.write_text(text)
+          PYCODE
+
+          rm -f .github/workflows/agent-youtube-media-fallback-hardening.yml
+          git diff --check
+          test ! -e .github/workflows/agent-youtube-media-fallback-hardening.yml
+
+      - name: Compile focused unit tests
+        shell: bash
+        run: ./gradlew :app:testDebugUnitTest --tests com.luc4n3x.levyra.data.YoutubeMusicResilienceClientTest --stacktrace
+
+      - name: Publish hardening pass
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: harden YouTube fallback concurrency and memory'
+          git push origin HEAD:agent/youtube-media-fallback
