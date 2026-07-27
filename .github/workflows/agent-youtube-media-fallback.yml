@@ -1,0 +1,95 @@
+name: Apply YouTube media fallback
+
+on:
+  push:
+    branches:
+      - agent/youtube-media-fallback
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-youtube-media-fallback
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/youtube-media-fallback
+          fetch-depth: 0
+
+      - name: Apply resilient YouTube Music client
+        shell: bash
+        env:
+          HELPER_GZ_B64: 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
+          TEST_GZ_B64: H4sIAO7PZ2oC/81YYW/iRhD9zq/Y+pOtEsuQ5E6NStQ0vVO54yACLlJVVdFiD2Evay+3uyZBiP/eWdvENjaEcHdVLUUYPDs7++a9mXHm1H+g90B8Ebo89s+i0yeXw2IpqRtQTRsNFs6F1ETIe/eLEpH7YTToDyZfwNelR3HEtHulFEjt0uTj3deYcvWCUV/ofsz5C1ZjGUPVZAxKNxo+Rxvyl4h1PIFPsWL+EBTjDCIfrs2HNnZk1SB4/ZasMXfTOCIQzvXyRrKQyiUumotIwXvKufodQRmLqyiQggWJT9vJPJhrQTnxjR3pkDDWdMKhx5QeTH8dacmi+0vbKdsmYaBxdrMiEr7GJqqTy2dDc6VOf+5snrtzKaaMg8uCkh2bErtqQjodYj3C5ERCyJ6sYsSbqwjTWNJIGUg3R7fbntck1mptNUnb6zml1WsCXMFxLhEDFoyASn9mO01yWvHdyO9KwElQMc+Bc1Xqw9IGOyTjPUZqMW05+bISrezUgbP1NGWmzZOc2QXI0BtNk34SmvNYGG2Skx0eWs1NZAGj95FQmvnKdtx70LeUx1D07bi+QcSPNVsgyxiPMbij/W6F6arY9wFdZB4zHMt0n1EZZBuPwYiJSsaR+KFYgMpk8F6KcDyD6xll0RbnJYnEI+aidffW8+68/K/3vYRh+1z4D/h1lWy1dv63Sjlr/4JckVQD4SxkGgLkTuv8x2mmfX6IZsrk3xLNlEnEEaGQy41scpcJnq7P0dZ2DvOHXBZRsO2wntBbfM1U5SYh2c72hqbc268Q1sTQBoLPkWb8kyKXhj17dJBpZRrzDeRdNYRYQWDYP5phLnqo0eCa+jOoiGDDb++FEn+3k7KtxrdxodUucGGrYqZJrhRM3xxlK1eldVkyD1u4gx/J3rvIk26wp97lZbY2abhasyimmonohi65oMEolgvMkzIte4IdG/v1FWZ2rtV1wdjc44lUpYPPUy/VWpVPOEc38mffmO7cXV6J0sfOf1GqzpOmjmAvQBKQUkjM49l3au8Vc3MZztY+sCxrZfk1ubEuVlZSGW44IoNZGM2AT4tZNBb+s/Xf/6zXa/RWv83pea/y+5EDx0SKRzymoX2TpF+6RiWWKWGF8MxP14P+uNv/fDXuDvp348HHd/3XziVJ3dtQx0VWI8FwzhVznbZPuwQecqFTvy12zgM8/4SuZxRr8+Zc6HD9rMAaCS6YYlrIP/C1oKt6WCAiCG5A3qRcRfWlRbQitGzdn0ADkIeNBmmZPaDK7tDf1paFOaFwiEp1rhZns+lEBEvc0sgzDQqN6mSYsFtmykiY/aQNbQs7WhfWbXfUHQ+Gd632qbVuFjidKSCTFtY1A09XQziECA8B0phopjmgF1Si/2ClIjhMx6UeskMMB7YjAwh2Ia++C+2dGTIs0n5CRATVSeQV6/WjeGnw2Mz4xq4IPbbRMkf2tB54mjOZjQPI96mQobrqw+MwpdQxY/KBY0TdQPwD54pjMpqAg/rdNViauDG2t2/KEBzlsz7F7brhYS7ZwkznyeiQYpnPugbUC4J5O7kkPXyLTACu5ous8/4ywwGWg8RVO3BNqJB43At84tC52Pv/igKdJOhYRnutyz3YT+sOnihCYMv9kc7ZRzClLHl/PnmA5VYDxTFjaKaMW9RD1tRabttrv/HO2qeu13I9b2vFhp/JZ/mR3hwdH9dCYmeY5lzZmcESUS9I2jFIp1EZLL61lK4b/wIDh6sYEBMAAA==
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import base64
+          import gzip
+          import os
+
+          helper_path = Path("app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClient.kt")
+          test_path = Path("app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClientTest.kt")
+          helper_path.write_bytes(gzip.decompress(base64.b64decode(os.environ["HELPER_GZ_B64"])))
+          test_path.write_bytes(gzip.decompress(base64.b64decode(os.environ["TEST_GZ_B64"])))
+
+          repository_path = Path("app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt")
+          text = repository_path.read_text()
+          field = "    private val watchRepository = YoutubeMusicWatchRepository(context)\n"
+          if text.count(field) != 1:
+              raise SystemExit("Expected watchRepository field exactly once")
+          if "private val resilienceClient = YoutubeMusicResilienceClient" in text:
+              raise SystemExit("Resilience client is already integrated")
+          text = text.replace(
+              field,
+              field + "    private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)\n",
+              1,
+          )
+
+          start = text.index("    private fun searchInnerTubeRaw(")
+          end = text.index("\n    suspend fun home(", start)
+          search_replacement = """    private fun searchInnerTubeRaw(query: String, languageCode: String): JSONObject? {
+              return resilienceClient.search(query, languageCode)
+          }
+          """
+          text = text[:start] + search_replacement + text[end:]
+
+          start = text.index("    private fun requestMusicBrowseRoot(")
+          end = text.index("\n    private fun homeFeedInnerTube", start)
+          browse_replacement = """    private fun requestMusicBrowseRoot(
+              languageCode: String,
+              browseId: String,
+              params: String = "",
+              continuation: String = ""
+          ): JSONObject? {
+              return resilienceClient.browse(languageCode, browseId, params, continuation)
+          }
+          """
+          text = text[:start] + browse_replacement + text[end:]
+
+          if text.count("private val resilienceClient =") != 1:
+              raise SystemExit("Unexpected resilience client field count")
+          if "/youtubei/v1/search?key=" in text or "/youtubei/v1/browse?key=" in text:
+              raise SystemExit("Legacy direct request implementation still present")
+          repository_path.write_text(text)
+          PYCODE
+
+          rm -f .github/workflows/agent-youtube-media-fallback.yml
+          git diff --check
+
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: add resilient YouTube Music fallback'
+          git push origin HEAD:agent/youtube-media-fallback
