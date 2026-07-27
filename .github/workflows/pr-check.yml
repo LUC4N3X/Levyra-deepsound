@@ -5,30 +5,133 @@ on:
     branches:
       - main
       - master
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  apply-review-fixes:
+  android:
+    name: Lint and Release Compile
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
         with:
-          ref: agent/levyra-resonance-engine
-          fetch-depth: 0
-      - name: Apply reviewed files
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/levyra-fixes/part* | base64 --decode > /tmp/levyra-fixes.tar.gz
-          echo "98902295351c112f7ce9e638e8fc2251040d435efd5d6dfd9840d913296d1894  /tmp/levyra-fixes.tar.gz" | sha256sum --check
-          tar -xzf /tmp/levyra-fixes.tar.gz -C .
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/java/com/luc4n3x/levyra/data/LevyraResonanceEngine.kt
-          git add app/src/main/java/com/luc4n3x/levyra/data/LevyraSmartMusicProfileStore.kt
-          git add app/src/main/java/com/luc4n3x/levyra/player/queue/PersistentQueueEngine.kt
-          git add app/src/test/java/com/luc4n3x/levyra/data/LevyraResonancePersistenceTest.kt
-          git commit -m 'fix: address resonance review feedback'
-          git push origin HEAD:agent/levyra-resonance-engine
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+
+      - name: Validate Build Inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f gradle/libs.versions.toml
+          test -x ./gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+
+      - name: Prepare CI Release Signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: Gradle Version
+        run: ./gradlew --no-daemon --version
+
+      - name: Android Lint
+        run: ./gradlew --no-daemon :app:lintRelease
+
+      - name: Release Compile
+        run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
+
+      - name: Setup Java 21 for F-Droid
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: F-Droid Release Compile
+        shell: bash
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: ""
+          LEVYRA_KEYSTORE_FILE: ""
+          LEVYRA_KEYSTORE_PASSWORD: ""
+          LEVYRA_KEY_ALIAS: ""
+          LEVYRA_KEY_PASSWORD: ""
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease \
+            -PlevyraFdroidBuild=true
+          FDROID_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "${FDROID_APK}"
+          if "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify "${FDROID_APK}" >/dev/null 2>&1; then
+            echo "F-Droid source build must remain unsigned."
+            exit 1
+          fi
+
+      - name: Collect Reports
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/reports
+          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/reports-index.txt || true
+          if [ -d app/build/reports ]; then
+            cp -R app/build/reports artifacts/reports/app-build-reports
+          fi
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-check-reports-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: ignore
