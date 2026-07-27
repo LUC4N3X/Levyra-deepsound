@@ -1,10 +1,9 @@
 name: PR Check
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
-      - master
+      - agent/levyra-resonance-engine
 
 permissions:
   contents: write
