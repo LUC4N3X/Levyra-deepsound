@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.player.queue
 
 import android.content.Context
+import com.luc4n3x.levyra.data.LevyraSmartMusicProfileStore
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.domain.Track
 import java.util.Locale
@@ -19,6 +20,7 @@ import timber.log.Timber
 
 class PersistentQueueEngine private constructor(context: Context) {
     private val store = PlaybackQueueStore(context.applicationContext)
+    private val resonanceStore = LevyraSmartMusicProfileStore(context.applicationContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
     private val _state = MutableStateFlow(PlaybackQueueSnapshot())
@@ -100,6 +102,8 @@ class PersistentQueueEngine private constructor(context: Context) {
     }
 
     fun select(index: Int, positionMs: Long = 0L, rememberCurrent: Boolean = true): Track? {
+        val before = _state.value
+        if (index in before.tracks.indices && index != before.currentIndex) scheduleTransition(before)
         var selected: Track? = null
         mutate(immediatePersist = true) { current ->
             if (index !in current.tracks.indices) return@mutate current
@@ -228,6 +232,7 @@ class PersistentQueueEngine private constructor(context: Context) {
 
     fun next(respectRepeatOne: Boolean = true): Track? {
         var result: Track? = null
+        var transition: PlaybackQueueSnapshot? = null
         mutate(immediatePersist = true) { current ->
             if (current.tracks.isEmpty() || current.currentIndex !in current.tracks.indices) return@mutate current
             if (respectRepeatOne && current.repeatMode == RepeatMode.One) {
@@ -251,14 +256,17 @@ class PersistentQueueEngine private constructor(context: Context) {
                 }
             }
             if (target == null) return@mutate current
+            transition = current
             result = current.tracks[target]
             selectSnapshot(current, target, 0L, rememberCurrent = true)
         }
+        transition?.let(::scheduleTransition)
         return result
     }
 
     fun previous(): Track? {
         var result: Track? = null
+        var transition: PlaybackQueueSnapshot? = null
         mutate(immediatePersist = true) { current ->
             if (current.tracks.isEmpty()) return@mutate current
             val history = current.history.toMutableList()
@@ -275,9 +283,11 @@ class PersistentQueueEngine private constructor(context: Context) {
                 }
             }
             val index = target ?: return@mutate current.copy(history = history)
+            if (index != current.currentIndex) transition = current
             result = current.tracks[index]
             selectSnapshot(current.copy(history = history), index, 0L, rememberCurrent = false)
         }
+        transition?.let(::scheduleTransition)
         return result
     }
 
@@ -324,15 +334,27 @@ class PersistentQueueEngine private constructor(context: Context) {
         return indices.mapNotNull(current.tracks::getOrNull)
     }
 
-    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot = mutate(structural = true, immediatePersist = true) { current ->
-        val existing = current.tracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
-        val additions = tracks
-            .filter { it.title.isNotBlank() }
-            .filter { existing.add(playbackQueueIdentity(it)) }
-            .map { it.queueStoredCopy() }
-            .take(20)
-        if (additions.isEmpty()) return@mutate current
-        rebuildAfterStructureChange(current, current.tracks + additions, current.currentIndex)
+    fun appendRadioTracks(tracks: List<Track>): PlaybackQueueSnapshot {
+        val snapshot = _state.value
+        val ranked = runCatching {
+            resonanceStore.rankRadioCandidates(
+                candidates = tracks,
+                currentQueue = snapshot.tracks,
+                currentTrack = snapshot.currentTrack,
+                limit = 20
+            )
+        }.onFailure { Timber.w(it, "Resonance radio ranking failed") }
+            .getOrDefault(tracks)
+        return mutate(structural = true, immediatePersist = true) { current ->
+            val existing = current.tracks.mapTo(LinkedHashSet(), ::playbackQueueIdentity)
+            val additions = ranked
+                .filter { it.title.isNotBlank() }
+                .filter { existing.add(playbackQueueIdentity(it)) }
+                .map { it.queueStoredCopy() }
+                .take(20)
+            if (additions.isEmpty()) return@mutate current
+            rebuildAfterStructureChange(current, current.tracks + additions, current.currentIndex)
+        }
     }
 
     suspend fun flush() {
@@ -346,6 +368,15 @@ class PersistentQueueEngine private constructor(context: Context) {
     fun flushBlocking() {
         runCatching { runBlocking(Dispatchers.IO) { flush() } }
             .onFailure { Timber.w(it, "Persistent queue blocking flush failed") }
+    }
+
+    private fun scheduleTransition(snapshot: PlaybackQueueSnapshot) {
+        val track = snapshot.currentTrack ?: return
+        val positionMs = snapshot.positionMs.coerceAtLeast(0L)
+        scope.launch {
+            runCatching { resonanceStore.recordTransition(track, positionMs, track.durationMs) }
+                .onFailure { Timber.w(it, "Resonance transition recording failed") }
+        }
     }
 
     private fun mutate(
