@@ -1,9 +1,10 @@
 name: PR Check
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/levyra-resonance-engine
+      - main
+      - master
 
 permissions:
   contents: write
@@ -16,34 +17,29 @@ jobs:
         with:
           ref: agent/levyra-resonance-engine
           fetch-depth: 0
-      - name: Preserve completion position
+      - name: Keep auto-advance out of skip learning
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
 
-          path = Path('app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt')
+          path = Path('app/src/main/java/com/luc4n3x/levyra/player/queue/PersistentQueueEngine.kt')
           text = path.read_text()
-          old = '''            val player = activePlayer ?: return@launch
-            if (rewindInsteadOfSkip(player, forward)) return@launch
-            val target = withContext(Dispatchers.IO) {
+          old = '''            if (target == null) return@mutate current
+            transition = current
+            result = current.tracks[target]
 '''
-          new = '''            val player = activePlayer ?: return@launch
-            if (rewindInsteadOfSkip(player, forward)) return@launch
-            if (forward && autoAdvance) {
-                val durationMs = player.duration.takeIf { it > 0L && it != C.TIME_UNSET }
-                val completionPositionMs = maxOf(player.currentPosition.coerceAtLeast(0L), durationMs ?: 0L)
-                queueEngine.updatePosition(completionPositionMs)
-            }
-            val target = withContext(Dispatchers.IO) {
+          new = '''            if (target == null) return@mutate current
+            if (!respectRepeatOne) transition = current
+            result = current.tracks[target]
 '''
           if text.count(old) != 1:
-              raise SystemExit('Expected skipQueue insertion point exactly once')
+              raise SystemExit('Expected next transition block exactly once')
           path.write_text(text.replace(old, new, 1))
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt
-          git commit -m 'fix: preserve auto-advance completion position'
+          git add app/src/main/java/com/luc4n3x/levyra/player/queue/PersistentQueueEngine.kt
+          git commit -m 'fix: distinguish auto-advance from manual skips'
           git push origin HEAD:agent/levyra-resonance-engine
