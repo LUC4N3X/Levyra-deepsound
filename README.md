@@ -57,43 +57,6 @@ offline library with resumable downloads and automatically prefers the verified 
 
 ---
 
-## ✦ Available on Android and Windows
-
-<table width="100%">
-<tr>
-<td width="50%" valign="top">
-
-### 🤖 Android
-
-- Signed APK for Android 8.0+
-- Media3 / ExoPlayer background playback
-- Public tagged M4A exports
-- Pulse listening statistics
-- F-Droid reproducible-build support
-
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><strong>Download the latest Android APK →</strong></a>
-
-</td>
-<td width="50%" valign="top">
-
-### 🪟 Windows
-
-- Native Compose Desktop interface
-- libvlc audio engine and system tray controls
-- Persistent offline downloads with resume
-- Full player plus always-on-top mini player
-- MSI, EXE and portable ZIP packages
-
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=desktop-v&expanded=true"><strong>Download Levyra Desktop for Windows →</strong></a>
-
-</td>
-</tr>
-</table>
-
-> Android remains the repository's **Latest** release. Windows builds use independent `desktop-v*` releases and are always available through the dedicated Windows badge above.
-
----
-
 ## ✦ Features
 
 <table width="100%">
