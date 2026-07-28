@@ -127,9 +127,11 @@ class VlcAudioPlayer private constructor(
         }
     }
 
-    override fun setSpeed(speed: Float) {
-        if (released.get()) return
-        runCatching { mediaPlayer.controls().setRate(DesktopSettings.normalizeSpeed(speed)) }
+    override fun setSpeed(speed: Float): Boolean {
+        if (released.get()) return false
+        return runCatching {
+            mediaPlayer.controls().setRate(DesktopSettings.normalizeSpeed(speed))
+        }.getOrDefault(false)
     }
 
     override fun positionMs(): Long = if (released.get()) 0L else mediaPlayer.status().time().coerceAtLeast(0L)
