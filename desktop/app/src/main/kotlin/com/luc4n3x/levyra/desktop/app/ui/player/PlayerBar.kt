@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +43,9 @@ import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
+import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
+import com.luc4n3x.levyra.desktop.core.model.SleepTimerMode
+import com.luc4n3x.levyra.desktop.core.model.SleepTimerState
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
 import com.luc4n3x.levyra.desktop.player.RepeatMode
 
@@ -59,6 +65,10 @@ fun PlayerBar(
     onCycleRepeat: () -> Unit,
     onToggleQueue: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onSpeedChange: (Float) -> Unit,
+    onSleepTimerMinutes: (Int) -> Unit,
+    onSleepAtEndOfTrack: () -> Unit,
+    onCancelSleepTimer: () -> Unit,
     onClose: () -> Unit,
     onOpenNowPlaying: () -> Unit,
     modifier: Modifier = Modifier
@@ -326,10 +336,33 @@ fun PlayerBar(
                 }
 
                 Row(
-                    modifier = Modifier.width(286.dp),
+                    modifier = Modifier.width(320.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
+                    val sleepLabel = when (state.sleepTimer.mode) {
+                        SleepTimerMode.DURATION -> Format.duration(state.sleepRemainingMs)
+                        SleepTimerMode.END_OF_TRACK -> strings.sleepTimerEndOfTrack
+                        SleepTimerMode.OFF -> ""
+                    }
+                    if (sleepLabel.isNotBlank()) {
+                        Text(
+                            text = sleepLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = accent,
+                            maxLines = 1,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                    if (state.speed != DesktopSettings.DEFAULT_SPEED) {
+                        Text(
+                            text = Format.speed(state.speed),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = accent,
+                            maxLines = 1,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
                     if (state.streamLabel.isNotBlank()) {
                         Text(
                             text = state.streamLabel,
@@ -380,6 +413,13 @@ fun PlayerBar(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                    PlaybackToolsMenu(
+                        state = state,
+                        onSpeedChange = onSpeedChange,
+                        onSleepTimerMinutes = onSleepTimerMinutes,
+                        onSleepAtEndOfTrack = onSleepAtEndOfTrack,
+                        onCancelSleepTimer = onCancelSleepTimer
+                    )
                     IconButton(onClick = onClose) {
                         Icon(
                             imageVector = LevyraIcons.Close,
@@ -405,4 +445,126 @@ fun PlayerBar(
             }
         }
     }
+}
+
+@Composable
+private fun PlaybackToolsMenu(
+    state: PlaybackUiState,
+    onSpeedChange: (Float) -> Unit,
+    onSleepTimerMinutes: (Int) -> Unit,
+    onSleepAtEndOfTrack: () -> Unit,
+    onCancelSleepTimer: () -> Unit
+) {
+    val strings = LocalStrings.current
+    val accent = LocalAccentColor.current
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                imageVector = LevyraIcons.More,
+                contentDescription = strings.settingsPlayback,
+                tint = if (state.sleepTimer.active || state.speed != DesktopSettings.DEFAULT_SPEED) {
+                    accent
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            MenuSectionLabel(text = strings.settingsSpeed)
+            DesktopSettings.SPEED_STEPS.forEach { step ->
+                DropdownMenuItem(
+                    text = { Text(Format.speed(step)) },
+                    onClick = {
+                        onSpeedChange(step)
+                        expanded = false
+                    },
+                    trailingIcon = {
+                        if (state.speed == step) {
+                            Icon(
+                                imageVector = OfflineIcons.Check,
+                                contentDescription = null,
+                                tint = accent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            MenuSectionLabel(text = strings.settingsSleepTimer)
+            DropdownMenuItem(
+                text = { Text(strings.sleepTimerOff) },
+                onClick = {
+                    onCancelSleepTimer()
+                    expanded = false
+                },
+                trailingIcon = {
+                    if (!state.sleepTimer.active) {
+                        Icon(
+                            imageVector = OfflineIcons.Check,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            )
+            SleepTimerState.PRESET_MINUTES.forEach { minutes ->
+                val selected = state.sleepTimer.mode == SleepTimerMode.DURATION &&
+                    state.sleepTimer.requestedMinutes == minutes
+                DropdownMenuItem(
+                    text = { Text("$minutes min") },
+                    onClick = {
+                        onSleepTimerMinutes(minutes)
+                        expanded = false
+                    },
+                    trailingIcon = {
+                        if (selected) {
+                            Icon(
+                                imageVector = OfflineIcons.Check,
+                                contentDescription = null,
+                                tint = accent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(strings.sleepTimerEndOfTrack) },
+                onClick = {
+                    onSleepAtEndOfTrack()
+                    expanded = false
+                },
+                trailingIcon = {
+                    if (state.sleepTimer.mode == SleepTimerMode.END_OF_TRACK) {
+                        Icon(
+                            imageVector = OfflineIcons.Check,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MenuSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+    )
 }

@@ -429,6 +429,10 @@ fun LevyraRoot(model: LevyraAppModel) {
                                         model.toggleFavorite(track.copy(offlinePath = "", offlineMediaLabel = ""))
                                     }
                                 },
+                                onSpeedChange = model.playbackController::setSpeed,
+                                onSleepTimerMinutes = model.playbackController::startSleepTimer,
+                                onSleepAtEndOfTrack = model.playbackController::sleepAtEndOfTrack,
+                                onCancelSleepTimer = model.playbackController::cancelSleepTimer,
                                 onClose = {
                                     model.closeQueue()
                                     model.playbackController.clearQueue()

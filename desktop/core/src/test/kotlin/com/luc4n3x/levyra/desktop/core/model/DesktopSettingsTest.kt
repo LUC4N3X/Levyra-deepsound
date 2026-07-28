@@ -75,6 +75,39 @@ class DesktopSettingsTest {
     }
 
     @Test
+    fun playbackSpeedStaysInsideTheEngineRange() {
+        assertEquals(DesktopSettings.MAX_SPEED, DesktopSettings.normalizeSpeed(4f), 0.001f)
+        assertEquals(DesktopSettings.MIN_SPEED, DesktopSettings.normalizeSpeed(0.1f), 0.001f)
+        assertEquals(DesktopSettings.DEFAULT_SPEED, DesktopSettings.normalizeSpeed(Float.NaN), 0.001f)
+        assertEquals(1.25f, DesktopSettings.normalizeSpeed(1.25f), 0.001f)
+        assertEquals(1.5f, DesktopSettings(playbackSpeed = 1.5f).sanitized().playbackSpeed, 0.001f)
+        assertEquals(
+            DesktopSettings.MAX_SPEED,
+            DesktopSettings(playbackSpeed = 9f).sanitized().playbackSpeed,
+            0.001f
+        )
+    }
+
+    @Test
+    fun speedStepsStayInsideTheSupportedRange() {
+        assertTrue(
+            DesktopSettings.SPEED_STEPS.all { step ->
+                step >= DesktopSettings.MIN_SPEED && step <= DesktopSettings.MAX_SPEED
+            }
+        )
+        assertTrue(DesktopSettings.DEFAULT_SPEED in DesktopSettings.SPEED_STEPS)
+    }
+
+    @Test
+    fun desktopPowerFeaturesAreOnByDefault() {
+        val settings = DesktopSettings()
+
+        assertTrue(settings.preloadNextTrack)
+        assertTrue(settings.globalMediaKeys)
+        assertEquals(DesktopSettings.DEFAULT_SPEED, settings.playbackSpeed, 0.001f)
+    }
+
+    @Test
     fun blankCountryFallsBackToLanguageCountry() {
         val settings = DesktopSettings(
             language = AppLanguage.JAPANESE,
