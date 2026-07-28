@@ -14,26 +14,29 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.LinkedHashMap
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.max
+import kotlin.math.min
 
 internal class YoutubeMusicResilienceClient(
     private val context: Context?,
     private val apiKey: String,
     webRemixVersion: String,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val monotonicClock: () -> Long = { System.nanoTime() / 1_000_000L },
     transport: YoutubeMusicTransport? = null
 ) {
     private val transport = transport ?: OkHttpYoutubeMusicTransport(context)
-    private val requestLocks = ConcurrentHashMap<String, Any>()
+    private val inFlight = ConcurrentHashMap<String, YoutubeMusicInFlightRequest>()
     private val visitorData = ConcurrentHashMap<String, String>()
     private val health = ConcurrentHashMap<String, YoutubeMusicClientHealth>()
     private val cacheLock = Any()
-    private val responseCache = object : LinkedHashMap<String, YoutubeMusicCacheEntry>(32, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, YoutubeMusicCacheEntry>?): Boolean {
-            return size > MAX_CACHE_ENTRIES
-        }
-    }
+    private val responseCache = LinkedHashMap<String, YoutubeMusicCacheEntry>(32, 0.75f, true)
+    private var responseCacheBytes = 0L
+
     private val profiles = listOf(
         YoutubeMusicClientProfile(
             id = "web-remix",
@@ -121,7 +124,7 @@ internal class YoutubeMusicResilienceClient(
     ): JSONObject? {
         val cleanBrowseId = browseId.trim()
         val cleanContinuation = continuation.trim()
-        if (apiKey.isBlank() || cleanBrowseId.isBlank() && cleanContinuation.isBlank()) return null
+        if (apiKey.isBlank() || (cleanBrowseId.isBlank() && cleanContinuation.isBlank())) return null
         return request(
             kind = YoutubeMusicRequestKind.BROWSE,
             languageCode = languageCode,
@@ -134,6 +137,10 @@ internal class YoutubeMusicResilienceClient(
 
     internal fun diagnostics(): Map<String, YoutubeMusicClientHealth> = health.toMap()
 
+    internal fun cacheDiagnostics(): YoutubeMusicCacheDiagnostics = synchronized(cacheLock) {
+        YoutubeMusicCacheDiagnostics(responseCache.size, responseCacheBytes)
+    }
+
     private fun request(
         kind: YoutubeMusicRequestKind,
         languageCode: String,
@@ -144,16 +151,43 @@ internal class YoutubeMusicResilienceClient(
     ): JSONObject? {
         val requestKey = listOf(kind.name, languageCode, browseId, params, continuation, query).joinToString("\u001f")
         cached(requestKey)?.let { return it }
-        val requestLock = requestLocks.computeIfAbsent(requestKey) { Any() }
+
+        val leader = AtomicBoolean(false)
+        val shared = inFlight.compute(requestKey) { _, current ->
+            if (current == null) {
+                leader.set(true)
+                YoutubeMusicInFlightRequest()
+            } else {
+                current.retain()
+            }
+        } ?: return null
+
         try {
-            return synchronized(requestLock) {
-                cached(requestKey)?.let { return@synchronized it }
-                performRequest(kind, languageCode, browseId, params, continuation, query)?.also { root ->
-                    cache(requestKey, root, if (continuation.isBlank()) DEFAULT_CACHE_TTL_MS else CONTINUATION_CACHE_TTL_MS)
+            if (leader.get()) {
+                try {
+                    val root = cached(requestKey)
+                        ?: performRequest(kind, languageCode, browseId, params, continuation, query)
+                    if (root != null) {
+                        cache(
+                            requestKey,
+                            root,
+                            if (continuation.isBlank()) DEFAULT_CACHE_TTL_MS else CONTINUATION_CACHE_TTL_MS
+                        )
+                    }
+                    shared.complete(root?.toString())
+                } catch (error: Exception) {
+                    shared.completeExceptionally(error)
                 }
             }
+            return shared.await()?.let(::JSONObject)
         } finally {
-            requestLocks.remove(requestKey, requestLock)
+            inFlight.computeIfPresent(requestKey) { _, current ->
+                when {
+                    current !== shared -> current
+                    shared.release() -> null
+                    else -> current
+                }
+            }
         }
     }
 
@@ -165,53 +199,73 @@ internal class YoutubeMusicResilienceClient(
         continuation: String,
         query: String
     ): JSONObject? {
-        val now = clock()
-        val orderedProfiles = orderedProfiles(now)
+        val deadline = monotonicClock() + TOTAL_REQUEST_BUDGET_MS
+        val orderedProfiles = orderedProfiles(clock())
         var lastFailure: Throwable? = null
+
         for (profile in orderedProfiles) {
-            val payload = payload(profile, kind, languageCode, browseId, params, continuation, query)
+            val remainingMs = deadline - monotonicClock()
+            if (remainingMs <= 0L) {
+                lastFailure = IOException("YouTube Music fallback deadline exceeded")
+                break
+            }
+
             val request = YoutubeMusicTransportRequest(
                 path = if (kind == YoutubeMusicRequestKind.SEARCH) "search" else "browse",
                 apiKey = apiKey,
                 profile = profile,
-                payload = payload.toString(),
+                payload = payload(profile, kind, languageCode, browseId, params, continuation, query).toString(),
                 referer = referer(kind, browseId, query),
-                visitorData = visitorData[profile.id].orEmpty()
+                visitorData = visitorData[profile.id].orEmpty(),
+                timeoutMs = min(PROFILE_REQUEST_TIMEOUT_MS, remainingMs).coerceAtLeast(1L)
             )
+            val attemptStartedAt = monotonicClock()
             val response = try {
                 transport.execute(request)
             } catch (error: Exception) {
-                if (error is InterruptedException) Thread.currentThread().interrupt()
+                if (error is InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return null
+                }
                 lastFailure = error
-                recordFailure(profile, null, error.message.orEmpty(), null, now)
+                recordFailure(
+                    profile = profile,
+                    statusCode = null,
+                    reason = error.message.orEmpty(),
+                    latencyMs = (monotonicClock() - attemptStartedAt).takeIf { it > 0L },
+                    now = clock()
+                )
                 continue
             }
+
             if (response.code !in 200..299) {
-                val error = IOException("HTTP ${response.code}")
-                lastFailure = error
-                recordFailure(profile, response.code, response.body, response.latencyMs, now)
+                lastFailure = IOException("HTTP ${response.code}")
+                recordFailure(profile, response.code, response.body, response.latencyMs, clock())
                 continue
             }
+
             val parsed = runCatching { JSONObject(response.body) }
             val root = parsed.getOrNull()
             if (root == null) {
-                val error = parsed.exceptionOrNull() ?: IOException("Invalid JSON")
-                lastFailure = error
-                recordFailure(profile, response.code, "invalid json", response.latencyMs, now)
+                lastFailure = parsed.exceptionOrNull() ?: IOException("Invalid JSON")
+                recordFailure(profile, response.code, "invalid json", response.latencyMs, clock())
                 continue
             }
             if (!isUseful(kind, root)) {
-                recordFailure(profile, response.code, "empty response", response.latencyMs, now)
+                recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
                 continue
             }
+
             root.optJSONObject("responseContext")
                 ?.optString("visitorData")
                 ?.trim()
                 ?.takeIf(String::isNotBlank)
                 ?.let { visitorData[profile.id] = it }
-            recordSuccess(profile, response.latencyMs, now)
+
+            recordSuccess(profile, response.latencyMs, clock())
             return root
         }
+
         lastFailure?.let { Timber.d(it, "YouTube Music fallback chain exhausted") }
         return null
     }
@@ -236,6 +290,7 @@ internal class YoutubeMusicResilienceClient(
         if (profile.osName.isNotBlank()) client.put("osName", profile.osName)
         if (profile.osVersion.isNotBlank()) client.put("osVersion", profile.osVersion)
         visitorData[profile.id]?.takeIf(String::isNotBlank)?.let { client.put("visitorData", it) }
+
         val root = JSONObject().put("context", JSONObject().put("client", client))
         when (kind) {
             YoutubeMusicRequestKind.SEARCH -> root.put("query", query)
@@ -250,9 +305,7 @@ internal class YoutubeMusicResilienceClient(
 
     private fun orderedProfiles(now: Long): List<YoutubeMusicClientProfile> {
         val available = profiles.filter { (health[it.id]?.blockedUntilMs ?: 0L) <= now }
-        if (available.isEmpty()) {
-            return profiles.sortedBy { health[it.id]?.blockedUntilMs ?: Long.MAX_VALUE }.take(1)
-        }
+        if (available.isEmpty()) return emptyList()
         return available.sortedWith(
             compareByDescending<YoutubeMusicClientProfile> { it.priority == 0 }
                 .thenByDescending { profile -> health[profile.id]?.score ?: 0.0 }
@@ -286,14 +339,17 @@ internal class YoutubeMusicResilienceClient(
         latencyMs: Long?,
         now: Long
     ) {
+        val requestScopedDenial = statusCode == 401 || statusCode == 403 || statusCode == 410 ||
+            reason.contains("sign in", ignoreCase = true) ||
+            reason.contains("login", ignoreCase = true)
+        if (requestScopedDenial) return
+
         health.compute(profile.id) { _, current ->
             val previous = current ?: YoutubeMusicClientHealth()
             val failures = (previous.failures + 1).coerceAtMost(MAX_HEALTH_SAMPLES)
             val consecutive = (previous.consecutiveFailures + 1).coerceAtMost(20)
-            val hardFailure = statusCode == 403 || statusCode == 410 || statusCode == 429 ||
-                reason.contains("sign in", true) || reason.contains("login", true)
             val blockMs = when {
-                hardFailure -> HARD_BLOCK_MS
+                statusCode == 429 -> HARD_BLOCK_MS
                 consecutive >= 4 -> LONG_BLOCK_MS
                 consecutive >= 2 -> SHORT_BLOCK_MS
                 else -> 0L
@@ -307,7 +363,7 @@ internal class YoutubeMusicResilienceClient(
                 failures = failures,
                 consecutiveFailures = consecutive,
                 averageLatencyMs = average,
-                blockedUntilMs = now + blockMs,
+                blockedUntilMs = max(previous.blockedUntilMs, now + blockMs),
                 updatedAtMs = now
             )
         }
@@ -339,27 +395,65 @@ internal class YoutubeMusicResilienceClient(
         val entry = responseCache[key] ?: return@synchronized null
         if (clock() >= entry.expiresAtMs) {
             responseCache.remove(key)
+            responseCacheBytes -= entry.sizeBytes
             return@synchronized null
         }
-        runCatching { JSONObject(entry.payload) }.getOrNull()
+        val parsed = runCatching { JSONObject(entry.payload) }.getOrNull()
+        if (parsed == null) {
+            responseCache.remove(key)
+            responseCacheBytes -= entry.sizeBytes
+        }
+        parsed
     }
 
     private fun cache(key: String, root: JSONObject, ttlMs: Long) = synchronized(cacheLock) {
-        responseCache[key] = YoutubeMusicCacheEntry(root.toString(), clock() + max(1_000L, ttlMs))
+        val payload = root.toString()
+        val sizeBytes = payload.toByteArray(StandardCharsets.UTF_8).size.toLong()
+        if (sizeBytes > MAX_SINGLE_CACHE_ENTRY_BYTES) return@synchronized
+
+        responseCache.remove(key)?.let { responseCacheBytes -= it.sizeBytes }
+        responseCache[key] = YoutubeMusicCacheEntry(
+            payload = payload,
+            expiresAtMs = clock() + max(1_000L, ttlMs),
+            sizeBytes = sizeBytes
+        )
+        responseCacheBytes += sizeBytes
+        trimCache()
+    }
+
+    private fun trimCache() {
+        val iterator = responseCache.entries.iterator()
+        while (
+            iterator.hasNext() &&
+            (responseCache.size > MAX_CACHE_ENTRIES || responseCacheBytes > MAX_CACHE_BYTES)
+        ) {
+            val entry = iterator.next().value
+            responseCacheBytes -= entry.sizeBytes
+            iterator.remove()
+        }
     }
 
     private companion object {
         const val MAX_CACHE_ENTRIES = 96
+        const val MAX_CACHE_BYTES = 2L * 1024L * 1024L
+        const val MAX_SINGLE_CACHE_ENTRY_BYTES = 512L * 1024L
         const val MAX_HEALTH_SAMPLES = 10_000
         const val DEFAULT_CACHE_TTL_MS = 75_000L
         const val CONTINUATION_CACHE_TTL_MS = 20_000L
+        const val TOTAL_REQUEST_BUDGET_MS = 35_000L
+        const val PROFILE_REQUEST_TIMEOUT_MS = 14_000L
         const val SHORT_BLOCK_MS = 25_000L
         const val LONG_BLOCK_MS = 2L * 60L * 1_000L
         const val HARD_BLOCK_MS = 10L * 60L * 1_000L
-        const val WEB_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
-        const val ANDROID_MUSIC_USER_AGENT = "com.google.android.apps.youtube.music/8.10.52 (Linux; U; Android 15; Pixel 8 Pro Build/AP3A.241105.007) gzip"
-        const val ANDROID_USER_AGENT = "com.google.android.youtube/19.44.38 (Linux; U; Android 15; Pixel 8 Pro Build/AP3A.241105.007) gzip"
-        const val IOS_USER_AGENT = "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)"
+        const val WEB_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+        const val ANDROID_MUSIC_USER_AGENT =
+            "com.google.android.apps.youtube.music/8.10.52 (Linux; U; Android 15; Pixel 8 Pro Build/AP3A.241105.007) gzip"
+        const val ANDROID_USER_AGENT =
+            "com.google.android.youtube/19.44.38 (Linux; U; Android 15; Pixel 8 Pro Build/AP3A.241105.007) gzip"
+        const val IOS_USER_AGENT =
+            "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)"
+
         val SEARCH_MARKERS = arrayOf(
             "musicResponsiveListItemRenderer",
             "musicTwoRowItemRenderer",
@@ -391,7 +485,8 @@ internal data class YoutubeMusicTransportRequest(
     val profile: YoutubeMusicClientProfile,
     val payload: String,
     val referer: String,
-    val visitorData: String
+    val visitorData: String,
+    val timeoutMs: Long
 )
 
 internal data class YoutubeMusicTransportResponse(
@@ -427,15 +522,60 @@ internal data class YoutubeMusicClientHealth(
         get() {
             val total = successes + failures
             val reliability = if (total <= 0) 0.5 else successes.toDouble() / total.toDouble()
-            val latencyBonus = if (averageLatencyMs == Long.MAX_VALUE) 0.0 else 1_500.0 / averageLatencyMs.coerceAtLeast(50L)
+            val latencyBonus =
+                if (averageLatencyMs == Long.MAX_VALUE) 0.0 else 1_500.0 / averageLatencyMs.coerceAtLeast(50L)
             return reliability * 100.0 + latencyBonus - consecutiveFailures * 12.0
         }
 }
 
+internal data class YoutubeMusicCacheDiagnostics(
+    val entries: Int,
+    val bytes: Long
+)
+
 private data class YoutubeMusicCacheEntry(
     val payload: String,
-    val expiresAtMs: Long
+    val expiresAtMs: Long,
+    val sizeBytes: Long
 )
+
+private class YoutubeMusicInFlightRequest {
+    private val references = AtomicInteger(1)
+    private val completed = CountDownLatch(1)
+
+    @Volatile
+    private var payload: String? = null
+
+    @Volatile
+    private var failure: Throwable? = null
+
+    fun retain(): YoutubeMusicInFlightRequest {
+        references.incrementAndGet()
+        return this
+    }
+
+    fun complete(payload: String?) {
+        this.payload = payload
+        completed.countDown()
+    }
+
+    fun completeExceptionally(error: Throwable) {
+        failure = error
+        completed.countDown()
+    }
+
+    fun await(): String? {
+        return try {
+            completed.await()
+            if (failure != null) null else payload
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            null
+        }
+    }
+
+    fun release(): Boolean = references.decrementAndGet() == 0 && completed.count == 0L
+}
 
 private enum class YoutubeMusicRequestKind {
     SEARCH,
@@ -467,14 +607,18 @@ private class OkHttpYoutubeMusicTransport(context: Context?) : YoutubeMusicTrans
         if (request.profile.origin.isNotBlank()) builder.header("Origin", request.profile.origin)
         if (request.profile.androidSdkVersion > 0) builder.header("X-Goog-Api-Format-Version", "2")
         request.visitorData.takeIf(String::isNotBlank)?.let { builder.header("X-Goog-Visitor-Id", it) }
+
         val httpRequest = GoogleApiKeyHeaders.applyTo(builder, appContext).build()
         val startedAt = System.nanoTime()
-        return client.newCall(httpRequest).execute().use { response ->
-            YoutubeMusicTransportResponse(
-                code = response.code,
-                body = response.body.string(),
-                latencyMs = ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
-            )
-        }
+        return client.newCall(httpRequest)
+            .apply { timeout().timeout(request.timeoutMs, TimeUnit.MILLISECONDS) }
+            .execute()
+            .use { response ->
+                YoutubeMusicTransportResponse(
+                    code = response.code,
+                    body = response.body.string(),
+                    latencyMs = ((System.nanoTime() - startedAt) / 1_000_000L).coerceAtLeast(1L)
+                )
+            }
     }
 }
