@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.nexus.update
 
+import com.luc4n3x.levyra.nexus.core.LevyraFailureType
 import com.luc4n3x.levyra.nexus.core.LevyraResult
 import java.io.ByteArrayInputStream
 import java.security.KeyPairGenerator
@@ -55,6 +56,51 @@ class LevyraUpdateCoreTest {
         assertEquals(first, LevyraUpdateSelector.rolloutBucket("device-1"))
         assertFalse(LevyraUpdateSelector.isEligibleForRollout("device-1", 0))
         assertTrue(LevyraUpdateSelector.isEligibleForRollout("device-1", 100))
+    }
+
+    @Test
+    fun rejectsArtifactWithoutDigestOrSignature() {
+        val result = LevyraUpdateVerifier.verifyArtifact(
+            input = ByteArrayInputStream("untrusted".toByteArray()),
+            artifact = LevyraUpdateArtifact(
+                name = "levyra-universal-release.apk",
+                downloadUrl = "https://example.com/levyra.apk"
+            ),
+            inspection = LevyraArtifactInspection(
+                packageName = "com.luc4n3x.levyra",
+                signerSha256 = "signer",
+                sdk = 35,
+                abi = "arm64-v8a"
+            ),
+            expectedPackageName = "com.luc4n3x.levyra"
+        )
+        val failure = result as LevyraResult.Failure
+        assertEquals(LevyraFailureType.SECURITY, failure.type)
+        assertFalse(failure.retryable)
+        assertTrue(failure.message.contains("SHA-256 or signature"))
+    }
+
+    @Test
+    fun rejectsDetachedSignatureWithoutPublicKey() {
+        val result = LevyraUpdateVerifier.verifyArtifact(
+            input = ByteArrayInputStream("untrusted".toByteArray()),
+            artifact = LevyraUpdateArtifact(
+                name = "levyra-universal-release.apk",
+                downloadUrl = "https://example.com/levyra.apk",
+                signatureBase64 = Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3))
+            ),
+            inspection = LevyraArtifactInspection(
+                packageName = "com.luc4n3x.levyra",
+                signerSha256 = "signer",
+                sdk = 35,
+                abi = "arm64-v8a"
+            ),
+            expectedPackageName = "com.luc4n3x.levyra"
+        )
+        val failure = result as LevyraResult.Failure
+        assertEquals(LevyraFailureType.SECURITY, failure.type)
+        assertFalse(failure.retryable)
+        assertTrue(failure.message.contains("public key"))
     }
 
     @Test
