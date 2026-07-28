@@ -21,12 +21,6 @@ includeBuild("../third_party/LevyraExtractor") {
     }
 }
 
-includeBuild("../third_party/LevyraNexus") {
-    dependencySubstitution {
-        substitute(module("com.github.LUC4N3X:LevyraNexus")).using(project(":"))
-    }
-}
-
 rootProject.name = "levyra-desktop"
 
 include(":core")
