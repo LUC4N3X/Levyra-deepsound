@@ -150,6 +150,8 @@ internal fun filLocalizationEntries(): Map<String, String> = mapOf(
     "alreadyOffline" to "Naka-save na offline",
     "download" to "I-download",
     "openArtist" to "Buksan ang artist",
+    "openAlbum" to "Buksan ang album",
+    "deleteDownload" to "I-delete ang download",
     "share" to "Ibahagi",
     "shareSong" to "Ibahagi ang kanta",
     "removeFromRecentSearches" to "Alisin sa mga kamakailang paghahanap",
