@@ -221,6 +221,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private val clientVersion = "1.20260423.01.00"
     private val memory = LinkedHashMap<String, Track>()
     private val watchRepository = YoutubeMusicWatchRepository(context)
+    private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)
 
     suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
@@ -330,37 +331,8 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private fun searchInnerTubeRaw(query: String, languageCode: String): JSONObject? {
-        val endpoint = "https://music.youtube.com/youtubei/v1/search?key=$apiKey&prettyPrint=false"
-        val body = JSONObject()
-            .put(
-                "context",
-                JSONObject().put("client", clientPayload(languageCode))
-            )
-            .put("query", query)
-            .toString()
-        val bytes = body.toByteArray(StandardCharsets.UTF_8)
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 15000
-            readTimeout = 20000
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Origin", "https://music.youtube.com")
-            setRequestProperty("Referer", "https://music.youtube.com/search?q=${query.replace(" ", "+")}")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-            setRequestProperty("X-Youtube-Client-Name", "67")
-            setRequestProperty("X-Youtube-Client-Version", clientVersion)
-            GoogleApiKeyHeaders.applyTo(this, context)
-            setRequestProperty("Content-Length", bytes.size.toString())
-        }
-        connection.outputStream.use { it.write(bytes) }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val response = BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { it.readText() }
-        if (code !in 200..299) return null
-        return JSONObject(response)
-    }
+    return resilienceClient.search(query, languageCode)
+}
 
     suspend fun home(
         queries: List<String> = LevyraContentLocales.forLanguage(LevyraLanguageCatalog.deviceDefault()).homeQueries,
@@ -974,45 +946,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private fun requestMusicHomeRoot(languageCode: String): JSONObject? = requestMusicBrowseRoot(languageCode, "FEmusic_home")
 
     private fun requestMusicBrowseRoot(
-        languageCode: String,
-        browseId: String,
-        params: String = "",
-        continuation: String = ""
-    ): JSONObject? {
-        if (browseId.isBlank() && continuation.isBlank()) return null
-        val endpoint = "https://music.youtube.com/youtubei/v1/browse?key=$apiKey&prettyPrint=false"
-        val payload = JSONObject()
-            .put(
-                "context",
-                JSONObject().put("client", clientPayload(languageCode))
-            )
-        if (browseId.isNotBlank()) payload.put("browseId", browseId)
-        if (params.isNotBlank()) payload.put("params", params)
-        if (continuation.isNotBlank()) payload.put("continuation", continuation)
-        val body = payload.toString()
-        val bytes = body.toByteArray(StandardCharsets.UTF_8)
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 15000
-            readTimeout = 20000
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Origin", "https://music.youtube.com")
-            setRequestProperty("Referer", "https://music.youtube.com/browse/$browseId")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-            setRequestProperty("X-Youtube-Client-Name", "67")
-            setRequestProperty("X-Youtube-Client-Version", clientVersion)
-            GoogleApiKeyHeaders.applyTo(this, context)
-            setRequestProperty("Content-Length", bytes.size.toString())
-        }
-        connection.outputStream.use { it.write(bytes) }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val response = BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { it.readText() }
-        if (code !in 200..299) return null
-        return JSONObject(response)
-    }
+    languageCode: String,
+    browseId: String,
+    params: String = "",
+    continuation: String = ""
+): JSONObject? {
+    return resilienceClient.browse(languageCode, browseId, params, continuation)
+}
 
     private fun homeFeedInnerTube(languageCode: String): List<HomeSection> {
         val root = requestMusicHomeRoot(languageCode) ?: return emptyList()
@@ -1720,53 +1660,24 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     }
 
     private fun searchInnerTube(query: String, limit: Int, languageCode: String): List<Track> {
-        val endpoint = "https://music.youtube.com/youtubei/v1/search?key=$apiKey&prettyPrint=false"
-        val body = JSONObject()
-            .put(
-                "context",
-                JSONObject().put("client", clientPayload(languageCode))
-            )
-            .put("query", query)
-            .toString()
-        val bytes = body.toByteArray(StandardCharsets.UTF_8)
-        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 15000
-            readTimeout = 20000
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("Accept", "application/json")
-            setRequestProperty("Origin", "https://music.youtube.com")
-            setRequestProperty("Referer", "https://music.youtube.com/search?q=${query.replace(" ", "+")}")
-            setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-            setRequestProperty("X-Youtube-Client-Name", "67")
-            setRequestProperty("X-Youtube-Client-Version", clientVersion)
-            GoogleApiKeyHeaders.applyTo(this, context)
-            setRequestProperty("Content-Length", bytes.size.toString())
-        }
-        connection.outputStream.use { it.write(bytes) }
-        val code = connection.responseCode
-        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val response = BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { it.readText() }
-        if (code !in 200..299) return emptyList()
-        val root = JSONObject(response)
-        val renderers = mutableListOf<JSONObject>()
-        collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
-        val tracks = LinkedHashMap<String, Track>()
-        renderers.forEach { renderer ->
-            val track = parseMusicRenderer(renderer, query)
+    val root = searchInnerTubeRaw(query, languageCode) ?: return emptyList()
+    val renderers = mutableListOf<JSONObject>()
+    collectObjectsByKey(root, "musicResponsiveListItemRenderer", renderers)
+    val tracks = LinkedHashMap<String, Track>()
+    renderers.forEach { renderer ->
+        val track = parseMusicRenderer(renderer, query)
+        if (track != null && !tracks.containsKey(track.id)) tracks[track.id] = track
+    }
+    if (tracks.isEmpty()) {
+        val videoRenderers = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "videoRenderer", videoRenderers)
+        videoRenderers.forEach { renderer ->
+            val track = parseVideoRenderer(renderer, query)
             if (track != null && !tracks.containsKey(track.id)) tracks[track.id] = track
         }
-        if (tracks.isEmpty()) {
-            val videoRenderers = mutableListOf<JSONObject>()
-            collectObjectsByKey(root, "videoRenderer", videoRenderers)
-            videoRenderers.forEach { renderer ->
-                val track = parseVideoRenderer(renderer, query)
-                if (track != null && !tracks.containsKey(track.id)) tracks[track.id] = track
-            }
-        }
-        return tracks.values.take(limit)
     }
+    return tracks.values.take(limit)
+}
 
     private fun searchYoutubeExtractor(query: String, limit: Int): List<Track> {
         NewPipeRuntime.ensure()
