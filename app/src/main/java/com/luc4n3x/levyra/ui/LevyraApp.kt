@@ -321,6 +321,7 @@ import com.luc4n3x.levyra.ui.components.LevyraArtistItemWidth
 import com.luc4n3x.levyra.ui.components.LevyraArtistNameSpacing
 import com.luc4n3x.levyra.ui.components.LevyraArtistShelfItem
 import com.luc4n3x.levyra.ui.components.LevyraArtistShelfSpacing
+import com.luc4n3x.levyra.ui.components.LevyraTrackActionSheet
 import com.luc4n3x.levyra.ui.components.levyraArtistAccent
 import com.luc4n3x.levyra.ui.theme.LevyraBlack
 import com.luc4n3x.levyra.ui.theme.LevyraInk
@@ -931,6 +932,8 @@ private fun Modifier.pressable(
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
     pressedScale: Float = 0.96f,
+    onLongClickLabel: String? = null,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ): Modifier {
     val animationsEnabled = LocalAnimationsEnabled.current
@@ -941,13 +944,27 @@ private fun Modifier.pressable(
         animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
         label = "press"
     )
+    val indication = if (animationsEnabled) null else LocalIndication.current
     return this
         .graphicsLayer { scaleX = scale; scaleY = scale }
-        .clickable(
-            interactionSource = interaction,
-            indication = if (animationsEnabled) null else LocalIndication.current,
-            enabled = enabled,
-            onClick = onClick
+        .then(
+            if (onLongClick == null) {
+                Modifier.clickable(
+                    interactionSource = interaction,
+                    indication = indication,
+                    enabled = enabled,
+                    onClick = onClick
+                )
+            } else {
+                Modifier.combinedClickable(
+                    interactionSource = interaction,
+                    indication = indication,
+                    enabled = enabled,
+                    onLongClickLabel = onLongClickLabel,
+                    onLongClick = onLongClick,
+                    onClick = onClick
+                )
+            }
         )
 }
 
@@ -983,6 +1000,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
     val activity = toastContext as? Activity
     var showLanguageRestartDialog by remember { mutableStateOf(false) }
     var showDownloadsFolder by remember { mutableStateOf(false) }
+    var trackActionTarget by remember { mutableStateOf<Track?>(null) }
+    var trackActionPlaylistTarget by remember { mutableStateOf<Track?>(null) }
     val createBackupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         uri?.let(viewModel::createBackup)
     }
@@ -1122,7 +1141,12 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         LevyraTab.Home -> {
                             val homeViewModel: HomeViewModel = composeViewModel(key = "levyra-home", factory = screenViewModelFactory)
                             val renderSnapshot by homeViewModel.renderState.collectAsStateWithLifecycle()
-                            HomeScreen(homeViewModel, renderSnapshot, homeListState)
+                            HomeScreen(
+                                viewModel = homeViewModel,
+                                renderSnapshot = renderSnapshot,
+                                homeListState = homeListState,
+                                onTrackActions = { track -> trackActionTarget = track }
+                            )
                         }
                         LevyraTab.Search -> {
                             val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
@@ -1368,6 +1392,51 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                         restartLevyra(activity)
                     },
                     onLater = { showLanguageRestartDialog = false }
+                )
+            }
+
+            trackActionTarget?.let { target ->
+                val download = remember(state.downloads, target.id) {
+                    state.downloads.firstOrNull { it.trackId == target.id }
+                }
+                LevyraTrackActionSheet(
+                    track = target,
+                    isFavorite = target.id in state.favoriteIds,
+                    isDownloaded = download != null,
+                    isDownloading = target.id in state.downloadingTrackIds,
+                    canRemoveFromHistory = remember(state.recentSearches, target.id) {
+                        val identity = LevyraPersonalOrbit.identityKey(target)
+                        state.recentSearches.any {
+                            it.id == target.id || LevyraPersonalOrbit.identityKey(it) == identity
+                        }
+                    },
+                    animationsEnabled = state.animationsEnabled,
+                    onDismiss = { trackActionTarget = null },
+                    onPlayNext = { viewModel.playNext(target) },
+                    onAddToQueue = { viewModel.addToQueue(target) },
+                    onAddToPlaylist = { trackActionPlaylistTarget = target },
+                    onToggleFavorite = { viewModel.toggleFavorite(target) },
+                    onDownload = { viewModel.exportTrack(target) },
+                    onDeleteDownload = { download?.let(viewModel::deleteDownload) },
+                    onOpenAlbum = { viewModel.openAlbum(trackAlbumHit(target)) },
+                    onOpenArtist = { viewModel.openArtist(target) },
+                    onRemoveFromHistory = { viewModel.removeRecentSearch(target) }
+                )
+            }
+
+            trackActionPlaylistTarget?.let { track ->
+                AddToPlaylistDialog(
+                    track = track,
+                    playlists = state.playlists,
+                    onDismiss = { trackActionPlaylistTarget = null },
+                    onAddTo = { playlistId ->
+                        viewModel.addToPlaylist(playlistId, track)
+                        trackActionPlaylistTarget = null
+                    },
+                    onCreateWith = { name ->
+                        viewModel.createPlaylist(name, track)
+                        trackActionPlaylistTarget = null
+                    }
                 )
             }
 
@@ -5174,7 +5243,12 @@ internal fun selectHomeSpotlightTracks(
 }
 
 @Composable
-private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnapshot, homeListState: LazyListState) {
+private fun HomeScreen(
+    viewModel: HomeViewModel,
+    renderSnapshot: HomeRenderSnapshot,
+    homeListState: LazyListState,
+    onTrackActions: (Track) -> Unit
+) {
     val state = renderSnapshot.state
     val homeDerivedState = renderSnapshot.derived
     val strings = LocalLevyraStrings.current
@@ -5340,7 +5414,8 @@ private fun HomeScreen(viewModel: HomeViewModel, renderSnapshot: HomeRenderSnaps
                     isPlaying = state.isPlaying,
                     isResolving = state.isResolving,
                     onPlay = { track -> viewModel.playFrom(visiblePersonalTracks, track) },
-                    onPlayAll = { viewModel.playAll(visiblePersonalTracks) }
+                    onPlayAll = { viewModel.playAll(visiblePersonalTracks) },
+                    onTrackActions = onTrackActions
                 )
             }
         }
@@ -6732,9 +6807,11 @@ private fun PersonalListeningShelf(
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: (Track) -> Unit,
-    onPlayAll: () -> Unit
+    onPlayAll: () -> Unit,
+    onTrackActions: (Track) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
+    val haptics = LocalHapticFeedback.current
     val shelfTracks = remember(tracks) { tracks.distinctBy { LevyraPersonalOrbit.identityKey(it) }.take(LevyraPersonalOrbit.DISPLAY_LIMIT) }
     val pages = remember(shelfTracks) { shelfTracks.chunked(6) }
     val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
@@ -6769,7 +6846,12 @@ private fun PersonalListeningShelf(
                                     playing = isPlaying && track.id == currentId,
                                     resolving = isResolving && track.id == currentId,
                                     onClick = { onPlay(track) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    onLongClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onTrackActions(track)
+                                    },
+                                    onLongClickLabel = strings.songOptions
                                 )
                             } else {
                                 Column(modifier = Modifier.weight(1f)) {
@@ -6828,11 +6910,17 @@ private fun PersonalListeningCard(
     playing: Boolean,
     resolving: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null
 ) {
     val artworkShape = RoundedCornerShape(17.dp)
     Column(
-        modifier = modifier.pressable(onClick = onClick),
+        modifier = modifier.pressable(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClickLabel
+        ),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box(
@@ -6912,6 +7000,20 @@ private fun PersonalListeningCard(
     }
 }
 
+
+private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
+    title = track.album.trim(),
+    artist = track.artist.trim(),
+    year = track.year.ifBlank { track.releaseDate.take(4).takeIf { it.toIntOrNull() != null }.orEmpty() },
+    thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
+    query = listOf(track.album.trim(), track.artist.trim(), "album").filter(String::isNotBlank).joinToString(" "),
+    browseId = track.albumBrowseId,
+    artistBrowseId = track.artistBrowseIds.firstOrNull().orEmpty(),
+    explicit = track.explicit,
+    releaseDate = track.releaseDate,
+    upc = track.upc,
+    canonicalUrl = track.canonicalAlbumUrl
+)
 
 private fun isPersonalOrbitSectionTitle(title: String): Boolean {
     val normalized = title.lowercase(Locale.ROOT)
