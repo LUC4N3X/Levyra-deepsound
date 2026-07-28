@@ -1,0 +1,1 @@
+Improves playback reliability with resilient YouTube Music fallbacks, adaptive network routing, and stricter update verification. Adds official chart artwork and shortcuts, a long-press track action menu, clearer artist and settings screens, accessibility refinements, and updated player configurations. Also fixes request-denial handling and several playback recovery edge cases.
