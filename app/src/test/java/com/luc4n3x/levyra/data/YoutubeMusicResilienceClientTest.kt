@@ -3,8 +3,14 @@ package com.luc4n3x.levyra.data
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 class YoutubeMusicResilienceClientTest {
     @Test
@@ -28,7 +34,7 @@ class YoutubeMusicResilienceClientTest {
     }
 
     @Test
-    fun hardFailureTemporarilyRemovesPrimaryFromTheChain() {
+    fun rateLimitTemporarilyRemovesPrimaryFromTheChain() {
         var now = 1_700_000_000_000L
         val calls = mutableListOf<String>()
         val client = client(clock = { now }) { request ->
@@ -87,7 +93,6 @@ class YoutubeMusicResilienceClientTest {
         assertTrue(payloads.all { !it.has("browseId") })
     }
 
-
     @Test
     fun visitorDataIsLearnedPerProfileAndReused() {
         val visitorHeaders = mutableListOf<String>()
@@ -125,6 +130,135 @@ class YoutubeMusicResilienceClientTest {
         assertEquals(2, calls)
     }
 
+    @Test
+    fun requestSpecificDenialsDoNotPoisonGlobalProfileHealth() {
+        val publicRequest = AtomicBoolean(false)
+        val calls = mutableListOf<String>()
+        val client = client { request ->
+            calls += request.profile.id
+            if (publicRequest.get()) {
+                YoutubeMusicTransportResponse(200, validSearch(), 10L)
+            } else {
+                YoutubeMusicTransportResponse(403, "private or region restricted resource", 10L)
+            }
+        }
+
+        assertNull(client.browse("it", browseId = "PRIVATE"))
+        assertTrue(client.diagnostics().isEmpty())
+
+        calls.clear()
+        publicRequest.set(true)
+        assertNotNull(client.search("public song", "it"))
+        assertEquals(listOf("web-remix"), calls)
+    }
+
+    @Test
+    fun failedConcurrentRequestsShareOneFallbackChain() {
+        val calls = AtomicInteger()
+        val firstEntered = CountDownLatch(1)
+        val releaseFirst = CountDownLatch(1)
+        val waitersReady = CountDownLatch(2)
+        val client = client { _ ->
+            if (calls.incrementAndGet() == 1) {
+                firstEntered.countDown()
+                releaseFirst.await(5, TimeUnit.SECONDS)
+            }
+            YoutubeMusicTransportResponse(500, "server error", 10L)
+        }
+        val executor = Executors.newFixedThreadPool(3)
+
+        try {
+            val leader = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+            assertTrue(firstEntered.await(5, TimeUnit.SECONDS))
+            val waiterOne = executor.submit<JSONObject?> {
+                waitersReady.countDown()
+                client.search("same failing query", "it")
+            }
+            val waiterTwo = executor.submit<JSONObject?> {
+                waitersReady.countDown()
+                client.search("same failing query", "it")
+            }
+            assertTrue(waitersReady.await(5, TimeUnit.SECONDS))
+            Thread.sleep(100L)
+            releaseFirst.countDown()
+
+            assertNull(leader.get(5, TimeUnit.SECONDS))
+            assertNull(waiterOne.get(5, TimeUnit.SECONDS))
+            assertNull(waiterTwo.get(5, TimeUnit.SECONDS))
+            assertEquals(5, calls.get())
+        } finally {
+            releaseFirst.countDown()
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun fallbackChainHonorsOneOverallDeadline() {
+        var now = 1_700_000_000_000L
+        val timeouts = mutableListOf<Long>()
+        val client = client(clock = { now }) { request ->
+            timeouts += request.timeoutMs
+            now += 12_000L
+            YoutubeMusicTransportResponse(500, "server error", 12_000L)
+        }
+
+        assertNull(client.search("deadline query", "it"))
+        assertEquals(listOf(14_000L, 14_000L, 11_000L), timeouts)
+    }
+
+    @Test
+    fun interruptionStopsTheFallbackChainImmediately() {
+        val calls = AtomicInteger()
+        val client = client { _ ->
+            calls.incrementAndGet()
+            throw InterruptedException("cancelled")
+        }
+
+        try {
+            assertNull(client.search("interrupted query", "it"))
+            assertEquals(1, calls.get())
+            assertTrue(Thread.currentThread().isInterrupted)
+        } finally {
+            Thread.interrupted()
+        }
+    }
+
+    @Test
+    fun hardBlockedProfilesAreNotRetriedBeforeTheirDeadline() {
+        var now = 1_700_000_000_000L
+        val calls = AtomicInteger()
+        val client = client(clock = { now }) { _ ->
+            calls.incrementAndGet()
+            YoutubeMusicTransportResponse(429, "rate limited", 10L)
+        }
+
+        assertNull(client.search("first rate limited query", "it"))
+        val deadlines = client.diagnostics().mapValues { it.value.blockedUntilMs }
+        assertEquals(5, calls.get())
+
+        now += 1_000L
+        assertNull(client.search("second rate limited query", "it"))
+
+        assertEquals(5, calls.get())
+        assertEquals(deadlines, client.diagnostics().mapValues { it.value.blockedUntilMs })
+    }
+
+    @Test
+    fun oversizedResponsesAreNotRetainedInMemoryCache() {
+        val calls = AtomicInteger()
+        val oversized = """{"contents":{"musicResponsiveListItemRenderer":{"title":"${"x".repeat(600_000)}"}}}"""
+        val client = client { _ ->
+            calls.incrementAndGet()
+            YoutubeMusicTransportResponse(200, oversized, 10L)
+        }
+
+        assertNotNull(client.search("large response", "it"))
+        assertEquals(0, client.cacheDiagnostics().entries)
+        assertEquals(0L, client.cacheDiagnostics().bytes)
+        assertNotNull(client.search("large response", "it"))
+        assertEquals(2, calls.get())
+    }
+
     private fun client(
         clock: () -> Long = { 1_700_000_000_000L },
         handler: (YoutubeMusicTransportRequest) -> YoutubeMusicTransportResponse
@@ -134,6 +268,7 @@ class YoutubeMusicResilienceClientTest {
             apiKey = "test-key",
             webRemixVersion = "1.20260423.01.00",
             clock = clock,
+            monotonicClock = clock,
             transport = YoutubeMusicTransport(handler)
         )
     }
