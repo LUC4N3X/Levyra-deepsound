@@ -1,9 +1,11 @@
 package com.luc4n3x.levyra.desktop.app
 
+import org.slf4j.LoggerFactory
+
 internal object DesktopDiagnostics {
+    private val logger = LoggerFactory.getLogger("Levyra")
 
     fun background(operation: String, error: Throwable) {
-        val reason = error.message?.takeIf { it.isNotBlank() } ?: error::class.simpleName.orEmpty()
-        System.err.println("Levyra: $operation failed ($reason)")
+        logger.warn("Background task failed: $operation", error)
     }
 }
