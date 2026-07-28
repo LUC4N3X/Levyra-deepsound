@@ -1,0 +1,501 @@
+name: Finalize denial health
+
+on:
+  push:
+    branches:
+      - agent/youtube-media-fallback
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-finalize-denial-health
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/youtube-media-fallback
+          fetch-depth: 0
+
+      - name: Apply reviewed fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClient.kt')
+          test_path = Path('app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClientTest.kt')
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              return text.replace(old, new, 1)
+
+          def replace_between(text, start_marker, end_marker, replacement, label):
+              start = text.find(start_marker)
+              if start < 0:
+                  raise SystemExit(f'{label}: start marker not found')
+              end = text.find(end_marker, start)
+              if end < 0:
+                  raise SystemExit(f'{label}: end marker not found')
+              return text[:start] + replacement + text[end:]
+
+          source = source_path.read_text()
+          source = replace_once(
+              source,
+              '''    internal fun cacheDiagnostics(): YoutubeMusicCacheDiagnostics = synchronized(cacheLock) {
+                  YoutubeMusicCacheDiagnostics(responseCache.size, responseCacheBytes)
+              }
+          ''',
+              '''    internal fun cacheDiagnostics(): YoutubeMusicCacheDiagnostics = synchronized(cacheLock) {
+                  YoutubeMusicCacheDiagnostics(responseCache.size, responseCacheBytes)
+              }
+
+              internal fun inFlightReferenceCounts(): List<Int> = inFlight.values.map { it.referenceCount() }
+          ''',
+              'in-flight diagnostics'
+          )
+          source = replace_once(
+              source,
+              '            return shared.await()?.let(::JSONObject)\n',
+              '            return shared.await(TOTAL_REQUEST_BUDGET_MS)?.let(::JSONObject)\n',
+              'bounded waiter'
+          )
+
+          perform = '''    private fun performRequest(
+              kind: YoutubeMusicRequestKind,
+              languageCode: String,
+              browseId: String,
+              params: String,
+              continuation: String,
+              query: String
+          ): JSONObject? {
+              val deadline = monotonicClock() + TOTAL_REQUEST_BUDGET_MS
+              val orderedProfiles = orderedProfiles(clock())
+              val deferredDenials = mutableListOf<YoutubeMusicDeferredFailure>()
+              var lastFailure: Throwable? = null
+
+              for (profile in orderedProfiles) {
+                  val remainingMs = deadline - monotonicClock()
+                  if (remainingMs <= 0L) {
+                      lastFailure = IOException("YouTube Music fallback deadline exceeded")
+                      break
+                  }
+
+                  val request = YoutubeMusicTransportRequest(
+                      path = if (kind == YoutubeMusicRequestKind.SEARCH) "search" else "browse",
+                      apiKey = apiKey,
+                      profile = profile,
+                      payload = payload(profile, kind, languageCode, browseId, params, continuation, query).toString(),
+                      referer = referer(kind, browseId, query),
+                      visitorData = visitorData[profile.id].orEmpty(),
+                      timeoutMs = min(PROFILE_REQUEST_TIMEOUT_MS, remainingMs).coerceAtLeast(1L)
+                  )
+                  val attemptStartedAt = monotonicClock()
+                  val response = try {
+                      transport.execute(request)
+                  } catch (error: Exception) {
+                      if (error is InterruptedException) {
+                          Thread.currentThread().interrupt()
+                          return null
+                      }
+                      lastFailure = error
+                      recordFailure(
+                          profile = profile,
+                          statusCode = null,
+                          reason = error.message.orEmpty(),
+                          latencyMs = (monotonicClock() - attemptStartedAt).takeIf { it > 0L },
+                          now = clock()
+                      )
+                      continue
+                  }
+
+                  if (response.code !in 200..299) {
+                      lastFailure = IOException("HTTP ${response.code}")
+                      if (isRequestScopedDenial(response.code, response.body)) {
+                          deferredDenials += YoutubeMusicDeferredFailure(
+                              profile = profile,
+                              statusCode = response.code,
+                              reason = response.body,
+                              latencyMs = response.latencyMs,
+                              now = clock()
+                          )
+                      } else {
+                          recordFailure(profile, response.code, response.body, response.latencyMs, clock())
+                      }
+                      continue
+                  }
+
+                  val parsed = runCatching { JSONObject(response.body) }
+                  val root = parsed.getOrNull()
+                  if (root == null) {
+                      lastFailure = parsed.exceptionOrNull() ?: IOException("Invalid JSON")
+                      recordFailure(profile, response.code, "invalid json", response.latencyMs, clock())
+                      continue
+                  }
+                  if (!isUseful(kind, root)) {
+                      if (isRequestScopedDenial(response.code, response.body)) {
+                          deferredDenials += YoutubeMusicDeferredFailure(
+                              profile = profile,
+                              statusCode = response.code,
+                              reason = response.body,
+                              latencyMs = response.latencyMs,
+                              now = clock()
+                          )
+                      } else {
+                          recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
+                      }
+                      continue
+                  }
+
+                  deferredDenials.forEach { recordRequestScopedDenial(it, recoveredByFallback = true) }
+                  root.optJSONObject("responseContext")
+                      ?.optString("visitorData")
+                      ?.trim()
+                      ?.takeIf(String::isNotBlank)
+                      ?.let { visitorData[profile.id] = it }
+
+                  recordSuccess(profile, response.latencyMs, clock())
+                  return root
+              }
+
+              deferredDenials.forEach { recordRequestScopedDenial(it, recoveredByFallback = false) }
+              lastFailure?.let { Timber.d(it, "YouTube Music fallback chain exhausted") }
+              return null
+          }
+
+'''
+          source = replace_between(
+              source,
+              '    private fun performRequest(\n',
+              '    private fun payload(\n',
+              perform,
+              'perform request'
+          )
+
+          ordered = '''    private fun orderedProfiles(now: Long): List<YoutubeMusicClientProfile> {
+              val available = profiles.filter { (health[it.id]?.blockedUntilMs ?: 0L) <= now }
+              if (available.isEmpty()) return emptyList()
+              return available.sortedWith(
+                  compareByDescending<YoutubeMusicClientProfile> {
+                      health[it.id]?.score ?: DEFAULT_PROFILE_SCORE
+                  }.thenBy { it.priority }
+              )
+          }
+
+'''
+          source = replace_between(
+              source,
+              '    private fun orderedProfiles(\n',
+              '    private fun recordSuccess(\n',
+              ordered,
+              'profile ordering'
+          )
+
+          health_methods = '''    private fun recordSuccess(profile: YoutubeMusicClientProfile, latencyMs: Long, now: Long) {
+              health.compute(profile.id) { _, current ->
+                  val previous = current ?: YoutubeMusicClientHealth()
+                  val samples = (previous.successes + 1).coerceAtMost(MAX_HEALTH_SAMPLES)
+                  val average = if (previous.successes <= 0 || previous.averageLatencyMs == Long.MAX_VALUE) {
+                      latencyMs.coerceAtLeast(1L)
+                  } else {
+                      ((previous.averageLatencyMs * 7L) + latencyMs.coerceAtLeast(1L)) / 8L
+                  }
+                  previous.copy(
+                      successes = samples,
+                      consecutiveFailures = 0,
+                      consecutiveDenials = 0,
+                      averageLatencyMs = average,
+                      blockedUntilMs = 0L,
+                      updatedAtMs = now
+                  )
+              }
+          }
+
+          private fun recordFailure(
+              profile: YoutubeMusicClientProfile,
+              statusCode: Int?,
+              reason: String,
+              latencyMs: Long?,
+              now: Long
+          ) {
+              health.compute(profile.id) { _, current ->
+                  val previous = current ?: YoutubeMusicClientHealth()
+                  val failures = (previous.failures + 1).coerceAtMost(MAX_HEALTH_SAMPLES)
+                  val consecutive = (previous.consecutiveFailures + 1).coerceAtMost(20)
+                  val blockMs = when {
+                      statusCode == 429 -> HARD_BLOCK_MS
+                      consecutive >= 4 -> LONG_BLOCK_MS
+                      consecutive >= 2 -> SHORT_BLOCK_MS
+                      else -> 0L
+                  }
+                  previous.copy(
+                      failures = failures,
+                      consecutiveFailures = consecutive,
+                      averageLatencyMs = updatedAverage(previous.averageLatencyMs, latencyMs),
+                      blockedUntilMs = max(previous.blockedUntilMs, now + blockMs),
+                      updatedAtMs = now
+                  )
+              }
+              if (reason.isNotBlank()) Timber.v("YouTube Music profile %s failed: %s", profile.id, reason)
+          }
+
+          private fun recordRequestScopedDenial(
+              failure: YoutubeMusicDeferredFailure,
+              recoveredByFallback: Boolean
+          ) {
+              health.compute(failure.profile.id) { _, current ->
+                  val previous = current ?: YoutubeMusicClientHealth()
+                  previous.copy(
+                      denials = (previous.denials + 1).coerceAtMost(MAX_HEALTH_SAMPLES),
+                      consecutiveDenials = (previous.consecutiveDenials + 1).coerceAtMost(20),
+                      averageLatencyMs = updatedAverage(previous.averageLatencyMs, failure.latencyMs),
+                      updatedAtMs = failure.now
+                  )
+              }
+              Timber.v(
+                  "YouTube Music profile %s denied request with HTTP %s; fallbackRecovered=%s",
+                  failure.profile.id,
+                  failure.statusCode,
+                  recoveredByFallback
+              )
+          }
+
+          private fun updatedAverage(previous: Long, latencyMs: Long?): Long {
+              return when {
+                  latencyMs == null || latencyMs <= 0L -> previous
+                  previous == Long.MAX_VALUE -> latencyMs
+                  else -> ((previous * 3L) + latencyMs) / 4L
+              }
+          }
+
+          private fun isRequestScopedDenial(statusCode: Int?, reason: String): Boolean {
+              return statusCode == 401 || statusCode == 403 || statusCode == 410 ||
+                  reason.contains("sign in", ignoreCase = true) ||
+                  reason.contains("login", ignoreCase = true)
+          }
+
+'''
+          source = replace_between(
+              source,
+              '    private fun recordSuccess(\n',
+              '    private fun isUseful(\n',
+              health_methods,
+              'health handling'
+          )
+
+          source = replace_once(
+              source,
+              '        const val HARD_BLOCK_MS = 10L * 60L * 1_000L\n',
+              '        const val HARD_BLOCK_MS = 10L * 60L * 1_000L\n        const val DEFAULT_PROFILE_SCORE = 50.0\n',
+              'default score'
+          )
+
+          health_model = '''internal data class YoutubeMusicClientHealth(
+              val successes: Int = 0,
+              val failures: Int = 0,
+              val denials: Int = 0,
+              val consecutiveFailures: Int = 0,
+              val consecutiveDenials: Int = 0,
+              val averageLatencyMs: Long = Long.MAX_VALUE,
+              val blockedUntilMs: Long = 0L,
+              val updatedAtMs: Long = 0L
+          ) {
+              val score: Double
+                  get() {
+                      val weightedFailures = failures.toDouble() + denials.toDouble() * 0.35
+                      val reliability = (successes + 1.0) / (successes + weightedFailures + 2.0)
+                      val latencyBonus =
+                          if (averageLatencyMs == Long.MAX_VALUE) 0.0 else 1_500.0 / averageLatencyMs.coerceAtLeast(50L)
+                      return reliability * 100.0 + latencyBonus - consecutiveFailures * 12.0 - consecutiveDenials * 6.0
+                  }
+          }
+
+'''
+          source = replace_between(
+              source,
+              'internal data class YoutubeMusicClientHealth(\n',
+              'internal data class YoutubeMusicCacheDiagnostics(\n',
+              health_model,
+              'health model'
+          )
+
+          deferred_model = '''private data class YoutubeMusicDeferredFailure(
+              val profile: YoutubeMusicClientProfile,
+              val statusCode: Int?,
+              val reason: String,
+              val latencyMs: Long?,
+              val now: Long
+          )
+
+'''
+          source = replace_once(
+              source,
+              'private class YoutubeMusicInFlightRequest {\n',
+              deferred_model + 'private class YoutubeMusicInFlightRequest {\n',
+              'deferred failure model'
+          )
+
+          old_await = '''    fun await(): String? {
+              return try {
+                  completed.await()
+                  if (failure != null) null else payload
+              } catch (_: InterruptedException) {
+                  Thread.currentThread().interrupt()
+                  null
+              }
+          }
+
+              fun release(): Boolean = references.decrementAndGet() == 0 && completed.count == 0L
+          '''
+          new_await = '''    fun await(timeoutMs: Long): String? {
+              return try {
+                  if (!completed.await(timeoutMs, TimeUnit.MILLISECONDS)) return null
+                  if (failure != null) null else payload
+              } catch (_: InterruptedException) {
+                  Thread.currentThread().interrupt()
+                  null
+              }
+          }
+
+              fun referenceCount(): Int = references.get()
+
+              fun release(): Boolean = references.decrementAndGet() == 0 && completed.count == 0L
+          '''
+          source = replace_once(source, old_await, new_await, 'bounded await implementation')
+          source_path.write_text(source)
+
+          tests = test_path.read_text()
+          denial_tests = '''    @Test
+              fun requestSpecificDenialsNeverBlockTheWholeFallbackChain() {
+                  val publicRequest = AtomicBoolean(false)
+                  val calls = mutableListOf<String>()
+                  val client = client { request ->
+                      calls += request.profile.id
+                      if (publicRequest.get()) {
+                          YoutubeMusicTransportResponse(200, validSearch(), 10L)
+                      } else {
+                          YoutubeMusicTransportResponse(403, "private or region restricted resource", 10L)
+                      }
+                  }
+
+                  assertNull(client.browse("it", browseId = "PRIVATE"))
+                  assertTrue(client.diagnostics().values.all { it.blockedUntilMs == 0L })
+
+                  calls.clear()
+                  publicRequest.set(true)
+                  assertNotNull(client.search("public song", "it"))
+                  assertEquals(listOf("web-remix"), calls)
+              }
+
+              @Test
+              fun profileSpecificDenialIsDeprioritizedAfterFallbackRecovery() {
+                  val calls = mutableListOf<String>()
+                  val client = client { request ->
+                      calls += request.profile.id
+                      if (request.profile.id == "web-remix") {
+                          YoutubeMusicTransportResponse(403, "bot blocked", 10L)
+                      } else {
+                          YoutubeMusicTransportResponse(200, validSearch(), 10L)
+                      }
+                  }
+
+                  assertNotNull(client.search("first public query", "it"))
+                  assertEquals(listOf("web-remix", "android-music"), calls)
+                  assertEquals(1, client.diagnostics().getValue("web-remix").consecutiveDenials)
+                  assertEquals(0L, client.diagnostics().getValue("web-remix").blockedUntilMs)
+
+                  calls.clear()
+                  assertNotNull(client.search("second public query", "it"))
+                  assertEquals(listOf("android-music"), calls)
+              }
+
+'''
+          tests = replace_between(
+              tests,
+              '    @Test\n    fun requestSpecificDenialsDoNotPoisonGlobalProfileHealth() {\n',
+              '    @Test\n    fun failedConcurrentRequestsShareOneFallbackChain() {\n',
+              denial_tests,
+              'denial tests'
+          )
+
+          concurrency_test = '''    @Test
+              fun failedConcurrentRequestsShareOneFallbackChain() {
+                  val calls = AtomicInteger()
+                  val firstEntered = CountDownLatch(1)
+                  val releaseFirst = CountDownLatch(1)
+                  val client = client { _ ->
+                      if (calls.incrementAndGet() == 1) {
+                          firstEntered.countDown()
+                          releaseFirst.await(5, TimeUnit.SECONDS)
+                      }
+                      YoutubeMusicTransportResponse(500, "server error", 10L)
+                  }
+                  val executor = Executors.newFixedThreadPool(3)
+
+                  try {
+                      val leader = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+                      assertTrue(firstEntered.await(5, TimeUnit.SECONDS))
+                      val waiterOne = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+                      val waiterTwo = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+                      assertTrue(awaitCondition { client.inFlightReferenceCounts().any { it == 3 } })
+                      releaseFirst.countDown()
+
+                      assertNull(leader.get(5, TimeUnit.SECONDS))
+                      assertNull(waiterOne.get(5, TimeUnit.SECONDS))
+                      assertNull(waiterTwo.get(5, TimeUnit.SECONDS))
+                      assertEquals(5, calls.get())
+                  } finally {
+                      releaseFirst.countDown()
+                      executor.shutdownNow()
+                  }
+              }
+
+'''
+          tests = replace_between(
+              tests,
+              '    @Test\n    fun failedConcurrentRequestsShareOneFallbackChain() {\n',
+              '    @Test\n    fun fallbackChainHonorsOneOverallDeadline() {\n',
+              concurrency_test,
+              'concurrency test'
+          )
+
+          helper = '''    private fun awaitCondition(timeoutMs: Long = 5_000L, condition: () -> Boolean): Boolean {
+              val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+              while (System.nanoTime() < deadline) {
+                  if (condition()) return true
+                  Thread.yield()
+              }
+              return condition()
+          }
+
+'''
+          tests = replace_once(
+              tests,
+              '    private fun validSearch(): String =\n',
+              helper + '    private fun validSearch(): String =\n',
+              'await helper'
+          )
+          test_path.write_text(tests)
+          PY
+
+          git diff --check
+
+      - name: Run focused tests
+        run: ./gradlew :app:testDebugUnitTest --tests com.luc4n3x.levyra.data.YoutubeMusicResilienceClientTest --no-daemon --stacktrace
+
+      - name: Publish clean commit
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/agent-finalize-denial-health.yml
+          git add app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClient.kt
+          git add app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClientTest.kt
+          git commit -m "fix: balance request denials and client health"
+          git push origin HEAD:agent/youtube-media-fallback
