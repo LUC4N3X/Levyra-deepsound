@@ -1,9 +1,13 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import android.os.Build
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.AppUpdateInfo
+import com.luc4n3x.levyra.nexus.update.LevyraUpdateArtifact
+import com.luc4n3x.levyra.nexus.update.LevyraUpdateSelector
+import com.luc4n3x.levyra.nexus.update.LevyraVersionComparator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -36,8 +40,14 @@ class AppUpdateRepository(context: Context) {
         val latestTag = root.optString("tag_name").ifBlank { root.optString("name") }
         val latestVersion = normalizeDisplayVersion(latestTag)
         val releaseUrl = root.optString("html_url")
-        val asset = bestDownloadAsset(root)
-        val downloadUrl = asset?.downloadUrl?.ifBlank { releaseUrl } ?: releaseUrl
+        val assets = releaseAssets(root)
+        val selected = LevyraUpdateSelector.selectArtifact(
+            artifacts = assets.map(ReleaseAsset::toNexusArtifact),
+            sdk = Build.VERSION.SDK_INT,
+            supportedAbis = Build.SUPPORTED_ABIS.orEmpty().toList()
+        )
+        val downloadUrl = selected?.downloadUrl?.ifBlank { releaseUrl } ?: releaseUrl
+        val assetName = selected?.name.orEmpty()
         val releaseTitle = root.optString("name").ifBlank { "LEVYRA $latestVersion" }
         val notes = root.optString("body").trim()
         val current = BuildConfig.VERSION_NAME
@@ -50,58 +60,55 @@ class AppUpdateRepository(context: Context) {
             publishedAt = root.optString("published_at"),
             downloadUrl = downloadUrl,
             releaseUrl = releaseUrl.ifBlank { downloadUrl },
-            assetName = asset?.name.orEmpty(),
-            directApk = asset?.directApk ?: false,
-            isNewer = compareVersions(latestVersion, current) > 0
+            assetName = assetName,
+            directApk = selected?.isApk == true,
+            isNewer = LevyraVersionComparator.compare(latestVersion, current) > 0
         )
     }
 
-    private fun bestDownloadAsset(root: JSONObject): ReleaseAsset? {
-        val assets = root.optJSONArray("assets") ?: return null
-        val parsed = buildList {
+    private fun releaseAssets(root: JSONObject): List<ReleaseAsset> {
+        val assets = root.optJSONArray("assets") ?: return emptyList()
+        return buildList {
             for (index in 0 until assets.length()) {
                 val item = assets.optJSONObject(index) ?: continue
                 val name = item.optString("name").trim()
                 val url = item.optString("browser_download_url").trim()
                 if (url.isBlank()) continue
-                val contentType = item.optString("content_type").lowercase()
-                val directApk = name.endsWith(".apk", ignoreCase = true) || contentType.contains("android.package-archive")
-                add(ReleaseAsset(name, url, directApk))
+                val contentType = item.optString("content_type").trim()
+                val directApk = name.endsWith(".apk", ignoreCase = true) ||
+                    contentType.contains("android.package-archive", ignoreCase = true)
+                add(
+                    ReleaseAsset(
+                        name = name,
+                        downloadUrl = url,
+                        directApk = directApk,
+                        contentType = contentType,
+                        sizeBytes = item.optLong("size", 0L).coerceAtLeast(0L)
+                    )
+                )
             }
         }
-        return parsed.firstOrNull { it.directApk && it.name.contains("release", ignoreCase = true) }
-            ?: parsed.firstOrNull { it.directApk }
-            ?: parsed.firstOrNull()
     }
 
     private fun normalizeDisplayVersion(value: String): String {
         val clean = value.trim().removePrefix("v").removePrefix("V")
-        val match = Regex("\\d+(?:\\.\\d+){0,3}").find(clean)?.value
+        val match = Regex("\\d+(?:\\.\\d+){0,3}(?:[-+][0-9A-Za-z.-]+)?").find(clean)?.value
         return match ?: clean.ifBlank { BuildConfig.VERSION_NAME }
-    }
-
-    private fun compareVersions(left: String, right: String): Int {
-        val a = numericParts(left)
-        val b = numericParts(right)
-        val size = maxOf(a.size, b.size, 1)
-        for (index in 0 until size) {
-            val av = a.getOrNull(index) ?: 0
-            val bv = b.getOrNull(index) ?: 0
-            if (av != bv) return av.compareTo(bv)
-        }
-        return 0
-    }
-
-    private fun numericParts(value: String): List<Int> {
-        return Regex("\\d+")
-            .findAll(value)
-            .mapNotNull { it.value.toIntOrNull() }
-            .toList()
     }
 
     private data class ReleaseAsset(
         val name: String,
         val downloadUrl: String,
-        val directApk: Boolean
-    )
+        val directApk: Boolean,
+        val contentType: String,
+        val sizeBytes: Long
+    ) {
+        fun toNexusArtifact(): LevyraUpdateArtifact = LevyraUpdateArtifact(
+            name = name,
+            downloadUrl = downloadUrl,
+            sizeBytes = sizeBytes,
+            contentType = contentType,
+            abi = LevyraUpdateSelector.inferAbi(name)
+        )
+    }
 }
