@@ -546,10 +546,18 @@ class PlaybackController(
     }
 
     private fun pauseForSleepTimer() {
-        player?.pause()
+        val settled = internalState.value.status in SETTLED_STATUSES
+        if (settled) {
+            player?.pause()
+        } else {
+            playbackJob?.cancel()
+            prefetchJob?.cancel()
+            runCatching { player?.stop() }
+        }
         internalState.update { state ->
             state.copy(
-                status = if (state.status == PlaybackStatus.IDLE) state.status else PlaybackStatus.PAUSED,
+                status = if (settled) PlaybackStatus.PAUSED else PlaybackStatus.IDLE,
+                preparingTrackId = if (settled) state.preparingTrackId else "",
                 sleepTimer = SleepTimerState(),
                 sleepRemainingMs = 0L
             )
@@ -704,6 +712,7 @@ class PlaybackController(
         const val RESTART_THRESHOLD_MS = 4_000L
         const val PERSIST_INTERVAL_MS = 15_000L
         const val SLEEP_TICK_MS = 1_000L
+        val SETTLED_STATUSES = setOf(PlaybackStatus.PLAYING, PlaybackStatus.PAUSED)
         const val MAX_QUEUE_SIZE = 200
         const val MAX_CAUSE_DEPTH = 8
         const val DEFAULT_VOLUME = 60
