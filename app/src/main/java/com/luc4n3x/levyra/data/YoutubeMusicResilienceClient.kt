@@ -141,6 +141,8 @@ internal class YoutubeMusicResilienceClient(
         YoutubeMusicCacheDiagnostics(responseCache.size, responseCacheBytes)
     }
 
+    internal fun inFlightReferenceCounts(): List<Int> = inFlight.values.map { it.referenceCount() }
+
     private fun request(
         kind: YoutubeMusicRequestKind,
         languageCode: String,
@@ -179,7 +181,7 @@ internal class YoutubeMusicResilienceClient(
                     shared.completeExceptionally(error)
                 }
             }
-            return shared.await()?.let(::JSONObject)
+            return shared.await(TOTAL_REQUEST_BUDGET_MS)?.let(::JSONObject)
         } finally {
             inFlight.computeIfPresent(requestKey) { _, current ->
                 when {
@@ -201,6 +203,7 @@ internal class YoutubeMusicResilienceClient(
     ): JSONObject? {
         val deadline = monotonicClock() + TOTAL_REQUEST_BUDGET_MS
         val orderedProfiles = orderedProfiles(clock())
+        val deferredDenials = mutableListOf<YoutubeMusicDeferredFailure>()
         var lastFailure: Throwable? = null
 
         for (profile in orderedProfiles) {
@@ -240,7 +243,17 @@ internal class YoutubeMusicResilienceClient(
 
             if (response.code !in 200..299) {
                 lastFailure = IOException("HTTP ${response.code}")
-                recordFailure(profile, response.code, response.body, response.latencyMs, clock())
+                if (isRequestScopedDenial(response.code, response.body)) {
+                    deferredDenials += YoutubeMusicDeferredFailure(
+                        profile = profile,
+                        statusCode = response.code,
+                        reason = response.body,
+                        latencyMs = response.latencyMs,
+                        now = clock()
+                    )
+                } else {
+                    recordFailure(profile, response.code, response.body, response.latencyMs, clock())
+                }
                 continue
             }
 
@@ -252,10 +265,21 @@ internal class YoutubeMusicResilienceClient(
                 continue
             }
             if (!isUseful(kind, root)) {
-                recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
+                if (isRequestScopedDenial(response.code, response.body)) {
+                    deferredDenials += YoutubeMusicDeferredFailure(
+                        profile = profile,
+                        statusCode = response.code,
+                        reason = response.body,
+                        latencyMs = response.latencyMs,
+                        now = clock()
+                    )
+                } else {
+                    recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
+                }
                 continue
             }
 
+            deferredDenials.forEach { recordRequestScopedDenial(it, recoveredByFallback = true) }
             root.optJSONObject("responseContext")
                 ?.optString("visitorData")
                 ?.trim()
@@ -266,6 +290,7 @@ internal class YoutubeMusicResilienceClient(
             return root
         }
 
+        deferredDenials.forEach { recordRequestScopedDenial(it, recoveredByFallback = false) }
         lastFailure?.let { Timber.d(it, "YouTube Music fallback chain exhausted") }
         return null
     }
@@ -307,9 +332,9 @@ internal class YoutubeMusicResilienceClient(
         val available = profiles.filter { (health[it.id]?.blockedUntilMs ?: 0L) <= now }
         if (available.isEmpty()) return emptyList()
         return available.sortedWith(
-            compareByDescending<YoutubeMusicClientProfile> { it.priority == 0 }
-                .thenByDescending { profile -> health[profile.id]?.score ?: 0.0 }
-                .thenBy { it.priority }
+            compareByDescending<YoutubeMusicClientProfile> {
+                health[it.id]?.score ?: DEFAULT_PROFILE_SCORE
+            }.thenBy { it.priority }
         )
     }
 
@@ -325,6 +350,7 @@ internal class YoutubeMusicResilienceClient(
             previous.copy(
                 successes = samples,
                 consecutiveFailures = 0,
+                consecutiveDenials = 0,
                 averageLatencyMs = average,
                 blockedUntilMs = 0L,
                 updatedAtMs = now
@@ -339,11 +365,6 @@ internal class YoutubeMusicResilienceClient(
         latencyMs: Long?,
         now: Long
     ) {
-        val requestScopedDenial = statusCode == 401 || statusCode == 403 || statusCode == 410 ||
-            reason.contains("sign in", ignoreCase = true) ||
-            reason.contains("login", ignoreCase = true)
-        if (requestScopedDenial) return
-
         health.compute(profile.id) { _, current ->
             val previous = current ?: YoutubeMusicClientHealth()
             val failures = (previous.failures + 1).coerceAtMost(MAX_HEALTH_SAMPLES)
@@ -354,19 +375,50 @@ internal class YoutubeMusicResilienceClient(
                 consecutive >= 2 -> SHORT_BLOCK_MS
                 else -> 0L
             }
-            val average = when {
-                latencyMs == null || latencyMs <= 0L -> previous.averageLatencyMs
-                previous.averageLatencyMs == Long.MAX_VALUE -> latencyMs
-                else -> ((previous.averageLatencyMs * 3L) + latencyMs) / 4L
-            }
             previous.copy(
                 failures = failures,
                 consecutiveFailures = consecutive,
-                averageLatencyMs = average,
+                averageLatencyMs = updatedAverage(previous.averageLatencyMs, latencyMs),
                 blockedUntilMs = max(previous.blockedUntilMs, now + blockMs),
                 updatedAtMs = now
             )
         }
+        if (reason.isNotBlank()) Timber.v("YouTube Music profile %s failed: %s", profile.id, reason)
+    }
+
+    private fun recordRequestScopedDenial(
+        failure: YoutubeMusicDeferredFailure,
+        recoveredByFallback: Boolean
+    ) {
+        health.compute(failure.profile.id) { _, current ->
+            val previous = current ?: YoutubeMusicClientHealth()
+            previous.copy(
+                denials = (previous.denials + 1).coerceAtMost(MAX_HEALTH_SAMPLES),
+                consecutiveDenials = (previous.consecutiveDenials + 1).coerceAtMost(20),
+                averageLatencyMs = updatedAverage(previous.averageLatencyMs, failure.latencyMs),
+                updatedAtMs = failure.now
+            )
+        }
+        Timber.v(
+            "YouTube Music profile %s denied request with HTTP %s; fallbackRecovered=%s",
+            failure.profile.id,
+            failure.statusCode,
+            recoveredByFallback
+        )
+    }
+
+    private fun updatedAverage(previous: Long, latencyMs: Long?): Long {
+        return when {
+            latencyMs == null || latencyMs <= 0L -> previous
+            previous == Long.MAX_VALUE -> latencyMs
+            else -> ((previous * 3L) + latencyMs) / 4L
+        }
+    }
+
+    private fun isRequestScopedDenial(statusCode: Int?, reason: String): Boolean {
+        return statusCode == 401 || statusCode == 403 || statusCode == 410 ||
+            reason.contains("sign in", ignoreCase = true) ||
+            reason.contains("login", ignoreCase = true)
     }
 
     private fun isUseful(kind: YoutubeMusicRequestKind, root: JSONObject): Boolean {
@@ -445,6 +497,7 @@ internal class YoutubeMusicResilienceClient(
         const val SHORT_BLOCK_MS = 25_000L
         const val LONG_BLOCK_MS = 2L * 60L * 1_000L
         const val HARD_BLOCK_MS = 10L * 60L * 1_000L
+        const val DEFAULT_PROFILE_SCORE = 50.0
         const val WEB_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
         const val ANDROID_MUSIC_USER_AGENT =
@@ -513,18 +566,20 @@ internal data class YoutubeMusicClientProfile(
 internal data class YoutubeMusicClientHealth(
     val successes: Int = 0,
     val failures: Int = 0,
+    val denials: Int = 0,
     val consecutiveFailures: Int = 0,
+    val consecutiveDenials: Int = 0,
     val averageLatencyMs: Long = Long.MAX_VALUE,
     val blockedUntilMs: Long = 0L,
     val updatedAtMs: Long = 0L
 ) {
     val score: Double
         get() {
-            val total = successes + failures
-            val reliability = if (total <= 0) 0.5 else successes.toDouble() / total.toDouble()
+            val weightedFailures = failures.toDouble() + denials.toDouble() * 0.35
+            val reliability = (successes + 1.0) / (successes + weightedFailures + 2.0)
             val latencyBonus =
                 if (averageLatencyMs == Long.MAX_VALUE) 0.0 else 1_500.0 / averageLatencyMs.coerceAtLeast(50L)
-            return reliability * 100.0 + latencyBonus - consecutiveFailures * 12.0
+            return reliability * 100.0 + latencyBonus - consecutiveFailures * 12.0 - consecutiveDenials * 6.0
         }
 }
 
@@ -537,6 +592,14 @@ private data class YoutubeMusicCacheEntry(
     val payload: String,
     val expiresAtMs: Long,
     val sizeBytes: Long
+)
+
+private data class YoutubeMusicDeferredFailure(
+    val profile: YoutubeMusicClientProfile,
+    val statusCode: Int?,
+    val reason: String,
+    val latencyMs: Long?,
+    val now: Long
 )
 
 private class YoutubeMusicInFlightRequest {
@@ -564,15 +627,17 @@ private class YoutubeMusicInFlightRequest {
         completed.countDown()
     }
 
-    fun await(): String? {
+    fun await(timeoutMs: Long): String? {
         return try {
-            completed.await()
+            if (!completed.await(timeoutMs, TimeUnit.MILLISECONDS)) return null
             if (failure != null) null else payload
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
             null
         }
     }
+
+    fun referenceCount(): Int = references.get()
 
     fun release(): Boolean = references.decrementAndGet() == 0 && completed.count == 0L
 }
