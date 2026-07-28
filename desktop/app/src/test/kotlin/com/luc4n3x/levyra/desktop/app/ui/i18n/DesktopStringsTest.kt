@@ -55,6 +55,14 @@ class DesktopStringsTest {
     }
 
     @Test
+    fun desktopOnlyLabelCatalogCoversEverySupportedLanguage() {
+        assertEquals(
+            AppLanguage.entries.map { it.tag }.toSet(),
+            DesktopExtras.supportedTags()
+        )
+    }
+
+    @Test
     fun desktopOnlyLabelsAreTranslatedForEveryLanguage() {
         val english = stringsFor(AppLanguage.ENGLISH)
         AppLanguage.entries.forEach { language ->

@@ -270,17 +270,20 @@ fun SettingsScreen(
 
         item {
             SettingsSection(title = strings.settingsShortcuts) {
-                ShortcutRow(keys = "Space", label = "${strings.playbackPlay} / ${strings.playbackPause}")
-                ShortcutRow(keys = "Ctrl + ← / →", label = "${strings.playbackPrevious} / ${strings.playbackNext}")
-                ShortcutRow(keys = "← / →", label = strings.shortcutSeek)
-                ShortcutRow(keys = "Ctrl + ↑ / ↓", label = strings.shortcutVolume)
-                ShortcutRow(keys = "Ctrl + M", label = strings.playbackMute)
-                ShortcutRow(keys = "Ctrl + Shift + M", label = strings.miniPlayer)
-                ShortcutRow(keys = "Ctrl + S", label = strings.playbackShuffle)
-                ShortcutRow(keys = "Ctrl + R", label = strings.playbackRepeat)
-                ShortcutRow(keys = "Ctrl + Q", label = strings.queueTitle)
-                ShortcutRow(keys = "Ctrl + P", label = strings.navNowPlaying)
-                ShortcutRow(keys = "Ctrl + F", label = strings.navSearch)
+                val shortcuts = listOf(
+                    "Space" to "${strings.playbackPlay} / ${strings.playbackPause}",
+                    "Ctrl + ← / →" to "${strings.playbackPrevious} / ${strings.playbackNext}",
+                    "← / →" to strings.shortcutSeek,
+                    "Ctrl + ↑ / ↓" to strings.shortcutVolume,
+                    "Ctrl + M" to strings.playbackMute,
+                    "Ctrl + Shift + M" to strings.miniPlayer,
+                    "Ctrl + S" to strings.playbackShuffle,
+                    "Ctrl + R" to strings.playbackRepeat,
+                    "Ctrl + Q" to strings.queueTitle,
+                    "Ctrl + P" to strings.navNowPlaying,
+                    "Ctrl + F" to strings.navSearch
+                )
+                shortcuts.forEach { (keys, label) -> ShortcutRow(keys = keys, label = label) }
             }
         }
 
