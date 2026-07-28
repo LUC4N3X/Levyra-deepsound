@@ -1,0 +1,457 @@
+name: Address resilience reviews
+
+on:
+  push:
+    branches:
+      - agent/youtube-media-fallback
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-address-resilience-reviews
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/youtube-media-fallback
+          fetch-depth: 0
+
+      - name: Apply review fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClient.kt')
+          source = source_path.read_text()
+
+          def replace_once(text, old, new, label):
+              if text.count(old) != 1:
+                  raise SystemExit(f'{label}: expected one match, found {text.count(old)}')
+              return text.replace(old, new, 1)
+
+          source = replace_once(
+              source,
+              '''import java.util.concurrent.ConcurrentHashMap
+          import java.util.concurrent.TimeUnit
+          import kotlin.math.max
+          ''',
+              '''import java.util.concurrent.CompletableFuture
+          import java.util.concurrent.ConcurrentHashMap
+          import java.util.concurrent.ExecutionException
+          import java.util.concurrent.TimeUnit
+          import java.util.concurrent.atomic.AtomicBoolean
+          import java.util.concurrent.atomic.AtomicInteger
+          import kotlin.math.max
+          import kotlin.math.min
+          ''',
+              'concurrency imports'
+          )
+          source = replace_once(
+              source,
+              '    private val requestLocks = ConcurrentHashMap<String, Any>()\n',
+              '    private val inFlight = ConcurrentHashMap<String, YoutubeMusicInFlightRequest>()\n',
+              'in-flight field'
+          )
+
+          old_request = '''    private fun request(
+              kind: YoutubeMusicRequestKind,
+              languageCode: String,
+              browseId: String,
+              params: String,
+              continuation: String,
+              query: String
+          ): JSONObject? {
+              val requestKey = listOf(kind.name, languageCode, browseId, params, continuation, query).joinToString("\\u001f")
+              cached(requestKey)?.let { return it }
+              val requestLock = requestLocks.computeIfAbsent(requestKey) { Any() }
+              try {
+                  return synchronized(requestLock) {
+                      cached(requestKey)?.let { return@synchronized it }
+                      performRequest(kind, languageCode, browseId, params, continuation, query)?.also { root ->
+                          cache(requestKey, root, if (continuation.isBlank()) DEFAULT_CACHE_TTL_MS else CONTINUATION_CACHE_TTL_MS)
+                      }
+                  }
+              } finally {
+                  requestLocks.remove(requestKey, requestLock)
+              }
+          }
+          '''
+          new_request = '''    private fun request(
+              kind: YoutubeMusicRequestKind,
+              languageCode: String,
+              browseId: String,
+              params: String,
+              continuation: String,
+              query: String
+          ): JSONObject? {
+              val requestKey = listOf(kind.name, languageCode, browseId, params, continuation, query).joinToString("\\u001f")
+              cached(requestKey)?.let { return it }
+              val leader = AtomicBoolean(false)
+              val shared = inFlight.compute(requestKey) { _, current ->
+                  if (current == null) {
+                      leader.set(true)
+                      YoutubeMusicInFlightRequest()
+                  } else {
+                      current.retain()
+                  }
+              } ?: return null
+              try {
+                  if (leader.get()) {
+                      runCatching {
+                          cached(requestKey) ?: performRequest(kind, languageCode, browseId, params, continuation, query)
+                      }.onSuccess { root ->
+                          if (root != null) {
+                              cache(
+                                  requestKey,
+                                  root,
+                                  if (continuation.isBlank()) DEFAULT_CACHE_TTL_MS else CONTINUATION_CACHE_TTL_MS
+                              )
+                          }
+                          shared.complete(root?.toString())
+                      }.onFailure(shared::completeExceptionally)
+                  }
+                  return shared.await()?.let(::JSONObject)
+              } finally {
+                  if (shared.release()) inFlight.remove(requestKey, shared)
+              }
+          }
+          '''
+          source = replace_once(source, old_request, new_request, 'request de-duplication')
+
+          old_perform_start = source.index('    private fun performRequest(')
+          old_perform_end = source.index('\n    private fun payload(', old_perform_start)
+          new_perform = '''    private fun performRequest(
+              kind: YoutubeMusicRequestKind,
+              languageCode: String,
+              browseId: String,
+              params: String,
+              continuation: String,
+              query: String
+          ): JSONObject? {
+              val startedAt = clock()
+              val deadline = startedAt + TOTAL_REQUEST_BUDGET_MS
+              val orderedProfiles = orderedProfiles(startedAt)
+              var lastFailure: Throwable? = null
+              for (profile in orderedProfiles) {
+                  val remainingMs = deadline - clock()
+                  if (remainingMs <= 0L) {
+                      lastFailure = IOException("YouTube Music fallback deadline exceeded")
+                      break
+                  }
+                  val request = YoutubeMusicTransportRequest(
+                      path = if (kind == YoutubeMusicRequestKind.SEARCH) "search" else "browse",
+                      apiKey = apiKey,
+                      profile = profile,
+                      payload = payload(profile, kind, languageCode, browseId, params, continuation, query).toString(),
+                      referer = referer(kind, browseId, query),
+                      visitorData = visitorData[profile.id].orEmpty(),
+                      timeoutMs = min(PROFILE_REQUEST_TIMEOUT_MS, remainingMs).coerceAtLeast(MIN_PROFILE_TIMEOUT_MS)
+                  )
+                  val attemptStartedAt = clock()
+                  val response = try {
+                      transport.execute(request)
+                  } catch (error: Exception) {
+                      if (error is InterruptedException) {
+                          Thread.currentThread().interrupt()
+                          return null
+                      }
+                      lastFailure = error
+                      recordFailure(
+                          profile,
+                          null,
+                          error.message.orEmpty(),
+                          (clock() - attemptStartedAt).takeIf { it > 0L },
+                          clock()
+                      )
+                      continue
+                  }
+                  if (response.code !in 200..299) {
+                      lastFailure = IOException("HTTP ${response.code}")
+                      recordFailure(profile, response.code, response.body, response.latencyMs, clock())
+                      continue
+                  }
+                  val parsed = runCatching { JSONObject(response.body) }
+                  val root = parsed.getOrNull()
+                  if (root == null) {
+                      lastFailure = parsed.exceptionOrNull() ?: IOException("Invalid JSON")
+                      recordFailure(profile, response.code, "invalid json", response.latencyMs, clock())
+                      continue
+                  }
+                  if (!isUseful(kind, root)) {
+                      recordFailure(profile, response.code, "empty response", response.latencyMs, clock())
+                      continue
+                  }
+                  root.optJSONObject("responseContext")
+                      ?.optString("visitorData")
+                      ?.trim()
+                      ?.takeIf(String::isNotBlank)
+                      ?.let { visitorData[profile.id] = it }
+                  recordSuccess(profile, response.latencyMs, clock())
+                  return root
+              }
+              lastFailure?.let { Timber.d(it, "YouTube Music fallback chain exhausted") }
+              return null
+          }
+          '''
+          source = source[:old_perform_start] + new_perform + source[old_perform_end + 1:]
+
+          old_failure_start = source.index('    private fun recordFailure(')
+          old_failure_end = source.index('\n    private fun isUseful(', old_failure_start)
+          new_failure = '''    private fun recordFailure(
+              profile: YoutubeMusicClientProfile,
+              statusCode: Int?,
+              reason: String,
+              latencyMs: Long?,
+              now: Long
+          ) {
+              health.compute(profile.id) { _, current ->
+                  val previous = current ?: YoutubeMusicClientHealth()
+                  val requestScopedDenial = statusCode == 403 || statusCode == 410 ||
+                      reason.contains("sign in", ignoreCase = true) || reason.contains("login", ignoreCase = true)
+                  val failures = (previous.failures + 1).coerceAtMost(MAX_HEALTH_SAMPLES)
+                  val consecutive = if (requestScopedDenial) {
+                      previous.consecutiveFailures
+                  } else {
+                      (previous.consecutiveFailures + 1).coerceAtMost(20)
+                  }
+                  val blockMs = when {
+                      statusCode == 429 -> HARD_BLOCK_MS
+                      requestScopedDenial -> 0L
+                      consecutive >= 4 -> LONG_BLOCK_MS
+                      consecutive >= 2 -> SHORT_BLOCK_MS
+                      else -> 0L
+                  }
+                  val average = when {
+                      latencyMs == null || latencyMs <= 0L -> previous.averageLatencyMs
+                      previous.averageLatencyMs == Long.MAX_VALUE -> latencyMs
+                      else -> ((previous.averageLatencyMs * 3L) + latencyMs) / 4L
+                  }
+                  previous.copy(
+                      failures = failures,
+                      consecutiveFailures = consecutive,
+                      averageLatencyMs = average,
+                      blockedUntilMs = max(previous.blockedUntilMs, now + blockMs),
+                      updatedAtMs = now
+                  )
+              }
+          }
+          '''
+          source = source[:old_failure_start] + new_failure + source[old_failure_end + 1:]
+
+          source = replace_once(
+              source,
+              '''        const val CONTINUATION_CACHE_TTL_MS = 20_000L
+                  const val SHORT_BLOCK_MS = 25_000L
+          ''',
+              '''        const val CONTINUATION_CACHE_TTL_MS = 20_000L
+                  const val TOTAL_REQUEST_BUDGET_MS = 35_000L
+                  const val PROFILE_REQUEST_TIMEOUT_MS = 14_000L
+                  const val MIN_PROFILE_TIMEOUT_MS = 250L
+                  const val SHORT_BLOCK_MS = 25_000L
+          ''',
+              'request budget constants'
+          )
+          source = replace_once(
+              source,
+              '''    val referer: String,
+              val visitorData: String
+          )
+          ''',
+              '''    val referer: String,
+              val visitorData: String,
+              val timeoutMs: Long
+          )
+          ''',
+              'transport timeout contract'
+          )
+          in_flight_class = '''private class YoutubeMusicInFlightRequest {
+              private val references = AtomicInteger(1)
+              private val future = CompletableFuture<String?>()
+
+              fun retain(): YoutubeMusicInFlightRequest {
+                  references.incrementAndGet()
+                  return this
+              }
+
+              fun complete(payload: String?) {
+                  future.complete(payload)
+              }
+
+              fun completeExceptionally(error: Throwable) {
+                  future.completeExceptionally(error)
+              }
+
+              fun await(): String? {
+                  return try {
+                      future.get()
+                  } catch (error: InterruptedException) {
+                      Thread.currentThread().interrupt()
+                      null
+                  } catch (_: ExecutionException) {
+                      null
+                  }
+              }
+
+              fun release(): Boolean = references.decrementAndGet() == 0 && future.isDone
+          }
+
+          '''
+          source = replace_once(
+              source,
+              'private enum class YoutubeMusicRequestKind {\n',
+              in_flight_class + 'private enum class YoutubeMusicRequestKind {\n',
+              'shared request holder'
+          )
+          source = replace_once(
+              source,
+              '''        return client.newCall(httpRequest).execute().use { response ->
+          ''',
+              '''        return client.newCall(httpRequest).apply {
+                  timeout().timeout(request.timeoutMs, TimeUnit.MILLISECONDS)
+              }.execute().use { response ->
+          ''',
+              'per-attempt timeout'
+          )
+          source_path.write_text(source)
+
+          test_path = Path('app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicResilienceClientTest.kt')
+          tests = test_path.read_text()
+          tests = replace_once(
+              tests,
+              '''import org.junit.Assert.assertNotNull
+          import org.junit.Assert.assertTrue
+          import org.junit.Test
+          ''',
+              '''import org.junit.Assert.assertNotNull
+          import org.junit.Assert.assertNull
+          import org.junit.Assert.assertTrue
+          import org.junit.Test
+          import java.util.concurrent.CountDownLatch
+          import java.util.concurrent.Executors
+          import java.util.concurrent.TimeUnit
+          import java.util.concurrent.atomic.AtomicBoolean
+          import java.util.concurrent.atomic.AtomicInteger
+          ''',
+              'test imports'
+          )
+          new_tests = r'''
+              @Test
+              fun requestSpecificDenialsDoNotPoisonGlobalProfileHealth() {
+                  val publicRequest = AtomicBoolean(false)
+                  val calls = mutableListOf<String>()
+                  val client = client { request ->
+                      calls += request.profile.id
+                      if (publicRequest.get()) YoutubeMusicTransportResponse(200, validSearch(), 10L)
+                      else YoutubeMusicTransportResponse(403, "private resource", 10L)
+                  }
+                  assertNull(client.browse("it", browseId = "PRIVATE"))
+                  assertTrue(client.diagnostics().values.all { it.blockedUntilMs == 0L })
+                  assertTrue(client.diagnostics().values.all { it.consecutiveFailures == 0 })
+                  calls.clear()
+                  publicRequest.set(true)
+                  assertNotNull(client.search("public song", "it"))
+                  assertEquals(listOf("web-remix"), calls)
+              }
+
+              @Test
+              fun failedConcurrentRequestsShareOneFallbackChain() {
+                  val calls = AtomicInteger()
+                  val firstEntered = CountDownLatch(1)
+                  val releaseFirst = CountDownLatch(1)
+                  val client = client { _ ->
+                      if (calls.incrementAndGet() == 1) {
+                          firstEntered.countDown()
+                          releaseFirst.await(5, TimeUnit.SECONDS)
+                      }
+                      YoutubeMusicTransportResponse(500, "server error", 10L)
+                  }
+                  val executor = Executors.newFixedThreadPool(3)
+                  try {
+                      val leader = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+                      assertTrue(firstEntered.await(5, TimeUnit.SECONDS))
+                      val waiterOne = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+                      val waiterTwo = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+                      Thread.sleep(100L)
+                      releaseFirst.countDown()
+                      assertNull(leader.get(5, TimeUnit.SECONDS))
+                      assertNull(waiterOne.get(5, TimeUnit.SECONDS))
+                      assertNull(waiterTwo.get(5, TimeUnit.SECONDS))
+                      assertEquals(5, calls.get())
+                  } finally {
+                      releaseFirst.countDown()
+                      executor.shutdownNow()
+                  }
+              }
+
+              @Test
+              fun fallbackChainHonorsOneOverallDeadline() {
+                  var now = 1_700_000_000_000L
+                  val timeouts = mutableListOf<Long>()
+                  val client = client(clock = { now }) { request ->
+                      timeouts += request.timeoutMs
+                      now += 12_000L
+                      YoutubeMusicTransportResponse(500, "server error", 12_000L)
+                  }
+                  assertNull(client.search("deadline query", "it"))
+                  assertEquals(listOf(14_000L, 14_000L, 11_000L), timeouts)
+              }
+
+              @Test
+              fun interruptionStopsTheFallbackChainImmediately() {
+                  val calls = AtomicInteger()
+                  val client = client { _ ->
+                      calls.incrementAndGet()
+                      throw InterruptedException("cancelled")
+                  }
+                  try {
+                      assertNull(client.search("interrupted query", "it"))
+                      assertEquals(1, calls.get())
+                      assertTrue(Thread.currentThread().isInterrupted)
+                  } finally {
+                      Thread.interrupted()
+                  }
+              }
+
+              @Test
+              fun laterSoftFailureDoesNotShortenAnActiveHardBlock() {
+                  var now = 1_700_000_000_000L
+                  val hardFailure = AtomicBoolean(true)
+                  val client = client(clock = { now }) { _ ->
+                      if (hardFailure.get()) YoutubeMusicTransportResponse(429, "rate limited", 10L)
+                      else YoutubeMusicTransportResponse(500, "temporary failure", 10L)
+                  }
+                  assertNull(client.search("hard block query", "it"))
+                  val originalDeadline = client.diagnostics().getValue("web-remix").blockedUntilMs
+                  hardFailure.set(false)
+                  now += 1_000L
+                  assertNull(client.search("soft failure query", "it"))
+                  assertEquals(originalDeadline, client.diagnostics().getValue("web-remix").blockedUntilMs)
+              }
+
+          '''
+          tests = replace_once(tests, '    private fun client(\n', new_tests + '    private fun client(\n', 'review regression tests')
+          test_path.write_text(tests)
+          PY
+          git diff --check
+
+      - name: Run focused tests
+        run: ./gradlew :app:testDebugUnitTest --tests com.luc4n3x.levyra.data.YoutubeMusicResilienceClientTest --stacktrace
+
+      - name: Publish clean commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/agent-address-resilience-reviews.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: address YouTube resilience review findings'
+          git push origin HEAD:agent/youtube-media-fallback
