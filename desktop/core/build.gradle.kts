@@ -3,9 +3,17 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+kotlin {
+    sourceSets.named("main") {
+        kotlin.srcDir(rootProject.file("../third_party/LevyraNexus/src/main/kotlin"))
+    }
+    sourceSets.named("test") {
+        kotlin.srcDir(rootProject.file("../third_party/LevyraNexus/src/test/kotlin"))
+    }
+}
+
 dependencies {
     api(libs.levyra.extractor)
-    api("com.github.LUC4N3X:LevyraNexus:1.0.0")
     api(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.serialization.json)
     api(libs.okhttp)
