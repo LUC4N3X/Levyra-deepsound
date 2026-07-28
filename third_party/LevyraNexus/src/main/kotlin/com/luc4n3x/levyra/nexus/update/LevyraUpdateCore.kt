@@ -307,9 +307,18 @@ object LevyraUpdateVerifier {
             return failure("APK signer mismatch")
         }
 
+        val hasDigest = artifact.sha256.isNotBlank()
+        val hasSignature = artifact.signatureBase64.isNotBlank()
+        if (!hasDigest && !hasSignature) {
+            return failure("APK has no SHA-256 or signature")
+        }
+        if (hasSignature && publicKeyBase64.isBlank()) {
+            return failure("APK signature requires a public key")
+        }
+
         return runCatching {
             val digest = MessageDigest.getInstance("SHA-256")
-            val signature = if (artifact.signatureBase64.isNotBlank() && publicKeyBase64.isNotBlank()) {
+            val signature = if (hasSignature) {
                 Signature.getInstance(signatureAlgorithm).apply {
                     initVerify(decodePublicKey(publicKeyBase64, signatureAlgorithm))
                 }
@@ -328,7 +337,7 @@ object LevyraUpdateVerifier {
             }
             if (artifact.sizeBytes > 0L && total != artifact.sizeBytes) throw SecurityException("APK size mismatch")
             val actualSha256 = digest.digest().toHex()
-            if (artifact.sha256.isNotBlank() && !constantTimeEquals(artifact.sha256, actualSha256)) {
+            if (hasDigest && !constantTimeEquals(artifact.sha256, actualSha256)) {
                 throw SecurityException("APK SHA-256 mismatch")
             }
             if (signature != null && !signature.verify(Base64.getDecoder().decode(artifact.signatureBase64))) {
