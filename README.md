@@ -7,7 +7,7 @@
 ### Stream everything. Keep what you love. Own every note.
 
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-android-platform.svg" alt="Download Levyra for Android"></a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=desktop-v&expanded=true"><img src="docs/assets/levyra-windows-platform.svg" alt="Download Levyra for Windows"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-platform.svg" alt="Download Levyra for Windows"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>
 <a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>
@@ -17,7 +17,7 @@
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
   <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="370" />
 </a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=desktop-v&expanded=true">
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true">
   <img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="370" />
 </a>
 
