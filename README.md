@@ -324,8 +324,8 @@ Android and Windows use independent version sources and release tags.
 
 ```properties
 # Android — gradle.properties
-levyraVersionName=2.3.16
-levyraVersionCode=2031600
+levyraVersionName=2.3.17
+levyraVersionCode=2031700
 
 # Windows — desktop/version.properties
 levyraDesktopVersion=1.0.1
