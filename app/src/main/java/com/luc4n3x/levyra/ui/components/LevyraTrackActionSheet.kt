@@ -3,7 +3,10 @@ package com.luc4n3x.levyra.ui.components
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -142,7 +145,7 @@ internal fun LevyraTrackActionSheet(
     LaunchedEffect(Unit) { visible = true }
     LaunchedEffect(closing) {
         if (closing) {
-            delay(TrackActionSheetExitMs.toLong())
+            if (animationsEnabled) delay(TrackActionSheetExitMs.toLong())
             onDismiss()
         }
     }
@@ -162,6 +165,33 @@ internal fun LevyraTrackActionSheet(
 
     BackHandler(enabled = !closing, onBack = dismiss)
 
+    val scrimEnter = if (animationsEnabled) {
+        fadeIn(animationSpec = tween(TrackActionSheetEnterMs))
+    } else {
+        EnterTransition.None
+    }
+    val scrimExit = if (animationsEnabled) {
+        fadeOut(animationSpec = tween(TrackActionSheetExitMs))
+    } else {
+        ExitTransition.None
+    }
+    val sheetEnter = if (animationsEnabled) {
+        slideInVertically(
+            animationSpec = tween(TrackActionSheetEnterMs),
+            initialOffsetY = { it }
+        ) + fadeIn(animationSpec = tween(TrackActionSheetEnterMs))
+    } else {
+        EnterTransition.None
+    }
+    val sheetExit = if (animationsEnabled) {
+        slideOutVertically(
+            animationSpec = tween(TrackActionSheetExitMs),
+            targetOffsetY = { it }
+        ) + fadeOut(animationSpec = tween(TrackActionSheetExitMs))
+    } else {
+        ExitTransition.None
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -169,8 +199,8 @@ internal fun LevyraTrackActionSheet(
     ) {
         AnimatedVisibility(
             visible = visible,
-            enter = fadeIn(animationSpec = tween(TrackActionSheetEnterMs)),
-            exit = fadeOut(animationSpec = tween(TrackActionSheetExitMs))
+            enter = scrimEnter,
+            exit = scrimExit
         ) {
             Box(
                 modifier = Modifier
@@ -187,14 +217,8 @@ internal fun LevyraTrackActionSheet(
         AnimatedVisibility(
             visible = visible,
             modifier = Modifier.align(Alignment.BottomCenter),
-            enter = slideInVertically(
-                animationSpec = tween(TrackActionSheetEnterMs),
-                initialOffsetY = { it }
-            ) + fadeIn(animationSpec = tween(TrackActionSheetEnterMs)),
-            exit = slideOutVertically(
-                animationSpec = tween(TrackActionSheetExitMs),
-                targetOffsetY = { it }
-            ) + fadeOut(animationSpec = tween(TrackActionSheetExitMs))
+            enter = sheetEnter,
+            exit = sheetExit
         ) {
             Surface(
                 modifier = Modifier
@@ -226,18 +250,12 @@ internal fun LevyraTrackActionSheet(
                                         if (dragOffset.value > dismissDistancePx) {
                                             dismiss()
                                         } else {
-                                            scope.launch {
-                                                dragOffset.animateTo(
-                                                    targetValue = 0f,
-                                                    animationSpec = spring(
-                                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                                        stiffness = Spring.StiffnessMediumLow
-                                                    )
-                                                )
-                                            }
+                                            scope.launch { settleDragOffset(dragOffset, animationsEnabled) }
                                         }
                                     },
-                                    onDragCancel = { scope.launch { dragOffset.animateTo(0f) } }
+                                    onDragCancel = {
+                                        scope.launch { settleDragOffset(dragOffset, animationsEnabled) }
+                                    }
                                 ) { change, delta ->
                                     change.consume()
                                     scope.launch {
@@ -383,6 +401,20 @@ internal fun LevyraTrackActionSheet(
                 }
             }
         }
+    }
+}
+
+private suspend fun settleDragOffset(dragOffset: Animatable<Float, AnimationVector1D>, animationsEnabled: Boolean) {
+    if (animationsEnabled) {
+        dragOffset.animateTo(
+            targetValue = 0f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+        )
+    } else {
+        dragOffset.snapTo(0f)
     }
 }
 
