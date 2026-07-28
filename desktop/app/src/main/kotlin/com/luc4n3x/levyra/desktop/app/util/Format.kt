@@ -17,6 +17,13 @@ object Format {
         }
     }
 
+    fun speed(value: Float): String {
+        val rounded = String.format(Locale.ROOT, "%.2f", value)
+            .trimEnd('0')
+            .trimEnd('.', ',')
+        return "${rounded}×"
+    }
+
     fun count(value: Long): String = when {
         value <= 0L -> ""
         value < 1_000L -> value.toString()

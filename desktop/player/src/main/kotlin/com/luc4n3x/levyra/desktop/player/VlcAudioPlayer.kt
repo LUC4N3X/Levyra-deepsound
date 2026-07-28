@@ -126,6 +126,11 @@ class VlcAudioPlayer private constructor(
         }
     }
 
+    override fun setSpeed(speed: Float) {
+        if (released.get()) return
+        runCatching { mediaPlayer.controls().setRate(speed.coerceIn(MIN_RATE, MAX_RATE)) }
+    }
+
     override fun positionMs(): Long = if (released.get()) 0L else mediaPlayer.status().time().coerceAtLeast(0L)
 
     override fun durationMs(): Long = if (released.get()) 0L else mediaPlayer.status().length().coerceAtLeast(0L)
@@ -143,6 +148,9 @@ class VlcAudioPlayer private constructor(
     }
 
     companion object {
+        private const val MIN_RATE = 0.5f
+        private const val MAX_RATE = 2f
+
         private val FACTORY_ARGUMENTS = arrayOf(
             "--intf=dummy",
             "--no-video",

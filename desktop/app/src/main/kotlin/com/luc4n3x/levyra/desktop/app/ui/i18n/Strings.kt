@@ -186,6 +186,18 @@ data class LevyraStrings(
     val onboardingSkip: String,
     val onboardingBack: String,
     val onboardingStart: String,
+    val settingsSleepTimer: String,
+    val sleepTimerOff: String,
+    val sleepTimerEndOfTrack: String,
+    val settingsSpeed: String,
+    val settingsPreloadNext: String,
+    val settingsPreloadNextBody: String,
+    val settingsMediaKeys: String,
+    val settingsMediaKeysBody: String,
+    val settingsShortcuts: String,
+    val shortcutSeek: String,
+    val shortcutVolume: String,
+    val miniPlayer: String,
     val cancel: String,
     val save: String,
     val close: String
@@ -197,6 +209,7 @@ fun stringsFor(
     hour: Int = LocalTime.now().hour
 ): LevyraStrings {
     val shared = SharedLevyraStrings.forCode(language.tag)
+    val extras = DesktopExtras.forTag(language.tag)
     return LevyraStrings(
         languageCode = language.tag,
         appName = "Levyra",
@@ -378,6 +391,18 @@ fun stringsFor(
         onboardingSkip = shared.skipAndContinue,
         onboardingBack = shared.back,
         onboardingStart = shared.startListening,
+        settingsSleepTimer = extras.sleepTimer,
+        sleepTimerOff = extras.sleepTimerOff,
+        sleepTimerEndOfTrack = extras.sleepTimerEndOfTrack,
+        settingsSpeed = extras.playbackSpeed,
+        settingsPreloadNext = extras.preloadNext,
+        settingsPreloadNextBody = extras.preloadNextBody,
+        settingsMediaKeys = extras.mediaKeys,
+        settingsMediaKeysBody = extras.mediaKeysBody,
+        settingsShortcuts = extras.shortcuts,
+        shortcutSeek = extras.seek,
+        shortcutVolume = shared.volume,
+        miniPlayer = extras.miniPlayer,
         cancel = shared.cancel,
         save = shared.save,
         close = shared.close
