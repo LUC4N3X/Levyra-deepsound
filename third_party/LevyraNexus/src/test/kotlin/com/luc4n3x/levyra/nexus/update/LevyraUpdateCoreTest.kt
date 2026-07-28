@@ -29,6 +29,24 @@ class LevyraUpdateCoreTest {
     fun stableVersionBeatsPrereleaseWithSameNumbers() {
         assertTrue(LevyraVersionComparator.compare("2.3.16", "2.3.16-beta2") > 0)
         assertTrue(LevyraVersionComparator.compare("2.3.17-beta2", "2.3.16") > 0)
+        assertTrue(LevyraVersionComparator.compare("2.3.16-beta2", "2.3.16-beta1") > 0)
+        assertTrue(LevyraVersionComparator.compare("2.3.16-rc1", "2.3.16-beta9") > 0)
+    }
+
+    @Test
+    fun infersAbiFromFilenameAndRejectsIncompatibleArtifacts() {
+        val inferred = LevyraUpdateSelector.selectArtifact(
+            artifacts = listOf(LevyraUpdateArtifact("levyra-arm64-v8a-release.apk", "https://a/a.apk")),
+            sdk = 35,
+            supportedAbis = listOf("arm64-v8a")
+        )
+        assertEquals("levyra-arm64-v8a-release.apk", inferred?.name)
+        val incompatible = LevyraUpdateSelector.selectArtifact(
+            artifacts = listOf(LevyraUpdateArtifact("levyra-arm64-v8a-release.apk", "https://a/a.apk")),
+            sdk = 35,
+            supportedAbis = listOf("x86_64")
+        )
+        assertEquals(null, incompatible)
     }
 
     @Test
