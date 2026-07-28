@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.desktop.app.state
 
+import com.luc4n3x.levyra.desktop.app.DesktopDiagnostics
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRateLimitException
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
@@ -526,7 +527,7 @@ class PlaybackController(
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {
-            Unit
+            DesktopDiagnostics.background("prefetch of ${track.title}", error)
         }
     }
 
