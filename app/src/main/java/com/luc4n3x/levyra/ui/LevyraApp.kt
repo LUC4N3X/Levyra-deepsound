@@ -932,6 +932,7 @@ private fun Modifier.pressable(
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
     pressedScale: Float = 0.96f,
+    onLongClickLabel: String? = null,
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ): Modifier {
@@ -959,6 +960,7 @@ private fun Modifier.pressable(
                     interactionSource = interaction,
                     indication = indication,
                     enabled = enabled,
+                    onLongClickLabel = onLongClickLabel,
                     onLongClick = onLongClick,
                     onClick = onClick
                 )
@@ -6848,7 +6850,8 @@ private fun PersonalListeningShelf(
                                     onLongClick = {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                         onTrackActions(track)
-                                    }
+                                    },
+                                    onLongClickLabel = strings.songOptions
                                 )
                             } else {
                                 Column(modifier = Modifier.weight(1f)) {
@@ -6908,11 +6911,16 @@ private fun PersonalListeningCard(
     resolving: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null
 ) {
     val artworkShape = RoundedCornerShape(17.dp)
     Column(
-        modifier = modifier.pressable(onClick = onClick, onLongClick = onLongClick),
+        modifier = modifier.pressable(
+            onClick = onClick,
+            onLongClick = onLongClick,
+            onLongClickLabel = onLongClickLabel
+        ),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box(
@@ -6996,9 +7004,9 @@ private fun PersonalListeningCard(
 private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
     title = track.album.trim(),
     artist = track.artist.trim(),
-    year = track.year.ifBlank { track.releaseDate.take(4) },
+    year = track.year.ifBlank { track.releaseDate.take(4).takeIf { it.toIntOrNull() != null }.orEmpty() },
     thumbnailUrl = track.largeThumbnailUrl.ifBlank { track.thumbnailUrl },
-    query = listOf(track.artist.trim(), track.album.trim()).filter(String::isNotBlank).joinToString(" "),
+    query = listOf(track.album.trim(), track.artist.trim(), "album").filter(String::isNotBlank).joinToString(" "),
     browseId = track.albumBrowseId,
     artistBrowseId = track.artistBrowseIds.firstOrNull().orEmpty(),
     explicit = track.explicit,
