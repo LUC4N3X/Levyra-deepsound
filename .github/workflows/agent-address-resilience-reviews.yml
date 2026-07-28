@@ -33,25 +33,24 @@ jobs:
           source = source_path.read_text()
 
           def replace_once(text, old, new, label):
-              if text.count(old) != 1:
-                  raise SystemExit(f'{label}: expected one match, found {text.count(old)}')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
               return text.replace(old, new, 1)
+
+          def replace_block(text, start_marker, end_marker, new_block, label):
+              start = text.find(start_marker)
+              if start < 0:
+                  raise SystemExit(f'{label}: start marker not found')
+              end = text.find(end_marker, start)
+              if end < 0:
+                  raise SystemExit(f'{label}: end marker not found')
+              return text[:start] + new_block + text[end:]
 
           source = replace_once(
               source,
-              '''import java.util.concurrent.ConcurrentHashMap
-          import java.util.concurrent.TimeUnit
-          import kotlin.math.max
-          ''',
-              '''import java.util.concurrent.CompletableFuture
-          import java.util.concurrent.ConcurrentHashMap
-          import java.util.concurrent.ExecutionException
-          import java.util.concurrent.TimeUnit
-          import java.util.concurrent.atomic.AtomicBoolean
-          import java.util.concurrent.atomic.AtomicInteger
-          import kotlin.math.max
-          import kotlin.math.min
-          ''',
+              'import java.util.concurrent.ConcurrentHashMap\nimport java.util.concurrent.TimeUnit\nimport kotlin.math.max\n',
+              'import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.ConcurrentHashMap\nimport java.util.concurrent.ExecutionException\nimport java.util.concurrent.TimeUnit\nimport java.util.concurrent.atomic.AtomicBoolean\nimport java.util.concurrent.atomic.AtomicInteger\nimport kotlin.math.max\nimport kotlin.math.min\n',
               'concurrency imports'
           )
           source = replace_once(
@@ -61,30 +60,7 @@ jobs:
               'in-flight field'
           )
 
-          old_request = '''    private fun request(
-              kind: YoutubeMusicRequestKind,
-              languageCode: String,
-              browseId: String,
-              params: String,
-              continuation: String,
-              query: String
-          ): JSONObject? {
-              val requestKey = listOf(kind.name, languageCode, browseId, params, continuation, query).joinToString("\\u001f")
-              cached(requestKey)?.let { return it }
-              val requestLock = requestLocks.computeIfAbsent(requestKey) { Any() }
-              try {
-                  return synchronized(requestLock) {
-                      cached(requestKey)?.let { return@synchronized it }
-                      performRequest(kind, languageCode, browseId, params, continuation, query)?.also { root ->
-                          cache(requestKey, root, if (continuation.isBlank()) DEFAULT_CACHE_TTL_MS else CONTINUATION_CACHE_TTL_MS)
-                      }
-                  }
-              } finally {
-                  requestLocks.remove(requestKey, requestLock)
-              }
-          }
-          '''
-          new_request = '''    private fun request(
+          request_block = '''    private fun request(
               kind: YoutubeMusicRequestKind,
               languageCode: String,
               browseId: String,
@@ -120,15 +96,22 @@ jobs:
                   }
                   return shared.await()?.let(::JSONObject)
               } finally {
-                  if (shared.release()) inFlight.remove(requestKey, shared)
+                  inFlight.computeIfPresent(requestKey) { _, current ->
+                      if (current !== shared) current else if (shared.release()) null else current
+                  }
               }
           }
-          '''
-          source = replace_once(source, old_request, new_request, 'request de-duplication')
 
-          old_perform_start = source.index('    private fun performRequest(')
-          old_perform_end = source.index('\n    private fun payload(', old_perform_start)
-          new_perform = '''    private fun performRequest(
+          '''
+          source = replace_block(
+              source,
+              '    private fun request(\n',
+              '    private fun performRequest(\n',
+              request_block,
+              'request de-duplication'
+          )
+
+          perform_block = '''    private fun performRequest(
               kind: YoutubeMusicRequestKind,
               languageCode: String,
               browseId: String,
@@ -200,12 +183,17 @@ jobs:
               lastFailure?.let { Timber.d(it, "YouTube Music fallback chain exhausted") }
               return null
           }
-          '''
-          source = source[:old_perform_start] + new_perform + source[old_perform_end + 1:]
 
-          old_failure_start = source.index('    private fun recordFailure(')
-          old_failure_end = source.index('\n    private fun isUseful(', old_failure_start)
-          new_failure = '''    private fun recordFailure(
+          '''
+          source = replace_block(
+              source,
+              '    private fun performRequest(\n',
+              '    private fun payload(\n',
+              perform_block,
+              'fallback deadline'
+          )
+
+          failure_block = '''    private fun recordFailure(
               profile: YoutubeMusicClientProfile,
               statusCode: Int?,
               reason: String,
@@ -243,35 +231,29 @@ jobs:
                   )
               }
           }
+
           '''
-          source = source[:old_failure_start] + new_failure + source[old_failure_end + 1:]
+          source = replace_block(
+              source,
+              '    private fun recordFailure(\n',
+              '    private fun isUseful(\n',
+              failure_block,
+              'failure health scope'
+          )
 
           source = replace_once(
               source,
-              '''        const val CONTINUATION_CACHE_TTL_MS = 20_000L
-                  const val SHORT_BLOCK_MS = 25_000L
-          ''',
-              '''        const val CONTINUATION_CACHE_TTL_MS = 20_000L
-                  const val TOTAL_REQUEST_BUDGET_MS = 35_000L
-                  const val PROFILE_REQUEST_TIMEOUT_MS = 14_000L
-                  const val MIN_PROFILE_TIMEOUT_MS = 250L
-                  const val SHORT_BLOCK_MS = 25_000L
-          ''',
+              '        const val CONTINUATION_CACHE_TTL_MS = 20_000L\n        const val SHORT_BLOCK_MS = 25_000L\n',
+              '        const val CONTINUATION_CACHE_TTL_MS = 20_000L\n        const val TOTAL_REQUEST_BUDGET_MS = 35_000L\n        const val PROFILE_REQUEST_TIMEOUT_MS = 14_000L\n        const val MIN_PROFILE_TIMEOUT_MS = 250L\n        const val SHORT_BLOCK_MS = 25_000L\n',
               'request budget constants'
           )
           source = replace_once(
               source,
-              '''    val referer: String,
-              val visitorData: String
-          )
-          ''',
-              '''    val referer: String,
-              val visitorData: String,
-              val timeoutMs: Long
-          )
-          ''',
+              '    val referer: String,\n    val visitorData: String\n)\n',
+              '    val referer: String,\n    val visitorData: String,\n    val timeoutMs: Long\n)\n',
               'transport timeout contract'
           )
+
           in_flight_class = '''private class YoutubeMusicInFlightRequest {
               private val references = AtomicInteger(1)
               private val future = CompletableFuture<String?>()
@@ -312,12 +294,8 @@ jobs:
           )
           source = replace_once(
               source,
-              '''        return client.newCall(httpRequest).execute().use { response ->
-          ''',
-              '''        return client.newCall(httpRequest).apply {
-                  timeout().timeout(request.timeoutMs, TimeUnit.MILLISECONDS)
-              }.execute().use { response ->
-          ''',
+              '        return client.newCall(httpRequest).execute().use { response ->\n',
+              '        return client.newCall(httpRequest).apply {\n            timeout().timeout(request.timeoutMs, TimeUnit.MILLISECONDS)\n        }.execute().use { response ->\n',
               'per-attempt timeout'
           )
           source_path.write_text(source)
@@ -326,20 +304,8 @@ jobs:
           tests = test_path.read_text()
           tests = replace_once(
               tests,
-              '''import org.junit.Assert.assertNotNull
-          import org.junit.Assert.assertTrue
-          import org.junit.Test
-          ''',
-              '''import org.junit.Assert.assertNotNull
-          import org.junit.Assert.assertNull
-          import org.junit.Assert.assertTrue
-          import org.junit.Test
-          import java.util.concurrent.CountDownLatch
-          import java.util.concurrent.Executors
-          import java.util.concurrent.TimeUnit
-          import java.util.concurrent.atomic.AtomicBoolean
-          import java.util.concurrent.atomic.AtomicInteger
-          ''',
+              'import org.junit.Assert.assertNotNull\nimport org.junit.Assert.assertTrue\nimport org.junit.Test\n',
+              'import org.junit.Assert.assertNotNull\nimport org.junit.Assert.assertNull\nimport org.junit.Assert.assertTrue\nimport org.junit.Test\nimport java.util.concurrent.CountDownLatch\nimport java.util.concurrent.Executors\nimport java.util.concurrent.TimeUnit\nimport java.util.concurrent.atomic.AtomicBoolean\nimport java.util.concurrent.atomic.AtomicInteger\n',
               'test imports'
           )
           new_tests = r'''
@@ -366,6 +332,7 @@ jobs:
                   val calls = AtomicInteger()
                   val firstEntered = CountDownLatch(1)
                   val releaseFirst = CountDownLatch(1)
+                  val waitersReady = CountDownLatch(2)
                   val client = client { _ ->
                       if (calls.incrementAndGet() == 1) {
                           firstEntered.countDown()
@@ -377,8 +344,15 @@ jobs:
                   try {
                       val leader = executor.submit<JSONObject?> { client.search("same failing query", "it") }
                       assertTrue(firstEntered.await(5, TimeUnit.SECONDS))
-                      val waiterOne = executor.submit<JSONObject?> { client.search("same failing query", "it") }
-                      val waiterTwo = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+                      val waiterOne = executor.submit<JSONObject?> {
+                          waitersReady.countDown()
+                          client.search("same failing query", "it")
+                      }
+                      val waiterTwo = executor.submit<JSONObject?> {
+                          waitersReady.countDown()
+                          client.search("same failing query", "it")
+                      }
+                      assertTrue(waitersReady.await(5, TimeUnit.SECONDS))
                       Thread.sleep(100L)
                       releaseFirst.countDown()
                       assertNull(leader.get(5, TimeUnit.SECONDS))
@@ -437,7 +411,12 @@ jobs:
               }
 
           '''
-          tests = replace_once(tests, '    private fun client(\n', new_tests + '    private fun client(\n', 'review regression tests')
+          tests = replace_once(
+              tests,
+              '    private fun client(\n',
+              new_tests + '    private fun client(\n',
+              'review regression tests'
+          )
           test_path.write_text(tests)
           PY
           git diff --check
