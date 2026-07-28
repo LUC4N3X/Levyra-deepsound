@@ -99,31 +99,85 @@ data class LevyraVerifiedArtifact(
 
 object LevyraVersionComparator {
     fun compare(left: String, right: String): Int {
-        val leftParts = numericParts(left)
-        val rightParts = numericParts(right)
-        val size = maxOf(leftParts.size, rightParts.size, 1)
+        val leftVersion = parse(left)
+        val rightVersion = parse(right)
+        val size = maxOf(leftVersion.numbers.size, rightVersion.numbers.size, 1)
         for (index in 0 until size) {
-            val leftValue = leftParts.getOrElse(index) { 0 }
-            val rightValue = rightParts.getOrElse(index) { 0 }
+            val leftValue = leftVersion.numbers.getOrElse(index) { 0 }
+            val rightValue = rightVersion.numbers.getOrElse(index) { 0 }
             if (leftValue != rightValue) return leftValue.compareTo(rightValue)
         }
-        return qualifierRank(left).compareTo(qualifierRank(right))
-    }
-
-    private fun numericParts(value: String): List<Int> {
-        val core = Regex("\\d+(?:\\.\\d+)*").find(value.trim())?.value.orEmpty()
-        return core.split('.').mapNotNull(String::toIntOrNull)
-    }
-
-    private fun qualifierRank(value: String): Int {
-        val normalized = value.lowercase(Locale.ROOT)
-        return when {
-            "nightly" in normalized || "snapshot" in normalized -> 0
-            "alpha" in normalized -> 1
-            "beta" in normalized -> 2
-            "rc" in normalized -> 3
-            else -> 4
+        if (leftVersion.qualifiers.isEmpty() || rightVersion.qualifiers.isEmpty()) {
+            return when {
+                leftVersion.qualifiers.isEmpty() && rightVersion.qualifiers.isEmpty() -> 0
+                leftVersion.qualifiers.isEmpty() -> 1
+                else -> -1
+            }
         }
+        val qualifierSize = maxOf(leftVersion.qualifiers.size, rightVersion.qualifiers.size)
+        for (index in 0 until qualifierSize) {
+            val leftIdentifier = leftVersion.qualifiers.getOrNull(index) ?: return -1
+            val rightIdentifier = rightVersion.qualifiers.getOrNull(index) ?: return 1
+            val comparison = compareIdentifier(leftIdentifier, rightIdentifier)
+            if (comparison != 0) return comparison
+        }
+        return 0
+    }
+
+    private fun parse(value: String): ParsedVersion {
+        val normalized = value.trim().removePrefix("v").removePrefix("V")
+        val coreMatch = Regex("\\d+(?:\\.\\d+)*").find(normalized)
+        val numbers = coreMatch?.value.orEmpty().split('.').mapNotNull(String::toIntOrNull)
+        val qualifierText = coreMatch?.range?.last?.let { end ->
+            normalized.substring(end + 1).substringBefore('+').trim('-', '.', '_')
+        }.orEmpty()
+        val qualifiers = qualifierText
+            .split(Regex("[._-]+"))
+            .filter(String::isNotBlank)
+            .flatMap(::splitIdentifier)
+        return ParsedVersion(numbers, qualifiers)
+    }
+
+    private fun splitIdentifier(value: String): List<VersionIdentifier> {
+        val match = Regex("([A-Za-z]+)(\\d*)").matchEntire(value)
+        if (match != null) {
+            val text = match.groupValues[1].lowercase(Locale.ROOT)
+            val number = match.groupValues[2].toIntOrNull()
+            return if (number == null) listOf(VersionIdentifier.Text(text)) else {
+                listOf(VersionIdentifier.Text(text), VersionIdentifier.Number(number))
+            }
+        }
+        return value.toIntOrNull()?.let { listOf(VersionIdentifier.Number(it)) }
+            ?: listOf(VersionIdentifier.Text(value.lowercase(Locale.ROOT)))
+    }
+
+    private fun compareIdentifier(left: VersionIdentifier, right: VersionIdentifier): Int = when {
+        left is VersionIdentifier.Number && right is VersionIdentifier.Number -> left.value.compareTo(right.value)
+        left is VersionIdentifier.Number -> -1
+        right is VersionIdentifier.Number -> 1
+        left is VersionIdentifier.Text && right is VersionIdentifier.Text -> {
+            val rankComparison = qualifierRank(left.value).compareTo(qualifierRank(right.value))
+            if (rankComparison != 0) rankComparison else left.value.compareTo(right.value)
+        }
+        else -> 0
+    }
+
+    private fun qualifierRank(value: String): Int = when (value) {
+        "nightly", "snapshot", "dev" -> 0
+        "alpha", "a" -> 1
+        "beta", "b" -> 2
+        "rc", "pre" -> 3
+        else -> 4
+    }
+
+    private data class ParsedVersion(
+        val numbers: List<Int>,
+        val qualifiers: List<VersionIdentifier>
+    )
+
+    private sealed interface VersionIdentifier {
+        data class Number(val value: Int) : VersionIdentifier
+        data class Text(val value: String) : VersionIdentifier
     }
 }
 
@@ -171,7 +225,9 @@ object LevyraUpdateSelector {
     }
 
     private fun scoreArtifact(artifact: LevyraUpdateArtifact, abiOrder: List<String>, preferredHost: String): Int {
-        val abi = normalizeAbi(artifact.abi.ifBlank { inferAbi(artifact.name) })
+        val declaredAbi = normalizeAbi(artifact.abi)
+        val inferredAbi = inferAbi(artifact.name)
+        val abi = if (declaredAbi == "universal" && inferredAbi != "universal") inferredAbi else declaredAbi
         val abiIndex = abiOrder.indexOf(abi)
         val abiScore = when {
             abi == "universal" -> 300
