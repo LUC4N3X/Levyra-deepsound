@@ -15,10 +15,10 @@ on:
         type: boolean
         default: false
       fdroid_release_suffix:
-        description: "F-Droid release suffix; keep r5 for the automatic update channel"
+        description: "F-Droid release suffix; keep r6 for the automatic update channel"
         required: false
         type: string
-        default: "r5"
+        default: "r6"
 
 permissions:
   contents: write
@@ -367,7 +367,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          FDROID_RELEASE_SUFFIX: ${{ inputs.fdroid_release_suffix || 'r5' }}
+          FDROID_RELEASE_SUFFIX: ${{ inputs.fdroid_release_suffix || 'r6' }}
         run: |
           set -euo pipefail
 
