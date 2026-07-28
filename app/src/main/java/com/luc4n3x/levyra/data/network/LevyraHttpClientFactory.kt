@@ -3,14 +3,14 @@ package com.luc4n3x.levyra.data.network
 import android.content.Context
 import com.chuckerteam.chucker.api.ChuckerInterceptor
 import com.luc4n3x.levyra.BuildConfig
+import java.io.File
+import java.util.concurrent.TimeUnit
 import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.brotli.BrotliInterceptor
-import java.io.File
-import java.util.concurrent.TimeUnit
 
 object LevyraHttpClientFactory {
     private const val FEED_CACHE_DIRECTORY = "levyra_feed_http"
@@ -47,13 +47,6 @@ object LevyraHttpClientFactory {
     @Volatile
     private var feedClient: OkHttpClient? = null
 
-    /**
-     * Client for small public JSON feeds (charts, catalog lookups).
-     *
-     * It reuses the media connection pool and dispatcher instead of adding another one, and owns a
-     * bounded HTTP cache so a repeated feed read can be answered from disk — or revalidated with a
-     * 304 — instead of downloading the whole payload again.
-     */
     fun feeds(context: Context): OkHttpClient {
         return feedClient ?: synchronized(this) {
             feedClient ?: media(context).newBuilder()
@@ -78,13 +71,14 @@ object LevyraHttpClientFactory {
                 .writeTimeout(10, TimeUnit.SECONDS)
                 .callTimeout(0, TimeUnit.MILLISECONDS)
                 .retryOnConnectionFailure(true)
+                .let { applyNetworkIntelligence(it, context) }
                 .let { applyDebugInterceptors(it, context) }
                 .build()
                 .also { mediaClient = it }
         }
     }
 
-    fun youtubePlayer(): OkHttpClient {
+    fun youtubePlayer(context: Context? = null): OkHttpClient {
         return youtubePlayerClient ?: synchronized(this) {
             youtubePlayerClient ?: OkHttpClient.Builder()
                 .connectionPool(youtubeConnectionPool)
@@ -96,6 +90,7 @@ object LevyraHttpClientFactory {
                 .callTimeout(15, TimeUnit.SECONDS)
                 .addInterceptor(BrotliInterceptor)
                 .retryOnConnectionFailure(true)
+                .let { applyNetworkIntelligence(it, context) }
                 .build()
                 .also { youtubePlayerClient = it }
         }
@@ -128,6 +123,7 @@ object LevyraHttpClientFactory {
                 .followRedirects(true)
                 .followSslRedirects(true)
                 .retryOnConnectionFailure(true)
+                .let { applyNetworkIntelligence(it, null) }
                 .build()
                 .also { downloadClient = it }
         }
@@ -141,7 +137,15 @@ object LevyraHttpClientFactory {
             .callTimeout(0, TimeUnit.MILLISECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
+            .let { applyNetworkIntelligence(it, context) }
         return applyDebugInterceptors(builder, context).build()
+    }
+
+    private fun applyNetworkIntelligence(builder: OkHttpClient.Builder, context: Context?): OkHttpClient.Builder {
+        context?.let(LevyraNetworkIntelligence::initialize)
+        return builder
+            .dns(LevyraNetworkIntelligence.dns)
+            .eventListenerFactory(LevyraNetworkIntelligence.eventListenerFactory)
     }
 
     private fun applyDebugInterceptors(builder: OkHttpClient.Builder, context: Context?): OkHttpClient.Builder {

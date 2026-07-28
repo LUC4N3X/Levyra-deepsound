@@ -8,3 +8,7 @@ plugins {
     alias(libs.plugins.licensee) apply false
     alias(libs.plugins.ruler) apply false
 }
+
+project(":app").pluginManager.withPlugin("com.android.application") {
+    project(":app").dependencies.add("implementation", "com.github.LUC4N3X:LevyraNexus:1.0.0")
+}
