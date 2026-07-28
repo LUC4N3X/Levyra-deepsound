@@ -60,4 +60,31 @@ class DesktopShortcutsTest {
         assertNull(DesktopShortcuts.resolve(Key.Z, ctrl = true))
         assertNull(DesktopShortcuts.resolve(Key.Escape))
     }
+
+    @Test
+    fun `typing in a text field keeps space and arrows out of playback`() {
+        assertNull(DesktopShortcuts.resolve(Key.Spacebar, textInputFocused = true))
+        assertNull(DesktopShortcuts.resolve(Key.DirectionLeft, textInputFocused = true))
+        assertNull(DesktopShortcuts.resolve(Key.DirectionRight, textInputFocused = true))
+    }
+
+    @Test
+    fun `text field focus still allows modifier and hardware shortcuts`() {
+        assertEquals(
+            ShortcutAction.NEXT,
+            DesktopShortcuts.resolve(Key.DirectionRight, ctrl = true, textInputFocused = true)
+        )
+        assertEquals(
+            ShortcutAction.TOGGLE_QUEUE,
+            DesktopShortcuts.resolve(Key.Q, ctrl = true, textInputFocused = true)
+        )
+        assertEquals(
+            ShortcutAction.PLAY_PAUSE,
+            DesktopShortcuts.resolve(Key.MediaPlayPause, textInputFocused = true)
+        )
+        assertEquals(
+            ShortcutAction.NEXT,
+            DesktopShortcuts.resolve(Key.MediaNext, textInputFocused = true)
+        )
+    }
 }

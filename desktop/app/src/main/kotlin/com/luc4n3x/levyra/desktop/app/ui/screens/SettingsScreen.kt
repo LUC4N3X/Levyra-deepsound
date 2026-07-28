@@ -32,6 +32,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.EqualizerBars
 import com.luc4n3x.levyra.desktop.app.ui.components.LanguagePicker
 import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
+import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
@@ -89,6 +90,7 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = 480.dp)
+                            .tracksTextInputFocus()
                             .onFocusChanged { state ->
                                 if (!state.isFocused) commitName()
                             }
@@ -281,7 +283,7 @@ fun SettingsScreen(
                     "Ctrl + R" to strings.playbackRepeat,
                     "Ctrl + Q" to strings.queueTitle,
                     "Ctrl + P" to strings.navNowPlaying,
-                    "Ctrl + F" to strings.navSearch
+                    "Ctrl + F / K" to strings.navSearch
                 )
                 shortcuts.forEach { (keys, label) -> ShortcutRow(keys = keys, label = label) }
             }
@@ -314,6 +316,7 @@ fun SettingsScreen(
                         singleLine = true,
                         modifier = Modifier
                             .weight(1f)
+                            .tracksTextInputFocus()
                             .onFocusChanged { focus ->
                                 if (!focus.isFocused) commitVlcDirectory()
                             }

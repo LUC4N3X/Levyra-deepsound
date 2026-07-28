@@ -54,6 +54,7 @@ import com.luc4n3x.levyra.desktop.app.state.LevyraAppModel
 import com.luc4n3x.levyra.desktop.app.ui.components.DownloadActions
 import com.luc4n3x.levyra.desktop.app.ui.components.LocalDownloadActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
+import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
@@ -494,7 +495,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                         onValueChange = { newPlaylistName = it },
                                         label = { Text(strings.playlistName) },
                                         singleLine = true,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth().tracksTextInputFocus()
                                     )
                                 }
                             },

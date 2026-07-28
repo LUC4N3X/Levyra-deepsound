@@ -103,7 +103,7 @@ The Windows version is changed only in:
 
 ```properties
 # desktop/version.properties
-levyraDesktopVersion=1.0.0
+levyraDesktopVersion=1.1.0
 ```
 
 The Android `levyraVersionName` value in the root `gradle.properties` file does not control, trigger, or publish the Desktop build.
