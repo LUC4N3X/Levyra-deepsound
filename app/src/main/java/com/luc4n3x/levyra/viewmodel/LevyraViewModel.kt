@@ -2838,15 +2838,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun removeRecentSearch(track: Track) {
-        val current = _state.value.recentSearches
+        val snapshot = _state.value
+        val current = snapshot.recentSearches
+        val currentOrbit = snapshot.personalOrbitTracks
         val identity = LevyraPersonalOrbit.identityKey(track)
-        val updated = current.filterNot {
-            it.id == track.id || LevyraPersonalOrbit.identityKey(it) == identity
+        val matches: (Track) -> Boolean = { candidate ->
+            candidate.id == track.id || LevyraPersonalOrbit.identityKey(candidate) == identity
         }
-        if (updated.size == current.size) return
-        _state.update { it.copy(recentSearches = updated) }
+        val updated = current.filterNot(matches)
+        val updatedOrbit = currentOrbit.filterNot(matches)
+        if (updated.size == current.size && updatedOrbit.size == currentOrbit.size) return
+        _state.update { it.copy(recentSearches = updated, personalOrbitTracks = updatedOrbit) }
+        val languageCode = snapshot.languageCode
         viewModelScope.launch(Dispatchers.IO) {
             preferences.saveRecentSearches(updated)
+            preferences.savePersonalOrbitTracks(updatedOrbit, languageCode)
         }
     }
 
