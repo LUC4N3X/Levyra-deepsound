@@ -1,8 +1,7 @@
 package com.luc4n3x.levyra.desktop.app
 
-import com.sun.jna.Library
-import com.sun.jna.Native
-import com.sun.jna.platform.win32.WinDef
+import com.sun.jna.platform.win32.Kernel32
+import com.sun.jna.platform.win32.User32
 import com.sun.jna.platform.win32.WinUser
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -48,13 +47,13 @@ internal class WindowsMediaKeys(private val onAction: (MediaKeyAction) -> Unit) 
         runCatching { pumpReady.await(PUMP_READY_TIMEOUT_MS, TimeUnit.MILLISECONDS) }
         val threadId = messageThreadId
         if (threadId == 0) return
-        runCatching { user32.PostThreadMessageW(threadId, WM_QUIT, null, null) }
+        runCatching { User32.INSTANCE.PostThreadMessage(threadId, WM_QUIT, null, null) }
     }
 
     private fun pumpMessages() {
-        messageThreadId = runCatching { kernel32.GetCurrentThreadId() }.getOrDefault(0)
+        messageThreadId = runCatching { Kernel32.INSTANCE.GetCurrentThreadId() }.getOrDefault(0)
         val registered = HOTKEYS.filter { (id, virtualKey) ->
-            runCatching { user32.RegisterHotKey(null, id, 0, virtualKey) }.getOrDefault(false)
+            runCatching { User32.INSTANCE.RegisterHotKey(null, id, 0, virtualKey) }.getOrDefault(false)
         }
         if (registered.isEmpty()) {
             running.set(false)
@@ -66,7 +65,7 @@ internal class WindowsMediaKeys(private val onAction: (MediaKeyAction) -> Unit) 
         try {
             val message = WinUser.MSG()
             while (running.get()) {
-                val result = user32.GetMessageW(message, null, 0, 0)
+                val result = User32.INSTANCE.GetMessage(message, null, 0, 0)
                 if (result <= 0) break
                 if (message.message == WM_HOTKEY) {
                     ACTIONS[message.wParam.toInt()]?.let { action ->
@@ -75,29 +74,12 @@ internal class WindowsMediaKeys(private val onAction: (MediaKeyAction) -> Unit) 
                 }
             }
         } finally {
-            registered.keys.forEach { id -> runCatching { user32.UnregisterHotKey(null, id) } }
+            registered.keys.forEach { id ->
+                runCatching { User32.INSTANCE.UnregisterHotKey(null, id) }
+            }
             messageThreadId = 0
             running.set(false)
         }
-    }
-
-    private interface User32Media : Library {
-        fun RegisterHotKey(window: WinDef.HWND?, id: Int, modifiers: Int, virtualKey: Int): Boolean
-
-        fun UnregisterHotKey(window: WinDef.HWND?, id: Int): Boolean
-
-        fun GetMessageW(message: WinUser.MSG, window: WinDef.HWND?, filterMin: Int, filterMax: Int): Int
-
-        fun PostThreadMessageW(
-            threadId: Int,
-            message: Int,
-            wParam: WinDef.WPARAM?,
-            lParam: WinDef.LPARAM?
-        ): Boolean
-    }
-
-    private interface Kernel32Media : Library {
-        fun GetCurrentThreadId(): Int
     }
 
     private companion object {
@@ -132,8 +114,5 @@ internal class WindowsMediaKeys(private val onAction: (MediaKeyAction) -> Unit) 
         val isWindows: Boolean = System.getProperty("os.name")
             .orEmpty()
             .startsWith("Windows", ignoreCase = true)
-
-        val user32: User32Media by lazy { Native.load("user32", User32Media::class.java) }
-        val kernel32: Kernel32Media by lazy { Native.load("kernel32", Kernel32Media::class.java) }
     }
 }
