@@ -105,10 +105,7 @@ class PlaybackController(
             settingsStore.settings
                 .map { DesktopSettings.normalizeSpeed(it.playbackSpeed) }
                 .distinctUntilChanged()
-                .collect { speed ->
-                    player?.setSpeed(speed)
-                    internalState.update { state -> state.copy(speed = speed) }
-                }
+                .collect { speed -> applySpeed(speed) }
         }
     }
 
@@ -434,7 +431,7 @@ class PlaybackController(
         val current = internalState.value
         activePlayer.setVolume(current.volume)
         activePlayer.setMuted(current.muted)
-        activePlayer.setSpeed(current.speed)
+        applySpeed(settingsStore.current.playbackSpeed, activePlayer)
         internalState.update { state ->
             state.copy(
                 preparingTrackId = "",
@@ -445,6 +442,13 @@ class PlaybackController(
         }
         libraryStore.recordPlayback(enriched)
         persistSession()
+    }
+
+    private fun applySpeed(speed: Float, target: AudioPlayer? = player) {
+        val safe = DesktopSettings.normalizeSpeed(speed)
+        if (target == null || target.setSpeed(safe)) {
+            internalState.update { state -> state.copy(speed = safe) }
+        }
     }
 
     private fun updateTrackMetadata(track: Track) {
@@ -604,7 +608,7 @@ class PlaybackController(
             startPersistLoop()
             val equalizer = settingsStore.current.equalizer
             created.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
-            created.setSpeed(internalState.value.speed)
+            applySpeed(settingsStore.current.playbackSpeed, created)
             internalState.update { state -> state.copy(unavailableReason = "") }
             created
         } catch (error: AudioPlayerUnavailableException) {
@@ -638,7 +642,7 @@ class PlaybackController(
             is PlayerEvent.Playing -> {
                 retriedTrackId = ""
                 consecutiveFailures = 0
-                player?.setSpeed(internalState.value.speed)
+                applySpeed(settingsStore.current.playbackSpeed)
                 internalState.update { state -> state.copy(status = PlaybackStatus.PLAYING) }
             }
 
