@@ -131,7 +131,7 @@ class YoutubeMusicResilienceClientTest {
     }
 
     @Test
-    fun requestSpecificDenialsDoNotPoisonGlobalProfileHealth() {
+    fun requestSpecificDenialsNeverBlockTheWholeFallbackChain() {
         val publicRequest = AtomicBoolean(false)
         val calls = mutableListOf<String>()
         val client = client { request ->
@@ -144,7 +144,7 @@ class YoutubeMusicResilienceClientTest {
         }
 
         assertNull(client.browse("it", browseId = "PRIVATE"))
-        assertTrue(client.diagnostics().isEmpty())
+        assertTrue(client.diagnostics().values.all { it.blockedUntilMs == 0L })
 
         calls.clear()
         publicRequest.set(true)
@@ -153,11 +153,32 @@ class YoutubeMusicResilienceClientTest {
     }
 
     @Test
+    fun profileSpecificDenialIsDeprioritizedAfterFallbackRecovery() {
+        val calls = mutableListOf<String>()
+        val client = client { request ->
+            calls += request.profile.id
+            if (request.profile.id == "web-remix") {
+                YoutubeMusicTransportResponse(403, "bot blocked", 10L)
+            } else {
+                YoutubeMusicTransportResponse(200, validSearch(), 10L)
+            }
+        }
+
+        assertNotNull(client.search("first public query", "it"))
+        assertEquals(listOf("web-remix", "android-music"), calls)
+        assertEquals(1, client.diagnostics().getValue("web-remix").consecutiveDenials)
+        assertEquals(0L, client.diagnostics().getValue("web-remix").blockedUntilMs)
+
+        calls.clear()
+        assertNotNull(client.search("second public query", "it"))
+        assertEquals(listOf("android-music"), calls)
+    }
+
+    @Test
     fun failedConcurrentRequestsShareOneFallbackChain() {
         val calls = AtomicInteger()
         val firstEntered = CountDownLatch(1)
         val releaseFirst = CountDownLatch(1)
-        val waitersReady = CountDownLatch(2)
         val client = client { _ ->
             if (calls.incrementAndGet() == 1) {
                 firstEntered.countDown()
@@ -170,16 +191,9 @@ class YoutubeMusicResilienceClientTest {
         try {
             val leader = executor.submit<JSONObject?> { client.search("same failing query", "it") }
             assertTrue(firstEntered.await(5, TimeUnit.SECONDS))
-            val waiterOne = executor.submit<JSONObject?> {
-                waitersReady.countDown()
-                client.search("same failing query", "it")
-            }
-            val waiterTwo = executor.submit<JSONObject?> {
-                waitersReady.countDown()
-                client.search("same failing query", "it")
-            }
-            assertTrue(waitersReady.await(5, TimeUnit.SECONDS))
-            Thread.sleep(100L)
+            val waiterOne = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+            val waiterTwo = executor.submit<JSONObject?> { client.search("same failing query", "it") }
+            assertTrue(awaitCondition { client.inFlightReferenceCounts().any { it == 3 } })
             releaseFirst.countDown()
 
             assertNull(leader.get(5, TimeUnit.SECONDS))
@@ -271,6 +285,15 @@ class YoutubeMusicResilienceClientTest {
             monotonicClock = clock,
             transport = YoutubeMusicTransport(handler)
         )
+    }
+
+    private fun awaitCondition(timeoutMs: Long = 5_000L, condition: () -> Boolean): Boolean {
+        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+        while (System.nanoTime() < deadline) {
+            if (condition()) return true
+            Thread.yield()
+        }
+        return condition()
     }
 
     private fun validSearch(): String =
