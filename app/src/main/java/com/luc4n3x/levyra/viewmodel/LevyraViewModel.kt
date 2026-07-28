@@ -125,6 +125,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -2838,15 +2839,29 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun removeRecentSearch(track: Track) {
-        val current = _state.value.recentSearches
         val identity = LevyraPersonalOrbit.identityKey(track)
-        val updated = current.filterNot {
-            it.id == track.id || LevyraPersonalOrbit.identityKey(it) == identity
+        val matches: (Track) -> Boolean = { candidate ->
+            candidate.id == track.id || LevyraPersonalOrbit.identityKey(candidate) == identity
         }
-        if (updated.size == current.size) return
-        _state.update { it.copy(recentSearches = updated) }
+        var changed = false
+        val applied = _state.updateAndGet { state ->
+            val updated = state.recentSearches.filterNot(matches)
+            val updatedOrbit = state.personalOrbitTracks.filterNot(matches)
+            changed = updated.size != state.recentSearches.size ||
+                updatedOrbit.size != state.personalOrbitTracks.size
+            if (!changed) {
+                state
+            } else {
+                state.copy(recentSearches = updated, personalOrbitTracks = updatedOrbit)
+            }
+        }
+        if (!changed) return
+        val persistedSearches = applied.recentSearches
+        val persistedOrbit = applied.personalOrbitTracks
+        val languageCode = applied.languageCode
         viewModelScope.launch(Dispatchers.IO) {
-            preferences.saveRecentSearches(updated)
+            preferences.saveRecentSearches(persistedSearches)
+            preferences.savePersonalOrbitTracks(persistedOrbit, languageCode)
         }
     }
 
