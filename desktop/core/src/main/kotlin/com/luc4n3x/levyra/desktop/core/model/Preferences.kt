@@ -126,6 +126,9 @@ data class DesktopSettings(
     val autoplayRadio: Boolean = true,
     val resumeOnStartup: Boolean = true,
     val minimizeToTray: Boolean = true,
+    val preloadNextTrack: Boolean = true,
+    val globalMediaKeys: Boolean = true,
+    val playbackSpeed: Float = DEFAULT_SPEED,
     val vlcDirectory: String = "",
     val equalizer: EqualizerSettings = EqualizerSettings()
 ) {
@@ -136,12 +139,21 @@ data class DesktopSettings(
             .filter { it in VALID_TASTE_IDS }
             .toSet(),
         volume = volume.coerceIn(0, 100),
+        playbackSpeed = normalizeSpeed(playbackSpeed),
         vlcDirectory = vlcDirectory.trim(),
         equalizer = equalizer.sanitized()
     )
 
     companion object {
         const val MAX_DISPLAY_NAME_LENGTH = 40
+        const val MIN_SPEED = 0.5f
+        const val MAX_SPEED = 2f
+        const val DEFAULT_SPEED = 1f
+
+        val SPEED_STEPS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
+
+        fun normalizeSpeed(value: Float): Float =
+            if (value.isNaN()) DEFAULT_SPEED else value.coerceIn(MIN_SPEED, MAX_SPEED)
         val VALID_TASTE_IDS = setOf(
             "hits",
             "rap",

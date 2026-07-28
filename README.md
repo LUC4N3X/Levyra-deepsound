@@ -328,7 +328,7 @@ levyraVersionName=2.3.17
 levyraVersionCode=2031700
 
 # Windows — desktop/version.properties
-levyraDesktopVersion=1.0.1
+levyraDesktopVersion=1.1.0
 ```
 
 Android publishes `v<version>` releases and remains the repository's **Latest** channel. Windows publishes immutable `desktop-v<version>` releases with MSI, EXE, portable ZIP and SHA-256 files. Increasing the Android version never starts or publishes the Desktop build, and increasing the Desktop version never modifies Android or F-Droid releases.
