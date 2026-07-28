@@ -46,11 +46,8 @@ class AppUpdateRepository(context: Context) {
             sdk = Build.VERSION.SDK_INT,
             supportedAbis = Build.SUPPORTED_ABIS.orEmpty().toList()
         )
-        val fallback = assets.firstOrNull { it.directApk } ?: assets.firstOrNull()
-        val downloadUrl = selected?.downloadUrl?.ifBlank { releaseUrl }
-            ?: fallback?.downloadUrl?.ifBlank { releaseUrl }
-            ?: releaseUrl
-        val assetName = selected?.name ?: fallback?.name.orEmpty()
+        val downloadUrl = selected?.downloadUrl?.ifBlank { releaseUrl } ?: releaseUrl
+        val assetName = selected?.name.orEmpty()
         val releaseTitle = root.optString("name").ifBlank { "LEVYRA $latestVersion" }
         val notes = root.optString("body").trim()
         val current = BuildConfig.VERSION_NAME
@@ -64,7 +61,7 @@ class AppUpdateRepository(context: Context) {
             downloadUrl = downloadUrl,
             releaseUrl = releaseUrl.ifBlank { downloadUrl },
             assetName = assetName,
-            directApk = selected?.isApk ?: fallback?.directApk ?: false,
+            directApk = selected?.isApk == true,
             isNewer = LevyraVersionComparator.compare(latestVersion, current) > 0
         )
     }
