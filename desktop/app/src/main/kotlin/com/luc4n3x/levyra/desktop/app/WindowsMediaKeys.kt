@@ -4,6 +4,8 @@ import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.platform.win32.WinDef
 import com.sun.jna.platform.win32.WinUser
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 enum class MediaKeyAction {
@@ -16,6 +18,7 @@ enum class MediaKeyAction {
 internal class WindowsMediaKeys(private val onAction: (MediaKeyAction) -> Unit) {
 
     private val running = AtomicBoolean(false)
+    private val pumpReady = CountDownLatch(1)
     private var thread: Thread? = null
 
     @Volatile
@@ -34,11 +37,18 @@ internal class WindowsMediaKeys(private val onAction: (MediaKeyAction) -> Unit) 
 
     fun stop() {
         if (!running.compareAndSet(true, false)) return
-        val threadId = messageThreadId
-        if (threadId != 0) {
-            runCatching { user32.PostThreadMessageW(threadId, WM_QUIT, null, null) }
-        }
         thread = null
+        Thread({ quitMessageLoop() }, "levyra-media-keys-stop").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    private fun quitMessageLoop() {
+        runCatching { pumpReady.await(PUMP_READY_TIMEOUT_MS, TimeUnit.MILLISECONDS) }
+        val threadId = messageThreadId
+        if (threadId == 0) return
+        runCatching { user32.PostThreadMessageW(threadId, WM_QUIT, null, null) }
     }
 
     private fun pumpMessages() {
@@ -49,8 +59,10 @@ internal class WindowsMediaKeys(private val onAction: (MediaKeyAction) -> Unit) 
         if (registered.isEmpty()) {
             running.set(false)
             messageThreadId = 0
+            pumpReady.countDown()
             return
         }
+        pumpReady.countDown()
         try {
             val message = WinUser.MSG()
             while (running.get()) {
@@ -89,6 +101,7 @@ internal class WindowsMediaKeys(private val onAction: (MediaKeyAction) -> Unit) 
     }
 
     private companion object {
+        const val PUMP_READY_TIMEOUT_MS = 2_000L
         const val WM_HOTKEY = 0x0312
         const val WM_QUIT = 0x0012
 

@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.desktop.app.ui.catalog.CountryOption
 import com.luc4n3x.levyra.desktop.app.ui.catalog.LocaleCatalog
 import com.luc4n3x.levyra.desktop.app.ui.components.CountryFlag
+import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
@@ -481,7 +482,7 @@ private fun ProfileStep(name: String, onNameChange: (String) -> Unit) {
                     onValueChange = onNameChange,
                     placeholder = { Text(strings.onboardingNamePlaceholder) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().tracksTextInputFocus()
                 )
                 Surface(
                     modifier = Modifier.fillMaxWidth(),

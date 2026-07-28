@@ -46,6 +46,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.SectionHeader
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
+import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
@@ -811,7 +812,7 @@ private fun LibraryTools(
                         onValueChange = onPlaylistNameChange,
                         label = { Text(playlistNameLabel) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().tracksTextInputFocus()
                     )
                     Button(
                         onClick = onCreatePlaylist,
@@ -830,7 +831,7 @@ private fun LibraryTools(
                         onValueChange = onImportUrlChange,
                         label = { Text(importLabel) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().tracksTextInputFocus()
                     )
                     OutlinedButton(
                         onClick = onImport,

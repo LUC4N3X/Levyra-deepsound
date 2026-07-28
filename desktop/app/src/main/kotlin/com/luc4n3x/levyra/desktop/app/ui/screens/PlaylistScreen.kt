@@ -31,6 +31,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRowAction
+import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.core.storage.LocalPlaylist
@@ -100,7 +101,8 @@ fun PlaylistScreen(
                                 value = draftName,
                                 onValueChange = { draftName = it },
                                 singleLine = true,
-                                label = { Text(strings.playlistName) }
+                                label = { Text(strings.playlistName) },
+                                modifier = Modifier.tracksTextInputFocus()
                             )
                             Button(
                                 onClick = {
