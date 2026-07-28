@@ -1,5 +1,9 @@
 package com.luc4n3x.levyra.desktop.app.ui.i18n
 
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
+import java.util.Properties
+
 data class DesktopExtraStrings(
     val sleepTimer: String,
     val sleepTimerOff: String,
@@ -16,346 +20,51 @@ data class DesktopExtraStrings(
 
 internal object DesktopExtras {
 
-    fun forTag(tag: String): DesktopExtraStrings = catalog[tag] ?: catalog.getValue("en")
+    fun forTag(tag: String): DesktopExtraStrings = catalog[tag] ?: catalog.getValue(FALLBACK_TAG)
 
-    private val catalog: Map<String, DesktopExtraStrings> = mapOf(
-        "en" to DesktopExtraStrings(
-            sleepTimer = "Sleep timer",
-            sleepTimerOff = "Off",
-            sleepTimerEndOfTrack = "End of track",
-            playbackSpeed = "Playback speed",
-            preloadNext = "Preload next track",
-            preloadNextBody = "Prepares the next track while the current one plays",
-            mediaKeys = "Media keys",
-            mediaKeysBody = "Control playback with the media keys while Levyra runs in the background",
-            shortcuts = "Keyboard shortcuts",
-            seek = "Seek",
-            miniPlayer = "Mini player"
-        ),
-        "it" to DesktopExtraStrings(
-            sleepTimer = "Timer di spegnimento",
-            sleepTimerOff = "Off",
-            sleepTimerEndOfTrack = "Fine del brano",
-            playbackSpeed = "Velocità di riproduzione",
-            preloadNext = "Precarica il brano successivo",
-            preloadNextBody = "Prepara il brano successivo mentre è in riproduzione quello corrente",
-            mediaKeys = "Tasti multimediali",
-            mediaKeysBody = "Controlla la riproduzione con i tasti multimediali anche con Levyra in secondo piano",
-            shortcuts = "Scorciatoie da tastiera",
-            seek = "Scorri",
-            miniPlayer = "Mini player"
-        ),
-        "es" to DesktopExtraStrings(
-            sleepTimer = "Temporizador de apagado",
-            sleepTimerOff = "Desactivado",
-            sleepTimerEndOfTrack = "Fin de la canción",
-            playbackSpeed = "Velocidad de reproducción",
-            preloadNext = "Precargar la siguiente canción",
-            preloadNextBody = "Prepara la siguiente canción mientras suena la actual",
-            mediaKeys = "Teclas multimedia",
-            mediaKeysBody = "Controla la reproducción con las teclas multimedia mientras Levyra está en segundo plano",
-            shortcuts = "Atajos de teclado",
-            seek = "Avanzar",
-            miniPlayer = "Minirreproductor"
-        ),
-        "fr" to DesktopExtraStrings(
-            sleepTimer = "Minuteur de veille",
-            sleepTimerOff = "Désactivé",
-            sleepTimerEndOfTrack = "Fin du morceau",
-            playbackSpeed = "Vitesse de lecture",
-            preloadNext = "Précharger le morceau suivant",
-            preloadNextBody = "Prépare le morceau suivant pendant la lecture en cours",
-            mediaKeys = "Touches multimédias",
-            mediaKeysBody = "Contrôlez la lecture avec les touches multimédias même lorsque Levyra est en arrière-plan",
-            shortcuts = "Raccourcis clavier",
-            seek = "Avancer",
-            miniPlayer = "Mini-lecteur"
-        ),
-        "de" to DesktopExtraStrings(
-            sleepTimer = "Sleep-Timer",
-            sleepTimerOff = "Aus",
-            sleepTimerEndOfTrack = "Ende des Titels",
-            playbackSpeed = "Wiedergabegeschwindigkeit",
-            preloadNext = "Nächsten Titel vorladen",
-            preloadNextBody = "Bereitet den nächsten Titel vor, während der aktuelle läuft",
-            mediaKeys = "Medientasten",
-            mediaKeysBody = "Steuere die Wiedergabe mit den Medientasten, auch wenn Levyra im Hintergrund läuft",
-            shortcuts = "Tastenkürzel",
-            seek = "Spulen",
-            miniPlayer = "Mini-Player"
-        ),
-        "pt" to DesktopExtraStrings(
-            sleepTimer = "Temporizador para dormir",
-            sleepTimerOff = "Desativado",
-            sleepTimerEndOfTrack = "Fim da faixa",
-            playbackSpeed = "Velocidade de reprodução",
-            preloadNext = "Pré-carregar a faixa seguinte",
-            preloadNextBody = "Prepara a faixa seguinte enquanto a atual toca",
-            mediaKeys = "Teclas de multimédia",
-            mediaKeysBody = "Controla a reprodução com as teclas de multimédia mesmo com o Levyra em segundo plano",
-            shortcuts = "Atalhos de teclado",
-            seek = "Avançar",
-            miniPlayer = "Mini leitor"
-        ),
-        "nl" to DesktopExtraStrings(
-            sleepTimer = "Slaaptimer",
-            sleepTimerOff = "Uit",
-            sleepTimerEndOfTrack = "Einde van nummer",
-            playbackSpeed = "Afspeelsnelheid",
-            preloadNext = "Volgend nummer vooraf laden",
-            preloadNextBody = "Bereidt het volgende nummer voor terwijl het huidige speelt",
-            mediaKeys = "Mediatoetsen",
-            mediaKeysBody = "Bedien het afspelen met de mediatoetsen terwijl Levyra op de achtergrond draait",
-            shortcuts = "Sneltoetsen",
-            seek = "Spoelen",
-            miniPlayer = "Mini-speler"
-        ),
-        "pl" to DesktopExtraStrings(
-            sleepTimer = "Wyłącznik czasowy",
-            sleepTimerOff = "Wyłączony",
-            sleepTimerEndOfTrack = "Koniec utworu",
-            playbackSpeed = "Prędkość odtwarzania",
-            preloadNext = "Wczytaj następny utwór z wyprzedzeniem",
-            preloadNextBody = "Przygotowuje następny utwór podczas odtwarzania bieżącego",
-            mediaKeys = "Klawisze multimedialne",
-            mediaKeysBody = "Steruj odtwarzaniem klawiszami multimedialnymi, gdy Levyra działa w tle",
-            shortcuts = "Skróty klawiszowe",
-            seek = "Przewijanie",
-            miniPlayer = "Mini odtwarzacz"
-        ),
-        "ro" to DesktopExtraStrings(
-            sleepTimer = "Cronometru de oprire",
-            sleepTimerOff = "Dezactivat",
-            sleepTimerEndOfTrack = "Sfârșitul piesei",
-            playbackSpeed = "Viteza de redare",
-            preloadNext = "Preîncarcă piesa următoare",
-            preloadNextBody = "Pregătește piesa următoare în timp ce se redă cea curentă",
-            mediaKeys = "Taste media",
-            mediaKeysBody = "Controlează redarea cu tastele media chiar și când Levyra este în fundal",
-            shortcuts = "Scurtături de tastatură",
-            seek = "Derulare",
-            miniPlayer = "Mini player"
-        ),
-        "el" to DesktopExtraStrings(
-            sleepTimer = "Χρονοδιακόπτης ύπνου",
-            sleepTimerOff = "Ανενεργό",
-            sleepTimerEndOfTrack = "Τέλος κομματιού",
-            playbackSpeed = "Ταχύτητα αναπαραγωγής",
-            preloadNext = "Προφόρτωση επόμενου κομματιού",
-            preloadNextBody = "Προετοιμάζει το επόμενο κομμάτι όσο παίζει το τρέχον",
-            mediaKeys = "Πλήκτρα πολυμέσων",
-            mediaKeysBody = "Έλεγχος αναπαραγωγής με τα πλήκτρα πολυμέσων όταν το Levyra είναι στο παρασκήνιο",
-            shortcuts = "Συντομεύσεις πληκτρολογίου",
-            seek = "Μετακίνηση",
-            miniPlayer = "Μίνι player"
-        ),
-        "sv" to DesktopExtraStrings(
-            sleepTimer = "Insomningstimer",
-            sleepTimerOff = "Av",
-            sleepTimerEndOfTrack = "Slutet av låten",
-            playbackSpeed = "Uppspelningshastighet",
-            preloadNext = "Förladda nästa låt",
-            preloadNextBody = "Förbereder nästa låt medan den aktuella spelas",
-            mediaKeys = "Mediatangenter",
-            mediaKeysBody = "Styr uppspelningen med mediatangenterna även när Levyra körs i bakgrunden",
-            shortcuts = "Kortkommandon",
-            seek = "Spola",
-            miniPlayer = "Minispelare"
-        ),
-        "da" to DesktopExtraStrings(
-            sleepTimer = "Sleep-timer",
-            sleepTimerOff = "Fra",
-            sleepTimerEndOfTrack = "Slutningen af nummeret",
-            playbackSpeed = "Afspilningshastighed",
-            preloadNext = "Forudindlæs næste nummer",
-            preloadNextBody = "Forbereder det næste nummer, mens det aktuelle spiller",
-            mediaKeys = "Medietaster",
-            mediaKeysBody = "Styr afspilningen med medietasterne, også når Levyra kører i baggrunden",
-            shortcuts = "Tastaturgenveje",
-            seek = "Spol",
-            miniPlayer = "Miniafspiller"
-        ),
-        "cs" to DesktopExtraStrings(
-            sleepTimer = "Časovač vypnutí",
-            sleepTimerOff = "Vypnuto",
-            sleepTimerEndOfTrack = "Konec skladby",
-            playbackSpeed = "Rychlost přehrávání",
-            preloadNext = "Přednačíst další skladbu",
-            preloadNextBody = "Připraví další skladbu, zatímco hraje aktuální",
-            mediaKeys = "Multimediální klávesy",
-            mediaKeysBody = "Ovládejte přehrávání multimediálními klávesami, i když je Levyra na pozadí",
-            shortcuts = "Klávesové zkratky",
-            seek = "Posun",
-            miniPlayer = "Mini přehrávač"
-        ),
-        "uk" to DesktopExtraStrings(
-            sleepTimer = "Таймер сну",
-            sleepTimerOff = "Вимкнено",
-            sleepTimerEndOfTrack = "Кінець треку",
-            playbackSpeed = "Швидкість відтворення",
-            preloadNext = "Попереднє завантаження наступного треку",
-            preloadNextBody = "Готує наступний трек, поки грає поточний",
-            mediaKeys = "Медіаклавіші",
-            mediaKeysBody = "Керуйте відтворенням медіаклавішами, навіть коли Levyra у фоні",
-            shortcuts = "Комбінації клавіш",
-            seek = "Перемотка",
-            miniPlayer = "Міні-плеєр"
-        ),
-        "ru" to DesktopExtraStrings(
-            sleepTimer = "Таймер сна",
-            sleepTimerOff = "Выключено",
-            sleepTimerEndOfTrack = "Конец трека",
-            playbackSpeed = "Скорость воспроизведения",
-            preloadNext = "Предзагрузка следующего трека",
-            preloadNextBody = "Готовит следующий трек, пока играет текущий",
-            mediaKeys = "Мультимедийные клавиши",
-            mediaKeysBody = "Управляйте воспроизведением мультимедийными клавишами, даже когда Levyra в фоне",
-            shortcuts = "Сочетания клавиш",
-            seek = "Перемотка",
-            miniPlayer = "Мини-плеер"
-        ),
-        "tr" to DesktopExtraStrings(
-            sleepTimer = "Uyku zamanlayıcısı",
-            sleepTimerOff = "Kapalı",
-            sleepTimerEndOfTrack = "Parçanın sonu",
-            playbackSpeed = "Oynatma hızı",
-            preloadNext = "Sonraki parçayı önceden yükle",
-            preloadNextBody = "Geçerli parça çalarken sonraki parçayı hazırlar",
-            mediaKeys = "Medya tuşları",
-            mediaKeysBody = "Levyra arka plandayken bile oynatmayı medya tuşlarıyla kontrol edin",
-            shortcuts = "Klavye kısayolları",
-            seek = "İleri sarma",
-            miniPlayer = "Mini oynatıcı"
-        ),
-        "ar" to DesktopExtraStrings(
-            sleepTimer = "مؤقت النوم",
-            sleepTimerOff = "إيقاف",
-            sleepTimerEndOfTrack = "نهاية المقطع",
-            playbackSpeed = "سرعة التشغيل",
-            preloadNext = "تحميل المقطع التالي مسبقًا",
-            preloadNextBody = "يجهّز المقطع التالي أثناء تشغيل المقطع الحالي",
-            mediaKeys = "مفاتيح الوسائط",
-            mediaKeysBody = "تحكّم في التشغيل بمفاتيح الوسائط حتى عندما يعمل Levyra في الخلفية",
-            shortcuts = "اختصارات لوحة المفاتيح",
-            seek = "التقديم",
-            miniPlayer = "مشغّل مصغّر"
-        ),
-        "zh" to DesktopExtraStrings(
-            sleepTimer = "睡眠定时器",
-            sleepTimerOff = "关闭",
-            sleepTimerEndOfTrack = "曲目结束",
-            playbackSpeed = "播放速度",
-            preloadNext = "预加载下一首",
-            preloadNextBody = "在当前曲目播放时准备下一首",
-            mediaKeys = "媒体按键",
-            mediaKeysBody = "即使 Levyra 在后台，也能用媒体按键控制播放",
-            shortcuts = "键盘快捷键",
-            seek = "快进快退",
-            miniPlayer = "迷你播放器"
-        ),
-        "ja" to DesktopExtraStrings(
-            sleepTimer = "スリープタイマー",
-            sleepTimerOff = "オフ",
-            sleepTimerEndOfTrack = "曲の終わり",
-            playbackSpeed = "再生速度",
-            preloadNext = "次の曲を先読み",
-            preloadNextBody = "再生中に次の曲を準備します",
-            mediaKeys = "メディアキー",
-            mediaKeysBody = "Levyra がバックグラウンドでもメディアキーで再生を操作できます",
-            shortcuts = "キーボードショートカット",
-            seek = "シーク",
-            miniPlayer = "ミニプレーヤー"
-        ),
-        "ko" to DesktopExtraStrings(
-            sleepTimer = "취침 타이머",
-            sleepTimerOff = "끄기",
-            sleepTimerEndOfTrack = "트랙 종료",
-            playbackSpeed = "재생 속도",
-            preloadNext = "다음 트랙 미리 불러오기",
-            preloadNextBody = "현재 트랙을 재생하는 동안 다음 트랙을 준비합니다",
-            mediaKeys = "미디어 키",
-            mediaKeysBody = "Levyra가 백그라운드에 있어도 미디어 키로 재생을 제어합니다",
-            shortcuts = "키보드 단축키",
-            seek = "탐색",
-            miniPlayer = "미니 플레이어"
-        ),
-        "hi" to DesktopExtraStrings(
-            sleepTimer = "स्लीप टाइमर",
-            sleepTimerOff = "बंद",
-            sleepTimerEndOfTrack = "ट्रैक का अंत",
-            playbackSpeed = "प्लेबैक गति",
-            preloadNext = "अगला ट्रैक पहले से लोड करें",
-            preloadNextBody = "मौजूदा ट्रैक चलने के दौरान अगला ट्रैक तैयार करता है",
-            mediaKeys = "मीडिया कुंजियाँ",
-            mediaKeysBody = "Levyra के बैकग्राउंड में होने पर भी मीडिया कुंजियों से प्लेबैक नियंत्रित करें",
-            shortcuts = "कीबोर्ड शॉर्टकट",
-            seek = "सीक",
-            miniPlayer = "मिनी प्लेयर"
-        ),
-        "id" to DesktopExtraStrings(
-            sleepTimer = "Timer tidur",
-            sleepTimerOff = "Nonaktif",
-            sleepTimerEndOfTrack = "Akhir lagu",
-            playbackSpeed = "Kecepatan pemutaran",
-            preloadNext = "Pramuat lagu berikutnya",
-            preloadNextBody = "Menyiapkan lagu berikutnya saat lagu ini diputar",
-            mediaKeys = "Tombol media",
-            mediaKeysBody = "Kendalikan pemutaran dengan tombol media meski Levyra berjalan di latar belakang",
-            shortcuts = "Pintasan keyboard",
-            seek = "Geser",
-            miniPlayer = "Mini player"
-        ),
-        "vi" to DesktopExtraStrings(
-            sleepTimer = "Hẹn giờ tắt",
-            sleepTimerOff = "Tắt",
-            sleepTimerEndOfTrack = "Kết thúc bài hát",
-            playbackSpeed = "Tốc độ phát",
-            preloadNext = "Tải trước bài tiếp theo",
-            preloadNextBody = "Chuẩn bị bài tiếp theo trong khi bài hiện tại đang phát",
-            mediaKeys = "Phím đa phương tiện",
-            mediaKeysBody = "Điều khiển phát bằng phím đa phương tiện ngay cả khi Levyra chạy nền",
-            shortcuts = "Phím tắt",
-            seek = "Tua",
-            miniPlayer = "Trình phát thu nhỏ"
-        ),
-        "th" to DesktopExtraStrings(
-            sleepTimer = "ตั้งเวลาปิด",
-            sleepTimerOff = "ปิด",
-            sleepTimerEndOfTrack = "จบเพลง",
-            playbackSpeed = "ความเร็วการเล่น",
-            preloadNext = "โหลดเพลงถัดไปล่วงหน้า",
-            preloadNextBody = "เตรียมเพลงถัดไปขณะที่เพลงปัจจุบันกำลังเล่น",
-            mediaKeys = "ปุ่มสื่อ",
-            mediaKeysBody = "ควบคุมการเล่นด้วยปุ่มสื่อแม้ Levyra จะทำงานอยู่เบื้องหลัง",
-            shortcuts = "แป้นพิมพ์ลัด",
-            seek = "เลื่อน",
-            miniPlayer = "มินิเพลเยอร์"
-        ),
-        "fil" to DesktopExtraStrings(
-            sleepTimer = "Sleep timer",
-            sleepTimerOff = "Naka-off",
-            sleepTimerEndOfTrack = "Katapusan ng track",
-            playbackSpeed = "Bilis ng pag-play",
-            preloadNext = "I-preload ang susunod na track",
-            preloadNextBody = "Inihahanda ang susunod na track habang tumutugtog ang kasalukuyan",
-            mediaKeys = "Media keys",
-            mediaKeysBody = "Kontrolin ang pag-play gamit ang media keys kahit nasa background ang Levyra",
-            shortcuts = "Mga keyboard shortcut",
-            seek = "Mag-seek",
-            miniPlayer = "Mini player"
-        ),
-        "he" to DesktopExtraStrings(
-            sleepTimer = "טיימר שינה",
-            sleepTimerOff = "כבוי",
-            sleepTimerEndOfTrack = "סוף הרצועה",
-            playbackSpeed = "מהירות הפעלה",
-            preloadNext = "טעינה מראש של הרצועה הבאה",
-            preloadNextBody = "מכין את הרצועה הבאה בזמן שהנוכחית מתנגנת",
-            mediaKeys = "מקשי מדיה",
-            mediaKeysBody = "שליטה בהפעלה באמצעות מקשי המדיה גם כאשר Levyra פועל ברקע",
-            shortcuts = "קיצורי מקלדת",
-            seek = "דילוג",
-            miniPlayer = "נגן מוקטן"
-        )
+    fun supportedTags(): Set<String> = catalog.keys
+
+    private const val RESOURCE = "/i18n/desktop-extras.properties"
+    private const val FALLBACK_TAG = "en"
+
+    private val catalog: Map<String, DesktopExtraStrings> by lazy { load() }
+
+    private fun load(): Map<String, DesktopExtraStrings> {
+        val entries = readEntries()
+        val tags = entries.stringPropertyNames()
+            .mapNotNull { name -> name.substringBefore('.', "").takeIf { it.isNotBlank() } }
+            .toSortedSet()
+        require(FALLBACK_TAG in tags) { "Desktop extra strings are missing the $FALLBACK_TAG bundle" }
+        return tags.associateWith { tag -> bundle(entries, tag) }
+    }
+
+    private fun readEntries(): Properties {
+        val stream = requireNotNull(DesktopExtras::class.java.getResourceAsStream(RESOURCE)) {
+            "Desktop extra strings resource not found: $RESOURCE"
+        }
+        return Properties().apply {
+            stream.use { source -> load(InputStreamReader(source, StandardCharsets.UTF_8)) }
+        }
+    }
+
+    private fun bundle(entries: Properties, tag: String): DesktopExtraStrings = DesktopExtraStrings(
+        sleepTimer = value(entries, tag, "sleepTimer"),
+        sleepTimerOff = value(entries, tag, "sleepTimerOff"),
+        sleepTimerEndOfTrack = value(entries, tag, "sleepTimerEndOfTrack"),
+        playbackSpeed = value(entries, tag, "playbackSpeed"),
+        preloadNext = value(entries, tag, "preloadNext"),
+        preloadNextBody = value(entries, tag, "preloadNextBody"),
+        mediaKeys = value(entries, tag, "mediaKeys"),
+        mediaKeysBody = value(entries, tag, "mediaKeysBody"),
+        shortcuts = value(entries, tag, "shortcuts"),
+        seek = value(entries, tag, "seek"),
+        miniPlayer = value(entries, tag, "miniPlayer")
     )
+
+    private fun value(entries: Properties, tag: String, key: String): String {
+        entries.getProperty("$tag.$key")?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+        val fallback = entries.getProperty("$FALLBACK_TAG.$key")?.trim().orEmpty()
+        require(fallback.isNotEmpty()) { "Desktop extra string $key is missing for $tag and $FALLBACK_TAG" }
+        return fallback
+    }
 }
