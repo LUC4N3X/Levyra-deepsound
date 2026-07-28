@@ -67,6 +67,8 @@ dependencies {
     implementation(libs.jna)
     implementation(libs.jna.platform)
 
+    implementation(libs.slf4j.api)
+
     runtimeOnly(libs.slf4j.simple)
 
     testImplementation(libs.junit)
