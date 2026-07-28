@@ -457,86 +457,110 @@ private fun PlaybackToolsMenu(
 ) {
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
-    val timer = state.sleepTimer
     var expanded by remember { mutableStateOf(false) }
-
-    val entries = buildList<MenuEntry> {
-        add(MenuSectionLabel(strings.settingsSpeed))
-        DesktopSettings.SPEED_STEPS.forEach { step ->
-            add(MenuChoice(Format.speed(step), state.speed == step) { onSpeedChange(step) })
-        }
-        add(MenuDivider)
-        add(MenuSectionLabel(strings.settingsSleepTimer))
-        add(MenuChoice(strings.sleepTimerOff, !timer.active, onCancelSleepTimer))
-        SleepTimerState.PRESET_MINUTES.forEach { minutes ->
-            val selected = timer.mode == SleepTimerMode.DURATION && timer.requestedMinutes == minutes
-            add(MenuChoice("$minutes min", selected) { onSleepTimerMinutes(minutes) })
-        }
-        add(
-            MenuChoice(
-                strings.sleepTimerEndOfTrack,
-                timer.mode == SleepTimerMode.END_OF_TRACK,
-                onSleepAtEndOfTrack
-            )
-        )
-    }
+    val highlighted = state.sleepTimer.active || state.speed != DesktopSettings.DEFAULT_SPEED
 
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(
                 imageVector = LevyraIcons.More,
                 contentDescription = strings.settingsPlayback,
-                tint = if (timer.active || state.speed != DesktopSettings.DEFAULT_SPEED) {
-                    accent
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                tint = if (highlighted) accent else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            entries.forEach { entry ->
-                when (entry) {
-                    is MenuDivider -> HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                    is MenuSectionLabel -> Text(
-                        text = entry.text,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                    )
-
-                    is MenuChoice -> DropdownMenuItem(
-                        text = { Text(entry.label) },
-                        onClick = {
-                            expanded = false
-                            entry.onSelect()
-                        },
-                        trailingIcon = {
-                            if (entry.selected) {
-                                Icon(
-                                    imageVector = OfflineIcons.Check,
-                                    contentDescription = null,
-                                    tint = accent,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    )
+            SpeedMenuSection(
+                selected = state.speed,
+                onSelect = { speed ->
+                    expanded = false
+                    onSpeedChange(speed)
                 }
-            }
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            SleepTimerMenuSection(
+                timer = state.sleepTimer,
+                onSelect = { choice ->
+                    expanded = false
+                    when (choice) {
+                        is SleepChoice.Off -> onCancelSleepTimer()
+                        is SleepChoice.EndOfTrack -> onSleepAtEndOfTrack()
+                        is SleepChoice.Minutes -> onSleepTimerMinutes(choice.value)
+                    }
+                }
+            )
         }
     }
 }
 
-private sealed interface MenuEntry
+@Composable
+private fun SpeedMenuSection(selected: Float, onSelect: (Float) -> Unit) {
+    MenuSectionLabel(text = LocalStrings.current.settingsSpeed)
+    DesktopSettings.SPEED_STEPS.forEach { step ->
+        MenuChoiceItem(
+            label = Format.speed(step),
+            selected = selected == step,
+            onClick = { onSelect(step) }
+        )
+    }
+}
 
-private data object MenuDivider : MenuEntry
+@Composable
+private fun SleepTimerMenuSection(timer: SleepTimerState, onSelect: (SleepChoice) -> Unit) {
+    val strings = LocalStrings.current
+    MenuSectionLabel(text = strings.settingsSleepTimer)
+    MenuChoiceItem(
+        label = strings.sleepTimerOff,
+        selected = !timer.active,
+        onClick = { onSelect(SleepChoice.Off) }
+    )
+    SleepTimerState.PRESET_MINUTES.forEach { minutes ->
+        MenuChoiceItem(
+            label = "$minutes min",
+            selected = timer.mode == SleepTimerMode.DURATION && timer.requestedMinutes == minutes,
+            onClick = { onSelect(SleepChoice.Minutes(minutes)) }
+        )
+    }
+    MenuChoiceItem(
+        label = strings.sleepTimerEndOfTrack,
+        selected = timer.mode == SleepTimerMode.END_OF_TRACK,
+        onClick = { onSelect(SleepChoice.EndOfTrack) }
+    )
+}
 
-private data class MenuSectionLabel(val text: String) : MenuEntry
+@Composable
+private fun MenuChoiceItem(label: String, selected: Boolean, onClick: () -> Unit) {
+    val accent = LocalAccentColor.current
+    DropdownMenuItem(
+        text = { Text(label) },
+        onClick = onClick,
+        trailingIcon = {
+            if (selected) {
+                Icon(
+                    imageVector = OfflineIcons.Check,
+                    contentDescription = null,
+                    tint = accent,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    )
+}
 
-private data class MenuChoice(
-    val label: String,
-    val selected: Boolean,
-    val onSelect: () -> Unit
-) : MenuEntry
+@Composable
+private fun MenuSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+    )
+}
+
+private sealed interface SleepChoice {
+    data object Off : SleepChoice
+
+    data object EndOfTrack : SleepChoice
+
+    data class Minutes(val value: Int) : SleepChoice
+}

@@ -338,7 +338,9 @@ class PlaybackController(
     private fun startCurrent(startAtMs: Long, forceRestart: Boolean = false) {
         val track = internalState.value.queue.current ?: return
         playbackJob?.cancel()
-        prefetchJob?.cancel()
+        if (track.id != prefetchedTrackId) {
+            prefetchJob?.cancel()
+        }
         prefetchedTrackId = ""
         pendingResumeMs = startAtMs
         internalState.update { state ->
