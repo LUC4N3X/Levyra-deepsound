@@ -361,7 +361,7 @@ private fun seekTarget(playback: PlaybackUiState, deltaMs: Long): Long {
     return if (duration > 0L) target.coerceIn(0L, duration) else target.coerceAtLeast(0L)
 }
 
-private const val APP_ICON = "icons/levyra.svg"
+private const val APP_ICON = "icons/levyra.png"
 private const val ARTWORK_CACHE_BYTES = 512L * 1024L * 1024L
 private const val MIN_WINDOW_WIDTH = 960
 private const val MIN_WINDOW_HEIGHT = 640
