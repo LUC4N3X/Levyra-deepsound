@@ -52,6 +52,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
 import com.luc4n3x.levyra.desktop.app.ui.components.LoadingRow
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
+import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
@@ -260,7 +261,7 @@ private fun SearchField(
                 },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSubmit(query) }),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).tracksTextInputFocus()
             )
             Button(
                 onClick = { onSubmit(query) },
