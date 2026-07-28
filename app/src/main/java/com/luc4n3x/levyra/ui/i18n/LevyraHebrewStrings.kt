@@ -150,6 +150,8 @@ internal fun heLocalizationEntries(): Map<String, String> = mapOf(
     "alreadyOffline" to "כבר זמין אופליין",
     "download" to "הורדה",
     "openArtist" to "פתיחת האמן",
+    "openAlbum" to "פתיחת האלבום",
+    "deleteDownload" to "מחיקת ההורדה",
     "share" to "שיתוף",
     "shareSong" to "שיתוף השיר",
     "removeFromRecentSearches" to "הסרה מהחיפושים האחרונים",
