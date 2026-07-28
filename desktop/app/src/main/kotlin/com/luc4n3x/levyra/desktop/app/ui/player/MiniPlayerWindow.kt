@@ -106,7 +106,7 @@ fun MiniPlayerWindow(
         onCloseRequest = onClose,
         state = windowState,
         title = "Levyra · Mini ${strings.navNowPlaying}",
-        icon = painterResource("icons/levyra.svg"),
+        icon = painterResource("icons/levyra.png"),
         alwaysOnTop = true,
         undecorated = true,
         transparent = true,
