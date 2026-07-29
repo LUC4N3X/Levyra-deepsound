@@ -130,3 +130,5 @@ The application layer resolves playback through Levyra's existing music pipeline
   ]
 }
 ```
+
+The unit suite asserts that the serialized catalog contains no upstream brand name, URI, external URL, source identifier, cookie, or token material.
