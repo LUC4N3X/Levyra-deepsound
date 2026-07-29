@@ -14,3 +14,4 @@ if content.count(old) != 1:
     raise SystemExit(f"Expected exactly one dynamic Home bottom-padding expression, found {content.count(old)}")
 path.write_text(content.replace(old, new, 1), encoding="utf-8")
 print("Home scroll stability patch applied")
+# Trigger after workflow registration.
