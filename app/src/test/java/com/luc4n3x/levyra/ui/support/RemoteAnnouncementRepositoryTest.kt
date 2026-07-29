@@ -122,8 +122,9 @@ class RemoteAnnouncementRepositoryTest {
         )
         val config = candidates.firstOrNull(Files::exists)
             ?: error("Packaged announcement catalog not found")
-        return RemoteAnnouncementParser.parse(Files.readString(config))
-            .also(::assertNotNull)!!
+        val catalog = RemoteAnnouncementParser.parse(Files.readString(config))
+        assertNotNull(catalog)
+        return requireNotNull(catalog)
     }
 
     private fun announcement(
