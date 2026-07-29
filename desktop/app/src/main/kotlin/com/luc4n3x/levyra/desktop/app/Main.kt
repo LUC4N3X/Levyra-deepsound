@@ -13,12 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isCtrlPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -36,9 +30,12 @@ import coil3.compose.setSingletonImageLoaderFactory
 import coil3.disk.DiskCache
 import coil3.request.crossfade
 import com.luc4n3x.levyra.desktop.app.di.AppContainer
+import com.luc4n3x.levyra.desktop.app.state.Destination
 import com.luc4n3x.levyra.desktop.app.state.PlaybackController
+import com.luc4n3x.levyra.desktop.app.state.PlaybackUiState
 import com.luc4n3x.levyra.desktop.app.ui.DesktopUpdateDialogHost
 import com.luc4n3x.levyra.desktop.app.ui.LevyraRoot
+import com.luc4n3x.levyra.desktop.app.ui.components.TextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.player.MiniPlayerWindow
@@ -137,9 +134,31 @@ fun main(args: Array<String>) {
             if (playback.current == null) miniPlayerVisible = false
         }
 
+        DisposableEffect(settings.globalMediaKeys) {
+            val mediaKeys = if (settings.globalMediaKeys) {
+                WindowsMediaKeys { action ->
+                    when (action) {
+                        MediaKeyAction.PLAY_PAUSE -> container.playbackController.togglePlayPause()
+                        MediaKeyAction.NEXT -> container.playbackController.next(automatic = false)
+                        MediaKeyAction.PREVIOUS -> container.playbackController.previous()
+                        MediaKeyAction.STOP -> container.playbackController.stop()
+                    }
+                }.takeIf { it.start() }
+            } else {
+                null
+            }
+            onDispose { mediaKeys?.stop() }
+        }
+
         LevyraTray(
             strings = strings,
             playbackController = container.playbackController,
+            trackTooltip = playback.current?.let { track ->
+                listOf(track.title, track.artist)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" · ")
+                    .ifBlank { null }
+            },
             miniPlayerVisible = miniPlayerVisible,
             playerAvailable = playback.current != null,
             onShow = ::showMainWindow,
@@ -154,7 +173,22 @@ fun main(args: Array<String>) {
             title = strings.appName,
             icon = painterResource(APP_ICON),
             onKeyEvent = { event ->
-                handleShortcut(event, container.playbackController)
+                val action = DesktopShortcuts.resolve(event, TextInputFocus.active)
+                if (action == null) {
+                    false
+                } else {
+                    applyShortcut(
+                        action = action,
+                        container = container,
+                        playback = playback,
+                        onToggleMiniPlayer = {
+                            if (playback.current != null) {
+                                miniPlayerVisible = !miniPlayerVisible
+                            }
+                        }
+                    )
+                    true
+                }
             }
         ) {
             val systemDark = isSystemInDarkTheme()
@@ -213,6 +247,7 @@ fun main(args: Array<String>) {
 private fun ApplicationScope.LevyraTray(
     strings: LevyraStrings,
     playbackController: PlaybackController,
+    trackTooltip: String?,
     miniPlayerVisible: Boolean,
     playerAvailable: Boolean,
     onShow: () -> Unit,
@@ -221,7 +256,7 @@ private fun ApplicationScope.LevyraTray(
 ) {
     Tray(
         icon = painterResource(APP_ICON),
-        tooltip = strings.appName,
+        tooltip = trackTooltip?.let { "${strings.appName} · $it" } ?: strings.appName,
         onAction = onShow,
         menu = {
             Item(strings.trayShow, onClick = onShow)
@@ -289,32 +324,44 @@ private fun persistPlacement(
     }
 }
 
-private fun handleShortcut(
-    event: KeyEvent,
-    playbackController: PlaybackController
-): Boolean {
-    if (event.type != KeyEventType.KeyDown) return false
-    return when {
-        event.key == Key.Spacebar && !event.isCtrlPressed -> {
-            playbackController.togglePlayPause()
-            true
-        }
+private fun applyShortcut(
+    action: ShortcutAction,
+    container: AppContainer,
+    playback: PlaybackUiState,
+    onToggleMiniPlayer: () -> Unit
+) {
+    val controller = container.playbackController
+    when (action) {
+        ShortcutAction.PLAY_PAUSE -> controller.togglePlayPause()
+        ShortcutAction.NEXT -> controller.next(automatic = false)
+        ShortcutAction.PREVIOUS -> controller.previous()
+        ShortcutAction.SEEK_FORWARD -> controller.seekTo(
+            seekTarget(playback, DesktopShortcuts.SEEK_STEP_MS)
+        )
 
-        event.key == Key.DirectionRight && event.isCtrlPressed -> {
-            playbackController.next(automatic = false)
-            true
-        }
+        ShortcutAction.SEEK_BACKWARD -> controller.seekTo(
+            seekTarget(playback, -DesktopShortcuts.SEEK_STEP_MS)
+        )
 
-        event.key == Key.DirectionLeft && event.isCtrlPressed -> {
-            playbackController.previous()
-            true
-        }
-
-        else -> false
+        ShortcutAction.VOLUME_UP -> controller.setVolume(playback.volume + DesktopShortcuts.VOLUME_STEP)
+        ShortcutAction.VOLUME_DOWN -> controller.setVolume(playback.volume - DesktopShortcuts.VOLUME_STEP)
+        ShortcutAction.TOGGLE_MUTE -> controller.toggleMuted()
+        ShortcutAction.TOGGLE_SHUFFLE -> controller.toggleShuffle()
+        ShortcutAction.CYCLE_REPEAT -> controller.cycleRepeat()
+        ShortcutAction.TOGGLE_QUEUE -> container.appModel.toggleQueue()
+        ShortcutAction.TOGGLE_MINI_PLAYER -> onToggleMiniPlayer()
+        ShortcutAction.OPEN_SEARCH -> container.appModel.navigate(Destination.SEARCH)
+        ShortcutAction.OPEN_NOW_PLAYING -> container.appModel.navigate(Destination.NOW_PLAYING)
     }
 }
 
-private const val APP_ICON = "icons/levyra.svg"
+private fun seekTarget(playback: PlaybackUiState, deltaMs: Long): Long {
+    val target = playback.positionMs + deltaMs
+    val duration = playback.durationMs
+    return if (duration > 0L) target.coerceIn(0L, duration) else target.coerceAtLeast(0L)
+}
+
+private const val APP_ICON = "icons/levyra.png"
 private const val ARTWORK_CACHE_BYTES = 512L * 1024L * 1024L
 private const val MIN_WINDOW_WIDTH = 960
 private const val MIN_WINDOW_HEIGHT = 640
