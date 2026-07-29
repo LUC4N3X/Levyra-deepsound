@@ -1,0 +1,73 @@
+name: Apply Editorial Review Fixes
+
+on:
+  push:
+    branches:
+      - feat/editorial-collector
+    paths:
+      - tools/apply_editorial_review_fixes.py
+      - .github/workflows/apply-editorial-review-fixes.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-editorial-review-fixes
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/editorial-collector
+          fetch-depth: 0
+
+      - name: Apply review fixes
+        run: python tools/apply_editorial_review_fixes.py
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
+
+      - name: Verify collector
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -e 'tools/levyra-editorial[dev]'
+          python -m compileall -q tools/levyra-editorial/levyra_editorial
+          ruff check tools/levyra-editorial
+          pytest tools/levyra-editorial/tests
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Verify Android integration
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.EditorialCatalogParserTest' \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest'
+
+      - name: Commit verified fixes
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && { echo 'No changes to commit.'; exit 0; }
+          git commit -m 'fix(editorial): harden catalog pipeline and artwork continuity'
+          git push origin HEAD:feat/editorial-collector
