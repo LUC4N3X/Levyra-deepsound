@@ -6,19 +6,25 @@ import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.CacheControl
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
+import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
 
 /**
  * Reads Levyra's public, pre-normalized editorial catalog.
@@ -84,20 +90,36 @@ internal class EditorialChartsRepository(context: Context) {
         }
     }
 
-    private fun fetchRemoteSnapshot(): CatalogSnapshot? {
-        val request = Request.Builder()
-            .url(CATALOG_URL)
-            .header("Accept", "application/json")
-            .header("User-Agent", "Levyra/${BuildConfig.VERSION_NAME} Android")
-            .cacheControl(REMOTE_CACHE_CONTROL)
-            .build()
-        return httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return null
-            val body = response.body?.string()?.takeIf { it.isNotBlank() } ?: return null
-            if (body.toByteArray(StandardCharsets.UTF_8).size > MAX_CATALOG_BYTES) return null
-            EditorialCatalogParser.parse(body, System.currentTimeMillis())
+    private suspend fun fetchRemoteSnapshot(): CatalogSnapshot? =
+        suspendCancellableCoroutine { continuation ->
+            val request = Request.Builder()
+                .url(CATALOG_URL)
+                .header("Accept", "application/json")
+                .header("User-Agent", "Levyra/${BuildConfig.VERSION_NAME} Android")
+                .cacheControl(REMOTE_CACHE_CONTROL)
+                .build()
+            val call = httpClient.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, error: IOException) {
+                    if (continuation.isActive) continuation.resume(null)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    val snapshot = runCatching {
+                        response.use { current ->
+                            if (!current.isSuccessful) return@use null
+                            val body = current.body?.string()?.takeIf(String::isNotBlank) ?: return@use null
+                            if (body.toByteArray(StandardCharsets.UTF_8).size > MAX_CATALOG_BYTES) {
+                                return@use null
+                            }
+                            EditorialCatalogParser.parse(body, System.currentTimeMillis())
+                        }
+                    }.getOrNull()
+                    if (continuation.isActive) continuation.resume(snapshot)
+                }
+            })
         }
-    }
 
     private fun readStoredSnapshot(): CatalogSnapshot? {
         if (!cacheFile.isFile || cacheFile.length() !in 1..MAX_CATALOG_BYTES.toLong()) return null
@@ -107,13 +129,12 @@ internal class EditorialChartsRepository(context: Context) {
 
     private fun persist(body: String) {
         runCatching {
-            cacheFile.parentFile?.mkdirs()
-            val temporary = File(cacheFile.parentFile, "${cacheFile.name}.tmp")
+            val parent = cacheFile.parentFile ?: return
+            parent.mkdirs()
+            val temporary = File(parent, "${cacheFile.name}.tmp")
             temporary.writeText(body, Charsets.UTF_8)
-            if (!temporary.renameTo(cacheFile)) {
-                cacheFile.writeText(body, Charsets.UTF_8)
-                temporary.delete()
-            }
+            temporary.copyTo(cacheFile, overwrite = true)
+            temporary.delete()
         }.onFailure { error ->
             Timber.w(error, "Unable to persist editorial chart catalog")
         }
@@ -197,7 +218,7 @@ internal object EditorialCatalogParser {
                 accentEnd = palette.second,
                 isrc = item.optString("isrc").trim(),
                 releaseDate = releaseDate,
-                year = releaseDate.take(4).takeIf { it.all(Char::isDigit) }.orEmpty(),
+                year = releaseDate.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty(),
                 explicit = item.optBoolean("explicit", false),
                 metadataProvider = EDITORIAL_SOURCE,
                 metadataConfidence = 96
@@ -218,7 +239,9 @@ internal object EditorialCatalogParser {
 
     private fun safeHttpsUrl(value: String): String {
         val normalized = value.trim()
-        return normalized.takeIf { it.startsWith("https://", ignoreCase = true) }.orEmpty()
+        return normalized.takeIf {
+            it.length <= MAX_URL_LENGTH && it.startsWith("https://", ignoreCase = true)
+        }.orEmpty()
     }
 
     private fun chartIdentity(value: String): ChartIdentity {
@@ -236,6 +259,7 @@ internal object EditorialCatalogParser {
 
     private const val SUPPORTED_SCHEMA_VERSION = 1
     private const val MAX_TRACKS_PER_MARKET = 100
+    private const val MAX_URL_LENGTH = 2_048
     private const val EDITORIAL_SOURCE = "Levyra Editorial"
     private const val EDITORIAL_ALBUM = "Levyra Top 50"
 
