@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+import hashlib
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -11,6 +12,21 @@ def _compact(value: Any) -> Any:
     if isinstance(value, list):
         return [_compact(item) for item in value]
     return value
+
+
+def _public_track_id(track: Track) -> str:
+    """Create a stable Levyra-owned identity without publishing upstream identifiers."""
+    artist_names = "|".join(artist.name.strip().casefold() for artist in track.artists)
+    identity = "\u001f".join(
+        (
+            track.title.strip().casefold(),
+            artist_names,
+            track.album.name.strip().casefold(),
+            str(track.duration_ms),
+        )
+    )
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:20]
+    return f"levyra-{digest}"
 
 
 @dataclass(frozen=True)
@@ -46,21 +62,17 @@ class Track:
         return _compact(
             {
                 "position": self.position,
-                "id": self.id,
-                "uri": self.uri,
+                "id": _public_track_id(self),
                 "title": self.title,
-                "artists": [asdict(artist) for artist in self.artists],
+                "artists": [{"name": artist.name} for artist in self.artists],
                 "album": {
-                    "id": self.album.id,
                     "name": self.album.name,
                     "releaseDate": self.album.release_date,
                     "artworkUrl": self.album.artwork_url,
-                    "externalUrl": self.album.external_url,
                 },
                 "durationMs": self.duration_ms,
                 "explicit": self.explicit,
                 "isrc": self.isrc,
-                "externalUrl": self.external_url,
                 "artworkUrl": self.artwork_url,
             }
         )
@@ -87,11 +99,7 @@ class Collection:
                 "kind": self.kind,
                 "market": self.market,
                 "title": self.title,
-                "description": self.description,
-                "sourceId": self.source_id,
-                "sourceUrl": self.source_url,
                 "artworkUrl": self.artwork_url,
-                "snapshotId": self.snapshot_id,
                 "totalSourceItems": self.total_source_items,
                 "tracks": [track.to_dict() for track in self.tracks],
             }
