@@ -121,16 +121,20 @@ internal object RemoteAnnouncementRules {
 }
 
 internal object RemoteAnnouncementParser {
+    private val supportedLanguageCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+
     fun parse(raw: String): RemoteAnnouncementCatalog? = runCatching {
         val root = JSONObject(raw)
         val schemaVersion = root.optInt("schemaVersion", -1)
         if (schemaVersion != REMOTE_SCHEMA_VERSION) return@runCatching null
         val source = root.optJSONArray("announcements") ?: return@runCatching null
         if (source.length() > MAX_ANNOUNCEMENTS) return@runCatching null
+        val seenIds = hashSetOf<String>()
         val announcements = buildList {
             for (index in 0 until source.length()) {
                 val item = source.optJSONObject(index) ?: continue
-                parseAnnouncement(item)?.let(::add)
+                val announcement = parseAnnouncement(item) ?: continue
+                if (seenIds.add(announcement.id)) add(announcement)
             }
         }
         RemoteAnnouncementCatalog(schemaVersion, announcements)
@@ -154,11 +158,10 @@ internal object RemoteAnnouncementParser {
         val translations = linkedMapOf<String, OpenSourceSupportCopy>()
         val keys = translationsObject.keys()
         while (keys.hasNext()) {
-            val sourceCode = keys.next()
-            val normalized = LevyraLanguageCatalog.normalize(sourceCode)
-            if (normalized !in LevyraLanguageCatalog.languages.map { it.code }.toSet()) continue
+            val sourceCode = keys.next().trim().lowercase()
+            if (sourceCode !in supportedLanguageCodes) continue
             val copyObject = translationsObject.optJSONObject(sourceCode) ?: continue
-            parseCopy(copyObject, actionUrl != null)?.let { translations[normalized] = it }
+            parseCopy(copyObject, actionUrl != null)?.let { translations[sourceCode] = it }
         }
         if (translations["en"] == null) return@runCatching null
         RemoteAnnouncement(
