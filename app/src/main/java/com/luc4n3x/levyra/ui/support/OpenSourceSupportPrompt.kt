@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.support
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,6 +58,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import com.luc4n3x.levyra.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraOrange
 import com.luc4n3x.levyra.ui.theme.LevyraViolet
@@ -102,15 +104,17 @@ fun OpenSourceSupportPromptGate(
     if (!visible) return
 
     val copy = remember(languageCode) { OpenSourceSupportStrings.forCode(languageCode) }
+    val linkFailureMessage = remember(languageCode) { LevyraStrings.forCode(languageCode).cannotOpenExternalLink }
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
     val dismiss = {
         OpenSourceSupportPromptStore.markSeen(context)
         visible = false
     }
     val openRepository = {
-        dismiss()
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(REPOSITORY_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(intent) }
+            .onSuccess { dismiss() }
+            .onFailure { Toast.makeText(context, linkFailureMessage, Toast.LENGTH_LONG).show() }
         Unit
     }
 
