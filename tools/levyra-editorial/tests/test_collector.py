@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+import requests
 
 from levyra_editorial.collector import (
     build_catalog,
@@ -14,6 +15,7 @@ from levyra_editorial.collector import (
 )
 from levyra_editorial.spotify import (
     AuthenticationError,
+    SpotifyWebClient,
     decode_totp_secret,
     generate_totp,
     normalize_sp_dc,
@@ -72,6 +74,43 @@ class FakeClient:
         ]
 
 
+class FakeResponse:
+    """Small response double for authentication error-path tests."""
+
+    def __init__(self, *, payload: object | None = None, headers: dict[str, str] | None = None) -> None:
+        self._payload = payload
+        self.headers = headers or {}
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> object:
+        return self._payload
+
+
+class SecretTimeoutSession:
+    """Session double that fails before the TOTP dictionary is available."""
+
+    def get(self, *_args: object, **_kwargs: object) -> FakeResponse:
+        raise requests.Timeout("secret dictionary timeout")
+
+    def close(self) -> None:
+        return None
+
+
+class ServerTimeTimeoutSession:
+    """Session double that fails while obtaining the source clock."""
+
+    def get(self, *_args: object, **_kwargs: object) -> FakeResponse:
+        return FakeResponse(payload={"61": [44, 55, 47, 42]})
+
+    def head(self, *_args: object, **_kwargs: object) -> FakeResponse:
+        raise requests.Timeout("server time timeout")
+
+    def close(self) -> None:
+        return None
+
+
 def test_normalize_sp_dc_accepts_value_and_cookie_string() -> None:
     value = "A" * 40
     assert normalize_sp_dc(value) == value
@@ -99,6 +138,20 @@ def test_totp_secret_selection_uses_latest_numeric_version() -> None:
     assert version == 61
     assert secret == decode_totp_secret([44, 55, 47, 42])
     assert secret
+
+
+def test_authentication_wraps_secret_dictionary_request_failures() -> None:
+    client = SpotifyWebClient("A" * 40, session=SecretTimeoutSession())
+
+    with pytest.raises(AuthenticationError, match="secret dictionary could not be retrieved"):
+        client.authenticate()
+
+
+def test_authentication_wraps_server_time_request_failures() -> None:
+    client = SpotifyWebClient("A" * 40, session=ServerTimeTimeoutSession())
+
+    with pytest.raises(AuthenticationError, match="server time could not be retrieved"):
+        client.authenticate()
 
 
 def test_collector_builds_compact_account_free_catalog(tmp_path: Path) -> None:
