@@ -13,6 +13,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
@@ -30,10 +31,16 @@ internal class YoutubeMusicChartsRepository(context: Context) {
     private val appContext = context.applicationContext
     private val httpClient = LevyraHttpClientFactory.feeds(appContext)
     private val musicRepository = YoutubeMusicRepository(appContext)
+    private val editorialCharts = EditorialChartsRepository(appContext)
     private val playlistStore = appContext.getSharedPreferences(PLAYLIST_STORE_NAME, Context.MODE_PRIVATE)
 
     suspend fun topTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
         val request = chartRequest(country, limit)
+        val editorial = withTimeoutOrNull(EDITORIAL_PRIMARY_BUDGET_MS) {
+            editorialCharts.topTracks(request.country, request.limit)
+        }.orEmpty()
+        if (editorial.isNotEmpty()) return@withContext editorial
+
         val cache = readPlaylistCache(request.country, System.currentTimeMillis())
         val candidates = resolvePlaylistCandidates(request, cache)
         val tracks = loadFirstAvailablePlaylist(candidates, request)
@@ -246,6 +253,7 @@ internal class YoutubeMusicChartsRepository(context: Context) {
         const val CLIENT_VERSION = "1.20260423.01.00"
         const val PLAYLIST_STORE_NAME = "levyra_youtube_music_charts"
         const val PLAYLIST_ID_TTL_MS = 7L * 24L * 60L * 60L * 1000L
+        const val EDITORIAL_PRIMARY_BUDGET_MS = 1_500L
         const val MAX_PLAYLIST_PAGES = 8
         const val CHART_SOURCE = "YouTube Music Charts"
         const val CHART_ALBUM = "YouTube Music Charts"
