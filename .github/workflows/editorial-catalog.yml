@@ -122,7 +122,17 @@ jobs:
           output="build/editorial/catalog.json"
 
           if ! git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
+            source_ref="$(git rev-parse HEAD)"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout --orphan "${branch}"
+            git rm -rf .
+            mkdir -p catalog
+            cp "${output}" catalog/editorial.json
+            git add catalog/editorial.json
+            git commit -m "chore(editorial): bootstrap data branch"
             git push origin "HEAD:refs/heads/${branch}"
+            git checkout --detach "${source_ref}"
           fi
 
           current_sha="$(gh api "${api_path}?ref=${branch}" --jq .sha 2>/dev/null || true)"
