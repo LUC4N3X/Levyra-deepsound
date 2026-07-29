@@ -4,6 +4,11 @@ on:
   pull_request:
     paths:
       - "tools/levyra-editorial/**"
+      - "app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/ChartsRepository.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicChartsRepository.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
+      - "app/src/test/java/com/luc4n3x/levyra/data/Editorial*.kt"
       - ".github/workflows/editorial-catalog.yml"
   schedule:
     - cron: "17 */6 * * *"
@@ -13,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: editorial-catalog-${{ github.event_name }}-${{ github.ref }}
+  group: editorial-catalog-${{ github.event_name == 'pull_request' && github.ref || 'publisher' }}
   cancel-in-progress: true
 
 jobs:
@@ -21,36 +26,24 @@ jobs:
     name: Verify Collector
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: tools/levyra-editorial/pyproject.toml
-
       - name: Install Collector
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
-
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
       - name: Static Checks
-        shell: bash
         run: |
           set -euo pipefail
           python -m compileall -q tools/levyra-editorial/levyra_editorial
           ruff check tools/levyra-editorial
-
       - name: Unit Tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          pytest tools/levyra-editorial/tests
+        run: pytest tools/levyra-editorial/tests
 
   integration:
     name: Test Live Editorial Collection
@@ -60,49 +53,37 @@ jobs:
       github.actor != 'dependabot[bot]'
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     permissions:
       contents: read
     env:
       LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
-      LEVYRA_EDITORIAL_TOTP_SECRETS_URL: ${{ vars.LEVYRA_EDITORIAL_TOTP_SECRETS_URL }}
-
     steps:
       - name: Checkout Pull Request
         uses: actions/checkout@v7
-
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: tools/levyra-editorial/pyproject.toml
-
       - name: Install Collector
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
       - name: Require Editorial Secret
-        shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${LEVYRA_EDITORIAL_SP_DC:-}" ]; then
-            echo "::error::Missing repository secret LEVYRA_EDITORIAL_SP_DC"
+          test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
+      - name: Generate and Validate Live Catalog
+        run: |
+          set -euo pipefail
+          timeout --foreground 240s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
+          levyra-editorial --validate build/editorial/catalog.json
+          test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
+          if jq -e '.. | objects | has("artworkUrl") or has("isrc")' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains source artwork or unsupported ISRC fields"
             exit 1
           fi
-
-      - name: Generate and Validate Live Catalog
-        shell: bash
-        run: |
-          set -euo pipefail
-          timeout --foreground 180s levyra-editorial \
-            --config tools/levyra-editorial/config.json \
-            --output build/editorial/catalog.json
-          levyra-editorial --validate build/editorial/catalog.json
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
-
       - name: Upload Pull Request Diagnostics
         uses: actions/upload-artifact@v7
         with:
@@ -124,49 +105,39 @@ jobs:
       )
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     permissions:
       contents: write
     env:
       LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
-      LEVYRA_EDITORIAL_TOTP_SECRETS_URL: ${{ vars.LEVYRA_EDITORIAL_TOTP_SECRETS_URL }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
+        with:
+          fetch-depth: 0
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: tools/levyra-editorial/pyproject.toml
-
       - name: Install Collector
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
       - name: Require Editorial Secret
-        shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${LEVYRA_EDITORIAL_SP_DC:-}" ]; then
-            echo "::error::Missing repository secret LEVYRA_EDITORIAL_SP_DC"
+          test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
+      - name: Generate Catalog
+        run: |
+          set -euo pipefail
+          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
+          levyra-editorial --validate build/editorial/catalog.json
+          test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
+          if jq -e '.. | objects | has("artworkUrl") or has("isrc")' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains source artwork or unsupported ISRC fields"
             exit 1
           fi
-
-      - name: Generate Catalog
-        shell: bash
-        run: |
-          set -euo pipefail
-          timeout --foreground 300s levyra-editorial \
-            --config tools/levyra-editorial/config.json \
-            --output build/editorial/catalog.json
-          levyra-editorial --validate build/editorial/catalog.json
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
-
       - name: Upload Diagnostics
         uses: actions/upload-artifact@v7
         with:
@@ -176,62 +147,36 @@ jobs:
             build/editorial/catalog.sha256
           if-no-files-found: error
           retention-days: 14
-
       - name: Publish Last Valid Catalog
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: |
           set -euo pipefail
-
           branch="editorial-data"
-          api_path="repos/${GITHUB_REPOSITORY}/contents/catalog/editorial.json"
-          output="build/editorial/catalog.json"
+          source_ref="$(git rev-parse HEAD)"
+          cp build/editorial/catalog.json /tmp/editorial.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if ! git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
-            source_ref="$(git rev-parse HEAD)"
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git checkout --orphan "${branch}"
-            git rm -rf .
-            mkdir -p catalog
-            cp "${output}" catalog/editorial.json
-            git add catalog/editorial.json
-            git commit -m "chore(editorial): bootstrap data branch"
-            git push origin "HEAD:refs/heads/${branch}"
-            git checkout --detach "${source_ref}"
-          fi
-
-          current_sha="$(gh api "${api_path}?ref=${branch}" --jq .sha 2>/dev/null || true)"
-          if [ -n "${current_sha}" ]; then
-            gh api "${api_path}?ref=${branch}" --jq .content \
-              | tr -d '\n' \
-              | base64 --decode \
-              > /tmp/current-editorial.json
-            jq -S 'del(.generatedAt)' /tmp/current-editorial.json > /tmp/current-editorial-content.json
-            jq -S 'del(.generatedAt)' "${output}" > /tmp/new-editorial-content.json
-            if cmp -s /tmp/current-editorial-content.json /tmp/new-editorial-content.json; then
-              echo "Catalog content is unchanged; publication skipped."
-              exit 0
+          if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
+            git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
+            git switch --force-create "${branch}" "origin/${branch}"
+            if [ -f catalog/editorial.json ]; then
+              jq -S 'del(.generatedAt)' catalog/editorial.json > /tmp/current-editorial-content.json
+              jq -S 'del(.generatedAt)' /tmp/editorial.json > /tmp/new-editorial-content.json
+              if cmp -s /tmp/current-editorial-content.json /tmp/new-editorial-content.json; then
+                echo "Catalog content is unchanged; publication skipped."
+                git switch --detach "${source_ref}"
+                exit 0
+              fi
             fi
-          fi
-
-          encoded="$(base64 -w 0 "${output}")"
-          message="chore(editorial): refresh catalog from run ${GITHUB_RUN_NUMBER}"
-
-          if [ -n "${current_sha}" ]; then
-            gh api --method PUT "${api_path}" \
-              -f branch="${branch}" \
-              -f message="${message}" \
-              -f content="${encoded}" \
-              -f sha="${current_sha}" \
-              >/dev/null
           else
-            gh api --method PUT "${api_path}" \
-              -f branch="${branch}" \
-              -f message="${message}" \
-              -f content="${encoded}" \
-              >/dev/null
+            git switch --orphan "${branch}"
+            git rm -rf .
           fi
 
+          mkdir -p catalog
+          cp /tmp/editorial.json catalog/editorial.json
+          git add catalog/editorial.json
+          git commit -m "chore(editorial): refresh catalog from run ${GITHUB_RUN_NUMBER}"
+          git push origin "HEAD:refs/heads/${branch}"
+          git switch --detach "${source_ref}"
           echo "Published catalog to ${branch}/catalog/editorial.json"
