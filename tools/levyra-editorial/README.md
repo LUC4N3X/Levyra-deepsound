@@ -7,13 +7,18 @@ It runs only in GitHub Actions. The long-lived web session value is stored as an
 ## Security model
 
 - The secret is never stored in the repository, APK, generated catalog, artifacts, or logs.
-- Pull-request jobs run tests without access to repository secrets.
+- Same-repository pull requests can run the live collector with the repository secret; fork and Dependabot pull requests do not receive it.
+- The pull-request integration job has read-only repository permissions and never publishes data.
 - The scheduled collector fails closed: if authentication, parsing, or validation fails, the last published catalog is left untouched.
 - Generated output is scanned for credential-related keys before publication.
 - A dedicated source account should be used. Do not reuse a personal password or session.
 - Rotate the secret immediately if a workflow log, local terminal, or third-party service ever receives it.
 
 The source account is not shipped to users. Android and Desktop will consume only the generated public catalog.
+
+## Implementation note
+
+The collector is an original Python implementation written for Levyra. The actively maintained SimpMusic project was used as a behavioral reference for the current `sp_dc` plus TOTP web-session flow, including the dedicated server-time endpoint and mobile web-player token profile. No SimpMusic source code was copied into Levyra.
 
 ## Repository secret
 
@@ -72,6 +77,7 @@ levyra-editorial --validate ../../build/editorial/catalog.json
 `.github/workflows/editorial-catalog.yml` runs:
 
 - unit tests and static checks on pull requests;
+- a live read-only collection test on same-repository pull requests;
 - collection every six hours and on manual dispatch;
 - validation before any publication;
 - artifact upload for diagnostics;
