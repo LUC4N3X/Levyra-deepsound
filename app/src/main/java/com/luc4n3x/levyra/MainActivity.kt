@@ -25,7 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
-import com.luc4n3x.levyra.ui.support.OpenSourceSupportPromptGate
+import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
                     viewModel = viewModel,
                     isInPictureInPicture = pipMode.value
                 )
-                OpenSourceSupportPromptGate(
+                RemoteAnnouncementGate(
                     enabled = !uiState.showOnboarding && !pipMode.value,
                     languageCode = uiState.languageCode
                 )
