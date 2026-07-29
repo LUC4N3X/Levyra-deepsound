@@ -1,0 +1,57 @@
+name: Apply Home Scroll Stability Fix
+
+on:
+  push:
+    branches:
+      - feat/editorial-collector
+    paths:
+      - tools/apply_home_scroll_stability_fix.py
+      - .github/workflows/apply-home-scroll-stability-fix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-home-scroll-stability-fix
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.event.head_commit.message == 'chore(ui): trigger home scroll stability fix'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/editorial-collector
+          fetch-depth: 0
+
+      - name: Apply scroll stability patch
+        run: python tools/apply_home_scroll_stability_fix.py
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Verify Android
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest
+
+      - name: Commit verified fix
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git diff --cached --quiet && { echo 'No changes to commit.'; exit 0; }
+          git commit -m 'fix(ui): preserve Home scroll when player changes'
+          git pull --rebase origin feat/editorial-collector
+          git push origin HEAD:feat/editorial-collector
