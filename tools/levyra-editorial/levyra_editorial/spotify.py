@@ -3,10 +3,12 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import os
 import struct
-from collections.abc import Mapping
+import time
+from collections.abc import Mapping, Sequence
 from email.utils import parsedate_to_datetime
 from typing import Any
 
@@ -20,8 +22,13 @@ OPEN_SPOTIFY_URL = "https://open.spotify.com/"
 SERVER_TIME_URL = "https://open.spotify.com/api/server-time"
 TOKEN_URL = "https://open.spotify.com/api/token"
 API_BASE_URL = "https://api.spotify.com/v1"
+PATHFINDER_URL = "https://api-partner.spotify.com/pathfinder/v1/query"
+
 DEFAULT_SECRET_DICT_URL = (
     "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/main/secrets/secretDict.json"
+)
+DEFAULT_PLAYLIST_QUERY_HASH = (
+    "a65e12194ed5fc443a1cdebed5fabe33ca5b07b987185d63c72483867ad13cb4"
 )
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -72,10 +79,16 @@ def normalize_sp_dc(raw_value: str) -> str:
 
 def decode_totp_secret(cipher_bytes: list[int]) -> str:
     """Decode one versioned web-player TOTP cipher entry into a Base32 secret."""
-    invalid = any(not isinstance(value, int) or value not in range(256) for value in cipher_bytes)
+    invalid = any(
+        not isinstance(value, int) or value not in range(256)
+        for value in cipher_bytes
+    )
     if not cipher_bytes or invalid:
         raise AuthenticationError("The TOTP secret dictionary contains invalid bytes.")
-    transformed = [value ^ ((index % 33) + 9) for index, value in enumerate(cipher_bytes)]
+    transformed = [
+        value ^ ((index % 33) + 9)
+        for index, value in enumerate(cipher_bytes)
+    ]
     joined = "".join(str(value) for value in transformed).encode("ascii")
     return base64.b32encode(joined).decode("ascii").rstrip("=")
 
@@ -98,11 +111,15 @@ def generate_totp(
     counter = int(timestamp_seconds) // interval
     digest = hmac.new(key, struct.pack(">Q", counter), hashlib.sha1).digest()
     offset = digest[-1] & 0x0F
-    code = (struct.unpack(">I", digest[offset : offset + 4])[0] & 0x7FFFFFFF) % (10**digits)
+    code = (
+        struct.unpack(">I", digest[offset : offset + 4])[0] & 0x7FFFFFFF
+    ) % (10**digits)
     return f"{code:0{digits}d}"
 
 
-def select_latest_totp_secret(secret_dict: Mapping[str, Any]) -> tuple[int, str]:
+def select_latest_totp_secret(
+    secret_dict: Mapping[str, Any],
+) -> tuple[int, str]:
     """Select and decode the highest numeric TOTP secret version."""
     candidates: list[tuple[int, list[int]]] = []
     for raw_version, raw_secret in secret_dict.items():
@@ -146,8 +163,10 @@ def build_session() -> requests.Session:
 class SpotifyWebClient:
     """Read public editorial metadata through a dedicated web-player session.
 
-    The session cookie is used only to obtain a short-lived bearer token. It is
-    never returned by this class, serialized, or included in log messages.
+    Authentication is performed with the dedicated source account's ``sp_dc``
+    session. Playlist reads use the web player's persisted-query endpoint rather
+    than the developer Web API, avoiding the shared-runner rate limit observed
+    on ``api.spotify.com/v1/playlists``.
     """
 
     def __init__(
@@ -156,6 +175,7 @@ class SpotifyWebClient:
         *,
         session: requests.Session | None = None,
         secret_dict_url: str | None = None,
+        playlist_query_hash: str | None = None,
         timeout_seconds: float = 8.0,
     ) -> None:
         self._sp_dc = normalize_sp_dc(sp_dc)
@@ -165,10 +185,16 @@ class SpotifyWebClient:
             or os.environ.get("LEVYRA_EDITORIAL_TOTP_SECRETS_URL")
             or DEFAULT_SECRET_DICT_URL
         )
+        self._playlist_query_hash = (
+            playlist_query_hash
+            or os.environ.get("LEVYRA_EDITORIAL_PLAYLIST_QUERY_HASH")
+            or DEFAULT_PLAYLIST_QUERY_HASH
+        )
         self._timeout = timeout_seconds
         self._access_token: str | None = None
         self._client_id: str | None = None
         self._expires_at_ms = 0
+        self._playlist_pages: dict[tuple[str, int], dict[str, Any]] = {}
 
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
@@ -180,7 +206,11 @@ class SpotifyWebClient:
 
         last_error: Exception | None = None
         for product_type, reason in TOKEN_ATTEMPTS:
-            LOGGER.info("Trying editorial token profile %s / %s.", product_type, reason)
+            LOGGER.info(
+                "Trying editorial token profile %s / %s.",
+                product_type,
+                reason,
+            )
             try:
                 token_data = self._request_access_token(
                     product_type=product_type,
@@ -194,7 +224,11 @@ class SpotifyWebClient:
                     product_type,
                 )
                 return
-            except (requests.RequestException, ValueError, AuthenticationError) as error:
+            except (
+                requests.RequestException,
+                ValueError,
+                AuthenticationError,
+            ) as error:
                 last_error = error
                 self._access_token = None
                 self._client_id = None
@@ -210,53 +244,183 @@ class SpotifyWebClient:
             "Rotate LEVYRA_EDITORIAL_SP_DC and retry the workflow."
         ) from last_error
 
-    def get_playlist_metadata(self, playlist_id: str, market: str) -> dict[str, Any]:
+    def get_playlist_metadata(
+        self,
+        playlist_id: str,
+        market: str,
+    ) -> dict[str, Any]:
         """Fetch public metadata for one configured playlist."""
         normalized_id = self._validate_playlist_id(playlist_id)
-        response = self._api_get(
-            f"/playlists/{normalized_id}",
-            params={
-                "market": _api_market(market),
-                "fields": (
-                    "id,name,description,external_urls,images,snapshot_id,"
-                    "tracks(total)"
-                ),
+        page = self._get_playlist_page(normalized_id, offset=0)
+        playlist = _playlist_union(page)
+        content = _mapping(playlist.get("content"))
+        total = _non_negative_int(content.get("totalCount")) if content else 0
+        images = _playlist_images(playlist)
+        return {
+            "id": normalized_id,
+            "name": _string(playlist.get("name")) or normalized_id,
+            "description": _string(playlist.get("description")) or "",
+            "external_urls": {
+                "spotify": f"https://open.spotify.com/playlist/{normalized_id}"
             },
-        )
-        return _require_object(response, "playlist metadata")
+            "images": images,
+            "snapshot_id": _playlist_snapshot_id(playlist),
+            "tracks": {"total": total},
+        }
 
-    def iter_playlist_items(self, playlist_id: str, market: str) -> list[dict[str, Any]]:
+    def iter_playlist_items(
+        self,
+        playlist_id: str,
+        market: str,
+    ) -> list[dict[str, Any]]:
         """Fetch every track item from one configured playlist, preserving order."""
         normalized_id = self._validate_playlist_id(playlist_id)
-        url: str | None = f"{API_BASE_URL}/playlists/{normalized_id}/tracks"
-        params: dict[str, Any] | None = {
-            "market": _api_market(market),
-            "limit": 100,
-            "offset": 0,
-            "additional_types": "track",
-        }
-        items: list[dict[str, Any]] = []
+        offset = 0
+        output: list[dict[str, Any]] = []
+        total: int | None = None
 
-        while url:
-            payload = self._api_get_url(url, params=params)
-            page = _require_object(payload, "playlist items")
-            raw_items = page.get("items", [])
+        while total is None or offset < total:
+            page = self._get_playlist_page(normalized_id, offset=offset)
+            playlist = _playlist_union(page)
+            content = _mapping(playlist.get("content"))
+            if content is None:
+                raise SourceApiError(
+                    "The editorial playlist response is missing its content page."
+                )
+            raw_items = content.get("items")
             if not isinstance(raw_items, list):
-                raise SourceApiError("The playlist items response has an invalid shape.")
-            items.extend(item for item in raw_items if isinstance(item, dict))
-            next_url = page.get("next")
-            url = next_url if isinstance(next_url, str) and next_url.startswith("https://") else None
-            params = None
+                raise SourceApiError(
+                    "The editorial playlist response has an invalid item list."
+                )
+            if total is None:
+                total = _non_negative_int(content.get("totalCount"))
+            converted = [
+                item
+                for raw_item in raw_items
+                if isinstance(raw_item, Mapping)
+                if (item := _convert_playlist_item(raw_item)) is not None
+            ]
+            output.extend(converted)
 
-        return items
+            consumed = len(raw_items)
+            if consumed == 0:
+                break
+            offset += consumed
+            if total is None or total <= offset:
+                break
+
+        return output
 
     def close(self) -> None:
         """Close the underlying HTTP session."""
         self._session.close()
 
+    def _get_playlist_page(
+        self,
+        playlist_id: str,
+        *,
+        offset: int,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        cache_key = (playlist_id, offset)
+        cached = self._playlist_pages.get(cache_key)
+        if cached is not None:
+            return cached
+
+        if self._access_token is None:
+            self.authenticate()
+
+        params = {
+            "operationName": "fetchPlaylist",
+            "variables": json.dumps(
+                {
+                    "uri": f"spotify:playlist:{playlist_id}",
+                    "offset": offset,
+                    "limit": limit,
+                    "enableWatchFeedEntrypoint": False,
+                },
+                separators=(",", ":"),
+            ),
+            "extensions": json.dumps(
+                {
+                    "persistedQuery": {
+                        "version": 1,
+                        "sha256Hash": self._playlist_query_hash,
+                    }
+                },
+                separators=(",", ":"),
+            ),
+        }
+
+        response = self._pathfinder_request(params)
+        if response.status_code == 401:
+            self.authenticate()
+            response = self._pathfinder_request(params)
+
+        if response.status_code == 429:
+            delay = _bounded_retry_after(response.headers.get("Retry-After"))
+            if delay > 0:
+                LOGGER.warning(
+                    "Editorial pathfinder rate-limited; retrying once in %d second(s).",
+                    delay,
+                )
+                time.sleep(delay)
+                response = self._pathfinder_request(params)
+
+        if response.status_code >= 400:
+            raise SourceApiError(
+                "The editorial pathfinder request failed with "
+                f"HTTP {response.status_code}."
+            )
+
+        try:
+            payload = response.json()
+        except ValueError as error:
+            raise SourceApiError(
+                "The editorial pathfinder returned invalid JSON."
+            ) from error
+        if not isinstance(payload, dict):
+            raise SourceApiError(
+                "The editorial pathfinder returned an invalid response shape."
+            )
+
+        errors = payload.get("errors")
+        if isinstance(errors, list) and errors:
+            messages = {
+                str(error.get("message") or "")
+                for error in errors
+                if isinstance(error, Mapping)
+            }
+            if "PersistedQueryNotFound" in messages:
+                raise SourceApiError(
+                    "Spotify rotated the fetchPlaylist query hash. "
+                    "Update LEVYRA_EDITORIAL_PLAYLIST_QUERY_HASH."
+                )
+            raise SourceApiError(
+                "The editorial pathfinder returned a GraphQL error."
+            )
+
+        _playlist_union(payload)
+        self._playlist_pages[cache_key] = payload
+        return payload
+
+    def _pathfinder_request(
+        self,
+        params: Mapping[str, Any],
+    ) -> requests.Response:
+        return self._session.get(
+            PATHFINDER_URL,
+            params=params,
+            headers=self._pathfinder_headers(),
+            timeout=self._timeout,
+        )
+
     def _fetch_totp_secret_dictionary(self) -> dict[str, Any]:
         try:
-            response = self._session.get(self._secret_dict_url, timeout=self._timeout)
+            response = self._session.get(
+                self._secret_dict_url,
+                timeout=self._timeout,
+            )
             response.raise_for_status()
         except requests.RequestException as error:
             raise AuthenticationError(
@@ -266,9 +430,13 @@ class SpotifyWebClient:
         try:
             payload = response.json()
         except ValueError as error:
-            raise AuthenticationError("The TOTP secret dictionary is not valid JSON.") from error
+            raise AuthenticationError(
+                "The TOTP secret dictionary is not valid JSON."
+            ) from error
         if not isinstance(payload, dict):
-            raise AuthenticationError("The TOTP secret dictionary has an invalid shape.")
+            raise AuthenticationError(
+                "The TOTP secret dictionary has an invalid shape."
+            )
         return payload
 
     def _fetch_server_time(self) -> int:
@@ -302,13 +470,17 @@ class SpotifyWebClient:
             )
             fallback_response.raise_for_status()
         except requests.RequestException as error:
-            raise AuthenticationError("The source server time could not be retrieved.") from (
-                request_error or error
-            )
+            raise AuthenticationError(
+                "The source server time could not be retrieved."
+            ) from (request_error or error)
 
-        fallback_timestamp = _http_date_timestamp(fallback_response.headers.get("Date"))
+        fallback_timestamp = _http_date_timestamp(
+            fallback_response.headers.get("Date")
+        )
         if fallback_timestamp is None:
-            raise AuthenticationError("The source returned an invalid server time.")
+            raise AuthenticationError(
+                "The source returned an invalid server time."
+            )
         return fallback_timestamp
 
     def _request_access_token(
@@ -338,24 +510,45 @@ class SpotifyWebClient:
         try:
             payload = response.json()
         except ValueError as error:
-            raise AuthenticationError("token endpoint returned invalid JSON") from error
+            raise AuthenticationError(
+                "token endpoint returned invalid JSON"
+            ) from error
         if not isinstance(payload, dict):
-            raise AuthenticationError("token endpoint returned an invalid response shape")
+            raise AuthenticationError(
+                "token endpoint returned an invalid response shape"
+            )
         return payload
 
-    def _accept_token_response(self, token_data: Mapping[str, Any], server_time: int) -> None:
+    def _accept_token_response(
+        self,
+        token_data: Mapping[str, Any],
+        server_time: int,
+    ) -> None:
         access_token = str(token_data.get("accessToken", "")).strip()
         if not access_token:
-            raise AuthenticationError("token endpoint returned an empty access token")
+            raise AuthenticationError(
+                "token endpoint returned an empty access token"
+            )
         if token_data.get("isAnonymous") is True:
-            raise AuthenticationError("token endpoint returned an anonymous session")
+            raise AuthenticationError(
+                "token endpoint returned an anonymous session"
+            )
 
-        expires_at_ms = _positive_timestamp(token_data.get("accessTokenExpirationTimestampMs"))
-        if expires_at_ms is not None and expires_at_ms <= server_time * 1000:
-            raise AuthenticationError("token endpoint returned an expired access token")
+        expires_at_ms = _positive_timestamp(
+            token_data.get("accessTokenExpirationTimestampMs")
+        )
+        if (
+            expires_at_ms is not None
+            and expires_at_ms <= server_time * 1000
+        ):
+            raise AuthenticationError(
+                "token endpoint returned an expired access token"
+            )
 
         self._access_token = access_token
-        self._client_id = str(token_data.get("clientId", "")).strip() or None
+        self._client_id = (
+            str(token_data.get("clientId", "")).strip() or None
+        )
         self._expires_at_ms = expires_at_ms or 0
 
     def _web_player_headers(self) -> dict[str, str]:
@@ -372,41 +565,17 @@ class SpotifyWebClient:
         headers["Spotify-App-Version"] = SPOTIFY_APP_VERSION
         return headers
 
-    def _api_get(self, path: str, *, params: Mapping[str, Any] | None = None) -> Any:
-        return self._api_get_url(f"{API_BASE_URL}{path}", params=params)
-
-    def _api_get_url(self, url: str, *, params: Mapping[str, Any] | None = None) -> Any:
+    def _pathfinder_headers(self) -> dict[str, str]:
         if self._access_token is None:
-            self.authenticate()
-        response = self._session.get(
-            url,
-            params=params,
-            headers=self._api_headers(),
-            timeout=self._timeout,
-        )
-        if response.status_code == 401:
-            self.authenticate()
-            response = self._session.get(
-                url,
-                params=params,
-                headers=self._api_headers(),
-                timeout=self._timeout,
+            raise AuthenticationError(
+                "The editorial source is not authenticated."
             )
-        if response.status_code >= 400:
-            raise SourceApiError(
-                f"The editorial source request failed with HTTP {response.status_code}."
-            )
-        try:
-            return response.json()
-        except ValueError as error:
-            raise SourceApiError("The editorial source returned invalid JSON.") from error
-
-    def _api_headers(self) -> dict[str, str]:
-        if self._access_token is None:
-            raise AuthenticationError("The editorial source is not authenticated.")
         headers = {
             "Authorization": f"Bearer {self._access_token}",
             "Accept": "application/json",
+            "App-Platform": "WebPlayer",
+            "Origin": OPEN_SPOTIFY_URL.rstrip("/"),
+            "Referer": OPEN_SPOTIFY_URL,
         }
         if self._client_id:
             headers["Client-Id"] = self._client_id
@@ -415,9 +584,227 @@ class SpotifyWebClient:
     @staticmethod
     def _validate_playlist_id(value: str) -> str:
         normalized = value.strip()
-        if len(normalized) not in range(10, 80) or not normalized.isalnum():
-            raise SourceApiError("A configured playlist ID is invalid.")
+        if (
+            len(normalized) not in range(10, 80)
+            or not normalized.isalnum()
+        ):
+            raise SourceApiError(
+                "A configured playlist ID is invalid."
+            )
         return normalized
+
+
+def _playlist_union(payload: Mapping[str, Any]) -> dict[str, Any]:
+    data = _mapping(payload.get("data"))
+    playlist = _mapping(data.get("playlistV2")) if data else None
+    if playlist is None:
+        raise SourceApiError(
+            "The editorial pathfinder response is missing playlistV2."
+        )
+    return dict(playlist)
+
+
+def _convert_playlist_item(
+    item: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    item_v2 = _mapping(item.get("itemV2"))
+    data = _mapping(item_v2.get("data")) if item_v2 else None
+    if data is None or data.get("__typename") != "Track":
+        return None
+
+    uri = _string(data.get("uri"))
+    name = _string(data.get("name"))
+    duration = _mapping(data.get("trackDuration"))
+    duration_ms = (
+        _positive_timestamp(duration.get("totalMilliseconds"))
+        if duration
+        else None
+    )
+    if not uri or not name or duration_ms is None:
+        return None
+    track_id = _spotify_id(uri)
+    if not track_id:
+        return None
+
+    artists = _artists(data.get("artists"))
+    if not artists:
+        return None
+
+    album_node = _mapping(data.get("albumOfTrack")) or {}
+    album_uri = _string(album_node.get("uri"))
+    album_id = _spotify_id(album_uri)
+    album_name = _string(album_node.get("name")) or name
+    images = _cover_art_images(album_node)
+    external_album = (
+        f"https://open.spotify.com/album/{album_id}"
+        if album_id
+        else None
+    )
+
+    rating = _mapping(data.get("contentRating"))
+    explicit = bool(rating and rating.get("label") == "EXPLICIT")
+
+    track = {
+        "id": track_id,
+        "uri": uri,
+        "type": "track",
+        "name": name,
+        "duration_ms": duration_ms,
+        "explicit": explicit,
+        "is_local": False,
+        "external_ids": {},
+        "external_urls": {
+            "spotify": f"https://open.spotify.com/track/{track_id}"
+        },
+        "artists": artists,
+        "album": {
+            "id": album_id,
+            "name": album_name,
+            "release_date": _playlist_release_date(item),
+            "images": images,
+            "external_urls": {
+                "spotify": external_album
+            } if external_album else {},
+        },
+    }
+    return {"track": track}
+
+
+def _artists(value: Any) -> list[dict[str, str | None]]:
+    node = _mapping(value)
+    items = node.get("items") if node else None
+    if not isinstance(items, Sequence) or isinstance(items, (str, bytes)):
+        return []
+
+    output: list[dict[str, str | None]] = []
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        profile = _mapping(item.get("profile"))
+        name = _string(profile.get("name")) if profile else None
+        uri = _string(item.get("uri"))
+        if not name:
+            continue
+        output.append(
+            {
+                "id": _spotify_id(uri),
+                "name": name,
+            }
+        )
+    return output
+
+
+def _cover_art_images(value: Mapping[str, Any]) -> list[dict[str, Any]]:
+    cover_art = _mapping(value.get("coverArt"))
+    sources = cover_art.get("sources") if cover_art else None
+    return _image_sources(sources)
+
+
+def _playlist_images(
+    playlist: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    images = _mapping(playlist.get("images"))
+    items = images.get("items") if images else None
+    if not isinstance(items, Sequence) or isinstance(items, (str, bytes)):
+        return []
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        sources = _image_sources(item.get("sources"))
+        if sources:
+            return sources
+
+    attributes = playlist.get("attributes")
+    if isinstance(attributes, Sequence) and not isinstance(
+        attributes,
+        (str, bytes),
+    ):
+        for attribute in attributes:
+            if not isinstance(attribute, Mapping):
+                continue
+            if attribute.get("key") not in {
+                "image_url",
+                "header_image_url_desktop",
+            }:
+                continue
+            url = _string(attribute.get("value"))
+            if url and url.startswith("https://"):
+                return [{"url": url}]
+    return []
+
+
+def _image_sources(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        return []
+    output: list[dict[str, Any]] = []
+    for source in value:
+        if not isinstance(source, Mapping):
+            continue
+        url = _string(source.get("url"))
+        if not url or not url.startswith("https://"):
+            continue
+        image: dict[str, Any] = {"url": url}
+        width = _non_negative_int(
+            source.get("width", source.get("maxWidth"))
+        )
+        height = _non_negative_int(
+            source.get("height", source.get("maxHeight"))
+        )
+        if width:
+            image["width"] = width
+        if height:
+            image["height"] = height
+        output.append(image)
+    return output
+
+
+def _playlist_release_date(item: Mapping[str, Any]) -> str | None:
+    item_v3 = _mapping(item.get("itemV3"))
+    data = _mapping(item_v3.get("data")) if item_v3 else None
+    identity = _mapping(data.get("identityTrait")) if data else None
+    parent = (
+        _mapping(identity.get("contentHierarchyParent"))
+        if identity
+        else None
+    )
+    publishing = (
+        _mapping(parent.get("publishingMetadataTrait"))
+        if parent
+        else None
+    )
+    first_published = (
+        _mapping(publishing.get("firstPublishedAt"))
+        if publishing
+        else None
+    )
+    return (
+        _string(first_published.get("isoString"))
+        if first_published
+        else None
+    )
+
+
+def _playlist_snapshot_id(
+    playlist: Mapping[str, Any],
+) -> str | None:
+    attributes = playlist.get("attributes")
+    if not isinstance(attributes, Sequence) or isinstance(
+        attributes,
+        (str, bytes),
+    ):
+        return None
+    for attribute in attributes:
+        if not isinstance(attribute, Mapping):
+            continue
+        if attribute.get("key") in {
+            "correlation-id",
+            "revision",
+            "snapshot_id",
+        }:
+            value = _string(attribute.get("value"))
+            if value:
+                return value
+    return None
 
 
 def _safe_authentication_failure(error: Exception) -> str:
@@ -428,11 +815,52 @@ def _safe_authentication_failure(error: Exception) -> str:
     if isinstance(error, requests.ConnectionError):
         return "network connection failed"
     if isinstance(error, requests.HTTPError):
-        status_code = getattr(getattr(error, "response", None), "status_code", None)
-        return f"request failed with HTTP {status_code}" if status_code else "HTTP request failed"
+        status_code = getattr(
+            getattr(error, "response", None),
+            "status_code",
+            None,
+        )
+        return (
+            f"request failed with HTTP {status_code}"
+            if status_code
+            else "HTTP request failed"
+        )
     if isinstance(error, ValueError):
         return "invalid token response"
     return type(error).__name__
+
+
+def _bounded_retry_after(value: str | None) -> int:
+    if not value:
+        return 0
+    try:
+        return min(max(int(value), 0), 5)
+    except ValueError:
+        return 0
+
+
+def _spotify_id(uri: str | None) -> str | None:
+    if not uri:
+        return None
+    candidate = uri.rsplit(":", maxsplit=1)[-1].strip()
+    return candidate if candidate.isalnum() else None
+
+
+def _mapping(value: Any) -> Mapping[str, Any] | None:
+    return value if isinstance(value, Mapping) else None
+
+
+def _string(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def _non_negative_int(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return 0
+    return max(value, 0)
 
 
 def _positive_timestamp(value: Any) -> int | None:
@@ -456,14 +884,3 @@ def _http_date_timestamp(value: str | None) -> int | None:
         return int(parsedate_to_datetime(value).timestamp())
     except (TypeError, ValueError, OverflowError):
         return None
-
-
-def _api_market(market: str) -> str:
-    normalized = market.strip().upper()
-    return "from_token" if normalized in {"", "GLOBAL", "WORLD"} else normalized
-
-
-def _require_object(value: Any, label: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise SourceApiError(f"The {label} response has an invalid shape.")
-    return value
