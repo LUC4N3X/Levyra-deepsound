@@ -157,8 +157,14 @@ class SpotifyWebClient:
 
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
-        secret_response = self._session.get(self._secret_dict_url, timeout=self._timeout)
-        secret_response.raise_for_status()
+        try:
+            secret_response = self._session.get(self._secret_dict_url, timeout=self._timeout)
+            secret_response.raise_for_status()
+        except requests.RequestException as error:
+            raise AuthenticationError(
+                "The TOTP secret dictionary could not be retrieved."
+            ) from error
+
         try:
             secret_dict = secret_response.json()
         except ValueError as error:
@@ -242,16 +248,23 @@ class SpotifyWebClient:
         self._session.close()
 
     def _fetch_server_time(self) -> int:
-        response = self._session.head(
-            OPEN_SPOTIFY_URL,
-            headers={"Accept": "*/*"},
-            timeout=self._timeout,
-        )
-        response.raise_for_status()
+        try:
+            response = self._session.head(
+                OPEN_SPOTIFY_URL,
+                headers={"Accept": "*/*"},
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+        except requests.RequestException as error:
+            raise AuthenticationError("The source server time could not be retrieved.") from error
+
         date_header = response.headers.get("Date")
         if not date_header:
             raise AuthenticationError("The source did not return a server time.")
-        return int(parsedate_to_datetime(date_header).timestamp())
+        try:
+            return int(parsedate_to_datetime(date_header).timestamp())
+        except (TypeError, ValueError, OverflowError) as error:
+            raise AuthenticationError("The source returned an invalid server time.") from error
 
     def _request_access_token(
         self,
