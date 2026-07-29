@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,6 +28,11 @@ def _public_track_id(track: Track) -> str:
     )
     digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:20]
     return f"levyra-{digest}"
+
+
+def _public_description(value: str) -> str:
+    """Keep useful editorial copy while removing upstream brand references."""
+    return re.sub(r"\bspotify\b", "Levyra Editorial", value, flags=re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -99,6 +105,7 @@ class Collection:
                 "kind": self.kind,
                 "market": self.market,
                 "title": self.title,
+                "description": _public_description(self.description),
                 "artworkUrl": self.artwork_url,
                 "totalSourceItems": self.total_source_items,
                 "tracks": [track.to_dict() for track in self.tracks],
