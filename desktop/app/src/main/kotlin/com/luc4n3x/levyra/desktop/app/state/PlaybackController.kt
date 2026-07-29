@@ -1,7 +1,11 @@
 package com.luc4n3x.levyra.desktop.app.state
 
+import com.luc4n3x.levyra.desktop.app.DesktopDiagnostics
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorRateLimitException
+import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
+import com.luc4n3x.levyra.desktop.core.model.SleepTimerMode
+import com.luc4n3x.levyra.desktop.core.model.SleepTimerState
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
 import com.luc4n3x.levyra.desktop.core.storage.SessionData
@@ -14,6 +18,7 @@ import com.luc4n3x.levyra.desktop.player.AudioPlayerUnavailableException
 import com.luc4n3x.levyra.desktop.player.PlaybackStatus
 import com.luc4n3x.levyra.desktop.player.PlayerEvent
 import com.luc4n3x.levyra.desktop.player.PlayerQueue
+import com.luc4n3x.levyra.desktop.player.PrefetchPlanner
 import com.luc4n3x.levyra.desktop.player.RepeatMode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +45,9 @@ data class PlaybackUiState(
     val durationMs: Long = 0L,
     val volume: Int = 80,
     val muted: Boolean = false,
+    val speed: Float = DesktopSettings.DEFAULT_SPEED,
+    val sleepTimer: SleepTimerState = SleepTimerState(),
+    val sleepRemainingMs: Long = 0L,
     val streamLabel: String = "",
     val preparingTrackId: String = "",
     val unavailableReason: String = ""
@@ -61,6 +69,7 @@ class PlaybackController(
     private val internalState = MutableStateFlow(
         PlaybackUiState(
             volume = settingsStore.current.volume,
+            speed = DesktopSettings.normalizeSpeed(settingsStore.current.playbackSpeed),
             queue = PlayerQueue(repeat = RepeatMode.OFF)
         )
     )
@@ -72,6 +81,9 @@ class PlaybackController(
     private var playbackJob: Job? = null
     private var eventJob: Job? = null
     private var persistJob: Job? = null
+    private var prefetchJob: Job? = null
+    private var sleepJob: Job? = null
+    private var prefetchedTrackId: String = ""
     private var retriedTrackId: String = ""
     private var consecutiveFailures: Int = 0
     private var pendingResumeMs: Long = 0L
@@ -88,6 +100,12 @@ class PlaybackController(
                 .collect { equalizer ->
                     player?.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
                 }
+        }
+        playerScope.launch {
+            settingsStore.settings
+                .map { DesktopSettings.normalizeSpeed(it.playbackSpeed) }
+                .distinctUntilChanged()
+                .collect { speed -> applySpeed(speed) }
         }
     }
 
@@ -248,6 +266,34 @@ class PlaybackController(
         internalState.update { state -> state.copy(muted = muted) }
     }
 
+    fun setSpeed(speed: Float) {
+        val safe = DesktopSettings.normalizeSpeed(speed)
+        if (safe == internalState.value.speed) return
+        settingsStore.update { it.copy(playbackSpeed = safe) }
+    }
+
+    fun startSleepTimer(minutes: Int) {
+        val timer = SleepTimerState.forMinutes(minutes, System.currentTimeMillis())
+        internalState.update { state ->
+            state.copy(sleepTimer = timer, sleepRemainingMs = timer.remainingMs(System.currentTimeMillis()))
+        }
+        restartSleepLoop()
+    }
+
+    fun sleepAtEndOfTrack() {
+        sleepJob?.cancel()
+        internalState.update { state ->
+            state.copy(sleepTimer = SleepTimerState.endOfTrack(), sleepRemainingMs = 0L)
+        }
+    }
+
+    fun cancelSleepTimer() {
+        sleepJob?.cancel()
+        internalState.update { state ->
+            state.copy(sleepTimer = SleepTimerState(), sleepRemainingMs = 0L)
+        }
+    }
+
     fun toggleShuffle() {
         val queue = internalState.value.queue
         internalState.update { state -> state.copy(queue = queue.withShuffle(!queue.shuffle)) }
@@ -277,6 +323,8 @@ class PlaybackController(
     fun shutdown() {
         persistJob?.cancel()
         playbackJob?.cancel()
+        prefetchJob?.cancel()
+        sleepJob?.cancel()
         eventJob?.cancel()
         saveSessionNow()
         runCatching { player?.stop() }
@@ -288,6 +336,10 @@ class PlaybackController(
     private fun startCurrent(startAtMs: Long, forceRestart: Boolean = false) {
         val track = internalState.value.queue.current ?: return
         playbackJob?.cancel()
+        if (track.id != prefetchedTrackId) {
+            prefetchJob?.cancel()
+        }
+        prefetchedTrackId = ""
         pendingResumeMs = startAtMs
         internalState.update { state ->
             state.copy(
@@ -379,6 +431,7 @@ class PlaybackController(
         val current = internalState.value
         activePlayer.setVolume(current.volume)
         activePlayer.setMuted(current.muted)
+        applySpeed(settingsStore.current.playbackSpeed, activePlayer)
         internalState.update { state ->
             state.copy(
                 preparingTrackId = "",
@@ -389,6 +442,13 @@ class PlaybackController(
         }
         libraryStore.recordPlayback(enriched)
         persistSession()
+    }
+
+    private fun applySpeed(speed: Float, target: AudioPlayer? = player) {
+        val safe = DesktopSettings.normalizeSpeed(speed)
+        if (target == null || target.setSpeed(safe)) {
+            internalState.update { state -> state.copy(speed = safe) }
+        }
     }
 
     private fun updateTrackMetadata(track: Track) {
@@ -439,6 +499,79 @@ class PlaybackController(
         startCurrent(0L)
     }
 
+    private fun maybePrefetchNext() {
+        if (!settingsStore.current.preloadNextTrack) return
+        val current = internalState.value
+        if (current.status != PlaybackStatus.PLAYING) return
+        if (!PrefetchPlanner.withinLeadWindow(current.positionMs, current.durationMs)) return
+        val next = PrefetchPlanner.nextTrack(current.queue) ?: return
+        if (next.id == prefetchedTrackId) return
+        if (prefetchJob?.isActive == true) return
+        prefetchedTrackId = next.id
+        prefetchJob = playerScope.launch { prewarm(next) }
+    }
+
+    private suspend fun prewarm(track: Track) {
+        val settings = settingsStore.current
+        try {
+            val playable = if (track.videoUrl.isNotBlank()) {
+                track
+            } else {
+                catalog.findPlayable(track)?.let { located ->
+                    track.copy(
+                        videoUrl = located.videoUrl,
+                        durationMs = if (located.durationMs > 0L) located.durationMs else track.durationMs
+                    )
+                } ?: return
+            }
+            resolver.resolve(playable, settings.audioQuality, settings.preferredCodec)
+            if (playable.videoUrl != track.videoUrl) {
+                updateTrackMetadata(playable)
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            DesktopDiagnostics.background("prefetch of ${track.title}", error)
+        }
+    }
+
+    private fun restartSleepLoop() {
+        sleepJob?.cancel()
+        sleepJob = playerScope.launch {
+            while (isActive) {
+                val timer = internalState.value.sleepTimer
+                if (timer.mode != SleepTimerMode.DURATION) return@launch
+                val now = System.currentTimeMillis()
+                if (timer.expired(now)) {
+                    pauseForSleepTimer()
+                    return@launch
+                }
+                internalState.update { state -> state.copy(sleepRemainingMs = timer.remainingMs(now)) }
+                delay(SLEEP_TICK_MS)
+            }
+        }
+    }
+
+    private fun pauseForSleepTimer() {
+        val settled = internalState.value.status in SETTLED_STATUSES
+        if (settled) {
+            player?.pause()
+        } else {
+            playbackJob?.cancel()
+            prefetchJob?.cancel()
+            runCatching { player?.stop() }
+        }
+        internalState.update { state ->
+            state.copy(
+                status = if (settled) PlaybackStatus.PAUSED else PlaybackStatus.IDLE,
+                preparingTrackId = if (settled) state.preparingTrackId else "",
+                sleepTimer = SleepTimerState(),
+                sleepRemainingMs = 0L
+            )
+        }
+        saveSessionNow()
+    }
+
     private fun extendWithRadio() {
         val seed = internalState.value.queue.items.lastOrNull() ?: return
         playerScope.launch {
@@ -475,6 +608,7 @@ class PlaybackController(
             startPersistLoop()
             val equalizer = settingsStore.current.equalizer
             created.applyEqualizer(equalizer.enabled, equalizer.preamp, equalizer.amps)
+            applySpeed(settingsStore.current.playbackSpeed, created)
             internalState.update { state -> state.copy(unavailableReason = "") }
             created
         } catch (error: AudioPlayerUnavailableException) {
@@ -508,6 +642,7 @@ class PlaybackController(
             is PlayerEvent.Playing -> {
                 retriedTrackId = ""
                 consecutiveFailures = 0
+                applySpeed(settingsStore.current.playbackSpeed)
                 internalState.update { state -> state.copy(status = PlaybackStatus.PLAYING) }
             }
 
@@ -516,13 +651,19 @@ class PlaybackController(
 
             is PlayerEvent.Stopped -> Unit
 
-            is PlayerEvent.Finished -> next(automatic = true)
+            is PlayerEvent.Finished -> if (internalState.value.sleepTimer.mode == SleepTimerMode.END_OF_TRACK) {
+                cancelSleepTimer()
+                stop()
+            } else {
+                next(automatic = true)
+            }
 
             is PlayerEvent.Failed -> handleFailure(event.reason)
 
             is PlayerEvent.TimeChanged -> {
                 pendingResumeMs = event.positionMs
                 internalState.update { state -> state.copy(positionMs = event.positionMs) }
+                maybePrefetchNext()
             }
 
             is PlayerEvent.LengthChanged -> if (event.durationMs > 0L) {
@@ -577,6 +718,8 @@ class PlaybackController(
     private companion object {
         const val RESTART_THRESHOLD_MS = 4_000L
         const val PERSIST_INTERVAL_MS = 15_000L
+        const val SLEEP_TICK_MS = 1_000L
+        val SETTLED_STATUSES = setOf(PlaybackStatus.PLAYING, PlaybackStatus.PAUSED)
         const val MAX_QUEUE_SIZE = 200
         const val MAX_CAUSE_DEPTH = 8
         const val DEFAULT_VOLUME = 60

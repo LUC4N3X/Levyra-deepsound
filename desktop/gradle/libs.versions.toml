@@ -26,6 +26,7 @@ okio = { group = "com.squareup.okio", name = "okio", version.ref = "okio" }
 vlcj = { group = "uk.co.caprica", name = "vlcj", version.ref = "vlcj" }
 jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
 jna-platform = { group = "net.java.dev.jna", name = "jna-platform", version.ref = "jna" }
+slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 levyra-extractor = { group = "com.github.LUC4N3X", name = "LevyraExtractor", version.ref = "levyraExtractor" }

@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.desktop.player
 
 import com.luc4n3x.levyra.desktop.core.extractor.ExtractorHttp
+import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
@@ -124,6 +125,13 @@ class VlcAudioPlayer private constructor(
             }
             mediaPlayer.audio().setEqualizer(equalizer)
         }
+    }
+
+    override fun setSpeed(speed: Float): Boolean {
+        if (released.get()) return false
+        return runCatching {
+            mediaPlayer.controls().setRate(DesktopSettings.normalizeSpeed(speed))
+        }.getOrDefault(false)
     }
 
     override fun positionMs(): Long = if (released.get()) 0L else mediaPlayer.status().time().coerceAtLeast(0L)

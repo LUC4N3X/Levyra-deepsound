@@ -54,6 +54,7 @@ import com.luc4n3x.levyra.desktop.app.state.LevyraAppModel
 import com.luc4n3x.levyra.desktop.app.ui.components.DownloadActions
 import com.luc4n3x.levyra.desktop.app.ui.components.LocalDownloadActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
+import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
@@ -429,6 +430,10 @@ fun LevyraRoot(model: LevyraAppModel) {
                                         model.toggleFavorite(track.copy(offlinePath = "", offlineMediaLabel = ""))
                                     }
                                 },
+                                onSpeedChange = model.playbackController::setSpeed,
+                                onSleepTimerMinutes = model.playbackController::startSleepTimer,
+                                onSleepAtEndOfTrack = model.playbackController::sleepAtEndOfTrack,
+                                onCancelSleepTimer = model.playbackController::cancelSleepTimer,
                                 onClose = {
                                     model.closeQueue()
                                     model.playbackController.clearQueue()
@@ -490,7 +495,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                         onValueChange = { newPlaylistName = it },
                                         label = { Text(strings.playlistName) },
                                         singleLine = true,
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth().tracksTextInputFocus()
                                     )
                                 }
                             },

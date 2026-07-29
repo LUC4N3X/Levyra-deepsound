@@ -32,8 +32,10 @@ import com.luc4n3x.levyra.desktop.app.ui.components.EqualizerBars
 import com.luc4n3x.levyra.desktop.app.ui.components.LanguagePicker
 import com.luc4n3x.levyra.desktop.app.ui.components.LevyraChip
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
+import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
+import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.core.model.AudioQuality
 import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.EqualizerSettings
@@ -88,6 +90,7 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .widthIn(max = 480.dp)
+                            .tracksTextInputFocus()
                             .onFocusChanged { state ->
                                 if (!state.isFocused) commitName()
                             }
@@ -234,6 +237,24 @@ fun SettingsScreen(
 
         item {
             SettingsSection(title = strings.settingsPlayback) {
+                ChoiceRow(
+                    title = strings.settingsSpeed,
+                    selected = DesktopSettings.normalizeSpeed(settings.playbackSpeed),
+                    options = DesktopSettings.SPEED_STEPS.map { step -> step to Format.speed(step) },
+                    onSelect = { value -> onUpdate { it.copy(playbackSpeed = value) } }
+                )
+                SettingsToggle(
+                    title = strings.settingsPreloadNext,
+                    body = strings.settingsPreloadNextBody,
+                    checked = settings.preloadNextTrack,
+                    onCheckedChange = { value -> onUpdate { it.copy(preloadNextTrack = value) } }
+                )
+                SettingsToggle(
+                    title = strings.settingsMediaKeys,
+                    body = strings.settingsMediaKeysBody,
+                    checked = settings.globalMediaKeys,
+                    onCheckedChange = { value -> onUpdate { it.copy(globalMediaKeys = value) } }
+                )
                 SettingsToggle(
                     title = strings.settingsResume,
                     body = strings.settingsResumeBody,
@@ -246,6 +267,25 @@ fun SettingsScreen(
                     checked = settings.minimizeToTray,
                     onCheckedChange = { value -> onUpdate { it.copy(minimizeToTray = value) } }
                 )
+            }
+        }
+
+        item {
+            SettingsSection(title = strings.settingsShortcuts) {
+                val shortcuts = listOf(
+                    "Space" to "${strings.playbackPlay} / ${strings.playbackPause}",
+                    "Ctrl + ← / →" to "${strings.playbackPrevious} / ${strings.playbackNext}",
+                    "← / →" to strings.shortcutSeek,
+                    "Ctrl + ↑ / ↓" to strings.shortcutVolume,
+                    "Ctrl + M" to strings.playbackMute,
+                    "Ctrl + Shift + M" to strings.miniPlayer,
+                    "Ctrl + S" to strings.playbackShuffle,
+                    "Ctrl + R" to strings.playbackRepeat,
+                    "Ctrl + Q" to strings.queueTitle,
+                    "Ctrl + P" to strings.navNowPlaying,
+                    "Ctrl + F / K" to strings.navSearch
+                )
+                shortcuts.forEach { (keys, label) -> ShortcutRow(keys = keys, label = label) }
             }
         }
 
@@ -276,6 +316,7 @@ fun SettingsScreen(
                         singleLine = true,
                         modifier = Modifier
                             .weight(1f)
+                            .tracksTextInputFocus()
                             .onFocusChanged { focus ->
                                 if (!focus.isFocused) commitVlcDirectory()
                             }
@@ -392,6 +433,30 @@ private fun SettingsRow(
             )
         }
         control()
+    }
+}
+
+@Composable
+private fun ShortcutRow(keys: String, label: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = keys,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+        )
     }
 }
 
