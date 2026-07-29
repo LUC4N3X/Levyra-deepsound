@@ -60,7 +60,7 @@ jobs:
       github.actor != 'dependabot[bot]'
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
     permissions:
       contents: read
     env:
@@ -97,7 +97,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          levyra-editorial \
+          timeout --foreground 180s levyra-editorial \
             --config tools/levyra-editorial/config.json \
             --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
@@ -118,7 +118,7 @@ jobs:
     if: github.event_name != 'pull_request'
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     permissions:
       contents: write
     env:
@@ -155,7 +155,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          levyra-editorial \
+          timeout --foreground 300s levyra-editorial \
             --config tools/levyra-editorial/config.json \
             --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
