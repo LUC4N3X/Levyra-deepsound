@@ -187,7 +187,7 @@ class AuthenticationSession:
         return FakeResponse(payload={"61": [44, 55, 47, 42]})
 
     def head(self, *_args: object, **_kwargs: object) -> FakeResponse:
-        raise AssertionError("The Spotify server-time endpoint should be preferred.")
+        raise AssertionError("The source server-time endpoint should be preferred.")
 
     def close(self) -> None:
         return None
@@ -307,14 +307,24 @@ def test_collector_builds_compact_account_free_catalog(tmp_path: Path) -> None:
     payload = catalog.to_dict()
 
     assert payload["schemaVersion"] == 1
-    assert payload["collections"][0]["title"] == "Top 50 Italia"
-    assert payload["collections"][0]["description"] == "A compact description."
-    assert payload["collections"][0]["totalSourceItems"] == 2
-    assert len(payload["collections"][0]["tracks"]) == 1
-    assert payload["collections"][0]["tracks"][0]["position"] == 1
-    assert payload["collections"][0]["tracks"][0]["isrc"] == "ITABC2600001"
-    assert "owner" not in json.dumps(payload).lower()
-    assert "sp_dc" not in json.dumps(payload).lower()
+    collection = payload["collections"][0]
+    track = collection["tracks"][0]
+    assert collection["title"] == "Top 50 Italia"
+    assert collection["description"] == "A compact description."
+    assert collection["totalSourceItems"] == 2
+    assert len(collection["tracks"]) == 1
+    assert track["position"] == 1
+    assert track["id"].startswith("levyra-")
+    assert track["isrc"] == "ITABC2600001"
+    serialized = json.dumps(payload).lower()
+    assert "owner" not in serialized
+    assert "sp_dc" not in serialized
+    assert "spotify" not in serialized
+    assert "sourceid" not in serialized
+    assert "sourceurl" not in serialized
+    assert "externalurl" not in serialized
+    assert "uri" not in track
+    assert track["artists"] == [{"name": "Artist One"}]
 
     output = tmp_path / "catalog.json"
     write_catalog(catalog, output)
