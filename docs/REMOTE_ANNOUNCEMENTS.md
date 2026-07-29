@@ -1,20 +1,27 @@
 # Remote announcements
 
-Levyra can display small, one-time announcements without requiring a new APK for every message. The application downloads a declarative JSON catalog from:
+Levyra can display small, one-time announcements without requiring a new APK for every message. The single source of truth is:
 
-`config/announcements.json`
+`app/src/main/assets/config/announcements.json`
 
-The published client reads the raw file from the repository's `main` branch. No executable code, HTML, JavaScript or APK fragments are downloaded.
+The same reviewed JSON file serves two purposes:
+
+- it is packaged inside the APK as the offline and first-fetch fallback;
+- published clients read its raw version from the repository's `main` branch for future announcements.
+
+No executable code, HTML, JavaScript or APK fragments are downloaded.
 
 ## Publishing a message
 
-1. Edit `config/announcements.json` on `main` through a reviewed pull request.
+1. Edit `app/src/main/assets/config/announcements.json` through a reviewed pull request.
 2. Give every new message a unique, stable `id`.
 3. Add an English translation and any other supported languages.
 4. Set `enabled` to `true` when the message is ready.
 5. Merge the configuration change. Installed clients normally refresh within 12 hours and also keep a validated local cache.
 
 Each message is displayed once per installation. To show a revised campaign again, publish it with a new `id`. To stop a campaign, set `enabled` to `false` or add an `endAt` value.
+
+Changes made after an APK is published are delivered remotely. The packaged copy changes only when a new APK is built, so the app always retains a known-good fallback even when the network or the remote catalog is unavailable.
 
 ## Supported schema
 
@@ -59,7 +66,7 @@ The Android client validates the complete catalog before using it:
 - dates and Android version ranges must be valid;
 - action links must use HTTPS and point to an official `github.com/LUC4N3X/...` path;
 - invalid or unavailable remote data never prevents the app from starting;
-- the last validated catalog is used when the network is unavailable;
-- the original open-source message is built into the APK as the first-install fallback.
+- the last validated remote catalog is used when the network is unavailable;
+- the packaged catalog remains available if no validated remote catalog exists.
 
 The engine does not collect analytics, device identifiers, star status or interaction telemetry.
