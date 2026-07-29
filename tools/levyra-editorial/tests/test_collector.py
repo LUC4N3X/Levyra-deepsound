@@ -145,12 +145,20 @@ class ServerTimeHeaderSession:
 class AuthenticationSession:
     """Record the live-style authentication request order without network access."""
 
-    def __init__(self, successful_attempt: tuple[str, str]) -> None:
+    def __init__(
+        self,
+        successful_attempt: tuple[str, str],
+        *,
+        anonymous_attempts: set[tuple[str, str]] | None = None,
+    ) -> None:
         self.successful_attempt = successful_attempt
+        self.anonymous_attempts = anonymous_attempts or set()
         self.token_attempts: list[tuple[str, str]] = []
         self.server_time_headers: dict[str, str] = {}
+        self.requested_urls: list[str] = []
 
     def get(self, url: str, **kwargs: Any) -> FakeResponse:
+        self.requested_urls.append(url)
         if url == SERVER_TIME_URL:
             self.server_time_headers = dict(kwargs.get("headers") or {})
             return FakeResponse(payload={"serverTime": "1785326400"})
@@ -158,17 +166,24 @@ class AuthenticationSession:
             params = dict(kwargs.get("params") or {})
             attempt = (str(params.get("productType")), str(params.get("reason")))
             self.token_attempts.append(attempt)
+            if attempt in self.anonymous_attempts:
+                return FakeResponse(
+                    payload={
+                        "accessToken": "anonymous-token",
+                        "isAnonymous": True,
+                        "accessTokenExpirationTimestampMs": 1_785_330_000_000,
+                    }
+                )
             if attempt == self.successful_attempt:
                 return FakeResponse(
                     payload={
                         "accessToken": "temporary-token",
                         "clientId": "web-client",
+                        "isAnonymous": False,
                         "accessTokenExpirationTimestampMs": 1_785_330_000_000,
                     }
                 )
             return FakeResponse(payload={"accessToken": ""})
-        if url == f"{API_BASE_URL}/me":
-            return FakeResponse(payload={"id": "editorial-account"})
         return FakeResponse(payload={"61": [44, 55, 47, 42]})
 
     def head(self, *_args: object, **_kwargs: object) -> FakeResponse:
@@ -237,7 +252,9 @@ def test_authentication_prefers_current_mobile_web_player_flow(caplog: pytest.Lo
     assert session.token_attempts == [("mobile-web-player", "transport")]
     assert session.server_time_headers["Cookie"] == f"sp_dc={cookie}"
     assert session.server_time_headers["App-Platform"] == "WebPlayer"
+    assert session.server_time_headers["Spotify-App-Version"]
     assert session.server_time_headers["Origin"] == "https://open.spotify.com"
+    assert f"{API_BASE_URL}/me" not in session.requested_urls
     assert cookie not in caplog.text
     assert "temporary-token" not in caplog.text
 
@@ -253,6 +270,17 @@ def test_authentication_falls_back_without_repeating_successful_profiles() -> No
         ("mobile-web-player", "init"),
         ("web-player", "transport"),
     ]
+
+
+def test_authentication_rejects_anonymous_token_then_uses_next_profile() -> None:
+    first = ("mobile-web-player", "transport")
+    second = ("mobile-web-player", "init")
+    session = AuthenticationSession(second, anonymous_attempts={first})
+    client = SpotifyWebClient("A" * 40, session=session)
+
+    client.authenticate()
+
+    assert session.token_attempts == [first, second]
 
 
 def test_collector_builds_compact_account_free_catalog(tmp_path: Path) -> None:
