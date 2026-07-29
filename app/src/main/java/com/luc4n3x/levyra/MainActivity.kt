@@ -14,15 +14,18 @@ import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.doOnAttach
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
+import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -60,9 +63,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             LevyraTheme {
                 val viewModel: LevyraViewModel = viewModel()
+                val uiState by viewModel.state.collectAsStateWithLifecycle()
                 LevyraApp(
                     viewModel = viewModel,
                     isInPictureInPicture = pipMode.value
+                )
+                RemoteAnnouncementGate(
+                    enabled = !uiState.showOnboarding && !pipMode.value,
+                    languageCode = uiState.languageCode
                 )
             }
         }
