@@ -48,9 +48,19 @@ def playlist_payload() -> dict[str, Any]:
                 "uri": "spotify:playlist:playlist12345",
                 "name": "Top 50 Italia",
                 "description": "Daily chart",
-                "attributes": [
-                    {"key": "image_url", "value": "https://image.example/chart.jpg"}
-                ],
+                "images": {
+                    "items": [
+                        {
+                            "sources": [
+                                {
+                                    "url": "https://image.example/chart.jpg",
+                                    "width": 640,
+                                    "height": 640,
+                                }
+                            ]
+                        }
+                    ]
+                },
                 "content": {
                     "totalCount": 1,
                     "items": [
