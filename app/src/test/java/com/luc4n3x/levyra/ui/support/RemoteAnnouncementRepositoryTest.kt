@@ -21,18 +21,31 @@ class RemoteAnnouncementRepositoryTest {
     )
 
     @Test
-    fun checkedInCatalogIsValidAndCoversEverySupportedLanguage() {
-        val config = sequenceOf(
-            Path.of("config/announcements.json"),
-            Path.of("../config/announcements.json")
-        ).firstOrNull(Files::exists) ?: error("Remote announcement config not found")
-        val catalog = RemoteAnnouncementParser.parse(Files.readString(config))
-        assertNotNull(catalog)
-        val announcement = catalog!!.announcements.single { it.id == BUILT_IN_SUPPORT_ANNOUNCEMENT_ID }
+    fun packagedCatalogIsValidCompleteAndLocalized() {
+        val catalog = loadPackagedCatalog()
+        val announcement = catalog.announcements.single { it.id == BUILT_IN_SUPPORT_ANNOUNCEMENT_ID }
         val expectedLanguages = LevyraLanguageCatalog.languages.map { it.code }.toSet()
+
         assertEquals(expectedLanguages, announcement.translations.keys)
         assertEquals(AnnouncementStyle.OPEN_SOURCE, announcement.style)
         assertEquals(LEVYRA_REPOSITORY_URL, announcement.actionUrl)
+        announcement.translations.forEach { (code, copy) ->
+            listOf(copy.badge, copy.title, copy.body, copy.starAction, copy.continueAction).forEach { value ->
+                assertTrue("Blank announcement copy for $code", value.isNotBlank())
+            }
+            assertTrue("Announcement body is too short for $code", copy.body.length >= 45)
+        }
+
+        val now = Instant.parse("2026-07-29T12:00:00Z").toEpochMilli()
+        val italian = RemoteAnnouncementRules.select(catalog, "it-IT", 2_031_700, emptySet(), now)
+        val arabic = RemoteAnnouncementRules.select(catalog, "ar-SA", 2_031_700, emptySet(), now)
+        val hebrew = RemoteAnnouncementRules.select(catalog, "he-IL", 2_031_700, emptySet(), now)
+        val unknown = RemoteAnnouncementRules.select(catalog, "xx-YY", 2_031_700, emptySet(), now)
+
+        assertEquals("Levyra è gratuita. Davvero.", italian?.copy?.title)
+        assertTrue(arabic?.copy?.body.orEmpty().contains("GitHub"))
+        assertTrue(hebrew?.copy?.body.orEmpty().contains("GitHub"))
+        assertEquals(announcement.translations.getValue("en"), unknown?.copy)
     }
 
     @Test
@@ -100,6 +113,17 @@ class RemoteAnnouncementRepositoryTest {
         assertFalse(RemoteAnnouncementRules.isSafeActionUrl("http://github.com/LUC4N3X/Levyra-deepsound"))
         assertFalse(RemoteAnnouncementRules.isSafeActionUrl("https://example.com/LUC4N3X/Levyra-deepsound"))
         assertFalse(RemoteAnnouncementRules.isSafeActionUrl("https://github.com/another-owner/project"))
+    }
+
+    private fun loadPackagedCatalog(): RemoteAnnouncementCatalog {
+        val candidates = sequenceOf(
+            Path.of("app/src/main/assets").resolve(BUNDLED_ANNOUNCEMENTS_ASSET),
+            Path.of("src/main/assets").resolve(BUNDLED_ANNOUNCEMENTS_ASSET)
+        )
+        val config = candidates.firstOrNull(Files::exists)
+            ?: error("Packaged announcement catalog not found")
+        return RemoteAnnouncementParser.parse(Files.readString(config))
+            .also(::assertNotNull)!!
     }
 
     private fun announcement(
