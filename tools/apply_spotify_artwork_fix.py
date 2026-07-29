@@ -130,3 +130,4 @@ replace_once(
 )
 
 print("Spotify artwork continuity patch applied")
+# Triggered after workflow registration.
