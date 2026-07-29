@@ -31,6 +31,28 @@ jobs:
       - name: Apply review fixes
         run: python tools/apply_editorial_review_fixes.py
 
+      - name: Preserve server-time failure semantics
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('tools/levyra-editorial/levyra_editorial/spotify.py')
+          content = path.read_text(encoding='utf-8')
+          old = '''            try:
+                          server_time = self._fetch_server_time()
+                          otp = generate_totp(totp_secret, server_time)
+                          token_data = self._request_access_token(
+          '''
+          new = '''            server_time = self._fetch_server_time()
+                      otp = generate_totp(totp_secret, server_time)
+                      try:
+                          token_data = self._request_access_token(
+          '''
+          if content.count(old) != 1:
+              raise SystemExit('Unable to patch authentication attempt structure')
+          path.write_text(content.replace(old, new, 1), encoding='utf-8')
+          PY
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
