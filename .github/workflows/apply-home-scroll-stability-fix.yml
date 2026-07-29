@@ -48,4 +48,4 @@ jobs:
           git pull --rebase origin feat/editorial-collector
           git push origin HEAD:feat/editorial-collector
 
-# One-shot trigger marker.
+# One-shot trigger marker: final.
