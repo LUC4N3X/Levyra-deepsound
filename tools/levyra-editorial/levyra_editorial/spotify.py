@@ -118,16 +118,17 @@ def select_latest_totp_secret(secret_dict: Mapping[str, Any]) -> tuple[int, str]
 
 
 def build_session() -> requests.Session:
-    """Create a retrying HTTP session without enabling verbose header logging."""
+    """Create a retrying HTTP session with short, bounded backoff."""
     retry = Retry(
-        total=3,
-        connect=3,
-        read=3,
-        status=3,
-        backoff_factor=0.6,
-        status_forcelist=(429, 500, 502, 503, 504),
+        total=1,
+        connect=1,
+        read=1,
+        status=1,
+        backoff_factor=0.4,
+        backoff_max=2.0,
+        status_forcelist=(500, 502, 503, 504),
         allowed_methods=frozenset({"GET", "HEAD"}),
-        respect_retry_after_header=True,
+        respect_retry_after_header=False,
     )
     adapter = HTTPAdapter(max_retries=retry)
     session = requests.Session()
@@ -154,7 +155,7 @@ class SpotifyWebClient:
         *,
         session: requests.Session | None = None,
         secret_dict_url: str | None = None,
-        timeout_seconds: float = 12.0,
+        timeout_seconds: float = 8.0,
     ) -> None:
         self._sp_dc = normalize_sp_dc(sp_dc)
         self._session = session or build_session()
@@ -170,6 +171,7 @@ class SpotifyWebClient:
 
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
+        LOGGER.info("Preparing editorial source authentication.")
         secret_dict = self._fetch_totp_secret_dictionary()
         totp_version, totp_secret = select_latest_totp_secret(secret_dict)
         server_time = self._fetch_server_time()
@@ -177,6 +179,7 @@ class SpotifyWebClient:
 
         last_error: Exception | None = None
         for product_type, reason in TOKEN_ATTEMPTS:
+            LOGGER.info("Trying editorial token profile %s / %s.", product_type, reason)
             try:
                 token_data = self._request_access_token(
                     product_type=product_type,
@@ -200,6 +203,12 @@ class SpotifyWebClient:
                 last_error = error
                 self._access_token = None
                 self._client_id = None
+                LOGGER.warning(
+                    "Editorial token profile %s / %s failed (%s).",
+                    product_type,
+                    reason,
+                    type(error).__name__,
+                )
 
         raise AuthenticationError(
             "The editorial source session could not be authenticated. "
