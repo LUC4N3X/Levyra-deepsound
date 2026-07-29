@@ -1,19 +1,202 @@
 {
   "schemaVersion": 1,
+  "allowPartial": true,
   "collections": [
-    {
-      "id": "top-50-italy",
-      "kind": "chart",
-      "market": "IT",
-      "playlistId": "37i9dQZEVXbIQnj7RRhdSX",
-      "title": "Top 50 Italia"
-    },
     {
       "id": "top-50-global",
       "kind": "chart",
       "market": "GLOBAL",
       "playlistId": "37i9dQZEVXbMDoHDwVN2tF",
       "title": "Top 50 Global"
+    },
+    {
+      "id": "top-50-it",
+      "kind": "chart",
+      "market": "IT",
+      "playlistId": "37i9dQZEVXbIQnj7RRhdSX",
+      "title": "Top 50 Italia"
+    },
+    {
+      "id": "top-50-us",
+      "kind": "chart",
+      "market": "US",
+      "playlistId": "37i9dQZEVXbLRQDuF5jeBp",
+      "title": "Top 50 USA"
+    },
+    {
+      "id": "top-50-gb",
+      "kind": "chart",
+      "market": "GB",
+      "playlistId": "37i9dQZEVXbLnolsZ8PSNw",
+      "title": "Top 50 United Kingdom"
+    },
+    {
+      "id": "top-50-es",
+      "kind": "chart",
+      "market": "ES",
+      "playlistId": "37i9dQZEVXbNFJfN1Vw8d9",
+      "title": "Top 50 España"
+    },
+    {
+      "id": "top-50-fr",
+      "kind": "chart",
+      "market": "FR",
+      "playlistId": "37i9dQZEVXbIPWwFssbupI",
+      "title": "Top 50 France"
+    },
+    {
+      "id": "top-50-de",
+      "kind": "chart",
+      "market": "DE",
+      "playlistId": "37i9dQZEVXbJiZcmkrIHGU",
+      "title": "Top 50 Deutschland"
+    },
+    {
+      "id": "top-50-br",
+      "kind": "chart",
+      "market": "BR",
+      "playlistId": "37i9dQZEVXbMXbN3EUUhlg",
+      "title": "Top 50 Brasil"
+    },
+    {
+      "id": "top-50-mx",
+      "kind": "chart",
+      "market": "MX",
+      "playlistId": "37i9dQZEVXbO3qyFxbkOE1",
+      "title": "Top 50 México"
+    },
+    {
+      "id": "top-50-nl",
+      "kind": "chart",
+      "market": "NL",
+      "playlistId": "37i9dQZEVXbKCF6dqVpDkS",
+      "title": "Top 50 Nederland"
+    },
+    {
+      "id": "top-50-pl",
+      "kind": "chart",
+      "market": "PL",
+      "playlistId": "37i9dQZEVXbN6itCcaL3Tt",
+      "title": "Top 50 Polska"
+    },
+    {
+      "id": "top-50-ro",
+      "kind": "chart",
+      "market": "RO",
+      "playlistId": "37i9dQZEVXbNZbJ6TZelCq",
+      "title": "Top 50 România"
+    },
+    {
+      "id": "top-50-gr",
+      "kind": "chart",
+      "market": "GR",
+      "playlistId": "37i9dQZEVXbJqdarpmTJDL",
+      "title": "Top 50 Ελλάδα"
+    },
+    {
+      "id": "top-50-se",
+      "kind": "chart",
+      "market": "SE",
+      "playlistId": "37i9dQZEVXbLoATJ81JYXz",
+      "title": "Top 50 Sverige"
+    },
+    {
+      "id": "top-50-dk",
+      "kind": "chart",
+      "market": "DK",
+      "playlistId": "37i9dQZEVXbL3J0k32lWnN",
+      "title": "Top 50 Danmark"
+    },
+    {
+      "id": "top-50-cz",
+      "kind": "chart",
+      "market": "CZ",
+      "playlistId": "37i9dQZEVXbIP3c3fqVrJY",
+      "title": "Top 50 Česko"
+    },
+    {
+      "id": "top-50-ua",
+      "kind": "chart",
+      "market": "UA",
+      "playlistId": "37i9dQZEVXbKkidEfWYRuD",
+      "title": "Top 50 Україна"
+    },
+    {
+      "id": "top-50-ru",
+      "kind": "chart",
+      "market": "RU",
+      "playlistId": "37i9dQZEVXbL8l7ra5vVdB",
+      "title": "Top 50 Россия"
+    },
+    {
+      "id": "top-50-tr",
+      "kind": "chart",
+      "market": "TR",
+      "playlistId": "37i9dQZEVXbIVYVBNw9D5K",
+      "title": "Top 50 Türkiye"
+    },
+    {
+      "id": "top-50-sa",
+      "kind": "chart",
+      "market": "SA",
+      "playlistId": "37i9dQZEVXbLrQBcXqUtaC",
+      "title": "Top 50 السعودية"
+    },
+    {
+      "id": "top-50-jp",
+      "kind": "chart",
+      "market": "JP",
+      "playlistId": "37i9dQZEVXbKXQ4mDTEBXq",
+      "title": "Top 50 日本"
+    },
+    {
+      "id": "top-50-kr",
+      "kind": "chart",
+      "market": "KR",
+      "playlistId": "37i9dQZEVXbNxXF4SkHj9F",
+      "title": "Top 50 대한민국"
+    },
+    {
+      "id": "top-50-in",
+      "kind": "chart",
+      "market": "IN",
+      "playlistId": "37i9dQZEVXbLZ52XmnySJg",
+      "title": "Top 50 भारत"
+    },
+    {
+      "id": "top-50-id",
+      "kind": "chart",
+      "market": "ID",
+      "playlistId": "37i9dQZEVXbObFQZ3JLcXt",
+      "title": "Top 50 Indonesia"
+    },
+    {
+      "id": "top-50-vn",
+      "kind": "chart",
+      "market": "VN",
+      "playlistId": "37i9dQZEVXbLdGSmz6xilI",
+      "title": "Top 50 Việt Nam"
+    },
+    {
+      "id": "top-50-th",
+      "kind": "chart",
+      "market": "TH",
+      "playlistId": "37i9dQZEVXbMnz8KIWsvf9",
+      "title": "Top 50 ประเทศไทย"
+    },
+    {
+      "id": "top-50-ph",
+      "kind": "chart",
+      "market": "PH",
+      "playlistId": "37i9dQZEVXbNBz9cRCSFkY",
+      "title": "Top 50 Pilipinas"
+    },
+    {
+      "id": "top-50-il",
+      "kind": "chart",
+      "market": "IL",
+      "playlistId": "37i9dQZEVXbJ6IpvItkve3",
+      "title": "Top 50 ישראל"
     }
   ]
 }
