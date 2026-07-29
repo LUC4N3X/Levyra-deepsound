@@ -47,4 +47,4 @@ replace_once(
 
 path.write_text(content, encoding="utf-8")
 print("Home scroll stability patch applied")
-# Ready for the one-shot workflow trigger.
+# Triggered after workflow registration.
