@@ -47,3 +47,5 @@ jobs:
           git commit -m 'fix(ui): preserve Home scroll and Spotify chart artwork'
           git pull --rebase origin feat/editorial-collector
           git push origin HEAD:feat/editorial-collector
+
+# One-shot trigger marker.
