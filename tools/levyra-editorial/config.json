@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "collections": [
+    {
+      "id": "top-50-italy",
+      "kind": "chart",
+      "market": "IT",
+      "playlistId": "37i9dQZEVXbIQnj7RRhdSX",
+      "title": "Top 50 Italia"
+    },
+    {
+      "id": "top-50-global",
+      "kind": "chart",
+      "market": "GLOBAL",
+      "playlistId": "37i9dQZEVXbMDoHDwVN2tF",
+      "title": "Top 50 Global"
+    }
+  ]
+}
