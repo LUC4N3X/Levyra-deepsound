@@ -1,9 +1,7 @@
 name: Apply Editorial Review Fixes
 
 on:
-  push:
-    branches:
-      - feat/editorial-collector
+  pull_request:
     paths:
       - tools/apply_editorial_review_fixes.py
       - .github/workflows/apply-editorial-review-fixes.yml
@@ -12,12 +10,15 @@ permissions:
   contents: write
 
 concurrency:
-  group: apply-editorial-review-fixes
+  group: apply-editorial-review-fixes-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]'
+    if: >-
+      github.actor != 'github-actions[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/editorial-collector'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
