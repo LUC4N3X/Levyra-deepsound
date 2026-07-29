@@ -53,6 +53,13 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
+internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track {
+    if (!presented.source.equals("Levyra Editorial", ignoreCase = true)) return resolved
+    val artwork = presented.largeThumbnailUrl.trim().ifBlank { presented.thumbnailUrl.trim() }
+    if (artwork.isBlank()) return resolved
+    return resolved.copy(thumbnailUrl = artwork, largeThumbnailUrl = artwork)
+}
+
 class PlaybackResolver private constructor(private val context: Context) {
     companion object {
         private const val YOUTUBE_VIDEO_ID_PATTERN = "[A-Za-z0-9_-]{11}"
@@ -338,7 +345,7 @@ class PlaybackResolver private constructor(private val context: Context) {
     }
 
     suspend fun resolve(track: Track, isVideoMode: Boolean = false): Track {
-        return resolveInternal(
+        val resolved = resolveInternal(
             track = track,
             isVideoMode = isVideoMode,
             timeoutMs = playbackResolveTimeoutMs,
@@ -347,11 +354,12 @@ class PlaybackResolver private constructor(private val context: Context) {
             audioQuality = selectedAudioQuality,
             reuseProvidedStream = true
         )
+        return preserveEditorialArtwork(track, resolved)
     }
 
     suspend fun resolveForOffline(track: Track, audioQualityOverride: String? = null): Track {
         val quality = normalizeAudioQuality(audioQualityOverride ?: selectedAudioQuality)
-        return resolveInternal(
+        val resolved = resolveInternal(
             track = track,
             isVideoMode = false,
             timeoutMs = offlineResolveTimeoutMs,
@@ -360,6 +368,7 @@ class PlaybackResolver private constructor(private val context: Context) {
             audioQuality = quality,
             reuseProvidedStream = audioQualityOverride == null
         )
+        return preserveEditorialArtwork(track, resolved)
     }
 
     private suspend fun resolveInternal(

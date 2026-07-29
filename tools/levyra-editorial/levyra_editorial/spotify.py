@@ -6,11 +6,13 @@ import hmac
 import json
 import logging
 import os
+import re
 import struct
 import time
 from collections.abc import Mapping, Sequence
 from email.utils import parsedate_to_datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -25,7 +27,8 @@ API_BASE_URL = "https://api.spotify.com/v1"
 PATHFINDER_URL = "https://api-partner.spotify.com/pathfinder/v1/query"
 
 DEFAULT_SECRET_DICT_URL = (
-    "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/main/secrets/secretDict.json"
+    "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/"
+    "4cd9440671af3a419bad112164a193ea1374e0e1/secrets/secretDict.json"
 )
 DEFAULT_PLAYLIST_QUERY_HASH = (
     "a65e12194ed5fc443a1cdebed5fabe33ca5b07b987185d63c72483867ad13cb4"
@@ -180,12 +183,12 @@ class SpotifyWebClient:
     ) -> None:
         self._sp_dc = normalize_sp_dc(sp_dc)
         self._session = session or build_session()
-        self._secret_dict_url = (
+        self._secret_dict_url = validate_secret_dict_url(
             secret_dict_url
             or os.environ.get("LEVYRA_EDITORIAL_TOTP_SECRETS_URL")
             or DEFAULT_SECRET_DICT_URL
         )
-        self._playlist_query_hash = (
+        self._playlist_query_hash = validate_playlist_query_hash(
             playlist_query_hash
             or os.environ.get("LEVYRA_EDITORIAL_PLAYLIST_QUERY_HASH")
             or DEFAULT_PLAYLIST_QUERY_HASH
@@ -201,9 +204,6 @@ class SpotifyWebClient:
         LOGGER.info("Preparing editorial source authentication.")
         secret_dict = self._fetch_totp_secret_dictionary()
         totp_version, totp_secret = select_latest_totp_secret(secret_dict)
-        server_time = self._fetch_server_time()
-        otp = generate_totp(totp_secret, server_time)
-
         last_error: Exception | None = None
         for product_type, reason in TOKEN_ATTEMPTS:
             LOGGER.info(
@@ -211,6 +211,8 @@ class SpotifyWebClient:
                 product_type,
                 reason,
             )
+            server_time = self._fetch_server_time()
+            otp = generate_totp(totp_secret, server_time)
             try:
                 token_data = self._request_access_token(
                     product_type=product_type,
@@ -247,7 +249,6 @@ class SpotifyWebClient:
     def get_playlist_metadata(
         self,
         playlist_id: str,
-        market: str,
     ) -> dict[str, Any]:
         """Fetch public metadata for one configured playlist."""
         normalized_id = self._validate_playlist_id(playlist_id)
@@ -271,7 +272,6 @@ class SpotifyWebClient:
     def iter_playlist_items(
         self,
         playlist_id: str,
-        market: str,
     ) -> list[dict[str, Any]]:
         """Fetch every track item from one configured playlist, preserving order."""
         normalized_id = self._validate_playlist_id(playlist_id)
@@ -295,10 +295,13 @@ class SpotifyWebClient:
             if total is None:
                 total = _non_negative_int(content.get("totalCount"))
             converted = [
-                item
+                converted_item if converted_item is not None else {"track": None}
                 for raw_item in raw_items
-                if isinstance(raw_item, Mapping)
-                if (item := _convert_playlist_item(raw_item)) is not None
+                for converted_item in [
+                    _convert_playlist_item(raw_item)
+                    if isinstance(raw_item, Mapping)
+                    else None
+                ]
             ]
             output.extend(converted)
 
@@ -832,11 +835,40 @@ def _safe_authentication_failure(error: Exception) -> str:
 
 def _bounded_retry_after(value: str | None) -> int:
     if not value:
-        return 0
+        return 1
     try:
         return min(max(int(value), 0), 5)
     except ValueError:
         return 0
+
+
+def validate_secret_dict_url(value: str) -> str:
+    """Allow only the pinned third-party dictionary path over HTTPS."""
+    normalized = value.strip()
+    parsed = urlparse(normalized)
+    expected_path = re.fullmatch(
+        r"/xyloflake/spot-secrets-go/[0-9a-f]{40}/secrets/secretDict\.json",
+        parsed.path,
+    )
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != "raw.githubusercontent.com"
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port is not None
+        or parsed.query
+        or parsed.fragment
+        or expected_path is None
+    ):
+        raise AuthenticationError("The TOTP dictionary URL is not allowlisted.")
+    return normalized
+
+
+def validate_playlist_query_hash(value: str) -> str:
+    normalized = value.strip().lower()
+    if re.fullmatch(r"[0-9a-f]{64}", normalized) is None:
+        raise AuthenticationError("The playlist query hash is malformed.")
+    return normalized
 
 
 def _spotify_id(uri: str | None) -> str | None:
