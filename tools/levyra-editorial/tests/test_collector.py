@@ -24,13 +24,15 @@ from levyra_editorial.spotify import (
     generate_totp,
     normalize_sp_dc,
     select_latest_totp_secret,
+    validate_playlist_query_hash,
+    validate_secret_dict_url,
 )
 
 
 class FakeClient:
     """Deterministic source used by collector unit tests."""
 
-    def get_playlist_metadata(self, playlist_id: str, market: str) -> dict:
+    def get_playlist_metadata(self, playlist_id: str) -> dict:
         return {
             "id": playlist_id,
             "name": "Source title",
@@ -41,7 +43,7 @@ class FakeClient:
             "tracks": {"total": 2},
         }
 
-    def iter_playlist_items(self, playlist_id: str, market: str) -> list[dict]:
+    def iter_playlist_items(self, playlist_id: str) -> list[dict]:
         return [
             {
                 "track": {
@@ -51,7 +53,7 @@ class FakeClient:
                     "name": "First track",
                     "duration_ms": 185_000,
                     "explicit": False,
-                    "external_ids": {"isrc": "ITABC2600001"},
+                    "external_ids": {},
                     "external_urls": {"spotify": "https://open.spotify.com/track/track1"},
                     "artists": [{"id": "artist1", "name": "Artist One"}],
                     "album": {
@@ -315,11 +317,14 @@ def test_collector_builds_compact_account_free_catalog(tmp_path: Path) -> None:
     assert len(collection["tracks"]) == 1
     assert track["position"] == 1
     assert track["id"].startswith("levyra-")
-    assert track["isrc"] == "ITABC2600001"
+    assert "isrc" not in track
+    assert "artworkUrl" not in track
+    assert "artworkUrl" not in track["album"]
     serialized = json.dumps(payload).lower()
     assert "owner" not in serialized
     assert "sp_dc" not in serialized
-    assert "spotify" not in serialized
+    assert "open.spotify.com" not in serialized
+    assert "scdn.co" not in serialized
     assert "sourceid" not in serialized
     assert "sourceurl" not in serialized
     assert "externalurl" not in serialized
@@ -332,7 +337,7 @@ def test_collector_builds_compact_account_free_catalog(tmp_path: Path) -> None:
 
 
 def test_playlist_positions_preserve_source_order_when_items_are_skipped() -> None:
-    items = FakeClient().iter_playlist_items("playlist12345", "IT")
+    items = FakeClient().iter_playlist_items("playlist12345")
     items.insert(0, {"track": None})
     tracks = normalize_playlist_items(items)
     assert [track.position for track in tracks] == [2]
@@ -368,3 +373,24 @@ def test_config_rejects_duplicate_collection_ids(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError):
         load_config(config_path)
+
+
+
+def test_secret_dictionary_url_requires_pinned_allowlisted_path() -> None:
+    valid = (
+        "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/"
+        "4cd9440671af3a419bad112164a193ea1374e0e1/secrets/secretDict.json"
+    )
+    assert validate_secret_dict_url(valid) == valid
+    with pytest.raises(AuthenticationError):
+        validate_secret_dict_url("https://example.com/secretDict.json")
+    with pytest.raises(AuthenticationError):
+        validate_secret_dict_url(
+            "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/main/secrets/secretDict.json"
+        )
+
+
+def test_playlist_query_hash_is_strictly_validated() -> None:
+    assert validate_playlist_query_hash("a" * 64) == "a" * 64
+    with pytest.raises(AuthenticationError):
+        validate_playlist_query_hash("not-a-hash")

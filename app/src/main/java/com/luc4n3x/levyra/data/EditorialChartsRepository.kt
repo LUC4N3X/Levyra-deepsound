@@ -1,93 +1,119 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import android.util.AtomicFile
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.Track
-import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.Cache
 import okhttp3.CacheControl
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.brotli.BrotliInterceptor
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.time.Instant
+import java.time.format.DateTimeParseException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 
 /**
- * Reads Levyra's public, pre-normalized editorial catalog.
+ * Reads Levyra's public, pre-normalized editorial ranking catalog.
  *
- * The Android app never receives the source session credential and never contacts the upstream
- * editorial service. Missing countries intentionally return an empty list so the existing YouTube
- * Music and Apple chart providers remain the transparent fallback.
+ * The source credential and source artwork never enter the app. A single process-wide instance owns
+ * the remote refresh, memory snapshot and AtomicFile cache so Home and Android Auto cannot race.
  */
-internal class EditorialChartsRepository(context: Context) {
+internal class EditorialChartsRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
-    private val httpClient = LevyraHttpClientFactory.feeds(appContext)
-    private val refreshMutex = Mutex()
-    private val cacheFile = File(appContext.filesDir, CACHE_RELATIVE_PATH)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val refreshGuard = Any()
+    private val cacheFile = AtomicFile(File(appContext.filesDir, CACHE_RELATIVE_PATH))
+    private val httpClient = LevyraHttpClientFactory.media(appContext).newBuilder()
+        .connectTimeout(4, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
+        .callTimeout(10, TimeUnit.SECONDS)
+        .addInterceptor(BrotliInterceptor)
+        .cache(Cache(File(appContext.cacheDir, HTTP_CACHE_DIRECTORY), HTTP_CACHE_BYTES))
+        .build()
 
     @Volatile
     private var memorySnapshot: CatalogSnapshot? = null
 
     @Volatile
-    private var lastRefreshAttemptAt: Long = 0L
+    private var refreshDeferred: Deferred<CatalogSnapshot?>? = null
 
-    suspend fun topTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
-        val market = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: DEFAULT_MARKET
-        val safeLimit = limit.coerceIn(1, 100)
-        val snapshot = loadSnapshot() ?: return@withContext emptyList()
-        snapshot.byMarket[market].orEmpty().take(safeLimit)
+    @Volatile
+    private var lastRefreshFailureAt: Long = 0L
+
+    fun warm() {
+        refreshAsync()
     }
 
-    private suspend fun loadSnapshot(): CatalogSnapshot? {
+    suspend fun cachedTopTracks(country: String, limit: Int): List<Track> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        memorySnapshot?.let { cached ->
-            if (now - cached.loadedAt in 0 until MEMORY_TTL_MS) return cached
+        val snapshot = usableSnapshot(now)
+        if (snapshot == null) {
+            warm()
+            return@withContext emptyList()
         }
-        return refreshMutex.withLock {
-            val lockedNow = System.currentTimeMillis()
-            memorySnapshot?.let { cached ->
-                if (lockedNow - cached.loadedAt in 0 until MEMORY_TTL_MS) return@withLock cached
-            }
+        if (snapshot.needsRefresh(now)) warm()
+        snapshot.tracks(country, limit)
+    }
 
-            val stored = readStoredSnapshot()
-            val shouldRefresh = lockedNow - lastRefreshAttemptAt !in 0 until REFRESH_RETRY_TTL_MS
-            if (!shouldRefresh) {
-                memorySnapshot = stored
-                return@withLock stored
-            }
-
-            lastRefreshAttemptAt = lockedNow
-            val remote = try {
-                fetchRemoteSnapshot()
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (error: Throwable) {
-                Timber.w(error, "Editorial chart catalog refresh failed")
-                null
-            }
+    private fun refreshAsync(): Deferred<CatalogSnapshot?> = synchronized(refreshGuard) {
+        refreshDeferred?.takeIf { it.isActive }?.let { return@synchronized it }
+        val now = System.currentTimeMillis()
+        if (now - lastRefreshFailureAt in 0 until REFRESH_RETRY_TTL_MS) {
+            return@synchronized CompletableDeferred(usableSnapshot(now))
+        }
+        scope.async {
+            val stored = usableSnapshot(System.currentTimeMillis())
+            val remote = fetchRemoteSnapshot()
             if (remote != null) {
                 persist(remote.rawJson)
                 memorySnapshot = remote
+                lastRefreshFailureAt = 0L
                 remote
             } else {
-                memorySnapshot = stored
+                lastRefreshFailureAt = System.currentTimeMillis()
                 stored
             }
+        }.also { created ->
+            refreshDeferred = created
+            created.invokeOnCompletion {
+                synchronized(refreshGuard) {
+                    if (refreshDeferred === created) refreshDeferred = null
+                }
+            }
         }
+    }
+
+    private fun usableSnapshot(now: Long): CatalogSnapshot? {
+        memorySnapshot?.let { cached ->
+            if (cached.isUsable(now)) return cached
+            memorySnapshot = null
+        }
+        val stored = readStoredSnapshot(now) ?: return null
+        memorySnapshot = stored
+        return stored
     }
 
     private suspend fun fetchRemoteSnapshot(): CatalogSnapshot? =
@@ -96,7 +122,7 @@ internal class EditorialChartsRepository(context: Context) {
                 .url(CATALOG_URL)
                 .header("Accept", "application/json")
                 .header("User-Agent", "Levyra/${BuildConfig.VERSION_NAME} Android")
-                .cacheControl(REMOTE_CACHE_CONTROL)
+                .cacheControl(CacheControl.FORCE_NETWORK)
                 .build()
             val call = httpClient.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
@@ -109,11 +135,13 @@ internal class EditorialChartsRepository(context: Context) {
                     val snapshot = runCatching {
                         response.use { current ->
                             if (!current.isSuccessful) return@use null
-                            val body = current.body?.string()?.takeIf(String::isNotBlank) ?: return@use null
-                            if (body.toByteArray(StandardCharsets.UTF_8).size > MAX_CATALOG_BYTES) {
-                                return@use null
-                            }
-                            EditorialCatalogParser.parse(body, System.currentTimeMillis())
+                            val body = current.body ?: return@use null
+                            val bytes = body.byteStream().readBounded(MAX_CATALOG_BYTES) ?: return@use null
+                            if (bytes.isEmpty()) return@use null
+                            EditorialCatalogParser.parse(
+                                body = bytes.toString(StandardCharsets.UTF_8),
+                                loadedAt = System.currentTimeMillis(),
+                            )
                         }
                     }.getOrNull()
                     if (continuation.isActive) continuation.resume(snapshot)
@@ -121,50 +149,97 @@ internal class EditorialChartsRepository(context: Context) {
             })
         }
 
-    private fun readStoredSnapshot(): CatalogSnapshot? {
-        if (!cacheFile.isFile || cacheFile.length() !in 1..MAX_CATALOG_BYTES.toLong()) return null
-        val body = runCatching { cacheFile.readText(Charsets.UTF_8) }.getOrNull() ?: return null
-        return EditorialCatalogParser.parse(body, System.currentTimeMillis())
+    private fun readStoredSnapshot(now: Long): CatalogSnapshot? {
+        val bytes = runCatching {
+            cacheFile.openRead().use { it.readBounded(MAX_CATALOG_BYTES) }
+        }.getOrNull() ?: return null
+        val snapshot = EditorialCatalogParser.parse(
+            body = bytes.toString(StandardCharsets.UTF_8),
+            loadedAt = now,
+        ) ?: return null
+        return snapshot.takeIf { it.isUsable(now) }
     }
 
     private fun persist(body: String) {
-        runCatching {
-            val parent = cacheFile.parentFile ?: return
-            parent.mkdirs()
-            val temporary = File(parent, "${cacheFile.name}.tmp")
-            temporary.writeText(body, Charsets.UTF_8)
-            temporary.copyTo(cacheFile, overwrite = true)
-            temporary.delete()
-        }.onFailure { error ->
+        val bytes = body.toByteArray(StandardCharsets.UTF_8)
+        if (bytes.size !in 1..MAX_CATALOG_BYTES) return
+        val stream = runCatching { cacheFile.startWrite() }.getOrNull() ?: return
+        try {
+            stream.write(bytes)
+            stream.fd.sync()
+            cacheFile.finishWrite(stream)
+        } catch (error: Throwable) {
+            cacheFile.failWrite(stream)
             Timber.w(error, "Unable to persist editorial chart catalog")
         }
     }
 
-    private companion object {
-        const val DEFAULT_MARKET = "IT"
-        const val CACHE_RELATIVE_PATH = "editorial/charts-v1.json"
-        const val MEMORY_TTL_MS = 30L * 60L * 1000L
-        const val REFRESH_RETRY_TTL_MS = 5L * 60L * 1000L
-        const val MAX_CATALOG_BYTES = 4 * 1024 * 1024
-        const val CATALOG_URL =
-            "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json"
+    private fun InputStream.readBounded(maxBytes: Int): ByteArray? {
+        val output = ByteArrayOutputStream(minOf(maxBytes, 64 * 1024))
+        val buffer = ByteArray(8 * 1024)
+        var total = 0
+        while (true) {
+            val read = read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > maxBytes) return null
+            output.write(buffer, 0, read)
+        }
+        return output.toByteArray()
+    }
 
-        val REMOTE_CACHE_CONTROL: CacheControl = CacheControl.Builder()
-            .maxStale(7, TimeUnit.DAYS)
-            .build()
+    companion object {
+        @Volatile
+        private var instance: EditorialChartsRepository? = null
+
+        fun get(context: Context): EditorialChartsRepository {
+            return instance ?: synchronized(this) {
+                instance ?: EditorialChartsRepository(context.applicationContext).also { instance = it }
+            }
+        }
+
+        private const val CACHE_RELATIVE_PATH = "editorial/charts-v2.json"
+        private const val HTTP_CACHE_DIRECTORY = "levyra_editorial_http"
+        private const val HTTP_CACHE_BYTES = 4L * 1024L * 1024L
+        private const val REFRESH_RETRY_TTL_MS = 5L * 60L * 1000L
+        private const val MAX_CATALOG_BYTES = 2 * 1024 * 1024
+        private const val CATALOG_URL =
+            "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/editorial-data/catalog/editorial.json"
     }
 }
 
 internal data class CatalogSnapshot(
     val byMarket: Map<String, List<Track>>,
+    val generatedAtMs: Long,
     val loadedAt: Long,
-    val rawJson: String
-)
+    val rawJson: String,
+) {
+    fun isUsable(now: Long): Boolean {
+        val age = now - generatedAtMs
+        return age in -MAX_FUTURE_SKEW_MS..MAX_CATALOG_AGE_MS
+    }
+
+    fun needsRefresh(now: Long): Boolean = now - generatedAtMs > REFRESH_AFTER_MS
+
+    fun tracks(country: String, limit: Int): List<Track> {
+        val market = country.trim().uppercase(Locale.ROOT).takeIf { it.length == 2 } ?: DEFAULT_MARKET
+        return byMarket[market].orEmpty().take(limit.coerceIn(1, MAX_TRACKS_PER_MARKET))
+    }
+
+    private companion object {
+        const val DEFAULT_MARKET = "IT"
+        const val MAX_TRACKS_PER_MARKET = 100
+        const val REFRESH_AFTER_MS = 30L * 60L * 1000L
+        const val MAX_CATALOG_AGE_MS = 48L * 60L * 60L * 1000L
+        const val MAX_FUTURE_SKEW_MS = 10L * 60L * 1000L
+    }
+}
 
 internal object EditorialCatalogParser {
     fun parse(body: String, loadedAt: Long): CatalogSnapshot? {
         val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
         if (root.optInt("schemaVersion", -1) != SUPPORTED_SCHEMA_VERSION) return null
+        val generatedAtMs = parseInstant(root.optString("generatedAt")) ?: return null
         val collections = root.optJSONArray("collections") ?: return null
         val byMarket = LinkedHashMap<String, List<Track>>()
         for (index in 0 until collections.length()) {
@@ -179,7 +254,12 @@ internal object EditorialCatalogParser {
             if (tracks.isNotEmpty()) byMarket[market] = tracks
         }
         if (byMarket.isEmpty()) return null
-        return CatalogSnapshot(byMarket = byMarket, loadedAt = loadedAt, rawJson = body)
+        return CatalogSnapshot(
+            byMarket = byMarket,
+            generatedAtMs = generatedAtMs,
+            loadedAt = loadedAt,
+            rawJson = body,
+        )
     }
 
     private fun parseTracks(items: JSONArray?): List<Track> {
@@ -192,9 +272,6 @@ internal object EditorialCatalogParser {
             val artist = parseArtists(item.optJSONArray("artists"))
             if (title.isBlank() || artist.isBlank()) continue
             val album = item.optJSONObject("album")
-            val albumName = album?.optString("name").orEmpty().trim().ifBlank { EDITORIAL_ALBUM }
-            val artwork = safeHttpsUrl(item.optString("artworkUrl"))
-                .ifBlank { safeHttpsUrl(album?.optString("artworkUrl").orEmpty()) }
             val releaseDate = album?.optString("releaseDate").orEmpty().trim()
             val identity = chartIdentity("$title|$artist")
             val palette = PALETTES[identity.seed % PALETTES.size]
@@ -202,12 +279,12 @@ internal object EditorialCatalogParser {
                 id = "chart-${identity.id}",
                 title = title,
                 artist = artist,
-                album = albumName,
+                album = album?.optString("name").orEmpty().trim().ifBlank { EDITORIAL_ALBUM },
                 durationMs = item.optLong("durationMs", 0L).coerceAtLeast(0L),
                 streamUrl = "",
                 videoUrl = "",
-                thumbnailUrl = artwork,
-                largeThumbnailUrl = artwork,
+                thumbnailUrl = "",
+                largeThumbnailUrl = "",
                 source = EDITORIAL_SOURCE,
                 moodTags = setOf("hit", "chart"),
                 energy = 70,
@@ -216,12 +293,11 @@ internal object EditorialCatalogParser {
                 cacheScore = 88,
                 accentStart = palette.first,
                 accentEnd = palette.second,
-                isrc = item.optString("isrc").trim(),
                 releaseDate = releaseDate,
                 year = releaseDate.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty(),
                 explicit = item.optBoolean("explicit", false),
                 metadataProvider = EDITORIAL_SOURCE,
-                metadataConfidence = 96
+                metadataConfidence = 94,
             )
         }
         return tracks.distinctBy { it.id }
@@ -237,20 +313,20 @@ internal object EditorialCatalogParser {
         }.distinct().joinToString(", ")
     }
 
-    private fun safeHttpsUrl(value: String): String {
-        val normalized = value.trim()
-        return normalized.takeIf {
-            it.length <= MAX_URL_LENGTH && it.startsWith("https://", ignoreCase = true)
-        }.orEmpty()
+    private fun parseInstant(value: String): Long? {
+        return try {
+            Instant.parse(value.trim()).toEpochMilli()
+        } catch (_: DateTimeParseException) {
+            null
+        }
     }
 
     private fun chartIdentity(value: String): ChartIdentity {
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(value.toByteArray(StandardCharsets.UTF_8))
-        val seed = digest.take(4)
-            .fold(0) { accumulator, byte ->
-                (accumulator shl 8) or (byte.toInt() and 0xFF)
-            } and Int.MAX_VALUE
+        val seed = digest.take(4).fold(0) { accumulator, byte ->
+            (accumulator shl 8) or (byte.toInt() and 0xFF)
+        } and Int.MAX_VALUE
         val id = digest.take(8).joinToString("") { byte -> "%02x".format(byte) }
         return ChartIdentity(seed = seed, id = id)
     }
@@ -259,7 +335,6 @@ internal object EditorialCatalogParser {
 
     private const val SUPPORTED_SCHEMA_VERSION = 1
     private const val MAX_TRACKS_PER_MARKET = 100
-    private const val MAX_URL_LENGTH = 2_048
     private const val EDITORIAL_SOURCE = "Levyra Editorial"
     private const val EDITORIAL_ALBUM = "Levyra Top 50"
 
@@ -268,6 +343,6 @@ internal object EditorialCatalogParser {
         0xFF1B5CFF.toInt() to 0xFFFF4FD8.toInt(),
         0xFFFF7A18.toInt() to 0xFF8E57FF.toInt(),
         0xFF00D4A6.toInt() to 0xFFFF3B5C.toInt(),
-        0xFFFFB000.toInt() to 0xFF00E5FF.toInt()
+        0xFFFFB000.toInt() to 0xFF00E5FF.toInt(),
     )
 }

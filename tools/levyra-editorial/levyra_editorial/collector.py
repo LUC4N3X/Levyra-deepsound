@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-import argparse
 import json
 import logging
-import os
 import re
-import sys
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
 from .models import Album, Artist, Catalog, Collection, Track
-from .spotify import EditorialSourceError, SpotifyWebClient
 
 LOGGER = logging.getLogger(__name__)
 CATALOG_SCHEMA_VERSION = 1
@@ -23,10 +19,10 @@ COLLECTION_ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 class EditorialClient(Protocol):
     """Minimum metadata-source interface required by the collector."""
 
-    def get_playlist_metadata(self, playlist_id: str, market: str) -> dict[str, Any]:
+    def get_playlist_metadata(self, playlist_id: str) -> dict[str, Any]:
         """Return public metadata for a playlist."""
 
-    def iter_playlist_items(self, playlist_id: str, market: str) -> list[dict[str, Any]]:
+    def iter_playlist_items(self, playlist_id: str) -> list[dict[str, Any]]:
         """Return all ordered playlist items."""
 
 
@@ -72,6 +68,9 @@ def load_config(path: Path) -> dict[str, Any]:
         title = item.get("title")
         if title is not None and (not isinstance(title, str) or not title.strip()):
             raise ValueError(f"Collection '{collection_id}' has an invalid title.")
+        optional = item.get("optional")
+        if optional is not None and not isinstance(optional, bool):
+            raise ValueError(f"Collection '{collection_id}' has an invalid optional flag.")
     return payload
 
 
@@ -95,8 +94,8 @@ def build_catalog(
         market = str(item["market"]).upper()
         LOGGER.info("Collecting %s (%s)", collection_id, market)
 
-        metadata = client.get_playlist_metadata(playlist_id, market)
-        raw_items = client.iter_playlist_items(playlist_id, market)
+        metadata = client.get_playlist_metadata(playlist_id)
+        raw_items = client.iter_playlist_items(playlist_id)
         tracks = normalize_playlist_items(raw_items)
         if not tracks:
             raise ValueError(f"Collection '{collection_id}' produced no usable tracks.")
@@ -181,7 +180,6 @@ def normalize_playlist_items(items: list[dict[str, Any]]) -> list[Track]:
                 album=album,
                 duration_ms=duration_ms,
                 explicit=bool(raw_track.get("explicit", False)),
-                isrc=_nested_string(raw_track, "external_ids", "isrc"),
                 external_url=_nested_string(raw_track, "external_urls", "spotify"),
                 artwork_url=artwork_url,
             )
@@ -250,23 +248,6 @@ def validate_catalog_file(path: Path) -> None:
     validate_catalog_dict(payload)
 
 
-def run_collection(config_path: Path, output_path: Path) -> None:
-    """Execute one collector run using the repository Actions secret."""
-    config = load_config(config_path)
-    raw_secret = os.environ.get("LEVYRA_EDITORIAL_SP_DC", "")
-    client = SpotifyWebClient(raw_secret)
-    try:
-        catalog = build_catalog(config, client)
-        write_catalog(catalog, output_path)
-    finally:
-        client.close()
-    LOGGER.info(
-        "Editorial catalog written to %s with %d collection(s).",
-        output_path,
-        len(catalog.collections),
-    )
-
-
 def _assert_safe_keys(value: Any) -> None:
     forbidden = {"sp_dc", "cookie", "cookies", "access_token", "authorization"}
     if isinstance(value, Mapping):
@@ -326,48 +307,3 @@ def _optional_string(value: Any) -> str | None:
 
 def _positive_int(value: Any) -> int | None:
     return value if isinstance(value, int) and value > 0 else None
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate Levyra's editorial metadata catalog.")
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=Path("tools/levyra-editorial/config.json"),
-        help="Path to the checked-in collection configuration.",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("build/editorial/catalog.json"),
-        help="Path for the generated catalog.",
-    )
-    parser.add_argument(
-        "--validate",
-        type=Path,
-        help="Validate an existing catalog instead of collecting remote data.",
-    )
-    return parser
-
-
-def main(argv: list[str] | None = None) -> int:
-    """Command-line entry point."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-    )
-    args = _build_parser().parse_args(argv)
-    try:
-        if args.validate:
-            validate_catalog_file(args.validate)
-            LOGGER.info("Catalog validation succeeded: %s", args.validate)
-        else:
-            run_collection(args.config, args.output)
-        return 0
-    except (EditorialSourceError, OSError, ValueError) as error:
-        LOGGER.error("%s", error)
-        return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
