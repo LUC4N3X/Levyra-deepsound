@@ -2,7 +2,7 @@
 
 This tool builds a small, account-free JSON catalog for Levyra from configured public editorial playlists.
 
-It runs only in GitHub Actions. The long-lived web session value is stored as an Actions secret and is used only to obtain a short-lived bearer token during the workflow run. The generated catalog contains public metadata only: titles, artists, albums, artwork URLs, durations, ISRC values, source IDs, and chart positions.
+It runs only in GitHub Actions. The long-lived web session value is stored as an Actions secret and is used only to obtain a short-lived bearer token during the workflow run. Playlist metadata is then read through the web player's persisted-query endpoint. The generated catalog contains public metadata only: titles, artists, albums, artwork URLs, durations, source IDs, external links, and chart positions. ISRC is optional and remains absent when the playlist response does not provide it.
 
 ## Security model
 
@@ -19,6 +19,8 @@ The source account is not shipped to users. Android and Desktop will consume onl
 ## Implementation note
 
 The collector is an original Python implementation written for Levyra. The actively maintained SimpMusic project was used as a behavioral reference for the current `sp_dc` plus TOTP web-session flow, including the dedicated server-time endpoint and mobile web-player token profile. No SimpMusic source code was copied into Levyra.
+
+Playlist reads use the web player's `fetchPlaylist` persisted query instead of the developer Web API. This avoids depending on the shared-runner rate limit that affected `api.spotify.com/v1/playlists` during the pull-request test. The query hash is isolated in one constant and can be overridden without changing code if Spotify rotates it.
 
 ## Repository secret
 
@@ -38,13 +40,14 @@ Repository Settings → Secrets and variables → Actions → New repository sec
 
 The connector used to prepare this change cannot create or read repository secrets, so this is the only manual setup step.
 
-An optional secret-dictionary URL can be provided as a repository variable or workflow environment value:
+Optional repository variables or workflow environment values:
 
 ```text
 LEVYRA_EDITORIAL_TOTP_SECRETS_URL
+LEVYRA_EDITORIAL_PLAYLIST_QUERY_HASH
 ```
 
-When omitted, the collector uses the current public versioned dictionary configured in `levyra_editorial/spotify.py`.
+When omitted, the collector uses the current public versioned TOTP dictionary and the checked-in `fetchPlaylist` query hash configured in `levyra_editorial/spotify.py`.
 
 ## Configuring collections
 
@@ -125,7 +128,7 @@ A failed run never overwrites that file.
           },
           "durationMs": 185000,
           "explicit": false,
-          "isrc": "...",
+          "isrc": null,
           "externalUrl": "https://...",
           "artworkUrl": "https://..."
         }
