@@ -18,7 +18,7 @@ dev = [
 ]
 
 [project.scripts]
-levyra-editorial = "levyra_editorial.collector:main"
+levyra-editorial = "levyra_editorial.resilient:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
