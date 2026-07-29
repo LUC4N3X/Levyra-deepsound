@@ -28,6 +28,7 @@ DEFAULT_USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/135.0.0.0 Safari/537.36"
 )
+SPOTIFY_APP_VERSION = "1.2.61.20.g3b4cd5b2"
 TOKEN_ATTEMPTS = (
     ("mobile-web-player", "transport"),
     ("mobile-web-player", "init"),
@@ -187,13 +188,7 @@ class SpotifyWebClient:
                     otp=otp,
                     totp_version=totp_version,
                 )
-                access_token = str(token_data.get("accessToken", "")).strip()
-                if not access_token:
-                    raise AuthenticationError("The source returned an empty access token.")
-                self._access_token = access_token
-                self._client_id = str(token_data.get("clientId", "")).strip() or None
-                self._expires_at_ms = int(token_data.get("accessTokenExpirationTimestampMs", 0) or 0)
-                self._validate_access_token()
+                self._accept_token_response(token_data, server_time)
                 LOGGER.info(
                     "Editorial source authentication succeeded with the %s profile.",
                     product_type,
@@ -204,10 +199,10 @@ class SpotifyWebClient:
                 self._access_token = None
                 self._client_id = None
                 LOGGER.warning(
-                    "Editorial token profile %s / %s failed (%s).",
+                    "Editorial token profile %s / %s failed: %s.",
                     product_type,
                     reason,
-                    type(error).__name__,
+                    _safe_authentication_failure(error),
                 )
 
         raise AuthenticationError(
@@ -281,7 +276,7 @@ class SpotifyWebClient:
         try:
             response = self._session.get(
                 SERVER_TIME_URL,
-                headers=self._web_player_headers(),
+                headers=self._server_time_headers(),
                 timeout=self._timeout,
             )
             response.raise_for_status()
@@ -336,20 +331,32 @@ class SpotifyWebClient:
             headers=self._web_player_headers(),
             timeout=self._timeout,
         )
-        response.raise_for_status()
-        payload = response.json()
-        return _require_object(payload, "access token")
-
-    def _validate_access_token(self) -> None:
-        response = self._session.get(
-            f"{API_BASE_URL}/me",
-            headers=self._api_headers(),
-            timeout=self._timeout,
-        )
-        if response.status_code != 200:
+        if response.status_code >= 400:
             raise AuthenticationError(
-                f"The short-lived access token was rejected with HTTP {response.status_code}."
+                f"token endpoint returned HTTP {response.status_code}"
             )
+        try:
+            payload = response.json()
+        except ValueError as error:
+            raise AuthenticationError("token endpoint returned invalid JSON") from error
+        if not isinstance(payload, dict):
+            raise AuthenticationError("token endpoint returned an invalid response shape")
+        return payload
+
+    def _accept_token_response(self, token_data: Mapping[str, Any], server_time: int) -> None:
+        access_token = str(token_data.get("accessToken", "")).strip()
+        if not access_token:
+            raise AuthenticationError("token endpoint returned an empty access token")
+        if token_data.get("isAnonymous") is True:
+            raise AuthenticationError("token endpoint returned an anonymous session")
+
+        expires_at_ms = _positive_timestamp(token_data.get("accessTokenExpirationTimestampMs"))
+        if expires_at_ms is not None and expires_at_ms <= server_time * 1000:
+            raise AuthenticationError("token endpoint returned an expired access token")
+
+        self._access_token = access_token
+        self._client_id = str(token_data.get("clientId", "")).strip() or None
+        self._expires_at_ms = expires_at_ms or 0
 
     def _web_player_headers(self) -> dict[str, str]:
         return {
@@ -359,6 +366,11 @@ class SpotifyWebClient:
             "Origin": OPEN_SPOTIFY_URL.rstrip("/"),
             "Referer": OPEN_SPOTIFY_URL,
         }
+
+    def _server_time_headers(self) -> dict[str, str]:
+        headers = self._web_player_headers()
+        headers["Spotify-App-Version"] = SPOTIFY_APP_VERSION
+        return headers
 
     def _api_get(self, path: str, *, params: Mapping[str, Any] | None = None) -> Any:
         return self._api_get_url(f"{API_BASE_URL}{path}", params=params)
@@ -406,6 +418,21 @@ class SpotifyWebClient:
         if len(normalized) not in range(10, 80) or not normalized.isalnum():
             raise SourceApiError("A configured playlist ID is invalid.")
         return normalized
+
+
+def _safe_authentication_failure(error: Exception) -> str:
+    if isinstance(error, AuthenticationError):
+        return str(error)
+    if isinstance(error, requests.Timeout):
+        return "request timed out"
+    if isinstance(error, requests.ConnectionError):
+        return "network connection failed"
+    if isinstance(error, requests.HTTPError):
+        status_code = getattr(getattr(error, "response", None), "status_code", None)
+        return f"request failed with HTTP {status_code}" if status_code else "HTTP request failed"
+    if isinstance(error, ValueError):
+        return "invalid token response"
+    return type(error).__name__
 
 
 def _positive_timestamp(value: Any) -> int | None:
