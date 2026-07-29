@@ -29,7 +29,10 @@ jobs:
           fetch-depth: 0
 
       - name: Apply review fixes
-        run: python tools/apply_editorial_review_fixes.py
+        run: |
+          set -euo pipefail
+          python tools/apply_editorial_review_fixes.py
+          git checkout HEAD -- .github/workflows/editorial-catalog.yml
 
       - name: Preserve server-time failure semantics
         run: |
@@ -88,6 +91,11 @@ jobs:
       - name: Commit verified fixes
         run: |
           set -euo pipefail
+          rm -rf tools/levyra-editorial/levyra_editorial.egg-info
+          find tools/levyra-editorial -type d -name __pycache__ -prune -exec rm -rf {} +
+          rm -rf .pytest_cache tools/levyra-editorial/.pytest_cache
+          rm -f tools/apply_editorial_review_fixes.py
+          git checkout HEAD -- .github/workflows/editorial-catalog.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
