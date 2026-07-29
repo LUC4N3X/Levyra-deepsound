@@ -25,8 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -40,13 +42,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
@@ -66,81 +69,71 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-private const val REPOSITORY_URL = "https://github.com/LUC4N3X/Levyra-deepsound"
 private const val PROMPT_DELAY_MS = 800L
-private const val SUPPORT_PREFERENCES = "levyra_support_prompt"
-private const val KEY_PROMPT_SEEN = "open_source_support_prompt_v1_seen"
-
-private object OpenSourceSupportPromptStore {
-    fun hasSeen(context: Context): Boolean = preferences(context).getBoolean(KEY_PROMPT_SEEN, false)
-
-    fun markSeen(context: Context) {
-        preferences(context).edit().putBoolean(KEY_PROMPT_SEEN, true).apply()
-    }
-
-    private fun preferences(context: Context) =
-        context.applicationContext.getSharedPreferences(SUPPORT_PREFERENCES, Context.MODE_PRIVATE)
-}
 
 @Composable
-fun OpenSourceSupportPromptGate(
+fun RemoteAnnouncementGate(
     enabled: Boolean,
     languageCode: String
 ) {
     val context = LocalContext.current.applicationContext
-    var visible by rememberSaveable { mutableStateOf(false) }
+    val repository = remember(context) { RemoteAnnouncementRepository(context) }
+    var announcement by remember { mutableStateOf<RemoteAnnouncementPresentation?>(null) }
 
     LaunchedEffect(enabled, languageCode) {
-        visible = false
+        announcement = null
         if (!enabled) return@LaunchedEffect
-        val eligible = withContext(Dispatchers.IO) {
-            LevyraPreferences(context).isOnboarded() && !OpenSourceSupportPromptStore.hasSeen(context)
-        }
-        if (!eligible) return@LaunchedEffect
+        val onboarded = withContext(Dispatchers.IO) { LevyraPreferences(context).isOnboarded() }
+        if (!onboarded) return@LaunchedEffect
         delay(PROMPT_DELAY_MS)
-        visible = withContext(Dispatchers.IO) { !OpenSourceSupportPromptStore.hasSeen(context) }
+        announcement = repository.resolve(languageCode)
     }
 
-    if (!visible) return
-
-    val copy = remember(languageCode) { OpenSourceSupportStrings.forCode(languageCode) }
-    val linkFailureMessage = remember(languageCode) { LevyraStrings.forCode(languageCode).cannotOpenExternalLink }
-    val layoutDirection = if (LevyraLanguageCatalog.isRtl(languageCode)) LayoutDirection.Rtl else LayoutDirection.Ltr
+    val current = announcement ?: return
+    val linkFailureMessage = remember(languageCode) {
+        LevyraStrings.forCode(languageCode).cannotOpenExternalLink
+    }
+    val layoutDirection = if (LevyraLanguageCatalog.isRtl(languageCode)) {
+        LayoutDirection.Rtl
+    } else {
+        LayoutDirection.Ltr
+    }
     val dismiss = {
-        OpenSourceSupportPromptStore.markSeen(context)
-        visible = false
+        repository.markDismissed(current.id)
+        announcement = null
     }
-    val openRepository = {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(REPOSITORY_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { context.startActivity(intent) }
-            .onSuccess { dismiss() }
-            .onFailure { Toast.makeText(context, linkFailureMessage, Toast.LENGTH_LONG).show() }
+    val openAction = {
+        val target = current.actionUrl
+        if (target == null) {
+            dismiss()
+        } else {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { context.startActivity(intent) }
+                .onSuccess { dismiss() }
+                .onFailure { Toast.makeText(context, linkFailureMessage, Toast.LENGTH_LONG).show() }
+        }
         Unit
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-        OpenSourceSupportPrompt(
-            copy = copy,
-            onStar = openRepository,
+        RemoteAnnouncementDialog(
+            announcement = current,
+            onAction = openAction,
             onDismiss = dismiss
         )
     }
 }
 
 @Composable
-private fun OpenSourceSupportPrompt(
-    copy: OpenSourceSupportCopy,
-    onStar: () -> Unit,
+private fun RemoteAnnouncementDialog(
+    announcement: RemoteAnnouncementPresentation,
+    onAction: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val shape = RoundedCornerShape(30.dp)
-    val accentBrush = Brush.linearGradient(
-        listOf(
-            LevyraCyan.copy(alpha = 0.95f),
-            LevyraViolet.copy(alpha = 0.95f),
-            LevyraOrange.copy(alpha = 0.90f)
-        )
-    )
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val visuals = announcementVisuals(announcement.style)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -154,7 +147,7 @@ private fun OpenSourceSupportPrompt(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .widthIn(max = 440.dp)
-                .heightIn(max = 640.dp)
+                .heightIn(max = screenHeight * 0.88f)
                 .shadow(30.dp, shape),
             shape = shape,
             color = Color.Transparent,
@@ -182,12 +175,12 @@ private fun OpenSourceSupportPrompt(
                     Box(
                         modifier = Modifier
                             .size(72.dp)
-                            .background(accentBrush, CircleShape)
+                            .background(visuals.brush, CircleShape)
                             .border(1.dp, Color.White.copy(alpha = 0.30f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Star,
+                            imageVector = visuals.heroIcon,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(38.dp)
@@ -209,14 +202,14 @@ private fun OpenSourceSupportPrompt(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Code,
+                            imageVector = visuals.badgeIcon,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(7.dp))
                         Text(
-                            text = copy.badge,
+                            text = announcement.copy.badge,
                             color = MaterialTheme.colorScheme.primary,
                             fontSize = 11.sp,
                             letterSpacing = 0.8.sp,
@@ -227,7 +220,7 @@ private fun OpenSourceSupportPrompt(
                     Spacer(Modifier.height(16.dp))
 
                     Text(
-                        text = copy.title,
+                        text = announcement.copy.title,
                         color = MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Black,
@@ -237,41 +230,44 @@ private fun OpenSourceSupportPrompt(
                     Spacer(Modifier.height(12.dp))
 
                     Text(
-                        text = copy.body,
+                        text = announcement.copy.body,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 15.sp,
                         lineHeight = 21.sp,
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(Modifier.height(24.dp))
-
-                    Button(
-                        onClick = onStar,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Star,
-                            contentDescription = null,
-                            modifier = Modifier.size(19.dp)
-                        )
-                        Spacer(Modifier.width(9.dp))
-                        Text(
-                            text = copy.starAction,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.width(9.dp))
-                        Icon(
-                            imageVector = Icons.Rounded.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(17.dp)
-                        )
+                    if (announcement.actionUrl != null && announcement.copy.starAction.isNotBlank()) {
+                        Spacer(Modifier.height(24.dp))
+                        Button(
+                            onClick = onAction,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = visuals.actionIcon,
+                                contentDescription = null,
+                                modifier = Modifier.size(19.dp)
+                            )
+                            Spacer(Modifier.width(9.dp))
+                            Text(
+                                text = announcement.copy.starAction,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(Modifier.width(9.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    } else {
+                        Spacer(Modifier.height(14.dp))
                     }
 
                     TextButton(
@@ -279,7 +275,7 @@ private fun OpenSourceSupportPrompt(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = copy.continueAction,
+                            text = announcement.copy.continueAction,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -289,3 +285,52 @@ private fun OpenSourceSupportPrompt(
         }
     }
 }
+
+@Composable
+private fun announcementVisuals(style: AnnouncementStyle): AnnouncementVisuals {
+    return when (style) {
+        AnnouncementStyle.OPEN_SOURCE -> AnnouncementVisuals(
+            heroIcon = Icons.Rounded.Star,
+            badgeIcon = Icons.Rounded.Code,
+            actionIcon = Icons.Rounded.Star,
+            brush = Brush.linearGradient(
+                listOf(
+                    LevyraCyan.copy(alpha = 0.95f),
+                    LevyraViolet.copy(alpha = 0.95f),
+                    LevyraOrange.copy(alpha = 0.90f)
+                )
+            )
+        )
+        AnnouncementStyle.UPDATE -> AnnouncementVisuals(
+            heroIcon = Icons.Rounded.SystemUpdateAlt,
+            badgeIcon = Icons.Rounded.SystemUpdateAlt,
+            actionIcon = Icons.Rounded.SystemUpdateAlt,
+            brush = Brush.linearGradient(
+                listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.tertiary,
+                    MaterialTheme.colorScheme.secondary
+                )
+            )
+        )
+        AnnouncementStyle.INFO -> AnnouncementVisuals(
+            heroIcon = Icons.Rounded.Info,
+            badgeIcon = Icons.Rounded.Info,
+            actionIcon = Icons.Rounded.Info,
+            brush = Brush.linearGradient(
+                listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.primaryContainer
+                )
+            )
+        )
+    }
+}
+
+private data class AnnouncementVisuals(
+    val heroIcon: ImageVector,
+    val badgeIcon: ImageVector,
+    val actionIcon: ImageVector,
+    val brush: Brush
+)
