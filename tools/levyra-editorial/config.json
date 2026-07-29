@@ -1,14 +1,6 @@
 {
   "schemaVersion": 1,
-  "allowPartial": true,
   "collections": [
-    {
-      "id": "top-50-global",
-      "kind": "chart",
-      "market": "GLOBAL",
-      "playlistId": "37i9dQZEVXbMDoHDwVN2tF",
-      "title": "Top 50 Global"
-    },
     {
       "id": "top-50-it",
       "kind": "chart",
@@ -126,7 +118,8 @@
       "kind": "chart",
       "market": "RU",
       "playlistId": "37i9dQZEVXbL8l7ra5vVdB",
-      "title": "Top 50 Россия"
+      "title": "Top 50 Россия",
+      "optional": true
     },
     {
       "id": "top-50-tr",

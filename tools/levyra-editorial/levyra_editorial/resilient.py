@@ -4,12 +4,14 @@ import argparse
 import logging
 import os
 import sys
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 from .collector import (
     CATALOG_SCHEMA_VERSION,
+    EditorialClient,
     build_catalog,
     load_config,
     utc_now_iso,
@@ -20,66 +22,76 @@ from .models import Catalog, Collection
 from .spotify import EditorialSourceError, SourceApiError, SpotifyWebClient
 
 LOGGER = logging.getLogger(__name__)
+COLLECTION_PAUSE_SECONDS = 0.15
 
 
 def build_resilient_catalog(
     config: Mapping[str, Any],
-    client: SpotifyWebClient,
+    client: EditorialClient,
     *,
     generated_at: str | None = None,
+    pause_seconds: float = COLLECTION_PAUSE_SECONDS,
 ) -> Catalog:
-    """Collect every available chart while isolating unavailable country playlists."""
+    """Collect every required chart and isolate only explicitly optional markets."""
     raw_collections = config.get("collections")
     if not isinstance(raw_collections, list) or not raw_collections:
         raise ValueError("Collector config collections are missing.")
 
-    allow_partial = config.get("allowPartial") is True
     collected: list[Collection] = []
-    skipped: list[str] = []
+    skipped_optional: list[str] = []
+    required_ids = {
+        str(item.get("id") or "").strip()
+        for item in raw_collections
+        if isinstance(item, dict) and item.get("optional") is not True
+    }
     timestamp = generated_at or utc_now_iso()
 
-    for item in raw_collections:
+    for index, item in enumerate(raw_collections):
         if not isinstance(item, dict):
             continue
         collection_id = str(item.get("id") or "").strip()
-        single_config = {"collections": [item]}
+        optional = item.get("optional") is True
         try:
             single_catalog = build_catalog(
-                single_config,
+                {"collections": [item]},
                 client,
                 generated_at=timestamp,
             )
+            collected.extend(single_catalog.collections)
         except SourceApiError as error:
-            if not allow_partial:
+            if not optional:
                 raise
-            skipped.append(collection_id)
+            skipped_optional.append(collection_id)
             LOGGER.warning(
-                "Skipping unavailable editorial collection %s: %s",
+                "Skipping optional editorial collection %s: %s",
                 collection_id,
                 error,
             )
-            continue
         except ValueError as error:
-            if not allow_partial or "produced no usable tracks" not in str(error):
+            if not optional or "produced no usable tracks" not in str(error):
                 raise
-            skipped.append(collection_id)
-            LOGGER.warning(
-                "Skipping empty editorial collection %s.",
-                collection_id,
-            )
-            continue
-        collected.extend(single_catalog.collections)
+            skipped_optional.append(collection_id)
+            LOGGER.warning("Skipping empty optional editorial collection %s.", collection_id)
+        finally:
+            if pause_seconds > 0 and index + 1 < len(raw_collections):
+                time.sleep(pause_seconds)
 
+    collected_ids = {collection.id for collection in collected}
+    missing_required = sorted(required_ids - collected_ids)
+    if missing_required:
+        raise ValueError(
+            "Required editorial collections are missing: " + ", ".join(missing_required)
+        )
     if not collected:
         raise ValueError("No configured editorial collection produced usable tracks.")
 
     LOGGER.info(
-        "Collected %d editorial collection(s); skipped %d unavailable collection(s).",
+        "Collected %d editorial collection(s); skipped %d optional collection(s).",
         len(collected),
-        len(skipped),
+        len(skipped_optional),
     )
-    if skipped:
-        LOGGER.info("Unavailable collection ids: %s", ", ".join(skipped))
+    if skipped_optional:
+        LOGGER.info("Unavailable optional collection ids: %s", ", ".join(skipped_optional))
 
     return Catalog(
         schema_version=CATALOG_SCHEMA_VERSION,

@@ -127,8 +127,8 @@ def test_pathfinder_collects_metadata_and_tracks_without_developer_api() -> None
     session = PathfinderSession(FakeResponse(playlist_payload()))
     client = authenticated_client(session)
 
-    metadata = client.get_playlist_metadata("playlist12345", "IT")
-    items = client.iter_playlist_items("playlist12345", "IT")
+    metadata = client.get_playlist_metadata("playlist12345")
+    items = client.iter_playlist_items("playlist12345")
 
     assert metadata["name"] == "Top 50 Italia"
     assert metadata["tracks"]["total"] == 1
@@ -153,7 +153,7 @@ def test_pathfinder_reports_rotated_persisted_query_hash() -> None:
     client = authenticated_client(session)
 
     with pytest.raises(SourceApiError, match="rotated"):
-        client.get_playlist_metadata("playlist12345", "IT")
+        client.get_playlist_metadata("playlist12345")
 
 
 def test_pathfinder_rejects_missing_playlist_union() -> None:
@@ -161,4 +161,4 @@ def test_pathfinder_rejects_missing_playlist_union() -> None:
     client = authenticated_client(session)
 
     with pytest.raises(SourceApiError, match="playlistV2"):
-        client.get_playlist_metadata("playlist12345", "IT")
+        client.get_playlist_metadata("playlist12345")

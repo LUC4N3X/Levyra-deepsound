@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,11 +29,6 @@ def _public_track_id(track: Track) -> str:
     return f"levyra-{digest}"
 
 
-def _public_text(value: str) -> str:
-    """Keep useful metadata while removing upstream brand references."""
-    return re.sub(r"\bspotify\b", "Levyra Editorial", value, flags=re.IGNORECASE)
-
-
 @dataclass(frozen=True)
 class Artist:
     id: str | None
@@ -60,7 +54,6 @@ class Track:
     album: Album
     duration_ms: int
     explicit: bool
-    isrc: str | None
     external_url: str | None
     artwork_url: str | None
 
@@ -69,17 +62,14 @@ class Track:
             {
                 "position": self.position,
                 "id": _public_track_id(self),
-                "title": _public_text(self.title),
-                "artists": [{"name": _public_text(artist.name)} for artist in self.artists],
+                "title": self.title,
+                "artists": [{"name": artist.name} for artist in self.artists],
                 "album": {
-                    "name": _public_text(self.album.name),
+                    "name": self.album.name,
                     "releaseDate": self.album.release_date,
-                    "artworkUrl": self.album.artwork_url,
                 },
                 "durationMs": self.duration_ms,
                 "explicit": self.explicit,
-                "isrc": self.isrc,
-                "artworkUrl": self.artwork_url,
             }
         )
 
@@ -104,9 +94,8 @@ class Collection:
                 "id": self.id,
                 "kind": self.kind,
                 "market": self.market,
-                "title": _public_text(self.title),
-                "description": _public_text(self.description),
-                "artworkUrl": self.artwork_url,
+                "title": self.title,
+                "description": self.description,
                 "totalSourceItems": self.total_source_items,
                 "tracks": [track.to_dict() for track in self.tracks],
             }
