@@ -6,9 +6,10 @@ import logging
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from collections.abc import Mapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping, Protocol
+from typing import Any, Protocol
 
 from .models import Album, Artist, Catalog, Collection, Track
 from .spotify import EditorialSourceError, SpotifyWebClient
@@ -31,7 +32,7 @@ class EditorialClient(Protocol):
 
 def utc_now_iso() -> str:
     """Return a stable UTC timestamp suitable for the public catalog."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def load_config(path: Path) -> dict[str, Any]:
