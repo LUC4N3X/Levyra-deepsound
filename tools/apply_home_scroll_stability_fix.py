@@ -143,3 +143,4 @@ replace_once(
 )
 
 print("Home scroll and Spotify artwork continuity patch applied")
+# Triggered after final verifier update.
