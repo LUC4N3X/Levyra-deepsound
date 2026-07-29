@@ -17,6 +17,7 @@ from urllib3.util.retry import Retry
 LOGGER = logging.getLogger(__name__)
 
 OPEN_SPOTIFY_URL = "https://open.spotify.com/"
+SERVER_TIME_URL = "https://open.spotify.com/api/server-time"
 TOKEN_URL = "https://open.spotify.com/api/token"
 API_BASE_URL = "https://api.spotify.com/v1"
 DEFAULT_SECRET_DICT_URL = (
@@ -26,6 +27,12 @@ DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/135.0.0.0 Safari/537.36"
+)
+TOKEN_ATTEMPTS = (
+    ("mobile-web-player", "transport"),
+    ("mobile-web-player", "init"),
+    ("web-player", "transport"),
+    ("web-player", "init"),
 )
 
 
@@ -72,7 +79,13 @@ def decode_totp_secret(cipher_bytes: list[int]) -> str:
     return base64.b32encode(joined).decode("ascii").rstrip("=")
 
 
-def generate_totp(secret: str, timestamp_seconds: int, *, digits: int = 6, interval: int = 30) -> str:
+def generate_totp(
+    secret: str,
+    timestamp_seconds: int,
+    *,
+    digits: int = 6,
+    interval: int = 30,
+) -> str:
     """Generate an RFC 6238 SHA-1 time-based one-time password."""
     if digits not in range(6, 9) or interval <= 0:
         raise ValueError("Unsupported TOTP parameters.")
@@ -157,29 +170,16 @@ class SpotifyWebClient:
 
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
-        try:
-            secret_response = self._session.get(self._secret_dict_url, timeout=self._timeout)
-            secret_response.raise_for_status()
-        except requests.RequestException as error:
-            raise AuthenticationError(
-                "The TOTP secret dictionary could not be retrieved."
-            ) from error
-
-        try:
-            secret_dict = secret_response.json()
-        except ValueError as error:
-            raise AuthenticationError("The TOTP secret dictionary is not valid JSON.") from error
-        if not isinstance(secret_dict, dict):
-            raise AuthenticationError("The TOTP secret dictionary has an invalid shape.")
-
+        secret_dict = self._fetch_totp_secret_dictionary()
         totp_version, totp_secret = select_latest_totp_secret(secret_dict)
         server_time = self._fetch_server_time()
         otp = generate_totp(totp_secret, server_time)
 
         last_error: Exception | None = None
-        for reason in ("transport", "init"):
+        for product_type, reason in TOKEN_ATTEMPTS:
             try:
                 token_data = self._request_access_token(
+                    product_type=product_type,
                     reason=reason,
                     otp=otp,
                     totp_version=totp_version,
@@ -191,7 +191,10 @@ class SpotifyWebClient:
                 self._client_id = str(token_data.get("clientId", "")).strip() or None
                 self._expires_at_ms = int(token_data.get("accessTokenExpirationTimestampMs", 0) or 0)
                 self._validate_access_token()
-                LOGGER.info("Editorial source authentication succeeded.")
+                LOGGER.info(
+                    "Editorial source authentication succeeded with the %s profile.",
+                    product_type,
+                )
                 return
             except (requests.RequestException, ValueError, AuthenticationError) as error:
                 last_error = error
@@ -247,28 +250,67 @@ class SpotifyWebClient:
         """Close the underlying HTTP session."""
         self._session.close()
 
-    def _fetch_server_time(self) -> int:
+    def _fetch_totp_secret_dictionary(self) -> dict[str, Any]:
         try:
-            response = self._session.head(
+            response = self._session.get(self._secret_dict_url, timeout=self._timeout)
+            response.raise_for_status()
+        except requests.RequestException as error:
+            raise AuthenticationError(
+                "The TOTP secret dictionary could not be retrieved."
+            ) from error
+
+        try:
+            payload = response.json()
+        except ValueError as error:
+            raise AuthenticationError("The TOTP secret dictionary is not valid JSON.") from error
+        if not isinstance(payload, dict):
+            raise AuthenticationError("The TOTP secret dictionary has an invalid shape.")
+        return payload
+
+    def _fetch_server_time(self) -> int:
+        request_error: Exception | None = None
+        try:
+            response = self._session.get(
+                SERVER_TIME_URL,
+                headers=self._web_player_headers(),
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = None
+            if isinstance(payload, dict):
+                server_time = _positive_timestamp(payload.get("serverTime"))
+                if server_time is not None:
+                    return server_time
+            date_timestamp = _http_date_timestamp(response.headers.get("Date"))
+            if date_timestamp is not None:
+                return date_timestamp
+        except requests.RequestException as error:
+            request_error = error
+
+        try:
+            fallback_response = self._session.head(
                 OPEN_SPOTIFY_URL,
                 headers={"Accept": "*/*"},
                 timeout=self._timeout,
             )
-            response.raise_for_status()
+            fallback_response.raise_for_status()
         except requests.RequestException as error:
-            raise AuthenticationError("The source server time could not be retrieved.") from error
+            raise AuthenticationError("The source server time could not be retrieved.") from (
+                request_error or error
+            )
 
-        date_header = response.headers.get("Date")
-        if not date_header:
-            raise AuthenticationError("The source did not return a server time.")
-        try:
-            return int(parsedate_to_datetime(date_header).timestamp())
-        except (TypeError, ValueError, OverflowError) as error:
-            raise AuthenticationError("The source returned an invalid server time.") from error
+        fallback_timestamp = _http_date_timestamp(fallback_response.headers.get("Date"))
+        if fallback_timestamp is None:
+            raise AuthenticationError("The source returned an invalid server time.")
+        return fallback_timestamp
 
     def _request_access_token(
         self,
         *,
+        product_type: str,
         reason: str,
         otp: str,
         totp_version: int,
@@ -277,17 +319,12 @@ class SpotifyWebClient:
             TOKEN_URL,
             params={
                 "reason": reason,
-                "productType": "web-player",
+                "productType": product_type,
                 "totp": otp,
                 "totpServer": otp,
                 "totpVer": totp_version,
             },
-            headers={
-                "Accept": "application/json",
-                "Referer": OPEN_SPOTIFY_URL,
-                "App-Platform": "WebPlayer",
-                "Cookie": f"sp_dc={self._sp_dc}",
-            },
+            headers=self._web_player_headers(),
             timeout=self._timeout,
         )
         response.raise_for_status()
@@ -304,6 +341,15 @@ class SpotifyWebClient:
             raise AuthenticationError(
                 f"The short-lived access token was rejected with HTTP {response.status_code}."
             )
+
+    def _web_player_headers(self) -> dict[str, str]:
+        return {
+            "Accept": "application/json",
+            "App-Platform": "WebPlayer",
+            "Cookie": f"sp_dc={self._sp_dc}",
+            "Origin": OPEN_SPOTIFY_URL.rstrip("/"),
+            "Referer": OPEN_SPOTIFY_URL,
+        }
 
     def _api_get(self, path: str, *, params: Mapping[str, Any] | None = None) -> Any:
         return self._api_get_url(f"{API_BASE_URL}{path}", params=params)
@@ -351,6 +397,29 @@ class SpotifyWebClient:
         if len(normalized) not in range(10, 80) or not normalized.isalnum():
             raise SourceApiError("A configured playlist ID is invalid.")
         return normalized
+
+
+def _positive_timestamp(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value > 0:
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = int(value)
+        except ValueError:
+            return None
+        return parsed if parsed > 0 else None
+    return None
+
+
+def _http_date_timestamp(value: str | None) -> int | None:
+    if not value:
+        return None
+    try:
+        return int(parsedate_to_datetime(value).timestamp())
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 
 def _api_market(market: str) -> str:
