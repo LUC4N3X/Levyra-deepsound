@@ -6,8 +6,9 @@ import hmac
 import logging
 import os
 import struct
+from collections.abc import Mapping
 from email.utils import parsedate_to_datetime
-from typing import Any, Mapping
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
