@@ -14,8 +14,9 @@ import org.json.JSONObject
 
 internal const val BUILT_IN_SUPPORT_ANNOUNCEMENT_ID = "github-star-2026-07"
 internal const val LEVYRA_REPOSITORY_URL = "https://github.com/LUC4N3X/Levyra-deepsound"
+internal const val BUNDLED_ANNOUNCEMENTS_ASSET = "config/announcements.json"
 internal const val REMOTE_ANNOUNCEMENTS_URL =
-    "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/main/config/announcements.json"
+    "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/main/app/src/main/assets/config/announcements.json"
 
 private const val REMOTE_SCHEMA_VERSION = 1
 private const val CHECK_INTERVAL_MS = 12L * 60L * 60L * 1_000L
@@ -26,6 +27,7 @@ private const val KEY_LAST_SUCCESSFUL_CHECK = "last_successful_check"
 private const val KEY_DISMISSED_IDS = "dismissed_ids"
 private const val MAX_ANNOUNCEMENTS = 20
 private const val MAX_DISMISSED_IDS = 200
+private val supportedLanguageCodes = LevyraLanguageCatalog.languages.mapTo(mutableSetOf()) { it.code }
 
 internal enum class AnnouncementStyle {
     OPEN_SOURCE,
@@ -40,6 +42,14 @@ internal enum class AnnouncementStyle {
         }
     }
 }
+
+internal data class OpenSourceSupportCopy(
+    val badge: String,
+    val title: String,
+    val body: String,
+    val starAction: String,
+    val continueAction: String
+)
 
 internal data class RemoteAnnouncement(
     val id: String,
@@ -105,36 +115,37 @@ internal object RemoteAnnouncementRules {
                     .thenByDescending { it.startAtMs ?: Long.MIN_VALUE }
                     .thenBy { it.id }
             )
-            .mapNotNull { announcement ->
-                val copy = announcement.translations[normalizedLanguage]
-                    ?: announcement.translations["en"]
-                    ?: return@mapNotNull null
-                RemoteAnnouncementPresentation(
-                    id = announcement.id,
-                    style = announcement.style,
-                    copy = copy,
-                    actionUrl = announcement.actionUrl
-                )
-            }
+            .mapNotNull { announcement -> presentationFor(announcement, normalizedLanguage) }
             .firstOrNull()
+    }
+
+    private fun presentationFor(
+        announcement: RemoteAnnouncement,
+        languageCode: String
+    ): RemoteAnnouncementPresentation? {
+        val copy = announcement.translations[languageCode]
+            ?: announcement.translations["en"]
+            ?: return null
+        return RemoteAnnouncementPresentation(
+            id = announcement.id,
+            style = announcement.style,
+            copy = copy,
+            actionUrl = announcement.actionUrl
+        )
     }
 }
 
 internal object RemoteAnnouncementParser {
-    private val supportedLanguageCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
-
     fun parse(raw: String): RemoteAnnouncementCatalog? = runCatching {
         val root = JSONObject(raw)
         val schemaVersion = root.optInt("schemaVersion", -1)
         if (schemaVersion != REMOTE_SCHEMA_VERSION) return@runCatching null
         val source = root.optJSONArray("announcements") ?: return@runCatching null
         if (source.length() > MAX_ANNOUNCEMENTS) return@runCatching null
-        val seenIds = hashSetOf<String>()
         val announcements = buildList {
             for (index in 0 until source.length()) {
                 val item = source.optJSONObject(index) ?: continue
-                val announcement = parseAnnouncement(item) ?: continue
-                if (seenIds.add(announcement.id)) add(announcement)
+                parseAnnouncement(item)?.let(::add)
             }
         }
         RemoteAnnouncementCatalog(schemaVersion, announcements)
@@ -154,15 +165,7 @@ internal object RemoteAnnouncementParser {
         if (startAtMs != null && endAtMs != null && endAtMs < startAtMs) return@runCatching null
         val actionUrl = item.optString("actionUrl").trim().ifBlank { null }
         if (actionUrl != null && !RemoteAnnouncementRules.isSafeActionUrl(actionUrl)) return@runCatching null
-        val translationsObject = item.optJSONObject("translations") ?: return@runCatching null
-        val translations = linkedMapOf<String, OpenSourceSupportCopy>()
-        val keys = translationsObject.keys()
-        while (keys.hasNext()) {
-            val sourceCode = keys.next().trim().lowercase()
-            if (sourceCode !in supportedLanguageCodes) continue
-            val copyObject = translationsObject.optJSONObject(sourceCode) ?: continue
-            parseCopy(copyObject, actionUrl != null)?.let { translations[sourceCode] = it }
-        }
+        val translations = parseTranslations(item, actionUrl != null)
         if (translations["en"] == null) return@runCatching null
         RemoteAnnouncement(
             id = id,
@@ -177,6 +180,23 @@ internal object RemoteAnnouncementParser {
             translations = translations
         )
     }.getOrNull()
+
+    private fun parseTranslations(
+        item: JSONObject,
+        actionRequired: Boolean
+    ): Map<String, OpenSourceSupportCopy> {
+        val translationsObject = item.optJSONObject("translations") ?: return emptyMap()
+        return buildMap {
+            val keys = translationsObject.keys()
+            while (keys.hasNext()) {
+                val sourceCode = keys.next()
+                val normalized = LevyraLanguageCatalog.normalize(sourceCode)
+                if (normalized !in supportedLanguageCodes) continue
+                val copyObject = translationsObject.optJSONObject(sourceCode) ?: continue
+                parseCopy(copyObject, actionRequired)?.let { put(normalized, it) }
+            }
+        }
+    }
 
     private fun parseCopy(item: JSONObject, actionRequired: Boolean): OpenSourceSupportCopy? {
         val badge = item.optString("badge").trim()
@@ -219,6 +239,9 @@ internal class RemoteAnnouncementRepository(context: Context) {
         .readTimeout(4, TimeUnit.SECONDS)
         .callTimeout(5, TimeUnit.SECONDS)
         .build()
+    private val bundledCatalog: RemoteAnnouncementCatalog? by lazy(LazyThreadSafetyMode.NONE) {
+        readBundledCatalog()
+    }
 
     suspend fun resolve(
         languageCode: String,
@@ -235,7 +258,13 @@ internal class RemoteAnnouncementRepository(context: Context) {
         val selected = remoteState.catalog?.let {
             RemoteAnnouncementRules.select(it, languageCode, versionCode, dismissedIds, nowMs)
         }
-        selected ?: if (remoteState.available) null else builtInFallback(languageCode, dismissedIds)
+        selected ?: if (remoteState.available) {
+            null
+        } else {
+            bundledCatalog?.let {
+                RemoteAnnouncementRules.select(it, languageCode, versionCode, dismissedIds, nowMs)
+            }
+        }
     }
 
     fun markDismissed(id: String) {
@@ -269,18 +298,11 @@ internal class RemoteAnnouncementRepository(context: Context) {
         }.getOrElse { CatalogState(cached, available = cached != null) }
     }
 
-    private fun builtInFallback(
-        languageCode: String,
-        dismissedIds: Set<String>
-    ): RemoteAnnouncementPresentation? {
-        if (BUILT_IN_SUPPORT_ANNOUNCEMENT_ID in dismissedIds) return null
-        return RemoteAnnouncementPresentation(
-            id = BUILT_IN_SUPPORT_ANNOUNCEMENT_ID,
-            style = AnnouncementStyle.OPEN_SOURCE,
-            copy = OpenSourceSupportStrings.forCode(languageCode),
-            actionUrl = LEVYRA_REPOSITORY_URL
-        )
-    }
+    private fun readBundledCatalog(): RemoteAnnouncementCatalog? = runCatching {
+        appContext.assets.open(BUNDLED_ANNOUNCEMENTS_ASSET).bufferedReader().use { reader ->
+            RemoteAnnouncementParser.parse(reader.readText())
+        }
+    }.getOrNull()
 
     private data class CatalogState(
         val catalog: RemoteAnnouncementCatalog?,
