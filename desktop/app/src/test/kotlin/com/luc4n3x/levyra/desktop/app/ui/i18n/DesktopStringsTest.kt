@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.app.ui.i18n
 
 import com.luc4n3x.levyra.desktop.core.model.AppLanguage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -50,6 +51,43 @@ class DesktopStringsTest {
             )
             assertTrue("Missing desktop translation for ${language.tag}", required.all { it.isNotBlank() })
             assertEquals(language.tag, strings.languageCode)
+        }
+    }
+
+    @Test
+    fun desktopOnlyLabelCatalogCoversEverySupportedLanguage() {
+        assertEquals(
+            AppLanguage.entries.map { it.tag }.toSet(),
+            DesktopExtras.supportedTags()
+        )
+    }
+
+    @Test
+    fun desktopOnlyLabelsAreTranslatedForEveryLanguage() {
+        val english = stringsFor(AppLanguage.ENGLISH)
+        AppLanguage.entries.forEach { language ->
+            val strings = stringsFor(language)
+            val desktopOnly = listOf(
+                strings.settingsSleepTimer,
+                strings.sleepTimerOff,
+                strings.sleepTimerEndOfTrack,
+                strings.settingsSpeed,
+                strings.settingsPreloadNext,
+                strings.settingsPreloadNextBody,
+                strings.settingsMediaKeys,
+                strings.settingsMediaKeysBody,
+                strings.settingsShortcuts,
+                strings.shortcutSeek,
+                strings.miniPlayer
+            )
+            assertTrue("Missing desktop label for ${language.tag}", desktopOnly.all { it.isNotBlank() })
+            if (language != AppLanguage.ENGLISH && language != AppLanguage.FILIPINO) {
+                assertNotEquals(
+                    "Untranslated sleep timer label for ${language.tag}",
+                    english.settingsSleepTimer,
+                    strings.settingsSleepTimer
+                )
+            }
         }
     }
 

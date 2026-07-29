@@ -16,6 +16,10 @@ It shares the Android project's YouTube extractor (`third_party/LevyraExtractor`
 - Top 50 charts selectable by country flag and country name
 - Synced lyrics from LRCLIB, with the current line highlighted during playback
 - Queue with shuffle and repeat, plus automatic radio when the queue ends
+- Next-track preloading that resolves the upcoming stream before the current track ends
+- Playback speed between 0.75x and 2x, applied to the current track and kept across sessions
+- Sleep timer with presets or end-of-track mode, with the remaining time shown in the player
+- System-wide media keys on Windows, so playback stays controllable from the tray or the background
 - Full desktop player with a close action and direct offline-download control
 - Separate resizable mini player that can stay always on top
 - Single-instance protection: opening Levyra again brings the existing window to the foreground
@@ -99,7 +103,7 @@ The Windows version is changed only in:
 
 ```properties
 # desktop/version.properties
-levyraDesktopVersion=1.0.0
+levyraDesktopVersion=1.1.0
 ```
 
 The Android `levyraVersionName` value in the root `gradle.properties` file does not control, trigger, or publish the Desktop build.
@@ -109,6 +113,7 @@ Windows releases use independent tags:
 ```text
 desktop-v1.0.0
 desktop-v1.0.1
+desktop-v1.1.0
 ```
 
 The app checks only releases whose tag starts with `desktop-v`. When a newer version is available, Levyra:
@@ -239,11 +244,23 @@ Preferences, Library data, downloads, and artwork cache are stored in `%APPDATA%
 | Key | Action |
 |---|---|
 | `Space` | play or pause |
-| `Ctrl` + `→` | next track in the main window |
-| `Ctrl` + `←` | previous track in the main window |
+| `Ctrl` + `→` / `←` | next or previous track in the main window |
+| `→` / `←` | seek forward or backward by 5 seconds |
+| `Ctrl` + `↑` / `↓` | volume up or down by 5 |
+| `Ctrl` + `M` | mute or unmute |
+| `Ctrl` + `Shift` + `M` | open or close the mini player |
+| `Ctrl` + `S` | shuffle |
+| `Ctrl` + `R` | repeat mode |
+| `Ctrl` + `Q` | queue panel |
+| `Ctrl` + `P` | Now Playing |
+| `Ctrl` + `F` or `Ctrl` + `K` | Search |
 | `→` | next track in the mini player |
 | `←` | previous track in the mini player |
 | `Esc` | close the mini player |
+
+The hardware media keys (play/pause, next, previous, stop) are registered system wide on Windows while `globalMediaKeys` is enabled, so playback stays controllable when Levyra is in the tray or behind another window. Windows assigns each media key to a single process: if another player already owns them, Levyra keeps working with its in-window shortcuts.
+
+The complete list is also shown in Settings, under the keyboard shortcuts section.
 
 ## Technical References
 
@@ -253,4 +270,4 @@ The Desktop lifecycle hardening used the GPL-3.0 SimpMusic project as an archite
 
 The interface preserves the official Levyra icon, localized onboarding, country menus with real flags and native country names, RTL layout for Arabic and Hebrew, the integrated Library, and a closable player.
 
-It does not introduce manual country-code fields or a separate Desktop translation catalog that could drift away from the Android APK.
+It does not introduce manual country-code fields. Every string shared with the Android APK keeps coming from the shared localization catalog; the Desktop module only owns the labels for features that exist on Windows alone (sleep timer, playback speed, global media keys, keyboard shortcuts), so no shared text can drift between the two clients.
