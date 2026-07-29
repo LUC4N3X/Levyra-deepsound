@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: editorial-catalog-${{ github.event_name }}
+  group: editorial-catalog-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -51,6 +51,67 @@ jobs:
         run: |
           set -euo pipefail
           pytest tools/levyra-editorial/tests
+
+  integration:
+    name: Test Live Editorial Collection
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+      LEVYRA_EDITORIAL_TOTP_SECRETS_URL: ${{ vars.LEVYRA_EDITORIAL_TOTP_SECRETS_URL }}
+
+    steps:
+      - name: Checkout Pull Request
+        uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
+
+      - name: Install Collector
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
+
+      - name: Require Editorial Secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${LEVYRA_EDITORIAL_SP_DC:-}" ]; then
+            echo "::error::Missing repository secret LEVYRA_EDITORIAL_SP_DC"
+            exit 1
+          fi
+
+      - name: Generate and Validate Live Catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          levyra-editorial \
+            --config tools/levyra-editorial/config.json \
+            --output build/editorial/catalog.json
+          levyra-editorial --validate build/editorial/catalog.json
+          sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
+
+      - name: Upload Pull Request Diagnostics
+        uses: actions/upload-artifact@v7
+        with:
+          name: editorial-pr-${{ github.run_number }}
+          path: |
+            build/editorial/catalog.json
+            build/editorial/catalog.sha256
+          if-no-files-found: error
+          retention-days: 7
 
   collect:
     name: Collect and Publish
