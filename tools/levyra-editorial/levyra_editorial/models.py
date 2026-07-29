@@ -30,8 +30,8 @@ def _public_track_id(track: Track) -> str:
     return f"levyra-{digest}"
 
 
-def _public_description(value: str) -> str:
-    """Keep useful editorial copy while removing upstream brand references."""
+def _public_text(value: str) -> str:
+    """Keep useful metadata while removing upstream brand references."""
     return re.sub(r"\bspotify\b", "Levyra Editorial", value, flags=re.IGNORECASE)
 
 
@@ -69,10 +69,10 @@ class Track:
             {
                 "position": self.position,
                 "id": _public_track_id(self),
-                "title": self.title,
-                "artists": [{"name": artist.name} for artist in self.artists],
+                "title": _public_text(self.title),
+                "artists": [{"name": _public_text(artist.name)} for artist in self.artists],
                 "album": {
-                    "name": self.album.name,
+                    "name": _public_text(self.album.name),
                     "releaseDate": self.album.release_date,
                     "artworkUrl": self.album.artwork_url,
                 },
@@ -104,8 +104,8 @@ class Collection:
                 "id": self.id,
                 "kind": self.kind,
                 "market": self.market,
-                "title": self.title,
-                "description": _public_description(self.description),
+                "title": _public_text(self.title),
+                "description": _public_text(self.description),
                 "artworkUrl": self.artwork_url,
                 "totalSourceItems": self.total_source_items,
                 "tracks": [track.to_dict() for track in self.tracks],
