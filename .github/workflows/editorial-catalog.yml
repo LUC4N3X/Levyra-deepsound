@@ -86,8 +86,17 @@ jobs:
           timeout --foreground 240s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e 'any(.. | objects; has("artworkUrl") or has("isrc"))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains source artwork or unsupported ISRC fields"
+          if jq -e 'any(.. | objects; has("isrc") or has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains source identifiers or unsupported ISRC fields"
+            exit 1
+          fi
+          # Cover artwork is published on purpose, but only from the source image CDN.
+          if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains artwork outside the allowed image CDN"
+            exit 1
+          fi
+          if grep -qE 'open\.spotify\.com|spotify:(track|album|playlist):' build/editorial/catalog.json; then
+            echo "::error::Catalog contains source page URLs or URIs"
             exit 1
           fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
@@ -140,8 +149,17 @@ jobs:
           timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e 'any(.. | objects; has("artworkUrl") or has("isrc"))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains source artwork or unsupported ISRC fields"
+          if jq -e 'any(.. | objects; has("isrc") or has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains source identifiers or unsupported ISRC fields"
+            exit 1
+          fi
+          # Cover artwork is published on purpose, but only from the source image CDN.
+          if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains artwork outside the allowed image CDN"
+            exit 1
+          fi
+          if grep -qE 'open\.spotify\.com|spotify:(track|album|playlist):' build/editorial/catalog.json; then
+            echo "::error::Catalog contains source page URLs or URIs"
             exit 1
           fi
           sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256

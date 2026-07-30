@@ -318,15 +318,14 @@ def test_collector_builds_compact_account_free_catalog(tmp_path: Path) -> None:
     assert track["position"] == 1
     assert track["id"].startswith("levyra-")
     assert "isrc" not in track
-    # The fixtures above serve real i.scdn.co artwork, so these assert the published contract
-    # excludes source artwork rather than passing because the fixture host was not a Spotify CDN.
-    assert "artworkUrl" not in track
+    # Cover artwork is published on purpose: chart rows need a real cover for every entry. It must be
+    # the CDN URL and nothing else about the source may ride along with it.
+    assert track["artworkUrl"] == "https://i.scdn.co/image/test-album-cover"
     assert "artworkUrl" not in track["album"]
     serialized = json.dumps(payload).lower()
     assert "owner" not in serialized
     assert "sp_dc" not in serialized
     assert "open.spotify.com" not in serialized
-    assert "scdn.co" not in serialized
     assert "sourceid" not in serialized
     assert "sourceurl" not in serialized
     assert "externalurl" not in serialized

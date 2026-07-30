@@ -2634,12 +2634,12 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val concurrency = if (adaptivePlaybackPolicy.current(videoMode = false).lowRam) 1 else 2
         chartCatalogPrimeJob = viewModelScope.launch(Dispatchers.IO) {
             val semaphore = Semaphore(concurrency)
-            ChartsCatalog.regions.map { region ->
+            ChartsCatalog.regions.take(CHART_PRIME_REGION_COUNT).map { region ->
                 async {
                     semaphore.withPermit {
                         if (!isActive || _state.value.languageCode != languageCode) return@withPermit
                         val cacheKey = chartsCacheKey(languageCode, region.id)
-                        if (isChartCacheFresh(cacheKey)) return@withPermit
+                        if (isChartCacheFresh(cacheKey) || chartsByRegion[cacheKey].orEmpty().isNotEmpty()) return@withPermit
                         val result = runCatching { chartsRepository.topSongs(region.country) }.getOrDefault(emptyList())
                         if (result.isEmpty() || !isActive || _state.value.languageCode != languageCode) return@withPermit
                         chartsByRegion[cacheKey] = result
@@ -3675,7 +3675,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList(), searchFilter = SearchFilter.All) }
         val result = runCatching {
             val raw = providerRouter.searchEverything(clean, _state.value.languageCode)
-            raw.copy(artists = artistRepository.officialArtistHits(raw.artists))
+            val officialArtists = artistRepository.officialArtistHits(raw.artists)
+            raw.copy(
+                artists = officialArtists,
+                albums = searchAlbumsForArtistQuery(clean, raw, officialArtists)
+            )
         }
         result.onSuccess { data ->
             val tracks = data.songs
@@ -3703,6 +3707,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
         }
+    }
+
+    private suspend fun searchAlbumsForArtistQuery(
+        query: String,
+        raw: SearchResults,
+        artists: List<ArtistHit>
+    ): List<AlbumHit> {
+        val queryKey = artistIdentityKey(query)
+        val exactArtist = artists.firstOrNull { artistIdentityKey(it.name) == queryKey } ?: return raw.albums
+        val profile = runCatching {
+            artistRepository.profile(exactArtist.browseId, exactArtist.name)
+        }.getOrNull()
+        val officialArtistName = profile?.name.orEmpty().ifBlank { exactArtist.name }
+        val officialArtistBrowseId = profile?.browseId.orEmpty().ifBlank { exactArtist.browseId }
+        val officialAlbums = profile?.albums.orEmpty()
+            .asSequence()
+            .filter { release -> release.title.isNotBlank() && release.browseId.isNotBlank() }
+            .map { release ->
+                AlbumHit(
+                    title = release.title,
+                    artist = officialArtistName,
+                    year = release.year,
+                    thumbnailUrl = release.thumbnailUrl,
+                    query = listOf(release.title, officialArtistName, "album")
+                        .filter(String::isNotBlank)
+                        .joinToString(" "),
+                    browseId = release.browseId,
+                    artistBrowseId = officialArtistBrowseId,
+                    audioPlaylistId = release.playlistId,
+                    explicit = release.explicit
+                )
+            }
+            .distinctBy(::albumRecommendationDeduplicationKey)
+            .take(10)
+            .toList()
+        if (officialAlbums.isNotEmpty()) return officialAlbums
+
+        val songTitles = raw.songs
+            .asSequence()
+            .map { track -> albumRecommendationTextKey(track.title) }
+            .filter(String::isNotBlank)
+            .toSet()
+        return raw.albums
+            .filterNot { album -> albumRecommendationTextKey(album.title) in songTitles }
+            .distinctBy(::albumRecommendationDeduplicationKey)
+            .take(10)
     }
 
     fun setSearchFilter(filter: SearchFilter) {
