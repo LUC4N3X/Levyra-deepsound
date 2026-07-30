@@ -1,0 +1,93 @@
+name: Apply Central YouTube Music Editorial
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'feat/central-ytm-editorial' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+    steps:
+      - name: Check out clean feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Prepare ephemeral signing
+        shell: bash
+        run: |
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+      - name: Install collector tooling
+        run: python -m pip install --disable-pip-version-check -e 'tools/levyra-editorial[dev]'
+      - name: Apply guarded central feature
+        run: python3 tools/apply_central_ytm_editorial.py
+      - name: Verify no per-device YouTube Music account path remains
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -n -E 'YoutubeMusicCredentialStore|youtubeMusicAuthenticated|importYoutubeMusicSession|Account musicali|Music accounts' app/src/main || {
+            echo '::error::Per-device YouTube Music credential path still exists'
+            exit 1
+          }
+          ! grep -R -n 'LEVYRA_EDITORIAL_YTM_COOKIE' app/src/main || {
+            echo '::error::Repository secret name leaked into Android sources'
+            exit 1
+          }
+      - name: Test and lint collector
+        run: |
+          ruff check tools/levyra-editorial
+          pytest tools/levyra-editorial/tests -q
+      - name: Test and compile Android
+        run: |
+          ./gradlew \
+            :app:testDebugUnitTest \
+            --tests com.luc4n3x.levyra.data.RecordingIdentityTest \
+            --tests com.luc4n3x.levyra.domain.ReleaseTypeTest \
+            :app:compileDebugKotlin \
+            --stacktrace
+      - name: Commit verified feature
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main app/src/test tools/levyra-editorial
+          git reset -- tools/apply_central_ytm_editorial.py .github/workflows/apply-central-ytm-editorial.yml
+          if git diff --cached --quiet; then
+            echo 'Central feature already applied'
+            exit 0
+          fi
+          git commit -m 'feat(editorial): add central YouTube Music resolution'
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
