@@ -53,7 +53,33 @@ jobs:
       - name: Install collector tooling
         run: python -m pip install --disable-pip-version-check -e 'tools/levyra-editorial[dev]'
       - name: Apply guarded central feature
-        run: python3 tools/apply_central_ytm_editorial.py
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/apply_central_ytm_editorial.py')
+          text = path.read_text()
+          old = 'run("python3", "-m", "ruff", "check", "--fix", "tools/levyra-editorial")'
+          new = 'run("python3", "-m", "ruff", "check", "--fix-only", "tools/levyra-editorial")'
+          if text.count(old) != 1:
+              raise SystemExit('Ruff mode anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          python3 tools/apply_central_ytm_editorial.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/levyra-editorial/levyra_editorial/youtube_music.py')
+          text = path.read_text()
+          old = '                ((score_candidate(title, artist, duration_ms, candidate), candidate) for candidate in candidates),\n'
+          new = '''                (
+                      (score_candidate(title, artist, duration_ms, candidate), candidate)
+                      for candidate in candidates
+                  ),
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('Central resolver line anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Verify no per-device YouTube Music account path remains
         shell: bash
         run: |
