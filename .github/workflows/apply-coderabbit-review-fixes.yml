@@ -1,0 +1,96 @@
+name: Apply CodeRabbit Review Fixes
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: >-
+      github.event.pull_request.head.ref == 'feat/central-ytm-editorial' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Prepare ephemeral signing
+        shell: bash
+        run: |
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+      - name: Install collector tooling
+        run: python -m pip install --disable-pip-version-check -e 'tools/levyra-editorial[dev]'
+      - name: Apply guarded review fixes
+        run: python3 tools/apply_coderabbit_review_fixes.py
+      - name: Lint and test collector
+        run: |
+          ruff check --fix tools/levyra-editorial
+          ruff check tools/levyra-editorial
+          pytest tools/levyra-editorial/tests -q
+      - name: Test localization and Android regressions
+        run: |
+          ./gradlew \
+            :app:testDebugUnitTest \
+            --tests com.luc4n3x.levyra.data.RecordingIdentityTest \
+            --tests com.luc4n3x.levyra.domain.ReleaseTypeTest \
+            --tests com.luc4n3x.levyra.ui.i18n.LevyraStringsTest \
+            :app:compileDebugKotlin \
+            --stacktrace
+      - name: Verify review fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'uppercase(Locale.ROOT)' app/src/main/java/com/luc4n3x/levyra/data/RecordingIdentity.kt
+          grep -q 'val compilations: String' app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraStrings.kt
+          test "$(grep -R -h '"'"'"compilations" to'"'"' app/src/main/java/com/luc4n3x/levyra/ui/i18n/Levyra*Strings.kt | wc -l)" -eq 26
+          test "$(grep -c 'if (releaseType != ReleaseType.Album) return null' app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt)" -ge 2
+          grep -q '_bootstrap_failed = True' tools/levyra-editorial/levyra_editorial/youtube_music.py
+          grep -q 'Spotify track metadata rate-limited' tools/levyra-editorial/levyra_editorial/spotify.py
+      - name: Commit verified fixes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main app/src/test tools/levyra-editorial
+          git reset -- tools/apply_coderabbit_review_fixes.py .github/workflows/apply-coderabbit-review-fixes.yml
+          if git diff --cached --quiet; then
+            echo 'Review fixes already applied'
+            exit 0
+          fi
+          git commit -m 'fix(review): address CodeRabbit findings'
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
