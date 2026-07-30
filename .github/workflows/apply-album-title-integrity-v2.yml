@@ -31,8 +31,8 @@ jobs:
 
       - name: Apply guarded patch
         run: |
-          python3 -m py_compile tools/apply_album_title_integrity.py
-          python3 tools/apply_album_title_integrity.py
+          python3 -m py_compile tools/apply_album_title_integrity_v3.py
+          python3 tools/apply_album_title_integrity_v3.py
 
       - name: Test and compile
         run: ./gradlew :app:testDebugUnitTest --tests com.luc4n3x.levyra.data.YoutubeMusicAlbumTitleTest :app:compileDebugKotlin --stacktrace
