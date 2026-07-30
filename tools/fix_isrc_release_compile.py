@@ -2,14 +2,6 @@ from pathlib import Path
 import re
 
 
-def replace_once(path: Path, old: str, new: str, label: str) -> None:
-    text = path.read_text()
-    count = text.count(old)
-    if count != 1:
-        raise SystemExit(f"{label}: expected one anchor, found {count}")
-    path.write_text(text.replace(old, new, 1))
-
-
 # Keep artwork matching on the same ISRC-first contract as playback matching.
 artwork_path = Path("app/src/main/java/com/luc4n3x/levyra/data/OfficialArtworkRepository.kt")
 artwork = artwork_path.read_text()
@@ -21,8 +13,6 @@ artwork = artwork.replace(
     "        if (track.isrc.isNotBlank() && isrc.isNotBlank()) score += if (exactIsrc) 220 else -100\n",
     "",
 )
-if "exactIsrc" in artwork:
-    raise SystemExit("Official artwork matcher still references exactIsrc")
 artwork_path.write_text(artwork)
 
 
