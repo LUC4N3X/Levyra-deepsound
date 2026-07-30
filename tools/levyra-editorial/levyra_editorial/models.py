@@ -35,8 +35,9 @@ def _public_artwork_url(value: str | None) -> str | None:
 
     Album covers are the one source-hosted asset the catalog publishes: the chart rows need a real
     cover for every entry, and on-device lookups cannot match every track. Everything else about the
-    source (page URLs, ids, ISRC, credentials) stays out. The allowlist keeps a tampered or unexpected
-    payload from pointing the app's image loader at an arbitrary host.
+    source (page URLs, ids and credentials) stays out. ISRC is a public recording identity. The
+    allowlist keeps a tampered or unexpected payload from pointing the app's image loader at an
+    arbitrary host.
     """
     normalized = str(value or "").strip()
     if not normalized:
@@ -63,6 +64,8 @@ class Album:
     release_date: str | None
     artwork_url: str | None
     external_url: str | None
+    album_type: str | None = None
+    total_tracks: int | None = None
 
 
 @dataclass(frozen=True)
@@ -77,6 +80,8 @@ class Track:
     explicit: bool
     external_url: str | None
     artwork_url: str | None
+    isrc: str | None = None
+    youtube_music: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return _compact(
@@ -88,9 +93,13 @@ class Track:
                 "album": {
                     "name": self.album.name,
                     "releaseDate": self.album.release_date,
+                    "type": self.album.album_type,
+                    "totalTracks": self.album.total_tracks,
                 },
                 "durationMs": self.duration_ms,
                 "explicit": self.explicit,
+                "isrc": self.isrc,
+                "youtubeMusic": self.youtube_music,
                 "artworkUrl": _public_artwork_url(self.artwork_url),
             }
         )
