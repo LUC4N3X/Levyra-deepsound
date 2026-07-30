@@ -12,6 +12,8 @@ jobs:
     if: github.event.pull_request.number == 250 && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
     steps:
       - name: Check out feature branch
         uses: actions/checkout@v4
