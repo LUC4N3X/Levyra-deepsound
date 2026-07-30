@@ -67,7 +67,7 @@ jobs:
           end_marker = "# Optional central enrichment must degrade safely when the query-limit environment value is malformed."
           start = text.index(start_marker)
           end = text.index(end_marker, start)
-          replacement = '''# Add a localized strings-contract entry for all 26 supported languages.
+          replacement = """# Add a localized strings-contract entry for all 26 supported languages.
           strings_path = "app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraStrings.kt"
           replace_once(
               strings_path,
@@ -111,7 +111,7 @@ jobs:
               "                                ArtistSectionTitle(strings.compilations)\\n",
           )
 
-          '''
+          """
           path.write_text(text[:start] + replacement + text[end:], encoding="utf-8")
           PY
           python3 tools/apply_coderabbit_review_fixes.py
