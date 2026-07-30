@@ -204,14 +204,14 @@ internal class YoutubeMusicChartsRepository(context: Context) {
             val call = httpClient.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
-                override fun onFailure(call: Call, error: IOException) {
+                override fun onFailure(call: Call, e: IOException) {
                     if (continuation.isActive) continuation.resume(null)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     val result = runCatching {
                         response.use { current ->
-                            if (!current.isSuccessful) null else current.body?.string()?.takeIf(String::isNotBlank)
+                            if (!current.isSuccessful) null else current.body.string().takeIf(String::isNotBlank)
                         }
                     }.getOrNull()
                     if (continuation.isActive) continuation.resume(result)

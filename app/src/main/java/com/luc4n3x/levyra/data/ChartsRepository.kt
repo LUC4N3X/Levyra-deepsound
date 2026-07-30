@@ -228,14 +228,14 @@ class ChartsRepository(context: Context) {
             call.cancel()
         }
         call.enqueue(object : Callback {
-            override fun onFailure(call: Call, error: IOException) {
+            override fun onFailure(call: Call, e: IOException) {
                 if (completed.compareAndSet(false, true)) continuation.resume(null)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val body = runCatching {
                     response.use { current ->
-                        if (!current.isSuccessful) null else current.body?.string()?.takeIf { it.isNotBlank() }
+                        if (!current.isSuccessful) null else current.body.string().takeIf { it.isNotBlank() }
                     }
                 }.getOrNull()
                 if (completed.compareAndSet(false, true)) continuation.resume(body)

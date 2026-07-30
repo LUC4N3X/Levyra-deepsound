@@ -165,7 +165,6 @@ class LevyraRouteEngine(
                 }
                 LevyraRouteFailure.INVALID_RESPONSE,
                 LevyraRouteFailure.UNKNOWN -> if (consecutive >= 3) SHORT_BLOCK_MS else 0L
-                else -> 0L
             }
             health[route.key] = previous.copy(
                 failures = (previous.failures + 1).coerceAtMost(MAX_SAMPLES),
