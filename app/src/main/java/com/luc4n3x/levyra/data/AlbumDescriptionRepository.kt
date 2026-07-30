@@ -25,6 +25,31 @@ import java.util.concurrent.TimeUnit
  * is used only when an actual open.spotify.com album URL is already present;
  * generic "Listen on Spotify" marketing copy is deliberately rejected.
  */
+
+internal fun wikipediaAlbumTitleMatches(albumTitle: String, pageTitle: String): Boolean {
+    val albumKey = wikipediaAlbumTitleKey(albumTitle)
+    val pageKey = wikipediaAlbumTitleKey(pageTitle.substringBeforeLast(" ("))
+    return albumKey.isNotBlank() && pageKey == albumKey
+}
+
+private fun wikipediaAlbumTitleKey(value: String): String {
+    var key = Normalizer.normalize(value, Normalizer.Form.NFD)
+        .replace(Regex("""\p{M}+"""), "")
+        .lowercase(Locale.ROOT)
+        .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
+        .replace(Regex("""\s+"""), " ")
+        .trim()
+    val editionSuffixes = listOf(
+        " deluxe edition", " deluxe", " expanded edition", " expanded",
+        " anniversary edition", " remastered edition", " remastered",
+        " special edition", " collector edition", " bonus tracks"
+    )
+    editionSuffixes.firstOrNull(key::endsWith)?.let { suffix ->
+        key = key.removeSuffix(suffix).trim()
+    }
+    return key
+}
+
 internal class AlbumDescriptionRepository(context: Context?) {
     private val client = LevyraHttpClientFactory.media(context?.applicationContext).newBuilder()
         .connectTimeout(4, TimeUnit.SECONDS)
@@ -177,13 +202,10 @@ internal class AlbumDescriptionRepository(context: Context?) {
     }
 
     private fun wikipediaScore(album: AlbumHit, pageTitle: String, extract: String): Int {
-        val albumKey = descriptionKey(album.title)
+        if (!wikipediaAlbumTitleMatches(album.title, pageTitle)) return Int.MIN_VALUE
         val artistKey = descriptionKey(album.artist)
-        val titleKey = descriptionKey(pageTitle.substringBeforeLast(" ("))
         val extractKey = descriptionKey(extract)
-        var score = 0
-        if (titleKey == albumKey) score += 130
-        else if (titleKey.contains(albumKey) || albumKey.contains(titleKey)) score += 80
+        var score = 130
         if (artistKey.isNotBlank() && extractKey.contains(artistKey)) score += 75
         if (extractKey.contains("album")) score += 25
         if (pageTitle.contains("song", ignoreCase = true) || pageTitle.contains("singolo", ignoreCase = true)) score -= 90
