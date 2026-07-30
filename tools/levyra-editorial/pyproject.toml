@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "levyra-editorial"
+version = "0.1.0"
+description = "Secret-safe editorial metadata collector for Levyra"
+requires-python = ">=3.12"
+dependencies = [
+  "requests>=2.32,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4,<9",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+levyra-editorial = "levyra_editorial.resilient:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["levyra_editorial*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
