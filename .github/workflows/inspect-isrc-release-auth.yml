@@ -32,6 +32,38 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Apply guarded feature patch
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/apply_isrc_release_youtube_auth.py')
+          text = path.read_text()
+          old = '''models = replace_once(
+              models,
+              '    val explicit: Boolean = false\\n)\\n\\n@Immutable\\ndata class ArtistProfile(',
+              '    val explicit: Boolean = false,\\n    val releaseType: ReleaseType = ReleaseType.Unknown\\n)\\n\\n@Immutable\\ndata class ArtistProfile(',
+              'artist release type'
+          )
+          models = replace_once(
+              models,
+              '    val videosParams: String = ""\\n)\\n\\n@Immutable\\ndata class SearchResults(',
+              '    val videosParams: String = "",\\n    val compilations: List<ArtistRelease> = emptyList()\\n)\\n\\n@Immutable\\ndata class SearchResults(',
+              'artist compilations'
+          )'''
+          new = '''models = replace_once(
+              models,
+              '    val playlistId: String = "",\\n    val explicit: Boolean = false\\n)',
+              '    val playlistId: String = "",\\n    val explicit: Boolean = false,\\n    val releaseType: ReleaseType = ReleaseType.Unknown\\n)',
+              'artist release type'
+          )
+          models = replace_once(
+              models,
+              '    val videosBrowseId: String = "",\\n    val videosParams: String = ""\\n) {',
+              '    val videosBrowseId: String = "",\\n    val videosParams: String = "",\\n    val compilations: List<ArtistRelease> = emptyList()\\n) {',
+              'artist compilations'
+          )'''
+          if old not in text:
+              raise SystemExit('model patch block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
           python3 -m py_compile tools/apply_isrc_release_youtube_auth.py
           python3 tools/apply_isrc_release_youtube_auth.py
       - name: Test collector
