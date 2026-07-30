@@ -325,29 +325,40 @@ class SpotifyWebClient:
             if isinstance(item.get("track"), Mapping)
         ]
         missing = [
-    track_id
-    for track_id in dict.fromkeys(ids)
-    if track_id and track_id not in self._track_metadata
-]
+            track_id
+            for track_id in dict.fromkeys(ids)
+            if track_id and track_id not in self._track_metadata
+        ]
         for offset in range(0, len(missing), 50):
             chunk = missing[offset : offset + 50]
             if not chunk:
                 continue
-            try:
-                response = self._session.get(
+
+            def request_batch(track_ids: list[str] = chunk) -> requests.Response:
+                return self._session.get(
                     f"{API_BASE_URL}/tracks",
-                    params={"ids": ",".join(chunk)},
+                    params={"ids": ",".join(track_ids)},
                     headers=self._api_headers(),
                     timeout=self._timeout,
                 )
+
+            try:
+                response = request_batch()
                 if response.status_code == 401:
                     self.authenticate()
-                    response = self._session.get(
-                        f"{API_BASE_URL}/tracks",
-                        params={"ids": ",".join(chunk)},
-                        headers=self._api_headers(),
-                        timeout=self._timeout,
+                    response = request_batch()
+                if response.status_code == 429:
+                    delay = _bounded_retry_after(response.headers.get("Retry-After"))
+                    LOGGER.warning(
+                        "Spotify track metadata rate-limited; retrying once in %d second(s).",
+                        delay,
                     )
+                    if delay > 0:
+                        time.sleep(delay)
+                    response = request_batch()
+                    if response.status_code == 401:
+                        self.authenticate()
+                        response = request_batch()
                 if response.status_code >= 400:
                     LOGGER.warning(
                         "Spotify track metadata enrichment skipped after HTTP %s.",

@@ -2603,7 +2603,7 @@ private fun ArtistOverlay(
                     if (artist.compilations.isNotEmpty()) {
                         item {
                             Box(modifier = Modifier.padding(horizontal = 20.dp)) {
-                                ArtistSectionTitle(if (strings.code.startsWith("it")) "Raccolte" else "Compilations")
+                                ArtistSectionTitle(strings.compilations)
                             }
                         }
                         item {

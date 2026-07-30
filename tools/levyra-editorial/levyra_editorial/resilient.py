@@ -134,7 +134,7 @@ def run_collection(config_path: Path, output_path: Path) -> None:
     if youtube_cookie:
         try:
             youtube_music = YoutubeMusicWebClient(youtube_cookie)
-        except YoutubeMusicError as error:
+        except (YoutubeMusicError, ValueError) as error:
             LOGGER.warning("Central YouTube Music enrichment disabled: %s", error)
     else:
         LOGGER.warning("LEVYRA_EDITORIAL_YTM_COOKIE is not configured; publishing Spotify-only metadata.")

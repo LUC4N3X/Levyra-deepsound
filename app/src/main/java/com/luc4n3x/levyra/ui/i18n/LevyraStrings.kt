@@ -298,6 +298,35 @@ class LevyraStrings private constructor(
     val cancelDownload: String get() = value("cancelDownload")
     val readAll: String get() = value("readAll")
     val singlesAndEps: String get() = value("singlesAndEps")
+    val compilations: String
+        get() = when (code) {
+            "it" -> "Raccolte"
+            "es" -> "Recopilaciones"
+            "fr" -> "Compilations"
+            "de" -> "Kompilationen"
+            "pt" -> "Compilações"
+            "nl" -> "Verzamelalbums"
+            "pl" -> "Kompilacje"
+            "ro" -> "Compilații"
+            "el" -> "Συλλογές"
+            "sv" -> "Samlingar"
+            "da" -> "Opsamlinger"
+            "cs" -> "Kompilace"
+            "uk" -> "Збірки"
+            "ru" -> "Сборники"
+            "tr" -> "Derlemeler"
+            "ar" -> "ألبومات تجميعية"
+            "zh" -> "合辑"
+            "ja" -> "コンピレーション"
+            "ko" -> "컴필레이션"
+            "hi" -> "संकलन"
+            "id" -> "Kompilasi"
+            "vi" -> "Tuyển tập"
+            "th" -> "อัลบั้มรวมเพลง"
+            "fil" -> "Mga compilation"
+            "he" -> "אוספים"
+            else -> "Compilations"
+        }
     val tapHeartToAdd: String get() = value("tapHeartToAdd")
     val all: String get() = value("all")
     val automaticResume: String get() = value("automaticResume")
