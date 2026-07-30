@@ -11346,6 +11346,35 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                         shape = RoundedCornerShape(artCorner)
                                     )
                             )
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.72f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                                shape = CircleShape,
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(18.dp)
+                                    .zIndex(40f)
+                                    .pressable(onClick = viewModel::toggleVideoMode)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.MusicNote,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                    Text(
+                                        text = strings.song,
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         } else {
                             MotionArtworkLayer(
                                 artwork = state.motionArtwork,
@@ -16976,23 +17005,19 @@ private fun LevyraVideoSurface(
             aspectRatio = aspectRatio
         )
     }
-    val surfaceModifier = if (pictureInPicture) {
-        modifier
-    } else {
-        modifier.aspectRatio(aspectRatio.coerceIn(0.56f, 2.1f))
-    }
     Box(
-        modifier = surfaceModifier.background(Color.Black),
+        modifier = modifier.background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
         if (player != null) {
             AndroidView(
                 factory = { context ->
-                    androidx.media3.ui.PlayerView(context).apply {
-                        useController = false
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        setShowBuffering(androidx.media3.ui.PlayerView.SHOW_BUFFERING_ALWAYS)
-                        setBackgroundColor(android.graphics.Color.BLACK)
+                    // TextureView stays inside Compose bounds; SurfaceView can cover sibling controls.
+                    (android.view.LayoutInflater.from(context).inflate(
+                        R.layout.levyra_video_player_view,
+                        null,
+                        false
+                    ) as androidx.media3.ui.PlayerView).apply {
                         keepScreenOn = true
                         this.player = player
                     }
