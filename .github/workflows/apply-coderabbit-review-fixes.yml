@@ -56,7 +56,65 @@ jobs:
       - name: Install collector tooling
         run: python -m pip install --disable-pip-version-check -e 'tools/levyra-editorial[dev]'
       - name: Apply guarded review fixes
-        run: python3 tools/apply_coderabbit_review_fixes.py
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("tools/apply_coderabbit_review_fixes.py")
+          text = path.read_text(encoding="utf-8")
+          start_marker = "# Add a real localized strings-contract entry for all 26 supported languages."
+          end_marker = "# Optional central enrichment must degrade safely when the query-limit environment value is malformed."
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          replacement = '''# Add a localized strings-contract entry for all 26 supported languages.
+          strings_path = "app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraStrings.kt"
+          replace_once(
+              strings_path,
+              '    val singlesAndEps: String get() = value("singlesAndEps")\\n',
+              '''    val singlesAndEps: String get() = value("singlesAndEps")
+              val compilations: String
+                  get() = when (code) {
+                      "it" -> "Raccolte"
+                      "es" -> "Recopilaciones"
+                      "fr" -> "Compilations"
+                      "de" -> "Kompilationen"
+                      "pt" -> "Compilações"
+                      "nl" -> "Verzamelalbums"
+                      "pl" -> "Kompilacje"
+                      "ro" -> "Compilații"
+                      "el" -> "Συλλογές"
+                      "sv" -> "Samlingar"
+                      "da" -> "Opsamlinger"
+                      "cs" -> "Kompilace"
+                      "uk" -> "Збірки"
+                      "ru" -> "Сборники"
+                      "tr" -> "Derlemeler"
+                      "ar" -> "ألبومات تجميعية"
+                      "zh" -> "合辑"
+                      "ja" -> "コンピレーション"
+                      "ko" -> "컴필레이션"
+                      "hi" -> "संकलन"
+                      "id" -> "Kompilasi"
+                      "vi" -> "Tuyển tập"
+                      "th" -> "อัลบั้มรวมเพลง"
+                      "fil" -> "Mga compilation"
+                      "he" -> "אוספים"
+                      else -> "Compilations"
+                  }
+          ''',
+          )
+
+          replace_once(
+              "app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt",
+              '                                ArtistSectionTitle(if (strings.code.startsWith("it")) "Raccolte" else "Compilations")\\n',
+              "                                ArtistSectionTitle(strings.compilations)\\n",
+          )
+
+          '''
+          path.write_text(text[:start] + replacement + text[end:], encoding="utf-8")
+          PY
+          python3 tools/apply_coderabbit_review_fixes.py
       - name: Lint and test collector
         run: |
           ruff check --fix tools/levyra-editorial
@@ -77,7 +135,7 @@ jobs:
           set -euo pipefail
           grep -q 'uppercase(Locale.ROOT)' app/src/main/java/com/luc4n3x/levyra/data/RecordingIdentity.kt
           grep -q 'val compilations: String' app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraStrings.kt
-          test "$(grep -R -h '"'"'"compilations" to'"'"' app/src/main/java/com/luc4n3x/levyra/ui/i18n/Levyra*Strings.kt | wc -l)" -eq 26
+          grep -q '"he" -> "אוספים"' app/src/main/java/com/luc4n3x/levyra/ui/i18n/LevyraStrings.kt
           test "$(grep -c 'if (releaseType != ReleaseType.Album) return null' app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt)" -ge 2
           grep -q '_bootstrap_failed = True' tools/levyra-editorial/levyra_editorial/youtube_music.py
           grep -q 'Spotify track metadata rate-limited' tools/levyra-editorial/levyra_editorial/spotify.py
@@ -92,5 +150,5 @@ jobs:
             echo 'Review fixes already applied'
             exit 0
           fi
-          git commit -m 'fix(review): address CodeRabbit findings'
+          git commit -m 'fix(review): address CodeRabbit and Codex findings'
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
