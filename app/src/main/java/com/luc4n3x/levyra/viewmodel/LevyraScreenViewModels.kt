@@ -607,7 +607,10 @@ private fun buildHomeContentFingerprint(
     availability: HomeContentAvailability
 ): String {
     return buildString {
-        append(availability.copy(chartCount = 0).fingerprint())
+        // Charts and playback presence are deliberately excluded: this fingerprint identifies the home
+        // content structure. Starting or closing playback must never read as new home content, or the
+        // home list is rebuilt underneath a user who is scrolled down to the charts.
+        append(availability.copy(chartCount = 0, hasCurrentTrack = false).fingerprint())
         append('|')
         append(input.tracks.take(12).joinToString(",") { it.id })
         append('|')
