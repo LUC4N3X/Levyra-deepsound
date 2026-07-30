@@ -311,6 +311,7 @@ class YoutubeMusicWebClient:
         self._client_version = ""
         self._visitor_data = ""
         self._bootstrap_lock = threading.Lock()
+        self._bootstrap_failed = False
         self._cache_lock = threading.Lock()
         self._cache: dict[str, dict[str, Any] | None] = {}
         self._query_count = 0
@@ -327,24 +328,32 @@ class YoutubeMusicWebClient:
     def _bootstrap(self) -> None:
         if self._api_key and self._client_version:
             return
+        if self._bootstrap_failed:
+            raise YoutubeMusicError("Central YouTube Music session bootstrap previously failed.")
         with self._bootstrap_lock:
             if self._api_key and self._client_version:
                 return
-            response = self._session.get(
-                HOME_URL,
-                headers={"Cookie": self._cookie, "Origin": ORIGIN, "Referer": HOME_URL},
-                timeout=self._timeout,
-            )
-            response.raise_for_status()
-            body = response.text
-            key = re.search(r'"INNERTUBE_API_KEY":"([^"\\]+)"', body)
-            version = re.search(r'"INNERTUBE_CLIENT_VERSION":"([^"\\]+)"', body)
-            visitor = re.search(r'"VISITOR_DATA":"([^"\\]+)"', body)
-            if key is None or version is None:
-                raise YoutubeMusicError("Unable to bootstrap the central YouTube Music session.")
-            self._api_key = key.group(1)
-            self._client_version = version.group(1)
-            self._visitor_data = visitor.group(1) if visitor else ""
+            if self._bootstrap_failed:
+                raise YoutubeMusicError("Central YouTube Music session bootstrap previously failed.")
+            try:
+                response = self._session.get(
+                    HOME_URL,
+                    headers={"Cookie": self._cookie, "Origin": ORIGIN, "Referer": HOME_URL},
+                    timeout=self._timeout,
+                )
+                response.raise_for_status()
+                body = response.text
+                key = re.search(r'"INNERTUBE_API_KEY":"([^"\\]+)"', body)
+                version = re.search(r'"INNERTUBE_CLIENT_VERSION":"([^"\\]+)"', body)
+                visitor = re.search(r'"VISITOR_DATA":"([^"\\]+)"', body)
+                if key is None or version is None:
+                    raise YoutubeMusicError("Unable to bootstrap the central YouTube Music session.")
+                self._api_key = key.group(1)
+                self._client_version = version.group(1)
+                self._visitor_data = visitor.group(1) if visitor else ""
+            except (requests.RequestException, YoutubeMusicError):
+                self._bootstrap_failed = True
+                raise
 
     def _search(self, query: str) -> Mapping[str, Any]:
         self._bootstrap()

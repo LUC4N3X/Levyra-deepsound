@@ -1161,7 +1161,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val tokens = subtitle.split(" • ", " · ", " - ").map { it.trim() }.filter { it.isNotBlank() }
         val kind = tokens.firstOrNull().orEmpty()
         val releaseType = levyraReleaseType(kind)
-        if (releaseType == ReleaseType.Unknown) return null
+        if (releaseType != ReleaseType.Album) return null
         val artist = tokens.drop(1).firstOrNull { isAlbumArtistToken(it) } ?: return null
         val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }.orEmpty()
         val thumbnail = findBestThumbnail(two)
@@ -1187,7 +1187,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val tokens = lines.drop(1).flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }.filter { it.isNotBlank() }
         val kind = tokens.firstOrNull().orEmpty()
         val releaseType = levyraReleaseType(kind)
-        if (releaseType == ReleaseType.Unknown) return null
+        if (releaseType != ReleaseType.Album) return null
         val artist = tokens.drop(1).firstOrNull { isAlbumArtistToken(it) } ?: return null
         val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }.orEmpty()
         val thumbnail = findBestThumbnail(renderer)
