@@ -6,6 +6,7 @@ on:
       - feat/editorial-collector
     paths:
       - tools/apply_album_home_metadata_fix.py
+      - tools/trigger_album_home_metadata_fix.txt
       - .github/workflows/apply-album-home-metadata-fix.yml
 
 permissions:
