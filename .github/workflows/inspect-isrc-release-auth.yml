@@ -32,77 +32,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       - name: Apply guarded feature patch
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          path = Path('tools/apply_isrc_release_youtube_auth.py')
-          text = path.read_text()
-          old = '''models = replace_once(
-              models,
-              '    val explicit: Boolean = false\\n)\\n\\n@Immutable\\ndata class ArtistProfile(',
-              '    val explicit: Boolean = false,\\n    val releaseType: ReleaseType = ReleaseType.Unknown\\n)\\n\\n@Immutable\\ndata class ArtistProfile(',
-              'artist release type'
-          )
-          models = replace_once(
-              models,
-              '    val videosParams: String = ""\\n)\\n\\n@Immutable\\ndata class SearchResults(',
-              '    val videosParams: String = "",\\n    val compilations: List<ArtistRelease> = emptyList()\\n)\\n\\n@Immutable\\ndata class SearchResults(',
-              'artist compilations'
-          )'''
-          new = '''models = replace_once(
-              models,
-              '    val playlistId: String = "",\\n    val explicit: Boolean = false\\n)',
-              '    val playlistId: String = "",\\n    val explicit: Boolean = false,\\n    val releaseType: ReleaseType = ReleaseType.Unknown\\n)',
-              'artist release type'
-          )
-          models = replace_once(
-              models,
-              '    val videosBrowseId: String = "",\\n    val videosParams: String = ""\\n) {',
-              '    val videosBrowseId: String = "",\\n    val videosParams: String = "",\\n    val compilations: List<ArtistRelease> = emptyList()\\n) {',
-              'artist compilations'
-          )'''
-          if old not in text:
-              raise SystemExit('model patch block not found')
-          text = text.replace(old, new, 1)
-          old_album = '''models = replace_once(
-              models,
-              '    val metadataConfidence: Int = 0\\n)\\n\\ndata class AlbumDetail(',
-              '    val metadataConfidence: Int = 0,\\n    val releaseType: ReleaseType = ReleaseType.Unknown\\n)\\n\\ndata class AlbumDetail(',
-              'album hit release type'
-          )'''
-          new_album = '''models = replace_once(
-              models,
-              '    val metadataProvider: String = "",\\n    val metadataConfidence: Int = 0\\n)',
-              '    val metadataProvider: String = "",\\n    val metadataConfidence: Int = 0,\\n    val releaseType: ReleaseType = ReleaseType.Unknown\\n)',
-              'album hit release type'
-          )'''
-          if old_album not in text:
-              raise SystemExit('album model patch block not found')
-          text = text.replace(old_album, new_album, 1)
-          helper = '''def replace_once(text: str, old: str, new: str, label: str) -> str:
-              if new in text:
-                  return text
-              count = text.count(old)
-              if count != 1:
-                  if label == 'two row release classifier' and count == 2:
-                      return text.replace(old, new, 1)
-                  raise SystemExit(f'{label}: expected one anchor, found {count}')
-              return text.replace(old, new, 1)
-
-
-          def regex_once'''
-          text, count = re.subn(
-              r'def replace_once\(text: str, old: str, new: str, label: str\) -> str:\n.*?\n\n\ndef regex_once',
-              lambda _: helper,
-              text,
-              count=1,
-              flags=re.S,
-          )
-          if count != 1:
-              raise SystemExit('replace helper function not found')
-          path.write_text(text)
-          PY
-          python3 -m py_compile tools/apply_isrc_release_youtube_auth.py
+          python3 -m py_compile tools/prepare_isrc_release_patch.py tools/apply_isrc_release_youtube_auth.py
+          python3 tools/prepare_isrc_release_patch.py
           python3 tools/apply_isrc_release_youtube_auth.py
       - name: Test collector
         run: |
@@ -123,7 +54,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/src/main app/src/test tools/levyra-editorial .github/workflows/editorial-catalog.yml
-          git reset -- tools/apply_isrc_release_youtube_auth.py .github/workflows/inspect-isrc-release-auth.yml
+          git reset -- tools/apply_isrc_release_youtube_auth.py tools/prepare_isrc_release_patch.py .github/workflows/inspect-isrc-release-auth.yml
           if git diff --cached --quiet; then
             echo "Feature already applied"
             exit 0
