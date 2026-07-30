@@ -119,6 +119,26 @@ class HomeRenderSnapshotTest {
         assertEquals(listOf(refreshedTrack), published.derived.resonanceTracks)
     }
 
+    @Test
+    fun keepsContentFingerprintStableWhenPlaybackStartsAndStops() {
+        val chartTrack = track("aaaaaaaaaaa")
+        val idle = LevyraUiState(
+            tracks = listOf(chartTrack),
+            homeSections = listOf(HomeSection("Quick picks", listOf(chartTrack))),
+            charts = listOf(chartTrack)
+        )
+        val playing = idle.copy(currentTrack = chartTrack, isPlaying = true, isResolving = true)
+
+        val idleSnapshot = buildHomeRenderSnapshot(idle)
+        val playingSnapshot = buildHomeRenderSnapshot(playing)
+
+        // The fingerprint gates the deferred home shelves. If playback flipped it, tapping a chart row
+        // or closing the player would unmount everything below the fold and reset the home scroll.
+        assertEquals(idleSnapshot.derived.contentFingerprint, playingSnapshot.derived.contentFingerprint)
+        assertEquals(true, playingSnapshot.derived.contentAvailability.hasCurrentTrack)
+        assertEquals(false, idleSnapshot.derived.contentAvailability.hasCurrentTrack)
+    }
+
     private fun track(id: String): Track {
         return Track(
             id = id,
