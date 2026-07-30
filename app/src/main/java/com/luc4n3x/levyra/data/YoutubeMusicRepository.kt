@@ -689,12 +689,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             )
         }
         enrichedTracks.forEach { memory[it.id] = it }
-        val description = albumDescriptionRepository.resolve(
-            album = finalAlbum,
-            languageCode = languageCode,
-            youtubeDescription = root?.let { parseAlbumDescription(it) }.orEmpty(),
-            trackCount = enrichedTracks.size
-        )
+        val description = root?.let { parseAlbumDescription(it) }.orEmpty()
         AlbumDetail(
             album = finalAlbum,
             description = description,
@@ -704,6 +699,16 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             durationMs = enrichedTracks.sumOf { it.durationMs }
         )
     }
+
+    suspend fun resolveAlbumDescription(
+        detail: AlbumDetail,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): String = albumDescriptionRepository.resolve(
+        album = detail.album,
+        languageCode = languageCode,
+        youtubeDescription = detail.description,
+        trackCount = detail.trackCount
+    )
 
     private fun moodCategoryScore(
         zoneId: String,

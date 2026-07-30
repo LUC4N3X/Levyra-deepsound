@@ -3174,6 +3174,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     cacheReport = repository.cacheReport()
                 )
             }
+            launch {
+                val description = runCatching {
+                    repository.resolveAlbumDescription(detail, languageCode)
+                }.getOrNull()?.trim().orEmpty()
+                if (!isActive || description.isBlank() || description == detail.description) return@launch
+                _state.update { currentState ->
+                    val shownDetail = currentState.albumDetail ?: return@update currentState
+                    val sameBrowseId = detail.album.browseId.isNotBlank() &&
+                        shownDetail.album.browseId.equals(detail.album.browseId, ignoreCase = true)
+                    val sameIdentity = shownDetail.album.title.equals(detail.album.title, ignoreCase = true) &&
+                        shownDetail.album.artist.equals(detail.album.artist, ignoreCase = true)
+                    if (!currentState.showAlbum || (!sameBrowseId && !sameIdentity)) currentState
+                    else currentState.copy(albumDetail = shownDetail.copy(description = description))
+                }
+            }
             recordSmartAlbumOpen(detail.album)
             LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 8)
             refreshOfficialMetadataBatch(detail.tracks, 12)
