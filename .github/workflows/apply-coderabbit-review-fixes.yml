@@ -112,7 +112,15 @@ jobs:
           )
 
           """
-          path.write_text(text[:start] + replacement + text[end:], encoding="utf-8")
+          updated = text[:start] + replacement + text[end:]
+          old_definition = "            def request_batch() -> requests.Response:\n"
+          new_definition = "            def request_batch(track_ids: list[str] = chunk) -> requests.Response:\n"
+          old_join = '                    params={"ids": ",".join(chunk)},\n'
+          new_join = '                    params={"ids": ",".join(track_ids)},\n'
+          if updated.count(old_definition) != 1 or updated.count(old_join) != 1:
+              raise SystemExit("Spotify request-batch anchors not found exactly once")
+          updated = updated.replace(old_definition, new_definition, 1).replace(old_join, new_join, 1)
+          path.write_text(updated, encoding="utf-8")
           PY
           python3 tools/apply_coderabbit_review_fixes.py
       - name: Lint and test collector
