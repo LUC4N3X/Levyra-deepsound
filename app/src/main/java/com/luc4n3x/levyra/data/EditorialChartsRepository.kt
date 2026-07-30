@@ -39,7 +39,7 @@ import kotlin.coroutines.resume
 /**
  * Reads Levyra's public, pre-normalized editorial ranking catalog.
  *
- * The source credential never enters the app, and neither do source page URLs, URIs or ISRC. Cover
+ * The source credential never enters the app, and neither do source page URLs or URIs. ISRC is retained as a public recording identity. Cover
  * artwork is the one published source-hosted asset: on-device lookups cannot match every charting
  * track, so the catalog carries the album cover and [publishedArtworkUrl] re-checks its host here
  * rather than trusting the publication guard alone.
@@ -313,6 +313,7 @@ internal object EditorialCatalogParser {
                 releaseDate = releaseDate,
                 year = releaseDate.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty(),
                 explicit = item.optBoolean("explicit", false),
+                isrc = item.optString("isrc").uppercase(Locale.ROOT).filter(Char::isLetterOrDigit),
                 metadataProvider = EDITORIAL_SOURCE,
                 metadataConfidence = 94,
             )

@@ -256,6 +256,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -1272,6 +1273,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     downloadSettings = state.downloadSettings,
                     downloadQueue = state.downloadQueue,
                     playbackDiagnostics = state.playbackDiagnostics,
+                    youtubeMusicAuthenticated = state.youtubeMusicAuthenticated,
                     onThemePreset = viewModel::setThemePreset,
                     onInterfaceSettings = viewModel::setInterfaceSettings,
                     onDownloadSettings = viewModel::setDownloadSettings,
@@ -1293,6 +1295,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                     onPauseDownload = viewModel::pauseDownload,
                     onResumeDownload = viewModel::resumeDownload,
                     onCancelDownload = viewModel::cancelDownload,
+                    onImportYoutubeMusicSession = viewModel::importYoutubeMusicSession,
+                    onClearYoutubeMusicSession = viewModel::clearYoutubeMusicSession,
                     onShareDiagnostics = {
                         val diagnostics = viewModel.refreshPlaybackDiagnostics()
                         val intent = Intent(Intent.ACTION_SEND).apply {
@@ -13311,6 +13315,7 @@ private fun SettingsOverlay(
     downloadSettings: LevyraDownloadSettings,
     downloadQueue: List<OfflineDownloadTask>,
     playbackDiagnostics: String,
+    youtubeMusicAuthenticated: Boolean,
     onThemePreset: (String) -> Unit,
     onInterfaceSettings: (LevyraInterfaceSettings) -> Unit,
     onDownloadSettings: (LevyraDownloadSettings) -> Unit,
@@ -13326,6 +13331,8 @@ private fun SettingsOverlay(
     onPauseDownload: (String) -> Unit,
     onResumeDownload: (String) -> Unit,
     onCancelDownload: (String) -> Unit,
+    onImportYoutubeMusicSession: (String) -> Boolean,
+    onClearYoutubeMusicSession: () -> Unit,
     onShareDiagnostics: () -> Unit,
     onRedoQuestionnaire: () -> Unit,
     onClose: () -> Unit
@@ -13333,6 +13340,8 @@ private fun SettingsOverlay(
     val strings = LocalLevyraStrings.current
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    var youtubeMusicCookie by rememberSaveable { mutableStateOf("") }
+    var youtubeMusicCookieError by rememberSaveable { mutableStateOf(false) }
     val batteryContext = LocalContext.current
     val batteryLifecycleOwner = LocalLifecycleOwner.current
     var batteryCheckToken by remember { mutableStateOf(0) }
@@ -13358,6 +13367,7 @@ private fun SettingsOverlay(
         SettingsCategoryMeta("player", categoryTitle(strings.player), "${strings.advancedGestures} · ${strings.sponsorBlock} · ${strings.skipSilence}", Icons.Rounded.PlayArrow, LevyraPink),
         SettingsCategoryMeta("downloads", categoryTitle(strings.downloads), "${strings.wifiOnly} · ${strings.simultaneousDownloads}", Icons.Rounded.Download, LevyraBlue),
         SettingsCategoryMeta("lyrics", categoryTitle(strings.lyricsAnalysisSection), strings.lyricsAnalysisCompact, Icons.Rounded.Insights, LevyraOrange),
+        SettingsCategoryMeta("accounts", categoryTitle(if (strings.code.startsWith("it")) "Account musicali" else "Music accounts"), if (youtubeMusicAuthenticated) "YouTube Music · connesso" else "YouTube Music · cookie facoltativo", Icons.Rounded.Person, LevyraCyan),
         SettingsCategoryMeta("backup", categoryTitle(strings.backupRestoreSection), "${strings.createDataBackup} · ${strings.restoreBackup}", Icons.Rounded.History, LevyraCyan),
         SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
         SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
@@ -13714,6 +13724,90 @@ private fun SettingsOverlay(
                                     title = strings.lyricsAnalysisCompact,
                                     subtitle = strings.lyricsAnalysisCompactSubtitle
                                 )
+                            }
+                        }
+                        "accounts" -> {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    SettingsSectionLabel(if (strings.code.startsWith("it")) "YouTube Music" else "YouTube Music")
+                                    Text(
+                                        if (strings.code.startsWith("it")) {
+                                            "Facoltativo. Incolla il cookie esportato da music.youtube.com: viene cifrato sul dispositivo, non entra nei backup e non viene inviato agli stream."
+                                        } else {
+                                            "Optional. Paste a cookie exported from music.youtube.com. It is encrypted on this device, excluded from backups and never attached to media streams."
+                                        },
+                                        color = LevyraMuted,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(18.dp),
+                                        color = Color.White.copy(alpha = 0.05f),
+                                        border = BorderStroke(1.dp, if (youtubeMusicAuthenticated) LevyraCyan.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.08f))
+                                    ) {
+                                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            Text(
+                                                if (youtubeMusicAuthenticated) {
+                                                    if (strings.code.startsWith("it")) "Sessione salvata e protetta" else "Session saved and protected"
+                                                } else {
+                                                    if (strings.code.startsWith("it")) "Nessuna sessione salvata" else "No saved session"
+                                                },
+                                                color = if (youtubeMusicAuthenticated) LevyraCyan else LevyraText,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Black
+                                            )
+                                            OutlinedTextField(
+                                                value = youtubeMusicCookie,
+                                                onValueChange = {
+                                                    youtubeMusicCookie = it
+                                                    youtubeMusicCookieError = false
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                label = { Text(if (strings.code.startsWith("it")) "Cookie o export Netscape/JSON" else "Cookie or Netscape/JSON export") },
+                                                visualTransformation = PasswordVisualTransformation(),
+                                                minLines = 2,
+                                                maxLines = 4,
+                                                isError = youtubeMusicCookieError,
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedTextColor = LevyraText,
+                                                    unfocusedTextColor = LevyraText,
+                                                    focusedBorderColor = LevyraCyan,
+                                                    unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
+                                                    cursorColor = LevyraCyan
+                                                )
+                                            )
+                                            if (youtubeMusicCookieError) {
+                                                Text(
+                                                    if (strings.code.startsWith("it")) "Cookie non valido: deve contenere SAPISID o __Secure-3PAPISID." else "Invalid cookie: SAPISID or __Secure-3PAPISID is required.",
+                                                    color = LevyraPink,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                TextButton(
+                                                    onClick = {
+                                                        val saved = onImportYoutubeMusicSession(youtubeMusicCookie)
+                                                        youtubeMusicCookieError = !saved
+                                                        if (saved) youtubeMusicCookie = ""
+                                                    },
+                                                    enabled = youtubeMusicCookie.isNotBlank()
+                                                ) {
+                                                    Text(if (strings.code.startsWith("it")) "Salva sessione" else "Save session")
+                                                }
+                                                if (youtubeMusicAuthenticated) {
+                                                    TextButton(onClick = {
+                                                        onClearYoutubeMusicSession()
+                                                        youtubeMusicCookie = ""
+                                                        youtubeMusicCookieError = false
+                                                    }) {
+                                                        Text(if (strings.code.startsWith("it")) "Disconnetti" else "Disconnect", color = LevyraPink)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                         "backup" -> {

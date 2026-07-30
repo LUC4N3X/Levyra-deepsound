@@ -42,6 +42,8 @@ import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.isPlausibleYoutubeMusicAlbumTitle
+import com.luc4n3x.levyra.data.RecordingIdentityMatch
+import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistBiography
@@ -158,6 +160,11 @@ internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
 }
 
 internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boolean {
+    when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
+        RecordingIdentityMatch.Exact -> return true
+        RecordingIdentityMatch.Conflict -> return false
+        RecordingIdentityMatch.Unknown -> Unit
+    }
     val targetTitle = playbackTextKey(target.title)
     val candidateTitle = playbackTextKey(candidate.title)
     if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
@@ -181,6 +188,11 @@ internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boo
 }
 
 internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
+    when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
+        RecordingIdentityMatch.Exact -> return 10_000
+        RecordingIdentityMatch.Conflict -> return Int.MIN_VALUE
+        RecordingIdentityMatch.Unknown -> Unit
+    }
     val targetTitle = playbackTextKey(target.title)
     val targetArtist = playbackTextKey(target.artist)
     val candidateTitle = playbackTextKey(candidate.title)
@@ -289,7 +301,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             lyricsTranslationEnabled = startupSettings.lyricsTranslationEnabled,
             interfaceSettings = startupSettings.interfaceSettings,
             downloadSettings = startupSettings.downloadSettings,
-            playbackDiagnostics = resolver.playbackDiagnostics()
+            playbackDiagnostics = resolver.playbackDiagnostics(),
+            youtubeMusicAuthenticated = repository.hasYoutubeMusicSession()
         )
     )
     private var searchJob: Job? = null
@@ -2213,6 +2226,17 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeSettings() {
         _state.update { it.copy(showSettings = false) }
+    }
+
+    fun importYoutubeMusicSession(rawValue: String): Boolean {
+        val saved = repository.importYoutubeMusicSession(rawValue)
+        _state.update { it.copy(youtubeMusicAuthenticated = repository.hasYoutubeMusicSession()) }
+        return saved
+    }
+
+    fun clearYoutubeMusicSession() {
+        repository.clearYoutubeMusicSession()
+        _state.update { it.copy(youtubeMusicAuthenticated = false) }
     }
 
     fun checkForUpdates(silent: Boolean = false) {

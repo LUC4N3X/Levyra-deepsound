@@ -3,6 +3,8 @@ package com.luc4n3x.levyra.data
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.data.security.GoogleApiKeyHeaders
+import com.luc4n3x.levyra.data.security.YOUTUBE_MUSIC_ORIGIN
+import com.luc4n3x.levyra.data.security.YoutubeMusicCredentialStore
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -29,7 +31,8 @@ internal class YoutubeMusicResilienceClient(
     private val monotonicClock: () -> Long = { System.nanoTime() / 1_000_000L },
     transport: YoutubeMusicTransport? = null
 ) {
-    private val transport = transport ?: OkHttpYoutubeMusicTransport(context)
+    private val credentialStore = context?.applicationContext?.let(::YoutubeMusicCredentialStore)
+    private val transport = transport ?: OkHttpYoutubeMusicTransport(context, credentialStore)
     private val inFlight = ConcurrentHashMap<String, YoutubeMusicInFlightRequest>()
     private val visitorData = ConcurrentHashMap<String, String>()
     private val health = ConcurrentHashMap<String, YoutubeMusicClientHealth>()
@@ -135,6 +138,19 @@ internal class YoutubeMusicResilienceClient(
         )
     }
 
+    fun hasAuthenticatedSession(): Boolean = credentialStore?.hasCredential() == true
+
+    fun importAuthenticatedSession(rawValue: String): Boolean {
+        val saved = credentialStore?.save(rawValue) == true
+        if (saved) clearResponseCache()
+        return saved
+    }
+
+    fun clearAuthenticatedSession() {
+        credentialStore?.clear()
+        clearResponseCache()
+    }
+
     internal fun diagnostics(): Map<String, YoutubeMusicClientHealth> = health.toMap()
 
     internal fun cacheDiagnostics(): YoutubeMusicCacheDiagnostics = synchronized(cacheLock) {
@@ -151,7 +167,7 @@ internal class YoutubeMusicResilienceClient(
         continuation: String,
         query: String
     ): JSONObject? {
-        val requestKey = listOf(kind.name, languageCode, browseId, params, continuation, query).joinToString("\u001f")
+        val requestKey = listOf(kind.name, languageCode, browseId, params, continuation, query, credentialStore?.version().toString()).joinToString("\u001f")
         cached(requestKey)?.let { return it }
 
         val leader = AtomicBoolean(false)
@@ -443,6 +459,12 @@ internal class YoutubeMusicResilienceClient(
         }
     }
 
+    private fun clearResponseCache() = synchronized(cacheLock) {
+        responseCache.clear()
+        responseCacheBytes = 0L
+        visitorData.clear()
+    }
+
     private fun cached(key: String): JSONObject? = synchronized(cacheLock) {
         val entry = responseCache[key] ?: return@synchronized null
         if (clock() >= entry.expiresAtMs) {
@@ -647,7 +669,10 @@ private enum class YoutubeMusicRequestKind {
     BROWSE
 }
 
-private class OkHttpYoutubeMusicTransport(context: Context?) : YoutubeMusicTransport {
+private class OkHttpYoutubeMusicTransport(
+    context: Context?,
+    private val credentialStore: YoutubeMusicCredentialStore?
+) : YoutubeMusicTransport {
     private val mediaType = "application/json; charset=utf-8".toMediaType()
     private val client = LevyraHttpClientFactory.youtubePlayer().newBuilder()
         .connectTimeout(4, TimeUnit.SECONDS)
@@ -670,6 +695,13 @@ private class OkHttpYoutubeMusicTransport(context: Context?) : YoutubeMusicTrans
             .header("X-Youtube-Client-Name", request.profile.clientHeaderName)
             .header("X-Youtube-Client-Version", request.profile.clientVersion)
         if (request.profile.origin.isNotBlank()) builder.header("Origin", request.profile.origin)
+        if (request.profile.id == "web-remix" && request.profile.origin == YOUTUBE_MUSIC_ORIGIN) {
+            credentialStore?.load()?.let { credential ->
+                builder.header("Cookie", credential.cookieHeader)
+                builder.header("Authorization", credential.authorizationHeader(System.currentTimeMillis()))
+                builder.header("X-Goog-AuthUser", "0")
+            }
+        }
         if (request.profile.androidSdkVersion > 0) builder.header("X-Goog-Api-Format-Version", "2")
         request.visitorData.takeIf(String::isNotBlank)?.let { builder.header("X-Goog-Visitor-Id", it) }
 

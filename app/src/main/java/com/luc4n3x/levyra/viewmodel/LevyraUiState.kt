@@ -47,6 +47,7 @@ data class LevyraUiState(
     val showOnboarding: Boolean = false,
     val isVideoMode: Boolean = false,
     val showSettings: Boolean = false,
+    val youtubeMusicAuthenticated: Boolean = false,
     val animationsEnabled: Boolean = true,
     val dynamicColor: Boolean = true,
     val userName: String = "",

@@ -96,6 +96,12 @@ def build_catalog(
 
         metadata = client.get_playlist_metadata(playlist_id)
         raw_items = client.iter_playlist_items(playlist_id)
+        enricher = getattr(client, "enrich_track_metadata", None)
+        if callable(enricher):
+            try:
+                raw_items = enricher(raw_items)
+            except Exception as error:
+                LOGGER.warning("Optional track metadata enrichment skipped: %s", type(error).__name__)
         tracks = normalize_playlist_items(raw_items)
         if not tracks:
             raise ValueError(f"Collection '{collection_id}' produced no usable tracks.")
@@ -168,6 +174,8 @@ def normalize_playlist_items(items: list[dict[str, Any]]) -> list[Track]:
             release_date=_optional_string(raw_album.get("release_date")),
             artwork_url=artwork_url,
             external_url=_nested_string(raw_album, "external_urls", "spotify"),
+            album_type=_optional_string(raw_album.get("album_type")),
+            total_tracks=_positive_int(raw_album.get("total_tracks")),
         )
 
         tracks.append(
@@ -182,6 +190,7 @@ def normalize_playlist_items(items: list[dict[str, Any]]) -> list[Track]:
                 explicit=bool(raw_track.get("explicit", False)),
                 external_url=_nested_string(raw_track, "external_urls", "spotify"),
                 artwork_url=artwork_url,
+                isrc=_nested_string(raw_track, "external_ids", "isrc"),
             )
         )
     return tracks

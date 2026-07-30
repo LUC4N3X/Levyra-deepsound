@@ -22,6 +22,7 @@ import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.ReleaseType
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -350,6 +351,7 @@ class LevyraPreferences(context: Context) {
                     .put("canonicalUrl", album.canonicalUrl)
                     .put("metadataProvider", album.metadataProvider)
                     .put("metadataConfidence", album.metadataConfidence)
+                    .put("releaseType", album.releaseType.name)
             )
         }
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
@@ -553,7 +555,8 @@ class LevyraPreferences(context: Context) {
                         upc = item.optString("upc").trim(),
                         canonicalUrl = item.optString("canonicalUrl").trim(),
                         metadataProvider = item.optString("metadataProvider").trim(),
-                        metadataConfidence = item.optInt("metadataConfidence").coerceIn(0, 100)
+                        metadataConfidence = item.optInt("metadataConfidence").coerceIn(0, 100),
+                        releaseType = runCatching { ReleaseType.valueOf(item.optString("releaseType")) }.getOrDefault(ReleaseType.Unknown)
                     )
                 }
             }
