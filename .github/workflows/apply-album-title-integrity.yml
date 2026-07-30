@@ -34,43 +34,33 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           repo_path = Path('app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt')
           vm_path = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt')
           test_path = Path('app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicAlbumTitleTest.kt')
-
           repo = repo_path.read_text()
           vm = vm_path.read_text()
 
-          def replace_once(text: str, old: str, new: str, label: str) -> str:
+          def replace_once(text, old, new, label):
               if new in text:
                   return text
               count = text.count(old)
               if count != 1:
-                  raise SystemExit(f'{label}: expected exactly one anchor, found {count}')
+                  raise SystemExit(f'{label}: expected one anchor, found {count}')
               return text.replace(old, new, 1)
 
-          def replace_count(text: str, old: str, new: str, expected: int, label: str) -> str:
-              if old not in text:
-                  if text.count(new) >= expected:
-                      return text
-                  raise SystemExit(f'{label}: anchor not found')
-              count = text.count(old)
-              if count != expected:
-                  raise SystemExit(f'{label}: expected {expected} anchors, found {count}')
-              return text.replace(old, new)
+          def regex_once(text, pattern, replacement, label):
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one regex match, found {count}')
+              return updated
 
-          repo = replace_once(
-              repo,
-              '''internal fun levyraIsAlbumLabel(token: String): Boolean {
+          validator_anchor = '''internal fun levyraIsAlbumLabel(token: String): Boolean {
               return token.trim().lowercase(Locale.ROOT) in LEVYRA_LOCALIZED_ALBUM_LABELS
           }
-
-          internal fun levyraAlbumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {''',
-              '''internal fun levyraIsAlbumLabel(token: String): Boolean {
-              return token.trim().lowercase(Locale.ROOT) in LEVYRA_LOCALIZED_ALBUM_LABELS
-          }
-
+          '''
+          validator = validator_anchor + '''
           internal fun isPlausibleYoutubeMusicAlbumTitle(value: String): Boolean {
               val normalized = value
                   .replace('\\u00A0', ' ')
@@ -87,106 +77,47 @@ jobs:
               if (ALBUM_TITLE_TRACK_COUNT_PATTERN.matches(normalized)) return false
               return true
           }
-
-          internal fun levyraAlbumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {''',
-              'insert album-title validator'
-          )
-
+          '''
+          repo = replace_once(repo, validator_anchor, validator, 'insert validator')
           repo = replace_once(
               repo,
               '    if (albumKey.isBlank() || artistKey.isBlank()) return LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE',
               '    if (!isPlausibleYoutubeMusicAlbumTitle(album.title) || albumKey.isBlank() || artistKey.isBlank()) return LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE',
-              'reject metric titles while scoring'
+              'guard recommendation score'
           )
-
           repo = replace_once(
               repo,
               '                isAlbumLabel(kind) -> {',
               '                isAlbumLabel(kind) && isPlausibleYoutubeMusicAlbumTitle(title) -> {',
-              'filter search album title'
+              'guard search album card'
           )
 
-          repo = replace_count(
+          old_filter = '            .filter { it.title.isNotBlank() && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }'
+          new_filter = '            .filter { isPlausibleYoutubeMusicAlbumTitle(it.title) && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }'
+          if old_filter in repo:
+              if repo.count(old_filter) != 2:
+                  raise SystemExit(f'home album filters: expected 2, found {repo.count(old_filter)}')
+              repo = repo.replace(old_filter, new_filter)
+          elif repo.count(new_filter) < 2:
+              raise SystemExit('home album filters: neither old nor applied form found')
+
+          for function_name in ('parseAlbumFromExploreItem', 'parseTwoRowAlbumHit'):
+              pattern = rf'(private fun {function_name}\([^)]*\)[^{{]*\{{.*?val title = .*?\.trim\(\)\n\s*)if \(title\.isBlank\(\)\) return null'
+              repo = regex_once(
+                  repo,
+                  pattern,
+                  r'\1if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null',
+                  f'guard {function_name}'
+              )
+
+          repo = regex_once(
               repo,
-              '            .filter { it.title.isNotBlank() && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }',
-              '            .filter { isPlausibleYoutubeMusicAlbumTitle(it.title) && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }',
-              2,
-              'filter home album titles'
+              r'(private fun parseAlbumHit\(renderer: JSONObject\): AlbumHit\? \{\n\s*val lines = extractFlexLines\(renderer\)\n\s*val title = lines\.firstOrNull\(\)\?\.takeIf \{ it\.isNotBlank\(\) \} \?: return null\n)(\s*val tokens =)',
+              r'\1        if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null\n\2',
+              'guard parseAlbumHit'
           )
 
-          repo = replace_once(
-              repo,
-              '''    private fun parseAlbumFromExploreItem(item: JSONObject?): AlbumHit? {
-              item ?: return null
-              item.optJSONObject("musicResponsiveListItemRenderer")?.let { parseAlbumHit(it)?.let { album -> return album } }
-              val card = item.optJSONObject("musicTwoRowItemRenderer") ?: return null
-              val title = card.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-              if (title.isBlank()) return null
-              val subtitle = card.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty().trim()''',
-              '''    private fun parseAlbumFromExploreItem(item: JSONObject?): AlbumHit? {
-              item ?: return null
-              item.optJSONObject("musicResponsiveListItemRenderer")?.let { parseAlbumHit(it)?.let { album -> return album } }
-              val card = item.optJSONObject("musicTwoRowItemRenderer") ?: return null
-              val title = card.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-              if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
-              val subtitle = card.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty().trim()''',
-              'filter explore album title'
-          )
-
-          repo = replace_once(
-              repo,
-              '''    private fun parseTwoRowAlbumHit(two: JSONObject): AlbumHit? {
-              val title = two.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-              if (title.isBlank()) return null
-              val subtitle = two.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty()''',
-              '''    private fun parseTwoRowAlbumHit(two: JSONObject): AlbumHit? {
-              val title = two.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-              if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
-              val subtitle = two.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty()''',
-              'filter two-row album title'
-          )
-
-          repo = replace_once(
-              repo,
-              '''    private fun parseAlbumHit(renderer: JSONObject): AlbumHit? {
-              val lines = extractFlexLines(renderer)
-              val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
-              val tokens = lines.drop(1).flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }.filter { it.isNotBlank() }''',
-              '''    private fun parseAlbumHit(renderer: JSONObject): AlbumHit? {
-              val lines = extractFlexLines(renderer)
-              val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
-              if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
-              val tokens = lines.drop(1).flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }.filter { it.isNotBlank() }''',
-              'filter responsive album title'
-          )
-
-          old_resolver = '''    private fun resolveAlbumHit(album: AlbumHit, languageCode: String): AlbumHit {
-              if (album.browseId.isNotBlank()) return album
-              val query = album.query.ifBlank { "${album.title} ${album.artist}" }.trim()
-              val candidates = searchAlbumHits(query, languageCode, 8)
-              val normalizedTitle = album.title.trim().lowercase()
-              val normalizedArtist = album.artist.trim().lowercase()
-              val exact = candidates.firstOrNull { candidate ->
-                  candidate.title.trim().lowercase() == normalizedTitle && candidate.artist.trim().lowercase() == normalizedArtist && candidate.browseId.isNotBlank()
-              }
-              val sameTitle = candidates.firstOrNull { candidate ->
-                  candidate.title.trim().lowercase() == normalizedTitle && candidate.browseId.isNotBlank()
-              }
-              val withBrowse = exact ?: sameTitle ?: candidates.firstOrNull { it.browseId.isNotBlank() }
-              return withBrowse?.let { found ->
-                  album.copy(
-                      title = found.title.ifBlank { album.title },
-                      artist = found.artist.ifBlank { album.artist },
-                      year = found.year.ifBlank { album.year },
-                      thumbnailUrl = found.thumbnailUrl.ifBlank { album.thumbnailUrl },
-                      query = found.query.ifBlank { album.query },
-                      browseId = found.browseId,
-                      artistBrowseId = found.artistBrowseId.ifBlank { album.artistBrowseId }
-                  )
-              } ?: album
-          }
-          '''
-          new_resolver = '''    private fun albumArtworkIdentityKey(url: String): String {
+          resolver = '''    private fun albumArtworkIdentityKey(url: String): String {
               return url.trim()
                   .lowercase(Locale.ROOT)
                   .substringBefore('?')
@@ -194,7 +125,7 @@ jobs:
                   .replace(Regex("=s\\d+.*$"), "")
           }
 
-              private fun resolveAlbumHit(album: AlbumHit, languageCode: String): AlbumHit {
+          private fun resolveAlbumHit(album: AlbumHit, languageCode: String): AlbumHit {
               val inputTitleIsPlausible = isPlausibleYoutubeMusicAlbumTitle(album.title)
               if (album.browseId.isNotBlank() && inputTitleIsPlausible) return album
 
@@ -231,55 +162,29 @@ jobs:
               val sameArtist = candidates.firstOrNull { candidate ->
                   normalizedArtist.isNotBlank() && albumRecommendationTextKey(candidate.artist) == normalizedArtist
               }
-              val withBrowse = exact ?: sameArtwork ?: sameTitle ?: sameArtist ?: candidates.firstOrNull()
-              return withBrowse?.let { found ->
+              val found = exact ?: sameArtwork ?: sameTitle ?: sameArtist ?: candidates.firstOrNull()
+              return found?.let { candidate ->
                   album.copy(
-                      title = found.title,
-                      artist = found.artist.ifBlank { album.artist },
-                      year = found.year.ifBlank { album.year },
-                      thumbnailUrl = found.thumbnailUrl.ifBlank { album.thumbnailUrl },
-                      query = found.query.ifBlank { "${found.title} ${found.artist}".trim() },
-                      browseId = found.browseId,
-                      artistBrowseId = found.artistBrowseId.ifBlank { album.artistBrowseId }
+                      title = candidate.title,
+                      artist = candidate.artist.ifBlank { album.artist },
+                      year = candidate.year.ifBlank { album.year },
+                      thumbnailUrl = candidate.thumbnailUrl.ifBlank { album.thumbnailUrl },
+                      query = candidate.query.ifBlank { "${candidate.title} ${candidate.artist}".trim() },
+                      browseId = candidate.browseId,
+                      artistBrowseId = candidate.artistBrowseId.ifBlank { album.artistBrowseId }
                   )
               } ?: album.copy(title = album.title.takeIf(::isPlausibleYoutubeMusicAlbumTitle).orEmpty())
           }
-          '''
-          repo = replace_once(repo, old_resolver, new_resolver, 'replace album resolver')
 
-          old_header = '''    private fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit {
-              val headers = mutableListOf<JSONObject>()
-              collectObjectsByKey(root, "musicDetailHeaderRenderer", headers)
-              collectObjectsByKey(root, "musicResponsiveHeaderRenderer", headers)
-              collectObjectsByKey(root, "musicEditablePlaylistDetailHeaderRenderer", headers)
-              val header = headers.firstOrNull()
-              val title = header?.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().ifBlank { fallback.title }
-              val subtitles = listOf(
-                  header?.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty(),
-                  header?.optJSONObject("secondSubtitle")?.optJSONArray("runs")?.joinText().orEmpty()
-              ).filter { it.isNotBlank() }.joinToString(" • ")
-              val tokens = subtitles.split(" • ", " · ", " - ").map { it.trim() }.filter { it.isNotBlank() }
-              val fallbackArtist = fallback.artist.cleanAlbumArtistLabel()
-              val parsedArtist = tokens.firstNotNullOfOrNull { token ->
-                  token.cleanAlbumArtistLabel().takeIf { cleaned -> isAlbumArtistToken(cleaned) }
-              }.orEmpty().ifBlank { fallbackArtist }
-              val artistReference = extractYoutubeMusicArtistReference(header, parsedArtist)
-              val artist = artistReference?.name.orEmpty().cleanAlbumArtistLabel().ifBlank { parsedArtist }
-              val year = tokens.firstNotNullOfOrNull { Regex("\\b(19|20)\\d{2}\\b").find(it)?.value }.orEmpty().ifBlank { fallback.year }
-              val thumbnail = header?.let { findBestThumbnail(it) }.orEmpty().ifBlank { fallback.thumbnailUrl }
-              val browseId = fallback.browseId.ifBlank { root.optString("browseId") }
-              return fallback.copy(
-                  title = title.cleanLabel(),
-                  artist = artist.cleanLabel(),
-                  year = year,
-                  thumbnailUrl = upgradeThumbnail(thumbnail),
-                  query = "${title.cleanLabel()} ${artist.cleanLabel()}",
-                  browseId = browseId,
-                  artistBrowseId = artistReference?.browseId.orEmpty().ifBlank { fallback.artistBrowseId }
-              )
-          }
-          '''
-          new_header = '''    private fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit {
+          private fun parseAlbumHeader'''
+          repo = regex_once(
+              repo,
+              r'    private fun resolveAlbumHit\(album: AlbumHit, languageCode: String\): AlbumHit \{.*?\n    \}\n\n    private fun parseAlbumHeader',
+              resolver,
+              'replace album resolver'
+          )
+
+          header = '''    private fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit {
               val detailHeaders = mutableListOf<JSONObject>()
               val responsiveHeaders = mutableListOf<JSONObject>()
               val editableHeaders = mutableListOf<JSONObject>()
@@ -287,12 +192,14 @@ jobs:
               collectObjectsByKey(root, "musicResponsiveHeaderRenderer", responsiveHeaders)
               collectObjectsByKey(root, "musicEditablePlaylistDetailHeaderRenderer", editableHeaders)
               val headers = detailHeaders + responsiveHeaders + editableHeaders
+
               fun titleOf(candidate: JSONObject?): String = candidate
                   ?.optJSONObject("title")
                   ?.optJSONArray("runs")
                   ?.joinText()
                   .orEmpty()
                   .cleanLabel()
+
               val safeFallbackTitle = fallback.title.cleanLabel()
                   .takeIf(::isPlausibleYoutubeMusicAlbumTitle)
                   .orEmpty()
@@ -328,16 +235,20 @@ jobs:
                   artistBrowseId = artistReference?.browseId.orEmpty().ifBlank { fallback.artistBrowseId }
               )
           }
-          '''
-          repo = replace_once(repo, old_header, new_header, 'replace album header parser')
 
-          repo = replace_once(
+          private fun extractAudioPlaylistId'''
+          repo = regex_once(
               repo,
-              '''private val ALBUM_TRACK_METRIC_PATTERN = Regex(
+              r'    private fun parseAlbumHeader\(root: JSONObject, fallback: AlbumHit\): AlbumHit \{.*?\n    \}\n\n    private fun extractAudioPlaylistId',
+              header,
+              'replace album header parser'
+          )
+
+          metric_anchor = '''private val ALBUM_TRACK_METRIC_PATTERN = Regex(
               "(?:^|\\s)[\\d.,]+\\s*(?:k|m|mln|mil|mio|mrd|bn|b|milioni?|miliardi?|millions?|billions?)?\\s*(?:views?|visualizzazioni?|riproduzioni?|ascolti?|plays?|streams?)\\b",
               RegexOption.IGNORE_CASE
-          )''',
-              '''private val ALBUM_TITLE_METRIC_PATTERN = Regex(
+          )'''
+          metric_block = '''private val ALBUM_TITLE_METRIC_PATTERN = Regex(
               """^(?:[\\d.,]+\\s*(?:k|m|mln|mil|mio|mrd|bn|b|milioni?|miliardi?|millions?|billions?)?\\s*(?:(?:di|of)\\s+)?(?:views?|visualizzazioni?|riproduzioni?|ascolti?|plays?|streams?|reproducciones?|escuchas?|vues?|écoutes?|aufrufe?|wiedergaben?|reproduções?|visualizações?|просмотров?|прослушиваний?)|(?:views?|visualizzazioni?|riproduzioni?|ascolti?|plays?|streams?|reproducciones?|escuchas?|vues?|écoutes?|aufrufe?|wiedergaben?|reproduções?|visualizações?|просмотров?|прослушиваний?)\\s*[:\\-]?\\s*[\\d.,]+\\s*(?:k|m|mln|mil|mio|mrd|bn|b|milioni?|miliardi?|millions?|billions?)?|[\\d.,]+\\s*(?:万|億|만)?\\s*(?:再生(?:回数)?|回再生|조회수|스트리밍|צפיות|השמעות))$""",
               RegexOption.IGNORE_CASE
           )
@@ -350,32 +261,29 @@ jobs:
           private val ALBUM_TRACK_METRIC_PATTERN = Regex(
               "(?:^|\\s)[\\d.,]+\\s*(?:k|m|mln|mil|mio|mrd|bn|b|milioni?|miliardi?|millions?|billions?)?\\s*(?:views?|visualizzazioni?|riproduzioni?|ascolti?|plays?|streams?)\\b",
               RegexOption.IGNORE_CASE
-          )''',
-              'insert album metric patterns'
-          )
+          )'''
+          repo = replace_once(repo, metric_anchor, metric_block, 'insert metric patterns')
 
           vm = replace_once(
               vm,
               'import com.luc4n3x.levyra.data.albumRecommendationTextKey',
               'import com.luc4n3x.levyra.data.albumRecommendationTextKey\nimport com.luc4n3x.levyra.data.isPlausibleYoutubeMusicAlbumTitle',
-              'import album-title validator'
+              'import title validator'
           )
           vm = replace_once(
               vm,
               '        val candidates = mergeAlbums(instant, remote)',
               '        val candidates = mergeAlbums(instant, remote).filter { album -> isPlausibleYoutubeMusicAlbumTitle(album.title) }',
-              'filter cached ranked albums'
+              'filter cached album recommendations'
           )
           vm = replace_once(
               vm,
               '''    private fun isUsefulRecommendationAlbum(album: String, trackTitle: String): Boolean {
-              val key = albumRecommendationTextKey(album)
-              if (key.length < 2) return false''',
+              val key = albumRecommendationTextKey(album)''',
               '''    private fun isUsefulRecommendationAlbum(album: String, trackTitle: String): Boolean {
               if (!isPlausibleYoutubeMusicAlbumTitle(album)) return false
-              val key = albumRecommendationTextKey(album)
-              if (key.length < 2) return false''',
-              'filter metric album seeds'
+              val key = albumRecommendationTextKey(album)''',
+              'filter invalid album seed'
           )
 
           test_path.write_text('''package com.luc4n3x.levyra.data
