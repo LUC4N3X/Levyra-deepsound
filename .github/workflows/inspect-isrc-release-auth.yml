@@ -37,7 +37,7 @@ jobs:
           python3 tools/apply_isrc_release_youtube_auth.py
       - name: Test collector
         run: |
-          python -m pip install --disable-pip-version-check -e tools/levyra-editorial
+          python -m pip install --disable-pip-version-check pytest -e tools/levyra-editorial
           python -m pytest tools/levyra-editorial/tests -q
       - name: Test and compile Android
         run: |
