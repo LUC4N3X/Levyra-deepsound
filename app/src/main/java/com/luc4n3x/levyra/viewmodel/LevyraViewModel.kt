@@ -960,7 +960,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeArtistsJob?.cancel()
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
             val languageCode = LevyraLanguageCatalog.normalize(startupSnapshot.languageCode)
-            val localizedSeedNames = LevyraContentLocales.artistSuggestions(languageCode)
+            val localizedSeedNames = (
+                LevyraContentLocales.artistSuggestions(languageCode) + GLOBAL_HOME_ARTIST_FALLBACKS
+            ).distinctBy(::artistIdentityKey)
             val localizedSeedKeys = localizedSeedNames
                 .map(::artistIdentityKey)
                 .filter { it.isNotBlank() }
@@ -1944,7 +1946,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (deferUntilHomeIdle) candidates.take(startupPlan.albumSeedCount) else candidates
             }
             val remoteLimit = if (deferUntilHomeIdle) {
-                startupPlan.albumCandidateCount
+                maxOf(HOME_ALBUM_RECOMMENDATION_LIMIT, startupPlan.albumCandidateCount)
             } else {
                 HOME_ALBUM_REMOTE_CANDIDATE_LIMIT
             }
@@ -2156,7 +2158,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .thenBy { scored -> albumRecommendationTextKey(scored.first.artist) }
                 .thenBy { scored -> albumRecommendationTextKey(scored.first.title) }
         )
-        if (ranked.isEmpty()) return emptyList()
+        if (ranked.isEmpty()) return candidates.take(limit)
 
         val distinctSeedArtists = directSeeds
             .map { albumRecommendationTextKey(it.artist) }
@@ -2177,8 +2179,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         if (selected.size < limit) {
-            ranked.asSequence()
-                .map { scored: Pair<AlbumHit, Int> -> scored.first }
+            candidates.asSequence()
                 .filterNot { candidate: AlbumHit ->
                     selected.any { selectedAlbum: AlbumHit ->
                         albumRecommendationDeduplicationKey(selectedAlbum) == albumRecommendationDeduplicationKey(candidate)
@@ -5906,20 +5907,27 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         // last hour is served straight from memory instead of paying for another round trip.
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
         private const val CHART_PRIME_REGION_COUNT = 28
-        private const val HOME_ARTIST_SHELF_SIZE = 13
-        private const val HOME_ARTIST_HISTORY_LIMIT = 48
-        private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
-        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 2
+        private const val HOME_ARTIST_SHELF_SIZE = 20
+        private const val HOME_ARTIST_HISTORY_LIMIT = 72
+        private const val HOME_ARTIST_CANDIDATE_LIMIT = 72
+        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
-        private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 9_000L
+        private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 18_000L
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
         private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4
         private const val HOME_RESONANCE_REFRESH_INTERVAL_MS = 12L * 60L * 60L * 1000L
-        private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
-        private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
-        private const val HOME_ALBUM_REMOTE_CONCURRENCY = 3
-        private const val HOME_ALBUM_SEED_LIMIT = 12
+        private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 20
+        private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 32
+        private const val HOME_ALBUM_REMOTE_CONCURRENCY = 4
+        private const val HOME_ALBUM_SEED_LIMIT = 16
+        private val GLOBAL_HOME_ARTIST_FALLBACKS = listOf(
+            "The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "SZA",
+            "Travis Scott", "Dua Lipa", "Post Malone", "Ariana Grande", "Kendrick Lamar",
+            "Bruno Mars", "Beyoncé", "Rihanna", "Ed Sheeran", "Lady Gaga",
+            "Bad Bunny", "Doja Cat", "Coldplay", "Imagine Dragons", "Lana Del Rey",
+            "Olivia Rodrigo", "Sabrina Carpenter", "Miley Cyrus", "Harry Styles"
+        )
         private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 8
         private const val OFFICIAL_METADATA_CONCURRENCY = 2
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
