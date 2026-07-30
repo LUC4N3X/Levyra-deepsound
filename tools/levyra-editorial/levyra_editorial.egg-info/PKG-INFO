@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: levyra-editorial
+Version: 0.1.0
+Summary: Secret-safe editorial metadata collector for Levyra
+Requires-Python: >=3.12
+Requires-Dist: requests<3,>=2.32
+Provides-Extra: dev
+Requires-Dist: pytest<9,>=8.4; extra == "dev"
+Requires-Dist: ruff<1,>=0.12; extra == "dev"
