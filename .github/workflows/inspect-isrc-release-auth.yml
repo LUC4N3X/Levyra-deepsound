@@ -1,28 +1,62 @@
-name: Inspect Metadata Auth Integration
+name: Apply ISRC Release Auth Feature
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inspect:
-    if: github.event.pull_request.number == 250
+  apply:
+    if: github.event.pull_request.number == 250 && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - name: Locate integration points
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Apply guarded feature patch
+        run: |
+          python3 -m py_compile tools/apply_isrc_release_youtube_auth.py
+          python3 tools/apply_isrc_release_youtube_auth.py
+      - name: Test collector
+        run: |
+          python -m pip install --disable-pip-version-check -e tools/levyra-editorial
+          python -m pytest tools/levyra-editorial/tests -q
+      - name: Test and compile Android
+        run: |
+          ./gradlew \
+            :app:testDebugUnitTest \
+            --tests com.luc4n3x.levyra.data.RecordingIdentityTest \
+            --tests com.luc4n3x.levyra.domain.ReleaseTypeTest \
+            --tests com.luc4n3x.levyra.data.security.YoutubeMusicCookieParserTest \
+            :app:compileDebugKotlin \
+            --stacktrace
+      - name: Commit verified feature
         shell: bash
         run: |
-          echo '=== SETTINGS FILES ==='
-          find app/src/main/java -type f | sort | grep -Ei 'setting|preference|security|credential|account' || true
-          echo '=== SETTINGS SYMBOLS ==='
-          grep -RInE --include='*.kt' 'showSettings|openSettings|closeSettings|Settings|Impostazioni|audioQuality\(|setAudioQuality|password|cookie|credential' app/src/main/java | head -n 600 || true
-          echo '=== ALBUM SERIALIZATION ==='
-          grep -RInE --include='*.kt' 'AlbumHit\(|ArtistRelease\(|canonicalUrl|metadataConfidence|releaseType|album_type' app/src/main/java app/src/test | head -n 700 || true
-          echo '=== PLAYBACK MATCHING ==='
-          grep -RInE --include='*.kt' 'isPlaybackCandidateCompatible|playbackCandidateScore|isrc|OfficialArtwork' app/src/main/java app/src/test | head -n 700 || true
-          echo '=== SPOTIFY CONVERSION ==='
-          grep -RInE '_convert_playlist_item|external_ids|album_type|API_BASE_URL|iter_playlist_items' tools/levyra-editorial | head -n 500 || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main app/src/test tools/levyra-editorial .github/workflows/editorial-catalog.yml
+          git reset -- tools/apply_isrc_release_youtube_auth.py .github/workflows/inspect-isrc-release-auth.yml
+          if git diff --cached --quiet; then
+            echo "Feature already applied"
+            exit 0
+          fi
+          git commit -m "feat(metadata): add ISRC-first matching and release types"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
