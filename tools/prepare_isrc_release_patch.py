@@ -62,6 +62,45 @@ models = replace_once(
 )''',
         "viewmodel state patch block",
     ),
+    (
+        '''artwork = replace_once(
+    artwork,
+    '        val referenceIsrc = normalizeIdentifier(track.isrc)\\n        val candidateIsrc = normalizeIdentifier(candidate.isrc)\\n',
+    ''' + "'''" + '''        val referenceIsrc = normalizeIdentifier(track.isrc)
+        val candidateIsrc = normalizeIdentifier(candidate.isrc)
+        when (recordingIdentityMatch(referenceIsrc, candidateIsrc)) {
+            RecordingIdentityMatch.Exact -> return 10_000
+            RecordingIdentityMatch.Conflict -> return Int.MIN_VALUE
+            RecordingIdentityMatch.Unknown -> Unit
+        }
+''' + "'''" + ''',
+    'artwork isrc gate'
+)''',
+        '''artwork = replace_once(
+    artwork,
+    '        val exactIsrc = track.isrc.isNotBlank() && isrc.isNotBlank() && track.isrc.equals(isrc, true)\\n',
+    ''' + "'''" + '''        when (recordingIdentityMatch(track.isrc, isrc)) {
+            RecordingIdentityMatch.Exact -> return 10_000
+            RecordingIdentityMatch.Conflict -> return REJECTED_SCORE
+            RecordingIdentityMatch.Unknown -> Unit
+        }
+''' + "'''" + ''',
+    'artwork isrc gate'
+)
+artwork = replace_once(
+    artwork,
+    '        if (!exactIsrc && artistScore < MIN_ARTIST_MATCH_SCORE) return REJECTED_SCORE\\n',
+    '        if (artistScore < MIN_ARTIST_MATCH_SCORE) return REJECTED_SCORE\\n',
+    'artwork artist gate'
+)
+artwork = replace_once(
+    artwork,
+    '        if (track.isrc.isNotBlank() && isrc.isNotBlank()) score += if (exactIsrc) 220 else -100\\n',
+    '',
+    'remove legacy ISRC score'
+)''',
+        "artwork patch block",
+    ),
 ]
 
 for old, new, label in replacements:
