@@ -86,8 +86,12 @@ jobs:
           timeout --foreground 240s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e 'any(.. | objects; has("isrc") or has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains source identifiers or unsupported ISRC fields"
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains source identifiers"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("isrc")); (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains a malformed ISRC"
             exit 1
           fi
           # Cover artwork is published on purpose, but only from the source image CDN.
@@ -149,8 +153,12 @@ jobs:
           timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e 'any(.. | objects; has("isrc") or has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains source identifiers or unsupported ISRC fields"
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains source identifiers"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("isrc")); (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains a malformed ISRC"
             exit 1
           fi
           # Cover artwork is published on purpose, but only from the source image CDN.
