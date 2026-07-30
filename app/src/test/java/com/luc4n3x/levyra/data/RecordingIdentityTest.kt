@@ -7,8 +7,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class RecordingIdentityTest {
+    @Test
+    fun normalizationIsLocaleInvariantForTurkishDevices() {
+        val previous = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"))
+            assertEquals("TRI012345678", normalizedIsrc("tr-i01-23-45678"))
+        } finally {
+            Locale.setDefault(previous)
+        }
+    }
+
     @Test
     fun exactIsrcWinsBeforeTextMatching() {
         val target = Track(id = "spotify", title = "Completely different", artist = "A", album = "X", durationMs = 1, streamUrl = "", videoUrl = "", thumbnailUrl = "", largeThumbnailUrl = "", source = "Spotify", moodTags = emptySet(), energy = 0, vocal = 0, replayScore = 0, cacheScore = 0, accentStart = 0, accentEnd = 0, isrc = "IT-B00-20-00001")

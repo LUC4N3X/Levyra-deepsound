@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+import levyra_editorial.resilient as resilient_module
 from levyra_editorial.resilient import build_resilient_catalog
 from levyra_editorial.spotify import SourceApiError
 
@@ -95,3 +96,38 @@ def test_optional_flag_does_not_make_other_markets_optional() -> None:
             generated_at="2026-07-29T18:00:00Z",
             pause_seconds=0,
         )
+
+
+
+def test_optional_youtube_music_client_value_error_is_caught(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: object,
+) -> None:
+    monkeypatch.setenv("LEVYRA_EDITORIAL_YTM_COOKIE", "SAPISID=abcdefghijklmnopqrstuvwxyz123456")
+    monkeypatch.setenv("LEVYRA_EDITORIAL_YTM_MAX_QUERIES", "not-a-number")
+
+    spotify = object()
+    monkeypatch.setattr(resilient_module, "SpotifyWebClient", lambda _secret: spotify)
+    monkeypatch.setattr(resilient_module, "load_config", lambda _path: {"collections": []})
+
+    captured: dict[str, object] = {}
+
+    class FakeClient:
+        def __init__(self, spotify_client: object, youtube_client: object | None) -> None:
+            captured["spotify"] = spotify_client
+            captured["youtube"] = youtube_client
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(resilient_module, "CentralEditorialClient", FakeClient)
+    monkeypatch.setattr(
+        resilient_module,
+        "build_resilient_catalog",
+        lambda _config, _client: (_ for _ in ()).throw(ValueError("stop after initialization")),
+    )
+
+    with pytest.raises(ValueError, match="stop after initialization"):
+        resilient_module.run_collection(tmp_path, tmp_path)
+
+    assert captured == {"spotify": spotify, "youtube": None}
