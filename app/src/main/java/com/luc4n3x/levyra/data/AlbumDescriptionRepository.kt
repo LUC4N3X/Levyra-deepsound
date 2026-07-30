@@ -6,7 +6,6 @@ import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -50,6 +49,15 @@ private fun wikipediaAlbumTitleKey(value: String): String {
     return key
 }
 
+internal fun remainingAlbumDescriptionBudgetMillis(
+    deadlineNanos: Long,
+    nowNanos: Long = System.nanoTime()
+): Long {
+    val remainingNanos = deadlineNanos - nowNanos
+    if (remainingNanos <= 0L) return 0L
+    return TimeUnit.NANOSECONDS.toMillis(remainingNanos).coerceAtLeast(1L)
+}
+
 internal class AlbumDescriptionRepository(context: Context?) {
     private val client = LevyraHttpClientFactory.media(context?.applicationContext).newBuilder()
         .connectTimeout(4, TimeUnit.SECONDS)
@@ -74,12 +82,11 @@ internal class AlbumDescriptionRepository(context: Context?) {
         val key = "${descriptionKey(album.title)}|${descriptionKey(album.artist)}|$language"
         cache[key]?.let { return it }
 
-        val remote = withTimeoutOrNull(REMOTE_TIMEOUT_MS) {
-            withContext(Dispatchers.IO) {
-                wikipediaDescription(album, language)
-                    ?: wikidataDescription(album, language)
-                    ?: spotifyDescription(album.canonicalUrl)
-            }
+        val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(REMOTE_TIMEOUT_MS)
+        val remote = withContext(Dispatchers.IO) {
+            wikipediaDescription(album, language, deadlineNanos)
+                ?: wikidataDescription(album, language, deadlineNanos)
+                ?: spotifyDescription(album.canonicalUrl, deadlineNanos)
         }
         val resolved = cleanDescription(remote.orEmpty())
             .takeIf { it.length >= MIN_DESCRIPTION_LENGTH }
@@ -88,9 +95,10 @@ internal class AlbumDescriptionRepository(context: Context?) {
         return resolved
     }
 
-    private fun wikipediaDescription(album: AlbumHit, languageCode: String): String? {
+    private fun wikipediaDescription(album: AlbumHit, languageCode: String, deadlineNanos: Long): String? {
         val languages = linkedSetOf(languageCode, "en")
         for (language in languages) {
+            if (remainingAlbumDescriptionBudgetMillis(deadlineNanos) <= 0L) break
             val url = "https://$language.wikipedia.org/w/api.php".toHttpUrl().newBuilder()
                 .addQueryParameter("action", "query")
                 .addQueryParameter("generator", "search")
@@ -106,7 +114,7 @@ internal class AlbumDescriptionRepository(context: Context?) {
                 .addQueryParameter("formatversion", "2")
                 .addQueryParameter("origin", "*")
                 .build()
-            val pages = requestJson(url)
+            val pages = requestJson(url, deadlineNanos)
                 ?.optJSONObject("query")
                 ?.optJSONArray("pages")
                 ?: continue
@@ -129,7 +137,7 @@ internal class AlbumDescriptionRepository(context: Context?) {
         return null
     }
 
-    private fun wikidataDescription(album: AlbumHit, languageCode: String): String? {
+    private fun wikidataDescription(album: AlbumHit, languageCode: String, deadlineNanos: Long): String? {
         val url = "https://www.wikidata.org/w/api.php".toHttpUrl().newBuilder()
             .addQueryParameter("action", "wbsearchentities")
             .addQueryParameter("search", "${album.title} ${album.artist}")
@@ -140,7 +148,7 @@ internal class AlbumDescriptionRepository(context: Context?) {
             .addQueryParameter("format", "json")
             .addQueryParameter("origin", "*")
             .build()
-        val results = requestJson(url)?.optJSONArray("search") ?: return null
+        val results = requestJson(url, deadlineNanos)?.optJSONArray("search") ?: return null
         val albumKey = descriptionKey(album.title)
         val artistKey = descriptionKey(album.artist)
         var best: String? = null
@@ -165,11 +173,11 @@ internal class AlbumDescriptionRepository(context: Context?) {
         return best?.takeIf { bestScore >= MIN_WIKIDATA_SCORE }
     }
 
-    private fun spotifyDescription(canonicalUrl: String): String? {
+    private fun spotifyDescription(canonicalUrl: String, deadlineNanos: Long): String? {
         val url = canonicalUrl.trim().toHttpUrlOrNull() ?: return null
         if (!url.isHttps || !url.host.equals("open.spotify.com", ignoreCase = true)) return null
         if (url.pathSegments.firstOrNull() != "album") return null
-        val html = requestText(url, "text/html") ?: return null
+        val html = requestText(url, "text/html", deadlineNanos) ?: return null
         val description = sequenceOf(
             SPOTIFY_OG_DESCRIPTION.find(html)?.groupValues?.getOrNull(1),
             SPOTIFY_OG_DESCRIPTION_REVERSED.find(html)?.groupValues?.getOrNull(1),
@@ -181,20 +189,24 @@ internal class AlbumDescriptionRepository(context: Context?) {
         return description
     }
 
-    private fun requestJson(url: HttpUrl): JSONObject? {
-        val body = requestText(url, "application/json") ?: return null
+    private fun requestJson(url: HttpUrl, deadlineNanos: Long): JSONObject? {
+        val body = requestText(url, "application/json", deadlineNanos) ?: return null
         return runCatching { JSONObject(body) }.getOrNull()
     }
 
-    private fun requestText(url: HttpUrl, accept: String): String? {
+    private fun requestText(url: HttpUrl, accept: String, deadlineNanos: Long): String? {
+        val remainingMs = remainingAlbumDescriptionBudgetMillis(deadlineNanos)
+        if (remainingMs <= 0L) return null
         val request = Request.Builder()
             .url(url)
             .header("Accept", accept)
             .header("Accept-Language", "en-US,en;q=0.8")
             .header("User-Agent", "Levyra/Android album-metadata")
             .build()
+        val call = client.newCall(request)
+        call.timeout().timeout(remainingMs, TimeUnit.MILLISECONDS)
         return runCatching {
-            client.newCall(request).execute().use { response ->
+            call.execute().use { response ->
                 if (!response.isSuccessful) return@use null
                 response.body?.string()?.take(MAX_RESPONSE_CHARS)
             }
