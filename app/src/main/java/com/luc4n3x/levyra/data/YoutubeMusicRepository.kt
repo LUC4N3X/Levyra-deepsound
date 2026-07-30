@@ -96,12 +96,46 @@ internal fun levyraIsAlbumLabel(token: String): Boolean {
     return token.trim().lowercase(Locale.ROOT) in LEVYRA_LOCALIZED_ALBUM_LABELS
 }
 
+internal fun isPlausibleYoutubeMusicAlbumTitle(value: String): Boolean {
+    val normalized = value
+        .replace('\u00A0', ' ')
+        .replace('\u202F', ' ')
+        .replace("\\n", " ")
+        .replace('\n', ' ')
+        .replace('\r', ' ')
+        .replace(Regex("""\s+"""), " ")
+        .trim()
+        .lowercase(Locale.ROOT)
+    if (normalized.isBlank() || normalized.looksLikeSerializedJson()) return false
+
+    val trackCountParts = normalized.split(' ')
+    val trackCountLabels = setOf(
+        "brano", "brani", "traccia", "tracce", "canzone", "canzoni",
+        "song", "songs", "track", "tracks", "titre", "titres", "lieder",
+        "cancion", "canciones", "faixa", "faixas", "곡", "曲", "שיר", "שירים"
+    )
+    if (
+        trackCountParts.size == 2 &&
+        trackCountParts.first().all(Char::isDigit) &&
+        trackCountParts.last() in trackCountLabels
+    ) return false
+
+    val metricWords = listOf(
+        "view", "visualizz", "riproduzion", "ascolt", "play", "stream",
+        "reproduccion", "reproducción", "escucha", "vue", "écoute",
+        "aufruf", "wiedergabe", "reprodução", "visualização",
+        "просмотр", "прослушив", "再生", "조회수", "스트리밍", "צפיות", "השמעות"
+    )
+    if (normalized.any(Char::isDigit) && metricWords.any(normalized::contains)) return false
+    return !ALBUM_TRACK_METRIC_PATTERN.containsMatchIn(normalized)
+}
+
 internal fun levyraAlbumRecommendationMatchScore(album: AlbumHit, seed: AlbumRecommendationSeed): Int {
     val albumKey = albumRecommendationTextKey(album.title)
     val artistKey = albumRecommendationTextKey(album.artist)
     val seedAlbumKey = albumRecommendationTextKey(seed.album)
     val seedArtistKey = albumRecommendationTextKey(seed.artist)
-    if (albumKey.isBlank() || artistKey.isBlank()) return LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
+    if (!isPlausibleYoutubeMusicAlbumTitle(album.title) || albumKey.isBlank() || artistKey.isBlank()) return LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 
     val seedArtistTokens = recommendationTokens(seedArtistKey)
     val artistCompatibility = recommendationCompatibility(artistKey, seedArtistKey)
@@ -210,10 +244,10 @@ private val ALBUM_RECOMMENDATION_STOP_WORDS = setOf(
     "music", "musica", "new", "nuovo", "nuova", "popular", "popolari", "italian", "italiano", "italiana"
 )
 
-private const val MAX_ALBUM_RECOMMENDATION_SEEDS = 12
-private const val ALBUM_RECOMMENDATION_CONCURRENCY = 3
-private const val ALBUM_RESULTS_PER_SEED = 5
-private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 4
+private const val MAX_ALBUM_RECOMMENDATION_SEEDS = 16
+private const val ALBUM_RECOMMENDATION_CONCURRENCY = 4
+private const val ALBUM_RESULTS_PER_SEED = 8
+private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 8
 private const val ALBUM_RESULT_RANK_PENALTY = 18
 
 class YoutubeMusicRepository(private val context: Context? = null) {
@@ -222,6 +256,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private val memory = LinkedHashMap<String, Track>()
     private val watchRepository = YoutubeMusicWatchRepository(context)
     private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)
+    private val albumDescriptionRepository = AlbumDescriptionRepository(context)
 
     suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
@@ -272,7 +307,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                         )
                     }
                 }
-                isAlbumLabel(kind) -> {
+                isAlbumLabel(kind) && isPlausibleYoutubeMusicAlbumTitle(title) -> {
                     val albumArtist = subtitleTokens.getOrNull(1).orEmpty()
                     val artistReference = extractYoutubeMusicArtistReference(renderer, albumArtist)
                     val resolvedArtist = artistReference?.name?.ifBlank { albumArtist }.orEmpty().ifBlank { albumArtist }
@@ -353,11 +388,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     suspend fun homeAlbums(
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
-        limit: Int = 10,
+        limit: Int = 20,
         seeds: List<AlbumRecommendationSeed> = emptyList(),
         concurrency: Int = ALBUM_RECOMMENDATION_CONCURRENCY
     ): List<AlbumHit> = withContext(Dispatchers.IO) {
-        val boundedLimit = limit.coerceIn(1, 24)
+        val boundedLimit = limit.coerceIn(1, 40)
         val normalizedSeeds = seeds
             .asSequence()
             .map { seed -> seed.copy(query = seed.query.trim(), weight = seed.weight.coerceIn(0, 2_000)) }
@@ -372,9 +407,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             }
             .take(MAX_ALBUM_RECOMMENDATION_SEEDS)
             .toList()
-        if (normalizedSeeds.isNotEmpty()) {
+        val personalized = if (normalizedSeeds.isEmpty()) {
+            emptyList()
+        } else {
             val limiter = Semaphore(concurrency.coerceIn(1, ALBUM_RECOMMENDATION_CONCURRENCY))
-            val personalized = coroutineScope {
+            coroutineScope {
                 normalizedSeeds.map { seed ->
                     async {
                         limiter.withPermit {
@@ -393,7 +430,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                     }
                 }.awaitAll().flatten()
             }
-            return@withContext personalized
                 .groupBy { albumRecommendationDeduplicationKey(it.album) }
                 .values
                 .mapNotNull { group -> group.maxByOrNull { it.score } }
@@ -403,17 +439,33 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                         .thenBy { albumRecommendationTextKey(it.album.title) }
                 )
                 .map { it.album }
-                .take(boundedLimit)
         }
         val homeAlbums = runCatching { homeAlbumFeedInnerTube(languageCode) }.getOrDefault(emptyList())
-        val fallbackAlbums = if (homeAlbums.size >= boundedLimit) emptyList() else {
-            albumRecommendationQueries(languageCode).flatMap { query ->
-                runCatching { searchAlbumHits(query, languageCode, ALBUM_RESULTS_PER_FALLBACK_QUERY) }.getOrDefault(emptyList())
+        val baseAlbums = (personalized + homeAlbums)
+            .asSequence()
+            .filter { isPlausibleYoutubeMusicAlbumTitle(it.title) && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }
+            .filter { it.browseId.isNotBlank() || it.query.isNotBlank() }
+            .distinctBy(::albumRecommendationDeduplicationKey)
+            .toList()
+        val fallbackAlbums = if (baseAlbums.size >= boundedLimit) {
+            emptyList()
+        } else {
+            val limiter = Semaphore(concurrency.coerceIn(1, ALBUM_RECOMMENDATION_CONCURRENCY))
+            coroutineScope {
+                albumRecommendationQueries(languageCode).map { query ->
+                    async {
+                        limiter.withPermit {
+                            runCatching {
+                                searchAlbumHits(query, languageCode, ALBUM_RESULTS_PER_FALLBACK_QUERY)
+                            }.getOrDefault(emptyList())
+                        }
+                    }
+                }.awaitAll().flatten()
             }
         }
-        (homeAlbums + fallbackAlbums)
+        (baseAlbums + fallbackAlbums)
             .asSequence()
-            .filter { it.title.isNotBlank() && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }
+            .filter { isPlausibleYoutubeMusicAlbumTitle(it.title) && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }
             .filter { it.browseId.isNotBlank() || it.query.isNotBlank() }
             .distinctBy(::albumRecommendationDeduplicationKey)
             .take(boundedLimit)
@@ -602,7 +654,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val tracks = root?.let { parseAlbumTracks(it, headerAlbum.copy(thumbnailUrl = cover)) }.orEmpty()
         val fallbackTracks = if (tracks.isEmpty()) {
             searchInnerTube("${headerAlbum.title} ${headerAlbum.artist}", 24, languageCode)
-                .map { track -> track.copy(album = headerAlbum.title, thumbnailUrl = track.thumbnailUrl.ifBlank { cover }, largeThumbnailUrl = track.largeThumbnailUrl.ifBlank { cover }) }
+                .map { track ->
+                    track.copy(
+                        album = headerAlbum.title,
+                        thumbnailUrl = cover.ifBlank { track.thumbnailUrl },
+                        largeThumbnailUrl = cover.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
+                    )
+                }
         } else {
             emptyList()
         }
@@ -626,20 +684,31 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 albumBrowseId = finalAlbum.browseId,
                 year = track.year.ifBlank { finalAlbum.year },
                 explicit = track.explicit || finalAlbum.explicit,
-                thumbnailUrl = track.thumbnailUrl.ifBlank { finalAlbum.thumbnailUrl },
-                largeThumbnailUrl = track.largeThumbnailUrl.ifBlank { finalAlbum.thumbnailUrl }
+                thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
             )
         }
         enrichedTracks.forEach { memory[it.id] = it }
+        val description = root?.let { parseAlbumDescription(it) }.orEmpty()
         AlbumDetail(
             album = finalAlbum,
-            description = root?.let { parseAlbumDescription(it) }.orEmpty(),
+            description = description,
             tracks = enrichedTracks,
             otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
             trackCount = enrichedTracks.size,
             durationMs = enrichedTracks.sumOf { it.durationMs }
         )
     }
+
+    suspend fun resolveAlbumDescription(
+        detail: AlbumDetail,
+        languageCode: String = LevyraLanguageCatalog.deviceDefault()
+    ): String = albumDescriptionRepository.resolve(
+        album = detail.album,
+        languageCode = languageCode,
+        youtubeDescription = detail.description,
+        trackCount = detail.trackCount
+    )
 
     private fun moodCategoryScore(
         zoneId: String,
@@ -817,7 +886,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         item.optJSONObject("musicResponsiveListItemRenderer")?.let { parseAlbumHit(it)?.let { album -> return album } }
         val card = item.optJSONObject("musicTwoRowItemRenderer") ?: return null
         val title = card.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-        if (title.isBlank()) return null
+        if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
         val subtitle = card.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty().trim()
         val tokens = subtitle.split(" • ", " · ", " - ").map { it.trim() }.filter { it.isNotBlank() }
         val artist = tokens.firstOrNull { token -> !isAlbumLabel(token) && !token.matches(Regex("\\b(?:19|20)\\d{2}\\b")) }.orEmpty()
@@ -1073,7 +1142,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     private fun parseTwoRowAlbumHit(two: JSONObject): AlbumHit? {
         val title = two.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-        if (title.isBlank()) return null
+        if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
         val subtitle = two.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty()
         val tokens = subtitle.split(" • ", " · ", " - ").map { it.trim() }.filter { it.isNotBlank() }
         val kind = tokens.firstOrNull().orEmpty()
@@ -1098,6 +1167,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private fun parseAlbumHit(renderer: JSONObject): AlbumHit? {
         val lines = extractFlexLines(renderer)
         val title = lines.firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
+        if (!isPlausibleYoutubeMusicAlbumTitle(title)) return null
         val tokens = lines.drop(1).flatMap { it.split(" • ", " · ", " - ") }.map { it.trim() }.filter { it.isNotBlank() }
         val kind = tokens.firstOrNull().orEmpty()
         if (!isAlbumLabel(kind)) return null
@@ -1130,60 +1200,103 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         return true
     }
 
+    private fun albumArtworkIdentityKey(url: String): String = url.trim()
+        .lowercase(Locale.ROOT)
+        .substringBefore('?')
+        .replace(Regex("""=w\d+-h\d+.*$"""), "")
+        .replace(Regex("""=s\d+.*$"""), "")
+
     private fun resolveAlbumHit(album: AlbumHit, languageCode: String): AlbumHit {
-        if (album.browseId.isNotBlank()) return album
-        val query = album.query.ifBlank { "${album.title} ${album.artist}" }.trim()
-        val candidates = searchAlbumHits(query, languageCode, 8)
-        val normalizedTitle = album.title.trim().lowercase()
-        val normalizedArtist = album.artist.trim().lowercase()
-        val exact = candidates.firstOrNull { candidate ->
-            candidate.title.trim().lowercase() == normalizedTitle && candidate.artist.trim().lowercase() == normalizedArtist && candidate.browseId.isNotBlank()
+        val validInputTitle = isPlausibleYoutubeMusicAlbumTitle(album.title)
+        if (album.browseId.isNotBlank() && validInputTitle) return album
+
+        val query = when {
+            validInputTitle -> album.query.ifBlank { "${album.title} ${album.artist}" }
+            album.artist.isNotBlank() -> "${album.artist} album"
+            else -> album.query
+        }.trim()
+        if (query.length < 2) {
+            return album.copy(title = album.title.takeIf(::isPlausibleYoutubeMusicAlbumTitle).orEmpty())
         }
-        val sameTitle = candidates.firstOrNull { candidate ->
-            candidate.title.trim().lowercase() == normalizedTitle && candidate.browseId.isNotBlank()
-        }
-        val withBrowse = exact ?: sameTitle ?: candidates.firstOrNull { it.browseId.isNotBlank() }
-        return withBrowse?.let { found ->
+
+        val candidates = searchAlbumHits(query, languageCode, 12)
+            .filter { it.browseId.isNotBlank() && isPlausibleYoutubeMusicAlbumTitle(it.title) }
+        val titleKey = albumRecommendationTextKey(album.title)
+        val artistKey = albumRecommendationTextKey(album.artist)
+        val artworkKey = albumArtworkIdentityKey(album.thumbnailUrl)
+        val found = candidates.firstOrNull {
+            validInputTitle &&
+                albumRecommendationTextKey(it.title) == titleKey &&
+                albumRecommendationTextKey(it.artist) == artistKey
+        } ?: candidates.firstOrNull {
+            artworkKey.isNotBlank() &&
+                albumArtworkIdentityKey(it.thumbnailUrl) == artworkKey &&
+                (artistKey.isBlank() || albumRecommendationTextKey(it.artist) == artistKey)
+        } ?: candidates.firstOrNull {
+            artistKey.isNotBlank() && albumRecommendationTextKey(it.artist) == artistKey
+        } ?: candidates.firstOrNull()
+        return found?.let {
             album.copy(
-                title = found.title.ifBlank { album.title },
-                artist = found.artist.ifBlank { album.artist },
-                year = found.year.ifBlank { album.year },
-                thumbnailUrl = found.thumbnailUrl.ifBlank { album.thumbnailUrl },
-                query = found.query.ifBlank { album.query },
-                browseId = found.browseId,
-                artistBrowseId = found.artistBrowseId.ifBlank { album.artistBrowseId }
+                title = it.title,
+                artist = it.artist.ifBlank { album.artist },
+                year = it.year.ifBlank { album.year },
+                thumbnailUrl = it.thumbnailUrl.ifBlank { album.thumbnailUrl },
+                query = it.query.ifBlank { "${it.title} ${it.artist}".trim() },
+                browseId = it.browseId,
+                artistBrowseId = it.artistBrowseId.ifBlank { album.artistBrowseId }
             )
-        } ?: album
+        } ?: album.copy(title = album.title.takeIf(::isPlausibleYoutubeMusicAlbumTitle).orEmpty())
     }
 
     private fun parseAlbumHeader(root: JSONObject, fallback: AlbumHit): AlbumHit {
-        val headers = mutableListOf<JSONObject>()
-        collectObjectsByKey(root, "musicDetailHeaderRenderer", headers)
-        collectObjectsByKey(root, "musicResponsiveHeaderRenderer", headers)
-        collectObjectsByKey(root, "musicEditablePlaylistDetailHeaderRenderer", headers)
-        val header = headers.firstOrNull()
-        val title = header?.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().ifBlank { fallback.title }
+        val detailHeaders = mutableListOf<JSONObject>()
+        val responsiveHeaders = mutableListOf<JSONObject>()
+        val editableHeaders = mutableListOf<JSONObject>()
+        collectObjectsByKey(root, "musicDetailHeaderRenderer", detailHeaders)
+        collectObjectsByKey(root, "musicResponsiveHeaderRenderer", responsiveHeaders)
+        collectObjectsByKey(root, "musicEditablePlaylistDetailHeaderRenderer", editableHeaders)
+        val headers = detailHeaders + responsiveHeaders + editableHeaders
+
+        fun titleOf(candidate: JSONObject?): String = candidate
+            ?.optJSONObject("title")
+            ?.optJSONArray("runs")
+            ?.joinText()
+            .orEmpty()
+            .cleanLabel()
+
+        val fallbackTitle = fallback.title.cleanLabel()
+            .takeIf(::isPlausibleYoutubeMusicAlbumTitle)
+            .orEmpty()
+        val header = headers.firstOrNull { candidate ->
+            isPlausibleYoutubeMusicAlbumTitle(titleOf(candidate))
+        } ?: headers.firstOrNull()
+        val title = titleOf(header)
+            .takeIf(::isPlausibleYoutubeMusicAlbumTitle)
+            .orEmpty()
+            .ifBlank { fallbackTitle }
+            .ifBlank { "Album" }
         val subtitles = listOf(
             header?.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty(),
             header?.optJSONObject("secondSubtitle")?.optJSONArray("runs")?.joinText().orEmpty()
-        ).filter { it.isNotBlank() }.joinToString(" • ")
-        val tokens = subtitles.split(" • ", " · ", " - ").map { it.trim() }.filter { it.isNotBlank() }
+        ).filter(String::isNotBlank).joinToString(" • ")
+        val tokens = subtitles.split(" • ", " · ", " - ").map(String::trim).filter(String::isNotBlank)
         val fallbackArtist = fallback.artist.cleanAlbumArtistLabel()
         val parsedArtist = tokens.firstNotNullOfOrNull { token ->
-            token.cleanAlbumArtistLabel().takeIf { cleaned -> isAlbumArtistToken(cleaned) }
+            token.cleanAlbumArtistLabel().takeIf(::isAlbumArtistToken)
         }.orEmpty().ifBlank { fallbackArtist }
         val artistReference = extractYoutubeMusicArtistReference(header, parsedArtist)
         val artist = artistReference?.name.orEmpty().cleanAlbumArtistLabel().ifBlank { parsedArtist }
-        val year = tokens.firstNotNullOfOrNull { Regex("\\b(19|20)\\d{2}\\b").find(it)?.value }.orEmpty().ifBlank { fallback.year }
-        val thumbnail = header?.let { findBestThumbnail(it) }.orEmpty().ifBlank { fallback.thumbnailUrl }
-        val browseId = fallback.browseId.ifBlank { root.optString("browseId") }
+        val year = tokens.firstNotNullOfOrNull { Regex("""\b(19|20)\d{2}\b""").find(it)?.value }
+            .orEmpty()
+            .ifBlank { fallback.year }
+        val thumbnail = header?.let(::findBestThumbnail).orEmpty().ifBlank { fallback.thumbnailUrl }
         return fallback.copy(
-            title = title.cleanLabel(),
+            title = title,
             artist = artist.cleanLabel(),
             year = year,
             thumbnailUrl = upgradeThumbnail(thumbnail),
-            query = "${title.cleanLabel()} ${artist.cleanLabel()}",
-            browseId = browseId,
+            query = "$title ${artist.cleanLabel()}".trim(),
+            browseId = fallback.browseId.ifBlank { root.optString("browseId") },
             artistBrowseId = artistReference?.browseId.orEmpty().ifBlank { fallback.artistBrowseId }
         )
     }
@@ -1243,7 +1356,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .orEmpty()
             .cleanAlbumArtistLabel()
             .ifBlank { fallbackArtist }
-        val thumbnail = findBestThumbnail(renderer).ifBlank { album.thumbnailUrl }
+        val thumbnail = album.thumbnailUrl.ifBlank { findBestThumbnail(renderer) }
         val artistReferences = extractYoutubeMusicArtistReferences(renderer, artist)
         val trackNumber = renderer.optJSONArray("fixedColumns")
             ?.optJSONObject(0)

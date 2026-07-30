@@ -44,9 +44,14 @@ class ChartsRepository(context: Context) {
     private val appContext = context.applicationContext
     private val httpClient: OkHttpClient by lazy { LevyraHttpClientFactory.feeds(appContext) }
     private val youtubeMusicCharts = YoutubeMusicChartsRepository(appContext)
+    private val editorialCharts = EditorialChartsRepository.get(appContext)
     private val chartArtworkResolver = ChartOfficialArtworkResolver(appContext)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inFlight = ConcurrentHashMap<String, Deferred<List<Track>>>()
+
+    init {
+        editorialCharts.warm()
+    }
 
     fun close() {
         scope.cancel()
@@ -65,6 +70,11 @@ class ChartsRepository(context: Context) {
             Timber.w(error, "Chart request failed for %s", normalizedCountry)
             emptyList()
         }
+    }
+
+    suspend fun cachedCountryCharts(limit: Int = 50): Map<String, List<Track>> = withContext(Dispatchers.IO) {
+        editorialCharts.cachedAllMarkets(limit)
+            .mapKeys { (market, _) -> market.lowercase() }
     }
 
     suspend fun officialArtwork(title: String, artist: String, country: String): String? = withContext(Dispatchers.IO) {
@@ -110,11 +120,15 @@ class ChartsRepository(context: Context) {
 
     private suspend fun fetchTopSongs(country: String, limit: Int): List<Track> {
         val ranked = selectTopSongs(country, limit)
-        if (ranked.isEmpty() || ranked.none(::isYoutubeMusicChartTrack)) return ranked
+        if (ranked.isEmpty()) return ranked
         return chartArtworkResolver.enrich(ranked, country)
     }
 
     private suspend fun selectTopSongs(country: String, limit: Int): List<Track> = coroutineScope {
+        val editorial = editorialCharts.cachedTopTracks(country, limit)
+        if (editorial.isNotEmpty()) return@coroutineScope editorial
+        editorialCharts.warm()
+
         val youtube = async { fetchYoutubeTopSongs(country, limit) }
         val youtubeWithinBudget = withTimeoutOrNull(YOUTUBE_PRIMARY_BUDGET_MS) { youtube.await() }
         if (youtubeWithinBudget != null) {

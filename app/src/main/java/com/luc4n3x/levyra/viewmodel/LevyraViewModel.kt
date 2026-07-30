@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.preserveEditorialArtwork
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeRepository
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeResult
 import com.luc4n3x.levyra.data.YoutubeCommentsRepository
@@ -40,6 +41,7 @@ import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
+import com.luc4n3x.levyra.data.isPlausibleYoutubeMusicAlbumTitle
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistBiography
@@ -328,6 +330,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var chartsJob: Job? = null
     private var chartPrefetchJob: Job? = null
     private var chartMemoryWarmJob: Job? = null
+    private var chartCatalogPrimeJob: Job? = null
     private var homeSnapshotJob: Job? = null
     private var homeResonanceJob: Job? = null
     private var homeArtistsFingerprint: String = ""
@@ -958,7 +961,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeArtistsJob?.cancel()
         homeArtistsJob = viewModelScope.launch(Dispatchers.IO) {
             val languageCode = LevyraLanguageCatalog.normalize(startupSnapshot.languageCode)
-            val localizedSeedNames = LevyraContentLocales.artistSuggestions(languageCode)
+            val localizedSeedNames = (
+                LevyraContentLocales.artistSuggestions(languageCode) + GLOBAL_HOME_ARTIST_FALLBACKS
+            ).distinctBy(::artistIdentityKey)
             val localizedSeedKeys = localizedSeedNames
                 .map(::artistIdentityKey)
                 .filter { it.isNotBlank() }
@@ -1942,7 +1947,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 if (deferUntilHomeIdle) candidates.take(startupPlan.albumSeedCount) else candidates
             }
             val remoteLimit = if (deferUntilHomeIdle) {
-                startupPlan.albumCandidateCount
+                maxOf(HOME_ALBUM_RECOMMENDATION_LIMIT, startupPlan.albumCandidateCount)
             } else {
                 HOME_ALBUM_REMOTE_CANDIDATE_LIMIT
             }
@@ -2134,7 +2139,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         state: LevyraUiState,
         limit: Int
     ): List<AlbumHit> {
-        val candidates = mergeAlbums(instant, remote)
+        val candidates = mergeAlbums(instant, remote).filter { isPlausibleYoutubeMusicAlbumTitle(it.title) }
         if (candidates.isEmpty()) return emptyList()
         val allSeeds = albumRecommendationSeeds(state)
         val directSeeds = allSeeds.filter { it.artist.isNotBlank() || it.album.isNotBlank() }
@@ -2154,7 +2159,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 .thenBy { scored -> albumRecommendationTextKey(scored.first.artist) }
                 .thenBy { scored -> albumRecommendationTextKey(scored.first.title) }
         )
-        if (ranked.isEmpty()) return emptyList()
+        if (ranked.isEmpty()) return candidates.take(limit)
 
         val distinctSeedArtists = directSeeds
             .map { albumRecommendationTextKey(it.artist) }
@@ -2175,8 +2180,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         if (selected.size < limit) {
-            ranked.asSequence()
-                .map { scored: Pair<AlbumHit, Int> -> scored.first }
+            candidates.asSequence()
                 .filterNot { candidate: AlbumHit ->
                     selected.any { selectedAlbum: AlbumHit ->
                         albumRecommendationDeduplicationKey(selectedAlbum) == albumRecommendationDeduplicationKey(candidate)
@@ -2195,6 +2199,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun isUsefulRecommendationAlbum(album: String, trackTitle: String): Boolean {
+        if (!isPlausibleYoutubeMusicAlbumTitle(album)) return false
         val key = albumRecommendationTextKey(album)
         if (key.length < 2) return false
         if (key == albumRecommendationTextKey(trackTitle) && trackTitle.isNotBlank()) return false
@@ -2596,31 +2601,58 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Loads the persisted chart regions into the in-memory map in a single DataStore snapshot
-     * read, so tapping a region chip renders from memory instead of showing a shimmer while disk
-     * is read. Entries are intentionally left without a freshness stamp: they are shown at once and
-     * still revalidated by [loadCharts] when the region is selected. The region count is capped so
-     * the resident track list stays bounded, and trimmed further on low-RAM devices.
+     * Loads every persisted and editorial country into memory. All chips therefore render a chart
+     * immediately; slower artwork/playback enrichment continues independently in the background.
      */
     private fun warmChartRegionMemoryCache() {
-        val lowRam = adaptivePlaybackPolicy.current(videoMode = false).lowRam
-        val budget = if (lowRam) CHART_WARM_REGION_LIMIT_LOW_RAM else CHART_WARM_REGION_LIMIT
         chartMemoryWarmJob?.cancel()
+        chartCatalogPrimeJob?.cancel()
         chartMemoryWarmJob = viewModelScope.launch(Dispatchers.IO) {
             val languageCode = _state.value.languageCode
-            val missing = ChartsCatalog.regions
-                .map { it.id }
-                .filter { regionId -> chartsByRegion[chartsCacheKey(languageCode, regionId)].isNullOrEmpty() }
-                .take(budget)
-            if (missing.isEmpty()) return@launch
-            val stored = preferences.loadChartTracksByRegion(languageCode, missing)
-            if (stored.isEmpty() || !isActive || _state.value.languageCode != languageCode) return@launch
+            val regionIds = ChartsCatalog.regions.map { it.id }
+            val stored = preferences.loadChartTracksByRegion(languageCode, regionIds)
             stored.forEach { (regionId, tracks) ->
                 val repaired = LevyraStartupCatalog.repairTracks(tracks, languageCode)
-                if (repaired.isNotEmpty()) {
-                    chartsByRegion.putIfAbsent(chartsCacheKey(languageCode, regionId), repaired)
+                if (repaired.isNotEmpty()) chartsByRegion[chartsCacheKey(languageCode, regionId)] = repaired
+            }
+
+            val editorial = runCatching { chartsRepository.cachedCountryCharts(50) }.getOrDefault(emptyMap())
+            editorial.forEach { (regionId, tracks) ->
+                if (tracks.isNotEmpty()) {
+                    chartsByRegion.putIfAbsent(chartsCacheKey(languageCode, regionId), tracks)
                 }
             }
+            if (!isActive || _state.value.languageCode != languageCode) return@launch
+
+            val selectedId = _state.value.selectedChartId
+            val selected = chartsByRegion[chartsCacheKey(languageCode, selectedId)].orEmpty()
+            if (selected.isNotEmpty()) publishPrefetchedCharts(languageCode, selectedId, selected)
+            primeAllChartRegions(languageCode)
+        }
+    }
+
+    private fun primeAllChartRegions(languageCode: String) {
+        chartCatalogPrimeJob?.cancel()
+        val appContext = getApplication<Application>().applicationContext
+        val concurrency = if (adaptivePlaybackPolicy.current(videoMode = false).lowRam) 1 else 2
+        chartCatalogPrimeJob = viewModelScope.launch(Dispatchers.IO) {
+            val semaphore = Semaphore(concurrency)
+            ChartsCatalog.regions.take(CHART_PRIME_REGION_COUNT).map { region ->
+                async {
+                    semaphore.withPermit {
+                        if (!isActive || _state.value.languageCode != languageCode) return@withPermit
+                        val cacheKey = chartsCacheKey(languageCode, region.id)
+                        if (isChartCacheFresh(cacheKey) || chartsByRegion[cacheKey].orEmpty().isNotEmpty()) return@withPermit
+                        val result = runCatching { chartsRepository.topSongs(region.country) }.getOrDefault(emptyList())
+                        if (result.isEmpty() || !isActive || _state.value.languageCode != languageCode) return@withPermit
+                        chartsByRegion[cacheKey] = result
+                        chartsFreshAt[cacheKey] = System.currentTimeMillis()
+                        preferences.saveChartTracks(result, languageCode, region.id)
+                        LevyraArtworkCache.preloadHome(appContext, result, 8)
+                        publishPrefetchedCharts(languageCode, region.id, result)
+                    }
+                }
+            }.awaitAll()
         }
     }
 
@@ -3142,6 +3174,21 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     cacheReport = repository.cacheReport()
                 )
             }
+            launch {
+                val description = runCatching {
+                    repository.resolveAlbumDescription(detail, languageCode)
+                }.getOrNull()?.trim().orEmpty()
+                if (!isActive || description.isBlank() || description == detail.description) return@launch
+                _state.update { currentState ->
+                    val shownDetail = currentState.albumDetail ?: return@update currentState
+                    val sameBrowseId = detail.album.browseId.isNotBlank() &&
+                        shownDetail.album.browseId.equals(detail.album.browseId, ignoreCase = true)
+                    val sameIdentity = shownDetail.album.title.equals(detail.album.title, ignoreCase = true) &&
+                        shownDetail.album.artist.equals(detail.album.artist, ignoreCase = true)
+                    if (!currentState.showAlbum || (!sameBrowseId && !sameIdentity)) currentState
+                    else currentState.copy(albumDetail = shownDetail.copy(description = description))
+                }
+            }
             recordSmartAlbumOpen(detail.album)
             LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, detail.tracks, 8)
             refreshOfficialMetadataBatch(detail.tracks, 12)
@@ -3646,7 +3693,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList(), searchFilter = SearchFilter.All) }
         val result = runCatching {
             val raw = providerRouter.searchEverything(clean, _state.value.languageCode)
-            raw.copy(artists = artistRepository.officialArtistHits(raw.artists))
+            val officialArtists = artistRepository.officialArtistHits(raw.artists)
+            raw.copy(
+                artists = officialArtists,
+                albums = searchAlbumsForArtistQuery(clean, raw, officialArtists)
+            )
         }
         result.onSuccess { data ->
             val tracks = data.songs
@@ -3674,6 +3725,52 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
         }
+    }
+
+    private suspend fun searchAlbumsForArtistQuery(
+        query: String,
+        raw: SearchResults,
+        artists: List<ArtistHit>
+    ): List<AlbumHit> {
+        val queryKey = artistIdentityKey(query)
+        val exactArtist = artists.firstOrNull { artistIdentityKey(it.name) == queryKey } ?: return raw.albums
+        val profile = runCatching {
+            artistRepository.profile(exactArtist.browseId, exactArtist.name)
+        }.getOrNull()
+        val officialArtistName = profile?.name.orEmpty().ifBlank { exactArtist.name }
+        val officialArtistBrowseId = profile?.browseId.orEmpty().ifBlank { exactArtist.browseId }
+        val officialAlbums = profile?.albums.orEmpty()
+            .asSequence()
+            .filter { release -> release.title.isNotBlank() && release.browseId.isNotBlank() }
+            .map { release ->
+                AlbumHit(
+                    title = release.title,
+                    artist = officialArtistName,
+                    year = release.year,
+                    thumbnailUrl = release.thumbnailUrl,
+                    query = listOf(release.title, officialArtistName, "album")
+                        .filter(String::isNotBlank)
+                        .joinToString(" "),
+                    browseId = release.browseId,
+                    artistBrowseId = officialArtistBrowseId,
+                    audioPlaylistId = release.playlistId,
+                    explicit = release.explicit
+                )
+            }
+            .distinctBy(::albumRecommendationDeduplicationKey)
+            .take(10)
+            .toList()
+        if (officialAlbums.isNotEmpty()) return officialAlbums
+
+        val songTitles = raw.songs
+            .asSequence()
+            .map { track -> albumRecommendationTextKey(track.title) }
+            .filter(String::isNotBlank)
+            .toSet()
+        return raw.albums
+            .filterNot { album -> albumRecommendationTextKey(album.title) in songTitles }
+            .distinctBy(::albumRecommendationDeduplicationKey)
+            .take(10)
     }
 
     fun setSearchFilter(filter: SearchFilter) {
@@ -4201,7 +4298,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val instant = localDownloadedTrack(track) ?: resolver.cached(playableTrack, _state.value.isVideoMode)
         if (instant != null) {
             if (!isActive || requestId != playRequestId) return
-            startPlayback(instant)
+            startPlayback(preserveEditorialArtwork(track, instant))
             prefetchAround(instant)
             return
         }
@@ -5526,14 +5623,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
 
     private suspend fun resolveForPlayback(track: Track): Track {
-        youtubePlayableTrack(track)?.let { return resolvePlayableTrack(it) }
+        youtubePlayableTrack(track)?.let { return preserveEditorialArtwork(track, resolvePlayableTrack(it)) }
         val candidates = searchPlayableCandidates(track)
         if (candidates.isEmpty()) throw IllegalStateException("Nessun risultato YouTube per ${track.title}")
         val errors = mutableListOf<String>()
         for (candidate in candidates) {
             val carried = LevyraPersonalOrbit.preferAlbumArtwork(candidate, track)
             val resolved = runCatching { resolvePlayableTrack(carried) }
-            resolved.onSuccess { return it }
+            resolved.onSuccess { return preserveEditorialArtwork(track, it) }
             resolved.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "${candidate.title} - ${candidate.artist}: $it" }
             resolver.invalidate(carried, _state.value.isVideoMode)
         }
@@ -5826,22 +5923,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         // Apple publishes the most-played feed about once a day, so a region fetched within the
         // last hour is served straight from memory instead of paying for another round trip.
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
-        private const val CHART_WARM_REGION_LIMIT = 14
-        private const val CHART_WARM_REGION_LIMIT_LOW_RAM = 6
-        private const val HOME_ARTIST_SHELF_SIZE = 13
-        private const val HOME_ARTIST_HISTORY_LIMIT = 48
-        private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
-        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 2
+        private const val CHART_PRIME_REGION_COUNT = 28
+        private const val HOME_ARTIST_SHELF_SIZE = 20
+        private const val HOME_ARTIST_HISTORY_LIMIT = 72
+        private const val HOME_ARTIST_CANDIDATE_LIMIT = 72
+        private const val HOME_ARTIST_RESOLUTION_CONCURRENCY = 4
         private const val HOME_ARTIST_FAST_TIMEOUT_MS = 5_200L
-        private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 9_000L
+        private const val HOME_ARTIST_TOTAL_TIMEOUT_MS = 18_000L
         private const val HOME_ARTIST_STARTUP_GRACE_MS = 850L
         private const val HOME_STARTUP_STREAM_PREFETCH_COUNT = 2
         private const val HOME_STARTUP_METADATA_REFRESH_COUNT = 4
         private const val HOME_RESONANCE_REFRESH_INTERVAL_MS = 12L * 60L * 60L * 1000L
-        private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 10
-        private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 24
-        private const val HOME_ALBUM_REMOTE_CONCURRENCY = 3
-        private const val HOME_ALBUM_SEED_LIMIT = 12
+        private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 20
+        private const val HOME_ALBUM_REMOTE_CANDIDATE_LIMIT = 32
+        private const val HOME_ALBUM_REMOTE_CONCURRENCY = 4
+        private const val HOME_ALBUM_SEED_LIMIT = 16
+        private val GLOBAL_HOME_ARTIST_FALLBACKS = listOf(
+            "The Weeknd", "Drake", "Taylor Swift", "Billie Eilish", "SZA",
+            "Travis Scott", "Dua Lipa", "Post Malone", "Ariana Grande", "Kendrick Lamar",
+            "Bruno Mars", "Beyoncé", "Rihanna", "Ed Sheeran", "Lady Gaga",
+            "Bad Bunny", "Doja Cat", "Coldplay", "Imagine Dragons", "Lana Del Rey",
+            "Olivia Rodrigo", "Sabrina Carpenter", "Miley Cyrus", "Harry Styles"
+        )
         private const val OFFICIAL_METADATA_MAX_BATCH_SIZE = 8
         private const val OFFICIAL_METADATA_CONCURRENCY = 2
         const val LISTEN_SESSION_FLUSH_INTERVAL_MS = 30_000L
@@ -5888,6 +5991,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeResonanceJob?.cancel()
         chartsJob?.cancel()
         chartPrefetchJob?.cancel()
+        chartMemoryWarmJob?.cancel()
+        chartCatalogPrimeJob?.cancel()
         homeSnapshotJob?.cancel()
         super.onCleared()
     }
