@@ -120,6 +120,17 @@ jobs:
           if updated.count(old_definition) != 1 or updated.count(old_join) != 1:
               raise SystemExit("Spotify request-batch anchors not found exactly once")
           updated = updated.replace(old_definition, new_definition, 1).replace(old_join, new_join, 1)
+
+          regex_replacements = {
+              r'Regex("\\p{M}+")': r'Regex("\\\\p{M}+")',
+              r'Regex("[^\\p{L}\\p{N}]+")': r'Regex("[^\\\\p{L}\\\\p{N}]+")',
+              r'Regex("\\s+")': r'Regex("\\\\s+")',
+          }
+          for old, new in regex_replacements.items():
+              if updated.count(old) != 1:
+                  raise SystemExit(f"Kotlin regex anchor not found exactly once: {old}")
+              updated = updated.replace(old, new, 1)
+
           path.write_text(updated, encoding="utf-8")
           PY
           python3 tools/apply_coderabbit_review_fixes.py
