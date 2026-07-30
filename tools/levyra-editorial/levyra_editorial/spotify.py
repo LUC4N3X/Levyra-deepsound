@@ -324,7 +324,11 @@ class SpotifyWebClient:
             for item in items
             if isinstance(item.get("track"), Mapping)
         ]
-        missing = [track_id for track_id in dict.fromkeys(ids) if track_id and track_id not in self._track_metadata]
+        missing = [
+    track_id
+    for track_id in dict.fromkeys(ids)
+    if track_id and track_id not in self._track_metadata
+]
         for offset in range(0, len(missing), 50):
             chunk = missing[offset : offset + 50]
             if not chunk:
