@@ -1,8 +1,6 @@
 name: Inspect Metadata Auth Integration
 
 on:
-  push:
-    branches: [feat/isrc-release-youtube-auth]
   pull_request:
     branches: [main]
 
@@ -11,7 +9,7 @@ permissions:
 
 jobs:
   inspect:
-    if: github.event_name != 'pull_request' || github.event.pull_request.number == 250
+    if: github.event.pull_request.number == 250
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,10 +19,10 @@ jobs:
           echo '=== SETTINGS FILES ==='
           find app/src/main/java -type f | sort | grep -Ei 'setting|preference|security|credential|account' || true
           echo '=== SETTINGS SYMBOLS ==='
-          rg -n --glob '*.kt' 'showSettings|openSettings|closeSettings|Settings|Impostazioni|audioQuality\(|setAudioQuality|password|cookie|credential' app/src/main/java | head -n 600 || true
+          grep -RInE --include='*.kt' 'showSettings|openSettings|closeSettings|Settings|Impostazioni|audioQuality\(|setAudioQuality|password|cookie|credential' app/src/main/java | head -n 600 || true
           echo '=== ALBUM SERIALIZATION ==='
-          rg -n --glob '*.kt' 'AlbumHit\(|ArtistRelease\(|canonicalUrl|metadataConfidence|releaseType|album_type' app/src/main/java app/src/test | head -n 700 || true
+          grep -RInE --include='*.kt' 'AlbumHit\(|ArtistRelease\(|canonicalUrl|metadataConfidence|releaseType|album_type' app/src/main/java app/src/test | head -n 700 || true
           echo '=== PLAYBACK MATCHING ==='
-          rg -n --glob '*.kt' 'isPlaybackCandidateCompatible|playbackCandidateScore|isrc|OfficialArtwork' app/src/main/java app/src/test | head -n 700 || true
+          grep -RInE --include='*.kt' 'isPlaybackCandidateCompatible|playbackCandidateScore|isrc|OfficialArtwork' app/src/main/java app/src/test | head -n 700 || true
           echo '=== SPOTIFY CONVERSION ==='
-          rg -n '_convert_playlist_item|external_ids|album_type|API_BASE_URL|iter_playlist_items' tools/levyra-editorial | head -n 500 || true
+          grep -RInE '_convert_playlist_item|external_ids|album_type|API_BASE_URL|iter_playlist_items' tools/levyra-editorial | head -n 500 || true
