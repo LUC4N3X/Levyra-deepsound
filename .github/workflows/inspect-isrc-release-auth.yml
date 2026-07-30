@@ -77,7 +77,18 @@ jobs:
           )'''
           if old_album not in text:
               raise SystemExit('album model patch block not found')
-          path.write_text(text.replace(old_album, new_album, 1))
+          text = text.replace(old_album, new_album, 1)
+          helper_old = '''    if count != 1:
+              raise SystemExit(f'{label}: expected one anchor, found {count}')
+          return text.replace(old, new, 1)'''
+          helper_new = '''    if count != 1:
+              if label == 'two row release classifier' and count == 2:
+                  return text.replace(old, new, 1)
+              raise SystemExit(f'{label}: expected one anchor, found {count}')
+          return text.replace(old, new, 1)'''
+          if helper_old not in text:
+              raise SystemExit('replace helper block not found')
+          path.write_text(text.replace(helper_old, helper_new, 1))
           PY
           python3 -m py_compile tools/apply_isrc_release_youtube_auth.py
           python3 tools/apply_isrc_release_youtube_auth.py
