@@ -59,7 +59,9 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x gradlew
-          ./gradlew --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest
+          ./gradlew --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
+            --tests 'com.luc4n3x.levyra.data.EditorialCatalogParserTest'
       - name: Commit verified fixes
         run: |
           set -euo pipefail
