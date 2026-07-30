@@ -39,7 +39,7 @@ import kotlin.coroutines.resume
 /**
  * Reads Levyra's public, pre-normalized editorial ranking catalog.
  *
- * The source credential never enters the app, and neither do source page URLs, URIs or ISRC. Cover
+ * The source credential never enters the app, and neither do source page URLs or URIs. ISRC is retained as a public recording identity. Cover
  * artwork is the one published source-hosted asset: on-device lookups cannot match every charting
  * track, so the catalog carries the album cover and [publishedArtworkUrl] re-checks its host here
  * rather than trusting the publication guard alone.
@@ -292,14 +292,21 @@ internal object EditorialCatalogParser {
             val identity = chartIdentity("$title|$artist")
             val palette = PALETTES[identity.seed % PALETTES.size]
             val artwork = publishedArtworkUrl(item.optString("artworkUrl"))
+            val youtubeMusic = item.optJSONObject("youtubeMusic")
+            val youtubeVideoId = publishedYoutubeVideoId(youtubeMusic?.optString("videoId"))
+            val albumBrowseId = publishedYoutubeBrowseId(youtubeMusic?.optString("albumBrowseId"))
+            val artistBrowseId = publishedYoutubeBrowseId(youtubeMusic?.optString("artistBrowseId"))
+            val youtubeConfidence = youtubeMusic?.optInt("confidence", 0)?.coerceIn(0, 100) ?: 0
             tracks += Track(
-                id = "chart-${identity.id}",
+                id = youtubeVideoId.ifBlank { "chart-${identity.id}" },
                 title = title,
                 artist = artist,
                 album = album?.optString("name").orEmpty().trim().ifBlank { EDITORIAL_ALBUM },
                 durationMs = item.optLong("durationMs", 0L).coerceAtLeast(0L),
                 streamUrl = "",
-                videoUrl = "",
+                videoUrl = youtubeVideoId.takeIf(String::isNotBlank)
+                    ?.let { "https://www.youtube.com/watch?v=$it" }
+                    .orEmpty(),
                 thumbnailUrl = artwork,
                 largeThumbnailUrl = artwork,
                 source = EDITORIAL_SOURCE,
@@ -313,8 +320,12 @@ internal object EditorialCatalogParser {
                 releaseDate = releaseDate,
                 year = releaseDate.take(4).takeIf { it.length == 4 && it.all(Char::isDigit) }.orEmpty(),
                 explicit = item.optBoolean("explicit", false),
-                metadataProvider = EDITORIAL_SOURCE,
-                metadataConfidence = 94,
+                isrc = item.optString("isrc").uppercase(Locale.ROOT).filter(Char::isLetterOrDigit),
+                albumBrowseId = albumBrowseId,
+                artistBrowseIds = listOfNotNull(artistBrowseId.takeIf(String::isNotBlank)),
+                counterpartVideoId = youtubeVideoId,
+                metadataProvider = if (youtubeVideoId.isBlank()) EDITORIAL_SOURCE else "$EDITORIAL_SOURCE + YouTube Music",
+                metadataConfidence = if (youtubeVideoId.isBlank()) 94 else youtubeConfidence,
             )
         }
         return tracks.distinctBy { it.id }
@@ -328,6 +339,16 @@ internal object EditorialCatalogParser {
      * point Coil at an arbitrary host, embed credentials, or pin a custom port. A rejected value
      * degrades to on-device artwork lookup rather than failing the row.
      */
+    private fun publishedYoutubeVideoId(value: String?): String {
+        val normalized = value.orEmpty().trim()
+        return normalized.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty()
+    }
+
+    private fun publishedYoutubeBrowseId(value: String?): String {
+        val normalized = value.orEmpty().trim()
+        return normalized.takeIf { it.length <= 128 && it.matches(Regex("[A-Za-z0-9_-]+")) }.orEmpty()
+    }
+
     private fun publishedArtworkUrl(value: String?): String {
         val normalized = value.orEmpty().trim()
         if (normalized.isEmpty() || normalized.length > MAX_ARTWORK_URL_LENGTH) return ""

@@ -395,3 +395,15 @@ def test_playlist_query_hash_is_strictly_validated() -> None:
     assert validate_playlist_query_hash("a" * 64) == "a" * 64
     with pytest.raises(AuthenticationError):
         validate_playlist_query_hash("not-a-hash")
+
+
+
+def test_catalog_keeps_public_isrc_and_release_type() -> None:
+    item = FakeClient().iter_playlist_items("playlist12345")[0]
+    item["track"]["external_ids"] = {"isrc": "ITB002000001"}
+    item["track"]["album"]["album_type"] = "album"
+    item["track"]["album"]["total_tracks"] = 12
+    public = normalize_playlist_items([item])[0].to_dict()
+    assert public["isrc"] == "ITB002000001"
+    assert public["album"]["type"] == "album"
+    assert public["album"]["totalTracks"] == 12

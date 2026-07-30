@@ -96,6 +96,12 @@ def build_catalog(
 
         metadata = client.get_playlist_metadata(playlist_id)
         raw_items = client.iter_playlist_items(playlist_id)
+        enricher = getattr(client, "enrich_track_metadata", None)
+        if callable(enricher):
+            try:
+                raw_items = enricher(raw_items)
+            except Exception as error:
+                LOGGER.warning("Optional track metadata enrichment skipped: %s", type(error).__name__)
         tracks = normalize_playlist_items(raw_items)
         if not tracks:
             raise ValueError(f"Collection '{collection_id}' produced no usable tracks.")
@@ -168,6 +174,8 @@ def normalize_playlist_items(items: list[dict[str, Any]]) -> list[Track]:
             release_date=_optional_string(raw_album.get("release_date")),
             artwork_url=artwork_url,
             external_url=_nested_string(raw_album, "external_urls", "spotify"),
+            album_type=_optional_string(raw_album.get("album_type")),
+            total_tracks=_positive_int(raw_album.get("total_tracks")),
         )
 
         tracks.append(
@@ -182,6 +190,8 @@ def normalize_playlist_items(items: list[dict[str, Any]]) -> list[Track]:
                 explicit=bool(raw_track.get("explicit", False)),
                 external_url=_nested_string(raw_track, "external_urls", "spotify"),
                 artwork_url=artwork_url,
+                isrc=_nested_string(raw_track, "external_ids", "isrc"),
+                youtube_music=_safe_youtube_music_match(raw_track.get("youtube_music")),
             )
         )
     return tracks
@@ -222,6 +232,14 @@ def validate_catalog_dict(payload: Mapping[str, Any]) -> None:
                 raise ValueError(f"Catalog collection '{collection_id}' has a track without id.")
             if not str(track.get("title") or "").strip():
                 raise ValueError(f"Catalog collection '{collection_id}' has a track without title.")
+            raw_isrc = str(track.get("isrc") or "").strip()
+            if raw_isrc and re.fullmatch(r"[A-Z]{2}[A-Z0-9]{3}[0-9]{7}", raw_isrc) is None:
+                raise ValueError(f"Catalog collection '{collection_id}' has an invalid ISRC.")
+            youtube_music = track.get("youtubeMusic")
+            if youtube_music is not None and _safe_youtube_music_match(youtube_music) != youtube_music:
+                raise ValueError(
+                    f"Catalog collection '{collection_id}' has an invalid YouTube Music match."
+                )
 
 
 def write_catalog(catalog: Catalog, output_path: Path) -> None:
@@ -259,6 +277,29 @@ def _assert_safe_keys(value: Any) -> None:
     elif isinstance(value, list):
         for item in value:
             _assert_safe_keys(item)
+
+
+def _safe_youtube_music_match(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, Mapping):
+        return None
+    video_id = _optional_string(value.get("videoId"))
+    if video_id is None or re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) is None:
+        return None
+    confidence = value.get("confidence")
+    if not isinstance(confidence, int) or confidence not in range(0, 101):
+        return None
+    output: dict[str, Any] = {"videoId": video_id, "confidence": confidence}
+    for source_key, public_key in (
+        ("albumBrowseId", "albumBrowseId"),
+        ("artistBrowseId", "artistBrowseId"),
+    ):
+        candidate = _optional_string(value.get(source_key))
+        if candidate and len(candidate) <= 128 and re.fullmatch(r"[A-Za-z0-9_-]+", candidate):
+            output[public_key] = candidate
+    duration_ms = _positive_int(value.get("durationMs"))
+    if duration_ms is not None:
+        output["durationMs"] = duration_ms
+    return output
 
 
 def _clean_text(value: str) -> str:
