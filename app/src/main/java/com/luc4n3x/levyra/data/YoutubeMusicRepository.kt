@@ -210,10 +210,10 @@ private val ALBUM_RECOMMENDATION_STOP_WORDS = setOf(
     "music", "musica", "new", "nuovo", "nuova", "popular", "popolari", "italian", "italiano", "italiana"
 )
 
-private const val MAX_ALBUM_RECOMMENDATION_SEEDS = 12
-private const val ALBUM_RECOMMENDATION_CONCURRENCY = 3
-private const val ALBUM_RESULTS_PER_SEED = 5
-private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 4
+private const val MAX_ALBUM_RECOMMENDATION_SEEDS = 16
+private const val ALBUM_RECOMMENDATION_CONCURRENCY = 4
+private const val ALBUM_RESULTS_PER_SEED = 8
+private const val ALBUM_RESULTS_PER_FALLBACK_QUERY = 8
 private const val ALBUM_RESULT_RANK_PENALTY = 18
 
 class YoutubeMusicRepository(private val context: Context? = null) {
@@ -222,6 +222,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
     private val memory = LinkedHashMap<String, Track>()
     private val watchRepository = YoutubeMusicWatchRepository(context)
     private val resilienceClient = YoutubeMusicResilienceClient(context, apiKey, clientVersion)
+    private val albumDescriptionRepository = AlbumDescriptionRepository(context)
 
     suspend fun search(query: String, limit: Int = 36, languageCode: String = LevyraLanguageCatalog.deviceDefault()): List<Track> = withContext(Dispatchers.IO) {
         val cleanQuery = query.trim()
@@ -353,11 +354,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
 
     suspend fun homeAlbums(
         languageCode: String = LevyraLanguageCatalog.deviceDefault(),
-        limit: Int = 10,
+        limit: Int = 20,
         seeds: List<AlbumRecommendationSeed> = emptyList(),
         concurrency: Int = ALBUM_RECOMMENDATION_CONCURRENCY
     ): List<AlbumHit> = withContext(Dispatchers.IO) {
-        val boundedLimit = limit.coerceIn(1, 24)
+        val boundedLimit = limit.coerceIn(1, 40)
         val normalizedSeeds = seeds
             .asSequence()
             .map { seed -> seed.copy(query = seed.query.trim(), weight = seed.weight.coerceIn(0, 2_000)) }
@@ -372,9 +373,11 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             }
             .take(MAX_ALBUM_RECOMMENDATION_SEEDS)
             .toList()
-        if (normalizedSeeds.isNotEmpty()) {
+        val personalized = if (normalizedSeeds.isEmpty()) {
+            emptyList()
+        } else {
             val limiter = Semaphore(concurrency.coerceIn(1, ALBUM_RECOMMENDATION_CONCURRENCY))
-            val personalized = coroutineScope {
+            coroutineScope {
                 normalizedSeeds.map { seed ->
                     async {
                         limiter.withPermit {
@@ -393,7 +396,6 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                     }
                 }.awaitAll().flatten()
             }
-            return@withContext personalized
                 .groupBy { albumRecommendationDeduplicationKey(it.album) }
                 .values
                 .mapNotNull { group -> group.maxByOrNull { it.score } }
@@ -403,15 +405,31 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                         .thenBy { albumRecommendationTextKey(it.album.title) }
                 )
                 .map { it.album }
-                .take(boundedLimit)
         }
         val homeAlbums = runCatching { homeAlbumFeedInnerTube(languageCode) }.getOrDefault(emptyList())
-        val fallbackAlbums = if (homeAlbums.size >= boundedLimit) emptyList() else {
-            albumRecommendationQueries(languageCode).flatMap { query ->
-                runCatching { searchAlbumHits(query, languageCode, ALBUM_RESULTS_PER_FALLBACK_QUERY) }.getOrDefault(emptyList())
+        val baseAlbums = (personalized + homeAlbums)
+            .asSequence()
+            .filter { it.title.isNotBlank() && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }
+            .filter { it.browseId.isNotBlank() || it.query.isNotBlank() }
+            .distinctBy(::albumRecommendationDeduplicationKey)
+            .toList()
+        val fallbackAlbums = if (baseAlbums.size >= boundedLimit) {
+            emptyList()
+        } else {
+            val limiter = Semaphore(concurrency.coerceIn(1, ALBUM_RECOMMENDATION_CONCURRENCY))
+            coroutineScope {
+                albumRecommendationQueries(languageCode).map { query ->
+                    async {
+                        limiter.withPermit {
+                            runCatching {
+                                searchAlbumHits(query, languageCode, ALBUM_RESULTS_PER_FALLBACK_QUERY)
+                            }.getOrDefault(emptyList())
+                        }
+                    }
+                }.awaitAll().flatten()
             }
         }
-        (homeAlbums + fallbackAlbums)
+        (baseAlbums + fallbackAlbums)
             .asSequence()
             .filter { it.title.isNotBlank() && it.artist.isNotBlank() && it.thumbnailUrl.isNotBlank() }
             .filter { it.browseId.isNotBlank() || it.query.isNotBlank() }
@@ -602,7 +620,13 @@ class YoutubeMusicRepository(private val context: Context? = null) {
         val tracks = root?.let { parseAlbumTracks(it, headerAlbum.copy(thumbnailUrl = cover)) }.orEmpty()
         val fallbackTracks = if (tracks.isEmpty()) {
             searchInnerTube("${headerAlbum.title} ${headerAlbum.artist}", 24, languageCode)
-                .map { track -> track.copy(album = headerAlbum.title, thumbnailUrl = track.thumbnailUrl.ifBlank { cover }, largeThumbnailUrl = track.largeThumbnailUrl.ifBlank { cover }) }
+                .map { track ->
+                    track.copy(
+                        album = headerAlbum.title,
+                        thumbnailUrl = cover.ifBlank { track.thumbnailUrl },
+                        largeThumbnailUrl = cover.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
+                    )
+                }
         } else {
             emptyList()
         }
@@ -626,14 +650,20 @@ class YoutubeMusicRepository(private val context: Context? = null) {
                 albumBrowseId = finalAlbum.browseId,
                 year = track.year.ifBlank { finalAlbum.year },
                 explicit = track.explicit || finalAlbum.explicit,
-                thumbnailUrl = track.thumbnailUrl.ifBlank { finalAlbum.thumbnailUrl },
-                largeThumbnailUrl = track.largeThumbnailUrl.ifBlank { finalAlbum.thumbnailUrl }
+                thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl },
+                largeThumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.largeThumbnailUrl.ifBlank { track.thumbnailUrl } }
             )
         }
         enrichedTracks.forEach { memory[it.id] = it }
+        val description = albumDescriptionRepository.resolve(
+            album = finalAlbum,
+            languageCode = languageCode,
+            youtubeDescription = root?.let { parseAlbumDescription(it) }.orEmpty(),
+            trackCount = enrichedTracks.size
+        )
         AlbumDetail(
             album = finalAlbum,
-            description = root?.let { parseAlbumDescription(it) }.orEmpty(),
+            description = description,
             tracks = enrichedTracks,
             otherVersions = root?.let { parseOtherAlbumVersions(it, finalAlbum) }.orEmpty(),
             trackCount = enrichedTracks.size,
@@ -1243,7 +1273,7 @@ class YoutubeMusicRepository(private val context: Context? = null) {
             .orEmpty()
             .cleanAlbumArtistLabel()
             .ifBlank { fallbackArtist }
-        val thumbnail = findBestThumbnail(renderer).ifBlank { album.thumbnailUrl }
+        val thumbnail = album.thumbnailUrl.ifBlank { findBestThumbnail(renderer) }
         val artistReferences = extractYoutubeMusicArtistReferences(renderer, artist)
         val trackNumber = renderer.optJSONArray("fixedColumns")
             ?.optJSONObject(0)
