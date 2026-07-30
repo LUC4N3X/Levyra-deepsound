@@ -62,7 +62,22 @@ jobs:
           )'''
           if old not in text:
               raise SystemExit('model patch block not found')
-          path.write_text(text.replace(old, new, 1))
+          text = text.replace(old, new, 1)
+          old_album = '''models = replace_once(
+              models,
+              '    val metadataConfidence: Int = 0\\n)\\n\\ndata class AlbumDetail(',
+              '    val metadataConfidence: Int = 0,\\n    val releaseType: ReleaseType = ReleaseType.Unknown\\n)\\n\\ndata class AlbumDetail(',
+              'album hit release type'
+          )'''
+          new_album = '''models = replace_once(
+              models,
+              '    val metadataProvider: String = "",\\n    val metadataConfidence: Int = 0\\n)',
+              '    val metadataProvider: String = "",\\n    val metadataConfidence: Int = 0,\\n    val releaseType: ReleaseType = ReleaseType.Unknown\\n)',
+              'album hit release type'
+          )'''
+          if old_album not in text:
+              raise SystemExit('album model patch block not found')
+          path.write_text(text.replace(old_album, new_album, 1))
           PY
           python3 -m py_compile tools/apply_isrc_release_youtube_auth.py
           python3 tools/apply_isrc_release_youtube_auth.py
