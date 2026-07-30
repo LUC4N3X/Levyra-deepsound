@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - "tools/levyra-editorial/**"
-      - "tools/apply_chart_ui_polish.py"
       - "app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt"
       - "app/src/main/java/com/luc4n3x/levyra/data/ChartsRepository.kt"
       - "app/src/main/java/com/luc4n3x/levyra/data/ChartOfficialArtworkResolver.kt"
@@ -26,52 +25,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply_android_polish:
-    name: Apply Android Chart Polish
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'feat/editorial-collector' &&
-      github.actor != 'github-actions[bot]' &&
-      github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v7
-        with:
-          ref: feat/editorial-collector
-          fetch-depth: 0
-      - name: Apply fixes
-        run: python tools/apply_chart_ui_polish.py
-      - name: Verify patch
-        run: git diff --check
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
-      - name: Compile and test Android
-        run: |
-          set -euo pipefail
-          chmod +x gradlew
-          ./gradlew --no-daemon :app:compileDebugKotlin :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
-            --tests 'com.luc4n3x.levyra.data.EditorialCatalogParserTest'
-      - name: Commit verified fixes
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/src/main/java app/src/test/java
-          git diff --cached --quiet && { echo 'No changes to commit.'; exit 0; }
-          git commit -m 'fix(android): stabilize charts artwork scrolling and preloading'
-          git push origin HEAD:feat/editorial-collector
-
   verify:
     name: Verify Collector
     runs-on: ubuntu-latest
