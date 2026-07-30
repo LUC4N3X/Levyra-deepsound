@@ -14,6 +14,10 @@ jobs:
     timeout-minutes: 35
     env:
       YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
     steps:
       - name: Check out feature branch
         uses: actions/checkout@v4
@@ -32,6 +36,20 @@ jobs:
           python-version: '3.12'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Prepare ephemeral CI signing
+        shell: bash
+        run: |
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
       - name: Apply guarded feature patch
         run: |
           python3 -m py_compile \
