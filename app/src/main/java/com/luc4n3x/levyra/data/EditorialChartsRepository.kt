@@ -17,6 +17,7 @@ import okhttp3.Cache
 import okhttp3.CacheControl
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.brotli.BrotliInterceptor
@@ -38,8 +39,13 @@ import kotlin.coroutines.resume
 /**
  * Reads Levyra's public, pre-normalized editorial ranking catalog.
  *
- * The source credential and source artwork never enter the app. A single process-wide instance owns
- * the remote refresh, memory snapshot and AtomicFile cache so Home and Android Auto cannot race.
+ * The source credential never enters the app, and neither do source page URLs, URIs or ISRC. Cover
+ * artwork is the one published source-hosted asset: on-device lookups cannot match every charting
+ * track, so the catalog carries the album cover and [publishedArtworkUrl] re-checks its host here
+ * rather than trusting the publication guard alone.
+ *
+ * A single process-wide instance owns the remote refresh, memory snapshot and AtomicFile cache so
+ * Home and Android Auto cannot race.
  */
 internal class EditorialChartsRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
@@ -285,6 +291,7 @@ internal object EditorialCatalogParser {
             val releaseDate = album?.optString("releaseDate").orEmpty().trim()
             val identity = chartIdentity("$title|$artist")
             val palette = PALETTES[identity.seed % PALETTES.size]
+            val artwork = publishedArtworkUrl(item.optString("artworkUrl"))
             tracks += Track(
                 id = "chart-${identity.id}",
                 title = title,
@@ -293,8 +300,8 @@ internal object EditorialCatalogParser {
                 durationMs = item.optLong("durationMs", 0L).coerceAtLeast(0L),
                 streamUrl = "",
                 videoUrl = "",
-                thumbnailUrl = "",
-                largeThumbnailUrl = "",
+                thumbnailUrl = artwork,
+                largeThumbnailUrl = artwork,
                 source = EDITORIAL_SOURCE,
                 moodTags = setOf("hit", "chart"),
                 energy = 70,
@@ -311,6 +318,29 @@ internal object EditorialCatalogParser {
             )
         }
         return tracks.distinctBy { it.id }
+    }
+
+    /**
+     * Accepts a published cover URL only when it is HTTPS on the source's image CDN.
+     *
+     * The catalog is fetched from a remote branch, so the publication guard is not the only thing
+     * standing between it and the image loader: an unexpected or tampered payload must not be able to
+     * point Coil at an arbitrary host, embed credentials, or pin a custom port. A rejected value
+     * degrades to on-device artwork lookup rather than failing the row.
+     */
+    private fun publishedArtworkUrl(value: String?): String {
+        val normalized = value.orEmpty().trim()
+        if (normalized.isEmpty() || normalized.length > MAX_ARTWORK_URL_LENGTH) return ""
+        val url = normalized.toHttpUrlOrNull() ?: return ""
+        if (url.scheme != "https") return ""
+        if (url.port != HTTPS_DEFAULT_PORT) return ""
+        if (url.encodedUsername.isNotEmpty() || url.encodedPassword.isNotEmpty()) return ""
+        if (normalized.contains('@')) return ""
+        val host = url.host.lowercase(Locale.ROOT)
+        val allowed = host == "i.scdn.co" ||
+            host.endsWith(".scdn.co") ||
+            host == "image-cdn-ak.spotifycdn.com"
+        return if (allowed) normalized else ""
     }
 
     private fun parseArtists(items: JSONArray?): String {
@@ -347,6 +377,8 @@ internal object EditorialCatalogParser {
     private const val MAX_TRACKS_PER_MARKET = 100
     private const val EDITORIAL_SOURCE = "Levyra Editorial"
     private const val EDITORIAL_ALBUM = "Levyra Top 50"
+    private const val MAX_ARTWORK_URL_LENGTH = 512
+    private const val HTTPS_DEFAULT_PORT = 443
 
     private val PALETTES = listOf(
         0xFF00E5FF.toInt() to 0xFF7B42FF.toInt(),
