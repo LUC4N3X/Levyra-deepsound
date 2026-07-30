@@ -3,12 +3,15 @@ name: Inspect Metadata Auth Integration
 on:
   push:
     branches: [feat/isrc-release-youtube-auth]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   inspect:
+    if: github.event_name != 'pull_request' || github.event.pull_request.number == 250
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
