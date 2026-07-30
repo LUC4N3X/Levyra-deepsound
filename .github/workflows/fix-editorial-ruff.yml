@@ -23,6 +23,21 @@ jobs:
           python-version: '3.12'
       - name: Apply canonical Ruff formatting
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/levyra-editorial/levyra_editorial/spotify.py')
+          text = path.read_text()
+          old = '        missing = [track_id for track_id in dict.fromkeys(ids) if track_id and track_id not in self._track_metadata]\n'
+          new = '''        missing = [
+              track_id
+              for track_id in dict.fromkeys(ids)
+              if track_id and track_id not in self._track_metadata
+          ]
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('Spotify metadata filter anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
           python -m pip install --disable-pip-version-check -e 'tools/levyra-editorial[dev]'
           ruff check --fix tools/levyra-editorial
           ruff check tools/levyra-editorial
