@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
 internal class ChartOfficialArtworkResolver(context: Context) {
     private val appContext = context.applicationContext
     private val repositories = Array(PROVIDER_LANES) { OfficialArtworkRepository(appContext) }
+    private val youtubeMusicRepository = YoutubeMusicRepository(appContext)
     private val store = appContext.getSharedPreferences(CACHE_NAME, Context.MODE_PRIVATE)
     private val memory = ConcurrentHashMap<String, CachedArtwork>()
     private val keyLocks = Array(KEY_LOCK_COUNT) { Mutex() }
@@ -67,11 +69,15 @@ internal class ChartOfficialArtworkResolver(context: Context) {
             } catch (_: Throwable) {
                 null
             }
-            if (official == null) {
+            val artwork = if (official != null) {
+                CachedArtwork.from(official)
+            } else {
+                findYoutubeFallback(track)
+            }
+            if (artwork == null) {
                 store.edit().putLong(missKey(key, country), System.currentTimeMillis()).apply()
                 return@withLock null
             }
-            val artwork = CachedArtwork.from(official)
             memory[key] = artwork
             store.edit()
                 .putString(artworkKey(key), artwork.toJson().toString())
@@ -79,6 +85,50 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 .apply()
             artwork
         }
+    }
+
+    private suspend fun findYoutubeFallback(track: Track): CachedArtwork? {
+        val candidates = runCatching {
+            youtubeMusicRepository.search("${track.title} ${track.artist}", 8)
+        }.getOrDefault(emptyList())
+        val best = candidates
+            .asSequence()
+            .map { candidate -> candidate to youtubeMatchScore(track, candidate) }
+            .filter { (_, score) -> score >= MIN_YOUTUBE_MATCH_SCORE }
+            .maxByOrNull { (_, score) -> score }
+            ?.first
+            ?: return null
+        val prepared = LevyraPersonalOrbit.withoutVideoArtwork(best)
+        val artwork = prepared.largeThumbnailUrl.trim()
+            .ifBlank { prepared.thumbnailUrl.trim() }
+            .ifBlank { best.largeThumbnailUrl.trim() }
+            .ifBlank { best.thumbnailUrl.trim() }
+        if (artwork.isBlank()) return null
+        return CachedArtwork.fromYoutube(prepared.copy(thumbnailUrl = artwork, largeThumbnailUrl = artwork))
+    }
+
+    private fun youtubeMatchScore(target: Track, candidate: Track): Int {
+        val targetTitle = ChartFeedParser.normalizeMusicText(target.title)
+        val targetArtist = ChartFeedParser.normalizeMusicText(target.artist)
+        val candidateTitle = ChartFeedParser.normalizeMusicText(candidate.title)
+        val candidateArtist = ChartFeedParser.normalizeMusicText(candidate.artist)
+        var score = when {
+            candidateTitle == targetTitle -> 140
+            candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle) -> 90
+            else -> 0
+        }
+        score += when {
+            candidateArtist == targetArtist -> 90
+            candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist) -> 52
+            else -> 0
+        }
+        if (target.durationMs > 0L && candidate.durationMs > 0L) {
+            val delta = kotlin.math.abs(target.durationMs - candidate.durationMs)
+            if (delta <= 6_000L) score += 30 else if (delta > 40_000L) score -= 30
+        }
+        val searchable = "${candidate.title} ${candidate.artist} ${candidate.album}".lowercase()
+        if (listOf("karaoke", "cover", "reaction", "nightcore", "sped up", "slowed").any(searchable::contains)) score -= 70
+        return score
     }
 
     private fun repositoryFor(key: String): OfficialArtworkRepository {
@@ -156,7 +206,8 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 explicit = explicit || track.explicit,
                 metadataProvider = provider.ifBlank { track.metadataProvider },
                 metadataConfidence = maxOf(track.metadataConfidence, confidence(score)),
-                canonicalAlbumUrl = canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl }
+                canonicalAlbumUrl = canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
+                moodTags = track.moodTags + EDITORIAL_ARTWORK_LOCK_TAG
             )
         }
 
@@ -191,6 +242,23 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 isrc = value.isrc,
                 upc = value.upc,
                 score = value.score,
+                cachedAt = System.currentTimeMillis()
+            )
+
+            fun fromYoutube(value: Track): CachedArtwork = CachedArtwork(
+                thumbnailUrl = value.thumbnailUrl,
+                largeThumbnailUrl = value.largeThumbnailUrl.ifBlank { value.thumbnailUrl },
+                album = value.album,
+                provider = value.metadataProvider.ifBlank { value.source.ifBlank { "YouTube Music" } },
+                canonicalAlbumUrl = value.canonicalAlbumUrl,
+                releaseDate = value.releaseDate,
+                year = value.year,
+                trackNumber = value.trackNumber,
+                discNumber = value.discNumber,
+                explicit = value.explicit,
+                isrc = value.isrc,
+                upc = value.upc,
+                score = MIN_YOUTUBE_MATCH_SCORE,
                 cachedAt = System.currentTimeMillis()
             )
 
@@ -233,5 +301,6 @@ internal class ChartOfficialArtworkResolver(context: Context) {
         const val TOTAL_ARTWORK_BUDGET_MS = 7_000L
         const val ARTWORK_TTL_MS = 90L * 24L * 60L * 60L * 1000L
         const val MISS_TTL_MS = 12L * 60L * 60L * 1000L
+        const val MIN_YOUTUBE_MATCH_SCORE = 150
     }
 }
