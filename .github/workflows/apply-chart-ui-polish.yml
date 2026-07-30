@@ -57,3 +57,5 @@ jobs:
           git diff --cached --quiet && { echo 'No changes to commit.'; exit 0; }
           git commit -m 'fix(android): stabilize charts artwork scrolling and preloading'
           git push origin HEAD:feat/editorial-collector
+
+# Triggered after the workflow file existed on the branch.
