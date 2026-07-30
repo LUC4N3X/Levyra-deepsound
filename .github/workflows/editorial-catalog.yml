@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -64,6 +66,8 @@ jobs:
     steps:
       - name: Checkout Pull Request
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -82,7 +86,7 @@ jobs:
           timeout --foreground 240s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e '.. | objects | has("artworkUrl") or has("isrc")' build/editorial/catalog.json >/dev/null; then
+          if jq -e 'any(.. | objects; has("artworkUrl") or has("isrc"))' build/editorial/catalog.json >/dev/null; then
             echo "::error::Catalog contains source artwork or unsupported ISRC fields"
             exit 1
           fi
@@ -136,7 +140,7 @@ jobs:
           timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e '.. | objects | has("artworkUrl") or has("isrc")' build/editorial/catalog.json >/dev/null; then
+          if jq -e 'any(.. | objects; has("artworkUrl") or has("isrc"))' build/editorial/catalog.json >/dev/null; then
             echo "::error::Catalog contains source artwork or unsupported ISRC fields"
             exit 1
           fi
