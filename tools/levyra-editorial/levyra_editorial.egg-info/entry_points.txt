@@ -1,2 +1,0 @@
-[console_scripts]
-levyra-editorial = levyra_editorial.resilient:main
