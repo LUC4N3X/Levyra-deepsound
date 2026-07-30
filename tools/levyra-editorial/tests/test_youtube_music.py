@@ -87,6 +87,44 @@ def test_parser_and_score_prefer_exact_studio_recording() -> None:
     assert score_candidate("Perfect Song", "Exact Artist", 210_000, candidate) >= 90
 
 
+
+def test_parser_finds_video_id_inside_play_button_overlay() -> None:
+    payload = {
+        "contents": {
+            "musicResponsiveListItemRenderer": {
+                "flexColumns": [
+                    {
+                        "musicResponsiveListItemFlexColumnRenderer": {
+                            "text": {"runs": [{"text": "Nested Song"}]}
+                        }
+                    },
+                    {
+                        "musicResponsiveListItemFlexColumnRenderer": {
+                            "text": {"runs": [{"text": "Nested Artist"}]}
+                        }
+                    },
+                ],
+                "overlay": {
+                    "musicItemThumbnailOverlayRenderer": {
+                        "content": {
+                            "musicPlayButtonRenderer": {
+                                "playNavigationEndpoint": {
+                                    "watchEndpoint": {"videoId": "ZyXwVu98765"}
+                                }
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    candidates = parse_search_candidates(payload)
+
+    assert len(candidates) == 1
+    assert candidates[0]["videoId"] == "ZyXwVu98765"
+
+
 class BootstrapResponse:
     text = "<html>missing innertube configuration</html>"
 
