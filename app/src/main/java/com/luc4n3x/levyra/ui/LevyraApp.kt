@@ -11205,7 +11205,11 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
         var advancedControlsExpanded by remember(track?.id) {
             mutableStateOf(false)
         }
-        val playerHorizontalPadding = if (compactPlayer) 18.dp else 20.dp
+        val playerHorizontalPadding = when {
+            state.isVideoMode -> 8.dp
+            compactPlayer -> 18.dp
+            else -> 20.dp
+        }
         val playerItemSpacing = if (compactPlayer) 9.dp else 12.dp
         val artworkSize = minOf(
             (maxWidth - playerHorizontalPadding * 2f).coerceAtLeast(180.dp),
@@ -11317,11 +11321,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                 item { EmptyState(strings.emptyPlayer) }
             } else {
                 item {
-                    val mediaHeight = if (state.isVideoMode && track.videoUrl.isNotBlank()) {
-                        artworkSize * 0.5625f
-                    } else {
-                        artworkSize
-                    }
+                    val mediaHeight = artworkSize
                     Box(
                         modifier = Modifier
                             .size(width = artworkSize, height = mediaHeight)
@@ -17025,7 +17025,11 @@ private fun LevyraVideoSurface(
                 update = { view ->
                     val active = PlaybackService.activePlayer
                     if (view.player !== active) view.player = active
-                    view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    view.resizeMode = if (pictureInPicture) {
+                        AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    } else {
+                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    }
                     view.keepScreenOn = state.isPlaying
                 },
                 onRelease = { view ->

@@ -112,7 +112,7 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
         }
     }
 
-    private companion object {
+    companion object {
         const val PROVIDER_ID = "community-canvas"
         const val CATALOG_URL =
             "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json"

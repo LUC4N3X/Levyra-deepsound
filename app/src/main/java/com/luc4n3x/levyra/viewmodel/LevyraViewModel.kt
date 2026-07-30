@@ -1604,9 +1604,16 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         alternateModePrefetchJob?.cancel()
         if (track.id.isBlank() || track.videoUrl.isBlank() || track.source.equals("Offline", true)) return
         alternateModePrefetchJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(350L)
+            val targetVideoMode = !activeVideoMode
             val cleanTrack = (youtubePlayableTrack(track) ?: track).copy(streamUrl = "", videoStreamUrl = "")
-            resolver.prefetch(cleanTrack, !activeVideoMode)
+            val resolved = resolver.prefetch(cleanTrack, targetVideoMode) ?: return@launch
+            if (targetVideoMode) {
+                runCatching { playbackWarmup.primeVideo(resolved) }
+                    .onFailure { Timber.d(it, "alternate video warmup skipped") }
+            } else {
+                runCatching { playbackWarmup.prime(resolved) }
+                    .onFailure { Timber.d(it, "alternate audio warmup skipped") }
+            }
         }
     }
 

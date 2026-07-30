@@ -152,6 +152,30 @@ def _browse_id(run: Mapping[str, Any]) -> str:
     return str(browse.get("browseId") or "") if isinstance(browse, Mapping) else ""
 
 
+def _video_id_from(value: Any) -> str:
+    if isinstance(value, Mapping):
+        playlist_data = value.get("playlistItemData")
+        if isinstance(playlist_data, Mapping):
+            candidate = str(playlist_data.get("videoId") or "")
+            if VIDEO_ID.fullmatch(candidate):
+                return candidate
+        watch = value.get("watchEndpoint")
+        if isinstance(watch, Mapping):
+            candidate = str(watch.get("videoId") or "")
+            if VIDEO_ID.fullmatch(candidate):
+                return candidate
+        for child in value.values():
+            candidate = _video_id_from(child)
+            if candidate:
+                return candidate
+    elif isinstance(value, list):
+        for child in value:
+            candidate = _video_id_from(child)
+            if candidate:
+                return candidate
+    return ""
+
+
 def parse_search_candidates(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     output: list[dict[str, Any]] = []
     for node in _walk(payload):
@@ -168,17 +192,8 @@ def parse_search_candidates(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         title = _runs_text(first_renderer.get("text"))
         if not title:
             continue
-        video_id = ""
-        playlist_data = renderer.get("playlistItemData")
-        if isinstance(playlist_data, Mapping):
-            video_id = str(playlist_data.get("videoId") or "")
+        video_id = _video_id_from(renderer)
         if not video_id:
-            endpoint = renderer.get("navigationEndpoint")
-            if isinstance(endpoint, Mapping):
-                watch = endpoint.get("watchEndpoint")
-                if isinstance(watch, Mapping):
-                    video_id = str(watch.get("videoId") or "")
-        if VIDEO_ID.fullmatch(video_id) is None:
             continue
 
         artists: list[str] = []
@@ -467,10 +482,17 @@ class YoutubeMusicWebClient:
                     results[key] = future.result()
                 except Exception:
                     results[key] = None
+        matched = 0
         for key, tracks in targets.items():
             result = results.get(key)
             if result is None:
                 continue
+            matched += 1
             for track in tracks:
                 track["youtube_music"] = dict(result)
+        LOGGER.info(
+            "Central YouTube Music enrichment matched %d of %d unique recording(s).",
+            matched,
+            len(metadata),
+        )
         return items
