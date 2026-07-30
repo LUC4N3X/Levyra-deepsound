@@ -72,6 +72,11 @@ class ChartsRepository(context: Context) {
         }
     }
 
+    suspend fun cachedCountryCharts(limit: Int = 50): Map<String, List<Track>> = withContext(Dispatchers.IO) {
+        editorialCharts.cachedAllMarkets(limit)
+            .mapKeys { (market, _) -> market.lowercase() }
+    }
+
     suspend fun officialArtwork(title: String, artist: String, country: String): String? = withContext(Dispatchers.IO) {
         val cleanTitle = title.trim()
         val cleanArtist = artist.trim()
