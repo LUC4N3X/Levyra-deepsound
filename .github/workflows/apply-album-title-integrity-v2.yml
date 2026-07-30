@@ -1,4 +1,4 @@
-name: Apply Album Title Integrity Fix V2
+name: Apply Album Metadata Integrity Fix
 
 on:
   pull_request:
@@ -31,11 +31,17 @@ jobs:
 
       - name: Apply guarded patch
         run: |
-          python3 -m py_compile tools/apply_album_title_integrity_v3.py
-          python3 tools/apply_album_title_integrity_v3.py
+          python3 -m py_compile tools/apply_album_integrity_v4.py
+          python3 tools/apply_album_integrity_v4.py
 
       - name: Test and compile
-        run: ./gradlew :app:testDebugUnitTest --tests com.luc4n3x.levyra.data.YoutubeMusicAlbumTitleTest :app:compileDebugKotlin --stacktrace
+        run: |
+          ./gradlew \
+            :app:testDebugUnitTest \
+            --tests com.luc4n3x.levyra.data.YoutubeMusicAlbumTitleTest \
+            --tests com.luc4n3x.levyra.data.AlbumDescriptionMatchingTest \
+            :app:compileDebugKotlin \
+            --stacktrace
 
       - name: Commit verified fix
         shell: bash
@@ -44,11 +50,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/AlbumDescriptionRepository.kt \
             app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
-            app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicAlbumTitleTest.kt
+            app/src/test/java/com/luc4n3x/levyra/data/YoutubeMusicAlbumTitleTest.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/AlbumDescriptionMatchingTest.kt
           if git diff --cached --quiet; then
-            echo "Album title fix already applied"
+            echo "Album metadata integrity fix already applied"
             exit 0
           fi
-          git commit -m "fix(album): reject playback metrics as release titles"
+          git commit -m "fix(album): validate release titles and description matches"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
