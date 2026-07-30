@@ -143,7 +143,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
             val call = httpClient.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
-                override fun onFailure(call: Call, error: IOException) {
+                override fun onFailure(call: Call, e: IOException) {
                     if (continuation.isActive) continuation.resume(null)
                 }
 
@@ -151,7 +151,7 @@ internal class EditorialChartsRepository private constructor(context: Context) {
                     val snapshot = runCatching {
                         response.use { current ->
                             if (!current.isSuccessful) return@use null
-                            val body = current.body ?: return@use null
+                            val body = current.body
                             val bytes = body.byteStream().readBounded(MAX_CATALOG_BYTES) ?: return@use null
                             if (bytes.isEmpty()) return@use null
                             EditorialCatalogParser.parse(
