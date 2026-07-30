@@ -63,6 +63,7 @@ jobs:
       contents: read
     env:
       LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
     steps:
       - name: Checkout Pull Request
         uses: actions/checkout@v7
@@ -76,18 +77,29 @@ jobs:
           cache-dependency-path: tools/levyra-editorial/pyproject.toml
       - name: Install Collector
         run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-      - name: Require Editorial Secret
+      - name: Check Editorial Secrets
         run: |
           set -euo pipefail
           test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
+          if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
+            echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; testing Spotify-only fallback"
+          fi
       - name: Generate and Validate Live Catalog
         run: |
           set -euo pipefail
           timeout --foreground 240s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e 'any(.. | objects; has("isrc") or has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains source identifiers or unsupported ISRC fields"
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains private source identifiers"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("isrc")); (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains an invalid ISRC"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial/catalog.json; then
+            echo "::error::Catalog contains credential-related material"
             exit 1
           fi
           # Cover artwork is published on purpose, but only from the source image CDN.
@@ -126,6 +138,7 @@ jobs:
       contents: write
     env:
       LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
+      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -139,18 +152,29 @@ jobs:
           cache-dependency-path: tools/levyra-editorial/pyproject.toml
       - name: Install Collector
         run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-      - name: Require Editorial Secret
+      - name: Check Editorial Secrets
         run: |
           set -euo pipefail
           test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
+          if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
+            echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; publishing Spotify-only metadata"
+          fi
       - name: Generate Catalog
         run: |
           set -euo pipefail
           timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e 'any(.. | objects; has("isrc") or has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains source identifiers or unsupported ISRC fields"
+          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains private source identifiers"
+            exit 1
+          fi
+          if jq -e 'any(.. | objects | select(has("isrc")); (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not))' build/editorial/catalog.json >/dev/null; then
+            echo "::error::Catalog contains an invalid ISRC"
+            exit 1
+          fi
+          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial/catalog.json; then
+            echo "::error::Catalog contains credential-related material"
             exit 1
           fi
           # Cover artwork is published on purpose, but only from the source image CDN.
