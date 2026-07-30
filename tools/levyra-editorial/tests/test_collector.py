@@ -38,7 +38,7 @@ class FakeClient:
             "name": "Source title",
             "description": "  A   compact\n description. ",
             "external_urls": {"spotify": f"https://open.spotify.com/playlist/{playlist_id}"},
-            "images": [{"url": "https://image.example/playlist.jpg"}],
+            "images": [{"url": "https://i.scdn.co/image/playlist-cover"}],
             "snapshot_id": "snapshot-1",
             "tracks": {"total": 2},
         }
@@ -60,7 +60,7 @@ class FakeClient:
                         "id": "album1",
                         "name": "Album One",
                         "release_date": "2026-07-01",
-                        "images": [{"url": "https://image.example/album.jpg"}],
+                        "images": [{"url": "https://i.scdn.co/image/test-album-cover"}],
                         "external_urls": {"spotify": "https://open.spotify.com/album/album1"},
                     },
                 }
@@ -318,6 +318,8 @@ def test_collector_builds_compact_account_free_catalog(tmp_path: Path) -> None:
     assert track["position"] == 1
     assert track["id"].startswith("levyra-")
     assert "isrc" not in track
+    # The fixtures above serve real i.scdn.co artwork, so these assert the published contract
+    # excludes source artwork rather than passing because the fixture host was not a Spotify CDN.
     assert "artworkUrl" not in track
     assert "artworkUrl" not in track["album"]
     serialized = json.dumps(payload).lower()

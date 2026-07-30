@@ -839,7 +839,9 @@ def _bounded_retry_after(value: str | None) -> int:
     try:
         return min(max(int(value), 0), 5)
     except ValueError:
-        return 0
+        # `Retry-After` may legally be an HTTP-date. Fall back to the absent-header default so a
+        # rate-limited page still gets its single retry instead of failing immediately.
+        return 1
 
 
 def validate_secret_dict_url(value: str) -> str:

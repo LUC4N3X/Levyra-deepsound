@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urlparse
 
 
 def _compact(value: Any) -> Any:
@@ -28,20 +27,6 @@ def _public_track_id(track: Track) -> str:
     )
     digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:20]
     return f"levyra-{digest}"
-
-
-def _public_artwork_url(value: str | None) -> str | None:
-    """Keep only HTTPS artwork hosted by the source's public image CDN."""
-    normalized = str(value or "").strip()
-    if not normalized:
-        return None
-    parsed = urlparse(normalized)
-    host = (parsed.hostname or "").lower()
-    if parsed.scheme != "https" or parsed.username or parsed.password or parsed.port:
-        return None
-    if host == "i.scdn.co" or host.endswith(".scdn.co") or host == "image-cdn-ak.spotifycdn.com":
-        return normalized
-    return None
 
 
 @dataclass(frozen=True)
@@ -85,7 +70,6 @@ class Track:
                 },
                 "durationMs": self.duration_ms,
                 "explicit": self.explicit,
-                "artworkUrl": _public_artwork_url(self.artwork_url),
             }
         )
 
