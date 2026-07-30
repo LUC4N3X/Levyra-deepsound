@@ -164,7 +164,7 @@ import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.automirrored.rounded.Reply
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.ViewCompact
@@ -3118,7 +3118,7 @@ private fun BiographySourceLink(
         )
         if (sourceUrl.isNotBlank()) {
             Icon(
-                imageVector = Icons.Rounded.OpenInNew,
+                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                 contentDescription = sourceText,
                 tint = LevyraMuted.copy(alpha = 0.66f),
                 modifier = Modifier.size(11.dp)
@@ -3404,7 +3404,7 @@ private fun BiographyDialogSource(
         )
         if (sourceUrl.isNotBlank()) {
             Icon(
-                imageVector = Icons.Rounded.OpenInNew,
+                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                 contentDescription = sourceText,
                 tint = LevyraMuted.copy(alpha = 0.72f),
                 modifier = Modifier.size(12.dp)
