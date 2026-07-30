@@ -21,6 +21,13 @@ class EditorialArtworkContinuityTest {
         assertEquals(presented.thumbnailUrl, result.thumbnailUrl)
         assertEquals(presented.thumbnailUrl, result.largeThumbnailUrl)
         assertEquals(resolved.videoUrl, result.videoUrl)
+
+        val recovered = preserveEditorialArtwork(
+            result,
+            resolved.copy(thumbnailUrl = "https://i.ytimg.com/vi/abcdefghijk/maxresdefault.jpg")
+        )
+        assertEquals(presented.thumbnailUrl, recovered.thumbnailUrl)
+        assertEquals(presented.thumbnailUrl, recovered.largeThumbnailUrl)
     }
 
     @Test

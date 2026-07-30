@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.data.ListeningPulseStore
 import com.luc4n3x.levyra.data.OfficialArtworkRepository
 import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.data.PlaybackResolver
+import com.luc4n3x.levyra.data.preserveEditorialArtwork
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeRepository
 import com.luc4n3x.levyra.data.ReturnYoutubeDislikeResult
 import com.luc4n3x.levyra.data.YoutubeCommentsRepository
@@ -328,6 +329,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var chartsJob: Job? = null
     private var chartPrefetchJob: Job? = null
     private var chartMemoryWarmJob: Job? = null
+    private var chartCatalogPrimeJob: Job? = null
     private var homeSnapshotJob: Job? = null
     private var homeResonanceJob: Job? = null
     private var homeArtistsFingerprint: String = ""
@@ -2596,31 +2598,58 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * Loads the persisted chart regions into the in-memory map in a single DataStore snapshot
-     * read, so tapping a region chip renders from memory instead of showing a shimmer while disk
-     * is read. Entries are intentionally left without a freshness stamp: they are shown at once and
-     * still revalidated by [loadCharts] when the region is selected. The region count is capped so
-     * the resident track list stays bounded, and trimmed further on low-RAM devices.
+     * Loads every persisted and editorial country into memory. All chips therefore render a chart
+     * immediately; slower artwork/playback enrichment continues independently in the background.
      */
     private fun warmChartRegionMemoryCache() {
-        val lowRam = adaptivePlaybackPolicy.current(videoMode = false).lowRam
-        val budget = if (lowRam) CHART_WARM_REGION_LIMIT_LOW_RAM else CHART_WARM_REGION_LIMIT
         chartMemoryWarmJob?.cancel()
+        chartCatalogPrimeJob?.cancel()
         chartMemoryWarmJob = viewModelScope.launch(Dispatchers.IO) {
             val languageCode = _state.value.languageCode
-            val missing = ChartsCatalog.regions
-                .map { it.id }
-                .filter { regionId -> chartsByRegion[chartsCacheKey(languageCode, regionId)].isNullOrEmpty() }
-                .take(budget)
-            if (missing.isEmpty()) return@launch
-            val stored = preferences.loadChartTracksByRegion(languageCode, missing)
-            if (stored.isEmpty() || !isActive || _state.value.languageCode != languageCode) return@launch
+            val regionIds = ChartsCatalog.regions.map { it.id }
+            val stored = preferences.loadChartTracksByRegion(languageCode, regionIds)
             stored.forEach { (regionId, tracks) ->
                 val repaired = LevyraStartupCatalog.repairTracks(tracks, languageCode)
-                if (repaired.isNotEmpty()) {
-                    chartsByRegion.putIfAbsent(chartsCacheKey(languageCode, regionId), repaired)
+                if (repaired.isNotEmpty()) chartsByRegion[chartsCacheKey(languageCode, regionId)] = repaired
+            }
+
+            val editorial = runCatching { chartsRepository.cachedCountryCharts(50) }.getOrDefault(emptyMap())
+            editorial.forEach { (regionId, tracks) ->
+                if (tracks.isNotEmpty()) {
+                    chartsByRegion.putIfAbsent(chartsCacheKey(languageCode, regionId), tracks)
                 }
             }
+            if (!isActive || _state.value.languageCode != languageCode) return@launch
+
+            val selectedId = _state.value.selectedChartId
+            val selected = chartsByRegion[chartsCacheKey(languageCode, selectedId)].orEmpty()
+            if (selected.isNotEmpty()) publishPrefetchedCharts(languageCode, selectedId, selected)
+            primeAllChartRegions(languageCode)
+        }
+    }
+
+    private fun primeAllChartRegions(languageCode: String) {
+        chartCatalogPrimeJob?.cancel()
+        val appContext = getApplication<Application>().applicationContext
+        val concurrency = if (adaptivePlaybackPolicy.current(videoMode = false).lowRam) 1 else 2
+        chartCatalogPrimeJob = viewModelScope.launch(Dispatchers.IO) {
+            val semaphore = Semaphore(concurrency)
+            ChartsCatalog.regions.map { region ->
+                async {
+                    semaphore.withPermit {
+                        if (!isActive || _state.value.languageCode != languageCode) return@withPermit
+                        val cacheKey = chartsCacheKey(languageCode, region.id)
+                        if (isChartCacheFresh(cacheKey)) return@withPermit
+                        val result = runCatching { chartsRepository.topSongs(region.country) }.getOrDefault(emptyList())
+                        if (result.isEmpty() || !isActive || _state.value.languageCode != languageCode) return@withPermit
+                        chartsByRegion[cacheKey] = result
+                        chartsFreshAt[cacheKey] = System.currentTimeMillis()
+                        preferences.saveChartTracks(result, languageCode, region.id)
+                        LevyraArtworkCache.preloadHome(appContext, result, 8)
+                        publishPrefetchedCharts(languageCode, region.id, result)
+                    }
+                }
+            }.awaitAll()
         }
     }
 
@@ -4201,7 +4230,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         val instant = localDownloadedTrack(track) ?: resolver.cached(playableTrack, _state.value.isVideoMode)
         if (instant != null) {
             if (!isActive || requestId != playRequestId) return
-            startPlayback(instant)
+            startPlayback(preserveEditorialArtwork(track, instant))
             prefetchAround(instant)
             return
         }
@@ -5526,14 +5555,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
 
     private suspend fun resolveForPlayback(track: Track): Track {
-        youtubePlayableTrack(track)?.let { return resolvePlayableTrack(it) }
+        youtubePlayableTrack(track)?.let { return preserveEditorialArtwork(track, resolvePlayableTrack(it)) }
         val candidates = searchPlayableCandidates(track)
         if (candidates.isEmpty()) throw IllegalStateException("Nessun risultato YouTube per ${track.title}")
         val errors = mutableListOf<String>()
         for (candidate in candidates) {
             val carried = LevyraPersonalOrbit.preferAlbumArtwork(candidate, track)
             val resolved = runCatching { resolvePlayableTrack(carried) }
-            resolved.onSuccess { return it }
+            resolved.onSuccess { return preserveEditorialArtwork(track, it) }
             resolved.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }?.let { errors += "${candidate.title} - ${candidate.artist}: $it" }
             resolver.invalidate(carried, _state.value.isVideoMode)
         }
@@ -5826,8 +5855,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         // Apple publishes the most-played feed about once a day, so a region fetched within the
         // last hour is served straight from memory instead of paying for another round trip.
         private const val CHART_CACHE_FRESH_MS = 60L * 60L * 1000L
-        private const val CHART_WARM_REGION_LIMIT = 14
-        private const val CHART_WARM_REGION_LIMIT_LOW_RAM = 6
+        private const val CHART_PRIME_REGION_COUNT = 28
         private const val HOME_ARTIST_SHELF_SIZE = 13
         private const val HOME_ARTIST_HISTORY_LIMIT = 48
         private const val HOME_ARTIST_CANDIDATE_LIMIT = 48
@@ -5888,6 +5916,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         homeResonanceJob?.cancel()
         chartsJob?.cancel()
         chartPrefetchJob?.cancel()
+        chartMemoryWarmJob?.cancel()
+        chartCatalogPrimeJob?.cancel()
         homeSnapshotJob?.cancel()
         super.onCleared()
     }

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -971,7 +972,8 @@ private fun Modifier.pressable(
 private fun Modifier.consumeOverlayTouches(): Modifier = pointerInput(Unit) {
     awaitPointerEventScope {
         while (true) {
-            awaitPointerEvent().changes.forEach { change ->
+            val event = awaitPointerEvent(PointerEventPass.Final)
+            event.changes.forEach { change ->
                 if (!change.isConsumed) change.consume()
             }
         }
@@ -1821,7 +1823,7 @@ private fun AlbumOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = if (state.currentTrack != null) 232.dp else 112.dp),
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 232.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(key = "album-topbar") {
@@ -5373,7 +5375,7 @@ private fun HomeScreen(
         LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = if (state.currentTrack != null) 188.dp else 104.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 188.dp),
         verticalArrangement = Arrangement.spacedBy(if (state.interfaceSettings.compactHome) 14.dp else 26.dp)
     ) {
         item(key = "home-top", contentType = "home-header") {

@@ -53,11 +53,19 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
+internal const val EDITORIAL_ARTWORK_LOCK_TAG = "editorial-artwork-lock"
+
 internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track {
-    if (!presented.source.equals("Levyra Editorial", ignoreCase = true)) return resolved
+    val artworkLocked = presented.source.equals("Levyra Editorial", ignoreCase = true) ||
+        EDITORIAL_ARTWORK_LOCK_TAG in presented.moodTags
+    if (!artworkLocked) return resolved
     val artwork = presented.largeThumbnailUrl.trim().ifBlank { presented.thumbnailUrl.trim() }
     if (artwork.isBlank()) return resolved
-    return resolved.copy(thumbnailUrl = artwork, largeThumbnailUrl = artwork)
+    return resolved.copy(
+        thumbnailUrl = artwork,
+        largeThumbnailUrl = artwork,
+        moodTags = resolved.moodTags + EDITORIAL_ARTWORK_LOCK_TAG
+    )
 }
 
 class PlaybackResolver private constructor(private val context: Context) {
