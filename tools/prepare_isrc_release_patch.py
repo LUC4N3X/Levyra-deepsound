@@ -74,7 +74,7 @@ helper = '''def replace_once(text: str, old: str, new: str, label: str) -> str:
         return text
     count = text.count(old)
     if count != 1:
-        if label == 'two row release classifier' and count == 2:
+        if label in {'two row release classifier', 'viewmodel initial auth state'} and count == 2:
             return text.replace(old, new, 1)
         raise SystemExit(f'{label}: expected one anchor, found {count}')
     return text.replace(old, new, 1)
