@@ -1,0 +1,66 @@
+name: Apply Album Home Metadata Fix
+
+on:
+  push:
+    branches:
+      - feat/editorial-collector
+    paths:
+      - tools/apply_album_home_metadata_fix.py
+      - .github/workflows/apply-album-home-metadata-fix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-album-home-metadata-fix
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: "github.event.head_commit.message == 'chore(album): trigger album metadata fix'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/editorial-collector
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Apply verified changes
+        run: python tools/apply_album_home_metadata_fix.py
+
+      - name: Validate patch
+        run: |
+          set -euo pipefail
+          git diff --check
+          grep -F 'private val albumDescriptionRepository = AlbumDescriptionRepository(context)' app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt
+          grep -F 'private const val HOME_ARTIST_SHELF_SIZE = 20' app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          grep -F 'private const val HOME_ALBUM_RECOMMENDATION_LIMIT = 20' app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          grep -F 'thumbnailUrl = finalAlbum.thumbnailUrl.ifBlank { track.thumbnailUrl }' app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt
+
+      - name: Compile Android app
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:compileDebugKotlin --no-daemon
+
+      - name: Commit implementation
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/data/AlbumDescriptionRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          git diff --cached --check
+          git diff --cached --quiet && { echo "No implementation changes"; exit 0; }
+          git commit -m "fix(album): unify artwork descriptions and expand home shelves"
+          git push origin HEAD:feat/editorial-collector
