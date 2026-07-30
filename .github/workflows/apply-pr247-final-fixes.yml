@@ -1,9 +1,9 @@
 name: Apply PR 247 Final Fixes
 
 on:
-  push:
+  pull_request:
     branches:
-      - feat/editorial-collector
+      - main
     paths:
       - tools/apply_pr247_final_fixes.py
       - .github/workflows/apply-pr247-final-fixes.yml
@@ -17,7 +17,9 @@ concurrency:
 
 jobs:
   apply:
-    if: "github.event.head_commit.message == 'chore(pr247): trigger final fixes'"
+    if: >-
+      github.event.pull_request.head.ref == 'feat/editorial-collector' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
