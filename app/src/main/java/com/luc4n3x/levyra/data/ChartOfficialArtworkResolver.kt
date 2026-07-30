@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.data
 
 import android.content.Context
+import com.luc4n3x.levyra.domain.LevyraPersonalOrbit
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
 internal class ChartOfficialArtworkResolver(context: Context) {
     private val appContext = context.applicationContext
     private val repositories = Array(PROVIDER_LANES) { OfficialArtworkRepository(appContext) }
+    private val youtubeMusicRepository = YoutubeMusicRepository(appContext)
     private val store = appContext.getSharedPreferences(CACHE_NAME, Context.MODE_PRIVATE)
     private val memory = ConcurrentHashMap<String, CachedArtwork>()
     private val keyLocks = Array(KEY_LOCK_COUNT) { Mutex() }
@@ -67,11 +69,15 @@ internal class ChartOfficialArtworkResolver(context: Context) {
             } catch (_: Throwable) {
                 null
             }
-            if (official == null) {
+            val artwork = if (official != null) {
+                CachedArtwork.from(official)
+            } else {
+                findYoutubeFallback(track)
+            }
+            if (artwork == null) {
                 store.edit().putLong(missKey(key, country), System.currentTimeMillis()).apply()
                 return@withLock null
             }
-            val artwork = CachedArtwork.from(official)
             memory[key] = artwork
             store.edit()
                 .putString(artworkKey(key), artwork.toJson().toString())
@@ -79,6 +85,50 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 .apply()
             artwork
         }
+    }
+
+    private suspend fun findYoutubeFallback(track: Track): CachedArtwork? {
+        val candidates = runCatching {
+            youtubeMusicRepository.search("${track.title} ${track.artist}", 8)
+        }.getOrDefault(emptyList())
+        val best = candidates
+            .asSequence()
+            .map { candidate -> candidate to youtubeMatchScore(track, candidate) }
+            .filter { (_, score) -> score >= MIN_YOUTUBE_MATCH_SCORE }
+            .maxByOrNull { (_, score) -> score }
+            ?.first
+            ?: return null
+        val prepared = LevyraPersonalOrbit.withoutVideoArtwork(best)
+        val artwork = prepared.largeThumbnailUrl.trim()
+            .ifBlank { prepared.thumbnailUrl.trim() }
+            .ifBlank { best.largeThumbnailUrl.trim() }
+            .ifBlank { best.thumbnailUrl.trim() }
+        if (artwork.isBlank()) return null
+        return CachedArtwork.fromYoutube(prepared.copy(thumbnailUrl = artwork, largeThumbnailUrl = artwork))
+    }
+
+    private fun youtubeMatchScore(target: Track, candidate: Track): Int {
+        val targetTitle = ChartFeedParser.normalizeMusicText(target.title)
+        val targetArtist = ChartFeedParser.normalizeMusicText(target.artist)
+        val candidateTitle = ChartFeedParser.normalizeMusicText(candidate.title)
+        val candidateArtist = ChartFeedParser.normalizeMusicText(candidate.artist)
+        var score = when {
+            candidateTitle == targetTitle -> 140
+            candidateTitle.contains(targetTitle) || targetTitle.contains(candidateTitle) -> 90
+            else -> 0
+        }
+        score += when {
+            candidateArtist == targetArtist -> 90
+            candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist) -> 52
+            else -> 0
+        }
+        if (target.durationMs > 0L && candidate.durationMs > 0L) {
+            val delta = kotlin.math.abs(target.durationMs - candidate.durationMs)
+            if (delta <= 6_000L) score += 30 else if (delta > 40_000L) score -= 30
+        }
+        val searchable = "${candidate.title} ${candidate.artist} ${candidate.album}".lowercase()
+        if (listOf("karaoke", "cover", "reaction", "nightcore", "sped up", "slowed").any(searchable::contains)) score -= 70
+        return score
     }
 
     private fun repositoryFor(key: String): OfficialArtworkRepository {
@@ -143,10 +193,21 @@ internal class ChartOfficialArtworkResolver(context: Context) {
             thumbnailUrl.isNotBlank() && now - cachedAt in 0 until ARTWORK_TTL_MS
 
         fun applyTo(track: Track): Track {
+            // An editorial row already carries the catalog's album cover. Keep it: it is the artwork the
+            // user is looking at, and replacing it with a title/artist match would make the row and the
+            // player disagree. The rest of the looked-up metadata is still worth taking.
+            val editorialArtwork = track.source.equals(EDITORIAL_ARTWORK_SOURCE, ignoreCase = true) &&
+                track.thumbnailUrl.isNotBlank()
+            val resolvedThumbnail = if (editorialArtwork) track.thumbnailUrl else thumbnailUrl
+            val resolvedLarge = if (editorialArtwork) {
+                track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+            } else {
+                largeThumbnailUrl.ifBlank { thumbnailUrl }
+            }
             return track.copy(
                 album = album.ifBlank { track.album },
-                thumbnailUrl = thumbnailUrl,
-                largeThumbnailUrl = largeThumbnailUrl.ifBlank { thumbnailUrl },
+                thumbnailUrl = resolvedThumbnail,
+                largeThumbnailUrl = resolvedLarge,
                 isrc = isrc.ifBlank { track.isrc },
                 upc = upc.ifBlank { track.upc },
                 releaseDate = releaseDate.ifBlank { track.releaseDate },
@@ -156,7 +217,15 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 explicit = explicit || track.explicit,
                 metadataProvider = provider.ifBlank { track.metadataProvider },
                 metadataConfidence = maxOf(track.metadataConfidence, confidence(score)),
-                canonicalAlbumUrl = canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl }
+                canonicalAlbumUrl = canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
+                // The lock exists to hold editorial cover art through playback resolution. Stamping it on
+                // every enriched chart track would also freeze YouTube/Apple chart artwork, which is not
+                // what it is for.
+                moodTags = if (editorialArtwork) {
+                    track.moodTags + EDITORIAL_ARTWORK_LOCK_TAG
+                } else {
+                    track.moodTags
+                }
             )
         }
 
@@ -191,6 +260,23 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 isrc = value.isrc,
                 upc = value.upc,
                 score = value.score,
+                cachedAt = System.currentTimeMillis()
+            )
+
+            fun fromYoutube(value: Track): CachedArtwork = CachedArtwork(
+                thumbnailUrl = value.thumbnailUrl,
+                largeThumbnailUrl = value.largeThumbnailUrl.ifBlank { value.thumbnailUrl },
+                album = value.album,
+                provider = value.metadataProvider.ifBlank { value.source.ifBlank { "YouTube Music" } },
+                canonicalAlbumUrl = value.canonicalAlbumUrl,
+                releaseDate = value.releaseDate,
+                year = value.year,
+                trackNumber = value.trackNumber,
+                discNumber = value.discNumber,
+                explicit = value.explicit,
+                isrc = value.isrc,
+                upc = value.upc,
+                score = MIN_YOUTUBE_MATCH_SCORE,
                 cachedAt = System.currentTimeMillis()
             )
 
@@ -233,5 +319,7 @@ internal class ChartOfficialArtworkResolver(context: Context) {
         const val TOTAL_ARTWORK_BUDGET_MS = 7_000L
         const val ARTWORK_TTL_MS = 90L * 24L * 60L * 60L * 1000L
         const val MISS_TTL_MS = 12L * 60L * 60L * 1000L
+        const val MIN_YOUTUBE_MATCH_SCORE = 150
+        const val EDITORIAL_ARTWORK_SOURCE = "Levyra Editorial"
     }
 }
