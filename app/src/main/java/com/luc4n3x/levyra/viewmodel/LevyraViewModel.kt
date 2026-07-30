@@ -42,6 +42,8 @@ import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
 import com.luc4n3x.levyra.data.isPlausibleYoutubeMusicAlbumTitle
+import com.luc4n3x.levyra.data.RecordingIdentityMatch
+import com.luc4n3x.levyra.data.recordingIdentityMatch
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistBiography
@@ -158,6 +160,11 @@ internal fun monotonicDownloadProgress(current: Int?, incoming: Int): Int {
 }
 
 internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boolean {
+    when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
+        RecordingIdentityMatch.Exact -> return true
+        RecordingIdentityMatch.Conflict -> return false
+        RecordingIdentityMatch.Unknown -> Unit
+    }
     val targetTitle = playbackTextKey(target.title)
     val candidateTitle = playbackTextKey(candidate.title)
     if (targetTitle.isBlank() || candidateTitle.isBlank()) return false
@@ -181,6 +188,11 @@ internal fun isPlaybackCandidateCompatible(target: Track, candidate: Track): Boo
 }
 
 internal fun playbackCandidateScore(target: Track, candidate: Track): Int {
+    when (recordingIdentityMatch(target.isrc, candidate.isrc)) {
+        RecordingIdentityMatch.Exact -> return 10_000
+        RecordingIdentityMatch.Conflict -> return Int.MIN_VALUE
+        RecordingIdentityMatch.Unknown -> Unit
+    }
     val targetTitle = playbackTextKey(target.title)
     val targetArtist = playbackTextKey(target.artist)
     val candidateTitle = playbackTextKey(candidate.title)
@@ -3754,7 +3766,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     browseId = release.browseId,
                     artistBrowseId = officialArtistBrowseId,
                     audioPlaylistId = release.playlistId,
-                    explicit = release.explicit
+                    explicit = release.explicit,
+                    releaseType = release.releaseType
                 )
             }
             .distinctBy(::albumRecommendationDeduplicationKey)

@@ -2600,6 +2600,18 @@ private fun ArtistOverlay(
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.singlesAndEps) } }
                         item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(artist.singles, artist.name, onOpenRelease) } }
                     }
+                    if (artist.compilations.isNotEmpty()) {
+                        item {
+                            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                ArtistSectionTitle(if (strings.code.startsWith("it")) "Raccolte" else "Compilations")
+                            }
+                        }
+                        item {
+                            Box(modifier = Modifier.padding(start = 20.dp)) {
+                                ArtistReleaseRow(artist.compilations, artist.name, onOpenRelease)
+                            }
+                        }
+                    }
                     if (artist.videos.isNotEmpty()) {
                         item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.video) } }
                         item {
