@@ -41,6 +41,7 @@ import com.luc4n3x.levyra.data.LEVYRA_REJECTED_ALBUM_RECOMMENDATION_SCORE
 import com.luc4n3x.levyra.data.levyraAlbumRecommendationMatchScore
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.data.albumRecommendationTextKey
+import com.luc4n3x.levyra.data.isPlausibleYoutubeMusicAlbumTitle
 import com.luc4n3x.levyra.data.local.DownloadEntity
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.domain.ArtistBiography
@@ -2138,7 +2139,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         state: LevyraUiState,
         limit: Int
     ): List<AlbumHit> {
-        val candidates = mergeAlbums(instant, remote)
+        val candidates = mergeAlbums(instant, remote).filter { isPlausibleYoutubeMusicAlbumTitle(it.title) }
         if (candidates.isEmpty()) return emptyList()
         val allSeeds = albumRecommendationSeeds(state)
         val directSeeds = allSeeds.filter { it.artist.isNotBlank() || it.album.isNotBlank() }
@@ -2198,6 +2199,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun isUsefulRecommendationAlbum(album: String, trackTitle: String): Boolean {
+        if (!isPlausibleYoutubeMusicAlbumTitle(album)) return false
         val key = albumRecommendationTextKey(album)
         if (key.length < 2) return false
         if (key == albumRecommendationTextKey(trackTitle) && trackTitle.isNotBlank()) return false
