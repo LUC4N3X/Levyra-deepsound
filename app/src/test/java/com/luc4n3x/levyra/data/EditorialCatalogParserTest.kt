@@ -10,7 +10,7 @@ import java.time.Instant
 
 class EditorialCatalogParserTest {
     @Test
-    fun parsesCountryChartWithoutSourceArtworkOrFakeIsrc() {
+    fun parsesCountryChartWithPublishedCoverAndWithoutFakeIsrc() {
         val snapshot = EditorialCatalogParser.parse(validCatalog, loadedAt = NOW)
 
         assertNotNull(snapshot)
@@ -21,8 +21,8 @@ class EditorialCatalogParserTest {
         assertEquals("Album Uno", track.album)
         assertEquals(181_000L, track.durationMs)
         assertTrue(track.isrc.isBlank())
-        assertTrue(track.thumbnailUrl.isBlank())
-        assertTrue(track.largeThumbnailUrl.isBlank())
+        assertEquals("https://i.scdn.co/image/ab67616d0000cover", track.thumbnailUrl)
+        assertEquals("https://i.scdn.co/image/ab67616d0000cover", track.largeThumbnailUrl)
         assertEquals("2026", track.year)
         assertTrue(track.explicit)
         assertEquals("Levyra Editorial", track.source)
@@ -37,6 +37,37 @@ class EditorialCatalogParserTest {
 
         assertEquals(setOf("IT"), snapshot.byMarket.keys)
         assertFalse(snapshot.byMarket.containsKey("GLOBAL"))
+    }
+
+    @Test
+    fun ignoresCoverArtworkThatIsNotHttpsOnTheSourceImageCdn() {
+        // The catalog arrives from a remote branch, so a tampered or unexpected payload must never
+        // reach the image loader. A rejected cover degrades to on-device lookup, it does not drop the row.
+        val rejected = listOf(
+            "http://i.scdn.co/image/plain-http",
+            "https://evil.example/cover.jpg",
+            "https://i.scdn.co.evil.example/cover.jpg",
+            "https://user:pass@i.scdn.co/image/credentials",
+            "https://i.scdn.co:8443/image/custom-port",
+            "not-a-url",
+            "",
+        )
+        rejected.forEach { candidate ->
+            val snapshot = EditorialCatalogParser.parse(
+                validCatalog.replace("https://i.scdn.co/image/ab67616d0000cover", candidate),
+                loadedAt = NOW,
+            )
+            val track = snapshot!!.byMarket.getValue("IT").single()
+            assertTrue("Expected $candidate to be rejected", track.thumbnailUrl.isBlank())
+            assertTrue("Expected $candidate to be rejected", track.largeThumbnailUrl.isBlank())
+            assertEquals("Prima Canzone", track.title)
+        }
+
+        val accepted = EditorialCatalogParser.parse(
+            validCatalog.replace("https://i.scdn.co/image/ab67616d0000cover", "https://mosaic.scdn.co/640/abc"),
+            loadedAt = NOW,
+        )!!
+        assertEquals("https://mosaic.scdn.co/640/abc", accepted.byMarket.getValue("IT").single().thumbnailUrl)
     }
 
     @Test
@@ -85,7 +116,8 @@ class EditorialCatalogParserTest {
                     "releaseDate": "2026-07-01"
                   },
                   "durationMs": 181000,
-                  "explicit": true
+                  "explicit": true,
+                  "artworkUrl": "https://i.scdn.co/image/ab67616d0000cover"
                 }
               ]
             }

@@ -193,10 +193,21 @@ internal class ChartOfficialArtworkResolver(context: Context) {
             thumbnailUrl.isNotBlank() && now - cachedAt in 0 until ARTWORK_TTL_MS
 
         fun applyTo(track: Track): Track {
+            // An editorial row already carries the catalog's album cover. Keep it: it is the artwork the
+            // user is looking at, and replacing it with a title/artist match would make the row and the
+            // player disagree. The rest of the looked-up metadata is still worth taking.
+            val editorialArtwork = track.source.equals(EDITORIAL_ARTWORK_SOURCE, ignoreCase = true) &&
+                track.thumbnailUrl.isNotBlank()
+            val resolvedThumbnail = if (editorialArtwork) track.thumbnailUrl else thumbnailUrl
+            val resolvedLarge = if (editorialArtwork) {
+                track.largeThumbnailUrl.ifBlank { track.thumbnailUrl }
+            } else {
+                largeThumbnailUrl.ifBlank { thumbnailUrl }
+            }
             return track.copy(
                 album = album.ifBlank { track.album },
-                thumbnailUrl = thumbnailUrl,
-                largeThumbnailUrl = largeThumbnailUrl.ifBlank { thumbnailUrl },
+                thumbnailUrl = resolvedThumbnail,
+                largeThumbnailUrl = resolvedLarge,
                 isrc = isrc.ifBlank { track.isrc },
                 upc = upc.ifBlank { track.upc },
                 releaseDate = releaseDate.ifBlank { track.releaseDate },
@@ -207,7 +218,14 @@ internal class ChartOfficialArtworkResolver(context: Context) {
                 metadataProvider = provider.ifBlank { track.metadataProvider },
                 metadataConfidence = maxOf(track.metadataConfidence, confidence(score)),
                 canonicalAlbumUrl = canonicalAlbumUrl.ifBlank { track.canonicalAlbumUrl },
-                moodTags = track.moodTags + EDITORIAL_ARTWORK_LOCK_TAG
+                // The lock exists to hold editorial cover art through playback resolution. Stamping it on
+                // every enriched chart track would also freeze YouTube/Apple chart artwork, which is not
+                // what it is for.
+                moodTags = if (editorialArtwork) {
+                    track.moodTags + EDITORIAL_ARTWORK_LOCK_TAG
+                } else {
+                    track.moodTags
+                }
             )
         }
 
@@ -302,5 +320,6 @@ internal class ChartOfficialArtworkResolver(context: Context) {
         const val ARTWORK_TTL_MS = 90L * 24L * 60L * 60L * 1000L
         const val MISS_TTL_MS = 12L * 60L * 60L * 1000L
         const val MIN_YOUTUBE_MATCH_SCORE = 150
+        const val EDITORIAL_ARTWORK_SOURCE = "Levyra Editorial"
     }
 }

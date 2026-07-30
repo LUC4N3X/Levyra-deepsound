@@ -1864,7 +1864,6 @@ private fun AlbumOverlay(
         modifier = Modifier
             .fillMaxSize()
             .background(LevyraBlack)
-            .consumeOverlayTouches()
     ) {
         LevyraBackground(accentTrack?.accentStart, accentTrack?.accentEnd)
         Box(
@@ -8185,7 +8184,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                             }
                         }
                         if ((filter == SearchFilter.All || filter == SearchFilter.Albums) && data.albums.isNotEmpty()) {
-                            item { SectionTitle(strings.albumsAndSingles) }
+                            item { SectionTitle(strings.albumsPlain) }
                             item {
                                 AlbumHitRow(
                                     albums = data.albums,
