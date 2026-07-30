@@ -1,0 +1,107 @@
+name: Finish Release Separation
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  finish:
+    if: github.event.pull_request.number == 250 && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Prepare ephemeral signing
+        run: |
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" >/dev/null
+      - name: Complete release separation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          vm_path = Path('app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt')
+          vm = vm_path.read_text()
+          old_vm = '''                    audioPlaylistId = release.playlistId,
+                      explicit = release.explicit
+                  )
+          '''
+          new_vm = '''                    audioPlaylistId = release.playlistId,
+                      explicit = release.explicit,
+                      releaseType = release.releaseType
+                  )
+          '''
+          if vm.count(old_vm) != 1:
+              raise SystemExit(f'Official album type anchor count: {vm.count(old_vm)}')
+          vm_path.write_text(vm.replace(old_vm, new_vm, 1))
+
+          ui_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          ui = ui_path.read_text()
+          old_ui = '''                    if (artist.singles.isNotEmpty()) {
+                          item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.singlesAndEps) } }
+                          item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(artist.singles, artist.name, onOpenRelease) } }
+                      }
+                      if (artist.videos.isNotEmpty()) {
+          '''
+          new_ui = '''                    if (artist.singles.isNotEmpty()) {
+                          item { Box(modifier = Modifier.padding(horizontal = 20.dp)) { ArtistSectionTitle(strings.singlesAndEps) } }
+                          item { Box(modifier = Modifier.padding(start = 20.dp)) { ArtistReleaseRow(artist.singles, artist.name, onOpenRelease) } }
+                      }
+                      if (artist.compilations.isNotEmpty()) {
+                          item {
+                              Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                  ArtistSectionTitle(if (strings.code.startsWith("it")) "Raccolte" else "Compilations")
+                              }
+                          }
+                          item {
+                              Box(modifier = Modifier.padding(start = 20.dp)) {
+                                  ArtistReleaseRow(artist.compilations, artist.name, onOpenRelease)
+                              }
+                          }
+                      }
+                      if (artist.videos.isNotEmpty()) {
+          '''
+          if ui.count(old_ui) != 1:
+              raise SystemExit(f'Compilation UI anchor count: {ui.count(old_ui)}')
+          ui_path.write_text(ui.replace(old_ui, new_ui, 1))
+          PY
+      - name: Compile and test release classification
+        run: |
+          ./gradlew \
+            :app:testDebugUnitTest --tests com.luc4n3x.levyra.domain.ReleaseTypeTest \
+            :app:compileDebugKotlin \
+            --stacktrace
+      - name: Commit verified separation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          git commit -m 'fix(metadata): expose compilation releases separately'
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
