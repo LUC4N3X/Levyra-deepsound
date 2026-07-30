@@ -84,6 +84,9 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -192,6 +195,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -379,6 +383,12 @@ private val CinematicHairline = Color.White.copy(alpha = 0.105f)
 private val HomeHorizontalInset = 18.dp
 private val HomeHorizontalShelfEndPadding = 30.dp
 private const val HOME_ARTIST_SHELF_SIZE = 13
+private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
+/** Tab row height, without the navigation bar spacer that `BottomTabs` adds under it. */
+private val LevyraTabBarHeight = 76.dp
+/** Mini player height: content row, progress line and its trailing spacer. */
+private val LevyraMiniPlayerHeight = 77.dp
+private val LevyraBottomContentGap = 16.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
 private val LevyraNavigationBlueDeep = Color(0xFF0066E6)
 private val LevyraSignalNodes = listOf(
@@ -1117,6 +1127,10 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             LevyraBackground(accent?.accentStart, accent?.accentEnd)
 
             val homeListState = rememberLazyListState()
+            // Hoisted next to the list state: once the heavy home shelves are revealed they must stay
+            // mounted, otherwise leaving and re-entering the Home tab empties the list for a frame and
+            // the preserved scroll offset is clamped back to the top.
+            val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
 
             AnimatedContent(
                 targetState = state.selectedTab,
@@ -1147,6 +1161,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                                 viewModel = homeViewModel,
                                 renderSnapshot = renderSnapshot,
                                 homeListState = homeListState,
+                                deferredSectionsRevealed = homeDeferredSectionsRevealed,
                                 onTrackActions = { track -> trackActionTarget = track }
                             )
                         }
@@ -1641,6 +1656,47 @@ private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
     }
 }
 
+/**
+ * Bottom inset for a list that scrolls behind the tab bar, sized from the bars that actually cover it.
+ *
+ * A fixed inset large enough for the mini player leaves a tall band of dead space under the last shelf
+ * whenever nothing is playing, so the inset tracks the mini player instead. The change is animated with
+ * the mini player enter/exit duration: a list already scrolled to the end glides together with the bar
+ * rather than snapping when the scroll range shrinks.
+ */
+@Composable
+private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
+    val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val collapsed = LevyraTabBarHeight + navigationBarInset + LevyraBottomContentGap
+    return animatedBottomContentInset(
+        collapsed = collapsed,
+        expanded = collapsed + LevyraMiniPlayerHeight,
+        miniPlayerVisible = miniPlayerVisible,
+        animationsEnabled = animationsEnabled
+    )
+}
+
+/** Animates between two bottom insets without letting the change read as an unexplained jump. */
+@Composable
+private fun animatedBottomContentInset(
+    collapsed: Dp,
+    expanded: Dp,
+    miniPlayerVisible: Boolean,
+    animationsEnabled: Boolean
+): Dp {
+    val effectiveAnimationsEnabled = animationsEnabled && LocalAnimationsEnabled.current
+    val inset by animateDpAsState(
+        targetValue = if (miniPlayerVisible) expanded else collapsed,
+        animationSpec = if (effectiveAnimationsEnabled) {
+            tween(durationMillis = 260, easing = FastOutSlowInEasing)
+        } else {
+            snap()
+        },
+        label = "bottomContentInset"
+    )
+    return inset
+}
+
 @Composable
 private fun DownloadProgressHud(state: LevyraUiState, onCancel: (String) -> Unit) {
     val item = state.activeDownloadHudItem(LocalLevyraStrings.current) ?: return
@@ -1798,6 +1854,12 @@ private fun AlbumOverlay(
     val albumIsActive = albumCurrentTrack != null
     val albumIsPlaying = albumIsActive && state.isPlaying
     val albumIsResolving = albumIsActive && state.isResolving
+    val albumBottomInset = animatedBottomContentInset(
+        collapsed = 112.dp,
+        expanded = 232.dp,
+        miniPlayerVisible = state.currentTrack != null,
+        animationsEnabled = state.animationsEnabled
+    )
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1823,7 +1885,7 @@ private fun AlbumOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding(),
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 232.dp),
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = albumBottomInset),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item(key = "album-topbar") {
@@ -5249,6 +5311,7 @@ private fun HomeScreen(
     viewModel: HomeViewModel,
     renderSnapshot: HomeRenderSnapshot,
     homeListState: LazyListState,
+    deferredSectionsRevealed: MutableState<Boolean>,
     onTrackActions: (Track) -> Unit
 ) {
     val state = renderSnapshot.state
@@ -5275,7 +5338,10 @@ private fun HomeScreen(
     val editorialCollections = homeDerivedState.editorialCollections
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
-    val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId, state.currentTrack?.id) {
+    // `currentTrack` is read but intentionally not a key: avoiding the currently playing track is a
+    // preference for the initial pick only. Re-running this on every playback change could swap the hero
+    // above the viewport and shift everything below it, and `stableSpotlightId` pins the choice anyway.
+    val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
         spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
             ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
             ?: spotlightCandidates.firstOrNull()
@@ -5319,11 +5385,14 @@ private fun HomeScreen(
     val chartChunks = homeDerivedState.chartChunks
     val homeContent = homeDerivedState.contentAvailability
     val homeFingerprint = homeDerivedState.contentFingerprint
-    var showDeferredHomeSections by remember(homeFingerprint) { mutableStateOf(false) }
+    // The reveal is a first-paint budget, not a content switch: it defers the heavy shelves once so the
+    // greeting and the spotlight land first. Re-hiding them on every fingerprint change would unmount
+    // everything below the fold and force the LazyColumn to clamp the scroll offset back to the top.
+    val showDeferredHomeSections by deferredSectionsRevealed
     LaunchedEffect(homeFingerprint) {
-        showDeferredHomeSections = false
-        delay(180L)
-        showDeferredHomeSections = true
+        if (deferredSectionsRevealed.value) return@LaunchedEffect
+        delay(HOME_DEFERRED_SECTION_REVEAL_MS)
+        deferredSectionsRevealed.value = true
     }
     val showHomeAlbumShimmer = HomeLoadingPolicy.showAlbumShimmer(homeContent, state.homeAlbumsLoading)
     val showChartShimmer = HomeLoadingPolicy.showChartShimmer(homeContent, state.isLoadingCharts)
@@ -5357,6 +5426,10 @@ private fun HomeScreen(
             }
         }
     }
+    val homeBottomInset = tabBarBottomContentInset(
+        miniPlayerVisible = state.currentTrack != null,
+        animationsEnabled = state.animationsEnabled
+    )
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -5375,7 +5448,7 @@ private fun HomeScreen(
         LazyColumn(
         state = homeListState,
         modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 188.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset),
         verticalArrangement = Arrangement.spacedBy(if (state.interfaceSettings.compactHome) 14.dp else 26.dp)
     ) {
         item(key = "home-top", contentType = "home-header") {
@@ -5611,8 +5684,12 @@ private fun HomeScreen(
                 }
             }
         }
-        item(key = "home-status", contentType = "home-card") {
-            HomeSectionInset { StatusBlock(state) }
+        // Only emitted when it actually renders: an always-present empty item still consumes the
+        // vertical arrangement spacing and leaves a visible gap under the last shelf.
+        if (state.homeError != null || state.playerError != null) {
+            item(key = "home-status", contentType = "home-card") {
+                HomeSectionInset { StatusBlock(state) }
+            }
         }
     }
     }
