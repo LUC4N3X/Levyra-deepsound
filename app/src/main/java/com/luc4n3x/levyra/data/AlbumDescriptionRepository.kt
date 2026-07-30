@@ -208,7 +208,7 @@ internal class AlbumDescriptionRepository(context: Context?) {
         return runCatching {
             call.execute().use { response ->
                 if (!response.isSuccessful) return@use null
-                response.body?.string()?.take(MAX_RESPONSE_CHARS)
+                response.body.string().take(MAX_RESPONSE_CHARS)
             }
         }.getOrNull()
     }
