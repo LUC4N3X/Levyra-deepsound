@@ -107,21 +107,16 @@ jobs:
           python -m compileall -q tools/levyra-editorial/levyra_editorial
           git diff --check
 
-      - name: Commit mapping and clean temporary tooling
+      - name: Commit verified mapping sources
         shell: bash
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          git checkout 45c784ae0611348214ad9064f8f0156f16bf844b -- .github/workflows/editorial-catalog.yml
-          git rm -f \
-            tools/apply_dual_ytm_mapping_patch.py \
-            .github/workflows/apply-dual-ytm-mapping.yml \
-            .github/.ytm-mapping-trigger
+          git rm -f tools/apply_dual_ytm_mapping_patch.py .github/.ytm-mapping-trigger
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add \
-            .github/workflows/editorial-catalog.yml \
             tools/levyra-editorial/levyra_editorial/youtube_music.py \
             tools/levyra-editorial/levyra_editorial/collector.py \
             tools/levyra-editorial/tests/test_youtube_music.py \
