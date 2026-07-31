@@ -12,8 +12,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: apply-editorial-audit-fixes
-  cancel-in-progress: false
+  group: apply-editorial-audit-fixes-v2
+  cancel-in-progress: true
 
 jobs:
   apply:
