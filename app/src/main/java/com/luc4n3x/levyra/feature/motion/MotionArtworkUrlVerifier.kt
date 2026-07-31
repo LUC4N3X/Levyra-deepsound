@@ -33,6 +33,7 @@ internal object MotionArtworkDestinationPolicy {
                 host == allowed || host.endsWith(".$allowed")
             }
             "tidal-video-cover" -> host == TIDAL_MEDIA_HOST
+            "community-canvas" -> host in COMMUNITY_MEDIA_HOSTS
             else -> false
         }
     }

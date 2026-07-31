@@ -86,6 +86,9 @@ jobs:
       - name: Gradle Version
         run: ./gradlew --no-daemon --version
 
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 

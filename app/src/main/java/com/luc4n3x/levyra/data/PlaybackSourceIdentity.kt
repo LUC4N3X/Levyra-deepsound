@@ -12,7 +12,14 @@ object PlaybackSourceIdentity {
 
     fun canonicalKey(track: Track): String {
         val isrc = track.isrc.trim().lowercase(Locale.ROOT)
-        if (isrc.isNotBlank()) return "isrc:$isrc"
+        val sourceVideoId = sourceVideoId(track).lowercase(Locale.ROOT)
+        if (isrc.isNotBlank()) {
+            return if (sourceVideoId.isNotBlank()) {
+                "isrc:$isrc|youtube:$sourceVideoId"
+            } else {
+                "isrc:$isrc"
+            }
+        }
         val durationBucket = when {
             track.durationMs <= 0L -> 0L
             else -> (track.durationMs + 1_000L) / 2_000L
@@ -59,9 +66,9 @@ object PlaybackSourceIdentity {
     }
 
     private fun recordingDiscriminator(track: Track): String {
+        extractYoutubeVideoId(track.videoUrl).lowercase(Locale.ROOT).takeIf { it.isNotBlank() }?.let { return "youtube:$it" }
         normalizeIdentifier(track.id).takeIf { it.isNotBlank() }?.let { return "id:$it" }
         normalizeIdentifier(track.counterpartVideoId).takeIf { it.isNotBlank() }?.let { return "counterpart:$it" }
-        extractYoutubeVideoId(track.videoUrl).lowercase(Locale.ROOT).takeIf { it.isNotBlank() }?.let { return "youtube:$it" }
         return "metadata-only"
     }
 

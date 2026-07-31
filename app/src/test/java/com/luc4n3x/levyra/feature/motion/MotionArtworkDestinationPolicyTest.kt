@@ -21,10 +21,22 @@ class MotionArtworkDestinationPolicyTest {
                 "https://video-ssl.itunes.apple.com/itunes-assets/master.m3u8".toHttpUrl()
             )
         )
+        assertTrue(
+            MotionArtworkDestinationPolicy.isAllowedUrl(
+                "community-canvas",
+                "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4".toHttpUrl()
+            )
+        )
         assertFalse(
             MotionArtworkDestinationPolicy.isAllowedUrl(
                 "tidal-video-cover",
                 "https://example.com/video.mp4".toHttpUrl()
+            )
+        )
+        assertFalse(
+            MotionArtworkDestinationPolicy.isAllowedUrl(
+                "community-canvas",
+                "https://example.com/Song/1.mp4".toHttpUrl()
             )
         )
         assertFalse(

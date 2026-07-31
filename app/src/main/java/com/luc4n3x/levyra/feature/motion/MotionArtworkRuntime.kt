@@ -4,7 +4,11 @@ import com.luc4n3x.levyra.core.config.RuntimeConfigSnapshot
 import com.luc4n3x.levyra.core.config.VersionedRuntimeConfig
 
 data class MotionArtworkConfig(
-    val providerOrder: List<String> = listOf("apple-motion", "tidal-video-cover"),
+    val providerOrder: List<String> = listOf(
+        "community-canvas",
+        "apple-motion",
+        "tidal-video-cover"
+    ),
     val minimumConfidence: Int = 84,
     val requestTimeoutMs: Long = 6_500L,
     val positiveTtlMs: Long = MOTION_ARTWORK_POSITIVE_TTL_MS,
