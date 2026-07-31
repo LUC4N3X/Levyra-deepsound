@@ -377,6 +377,25 @@ def test_config_rejects_duplicate_collection_ids(tmp_path: Path) -> None:
 
 
 
+
+def test_catalog_keeps_separate_audio_and_official_video_ids() -> None:
+    item = FakeClient().iter_playlist_items("playlist12345")[0]
+    item["track"]["youtube_music"] = {
+        "audioVideoId": "Audio123456",
+        "audioConfidence": 99,
+        "videoId": "Official123",
+        "videoConfidence": 97,
+        "confidence": 99,
+    }
+
+    public = normalize_playlist_items([item])[0].to_dict()
+
+    assert public["youtubeMusic"]["audioVideoId"] == "Audio123456"
+    assert public["youtubeMusic"]["videoId"] == "Official123"
+    assert public["youtubeMusic"]["audioConfidence"] == 99
+    assert public["youtubeMusic"]["videoConfidence"] == 97
+
+
 def test_secret_dictionary_url_requires_pinned_allowlisted_path() -> None:
     valid = (
         "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/"
