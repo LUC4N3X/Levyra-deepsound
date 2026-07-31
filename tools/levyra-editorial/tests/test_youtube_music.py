@@ -407,3 +407,69 @@ def test_resolve_skips_web_video_query_when_audio_identity_is_missing(
         assert calls == 0
     finally:
         client.close()
+
+
+def test_variant_terms_use_word_boundaries_in_titles_and_albums() -> None:
+    cases = [
+        ("One More Time", "Discovery"),
+        ("One More Time", "Alive 2007"),
+        ("One More Time", "Undercover"),
+    ]
+    for title, album in cases:
+        mapping = select_youtube_music_mapping(
+            title,
+            "Daft Punk",
+            320_000,
+            [
+                {
+                    "videoId": "Audio123456",
+                    "title": title,
+                    "artist": "Daft Punk",
+                    "album": album,
+                    "durationMs": 320_000,
+                    "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
+                }
+            ],
+        )
+        assert mapping is not None
+        assert mapping["audioVideoId"] == "Audio123456"
+
+
+def test_official_video_allows_variant_word_when_it_is_in_canonical_title() -> None:
+    mapping = select_official_youtube_video(
+        "Live Forever",
+        "Oasis",
+        260_000,
+        [
+            {
+                "videoId": "Video123456",
+                "title": "Oasis - Live Forever (Official Video)",
+                "owner": "Oasis",
+                "channelId": "UCOfficial",
+                "durationMs": 260_000,
+                "verifiedArtist": True,
+            }
+        ],
+    )
+    assert mapping is not None
+    assert mapping["videoId"] == "Video123456"
+
+
+def test_official_video_still_rejects_unrequested_live_variant() -> None:
+    mapping = select_official_youtube_video(
+        "Forever",
+        "Exact Artist",
+        180_000,
+        [
+            {
+                "videoId": "Video123456",
+                "title": "Exact Artist - Forever Live (Official Video)",
+                "owner": "Exact Artist",
+                "channelId": "UCOfficial",
+                "durationMs": 180_000,
+                "verifiedArtist": True,
+            }
+        ],
+    )
+    assert mapping is None
+
