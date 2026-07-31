@@ -19,13 +19,15 @@ jobs:
     name: Signed Release APK
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       YOUTUBE_INNERTUBE_API_KEY: ${{ secrets.YOUTUBE_INNERTUBE_API_KEY }}
       LEVYRA_KEYSTORE_FILE: app/levyra-release.jks
       LEVYRA_KEYSTORE_PASSWORD: ${{ secrets.LEVYRA_KEYSTORE_PASSWORD }}
       LEVYRA_KEY_ALIAS: ${{ secrets.LEVYRA_KEY_ALIAS }}
       LEVYRA_KEY_PASSWORD: ${{ secrets.LEVYRA_KEY_PASSWORD }}
+      LEVYRA_TEST_AVD: levyra-api35
+      LEVYRA_TEST_SYSTEM_IMAGE: system-images;android-35;default;x86_64
 
     steps:
       - name: Checkout
@@ -44,8 +46,13 @@ jobs:
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
+            "emulator" \
             "platforms;android-36" \
-            "build-tools;36.0.0"
+            "build-tools;36.0.0" \
+            "${LEVYRA_TEST_SYSTEM_IMAGE}"
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+          fi
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -60,6 +67,9 @@ jobs:
           test -f gradle/wrapper/gradle-wrapper.jar
           test -f gradle/wrapper/gradle-wrapper.properties
           ./gradlew --no-daemon --version
+
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
 
       - name: Resolve APK Version
         shell: bash
@@ -133,6 +143,71 @@ jobs:
             cp app/build/outputs/mapping/release/mapping.txt artifacts/mapping.txt
           fi
 
+      - name: Create Android Test Device
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "${HOME}/.android/avd/${LEVYRA_TEST_AVD}.avd" "${HOME}/.android/avd/${LEVYRA_TEST_AVD}.ini"
+          echo no | "${ANDROID_HOME}/cmdline-tools/latest/bin/avdmanager" create avd \
+            --force \
+            --name "${LEVYRA_TEST_AVD}" \
+            --package "${LEVYRA_TEST_SYSTEM_IMAGE}" \
+            --device "pixel_6"
+
+      - name: Launch Exact Signed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          adb kill-server || true
+          nohup "${ANDROID_HOME}/emulator/emulator" \
+            -avd "${LEVYRA_TEST_AVD}" \
+            -no-window \
+            -no-audio \
+            -no-boot-anim \
+            -no-snapshot \
+            -gpu swiftshader_indirect \
+            > artifacts/emulator.log 2>&1 &
+          echo $! > artifacts/emulator.pid
+
+          timeout 240 adb wait-for-device
+          BOOTED=""
+          for _ in $(seq 1 120); do
+            BOOTED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+            if [ "${BOOTED}" = "1" ]; then
+              break
+            fi
+            sleep 2
+          done
+          if [ "${BOOTED}" != "1" ]; then
+            echo "Android emulator did not finish booting." >&2
+            exit 1
+          fi
+
+          adb logcat -c
+          APK="artifacts/LEVYRA-${VERSION}.apk"
+          adb install -r "${APK}" | tee artifacts/apk-install.txt
+          adb shell am force-stop com.luc4n3x.levyra
+          LAUNCH_OUTPUT="$(adb shell am start -W -n com.luc4n3x.levyra/.MainActivity)"
+          printf '%s\n' "${LAUNCH_OUTPUT}" | tee artifacts/apk-startup.txt
+          if printf '%s\n' "${LAUNCH_OUTPUT}" | grep -Eqi 'error|exception'; then
+            echo "Android reported an application launch error." >&2
+            exit 1
+          fi
+
+          sleep 5
+          adb logcat -d -v threadtime > artifacts/startup-logcat.txt
+          PROCESS_ID="$(adb shell pidof com.luc4n3x.levyra | tr -d '\r' | xargs)"
+          test -n "${PROCESS_ID}"
+          CURRENT_FOCUS="$(adb shell dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' || true)"
+          printf '%s\n' "${CURRENT_FOCUS}" > artifacts/window-focus.txt
+          printf '%s\n' "${CURRENT_FOCUS}" | grep -F 'com.luc4n3x.levyra'
+          if grep -Fq 'Process: com.luc4n3x.levyra' artifacts/startup-logcat.txt && \
+             grep -Fq 'FATAL EXCEPTION' artifacts/startup-logcat.txt; then
+            echo "Levyra crashed during startup." >&2
+            exit 1
+          fi
+
       - name: Upload Signed Release APK
         uses: actions/upload-artifact@v7
         with:
@@ -140,7 +215,12 @@ jobs:
           path: artifacts
           if-no-files-found: error
 
-      - name: Cleanup Signing Material
+      - name: Cleanup Emulator and Signing Material
         if: always()
         shell: bash
-        run: rm -f "${LEVYRA_KEYSTORE_FILE}"
+        run: |
+          adb emu kill >/dev/null 2>&1 || true
+          if [ -f artifacts/emulator.pid ]; then
+            kill "$(cat artifacts/emulator.pid)" >/dev/null 2>&1 || true
+          fi
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
