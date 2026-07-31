@@ -32,10 +32,31 @@ jobs:
           cache: pip
           cache-dependency-path: tools/levyra-editorial/pyproject.toml
       - name: Apply confirmed editorial fixes
-        run: python tools/apply_editorial_audit_fixes.py
+        id: apply_fixes
+        shell: bash
+        run: |
+          set +e
+          python tools/apply_editorial_audit_fixes.py > /tmp/editorial-audit-fix.log 2>&1
+          status=$?
+          cat /tmp/editorial-audit-fix.log
+          if [ "$status" -ne 0 ]; then
+            git reset --hard HEAD
+            cp /tmp/editorial-audit-fix.log tools/editorial-audit-fix-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tools/editorial-audit-fix-error.txt
+            git commit -m "chore(ci): capture editorial audit failure"
+            git push origin HEAD:feat/central-ytm-editorial
+            exit 0
+          fi
+      - name: Stop after captured failure
+        if: hashFiles('tools/editorial-audit-fix-error.txt') != ''
+        run: exit 0
       - name: Install collector tests
+        if: hashFiles('tools/editorial-audit-fix-error.txt') == ''
         run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
       - name: Verify editorial code
+        if: hashFiles('tools/editorial-audit-fix-error.txt') == ''
         run: |
           set -euo pipefail
           python -m compileall -q tools/levyra-editorial/levyra_editorial
@@ -43,6 +64,7 @@ jobs:
           pytest tools/levyra-editorial/tests
           python scripts/check_android_regex_compatibility.py
       - name: Commit verified fixes
+        if: hashFiles('tools/editorial-audit-fix-error.txt') == ''
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
