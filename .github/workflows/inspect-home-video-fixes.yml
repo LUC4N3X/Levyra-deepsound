@@ -1,0 +1,31 @@
+name: Inspect Home Video Fix Anchors
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.event.pull_request.head.ref == 'feat/central-ytm-editorial'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+      - name: Print targeted anchors
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          VM=app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          ED=app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+          echo '=== HOME / VIDEO UI ==='
+          grep -n -C 12 -E 'VideoGlassCard|visiblePersonalTracks|exploreVideos|YouTube Music|video musical|Video musical|track\.source' "$APP" || true
+          echo '=== VIEWMODEL VIDEO / HOME ==='
+          grep -n -C 12 -E 'newMusicVideos|exploreVideosLoaded|exploreVideos|youtubePlayableTrack|prefetchAlternateMode|targetMode|personalOrbitTracks' "$VM" || true
+          echo '=== EDITORIAL MAPPING ==='
+          grep -n -C 16 -E 'youtubeMusic|counterpartVideoId|videoUrl|videoId' "$ED" || true
