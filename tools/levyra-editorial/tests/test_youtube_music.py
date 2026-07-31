@@ -294,6 +294,26 @@ def test_web_selector_rejects_fake_official_titles_and_picks_oac() -> None:
     assert mapping == {"videoId": "fcnDmrtj6Sk", "videoConfidence": 99}
 
 
+def test_web_selector_rejects_live_performance_from_official_artist_channel() -> None:
+    mapping = select_official_youtube_video(
+        "Dai Dai",
+        "Shakira, Burna Boy",
+        223_448,
+        [
+            {
+                "videoId": "Live1234567",
+                "title": "Shakira, Burna Boy - Dai Dai (Official Video) Live Performance at Halftime",
+                "owner": "Shakira",
+                "channelId": "UCOfficial",
+                "durationMs": 223_448,
+                "verifiedArtist": True,
+            }
+        ],
+    )
+
+    assert mapping is None
+
+
 def test_web_selector_abstains_without_official_artist_channel() -> None:
     mapping = select_official_youtube_video(
         "Exact Song",

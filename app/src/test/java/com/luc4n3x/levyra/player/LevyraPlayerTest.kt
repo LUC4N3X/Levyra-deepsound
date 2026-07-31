@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.viewmodel.playbackIdentity
 import com.luc4n3x.levyra.viewmodel.youtubePlayableTrack
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class LevyraPlayerTest {
@@ -79,6 +80,13 @@ class LevyraPlayerTest {
         val audio = youtubePlayableTrack(video!!, preferVideo = false)
         assertEquals("audio123456", audio?.id)
         assertEquals("https://www.youtube.com/watch?v=audio123456", audio?.videoUrl)
+    }
+
+    @Test
+    fun youtubePlayableTrackDoesNotUseUnverifiedCurrentVideoInVideoMode() {
+        val unverified = track(streamUrl = "").copy(counterpartVideoId = "")
+
+        assertNull(youtubePlayableTrack(unverified, preferVideo = true))
     }
 
     private fun track(streamUrl: String): Track = Track(

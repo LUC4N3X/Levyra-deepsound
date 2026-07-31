@@ -372,6 +372,9 @@ HARD_VARIANT_TERMS = {
     "remix",
 }
 NON_OFFICIAL_VIDEO_TERMS = {"lyrics", "lyric", "visualizer", "visualiser", "audio"}
+FORBIDDEN_OFFICIAL_VIDEO_VARIANT = re.compile(
+    r"(?i)(?:^|[^a-z0-9])(?:live(?:\s+performance)?|performance|concert|festival|acoustic|session|stage|ceremony|halftime|half\s+time|award\s+show|tour)(?:$|[^a-z0-9])"
+)
 
 
 def _recording_title_key(value: str) -> str:
@@ -633,6 +636,8 @@ def _official_web_video_score(
     if "official video" not in title_key and "official music video" not in title_key:
         return None
     if any(term in title_key for term in ("lyrics", "lyric", "visualizer", "visualiser", "reaction")):
+        return None
+    if FORBIDDEN_OFFICIAL_VIDEO_VARIANT.search(title_key):
         return None
     if not candidate.get("verifiedArtist"):
         return None
