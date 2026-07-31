@@ -86,6 +86,9 @@ jobs:
       - name: Gradle Version
         run: ./gradlew --no-daemon --version
 
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
@@ -134,4 +137,100 @@ jobs:
         with:
           name: pr-check-reports-${{ github.run_number }}
           path: artifacts
+          if-no-files-found: ignore
+
+  startup-smoke:
+    name: Android Startup Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK and Emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "emulator" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+          fi
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+
+      - name: Prepare CI Release Signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: Resolve Managed Device Test Task
+        id: managed-device
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t TASKS < <(
+            ./gradlew --no-daemon -q :baselineprofile:tasks --all |
+              sed -n 's/^\(pixel6Api35[^ ]*AndroidTest\) .*/\1/p'
+          )
+          TASK="$(printf '%s\n' "${TASKS[@]}" | grep 'NonMinifiedRelease' | head -n 1 || true)"
+          if [ -z "${TASK}" ]; then
+            TASK="$(printf '%s\n' "${TASKS[@]}" | head -n 1)"
+          fi
+          if [ -z "${TASK}" ]; then
+            echo "No pixel6Api35 managed-device AndroidTest task was generated." >&2
+            exit 1
+          fi
+          echo "task=${TASK}" >> "${GITHUB_OUTPUT}"
+          echo "Using :baselineprofile:${TASK}"
+
+      - name: Install and Launch Levyra
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache \
+            ":baselineprofile:${{ steps.managed-device.outputs.task }}" \
+            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
+            -Pandroid.testInstrumentationRunnerArguments.class=com.luc4n3x.levyra.baselineprofile.StartupSmokeTest
+
+      - name: Upload Startup Test Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: startup-smoke-reports-${{ github.run_number }}
+          path: |
+            baselineprofile/build/reports
+            baselineprofile/build/outputs/androidTest-results
+            baselineprofile/build/outputs/managed_device_android_test_additional_output
           if-no-files-found: ignore
