@@ -52,6 +52,7 @@ jobs:
           set -euo pipefail
           python tools/apply_final_review_fixes.py
           python tools/fix_final_review_generated_test.py
+          python tools/fix_final_review_python_test.py
           rm -f tools/sitecustomize.py tools/levyra-editorial/tests/ruff.toml
 
       - name: Verify editorial collector
@@ -92,6 +93,7 @@ jobs:
             tools/final-review-trigger.txt \
             tools/apply_final_review_fixes.py \
             tools/fix_final_review_generated_test.py \
+            tools/fix_final_review_python_test.py \
             tools/sitecustomize.py \
             tools/levyra-editorial/tests/ruff.toml
           git config user.name github-actions[bot]
