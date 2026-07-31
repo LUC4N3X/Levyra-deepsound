@@ -144,9 +144,31 @@ object LevyraPersonalOrbit {
     }
 
     fun identityKey(track: Track): String {
-        val title = normalizedMusicText(track.title)
-        val artist = normalizedMusicText(track.artist)
-        return if (title.isNotBlank() && artist.isNotBlank()) "$title|$artist" else stableKey(track)
+        val title = normalizedMusicTitle(track.title)
+        val artist = normalizedArtistSignature(track.artist)
+        return if (title.isNotBlank() && artist.isNotBlank()) "$artist|$title" else stableKey(track)
+    }
+
+    fun sameRecording(first: Track, second: Track): Boolean {
+        val firstIsrc = normalizedIsrc(first.isrc)
+        val secondIsrc = normalizedIsrc(second.isrc)
+        if (firstIsrc.isNotBlank() && secondIsrc.isNotBlank()) {
+            return firstIsrc == secondIsrc
+        }
+        return identityKey(first) == identityKey(second)
+    }
+
+    fun distinctRecordings(tracks: List<Track>): List<Track> {
+        val result = ArrayList<Track>(tracks.size)
+        tracks.forEach { candidate ->
+            val existingIndex = result.indexOfFirst { existing -> sameRecording(existing, candidate) }
+            if (existingIndex < 0) {
+                result += candidate
+            } else {
+                result[existingIndex] = mergeRecordingMetadata(result[existingIndex], candidate)
+            }
+        }
+        return result
     }
 
     fun hasAnyArtwork(track: Track): Boolean {
@@ -243,14 +265,73 @@ object LevyraPersonalOrbit {
         return squareSized && (lower.contains("googleusercontent.com") || lower.contains("ggpht.com"))
     }
 
-    private fun normalizedMusicText(value: String): String {
+    private fun normalizedMusicTitle(value: String): String {
         return value.lowercase()
-            .replace(Regex("""\([^)]*\)|\[[^]]*]"""), " ")
-            .replace(Regex("""feat\.?|featuring|ft\.?"""), " ")
-            .replace(Regex("""official audio|official video|lyrics?|visuali[sz]er|music video"""), " ")
+            .replace(
+                Regex(
+                    """(?i)[(\[]\s*(?:(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er|feat\.?|ft\.?|featuring)[^)\]]*[)\]]"""
+                ),
+                " "
+            )
+            .replace(Regex("""(?i)\b(?:feat\.?|ft\.?|featuring)\b.*$"""), " ")
+            .replace(Regex("""(?i)\b(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er\b"""), " ")
             .replace(Regex("""[^\p{L}\p{M}\p{N}\s]"""), " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
+    }
+
+    private fun normalizedArtistSignature(value: String): String {
+        return value.lowercase()
+            .replace(
+                Regex("""(?i)\b(?:feat|featuring|ft|and|with|e|ed|y|et|und|x)\b|[,&;/+]"""),
+                "|"
+            )
+            .split('|')
+            .map { artist ->
+                artist
+                    .replace(Regex("""[^\p{L}\p{M}\p{N}\s]"""), " ")
+                    .replace(Regex("""\s+"""), " ")
+                    .trim()
+            }
+            .filter(String::isNotBlank)
+            .sorted()
+            .joinToString("|")
+    }
+
+    private fun normalizedIsrc(value: String): String =
+        value.uppercase(java.util.Locale.ROOT).filter(Char::isLetterOrDigit)
+
+    private fun mergeRecordingMetadata(first: Track, second: Track): Track {
+        val firstScore = recordingMetadataScore(first)
+        val secondScore = recordingMetadataScore(second)
+        val preferred = if (secondScore > firstScore) second else first
+        val fallback = if (preferred === first) second else first
+        return preferred.copy(
+            videoUrl = preferred.videoUrl.ifBlank { fallback.videoUrl },
+            thumbnailUrl = preferred.thumbnailUrl.ifBlank { fallback.thumbnailUrl },
+            largeThumbnailUrl = preferred.largeThumbnailUrl.ifBlank { fallback.largeThumbnailUrl },
+            isrc = preferred.isrc.ifBlank { fallback.isrc },
+            upc = preferred.upc.ifBlank { fallback.upc },
+            releaseDate = preferred.releaseDate.ifBlank { fallback.releaseDate },
+            albumBrowseId = preferred.albumBrowseId.ifBlank { fallback.albumBrowseId },
+            artistBrowseIds = preferred.artistBrowseIds.ifEmpty { fallback.artistBrowseIds },
+            counterpartVideoId = preferred.counterpartVideoId.ifBlank { fallback.counterpartVideoId },
+            videoType = preferred.videoType.ifBlank { fallback.videoType },
+            metadataProvider = preferred.metadataProvider.ifBlank { fallback.metadataProvider },
+            metadataConfidence = maxOf(preferred.metadataConfidence, fallback.metadataConfidence),
+            canonicalAlbumUrl = preferred.canonicalAlbumUrl.ifBlank { fallback.canonicalAlbumUrl }
+        )
+    }
+
+    private fun recordingMetadataScore(track: Track): Int {
+        var score = track.metadataConfidence.coerceIn(0, 100)
+        if (track.isrc.isNotBlank()) score += 120
+        if (track.counterpartVideoId.isNotBlank()) score += 100
+        if (track.videoUrl.isNotBlank()) score += 50
+        if (track.albumBrowseId.isNotBlank()) score += 35
+        if (hasSquareAlbumArtwork(track)) score += 30
+        if (track.largeThumbnailUrl.isNotBlank()) score += 12
+        return score
     }
 
     fun isLanguagePreferred(track: Track, languageCode: String): Boolean {

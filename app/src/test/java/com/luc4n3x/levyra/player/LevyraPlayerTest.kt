@@ -54,23 +54,37 @@ class LevyraPlayerTest {
     fun youtubePlayableTrackUsesVideoIdFromChartVideoUrl() {
         val chartTrack = track(streamUrl = "").copy(
             id = "chart-abc",
-            videoUrl = "https://www.youtube.com/watch?v=video-123"
+            videoUrl = "https://www.youtube.com/watch?v=video123456"
         )
 
         val playable = youtubePlayableTrack(chartTrack)
 
-        assertEquals("video-123", playable?.id)
-        assertEquals("https://www.youtube.com/watch?v=video-123", playable?.videoUrl)
+        assertEquals("video123456", playable?.id)
+        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
+    }
+
+    @Test
+    fun youtubePlayableTrackPrefersOfficialCounterpartInVideoMode() {
+        val songTrack = track(streamUrl = "").copy(
+            id = "audio123456",
+            videoUrl = "https://www.youtube.com/watch?v=audio123456",
+            counterpartVideoId = "video123456"
+        )
+
+        val playable = youtubePlayableTrack(songTrack, preferVideo = true)
+
+        assertEquals("video123456", playable?.id)
+        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
     }
 
     private fun track(streamUrl: String): Track = Track(
-        id = "video-123",
+        id = "video123456",
         title = "Song",
         artist = "Artist",
         album = "Album",
         durationMs = 180_000L,
         streamUrl = streamUrl,
-        videoUrl = "https://www.youtube.com/watch?v=video-123",
+        videoUrl = "https://www.youtube.com/watch?v=video123456",
         thumbnailUrl = "",
         largeThumbnailUrl = "",
         source = "YouTube Music",
