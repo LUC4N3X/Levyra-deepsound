@@ -5,7 +5,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"
 VM = ROOT / "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
-PLAYER_TEST = ROOT / "app/src/test/java/com/luc4n3x/levyra/player/LevyraPlayerTest.kt"
 
 
 def replace_once(path: Path, old: str, new: str, label: str) -> None:
@@ -96,35 +95,6 @@ replace_once(
 }
 ''',
     "localized video section detection",
-)
-
-replace_once(
-    PLAYER_TEST,
-    '''        assertEquals("video123456", playable?.id)
-        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
-''',
-    '''        assertEquals("chart-abc", playable?.id)
-        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
-''',
-    "chart video keeps canonical id",
-)
-replace_once(
-    PLAYER_TEST,
-    '''        assertEquals("video123456", playable?.id)
-        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
-    }
-
-    private fun track''',
-    '''        assertEquals("audio123456", playable?.id)
-        assertEquals("https://www.youtube.com/watch?v=video123456", playable?.videoUrl)
-
-        val restoredAudio = youtubePlayableTrack(playable!!, preferVideo = false)
-        assertEquals("audio123456", restoredAudio?.id)
-        assertEquals("https://www.youtube.com/watch?v=audio123456", restoredAudio?.videoUrl)
-    }
-
-    private fun track''',
-    "video audio round trip",
 )
 
 print("Remaining Home/video fixes are staged.")
