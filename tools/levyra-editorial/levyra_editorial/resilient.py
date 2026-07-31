@@ -20,9 +20,33 @@ from .collector import (
 )
 from .models import Catalog, Collection
 from .spotify import EditorialSourceError, SourceApiError, SpotifyWebClient
+from .youtube_music import YoutubeMusicError, YoutubeMusicWebClient
 
 LOGGER = logging.getLogger(__name__)
 COLLECTION_PAUSE_SECONDS = 0.15
+
+
+class CentralEditorialClient:
+    def __init__(self, spotify: SpotifyWebClient, youtube_music: YoutubeMusicWebClient | None) -> None:
+        self._spotify = spotify
+        self._youtube_music = youtube_music
+
+    def get_playlist_metadata(self, playlist_id: str) -> dict[str, Any]:
+        return self._spotify.get_playlist_metadata(playlist_id)
+
+    def iter_playlist_items(self, playlist_id: str) -> list[dict[str, Any]]:
+        return self._spotify.iter_playlist_items(playlist_id)
+
+    def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        enriched = self._spotify.enrich_track_metadata(items)
+        if self._youtube_music is not None:
+            enriched = self._youtube_music.enrich_track_metadata(enriched)
+        return enriched
+
+    def close(self) -> None:
+        self._spotify.close()
+        if self._youtube_music is not None:
+            self._youtube_music.close()
 
 
 def build_resilient_catalog(
@@ -104,7 +128,17 @@ def run_collection(config_path: Path, output_path: Path) -> None:
     """Execute one resilient collector run using the repository Actions secret."""
     config = load_config(config_path)
     raw_secret = os.environ.get("LEVYRA_EDITORIAL_SP_DC", "")
-    client = SpotifyWebClient(raw_secret)
+    spotify = SpotifyWebClient(raw_secret)
+    youtube_cookie = os.environ.get("LEVYRA_EDITORIAL_YTM_COOKIE", "").strip()
+    youtube_music: YoutubeMusicWebClient | None = None
+    if youtube_cookie:
+        try:
+            youtube_music = YoutubeMusicWebClient(youtube_cookie)
+        except (YoutubeMusicError, ValueError) as error:
+            LOGGER.warning("Central YouTube Music enrichment disabled: %s", error)
+    else:
+        LOGGER.warning("LEVYRA_EDITORIAL_YTM_COOKIE is not configured; publishing Spotify-only metadata.")
+    client = CentralEditorialClient(spotify, youtube_music)
     try:
         catalog = build_resilient_catalog(config, client)
         write_catalog(catalog, output_path)

@@ -1452,7 +1452,7 @@ private suspend fun okhttp3.OkHttpClient.await(request: Request): HttpResult = s
 private class HttpResultCallback(
     private val continuation: CancellableContinuation<HttpResult>
 ) : Callback {
-    override fun onFailure(call: Call, error: IOException) {
+    override fun onFailure(call: Call, e: IOException) {
         continuation.resumeIfActive(HttpResult.Failure)
     }
 

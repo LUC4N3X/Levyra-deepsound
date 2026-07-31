@@ -198,6 +198,7 @@ class SpotifyWebClient:
         self._client_id: str | None = None
         self._expires_at_ms = 0
         self._playlist_pages: dict[tuple[str, int], dict[str, Any]] = {}
+        self._track_metadata: dict[str, Mapping[str, Any]] = {}
 
     def authenticate(self) -> None:
         """Exchange the session cookie for a short-lived web-player access token."""
@@ -313,6 +314,106 @@ class SpotifyWebClient:
                 break
 
         return output
+
+    def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Best-effort ISRC and release metadata without weakening Pathfinder reads."""
+        if self._access_token is None:
+            self.authenticate()
+        ids = [
+            str(item.get("track", {}).get("id") or "").strip()
+            for item in items
+            if isinstance(item.get("track"), Mapping)
+        ]
+        missing = [
+            track_id
+            for track_id in dict.fromkeys(ids)
+            if track_id and track_id not in self._track_metadata
+        ]
+        for offset in range(0, len(missing), 50):
+            chunk = missing[offset : offset + 50]
+            if not chunk:
+                continue
+
+            def request_batch(track_ids: list[str] = chunk) -> requests.Response:
+                return self._session.get(
+                    f"{API_BASE_URL}/tracks",
+                    params={"ids": ",".join(track_ids)},
+                    headers=self._api_headers(),
+                    timeout=self._timeout,
+                )
+
+            try:
+                response = request_batch()
+                if response.status_code == 401:
+                    self.authenticate()
+                    response = request_batch()
+                if response.status_code == 429:
+                    delay = _bounded_retry_after(response.headers.get("Retry-After"))
+                    LOGGER.warning(
+                        "Spotify track metadata rate-limited; retrying once in %d second(s).",
+                        delay,
+                    )
+                    if delay > 0:
+                        time.sleep(delay)
+                    response = request_batch()
+                    if response.status_code == 401:
+                        self.authenticate()
+                        response = request_batch()
+                if response.status_code >= 400:
+                    LOGGER.warning(
+                        "Spotify track metadata enrichment skipped after HTTP %s.",
+                        response.status_code,
+                    )
+                    continue
+                payload = response.json()
+            except (requests.RequestException, ValueError, AuthenticationError) as error:
+                LOGGER.warning(
+                    "Spotify track metadata enrichment skipped: %s.",
+                    _safe_authentication_failure(error),
+                )
+                continue
+            raw_tracks = payload.get("tracks") if isinstance(payload, Mapping) else None
+            if not isinstance(raw_tracks, list):
+                continue
+            for raw_track in raw_tracks:
+                if not isinstance(raw_track, Mapping):
+                    continue
+                track_id = _string(raw_track.get("id"))
+                if track_id:
+                    self._track_metadata[track_id] = raw_track
+
+        for item in items:
+            track = item.get("track")
+            if not isinstance(track, dict):
+                continue
+            enriched = self._track_metadata.get(str(track.get("id") or ""))
+            if not isinstance(enriched, Mapping):
+                continue
+            external_ids = enriched.get("external_ids")
+            if isinstance(external_ids, Mapping):
+                track["external_ids"] = dict(external_ids)
+            for key in ("track_number", "disc_number"):
+                if isinstance(enriched.get(key), int):
+                    track[key] = enriched[key]
+            album = track.get("album")
+            enriched_album = enriched.get("album")
+            if isinstance(album, dict) and isinstance(enriched_album, Mapping):
+                for key in ("album_type", "total_tracks", "release_date"):
+                    value = enriched_album.get(key)
+                    if value is not None:
+                        album[key] = value
+        return items
+
+    def _api_headers(self) -> dict[str, str]:
+        if self._access_token is None:
+            raise AuthenticationError("The editorial source is not authenticated.")
+        headers = {
+            "Authorization": f"Bearer {self._access_token}",
+            "Accept": "application/json",
+        }
+        if self._client_id:
+            headers["Client-Id"] = self._client_id
+        return headers
 
     def close(self) -> None:
         """Close the underlying HTTP session."""

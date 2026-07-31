@@ -1,7 +1,12 @@
 package com.luc4n3x.levyra.domain
 
+import java.util.Locale
+import kotlin.math.abs
+
 object LevyraPersonalOrbit {
-    const val DISPLAY_LIMIT = 12
+    const val DISPLAY_LIMIT = 20
+
+    private const val RECORDING_DURATION_TOLERANCE_MS = 12_000L
 
     private val squareArtWidthHeightPattern = Regex("=w\\d+-h\\d+")
     private val squareArtSizePattern = Regex("=s\\d+")
@@ -11,12 +16,49 @@ object LevyraPersonalOrbit {
         Regex("youtu\\.be/([A-Za-z0-9_-]{11})"),
         Regex("/(?:shorts|embed|live|vi)/([A-Za-z0-9_-]{11})")
     )
+    private val bracketAnnotationPattern = Regex(
+        """(?i)[(\[]\s*(?:(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er|feat\.?|ft\.?|featuring)[^)\]]*[)\]]"""
+    )
+    private val trailingFeaturePattern = Regex("""(?i)\b(?:feat\.?|ft\.?|featuring)\b.*$""")
+    private val displayAnnotationPattern = Regex(
+        """(?i)\b(?:(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er)\b"""
+    )
+    // Android regexes are Unicode-aware by default and reject the unsupported (?U) flag.
+    private val artistSeparatorPattern = Regex(
+        """(?:(?<=\s)(?:feat\.?|featuring|ft\.?|and|with|e|ed|y|et|und|[,&;+])(?=\s)|(?<=[\p{L}\p{M}\p{N}])[,;&+](?=\s))""",
+        RegexOption.IGNORE_CASE
+    )
+    private val nonMusicWordPattern = Regex("""[^\p{L}\p{M}\p{N}\s]""")
+    private val whitespacePattern = Regex("""\s+""")
     private val officialArtworkHosts = listOf(
         "mzstatic.com",
         "dzcdn.net",
         "deezer.com/images/cover",
         "i.scdn.co/image",
         "mosaic.scdn.co"
+    )
+
+    private data class RecordingFingerprint(
+        val isrc: String,
+        val title: String,
+        val artists: List<String>,
+        val durationMs: Long
+    ) {
+        val primaryArtist: String = artists.firstOrNull().orEmpty()
+        val artistSet: Set<String> = artists.toSet()
+    }
+
+    private data class NormalizedTasteSeed(
+        val artists: Set<String>,
+        val album: String,
+        val moodTags: Set<String>
+    )
+
+    private data class RankedTrack(
+        val track: Track,
+        val affinity: Int,
+        val metadata: Int,
+        val title: String
     )
 
     fun build(
@@ -45,79 +87,94 @@ object LevyraPersonalOrbit {
 
         fun enriched(track: Track): Track {
             val clean = withoutVideoArtwork(track)
-            val donor = artworkDonors[identityKey(track)] ?: return clean
+            val donor = artworkDonors[normalizedMusicTitle(track.title)]
+                ?.firstOrNull { sameRecording(it, track) }
+                ?: return clean
             return withoutVideoArtwork(preferAlbumArtwork(clean, donor))
         }
 
-        val playbackHistory = buildList {
+        fun viable(source: List<Track>): List<Track> = distinctRecordings(
+            source.asSequence()
+                .map(::enriched)
+                .filter(::isReliableMusicCandidate)
+                .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
+                .toList()
+        )
+
+        val playbackHistory = viable(buildList {
             currentTrack?.let { add(it) }
             addAll(recentSearches)
+        })
+        val restoredOrbit = viable(cachedOrbit)
+        val favoritesPool = viable(favorites)
+        val fallbackTracks = viable(donorPool)
+        val tasteSeeds = distinctRecordings(playbackHistory + favoritesPool + restoredOrbit)
+        val normalizedTasteSeeds = tasteSeeds.map { seed ->
+            NormalizedTasteSeed(
+                artists = normalizedArtists(seed.artist).toSet(),
+                album = normalizedMusicTitle(seed.album),
+                moodTags = seed.moodTags.map { it.lowercase(Locale.ROOT) }.toSet()
+            )
         }
-            .asSequence()
-            .map(::enriched)
-            .filter { isReliableMusicCandidate(it) }
-            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-            .distinctBy { identityKey(it) }
-            .toList()
 
-        val restoredOrbit = cachedOrbit
-            .asSequence()
-            .map(::enriched)
-            .filter { isReliableMusicCandidate(it) }
-            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-            .distinctBy { identityKey(it) }
-            .toList()
-
-        val fallbackTracks = donorPool
-            .asSequence()
-            .map(::enriched)
-            .filter { isReliableMusicCandidate(it) }
-            .filter { it.title.isNotBlank() && it.artist.isNotBlank() }
-            .distinctBy { identityKey(it) }
-            .toList()
-
-        val localeTracks = fallbackTracks.filter { isLanguagePreferred(it, normalizedLanguage) }
-        val neutralTracks = fallbackTracks.filter {
-            !isLanguagePreferred(it, normalizedLanguage) && !isClearlyForeignForLanguage(it, normalizedLanguage)
-        }
-        val foreignFallbackTracks = fallbackTracks.filter { isClearlyForeignForLanguage(it, normalizedLanguage) }
-        val orderedFallback = (localeTracks + neutralTracks + foreignFallbackTracks)
-            .distinctBy { identityKey(it) }
+        val orderedFallback = fallbackTracks
+            .map { candidate ->
+                RankedTrack(
+                    track = candidate,
+                    affinity = tasteAffinity(candidate, normalizedTasteSeeds, normalizedLanguage),
+                    metadata = recordingMetadataScore(candidate),
+                    title = normalizedMusicTitle(candidate.title)
+                )
+            }
+            .sortedWith(
+                compareByDescending<RankedTrack> { it.affinity }
+                    .thenByDescending { it.metadata }
+                    .thenBy { it.title }
+            )
+            .map(RankedTrack::track)
 
         val selected = ArrayList<Track>(max)
-        val used = HashSet<String>()
 
         fun addTracks(source: List<Track>, predicate: (Track) -> Boolean = { true }) {
             if (selected.size >= max) return
-            source.forEach { track ->
+            source.forEach { candidate ->
                 if (selected.size >= max) return
-                val key = identityKey(track)
-                if (key !in used && predicate(track)) {
-                    selected += track
-                    used += key
+                if (!predicate(candidate)) return@forEach
+                val duplicateIndex = selected.indexOfFirst { sameRecording(it, candidate) }
+                if (duplicateIndex < 0) {
+                    selected += candidate
+                } else {
+                    selected[duplicateIndex] = mergeRecordingMetadata(selected[duplicateIndex], candidate)
                 }
             }
         }
 
         addTracks(playbackHistory)
+        addTracks(favoritesPool)
         addTracks(restoredOrbit)
-        addTracks(orderedFallback) { track -> isLanguagePreferred(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
-        addTracks(orderedFallback) { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasSquareAlbumArtwork(track) }
-        addTracks(orderedFallback) { track -> hasSquareAlbumArtwork(track) }
-        addTracks(orderedFallback) { track -> isLanguagePreferred(track, normalizedLanguage) && hasAnyArtwork(track) }
-        addTracks(orderedFallback) { track -> !isClearlyForeignForLanguage(track, normalizedLanguage) && hasAnyArtwork(track) }
-        addTracks(orderedFallback) { track -> hasAnyArtwork(track) }
-        addTracks(orderedFallback) { track -> isLanguagePreferred(track, normalizedLanguage) }
+        addTracks(orderedFallback) {
+            isLanguagePreferred(it, normalizedLanguage) && hasSquareAlbumArtwork(it)
+        }
+        addTracks(orderedFallback) {
+            !isClearlyForeignForLanguage(it, normalizedLanguage) && hasSquareAlbumArtwork(it)
+        }
+        addTracks(orderedFallback) { hasSquareAlbumArtwork(it) }
+        addTracks(orderedFallback) {
+            isLanguagePreferred(it, normalizedLanguage) && hasAnyArtwork(it)
+        }
+        addTracks(orderedFallback) {
+            !isClearlyForeignForLanguage(it, normalizedLanguage) && hasAnyArtwork(it)
+        }
+        addTracks(orderedFallback) { hasAnyArtwork(it) }
         addTracks(orderedFallback)
-        return selected
+        return distinctRecordings(selected).take(max)
     }
 
     fun prepareForOrbit(track: Track, donors: List<Track>): Track {
         val clean = withoutVideoArtwork(track.copy(streamUrl = "", videoStreamUrl = ""))
-        val donor = donors
-            .asSequence()
-            .filter { identityKey(it) == identityKey(track) }
-            .filter { hasSquareAlbumArtwork(it) }
+        val donor = donors.asSequence()
+            .filter { sameRecording(it, track) }
+            .filter(::hasSquareAlbumArtwork)
             .maxByOrNull(::artworkScore)
             ?: return clean
         return withoutVideoArtwork(preferAlbumArtwork(clean, donor))
@@ -139,41 +196,73 @@ object LevyraPersonalOrbit {
         }
     }
 
-    fun stableKey(track: Track): String {
-        return track.id.takeIf { it.isNotBlank() } ?: "${track.title.trim().lowercase()}|${track.artist.trim().lowercase()}"
-    }
+    fun stableKey(track: Track): String = track.id.takeIf(String::isNotBlank)
+        ?: "${track.title.trim().lowercase(Locale.ROOT)}|${track.artist.trim().lowercase(Locale.ROOT)}"
 
     fun identityKey(track: Track): String {
-        val title = normalizedMusicText(track.title)
-        val artist = normalizedMusicText(track.artist)
-        return if (title.isNotBlank() && artist.isNotBlank()) "$title|$artist" else stableKey(track)
+        val fingerprint = recordingFingerprint(track)
+        val artist = fingerprint.artists.sorted().joinToString("|")
+        return if (fingerprint.title.isNotBlank() && artist.isNotBlank()) {
+            "$artist|${fingerprint.title}"
+        } else {
+            stableKey(track)
+        }
     }
 
-    fun hasAnyArtwork(track: Track): Boolean {
-        return track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank()
+    fun sameRecording(first: Track, second: Track): Boolean =
+        fingerprintsMatch(recordingFingerprint(first), recordingFingerprint(second))
+
+    fun distinctRecordings(tracks: List<Track>): List<Track> {
+        val result = ArrayList<Track>(tracks.size)
+        val fingerprints = ArrayList<RecordingFingerprint>(tracks.size)
+        val isrcIndices = HashMap<String, Int>()
+        val titleIndices = HashMap<String, MutableList<Int>>()
+
+        tracks.forEach { candidate ->
+            val fingerprint = recordingFingerprint(candidate)
+            val existingIndex = fingerprint.isrc.takeIf(String::isNotBlank)
+                ?.let(isrcIndices::get)
+                ?: titleIndices[fingerprint.title]
+                    ?.firstOrNull { index -> fingerprintsMatch(fingerprints[index], fingerprint) }
+                ?: -1
+
+            if (existingIndex < 0) {
+                val index = result.size
+                result += candidate
+                fingerprints += fingerprint
+                if (fingerprint.isrc.isNotBlank()) isrcIndices[fingerprint.isrc] = index
+                titleIndices.getOrPut(fingerprint.title) { ArrayList() }.add(index)
+            } else {
+                val merged = mergeRecordingMetadata(result[existingIndex], candidate)
+                val mergedFingerprint = recordingFingerprint(merged)
+                result[existingIndex] = merged
+                fingerprints[existingIndex] = mergedFingerprint
+                if (mergedFingerprint.isrc.isNotBlank()) isrcIndices[mergedFingerprint.isrc] = existingIndex
+            }
+        }
+        return result
     }
 
-    fun hasSquareAlbumArtwork(track: Track): Boolean {
-        return sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl)
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
+    fun hasAnyArtwork(track: Track): Boolean =
+        track.thumbnailUrl.isNotBlank() || track.largeThumbnailUrl.isNotBlank()
+
+    fun hasSquareAlbumArtwork(track: Track): Boolean =
+        sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl)
+            .map(String::trim)
+            .filter(String::isNotBlank)
             .any(::isSquareAlbumArtworkUrl)
-    }
 
-    fun hasVideoFrameArtwork(track: Track): Boolean {
-        return sequenceOf(track.thumbnailUrl, track.largeThumbnailUrl)
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
+    fun hasVideoFrameArtwork(track: Track): Boolean =
+        sequenceOf(track.thumbnailUrl, track.largeThumbnailUrl)
+            .map(String::trim)
+            .filter(String::isNotBlank)
             .any(::isVideoFrameArtworkUrl)
-    }
 
-    fun youtubeFallbackArtwork(track: Track): String? {
-        val videoId = youtubeVideoId(track) ?: return null
-        return "https://i.ytimg.com/vi/$videoId/hqdefault.jpg"
-    }
+    fun youtubeFallbackArtwork(track: Track): String? =
+        youtubeVideoId(track)?.let { "https://i.ytimg.com/vi/$it/hqdefault.jpg" }
 
     fun isVideoFrameArtworkUrl(url: String): Boolean {
-        val lower = url.lowercase()
+        val lower = url.lowercase(Locale.ROOT)
         return lower.contains("/vi/") ||
             lower.contains("/vi_webp/") ||
             lower.contains("ytimg.com/an_webp") ||
@@ -192,21 +281,15 @@ object LevyraPersonalOrbit {
         return primary.copy(thumbnailUrl = donorArtwork, largeThumbnailUrl = donorArtwork)
     }
 
-    private fun buildArtworkDonors(tracks: List<Track>): Map<String, Track> {
-        val map = LinkedHashMap<String, Track>()
-        tracks.asSequence()
-            .filter { isReliableMusicCandidate(it) }
-            .filter { hasSquareAlbumArtwork(it) }
-            .forEach { track ->
-                val key = identityKey(track)
-                val current = map[key]
-                if (current == null || artworkScore(track) > artworkScore(current)) map[key] = track
-            }
-        return map
-    }
+    private fun buildArtworkDonors(tracks: List<Track>): Map<String, List<Track>> = tracks
+        .asSequence()
+        .filter(::isReliableMusicCandidate)
+        .filter(::hasSquareAlbumArtwork)
+        .groupBy { normalizedMusicTitle(it.title) }
+        .mapValues { (_, candidates) -> candidates.sortedByDescending(::artworkScore) }
 
     private fun artworkScore(track: Track): Int {
-        val url = albumArtworkUrl(track).orEmpty().lowercase()
+        val url = albumArtworkUrl(track).orEmpty().lowercase(Locale.ROOT)
         var score = 0
         if (hasSquareAlbumArtwork(track)) score += 100
         if (url.contains("mzstatic.com")) score += 35
@@ -220,56 +303,134 @@ object LevyraPersonalOrbit {
         return score
     }
 
-    private fun albumArtworkUrl(track: Track): String? {
-        return sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl)
-            .map { it.trim() }
+    private fun albumArtworkUrl(track: Track): String? =
+        sequenceOf(track.largeThumbnailUrl, track.thumbnailUrl)
+            .map(String::trim)
             .firstOrNull(::isSquareAlbumArtworkUrl)
-    }
 
     private fun youtubeVideoId(track: Track): String? {
-        val fromUrl = youtubeVideoUrlPatterns
-            .asSequence()
-            .mapNotNull { pattern -> pattern.find(track.videoUrl)?.groupValues?.getOrNull(1) }
-            .firstOrNull { youtubeVideoIdPattern.matches(it) }
+        val fromUrl = youtubeVideoUrlPatterns.asSequence()
+            .mapNotNull { it.find(track.videoUrl)?.groupValues?.getOrNull(1) }
+            .firstOrNull(youtubeVideoIdPattern::matches)
         if (fromUrl != null) return fromUrl
-        return track.id.trim().takeIf { youtubeVideoIdPattern.matches(it) }
+        return track.id.trim().takeIf(youtubeVideoIdPattern::matches)
     }
 
     private fun isSquareAlbumArtworkUrl(url: String): Boolean {
         if (url.isBlank() || isVideoFrameArtworkUrl(url)) return false
-        val lower = url.lowercase()
+        val lower = url.lowercase(Locale.ROOT)
         if (officialArtworkHosts.any(lower::contains)) return true
         val squareSized = squareArtWidthHeightPattern.containsMatchIn(url) || squareArtSizePattern.containsMatchIn(url)
         return squareSized && (lower.contains("googleusercontent.com") || lower.contains("ggpht.com"))
     }
 
-    private fun normalizedMusicText(value: String): String {
-        return value.lowercase()
-            .replace(Regex("""\([^)]*\)|\[[^]]*]"""), " ")
-            .replace(Regex("""feat\.?|featuring|ft\.?"""), " ")
-            .replace(Regex("""official audio|official video|lyrics?|visuali[sz]er|music video"""), " ")
-            .replace(Regex("""[^\p{L}\p{M}\p{N}\s]"""), " ")
-            .replace(Regex("""\s+"""), " ")
-            .trim()
+    private fun recordingFingerprint(track: Track): RecordingFingerprint = RecordingFingerprint(
+        isrc = normalizedIsrc(track.isrc),
+        title = normalizedMusicTitle(track.title),
+        artists = normalizedArtists(track.artist),
+        durationMs = track.durationMs.coerceAtLeast(0L)
+    )
+
+    private fun fingerprintsMatch(first: RecordingFingerprint, second: RecordingFingerprint): Boolean {
+        if (first.isrc.isNotBlank() && second.isrc.isNotBlank()) return first.isrc == second.isrc
+        if (first.title.isBlank() || first.title != second.title) return false
+        if (first.artistSet.isEmpty() || second.artistSet.isEmpty()) return false
+        val artistMatch = first.primaryArtist == second.primaryArtist ||
+            first.artistSet.containsAll(second.artistSet) ||
+            second.artistSet.containsAll(first.artistSet)
+        if (!artistMatch) return false
+        if (first.durationMs > 0L && second.durationMs > 0L &&
+            abs(first.durationMs - second.durationMs) > RECORDING_DURATION_TOLERANCE_MS
+        ) return false
+        return true
+    }
+
+    private fun normalizedMusicTitle(value: String): String = value
+        .lowercase(Locale.ROOT)
+        .replace(bracketAnnotationPattern, " ")
+        .replace(trailingFeaturePattern, " ")
+        .replace(displayAnnotationPattern, " ")
+        .replace(nonMusicWordPattern, " ")
+        .replace(whitespacePattern, " ")
+        .trim()
+
+    private fun normalizedArtists(value: String): List<String> = value
+        .lowercase(Locale.ROOT)
+        .replace(artistSeparatorPattern, "|")
+        .split('|')
+        .map { artist -> artist.replace(nonMusicWordPattern, " ").replace(whitespacePattern, " ").trim() }
+        .filter(String::isNotBlank)
+        .distinct()
+
+    private fun normalizedIsrc(value: String): String =
+        value.uppercase(Locale.ROOT).filter(Char::isLetterOrDigit)
+
+    private fun mergeRecordingMetadata(first: Track, second: Track): Track {
+        val preferred = if (recordingMetadataScore(second) > recordingMetadataScore(first)) second else first
+        val fallback = if (preferred === first) second else first
+        return preferred.copy(
+            videoUrl = preferred.videoUrl.ifBlank { fallback.videoUrl },
+            thumbnailUrl = preferred.thumbnailUrl.ifBlank { fallback.thumbnailUrl },
+            largeThumbnailUrl = preferred.largeThumbnailUrl.ifBlank { fallback.largeThumbnailUrl },
+            isrc = preferred.isrc.ifBlank { fallback.isrc },
+            upc = preferred.upc.ifBlank { fallback.upc },
+            releaseDate = preferred.releaseDate.ifBlank { fallback.releaseDate },
+            albumBrowseId = preferred.albumBrowseId.ifBlank { fallback.albumBrowseId },
+            artistBrowseIds = preferred.artistBrowseIds.ifEmpty { fallback.artistBrowseIds },
+            counterpartVideoId = preferred.counterpartVideoId.ifBlank { fallback.counterpartVideoId },
+            videoType = preferred.videoType.ifBlank { fallback.videoType },
+            metadataProvider = preferred.metadataProvider.ifBlank { fallback.metadataProvider },
+            metadataConfidence = maxOf(preferred.metadataConfidence, fallback.metadataConfidence),
+            canonicalAlbumUrl = preferred.canonicalAlbumUrl.ifBlank { fallback.canonicalAlbumUrl }
+        )
+    }
+
+    private fun recordingMetadataScore(track: Track): Int {
+        var score = track.metadataConfidence.coerceIn(0, 100)
+        if (track.isrc.isNotBlank()) score += 120
+        if (track.counterpartVideoId.isNotBlank()) score += 100
+        if (track.videoUrl.isNotBlank()) score += 50
+        if (track.albumBrowseId.isNotBlank()) score += 35
+        if (hasSquareAlbumArtwork(track)) score += 30
+        if (track.largeThumbnailUrl.isNotBlank()) score += 12
+        return score
+    }
+
+    private fun tasteAffinity(
+        track: Track,
+        seeds: List<NormalizedTasteSeed>,
+        languageCode: String
+    ): Int {
+        if (seeds.isEmpty()) {
+            return (if (isLanguagePreferred(track, languageCode)) 80 else 0) + recordingMetadataScore(track)
+        }
+        val candidateArtists = normalizedArtists(track.artist).toSet()
+        val candidateAlbum = normalizedMusicTitle(track.album)
+        val candidateMoods = track.moodTags.map { it.lowercase(Locale.ROOT) }.toSet()
+        val artistHits = seeds.count { seed -> candidateArtists.intersect(seed.artists).isNotEmpty() }
+        val albumHits = seeds.count { seed -> seed.album == candidateAlbum && candidateAlbum.isNotBlank() }
+        val moodHits = seeds.sumOf { seed -> candidateMoods.intersect(seed.moodTags).size }
+        return artistHits * 180 + albumHits * 70 + moodHits * 18 +
+            (if (isLanguagePreferred(track, languageCode)) 55 else 0) +
+            recordingMetadataScore(track)
     }
 
     fun isLanguagePreferred(track: Track, languageCode: String): Boolean {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         if (normalized == "en") return true
         if (track.moodTags.any { it.equals("local", ignoreCase = true) }) return true
-        val lookup = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+        val lookup = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase(Locale.ROOT)
         val artistMatches = LevyraContentLocales.artistSuggestions(normalized).any { artist ->
-            val key = artist.lowercase()
+            val key = artist.lowercase(Locale.ROOT)
             key.isNotBlank() && lookup.contains(key)
         }
-        if (artistMatches) return true
-        return languageMarkers(normalized).any { marker -> lookup.contains(marker) }
+        return artistMatches || languageMarkers(normalized).any { marker -> lookup.contains(marker) }
     }
 
     fun isClearlyForeignForLanguage(track: Track, languageCode: String): Boolean {
         val normalized = LevyraLanguageCatalog.normalize(languageCode)
         if (normalized == "en" || isLanguagePreferred(track, normalized)) return false
-        val lookup = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+        val lookup = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase(Locale.ROOT)
         return globalEnglishMarkers.any { marker -> lookup.contains(marker) }
     }
 
@@ -303,33 +464,14 @@ object LevyraPersonalOrbit {
             "he" -> listOf("ישראל", "ישראלי", "ישראלית", "עברית", "מוזיקה ישראלית")
             else -> emptyList()
         }
-        return (localeMarkers + LevyraContentLocales.artistSuggestions(normalized).map { it.lowercase() }).distinct()
+        return (localeMarkers + LevyraContentLocales.artistSuggestions(normalized).map { it.lowercase(Locale.ROOT) }).distinct()
     }
 
     private val globalEnglishMarkers = listOf(
-        "queen",
-        "the weeknd",
-        "dua lipa",
-        "nirvana",
-        "eminem",
-        "michael jackson",
-        "linkin park",
-        "coldplay",
-        "imagine dragons",
-        "billie eilish",
-        "taylor swift",
-        "drake",
-        "travis scott",
-        "post malone",
-        "ariana grande",
-        "kendrick lamar",
-        "bruno mars",
-        "harry styles",
-        "miley cyrus",
-        "glass animals",
-        "daft punk",
-        "m83",
-        "a-ha"
+        "queen", "the weeknd", "dua lipa", "nirvana", "eminem", "michael jackson",
+        "linkin park", "coldplay", "imagine dragons", "billie eilish", "taylor swift",
+        "drake", "travis scott", "post malone", "ariana grande", "kendrick lamar",
+        "bruno mars", "harry styles", "miley cyrus", "glass animals", "daft punk", "m83", "a-ha"
     )
 
     fun isReliableMusicCandidate(track: Track): Boolean {
@@ -341,44 +483,16 @@ object LevyraPersonalOrbit {
     }
 
     private fun isLikelyPlaylistOrCompilation(track: Track): Boolean {
-        val combined = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase()
+        val combined = listOf(track.title, track.artist, track.album).joinToString(" ").lowercase(Locale.ROOT)
         val markers = listOf(
-            "playlist",
-            "mix",
-            "top hit",
-            "top hits",
-            "hit italiane",
-            "canzoni italiane",
-            "musica italiana",
-            "éxitos",
-            "música española",
-            "música latina",
-            "chansons françaises",
-            "musique française",
-            "deutsche musik",
-            "deutschrap mix",
-            "música brasileira",
-            "funk brasileiro mix",
-            "nederlandse hits",
-            "polskie hity",
-            "hituri românia",
-            "ελληνικά hits",
-            "svenska hits",
-            "danske hits",
-            "české hity",
-            "українські хіти",
-            "estate mix",
-            "summer mix",
-            "best of",
-            "compilation",
-            "classifica",
-            "chart",
-            "charts",
-            "radio edit",
-            "sped up",
-            "slowed",
-            "nightcore"
+            "playlist", "mix", "top hit", "top hits", "hit italiane", "canzoni italiane",
+            "musica italiana", "éxitos", "música española", "música latina", "chansons françaises",
+            "musique française", "deutsche musik", "deutschrap mix", "música brasileira",
+            "funk brasileiro mix", "nederlandse hits", "polskie hity", "hituri românia",
+            "ελληνικά hits", "svenska hits", "danske hits", "české hity", "українські хіти",
+            "estate mix", "summer mix", "best of", "compilation", "classifica", "chart", "charts",
+            "radio edit", "sped up", "slowed", "nightcore"
         )
-        return markers.any { combined.contains(it) }
+        return markers.any { marker -> combined.contains(marker) }
     }
 }

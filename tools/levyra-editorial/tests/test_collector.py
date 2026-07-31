@@ -377,6 +377,25 @@ def test_config_rejects_duplicate_collection_ids(tmp_path: Path) -> None:
 
 
 
+
+def test_catalog_keeps_separate_audio_and_official_video_ids() -> None:
+    item = FakeClient().iter_playlist_items("playlist12345")[0]
+    item["track"]["youtube_music"] = {
+        "audioVideoId": "Audio123456",
+        "audioConfidence": 99,
+        "videoId": "Official123",
+        "videoConfidence": 97,
+        "confidence": 99,
+    }
+
+    public = normalize_playlist_items([item])[0].to_dict()
+
+    assert public["youtubeMusic"]["audioVideoId"] == "Audio123456"
+    assert public["youtubeMusic"]["videoId"] == "Official123"
+    assert public["youtubeMusic"]["audioConfidence"] == 99
+    assert public["youtubeMusic"]["videoConfidence"] == 97
+
+
 def test_secret_dictionary_url_requires_pinned_allowlisted_path() -> None:
     valid = (
         "https://raw.githubusercontent.com/xyloflake/spot-secrets-go/"
@@ -395,3 +414,15 @@ def test_playlist_query_hash_is_strictly_validated() -> None:
     assert validate_playlist_query_hash("a" * 64) == "a" * 64
     with pytest.raises(AuthenticationError):
         validate_playlist_query_hash("not-a-hash")
+
+
+
+def test_catalog_keeps_public_isrc_and_release_type() -> None:
+    item = FakeClient().iter_playlist_items("playlist12345")[0]
+    item["track"]["external_ids"] = {"isrc": "ITB002000001"}
+    item["track"]["album"]["album_type"] = "album"
+    item["track"]["album"]["total_tracks"] = 12
+    public = normalize_playlist_items([item])[0].to_dict()
+    assert public["isrc"] == "ITB002000001"
+    assert public["album"]["type"] == "album"
+    assert public["album"]["totalTracks"] == 12

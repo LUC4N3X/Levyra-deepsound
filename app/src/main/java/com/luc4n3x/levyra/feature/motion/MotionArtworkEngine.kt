@@ -25,6 +25,7 @@ class MotionArtworkEngine(context: Context) {
     private val networkPolicy = MotionArtworkNetworkPolicy(appContext)
     private val urlVerifier = MotionArtworkUrlVerifier(appContext)
     private val providerFactories: Map<String, () -> MotionArtworkProvider> = mapOf(
+        "community-canvas" to { CommunityCanvasProvider(appContext) },
         "apple-motion" to { AppleMotionArtworkProvider(appContext) },
         "tidal-video-cover" to { TidalVideoCoverProvider(appContext) }
     )

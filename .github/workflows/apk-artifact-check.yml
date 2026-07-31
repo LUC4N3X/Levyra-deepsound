@@ -61,6 +61,9 @@ jobs:
           test -f gradle/wrapper/gradle-wrapper.properties
           ./gradlew --no-daemon --version
 
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
       - name: Resolve APK Version
         shell: bash
         run: |
