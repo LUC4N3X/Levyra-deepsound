@@ -1,0 +1,49 @@
+name: Diagnose Dai Dai Mapping
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: >-
+      github.event.pull_request.head.ref == 'feat/central-ytm-editorial' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install collector
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
+      - name: Print sanitized candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${LEVYRA_EDITORIAL_YTM_COOKIE:-}"
+          python - <<'PY'
+          import json
+          import os
+          from levyra_editorial.youtube_music import YoutubeMusicWebClient, parse_search_candidates
+
+          client = YoutubeMusicWebClient(os.environ["LEVYRA_EDITORIAL_YTM_COOKIE"], workers=1)
+          try:
+              for query in (
+                  "Shakira Burna Boy Dai Dai official video",
+                  "Dai Dai Shakira Burna Boy",
+              ):
+                  candidates = parse_search_candidates(client._search(query))
+                  print(json.dumps({"query": query, "candidates": candidates}, ensure_ascii=False, indent=2))
+          finally:
+              client.close()
+          PY
