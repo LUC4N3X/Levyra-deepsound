@@ -5404,13 +5404,11 @@ private fun HomeScreen(
         },
         label = "homeAccentEnd"
     )
-    val visiblePersonalTracks = remember(personalTracks, spotlightCandidate?.track) {
-        val spotlightTrack = spotlightCandidate?.track
-        LevyraPersonalOrbit.distinctRecordings(personalTracks).filterNot { track ->
-            spotlightTrack != null && LevyraPersonalOrbit.sameRecording(track, spotlightTrack)
-        }
-    }
-    val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
+    val visiblePersonalTracks = remember(personalTracks) {
+    LevyraPersonalOrbit.distinctRecordings(personalTracks)
+        .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+}
+val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections.mapNotNull { collection ->
             val filteredTracks = collection.tracks.filterNot { it.id == spotlightCandidate?.track?.id }
             collection.copy(tracks = filteredTracks).takeIf { filteredTracks.size >= 4 }
