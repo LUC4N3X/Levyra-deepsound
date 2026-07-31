@@ -5346,7 +5346,7 @@ private fun HomeScreen(
             .distinctBy(::albumRecommendationDeduplicationKey)
     }
     val rawOtherSections = homeDerivedState.otherSections
-    val homeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts) {
+    val homeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
         val sectionVideos = rawOtherSections
             .filter { section -> isMusicVideoSectionTitle(section.title, strings) }
             .flatMap { section -> section.tracks }
@@ -5361,7 +5361,7 @@ private fun HomeScreen(
             }
             .take(12)
     }
-    val otherSections = remember(rawOtherSections, homeVideoTracks) {
+    val otherSections = remember(rawOtherSections, homeVideoTracks, strings.exploreNewVideos) {
         if (homeVideoTracks.isEmpty()) rawOtherSections
         else rawOtherSections.filterNot { section -> isMusicVideoSectionTitle(section.title, strings) }
     }

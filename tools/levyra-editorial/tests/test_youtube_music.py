@@ -5,6 +5,7 @@ import pytest
 from levyra_editorial.youtube_music import (
     YoutubeMusicError,
     YoutubeMusicWebClient,
+    combine_verified_youtube_mapping,
     normalize_youtube_music_cookie,
     parse_search_candidates,
     parse_youtube_web_candidates,
@@ -346,3 +347,43 @@ def test_bootstrap_failure_is_cached_after_first_attempt() -> None:
         client._bootstrap()
 
     assert session.get_calls == 1
+
+
+
+def test_combined_mapping_requires_verified_audio_identity() -> None:
+    official = {"videoId": "fcnDmrtj6Sk", "videoConfidence": 99}
+
+    assert combine_verified_youtube_mapping(None, official) is None
+    assert combine_verified_youtube_mapping(
+        {"audioVideoId": "invalid", "audioConfidence": 99},
+        official,
+    ) is None
+
+    mapping = combine_verified_youtube_mapping(
+        {"audioVideoId": "lFQdcPTTzSg", "audioConfidence": 99},
+        official,
+    )
+    assert mapping is not None
+    assert mapping["audioVideoId"] == "lFQdcPTTzSg"
+    assert mapping["videoId"] == "fcnDmrtj6Sk"
+    assert mapping["confidence"] == 99
+
+
+def test_resolve_skips_web_video_query_when_audio_identity_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = YoutubeMusicWebClient("SAPISID=abcdefghijklmnopqrstuvwxyz123456")
+    monkeypatch.setattr(client, "_search", lambda _query: {})
+    calls = 0
+
+    def official_video(_title: str, _artist: str, _duration_ms: int) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return {"videoId": "fcnDmrtj6Sk", "videoConfidence": 99}
+
+    monkeypatch.setattr(client, "_resolve_official_video", official_video)
+    try:
+        assert client.resolve("Missing", "Artist", 180_000) is None
+        assert calls == 0
+    finally:
+        client.close()
