@@ -674,6 +674,44 @@ def select_official_youtube_video(
     }
 
 
+def combine_verified_youtube_mapping(
+    audio_result: Mapping[str, Any] | None,
+    official_video: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Publish an official video only behind a verified Art Track identity."""
+    if not isinstance(audio_result, Mapping):
+        return None
+    audio_id = str(audio_result.get("audioVideoId") or "").strip()
+    audio_confidence = audio_result.get("audioConfidence")
+    if not VIDEO_ID.fullmatch(audio_id) or not isinstance(audio_confidence, int) or audio_confidence < 82:
+        return None
+
+    result = dict(audio_result)
+    result["audioVideoId"] = audio_id
+    result.pop("videoId", None)
+    result.pop("videoConfidence", None)
+
+    if isinstance(official_video, Mapping):
+        video_id = str(official_video.get("videoId") or "").strip()
+        video_confidence = official_video.get("videoConfidence")
+        if (
+            VIDEO_ID.fullmatch(video_id)
+            and video_id != audio_id
+            and isinstance(video_confidence, int)
+            and video_confidence >= 90
+        ):
+            result["videoId"] = video_id
+            result["videoConfidence"] = video_confidence
+
+    confidence_values = [
+        value
+        for key in ("audioConfidence", "videoConfidence")
+        if isinstance((value := result.get(key)), int)
+    ]
+    result["confidence"] = max(confidence_values)
+    return result
+
+
 class YoutubeMusicWebClient:
     """Resolve public recording identities with one repository-owned session."""
 
@@ -881,23 +919,15 @@ class YoutubeMusicWebClient:
         except (requests.RequestException, ValueError, YoutubeMusicError) as error:
             LOGGER.warning("Central YouTube Music audio query skipped: %s", type(error).__name__)
 
+        verified_audio = combine_verified_youtube_mapping(audio_result, None)
         official_video: dict[str, Any] | None = None
-        try:
-            official_video = self._resolve_official_video(title, artist, duration_ms)
-        except (requests.RequestException, ValueError, YoutubeMusicError) as error:
-            LOGGER.warning("Central YouTube official-video query skipped: %s", type(error).__name__)
+        if verified_audio is not None:
+            try:
+                official_video = self._resolve_official_video(title, artist, duration_ms)
+            except (requests.RequestException, ValueError, YoutubeMusicError) as error:
+                LOGGER.warning("Central YouTube official-video query skipped: %s", type(error).__name__)
 
-        result: dict[str, Any] = dict(audio_result or {})
-        if official_video:
-            result.update(official_video)
-        confidence_values = [
-            value
-            for key in ("audioConfidence", "videoConfidence")
-            if isinstance((value := result.get(key)), int)
-        ]
-        if confidence_values:
-            result["confidence"] = max(confidence_values)
-        final_result = result or None
+        final_result = combine_verified_youtube_mapping(verified_audio, official_video)
         with self._cache_lock:
             self._cache[cache_key] = final_result
         return final_result
