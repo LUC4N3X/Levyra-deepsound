@@ -1,0 +1,95 @@
+name: Run Final CodeRabbit Fixes
+
+on:
+  push:
+    branches:
+      - feat/central-ytm-editorial
+    paths:
+      - .github/workflows/run-final-coderabbit-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/central-ytm-editorial
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Apply verified fixes
+        run: python tools/apply_final_review_fixes.py
+
+      - name: Verify editorial collector
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
+          python -m compileall -q tools/levyra-editorial/levyra_editorial
+          ruff check tools/levyra-editorial
+          pytest tools/levyra-editorial/tests
+
+      - name: Verify Android regressions, lint, and compile
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon \
+            :app:testDebugUnitTest \
+            --tests com.luc4n3x.levyra.domain.LevyraPersonalOrbitIdentityTest \
+            --tests com.luc4n3x.levyra.data.EditorialCatalogParserTest \
+            --tests com.luc4n3x.levyra.player.LevyraPlayerTest \
+            :app:lintDebug \
+            :app:compileDebugKotlin
+
+      - name: Verify fixed contracts
+        run: |
+          set -euo pipefail
+          grep -q 'fun combine_verified_youtube_mapping' tools/levyra-editorial/levyra_editorial/youtube_music.py
+          grep -q 'if audio_result is not None:' tools/levyra-editorial/levyra_editorial/youtube_music.py
+          grep -q 'val youtubePlaybackId = youtubeAudioVideoId' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+          grep -q 'MIN_OFFICIAL_VIDEO_CONFIDENCE = 90' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+          grep -q '(?iU)(?<=\\s)' app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt
+          ! git diff -- app/src/main tools/levyra-editorial | grep -E 'LEVYRA_EDITORIAL_YTM_COOKIE|SAPISID|__Secure-' >/dev/null
+
+      - name: Commit fixes and remove temporary tooling
+        run: |
+          set -euo pipefail
+          git rm -f \
+            .github/workflows/run-final-coderabbit-fixes.yml \
+            .github/workflows/apply-final-review-fixes.yml \
+            tools/apply_final_review_fixes.py \
+            tools/final-review-trigger.txt \
+            tools/fix_artist_separator_regression.py \
+            tools/fix_final_review_generated_test.py \
+            tools/fix_final_review_python_test.py
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt \
+            app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/EditorialCatalogParserTest.kt \
+            app/src/test/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbitIdentityTest.kt \
+            tools/levyra-editorial/levyra_editorial/youtube_music.py \
+            tools/levyra-editorial/tests/test_youtube_music.py
+          git commit -m "fix(editorial): close final CodeRabbit findings"
+          git push origin HEAD:feat/central-ytm-editorial
