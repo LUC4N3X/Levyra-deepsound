@@ -10,28 +10,13 @@ on:
 
 permissions:
   actions: write
-  contents: write
+  contents: read
 
 jobs:
   dispatch:
-    name: Repair and Start Editorial Catalog
+    name: Start Editorial Catalog
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Repair Editorial Branch Bootstrap
-        run: |
-          set -euo pipefail
-          sed -i 's/git rm -rf \./git rm -rf --ignore-unmatch ./' .github/workflows/editorial-catalog.yml
-          if git diff --quiet -- .github/workflows/editorial-catalog.yml; then
-            echo "Editorial workflow is already repaired."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .github/workflows/editorial-catalog.yml
-            git commit -m "fix(ci): allow empty editorial branch bootstrap"
-            git push origin HEAD:main
-          fi
       - name: Dispatch Editorial Catalog
         env:
           GH_TOKEN: ${{ github.token }}
