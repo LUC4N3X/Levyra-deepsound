@@ -219,7 +219,7 @@ jobs:
             fi
           else
             git switch --orphan "${branch}"
-            git rm -rf .
+            git rm -rf --ignore-unmatch .
           fi
 
           mkdir -p catalog
