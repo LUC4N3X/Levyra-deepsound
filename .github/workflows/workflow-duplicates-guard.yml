@@ -79,11 +79,17 @@ jobs:
         run: |
           set -euo pipefail
           grep -q 'def combine_verified_youtube_mapping' tools/levyra-editorial/levyra_editorial/youtube_music.py
+          echo 'Verified mapping combiner.'
           grep -q 'verified_audio = combine_verified_youtube_mapping(audio_result, None)' tools/levyra-editorial/levyra_editorial/youtube_music.py
+          echo 'Verified audio-first gate.'
           grep -q 'val youtubePlaybackId = youtubeAudioVideoId' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+          echo 'Verified audio-only playback identity.'
           grep -q 'MIN_OFFICIAL_VIDEO_CONFIDENCE = 90' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+          echo 'Verified official-video confidence gate.'
           grep -q 'strings.exploreNewVideos)' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          ! git diff -- app/src/main tools/levyra-editorial | grep -E 'LEVYRA_EDITORIAL_YTM_COOKIE|SAPISID|__Secure-' >/dev/null
+          echo 'Verified localized Home invalidation key.'
+          ! git diff -- app/src/main tools/levyra-editorial/levyra_editorial | grep -E 'LEVYRA_EDITORIAL_YTM_COOKIE|SAPISID|__Secure-' >/dev/null
+          echo 'Verified production source contains no secret material.'
 
       - name: Commit verified fixes and remove all temporary files
         run: |
