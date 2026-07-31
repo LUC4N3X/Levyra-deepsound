@@ -66,9 +66,9 @@ object PlaybackSourceIdentity {
     }
 
     private fun recordingDiscriminator(track: Track): String {
+        extractYoutubeVideoId(track.videoUrl).lowercase(Locale.ROOT).takeIf { it.isNotBlank() }?.let { return "youtube:$it" }
         normalizeIdentifier(track.id).takeIf { it.isNotBlank() }?.let { return "id:$it" }
         normalizeIdentifier(track.counterpartVideoId).takeIf { it.isNotBlank() }?.let { return "counterpart:$it" }
-        extractYoutubeVideoId(track.videoUrl).lowercase(Locale.ROOT).takeIf { it.isNotBlank() }?.let { return "youtube:$it" }
         return "metadata-only"
     }
 
