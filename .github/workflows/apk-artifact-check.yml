@@ -159,7 +159,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          adb kill-server || true
+          ADB="${ANDROID_HOME}/platform-tools/adb"
+          test -x "${ADB}"
+          "${ADB}" kill-server || true
           nohup "${ANDROID_HOME}/emulator/emulator" \
             -avd "${LEVYRA_TEST_AVD}" \
             -no-window \
@@ -170,10 +172,10 @@ jobs:
             > artifacts/emulator.log 2>&1 &
           echo $! > artifacts/emulator.pid
 
-          timeout 240 adb wait-for-device
+          timeout 240 "${ADB}" wait-for-device
           BOOTED=""
           for _ in $(seq 1 120); do
-            BOOTED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
+            BOOTED="$("${ADB}" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
             if [ "${BOOTED}" = "1" ]; then
               break
             fi
@@ -184,11 +186,12 @@ jobs:
             exit 1
           fi
 
-          adb logcat -c
+          "${ADB}" logcat -c
           APK="artifacts/LEVYRA-${VERSION}.apk"
-          adb install -r "${APK}" | tee artifacts/apk-install.txt
-          adb shell am force-stop com.luc4n3x.levyra
-          LAUNCH_OUTPUT="$(adb shell am start -W -n com.luc4n3x.levyra/.MainActivity)"
+          "${ADB}" install -r "${APK}" | tee artifacts/apk-install.txt
+          "${ADB}" shell pm grant com.luc4n3x.levyra android.permission.POST_NOTIFICATIONS || true
+          "${ADB}" shell am force-stop com.luc4n3x.levyra
+          LAUNCH_OUTPUT="$("${ADB}" shell am start -W -n com.luc4n3x.levyra/.MainActivity)"
           printf '%s\n' "${LAUNCH_OUTPUT}" | tee artifacts/apk-startup.txt
           if printf '%s\n' "${LAUNCH_OUTPUT}" | grep -Eqi 'error|exception'; then
             echo "Android reported an application launch error." >&2
@@ -196,10 +199,10 @@ jobs:
           fi
 
           sleep 5
-          adb logcat -d -v threadtime > artifacts/startup-logcat.txt
-          PROCESS_ID="$(adb shell pidof com.luc4n3x.levyra | tr -d '\r' | xargs)"
+          "${ADB}" logcat -d -v threadtime > artifacts/startup-logcat.txt
+          PROCESS_ID="$("${ADB}" shell pidof com.luc4n3x.levyra | tr -d '\r' | xargs)"
           test -n "${PROCESS_ID}"
-          CURRENT_FOCUS="$(adb shell dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' || true)"
+          CURRENT_FOCUS="$("${ADB}" shell dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' || true)"
           printf '%s\n' "${CURRENT_FOCUS}" > artifacts/window-focus.txt
           printf '%s\n' "${CURRENT_FOCUS}" | grep -F 'com.luc4n3x.levyra'
           if grep -Fq 'Process: com.luc4n3x.levyra' artifacts/startup-logcat.txt && \
@@ -219,7 +222,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          adb emu kill >/dev/null 2>&1 || true
+          "${ANDROID_HOME}/platform-tools/adb" emu kill >/dev/null 2>&1 || true
           if [ -f artifacts/emulator.pid ]; then
             kill "$(cat artifacts/emulator.pid)" >/dev/null 2>&1 || true
           fi
