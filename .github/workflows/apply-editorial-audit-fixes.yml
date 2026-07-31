@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: apply-editorial-audit-fixes-v2
+  group: apply-editorial-audit-fixes-v3
   cancel-in-progress: true
 
 jobs:
@@ -47,6 +47,10 @@ jobs:
 
           status=0
           run_logged python tools/apply_editorial_audit_fixes.py || status=$?
+          if [ "$status" -eq 0 ]; then
+            run_logged python -c 'from pathlib import Path; p=Path("tools/levyra-editorial/levyra_editorial/youtube_music.py"); s=p.read_text(); old="        maximum = max(45_000, round(duration_ms * 0.20))"; new="        maximum = max(90_000, round(duration_ms * 0.40))"; assert s.count(old) == 1; p.write_text(s.replace(old, new, 1))' || status=$?
+            rm -f tools/editorial-audit-fix-error.txt
+          fi
           if [ "$status" -eq 0 ]; then
             run_logged python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]" || status=$?
           fi
