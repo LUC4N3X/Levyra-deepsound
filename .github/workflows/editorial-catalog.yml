@@ -1,231 +1,82 @@
-name: Editorial Catalog
+name: Editorial Catalog Mapping Patch
 
 on:
   pull_request:
-    paths:
-      - "tools/levyra-editorial/**"
-      - "app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt"
-      - "app/src/main/java/com/luc4n3x/levyra/data/ChartsRepository.kt"
-      - "app/src/main/java/com/luc4n3x/levyra/data/ChartOfficialArtworkResolver.kt"
-      - "app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicChartsRepository.kt"
-      - "app/src/main/java/com/luc4n3x/levyra/data/PlaybackResolver.kt"
-      - "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
-      - "app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"
-      - "app/src/test/java/com/luc4n3x/levyra/data/Editorial*.kt"
-      - ".github/workflows/editorial-catalog.yml"
-  schedule:
-    - cron: "17 */6 * * *"
-  workflow_dispatch:
+    branches: [main]
 
 permissions:
-  contents: read
-
-concurrency:
-  group: editorial-catalog-${{ github.event_name == 'pull_request' && github.ref || 'publisher' }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  verify:
-    name: Verify Collector
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: tools/levyra-editorial/pyproject.toml
-      - name: Install Collector
-        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
-      - name: Static Checks
-        run: |
-          set -euo pipefail
-          python -m compileall -q tools/levyra-editorial/levyra_editorial
-          ruff check tools/levyra-editorial
-      - name: Unit Tests
-        run: pytest tools/levyra-editorial/tests
-
-  integration:
-    name: Test Live Editorial Collection
+  apply:
     if: >-
-      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.ref == 'feat/central-ytm-editorial' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
-    needs: verify
+      github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    env:
-      LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
-      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
+    timeout-minutes: 55
     steps:
-      - name: Checkout Pull Request
+      - name: Checkout feature branch
         uses: actions/checkout@v7
         with:
-          persist-credentials: false
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: tools/levyra-editorial/pyproject.toml
-      - name: Install Collector
-        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-      - name: Check Editorial Secrets
-        run: |
-          set -euo pipefail
-          test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
-          if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
-            echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; testing Spotify-only fallback"
-          fi
-      - name: Generate and Validate Live Catalog
-        run: |
-          set -euo pipefail
-          timeout --foreground 240s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
-          levyra-editorial --validate build/editorial/catalog.json
-          test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains private source identifiers"
-            exit 1
-          fi
-          if jq -e 'any(.. | objects | select(has("isrc")); (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains an invalid ISRC"
-            exit 1
-          fi
-          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial/catalog.json; then
-            echo "::error::Catalog contains credential-related material"
-            exit 1
-          fi
-          # Cover artwork is published on purpose, but only from the source image CDN.
-          if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains artwork outside the allowed image CDN"
-            exit 1
-          fi
-          if grep -qE 'open\.spotify\.com|spotify:(track|album|playlist):' build/editorial/catalog.json; then
-            echo "::error::Catalog contains source page URLs or URIs"
-            exit 1
-          fi
-          sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
-      - name: Upload Pull Request Diagnostics
-        uses: actions/upload-artifact@v7
-        with:
-          name: editorial-pr-${{ github.run_number }}
-          path: |
-            build/editorial/catalog.json
-            build/editorial/catalog.sha256
-          if-no-files-found: error
-          retention-days: 7
-
-  collect:
-    name: Collect and Publish
-    if: >-
-      github.event_name != 'pull_request' ||
-      (
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.user.login == github.repository_owner &&
-        github.actor != 'dependabot[bot]'
-      )
-    needs: verify
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    permissions:
-      contents: write
-    env:
-      LEVYRA_EDITORIAL_SP_DC: ${{ secrets.LEVYRA_EDITORIAL_SP_DC }}
-      LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-      - name: Setup Python
+
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: tools/levyra-editorial/pyproject.toml
-      - name: Install Collector
-        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-      - name: Check Editorial Secrets
-        run: |
-          set -euo pipefail
-          test -n "${LEVYRA_EDITORIAL_SP_DC:-}" || { echo "::error::Missing LEVYRA_EDITORIAL_SP_DC"; exit 1; }
-          if [ -z "${LEVYRA_EDITORIAL_YTM_COOKIE:-}" ]; then
-            echo "::warning::LEVYRA_EDITORIAL_YTM_COOKIE is not configured; publishing Spotify-only metadata"
-          fi
-      - name: Generate Catalog
-        run: |
-          set -euo pipefail
-          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
-          levyra-editorial --validate build/editorial/catalog.json
-          test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
-          if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains private source identifiers"
-            exit 1
-          fi
-          if jq -e 'any(.. | objects | select(has("isrc")); (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains an invalid ISRC"
-            exit 1
-          fi
-          if grep -qiE '"(cookie|cookies|authorization|access_token|sp_dc|sapisid)"[[:space:]]*:' build/editorial/catalog.json; then
-            echo "::error::Catalog contains credential-related material"
-            exit 1
-          fi
-          # Cover artwork is published on purpose, but only from the source image CDN.
-          if jq -e 'any(.. | objects | select(has("artworkUrl")); (.artworkUrl | test("^https://([a-z0-9-]+\\.)*scdn\\.co/|^https://image-cdn-ak\\.spotifycdn\\.com/") | not))' build/editorial/catalog.json >/dev/null; then
-            echo "::error::Catalog contains artwork outside the allowed image CDN"
-            exit 1
-          fi
-          if grep -qE 'open\.spotify\.com|spotify:(track|album|playlist):' build/editorial/catalog.json; then
-            echo "::error::Catalog contains source page URLs or URIs"
-            exit 1
-          fi
-          sha256sum build/editorial/catalog.json > build/editorial/catalog.sha256
-      - name: Upload Diagnostics
-        uses: actions/upload-artifact@v7
+          python-version: '3.13'
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
         with:
-          name: editorial-catalog-${{ github.run_number }}
-          path: |
-            build/editorial/catalog.json
-            build/editorial/catalog.sha256
-          if-no-files-found: error
-          retention-days: 14
-      - name: Publish Last Valid Catalog
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Apply strict dual mapping
+        run: python tools/apply_dual_ytm_mapping_patch.py
+
+      - name: Verify collector
+        run: |
+          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
+          ruff check tools/levyra-editorial
+          pytest -q tools/levyra-editorial/tests
+
+      - name: Verify Android
+        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:compileDebugKotlin
+
+      - name: Verify mapping contract
+        shell: bash
         run: |
           set -euo pipefail
-          branch="editorial-data"
-          source_ref="$(git rev-parse HEAD)"
-          cp build/editorial/catalog.json /tmp/editorial.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          grep -q 'audioVideoId' tools/levyra-editorial/levyra_editorial/youtube_music.py
+          grep -q 'MUSIC_VIDEO_TYPE_OMV' tools/levyra-editorial/levyra_editorial/youtube_music.py
+          grep -q 'youtubeAudioVideoId' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+          grep -q 'counterpartVideoId = youtubeOfficialVideoId' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+          ! git diff -- app tools | grep -E 'SAPISID|__Secure-|LEVYRA_EDITORIAL_YTM_COOKIE=' >/dev/null
 
-          if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
-            git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
-            git switch --force-create "${branch}" "origin/${branch}"
-            if [ -f catalog/editorial.json ]; then
-              jq -S 'del(.generatedAt)' catalog/editorial.json > /tmp/current-editorial-content.json
-              jq -S 'del(.generatedAt)' /tmp/editorial.json > /tmp/new-editorial-content.json
-              if cmp -s /tmp/current-editorial-content.json /tmp/new-editorial-content.json; then
-                echo "Catalog content is unchanged; publication skipped."
-                git switch --detach "${source_ref}"
-                exit 0
-              fi
-            fi
-          else
-            git switch --orphan "${branch}"
-            git rm -rf .
-          fi
-
-          mkdir -p catalog
-          cp /tmp/editorial.json catalog/editorial.json
-          git add catalog/editorial.json
-          git commit -m "chore(editorial): refresh catalog from run ${GITHUB_RUN_NUMBER}"
-          git push origin "HEAD:refs/heads/${branch}"
-          git switch --detach "${source_ref}"
-          echo "Published catalog to ${branch}/catalog/editorial.json"
+      - name: Commit verified mapping and clean temporary tooling
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          git checkout HEAD^ -- .github/workflows/editorial-catalog.yml
+          git rm -f \
+            tools/apply_dual_ytm_mapping_patch.py \
+            .github/workflows/apply-dual-ytm-mapping.yml \
+            .github/.ytm-mapping-trigger
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            .github/workflows/editorial-catalog.yml \
+            tools/levyra-editorial/levyra_editorial/youtube_music.py \
+            tools/levyra-editorial/levyra_editorial/collector.py \
+            tools/levyra-editorial/tests/test_youtube_music.py \
+            tools/levyra-editorial/tests/test_collector.py \
+            app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+          git commit -m "fix(video): map audio and official music videos separately"
+          git push origin "HEAD:$HEAD_REF"
