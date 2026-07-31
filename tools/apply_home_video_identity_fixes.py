@@ -38,7 +38,7 @@ replace_once(
     val fromUrl = youtubeVideoId(track.videoUrl).trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val fromIdUrl = youtubeVideoId(track.id).trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val rawId = track.id.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
-    val regular = sequenceOf(fromUrl, fromIdUrl, rawId).firstOrNull(String::isNotBlank).orEmpty()
+    val regular = sequenceOf(fromIdUrl, rawId, fromUrl).firstOrNull(String::isNotBlank).orEmpty()
     val videoId = if (preferVideo) counterpart.ifBlank { regular } else regular.ifBlank { counterpart }
     if (videoId.isBlank()) return null
     val existingUrlId = youtubeVideoId(track.videoUrl)
@@ -47,7 +47,7 @@ replace_once(
     return track.copy(videoUrl = videoUrl)
 }
 ''',
-    "preserve canonical track id during mode switching",
+    "round-trip audio and video mode without replacing canonical identity",
 )
 
 replace_once(
