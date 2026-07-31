@@ -7,7 +7,7 @@ import org.junit.Test
 
 class PlaybackSourceIdentityTest {
     @Test
-    fun canonicalKeyIgnoresResolvedStreamState() {
+    fun canonicalKeyIgnoresTransientResolvedStreamStateWhenSourceIsUnchanged() {
         val original = track(
             id = "catalog-recording-1",
             title = "Song Title (Official Audio)",
@@ -17,11 +17,34 @@ class PlaybackSourceIdentityTest {
         val resolved = original.copy(
             streamUrl = "https://r1.googlevideo.com/videoplayback?expire=9999999999",
             videoStreamUrl = "https://r1.googlevideo.com/videoplayback?expire=9999999999&video=1",
-            videoUrl = "https://www.youtube.com/watch?v=ZYXWVUTSRQP",
             source = "fallback"
         )
 
         assertEquals(PlaybackSourceIdentity.canonicalKey(original), PlaybackSourceIdentity.canonicalKey(resolved))
+    }
+
+    @Test
+    fun canonicalKeySeparatesArtTrackAndOfficialVideoForTheSameIsrc() {
+        val audio = track(
+            id = "lFQdcPTTzSg",
+            title = "Dai Dai",
+            artist = "Shakira, Burna Boy",
+            videoUrl = "https://www.youtube.com/watch?v=lFQdcPTTzSg",
+            isrc = "USQX92601234"
+        )
+        val officialVideo = audio.copy(
+            videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
+            counterpartVideoId = "fcnDmrtj6Sk"
+        )
+
+        assertNotEquals(
+            PlaybackSourceIdentity.canonicalKey(audio),
+            PlaybackSourceIdentity.canonicalKey(officialVideo)
+        )
+        assertNotEquals(
+            PlaybackSourceIdentity.matchKey(audio, videoMode = true, audioQuality = "High"),
+            PlaybackSourceIdentity.matchKey(officialVideo, videoMode = true, audioQuality = "High")
+        )
     }
 
     @Test
@@ -78,7 +101,8 @@ class PlaybackSourceIdentityTest {
         artist: String = "Artist Name",
         videoUrl: String = "",
         durationMs: Long = 180_000L,
-        explicit: Boolean = false
+        explicit: Boolean = false,
+        isrc: String = ""
     ) = Track(
         id = id,
         title = title,
@@ -97,6 +121,7 @@ class PlaybackSourceIdentityTest {
         cacheScore = 0,
         accentStart = 0,
         accentEnd = 0,
-        explicit = explicit
+        explicit = explicit,
+        isrc = isrc
     )
 }
