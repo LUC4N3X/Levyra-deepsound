@@ -2,7 +2,6 @@ package com.luc4n3x.levyra.baselineprofile
 
 import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
@@ -13,7 +12,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-@LargeTest
 class StartupSmokeTest {
     @Test
     fun appLaunchesAndRemainsAlive() {
