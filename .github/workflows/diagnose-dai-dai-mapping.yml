@@ -1,133 +1,83 @@
-name: Diagnose Dai Dai Mapping
+name: Verify Official Video Mapping
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  apply:
     if: >-
       github.event.pull_request.head.ref == 'feat/central-ytm-editorial' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     env:
       LEVYRA_EDITORIAL_YTM_COOKIE: ${{ secrets.LEVYRA_EDITORIAL_YTM_COOKIE }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
         with:
-          persist-credentials: false
-      - uses: actions/setup-python@v6
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Apply official-video resolver
+        run: python tools/apply_web_official_video_mapping.py
       - name: Install collector
-        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-      - name: Print sanitized YouTube Web candidates
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
+      - name: Static checks and unit tests
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools/levyra-editorial/levyra_editorial
+          ruff check tools/levyra-editorial
+          pytest -q tools/levyra-editorial/tests
+      - name: Verify Dai Dai against live sources
         shell: bash
         run: |
           set -euo pipefail
           test -n "${LEVYRA_EDITORIAL_YTM_COOKIE:-}"
           python - <<'PY'
-          import json
           import os
-          import re
-          import requests
-          from collections.abc import Mapping
-          from levyra_editorial.youtube_music import DEFAULT_USER_AGENT, normalize_youtube_music_cookie
+          from levyra_editorial.youtube_music import YoutubeMusicWebClient
 
-          cookie, _ = normalize_youtube_music_cookie(os.environ["LEVYRA_EDITORIAL_YTM_COOKIE"])
-          session = requests.Session()
-          session.headers.update({"User-Agent": DEFAULT_USER_AGENT})
-          home = session.get(
-              "https://www.youtube.com/",
-              headers={"Cookie": cookie, "Accept-Language": "en-US,en;q=0.9"},
-              timeout=12,
+          client = YoutubeMusicWebClient(
+              os.environ["LEVYRA_EDITORIAL_YTM_COOKIE"],
+              workers=1,
+              timeout_seconds=12,
           )
-          home.raise_for_status()
-          key = re.search(r'"INNERTUBE_API_KEY":"([^"\\]+)"', home.text)
-          version = re.search(r'"INNERTUBE_CLIENT_VERSION":"([^"\\]+)"', home.text)
-          if key is None or version is None:
-              raise RuntimeError("Unable to bootstrap YouTube Web")
+          try:
+              result = client.resolve("Dai Dai", "Shakira, Burna Boy", 223_448)
+          finally:
+              client.close()
 
-          payload = {
-              "context": {
-                  "client": {
-                      "clientName": "WEB",
-                      "clientVersion": version.group(1),
-                      "hl": "en",
-                      "gl": "US",
-                  }
-              },
-              "query": "Shakira Burna Boy Dai Dai official video",
-          }
-          response = session.post(
-              f"https://www.youtube.com/youtubei/v1/search?key={key.group(1)}",
-              json=payload,
-              headers={
-                  "Cookie": cookie,
-                  "Origin": "https://www.youtube.com",
-                  "Referer": "https://www.youtube.com/",
-                  "Content-Type": "application/json",
-                  "X-Youtube-Client-Name": "1",
-                  "X-Youtube-Client-Version": version.group(1),
-              },
-              timeout=12,
-          )
-          response.raise_for_status()
-
-          def walk(value):
-              if isinstance(value, Mapping):
-                  yield value
-                  for child in value.values():
-                      yield from walk(child)
-              elif isinstance(value, list):
-                  for child in value:
-                      yield from walk(child)
-
-          def text(value):
-              if not isinstance(value, Mapping):
-                  return ""
-              if value.get("simpleText"):
-                  return str(value["simpleText"])
-              runs = value.get("runs")
-              if isinstance(runs, list):
-                  return "".join(str(run.get("text") or "") for run in runs if isinstance(run, Mapping))
-              return ""
-
-          output = []
-          for node in walk(response.json()):
-              renderer = node.get("videoRenderer")
-              if not isinstance(renderer, Mapping):
-                  continue
-              owner_runs = renderer.get("ownerText", {}).get("runs", [])
-              owner = text(renderer.get("ownerText"))
-              channel_id = ""
-              if owner_runs and isinstance(owner_runs[0], Mapping):
-                  endpoint = owner_runs[0].get("navigationEndpoint", {})
-                  browse = endpoint.get("browseEndpoint", {}) if isinstance(endpoint, Mapping) else {}
-                  channel_id = str(browse.get("browseId") or "") if isinstance(browse, Mapping) else ""
-              badges = []
-              for badge in renderer.get("ownerBadges", []) or []:
-                  if not isinstance(badge, Mapping):
-                      continue
-                  metadata = badge.get("metadataBadgeRenderer")
-                  if isinstance(metadata, Mapping):
-                      badges.append({
-                          "style": str(metadata.get("style") or ""),
-                          "label": str(metadata.get("label") or ""),
-                          "tooltip": str(metadata.get("tooltip") or ""),
-                      })
-              output.append({
-                  "videoId": renderer.get("videoId"),
-                  "title": text(renderer.get("title")),
-                  "owner": owner,
-                  "channelId": channel_id,
-                  "duration": text(renderer.get("lengthText")),
-                  "badges": badges,
-              })
-          print(json.dumps(output, ensure_ascii=False, indent=2))
+          assert result is not None, "Dai Dai mapping is missing"
+          assert result.get("videoId") == "fcnDmrtj6Sk", result
+          assert result.get("videoId") != "NWU1m16yzAY", result
+          assert result.get("audioVideoId"), result
+          assert result.get("audioVideoId") != result.get("videoId"), result
+          print({
+              "audioVideoId": result.get("audioVideoId"),
+              "videoId": result.get("videoId"),
+              "confidence": result.get("confidence"),
+          })
           PY
+      - name: Commit verified resolver
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          git rm -f tools/apply_web_official_video_mapping.py .github/.diagnose-dai-dai-trigger
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            tools/levyra-editorial/levyra_editorial/youtube_music.py \
+            tools/levyra-editorial/tests/test_youtube_music.py
+          git commit -m "fix(video): resolve official videos through artist-verified YouTube search"
+          git push origin "HEAD:$HEAD_REF"
