@@ -53,6 +53,7 @@ jobs:
           python tools/apply_final_review_fixes.py
           python tools/fix_final_review_generated_test.py
           python tools/fix_final_review_python_test.py
+          python tools/fix_artist_separator_regression.py
           rm -f tools/sitecustomize.py tools/levyra-editorial/tests/ruff.toml
 
       - name: Verify editorial collector
@@ -94,6 +95,7 @@ jobs:
             tools/apply_final_review_fixes.py \
             tools/fix_final_review_generated_test.py \
             tools/fix_final_review_python_test.py \
+            tools/fix_artist_separator_regression.py \
             tools/sitecustomize.py \
             tools/levyra-editorial/tests/ruff.toml
           git config user.name github-actions[bot]
