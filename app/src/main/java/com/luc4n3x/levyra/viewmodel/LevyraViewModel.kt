@@ -4321,8 +4321,23 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         autoRetryWhenOffline: Boolean
     ) {
         val requestedVideoMode = _state.value.isVideoMode
-        val playableTrack = youtubePlayableTrack(track, preferVideo = requestedVideoMode) ?: track
-        val instant = localDownloadedTrack(track) ?: resolver.cached(playableTrack, requestedVideoMode)
+        val playableTrack = youtubePlayableTrack(track, preferVideo = requestedVideoMode)
+        if (requestedVideoMode && playableTrack == null) {
+            if (!isActive || requestId != playRequestId) return
+            player.stop()
+            _state.update {
+                it.copy(
+                    isVideoMode = false,
+                    isResolving = false,
+                    isPlaying = false,
+                    currentTrack = track.copy(streamUrl = ""),
+                    playerError = "Video ufficiale non verificato per questo brano"
+                )
+            }
+            return
+        }
+        val selectedTrack = playableTrack ?: track
+        val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)
         if (instant != null) {
             if (!isActive || requestId != playRequestId) return
             startPlayback(preserveEditorialArtwork(track, instant))
@@ -4331,7 +4346,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         player.stop()
         try {
-            val playable = resolveForPlayback(track)
+            val playable = resolveForPlayback(selectedTrack)
             if (!isActive || requestId != playRequestId) return
             startPlayback(playable)
             prefetchAround(playable)
@@ -6060,7 +6075,7 @@ internal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): T
     val fromIdUrl = youtubeVideoId(track.id).trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val rawId = track.id.trim().takeIf(YOUTUBE_PLAYABLE_VIDEO_ID::matches).orEmpty()
     val regular = sequenceOf(fromIdUrl, rawId, fromUrl).firstOrNull(String::isNotBlank).orEmpty()
-    val videoId = if (preferVideo) counterpart.ifBlank { regular } else regular.ifBlank { counterpart }
+    val videoId = if (preferVideo) counterpart else regular.ifBlank { counterpart }
     if (videoId.isBlank()) return null
     val existingUrlId = youtubeVideoId(track.videoUrl)
     val videoUrl = track.videoUrl.takeIf { existingUrlId == videoId }
