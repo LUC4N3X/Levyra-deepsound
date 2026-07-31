@@ -36,19 +36,16 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Apply guarded fixes
-        run: |
-          python tools/apply_home_video_identity_fixes.py
-          python tools/fix_generated_artist_signature.py
+      - name: Apply idempotent fixes
+        run: python tools/apply_home_video_identity_fixes.py
 
       - name: Verify patch contract
         shell: bash
         run: |
           set -euo pipefail
-          test ! -z "$(git status --porcelain)"
-          grep -q 'preferVideo = targetMode' app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
-          grep -q 'HomeMusicVideoShelf' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
-          grep -q 'distinctRecordings' app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt
+          grep -q 'return track.copy(videoUrl = videoUrl)' app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          grep -q 'isMusicVideoSectionTitle(section.title, strings)' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          grep -q 'const val DISPLAY_LIMIT = 20' app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt
           ! git diff -- app/src/main | grep -E 'LEVYRA_EDITORIAL_YTM_COOKIE|SAPISID|__Secure-' >/dev/null
 
       - name: Focused unit tests
@@ -63,15 +60,19 @@ jobs:
 
       - name: Commit verified fixes
         shell: bash
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "No remaining changes to commit."
+            exit 0
+          fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add \
-            app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt \
             app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
             app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
-            app/src/test/java/com/luc4n3x/levyra/player/LevyraPlayerTest.kt \
-            app/src/test/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbitIdentityTest.kt
-          git commit -m "fix(home): stabilize official videos and recording identity"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+            app/src/test/java/com/luc4n3x/levyra/player/LevyraPlayerTest.kt
+          git commit -m "fix(player): preserve audio identity across video mode"
+          git push origin "HEAD:$HEAD_REF"
