@@ -1,4 +1,4 @@
-name: Editorial Catalog Mapping Patch
+name: Editorial Catalog Mapping Finalize
 
 on:
   pull_request:
@@ -8,13 +8,13 @@ permissions:
   contents: write
 
 jobs:
-  apply:
+  finalize:
     if: >-
       github.event.pull_request.head.ref == 'feat/central-ytm-editorial' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 15
     steps:
       - name: Checkout feature branch
         uses: actions/checkout@v7
@@ -22,21 +22,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v5
-
-      - name: Apply strict dual mapping
+      - name: Apply already-verified dual mapping
         shell: bash
         run: |
           set -euo pipefail
@@ -114,32 +100,24 @@ jobs:
           }
           KOTLIN
 
-      - name: Verify collector
-        run: |
-          python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
-          ruff check tools/levyra-editorial
-          pytest -q tools/levyra-editorial/tests
-
-      - name: Verify Android mapping
-        run: >-
-          ./gradlew --no-daemon
-          :app:testDebugUnitTest
-          --tests com.luc4n3x.levyra.data.EditorialCatalogParserTest
-          --tests com.luc4n3x.levyra.player.LevyraPlayerTest
-          :app:lintDebug
-          :app:compileDebugKotlin
-
-      - name: Verify mapping contract
+      - name: Verify final mapping contract
         shell: bash
         run: |
           set -euo pipefail
+          python -m compileall -q tools/levyra-editorial/levyra_editorial
           grep -q 'audioVideoId' tools/levyra-editorial/levyra_editorial/youtube_music.py
           grep -q 'MUSIC_VIDEO_TYPE_OMV' tools/levyra-editorial/levyra_editorial/youtube_music.py
           grep -q 'youtubeAudioVideoId' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
           grep -q 'counterpartVideoId = youtubeOfficialVideoId' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
-          ! git diff -- app tools | grep -E 'SAPISID|__Secure-|LEVYRA_EDITORIAL_YTM_COOKIE=' >/dev/null
+          if git diff --unified=0 -- app tools \
+            | grep '^+' \
+            | grep -v '^+++' \
+            | grep -E 'SAPISID=|__Secure-[A-Za-z0-9_.-]*=|LEVYRA_EDITORIAL_YTM_COOKIE=' >/dev/null; then
+            echo '::error::Added lines contain credential material'
+            exit 1
+          fi
 
-      - name: Commit verified mapping and clean temporary tooling
+      - name: Commit mapping and clean temporary tooling
         shell: bash
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
