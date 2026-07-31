@@ -24,13 +24,12 @@ class PlaybackSourceIdentityTest {
     }
 
     @Test
-    fun canonicalKeySeparatesArtTrackAndOfficialVideoForTheSameIsrc() {
+    fun canonicalKeySeparatesArtTrackAndOfficialVideoWithAndWithoutIsrc() {
         val audio = track(
             id = "lFQdcPTTzSg",
             title = "Dai Dai",
             artist = "Shakira, Burna Boy",
-            videoUrl = "https://www.youtube.com/watch?v=lFQdcPTTzSg",
-            isrc = "USQX92601234"
+            videoUrl = "https://www.youtube.com/watch?v=lFQdcPTTzSg"
         )
         val officialVideo = audio.copy(
             videoUrl = "https://www.youtube.com/watch?v=fcnDmrtj6Sk",
@@ -44,6 +43,13 @@ class PlaybackSourceIdentityTest {
         assertNotEquals(
             PlaybackSourceIdentity.matchKey(audio, videoMode = true, audioQuality = "High"),
             PlaybackSourceIdentity.matchKey(officialVideo, videoMode = true, audioQuality = "High")
+        )
+
+        val audioWithIsrc = audio.copy(isrc = "USQX92601234")
+        val officialVideoWithIsrc = officialVideo.copy(isrc = "USQX92601234")
+        assertNotEquals(
+            PlaybackSourceIdentity.canonicalKey(audioWithIsrc),
+            PlaybackSourceIdentity.canonicalKey(officialVideoWithIsrc)
         )
     }
 
