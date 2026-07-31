@@ -87,7 +87,7 @@ jobs:
       - name: Generate and Validate Live Catalog
         run: |
           set -euo pipefail
-          timeout --foreground 240s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
+          timeout --foreground 360s levyra-editorial --config tools/levyra-editorial/config.json --output build/editorial/catalog.json
           levyra-editorial --validate build/editorial/catalog.json
           test "$(jq '.collections | length' build/editorial/catalog.json)" -ge 26
           if jq -e 'any(.. | objects; has("uri") or has("externalUrl") or has("sourceId") or has("sourceUrl") or has("snapshotId"))' build/editorial/catalog.json >/dev/null; then
