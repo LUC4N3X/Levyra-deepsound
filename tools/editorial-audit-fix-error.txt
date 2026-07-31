@@ -1,5 +1,6 @@
 > python tools/apply_editorial_audit_fixes.py
 Applied editorial audit fixes.
+> python -c from pathlib import Path; p=Path("tools/levyra-editorial/levyra_editorial/youtube_music.py"); s=p.read_text(); old="        maximum = max(45_000, round(duration_ms * 0.20))"; new="        maximum = max(90_000, round(duration_ms * 0.40))"; assert s.count(old) == 1; p.write_text(s.replace(old, new, 1))
 > python -m pip install --disable-pip-version-check -e tools/levyra-editorial[dev]
 Obtaining file:///home/runner/work/Levyra-deepsound/Levyra-deepsound/tools/levyra-editorial
   Installing build dependencies: started
@@ -38,7 +39,7 @@ Using cached requests-2.34.2-py3-none-any.whl (73 kB)
 Using cached charset_normalizer-3.4.9-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (224 kB)
 Using cached idna-3.18-py3-none-any.whl (65 kB)
 Downloading ruff-0.16.1-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (11.5 MB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.5/11.5 MB 221.0 MB/s  0:00:00
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.5/11.5 MB 41.1 MB/s  0:00:00
 Using cached urllib3-2.7.0-py3-none-any.whl (131 kB)
 Using cached certifi-2026.7.22-py3-none-any.whl (136 kB)
 Using cached iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
@@ -47,8 +48,8 @@ Using cached pygments-2.20.0-py3-none-any.whl (1.2 MB)
 Building wheels for collected packages: levyra-editorial
   Building editable for levyra-editorial (pyproject.toml): started
   Building editable for levyra-editorial (pyproject.toml): finished with status 'done'
-  Created wheel for levyra-editorial: filename=levyra_editorial-0.1.0-0.editable-py3-none-any.whl size=3188 sha256=d9bbbfa0a5df14da49828b9753070a44aeaa071ed440fbc7bba544da97f049a3
-  Stored in directory: /tmp/pip-ephem-wheel-cache-nh4ux1cq/wheels/93/e4/ef/52080052f067ac8b77dba810b1b6db823df87a02188b8a7fcc
+  Created wheel for levyra-editorial: filename=levyra_editorial-0.1.0-0.editable-py3-none-any.whl size=3188 sha256=69d8a74056726f0127298dd8c78091b5f9c43188b19da9940bc0f41291a2d69e
+  Stored in directory: /tmp/pip-ephem-wheel-cache-v7f9bjbl/wheels/93/e4/ef/52080052f067ac8b77dba810b1b6db823df87a02188b8a7fcc
 Successfully built levyra-editorial
 Installing collected packages: urllib3, ruff, pygments, pluggy, packaging, iniconfig, idna, charset_normalizer, certifi, requests, pytest, levyra-editorial
 
@@ -57,83 +58,15 @@ Successfully installed certifi-2026.7.22 charset_normalizer-3.4.9 idna-3.18 inic
 > ruff check tools/levyra-editorial
 All checks passed!
 > pytest tools/levyra-editorial/tests
-....................................F........                            [100%]
-=================================== FAILURES ===================================
-_________ test_web_selector_rejects_fake_official_titles_and_picks_oac _________
-
-    def test_web_selector_rejects_fake_official_titles_and_picks_oac() -> None:
-        candidates = [
-            {
-                "videoId": "fcnDmrtj6Sk",
-                "title": "Shakira, Burna Boy - Dai Dai (Official Video)",
-                "owner": "Shakira and 2 more",
-                "channelId": "",
-                "durationMs": 241_000,
-                "verifiedArtist": True,
-            },
-            {
-                "videoId": "Ni6F5qdCpEY",
-                "title": "Shakira & Burna Boy – Dai Dai (Official Music Video)",
-                "owner": "Ayan.zehen.official",
-                "channelId": "UCSe2JMN9viN7XGgfDTJ3a9w",
-                "durationMs": 300_000,
-                "verifiedArtist": False,
-            },
-            {
-                "videoId": "NWU1m16yzAY",
-                "title": "Dai dai",
-                "owner": "Shakira",
-                "channelId": "",
-                "durationMs": 223_000,
-                "verifiedArtist": True,
-            },
-            {
-                "videoId": "X9CsK_nuqdE",
-                "title": "Shakira, Burna Boy - Dai Dai (Official Audio)",
-                "owner": "Shakira",
-                "channelId": "UCYLNGLIzMhRTi6ZOLjAPSmw",
-                "durationMs": 225_000,
-                "verifiedArtist": True,
-            },
-        ]
-    
-        mapping = select_official_youtube_video(
-            "Dai Dai",
-            "Shakira, Burna Boy",
-            223_448,
-            candidates,
-        )
-    
->       assert mapping == {"videoId": "fcnDmrtj6Sk", "videoConfidence": 99}
-E       AssertionError: assert {'videoConfid...'fcnDmrtj6Sk'} == {'videoConfid...'fcnDmrtj6Sk'}
-E         
-E         Omitting 1 identical items, use -vv to show
-E         Differing items:
-E         {'videoConfidence': 98} != {'videoConfidence': 99}
-E         
-E         Full diff:
-E           {
-E         -     'videoConfidence': 99,
-E         ?                         ^
-E         +     'videoConfidence': 98,
-E         ?                         ^
-E               'videoId': 'fcnDmrtj6Sk',
-E           }
-
-tools/levyra-editorial/tests/test_youtube_music.py:294: AssertionError
-=========================== short test summary info ============================
-FAILED tools/levyra-editorial/tests/test_youtube_music.py::test_web_selector_rejects_fake_official_titles_and_picks_oac - AssertionError: assert {'videoConfid...'fcnDmrtj6Sk'} == {'videoConfid...'fcnDmrtj6Sk'}
-  
-  Omitting 1 identical items, use -vv to show
-  Differing items:
-  {'videoConfidence': 98} != {'videoConfidence': 99}
-  
-  Full diff:
-    {
-  -     'videoConfidence': 99,
-  ?                         ^
-  +     'videoConfidence': 98,
-  ?                         ^
-        'videoId': 'fcnDmrtj6Sk',
-    }
-1 failed, 44 passed in 0.38s
+.............................................                            [100%]
+45 passed in 0.19s
+> python scripts/check_android_regex_compatibility.py
+Android regex compatibility check passed.
+[feat/central-ytm-editorial f7e076c0] fix(editorial): address resolver audit regressions
+ 9 files changed, 237 insertions(+), 726 deletions(-)
+ delete mode 100644 .github/workflows/apply-editorial-audit-fixes.yml
+ delete mode 100644 tools/apply_editorial_audit_fixes.py
+ delete mode 100644 tools/editorial-audit-fix-error.txt
+To https://github.com/LUC4N3X/Levyra-deepsound
+ ! [remote rejected]   HEAD -> feat/central-ytm-editorial (refusing to allow a GitHub App to create or update workflow `.github/workflows/editorial-catalog.yml` without `workflows` permission)
+error: failed to push some refs to 'https://github.com/LUC4N3X/Levyra-deepsound'
