@@ -35,6 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m compileall -q tools/levyra-editorial/levyra_editorial
+          ruff check --fix tools/levyra-editorial/tests/test_youtube_music.py
           ruff check tools/levyra-editorial
           pytest -q tools/levyra-editorial/tests
       - name: Verify Dai Dai against live sources
