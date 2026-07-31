@@ -320,7 +320,8 @@ data class ArtistProfile(
     val singlesBrowseId: String = "",
     val singlesParams: String = "",
     val videosBrowseId: String = "",
-    val videosParams: String = ""
+    val videosParams: String = "",
+    val compilations: List<ArtistRelease> = emptyList()
 ) {
     val bio: String
         get() = biography?.text.orEmpty()
@@ -354,7 +355,8 @@ data class ArtistRelease(
     val year: String,
     val params: String = "",
     val playlistId: String = "",
-    val explicit: Boolean = false
+    val explicit: Boolean = false,
+    val releaseType: ReleaseType = ReleaseType.Unknown
 )
 
 data class DownloadedTrack(
@@ -396,7 +398,8 @@ data class AlbumHit(
     val upc: String = "",
     val canonicalUrl: String = "",
     val metadataProvider: String = "",
-    val metadataConfidence: Int = 0
+    val metadataConfidence: Int = 0,
+    val releaseType: ReleaseType = ReleaseType.Unknown
 )
 
 data class AlbumRecommendationSeed(
