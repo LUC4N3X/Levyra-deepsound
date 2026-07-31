@@ -290,6 +290,8 @@ internal object EditorialCatalogParser {
             val album = item.optJSONObject("album")
             val releaseDate = album?.optString("releaseDate").orEmpty().trim()
             val identity = chartIdentity("$title|$artist")
+            val catalogTrackId = publishedCatalogTrackId(item.optString("id"))
+                .ifBlank { "chart-${identity.id}" }
             val palette = PALETTES[identity.seed % PALETTES.size]
             val artwork = publishedArtworkUrl(item.optString("artworkUrl"))
             val youtubeMusic = item.optJSONObject("youtubeMusic")
@@ -320,13 +322,16 @@ internal object EditorialCatalogParser {
                 youtubeVideoConfidence,
             )
             tracks += Track(
-                id = youtubePlaybackId.ifBlank { "chart-${identity.id}" },
+                id = catalogTrackId,
                 title = title,
                 artist = artist,
                 album = album?.optString("name").orEmpty().trim().ifBlank { EDITORIAL_ALBUM },
                 durationMs = item.optLong("durationMs", 0L).coerceAtLeast(0L),
                 streamUrl = "",
-                videoUrl = "",
+                videoUrl = youtubePlaybackId
+                    .takeIf(String::isNotBlank)
+                    ?.let { "https://www.youtube.com/watch?v=$it" }
+                    .orEmpty(),
                 thumbnailUrl = artwork,
                 largeThumbnailUrl = artwork,
                 source = EDITORIAL_SOURCE,
@@ -364,6 +369,13 @@ internal object EditorialCatalogParser {
      * point Coil at an arbitrary host, embed credentials, or pin a custom port. A rejected value
      * degrades to on-device artwork lookup rather than failing the row.
      */
+    private fun publishedCatalogTrackId(value: String?): String {
+        val normalized = value.orEmpty().trim()
+        return normalized.takeIf {
+            it.length in 1..128 && it.matches(Regex("[A-Za-z0-9_-]+"))
+        }.orEmpty()
+    }
+
     private fun publishedYoutubeVideoId(value: String?): String {
         val normalized = value.orEmpty().trim()
         return normalized.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }.orEmpty()

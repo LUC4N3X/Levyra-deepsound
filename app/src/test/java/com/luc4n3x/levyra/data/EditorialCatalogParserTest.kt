@@ -26,8 +26,8 @@ class EditorialCatalogParserTest {
 
         assertNotNull(snapshot)
         val track = snapshot!!.byMarket.getValue("IT").single()
-        assertEquals("Audio123456", track.id)
-        assertEquals("", track.videoUrl)
+        assertTrue(track.id.startsWith("chart-"))
+        assertEquals("https://www.youtube.com/watch?v=Audio123456", track.videoUrl)
         assertEquals("fcnDmrtj6Sk", track.counterpartVideoId)
         assertEquals("MUSIC_VIDEO_TYPE_OMV", track.videoType)
         assertEquals(99, track.metadataConfidence)
@@ -107,6 +107,35 @@ class EditorialCatalogParserTest {
             .byMarket.getValue("IT").single()
         assertTrue(legacy.id.startsWith("chart-"))
         assertEquals("", legacy.counterpartVideoId)
+    }
+
+    @Test
+    fun keepsDistinctChartRowsThatShareTheSameAudioMapping() {
+        val body = catalog(
+            collections = collection(
+                "IT",
+                track(
+                    title = "First",
+                    youtubeMusic = """{
+                        "audioVideoId": "Audio123456",
+                        "audioConfidence": 99
+                    }"""
+                ) + "," + track(
+                    title = "Second",
+                    youtubeMusic = """{
+                        "audioVideoId": "Audio123456",
+                        "audioConfidence": 99
+                    }"""
+                )
+            )
+        )
+
+        val tracks = EditorialCatalogParser.parse(body, loadedAt = 0L)!!
+            .byMarket.getValue("IT")
+
+        assertEquals(2, tracks.size)
+        assertEquals(2, tracks.map { it.id }.distinct().size)
+        assertTrue(tracks.all { it.videoUrl.endsWith("Audio123456") })
     }
 
     @Test
