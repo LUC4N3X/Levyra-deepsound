@@ -14,6 +14,9 @@ import com.luc4n3x.levyra.domain.primaryArtistSegment
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
 import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.domain.ReleaseType
+import com.luc4n3x.levyra.domain.isSingleLike
+import com.luc4n3x.levyra.domain.releaseTypeFromProviderLabel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -581,8 +584,13 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             )
         }
         val songs = (initialSongs + expanded.songs).distinctBy { it.id }.take(100)
-        val albums = mergeReleases(extractReleases(root, "Album"), expanded.albums)
-        val singles = mergeReleases(extractReleases(root, "Singol"), expanded.singles)
+        val mergedAlbums = mergeReleases(extractReleases(root, "Album"), expanded.albums)
+        val mergedSingles = mergeReleases(extractReleases(root, "Singol"), expanded.singles)
+        val albums = mergedAlbums.filter { it.releaseType == ReleaseType.Album }
+        val singles = (mergedSingles + mergedAlbums).filter { it.releaseType.isSingleLike }
+            .distinctBy { it.browseId.ifBlank { "${it.title.lowercase()}|${it.year}" } }
+        val compilations = (mergedAlbums + mergedSingles).filter { it.releaseType == ReleaseType.Compilation }
+            .distinctBy { it.browseId.ifBlank { "${it.title.lowercase()}|${it.year}" } }
         val videos = (extractVideos(root, name) + expanded.videos).distinctBy { it.id }.take(100)
         val related = extractRelatedArtists(root, name)
         val seed = stableSeed(browseId + name)
@@ -613,7 +621,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             singlesBrowseId = singlePointer?.browseId.orEmpty(),
             singlesParams = singlePointer?.params.orEmpty(),
             videosBrowseId = videoPointer?.browseId.orEmpty(),
-            videosParams = videoPointer?.params.orEmpty()
+            videosParams = videoPointer?.params.orEmpty(),
+            compilations = compilations
         )
     }
 
@@ -800,7 +809,15 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
             val title = card.optJSONObject("title")?.optJSONArray("runs")?.joinText().orEmpty().trim()
             if (title.isBlank()) return@forEach
             val subtitle = card.optJSONObject("subtitle")?.optJSONArray("runs")?.joinText().orEmpty().trim()
-            if (kindHint.isNotBlank() && !releaseKindMatches(subtitle, kindHint)) return@forEach
+            val parsedReleaseType = releaseTypeFromProviderLabel(subtitle)
+            val releaseType = when {
+                parsedReleaseType != ReleaseType.Unknown -> parsedReleaseType
+                kindHint.startsWith("Singol", ignoreCase = true) -> ReleaseType.Single
+                kindHint.startsWith("Album", ignoreCase = true) -> ReleaseType.Album
+                else -> ReleaseType.Unknown
+            }
+            if (kindHint.startsWith("Album", ignoreCase = true) && releaseType != ReleaseType.Album && releaseType != ReleaseType.Compilation) return@forEach
+            if (kindHint.startsWith("Singol", ignoreCase = true) && !releaseType.isSingleLike) return@forEach
             val navigation = card.optJSONObject("navigationEndpoint")
             val browseEndpoint = navigation?.optJSONObject("browseEndpoint")
             val browseId = browseEndpoint?.optString("browseId").orEmpty()
@@ -823,7 +840,8 @@ class ArtistRepository(private val music: YoutubeMusicRepository, private val co
                     year = year,
                     params = params,
                     playlistId = playlistId,
-                    explicit = card.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT")
+                    explicit = card.toString().contains("MUSIC_ITEM_BADGE_EXPLICIT"),
+                    releaseType = releaseType
                 )
             }
         }

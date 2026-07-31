@@ -1,4 +1,4 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.player.offline
 
 import android.content.ContentValues
@@ -1196,8 +1196,8 @@ class OfflineAudioExporter(
         val deferred = CompletableDeferred<Response>()
         enqueue(
             object : Callback {
-                override fun onFailure(call: Call, error: IOException) {
-                    deferred.completeExceptionally(error)
+                override fun onFailure(call: Call, e: IOException) {
+                    deferred.completeExceptionally(e)
                 }
 
                 override fun onResponse(call: Call, response: Response) {

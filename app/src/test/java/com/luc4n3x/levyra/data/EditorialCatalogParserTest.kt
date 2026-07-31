@@ -10,132 +10,203 @@ import java.time.Instant
 
 class EditorialCatalogParserTest {
     @Test
-    fun parsesCountryChartWithPublishedCoverAndWithoutFakeIsrc() {
-        val snapshot = EditorialCatalogParser.parse(validCatalog, loadedAt = NOW)
+    fun separatesAudioPlaybackFromOfficialVideoCounterpart() {
+        val snapshot = EditorialCatalogParser.parse(
+            catalog(
+                youtubeMusic = """{
+                    "audioVideoId": "Audio123456",
+                    "audioConfidence": 99,
+                    "videoId": "fcnDmrtj6Sk",
+                    "videoConfidence": 97,
+                    "confidence": 99
+                }"""
+            ),
+            loadedAt = 0L
+        )
 
         assertNotNull(snapshot)
-        val italy = snapshot!!.byMarket.getValue("IT")
-        val track = italy.single()
-        assertEquals("Prima Canzone", track.title)
-        assertEquals("Artista Uno, Artista Due", track.artist)
-        assertEquals("Album Uno", track.album)
-        assertEquals(181_000L, track.durationMs)
-        assertTrue(track.isrc.isBlank())
-        assertEquals("https://i.scdn.co/image/ab67616d0000cover", track.thumbnailUrl)
-        assertEquals("https://i.scdn.co/image/ab67616d0000cover", track.largeThumbnailUrl)
-        assertEquals("2026", track.year)
-        assertTrue(track.explicit)
-        assertEquals("Levyra Editorial", track.source)
-
-        val legacy = ChartFeedParser.modern(legacyFeed, limit = 1).single()
-        assertEquals(legacy.id, track.id)
+        val track = snapshot!!.byMarket.getValue("IT").single()
+        assertTrue(track.id.startsWith("chart-"))
+        assertEquals("https://www.youtube.com/watch?v=Audio123456", track.videoUrl)
+        assertEquals("fcnDmrtj6Sk", track.counterpartVideoId)
+        assertEquals("MUSIC_VIDEO_TYPE_OMV", track.videoType)
+        assertEquals(99, track.metadataConfidence)
     }
 
     @Test
-    fun onlyConfiguredTwoLetterMarketsAreExposed() {
-        val snapshot = EditorialCatalogParser.parse(validCatalog, loadedAt = NOW)!!
-
-        assertEquals(setOf("IT"), snapshot.byMarket.keys)
-        assertFalse(snapshot.byMarket.containsKey("GLOBAL"))
+    fun rejectsMalformedUnsupportedAndInvalidTimestampCatalogs() {
+        assertNull(EditorialCatalogParser.parse("not-json", loadedAt = 0L))
+        assertNull(EditorialCatalogParser.parse(catalog(schemaVersion = 2), loadedAt = 0L))
+        assertNull(EditorialCatalogParser.parse(catalog(generatedAt = "not-a-time"), loadedAt = 0L))
     }
 
     @Test
-    fun ignoresCoverArtworkThatIsNotHttpsOnTheSourceImageCdn() {
-        // The catalog arrives from a remote branch, so a tampered or unexpected payload must never
-        // reach the image loader. A rejected cover degrades to on-device lookup, it does not drop the row.
-        val rejected = listOf(
-            "http://i.scdn.co/image/plain-http",
-            "https://evil.example/cover.jpg",
-            "https://i.scdn.co.evil.example/cover.jpg",
-            "https://user:pass@i.scdn.co/image/credentials",
-            "https://i.scdn.co:8443/image/custom-port",
-            "not-a-url",
-            "",
-        )
-        rejected.forEach { candidate ->
-            val snapshot = EditorialCatalogParser.parse(
-                validCatalog.replace("https://i.scdn.co/image/ab67616d0000cover", candidate),
-                loadedAt = NOW,
-            )
-            val track = snapshot!!.byMarket.getValue("IT").single()
-            assertTrue("Expected $candidate to be rejected", track.thumbnailUrl.isBlank())
-            assertTrue("Expected $candidate to be rejected", track.largeThumbnailUrl.isBlank())
-            assertEquals("Prima Canzone", track.title)
-        }
-
-        val accepted = EditorialCatalogParser.parse(
-            validCatalog.replace("https://i.scdn.co/image/ab67616d0000cover", "https://mosaic.scdn.co/640/abc"),
-            loadedAt = NOW,
-        )!!
-        assertEquals("https://mosaic.scdn.co/640/abc", accepted.byMarket.getValue("IT").single().thumbnailUrl)
-    }
-
-    @Test
-    fun rejectsWrongSchemaMissingTimestampAndStaleCatalogs() {
-        assertNull(EditorialCatalogParser.parse("""{"schemaVersion":2,"collections":[]}""", NOW))
-        assertNull(EditorialCatalogParser.parse("""{"schemaVersion":1,"collections":[]}""", NOW))
-
+    fun exposesFreshnessWithoutAcceptingStaleOrFarFutureSnapshots() {
         val stale = EditorialCatalogParser.parse(
-            validCatalog.replace("2026-07-29T18:00:00Z", "2026-07-26T18:00:00Z"),
-            loadedAt = NOW,
+            catalog(generatedAt = "2026-07-01T00:00:00Z"),
+            loadedAt = 0L
+        )!!
+        val future = EditorialCatalogParser.parse(
+            catalog(generatedAt = "2026-08-01T00:00:00Z"),
+            loadedAt = 0L
+        )!!
+        val now = Instant.parse("2026-07-31T12:00:00Z").toEpochMilli()
+
+        assertFalse(stale.isUsable(now))
+        assertFalse(future.isUsable(now))
+    }
+
+    @Test
+    fun refusesVideoOnlyOrLowConfidenceMappings() {
+        val videoOnly = EditorialCatalogParser.parse(
+            catalog(
+                youtubeMusic = """{
+                    "videoId": "fcnDmrtj6Sk",
+                    "videoConfidence": 99,
+                    "confidence": 99
+                }"""
+            ),
+            loadedAt = 0L
+        )!!.byMarket.getValue("IT").single()
+        assertTrue(videoOnly.id.startsWith("chart-"))
+        assertEquals("", videoOnly.counterpartVideoId)
+
+        val lowConfidence = EditorialCatalogParser.parse(
+            catalog(
+                youtubeMusic = """{
+                    "audioVideoId": "Audio123456",
+                    "audioConfidence": 70,
+                    "videoId": "fcnDmrtj6Sk",
+                    "videoConfidence": 99
+                }"""
+            ),
+            loadedAt = 0L
+        )!!.byMarket.getValue("IT").single()
+        assertTrue(lowConfidence.id.startsWith("chart-"))
+        assertEquals("", lowConfidence.counterpartVideoId)
+    }
+
+    @Test
+    fun rejectsInvalidYoutubeIdsAndKeepsLegacyChartFallback() {
+        val invalid = EditorialCatalogParser.parse(
+            catalog(
+                youtubeMusic = """{
+                    "audioVideoId": "too-short",
+                    "audioConfidence": 99,
+                    "videoId": "also-invalid",
+                    "videoConfidence": 99
+                }"""
+            ),
+            loadedAt = 0L
+        )!!.byMarket.getValue("IT").single()
+        assertTrue(invalid.id.startsWith("chart-"))
+        assertEquals("", invalid.counterpartVideoId)
+        assertEquals("Levyra Editorial", invalid.metadataProvider)
+
+        val legacy = EditorialCatalogParser.parse(catalog(), loadedAt = 0L)!!
+            .byMarket.getValue("IT").single()
+        assertTrue(legacy.id.startsWith("chart-"))
+        assertEquals("", legacy.counterpartVideoId)
+    }
+
+    @Test
+    fun keepsDistinctChartRowsThatShareTheSameAudioMapping() {
+        val body = catalog(
+            collections = collection(
+                "IT",
+                track(
+                    title = "First",
+                    youtubeMusic = """{
+                        "audioVideoId": "Audio123456",
+                        "audioConfidence": 99
+                    }"""
+                ) + "," + track(
+                    title = "Second",
+                    youtubeMusic = """{
+                        "audioVideoId": "Audio123456",
+                        "audioConfidence": 99
+                    }"""
+                )
+            )
         )
-        assertNotNull(stale)
-        assertFalse(stale!!.isUsable(NOW))
+
+        val tracks = EditorialCatalogParser.parse(body, loadedAt = 0L)!!
+            .byMarket.getValue("IT")
+
+        assertEquals(2, tracks.size)
+        assertEquals(2, tracks.map { it.id }.distinct().size)
+        assertTrue(tracks.all { it.videoUrl.endsWith("Audio123456") })
     }
 
-    private companion object {
-        val NOW: Long = Instant.parse("2026-07-29T20:00:00Z").toEpochMilli()
+    @Test
+    fun validatesArtworkHostAndScheme() {
+        val rejected = EditorialCatalogParser.parse(
+            catalog(artworkUrl = "http://evil.example/cover.jpg"),
+            loadedAt = 0L
+        )!!.byMarket.getValue("IT").single()
+        assertEquals("", rejected.thumbnailUrl)
+
+        val acceptedUrl = "https://i.scdn.co/image/ab67616d00001e0203cadf1b3fe324c1dc710ed4"
+        val accepted = EditorialCatalogParser.parse(
+            catalog(artworkUrl = acceptedUrl),
+            loadedAt = 0L
+        )!!.byMarket.getValue("IT").single()
+        assertEquals(acceptedUrl, accepted.thumbnailUrl)
     }
 
-    private val validCatalog = """
-        {
-          "schemaVersion": 1,
-          "generatedAt": "2026-07-29T18:00:00Z",
-          "collections": [
-            {
-              "id": "top-50-global",
-              "kind": "chart",
-              "market": "GLOBAL",
-              "tracks": [{"position":1,"id":"global","title":"Global","artists":[{"name":"Artist"}]}]
-            },
-            {
-              "id": "top-50-it",
-              "kind": "chart",
-              "market": "IT",
-              "tracks": [
-                {
-                  "position": 1,
-                  "id": "source-track-id",
-                  "title": "Prima Canzone",
-                  "artists": [
-                    {"name": "Artista Uno"},
-                    {"name": "Artista Due"}
-                  ],
-                  "album": {
-                    "name": "Album Uno",
-                    "releaseDate": "2026-07-01"
-                  },
-                  "durationMs": 181000,
-                  "explicit": true,
-                  "artworkUrl": "https://i.scdn.co/image/ab67616d0000cover"
-                }
-              ]
-            }
-          ]
-        }
-    """.trimIndent()
+    @Test
+    fun selectsRequestedMarketAndUsesItalyOnlyForInvalidCountryCodes() {
+        val body = catalog(
+            collections = collection("IT", track(title = "Italia")) + "," +
+                collection("US", track(title = "USA"))
+        )
+        val snapshot = EditorialCatalogParser.parse(body, loadedAt = 0L)!!
 
-    private val legacyFeed = """
-        {
-          "feed": {
-            "results": [
-              {
-                "name": "Prima Canzone",
-                "artistName": "Artista Uno, Artista Due",
-                "artworkUrl100": "https://image.example/100x100bb.jpg"
-              }
-            ]
-          }
-        }
-    """.trimIndent()
+        assertEquals("USA", snapshot.tracks("US", 10).single().title)
+        assertEquals("Italia", snapshot.tracks("invalid", 10).single().title)
+        assertTrue(snapshot.tracks("FR", 10).isEmpty())
+    }
+
+    private fun catalog(
+        schemaVersion: Int = 1,
+        generatedAt: String = "2026-07-31T09:00:00Z",
+        artworkUrl: String = "",
+        youtubeMusic: String? = null,
+        collections: String = collection(
+            "IT",
+            track(artworkUrl = artworkUrl, youtubeMusic = youtubeMusic)
+        )
+    ): String = """{
+        "schemaVersion": $schemaVersion,
+        "generatedAt": "$generatedAt",
+        "collections": [$collections]
+    }""".trimIndent()
+
+    private fun collection(market: String, track: String): String = """{
+        "kind": "chart",
+        "market": "$market",
+        "tracks": [$track]
+    }""".trimIndent()
+
+    private fun track(
+        title: String = "Dai Dai",
+        artist: String = "Shakira",
+        artworkUrl: String = "",
+        youtubeMusic: String? = null
+    ): String {
+        val quote = '"'
+        val youtube = youtubeMusic
+            ?.let { ",${quote}youtubeMusic${quote}:$it" }
+            .orEmpty()
+        val artwork = artworkUrl
+            .takeIf(String::isNotBlank)
+            ?.let { ",${quote}artworkUrl${quote}:${quote}$it${quote}" }
+            .orEmpty()
+        return """{
+            "title": "$title",
+            "artists": [{"name": "$artist"}],
+            "album": {"name": "$title"},
+            "durationMs": 223448$youtube$artwork
+        }""".trimIndent()
+    }
 }

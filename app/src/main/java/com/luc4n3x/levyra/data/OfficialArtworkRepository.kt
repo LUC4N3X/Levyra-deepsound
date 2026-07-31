@@ -354,7 +354,11 @@ class OfficialArtworkRepository(context: Context) {
         val candidateTitle = normalize(title)
         val candidateArtist = normalize(artist)
         val candidateAlbum = normalize(album)
-        val exactIsrc = track.isrc.isNotBlank() && isrc.isNotBlank() && track.isrc.equals(isrc, true)
+        when (recordingIdentityMatch(track.isrc, isrc)) {
+            RecordingIdentityMatch.Exact -> return 10_000
+            RecordingIdentityMatch.Conflict -> return REJECTED_SCORE
+            RecordingIdentityMatch.Unknown -> Unit
+        }
         val artistScore = when {
             candidateArtist == targetArtist -> 125
             candidateArtist.contains(targetArtist) || targetArtist.contains(candidateArtist) -> 88
@@ -362,7 +366,7 @@ class OfficialArtworkRepository(context: Context) {
             tokenCoverage(targetArtist, candidateArtist) >= 0.5 -> 45
             else -> 0
         }
-        if (!exactIsrc && artistScore < MIN_ARTIST_MATCH_SCORE) return REJECTED_SCORE
+        if (artistScore < MIN_ARTIST_MATCH_SCORE) return REJECTED_SCORE
         var score = 0
         score += when {
             candidateTitle == targetTitle -> 170
@@ -372,7 +376,6 @@ class OfficialArtworkRepository(context: Context) {
             else -> 0
         }
         score += artistScore
-        if (track.isrc.isNotBlank() && isrc.isNotBlank()) score += if (exactIsrc) 220 else -100
         if (targetAlbum.isNotBlank() && candidateAlbum.isNotBlank()) {
             score += when {
                 candidateAlbum == targetAlbum -> 35
