@@ -17,6 +17,9 @@ LOGGER = logging.getLogger(__name__)
 ORIGIN = "https://music.youtube.com"
 HOME_URL = f"{ORIGIN}/"
 SEARCH_URL = f"{ORIGIN}/youtubei/v1/search"
+YOUTUBE_ORIGIN = "https://www.youtube.com"
+YOUTUBE_HOME_URL = f"{YOUTUBE_ORIGIN}/"
+YOUTUBE_SEARCH_URL = f"{YOUTUBE_ORIGIN}/youtubei/v1/search"
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
@@ -124,6 +127,9 @@ def _walk(value: Any):
 def _runs_text(value: Any) -> str:
     if not isinstance(value, Mapping):
         return ""
+    simple = value.get("simpleText")
+    if isinstance(simple, str) and simple.strip():
+        return simple.strip()
     runs = value.get("runs")
     if not isinstance(runs, list):
         return ""
@@ -399,7 +405,7 @@ def _artist_similarity(target: str, actual: str) -> float:
 
 def _duration_score(target_ms: int, candidate_ms: Any, *, official_video: bool) -> int | None:
     if not isinstance(candidate_ms, int) or candidate_ms <= 0 or target_ms <= 0:
-        return 8 if official_video else None
+        return 8
     delta = abs(candidate_ms - target_ms)
     maximum = max(75_000, round(target_ms * 0.30)) if official_video else 12_000
     if delta > maximum:
@@ -510,37 +516,162 @@ def select_youtube_music_mapping(
         for candidate in unique.values()
         if (score := _audio_candidate_score(title, artist, duration_ms, candidate)) is not None
     ]
-    video_ranked = [
-        (score, candidate)
-        for candidate in unique.values()
-        if (score := _official_video_candidate_score(title, artist, duration_ms, candidate)) is not None
-    ]
     audio = _best_unambiguous(audio_ranked, minimum=82)
-    video = _best_unambiguous(video_ranked, minimum=90)
-    if audio is None and video is None:
+    if audio is None:
         return None
 
-    output: dict[str, Any] = {}
-    selected: list[Mapping[str, Any]] = []
-    if audio is not None:
-        audio_score, audio_candidate = audio
-        output["audioVideoId"] = audio_candidate["videoId"]
-        output["audioConfidence"] = audio_score
-        selected.append(audio_candidate)
-    if video is not None:
-        video_score, video_candidate = video
-        output["videoId"] = video_candidate["videoId"]
-        output["videoConfidence"] = video_score
-        selected.insert(0, video_candidate)
-    output["confidence"] = max(
-        int(output.get("audioConfidence") or 0),
-        int(output.get("videoConfidence") or 0),
-    )
+    audio_score, audio_candidate = audio
+    output: dict[str, Any] = {
+        "audioVideoId": audio_candidate["videoId"],
+        "audioConfidence": audio_score,
+        "confidence": audio_score,
+    }
     for key in ("albumBrowseId", "artistBrowseId", "durationMs"):
-        value = next((candidate.get(key) for candidate in selected if candidate.get(key)), None)
+        value = audio_candidate.get(key)
         if value:
             output[key] = value
     return output
+
+
+
+def parse_youtube_web_candidates(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
+    output: list[dict[str, Any]] = []
+    for node in _walk(payload):
+        renderer = node.get("videoRenderer")
+        if not isinstance(renderer, Mapping):
+            continue
+        video_id = str(renderer.get("videoId") or "")
+        title = _runs_text(renderer.get("title"))
+        if not VIDEO_ID.fullmatch(video_id) or not title:
+            continue
+        owner_text = renderer.get("ownerText")
+        owner = _runs_text(owner_text)
+        owner_runs = owner_text.get("runs") if isinstance(owner_text, Mapping) else None
+        channel_id = ""
+        if isinstance(owner_runs, list):
+            for run in owner_runs:
+                if not isinstance(run, Mapping):
+                    continue
+                browse_id = _browse_id(run)
+                if browse_id.startswith("UC"):
+                    channel_id = browse_id
+                    break
+        badge_styles: set[str] = set()
+        badge_tooltips: set[str] = set()
+        raw_badges = renderer.get("ownerBadges")
+        if isinstance(raw_badges, list):
+            for badge in raw_badges:
+                if not isinstance(badge, Mapping):
+                    continue
+                metadata = badge.get("metadataBadgeRenderer")
+                if not isinstance(metadata, Mapping):
+                    continue
+                style = str(metadata.get("style") or "").strip().upper()
+                tooltip = str(metadata.get("tooltip") or "").strip().casefold()
+                if style:
+                    badge_styles.add(style)
+                if tooltip:
+                    badge_tooltips.add(tooltip)
+        output.append(
+            {
+                "videoId": video_id,
+                "title": title,
+                "owner": owner,
+                "channelId": channel_id,
+                "durationMs": _duration_ms(_runs_text(renderer.get("lengthText"))),
+                "verifiedArtist": (
+                    "BADGE_STYLE_TYPE_VERIFIED_ARTIST" in badge_styles
+                    or "official artist channel" in badge_tooltips
+                ),
+            }
+        )
+    return output
+
+
+def _artist_names(value: str) -> list[str]:
+    cleaned = re.sub(r"(?i)\b(?:feat(?:uring)?|ft|with)\.?\b", ",", value)
+    return [
+        key
+        for part in re.split(r"\s*(?:,|&|\+|/|;|\band\b)\s*", cleaned)
+        if (key := _text_key(part)) and key not in {"and", "more"}
+    ]
+
+
+def _owner_matches_artist(owner: str, artist: str) -> bool:
+    owner_key = _text_key(re.sub(r"(?i)\band\s+\d+\s+more\b", "", owner))
+    if not owner_key:
+        return False
+    return any(
+        name == owner_key or name in owner_key or owner_key in name
+        for name in _artist_names(artist)
+    )
+
+
+def _web_recording_title(value: str, artist: str) -> str:
+    cleaned = OFFICIAL_ANNOTATION.sub(" ", value)
+    cleaned = TRAILING_MEDIA_ANNOTATION.sub(" ", cleaned).strip()
+    for separator in (" - ", " – ", " — ", " | "):
+        if separator not in cleaned:
+            continue
+        prefix, suffix = cleaned.split(separator, 1)
+        if _owner_matches_artist(prefix, artist):
+            cleaned = suffix
+            break
+    return _text_key(cleaned)
+
+
+def _official_web_video_score(
+    title: str,
+    artist: str,
+    duration_ms: int,
+    candidate: Mapping[str, Any],
+) -> int | None:
+    raw_title = str(candidate.get("title") or "")
+    title_key = _text_key(raw_title)
+    if "official audio" in title_key:
+        return None
+    if "official video" not in title_key and "official music video" not in title_key:
+        return None
+    if any(term in title_key for term in ("lyrics", "lyric", "visualizer", "visualiser", "reaction")):
+        return None
+    if not candidate.get("verifiedArtist"):
+        return None
+    if not _owner_matches_artist(str(candidate.get("owner") or ""), artist):
+        return None
+    if _web_recording_title(raw_title, artist) != _recording_title_key(title):
+        return None
+    candidate_duration = candidate.get("durationMs")
+    duration_score = 0
+    if isinstance(candidate_duration, int) and candidate_duration > 0 and duration_ms > 0:
+        delta = abs(candidate_duration - duration_ms)
+        maximum = max(90_000, round(duration_ms * 0.40))
+        if delta > maximum:
+            return None
+        duration_score = max(0, 30 - round(30 * delta / maximum))
+    return 220 + duration_score
+
+
+def select_official_youtube_video(
+    title: str,
+    artist: str,
+    duration_ms: int,
+    candidates: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    ranked = [
+        (score, candidate)
+        for candidate in candidates
+        if (score := _official_web_video_score(title, artist, duration_ms, candidate)) is not None
+    ]
+    if not ranked:
+        return None
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    best_score, best = ranked[0]
+    if len(ranked) > 1 and best_score - ranked[1][0] < 8:
+        return None
+    return {
+        "videoId": best["videoId"],
+        "videoConfidence": min(100, 95 + max(0, best_score - 220) // 6),
+    }
 
 
 class YoutubeMusicWebClient:
@@ -564,6 +695,10 @@ class YoutubeMusicWebClient:
         self._visitor_data = ""
         self._bootstrap_lock = threading.Lock()
         self._bootstrap_failed = False
+        self._web_api_key = ""
+        self._web_client_version = ""
+        self._web_bootstrap_lock = threading.Lock()
+        self._web_bootstrap_failed = False
         self._cache_lock = threading.Lock()
         self._cache: dict[str, dict[str, Any] | None] = {}
         self._query_count = 0
@@ -647,6 +782,83 @@ class YoutubeMusicWebClient:
             raise YoutubeMusicError("YouTube Music returned an invalid search response.")
         return data
 
+    def _web_bootstrap(self) -> None:
+        if self._web_api_key and self._web_client_version:
+            return
+        if self._web_bootstrap_failed:
+            raise YoutubeMusicError("YouTube Web bootstrap previously failed.")
+        with self._web_bootstrap_lock:
+            if self._web_api_key and self._web_client_version:
+                return
+            if self._web_bootstrap_failed:
+                raise YoutubeMusicError("YouTube Web bootstrap previously failed.")
+            try:
+                response = self._session.get(
+                    YOUTUBE_HOME_URL,
+                    headers={
+                        "Cookie": self._cookie,
+                        "Accept-Language": "en-US,en;q=0.9",
+                    },
+                    timeout=self._timeout,
+                )
+                response.raise_for_status()
+                key = re.search(r'"INNERTUBE_API_KEY":"([^"\\]+)"', response.text)
+                version = re.search(r'"INNERTUBE_CLIENT_VERSION":"([^"\\]+)"', response.text)
+                if key is None or version is None:
+                    raise YoutubeMusicError("Unable to bootstrap YouTube Web search.")
+                self._web_api_key = key.group(1)
+                self._web_client_version = version.group(1)
+            except (requests.RequestException, YoutubeMusicError):
+                self._web_bootstrap_failed = True
+                raise
+
+    def _web_search(self, query: str) -> Mapping[str, Any]:
+        self._web_bootstrap()
+        payload = {
+            "context": {
+                "client": {
+                    "clientName": "WEB",
+                    "clientVersion": self._web_client_version,
+                    "hl": "en",
+                    "gl": "US",
+                }
+            },
+            "query": query,
+        }
+        response = self._session.post(
+            YOUTUBE_SEARCH_URL,
+            params={"key": self._web_api_key, "prettyPrint": "false"},
+            headers={
+                "Cookie": self._cookie,
+                "Origin": YOUTUBE_ORIGIN,
+                "Referer": YOUTUBE_HOME_URL,
+                "Content-Type": "application/json",
+                "X-Youtube-Client-Name": "1",
+                "X-Youtube-Client-Version": self._web_client_version,
+            },
+            json=payload,
+            timeout=self._timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+        if not isinstance(data, Mapping):
+            raise YoutubeMusicError("YouTube Web returned an invalid search response.")
+        return data
+
+    def _resolve_official_video(
+        self,
+        title: str,
+        artist: str,
+        duration_ms: int,
+    ) -> dict[str, Any] | None:
+        payload = self._web_search(f"{artist} {title} official video")
+        return select_official_youtube_video(
+            title,
+            artist,
+            duration_ms,
+            parse_youtube_web_candidates(payload),
+        )
+
     def resolve(self, title: str, artist: str, duration_ms: int) -> dict[str, Any] | None:
         cache_key = f"{_text_key(title)}\x1f{_text_key(artist)}\x1f{duration_ms // 1000}"
         with self._cache_lock:
@@ -657,34 +869,38 @@ class YoutubeMusicWebClient:
                 return None
             self._query_count += 1
 
-        candidates_by_id: dict[str, dict[str, Any]] = {}
-        result: dict[str, Any] | None = None
-        queries = (
-            f"{artist} {title} official video",
-            f"{title} {artist}",
-        )
-        for query in dict.fromkeys(queries):
-            try:
-                payload = self._search(query)
-            except (requests.RequestException, ValueError, YoutubeMusicError) as error:
-                LOGGER.warning("Central YouTube Music resolution query skipped: %s", type(error).__name__)
-                continue
-            for candidate in parse_search_candidates(payload):
-                video_id = str(candidate.get("videoId") or "")
-                if VIDEO_ID.fullmatch(video_id):
-                    candidates_by_id[video_id] = candidate
-            result = select_youtube_music_mapping(
+        audio_result: dict[str, Any] | None = None
+        try:
+            payload = self._search(f"{title} {artist}")
+            audio_result = select_youtube_music_mapping(
                 title,
                 artist,
                 duration_ms,
-                list(candidates_by_id.values()),
+                parse_search_candidates(payload),
             )
-            if result and result.get("audioVideoId") and result.get("videoId"):
-                break
+        except (requests.RequestException, ValueError, YoutubeMusicError) as error:
+            LOGGER.warning("Central YouTube Music audio query skipped: %s", type(error).__name__)
 
+        official_video: dict[str, Any] | None = None
+        try:
+            official_video = self._resolve_official_video(title, artist, duration_ms)
+        except (requests.RequestException, ValueError, YoutubeMusicError) as error:
+            LOGGER.warning("Central YouTube official-video query skipped: %s", type(error).__name__)
+
+        result: dict[str, Any] = dict(audio_result or {})
+        if official_video:
+            result.update(official_video)
+        confidence_values = [
+            value
+            for key in ("audioConfidence", "videoConfidence")
+            if isinstance((value := result.get(key)), int)
+        ]
+        if confidence_values:
+            result["confidence"] = max(confidence_values)
+        final_result = result or None
         with self._cache_lock:
-            self._cache[cache_key] = result
-        return result
+            self._cache[cache_key] = final_result
+        return final_result
 
     def enrich_track_metadata(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         targets: dict[str, list[dict[str, Any]]] = {}

@@ -7,7 +7,9 @@ from levyra_editorial.youtube_music import (
     YoutubeMusicWebClient,
     normalize_youtube_music_cookie,
     parse_search_candidates,
+    parse_youtube_web_candidates,
     score_candidate,
+    select_official_youtube_video,
     select_youtube_music_mapping,
 )
 
@@ -127,31 +129,23 @@ def test_parser_finds_video_id_inside_play_button_overlay() -> None:
 
 
 
-def test_mapping_separates_art_track_from_official_music_video() -> None:
+def test_ytm_mapping_keeps_art_track_and_never_promotes_omv() -> None:
     candidates = [
         {
             "videoId": "Audio123456",
             "title": "Dai Dai",
             "artist": "Shakira, Burna Boy",
             "album": "Dai Dai",
-            "durationMs": 223_448,
+            "durationMs": None,
             "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
-        },
-        {
-            "videoId": "fcnDmrtj6Sk",
-            "title": "Dai Dai (Official Video)",
-            "artist": "Shakira, Burna Boy",
-            "album": "",
-            "durationMs": 226_000,
-            "musicVideoType": "MUSIC_VIDEO_TYPE_OMV",
         },
         {
             "videoId": "Wrong123456",
             "title": "Dai Dai",
             "artist": "Shakira, Burna Boy",
             "album": "",
-            "durationMs": 223_000,
-            "musicVideoType": "MUSIC_VIDEO_TYPE_UGC",
+            "durationMs": None,
+            "musicVideoType": "MUSIC_VIDEO_TYPE_OMV",
         },
     ]
 
@@ -159,8 +153,7 @@ def test_mapping_separates_art_track_from_official_music_video() -> None:
 
     assert mapping is not None
     assert mapping["audioVideoId"] == "Audio123456"
-    assert mapping["videoId"] == "fcnDmrtj6Sk"
-    assert mapping["videoId"] != "Wrong123456"
+    assert "videoId" not in mapping
 
 
 def test_mapping_never_promotes_an_art_track_to_official_video() -> None:
@@ -224,6 +217,100 @@ def test_parser_keeps_video_type_attached_to_the_same_video_id() -> None:
 
     assert candidate["videoId"] == "Official123"
     assert candidate["musicVideoType"] == "MUSIC_VIDEO_TYPE_OMV"
+
+
+
+def test_web_parser_marks_only_official_artist_channel_badge() -> None:
+    payload = {
+        "contents": {
+            "videoRenderer": {
+                "videoId": "fcnDmrtj6Sk",
+                "title": {"runs": [{"text": "Shakira, Burna Boy - Dai Dai (Official Video)"}]},
+                "ownerText": {"runs": [{"text": "Shakira and 2 more"}]},
+                "lengthText": {"simpleText": "4:01"},
+                "ownerBadges": [
+                    {
+                        "metadataBadgeRenderer": {
+                            "style": "BADGE_STYLE_TYPE_VERIFIED_ARTIST",
+                            "tooltip": "Official Artist Channel",
+                        }
+                    }
+                ],
+            }
+        }
+    }
+
+    candidate = parse_youtube_web_candidates(payload)[0]
+
+    assert candidate["videoId"] == "fcnDmrtj6Sk"
+    assert candidate["verifiedArtist"] is True
+    assert candidate["durationMs"] == 241_000
+
+
+def test_web_selector_rejects_fake_official_titles_and_picks_oac() -> None:
+    candidates = [
+        {
+            "videoId": "fcnDmrtj6Sk",
+            "title": "Shakira, Burna Boy - Dai Dai (Official Video)",
+            "owner": "Shakira and 2 more",
+            "channelId": "",
+            "durationMs": 241_000,
+            "verifiedArtist": True,
+        },
+        {
+            "videoId": "Ni6F5qdCpEY",
+            "title": "Shakira & Burna Boy – Dai Dai (Official Music Video)",
+            "owner": "Ayan.zehen.official",
+            "channelId": "UCSe2JMN9viN7XGgfDTJ3a9w",
+            "durationMs": 300_000,
+            "verifiedArtist": False,
+        },
+        {
+            "videoId": "NWU1m16yzAY",
+            "title": "Dai dai",
+            "owner": "Shakira",
+            "channelId": "",
+            "durationMs": 223_000,
+            "verifiedArtist": True,
+        },
+        {
+            "videoId": "X9CsK_nuqdE",
+            "title": "Shakira, Burna Boy - Dai Dai (Official Audio)",
+            "owner": "Shakira",
+            "channelId": "UCYLNGLIzMhRTi6ZOLjAPSmw",
+            "durationMs": 225_000,
+            "verifiedArtist": True,
+        },
+    ]
+
+    mapping = select_official_youtube_video(
+        "Dai Dai",
+        "Shakira, Burna Boy",
+        223_448,
+        candidates,
+    )
+
+    assert mapping == {"videoId": "fcnDmrtj6Sk", "videoConfidence": 99}
+
+
+def test_web_selector_abstains_without_official_artist_channel() -> None:
+    mapping = select_official_youtube_video(
+        "Exact Song",
+        "Exact Artist",
+        180_000,
+        [
+            {
+                "videoId": "Fake1234567",
+                "title": "Exact Artist - Exact Song (Official Video)",
+                "owner": "Fan Uploads",
+                "channelId": "UCFake123456",
+                "durationMs": 180_000,
+                "verifiedArtist": False,
+            }
+        ],
+    )
+
+    assert mapping is None
 
 
 class BootstrapResponse:
