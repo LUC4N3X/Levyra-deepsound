@@ -17,8 +17,69 @@ UNSUPPORTED_CONSTANTS = (
 
 
 def strip_comments(text: str) -> str:
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
-    return re.sub(r"//.*", "", text)
+    output: list[str] = []
+    index = 0
+    state = "code"
+    while index < len(text):
+        if state == "code":
+            if text.startswith("//", index):
+                output.extend((" ", " "))
+                index += 2
+                state = "line_comment"
+            elif text.startswith("/*", index):
+                output.extend((" ", " "))
+                index += 2
+                state = "block_comment"
+            elif text.startswith('"""', index):
+                output.append('"""')
+                index += 3
+                state = "triple_string"
+            elif text[index] == '"':
+                output.append(text[index])
+                index += 1
+                state = "string"
+            elif text[index] == "'":
+                output.append(text[index])
+                index += 1
+                state = "char"
+            else:
+                output.append(text[index])
+                index += 1
+        elif state == "line_comment":
+            if text[index] == "\n":
+                output.append("\n")
+                state = "code"
+            else:
+                output.append(" ")
+            index += 1
+        elif state == "block_comment":
+            if text.startswith("*/", index):
+                output.extend((" ", " "))
+                index += 2
+                state = "code"
+            else:
+                output.append("\n" if text[index] == "\n" else " ")
+                index += 1
+        elif state == "triple_string":
+            if text.startswith('"""', index):
+                output.append('"""')
+                index += 3
+                state = "code"
+            else:
+                output.append(text[index])
+                index += 1
+        else:
+            current = text[index]
+            output.append(current)
+            index += 1
+            if current == "\\" and index < len(text):
+                output.append(text[index])
+                index += 1
+            elif state == "string" and current == '"':
+                state = "code"
+            elif state == "char" and current == "'":
+                state = "code"
+    return "".join(output)
 
 
 def main() -> int:
