@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject Java regex features that compile on the host JVM but fail on Android."""
+"""Reject host-only Java regex features, including inline ``(?U)``, before Android builds."""
 
 from __future__ import annotations
 
