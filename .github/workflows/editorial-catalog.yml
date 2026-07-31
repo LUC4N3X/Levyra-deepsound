@@ -94,7 +94,7 @@ jobs:
             echo "::error::Catalog contains private source identifiers"
             exit 1
           fi
-          if jq -e 'any(.. | objects | select(has("isrc")); (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not))' build/editorial/catalog.json >/dev/null; then
+          if jq -e 'any(.. | objects | select(has("isrc")); ((.isrc | type) != "string" or (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not)))' build/editorial/catalog.json >/dev/null; then
             echo "::error::Catalog contains an invalid ISRC"
             exit 1
           fi
@@ -169,7 +169,7 @@ jobs:
             echo "::error::Catalog contains private source identifiers"
             exit 1
           fi
-          if jq -e 'any(.. | objects | select(has("isrc")); (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not))' build/editorial/catalog.json >/dev/null; then
+          if jq -e 'any(.. | objects | select(has("isrc")); ((.isrc | type) != "string" or (.isrc | test("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$") | not)))' build/editorial/catalog.json >/dev/null; then
             echo "::error::Catalog contains an invalid ISRC"
             exit 1
           fi
