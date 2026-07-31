@@ -23,8 +23,10 @@ object LevyraPersonalOrbit {
     private val displayAnnotationPattern = Regex(
         """(?i)\b(?:(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er)\b"""
     )
+    // Android regexes are Unicode-aware by default and reject the unsupported (?U) flag.
     private val artistSeparatorPattern = Regex(
-        """(?iU)(?:(?<=\s)(?:feat\.?|featuring|ft\.?|and|with|e|ed|y|et|und|[,&;+])(?=\s)|(?<=[\p{L}\p{M}\p{N}])[,;&+](?=\s))"""
+        """(?:(?<=\s)(?:feat\.?|featuring|ft\.?|and|with|e|ed|y|et|und|[,&;+])(?=\s)|(?<=[\p{L}\p{M}\p{N}])[,;&+](?=\s))""",
+        RegexOption.IGNORE_CASE
     )
     private val nonMusicWordPattern = Regex("""[^\p{L}\p{M}\p{N}\s]""")
     private val whitespacePattern = Regex("""\s+""")
