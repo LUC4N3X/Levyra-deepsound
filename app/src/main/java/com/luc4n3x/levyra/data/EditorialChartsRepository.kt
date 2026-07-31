@@ -293,16 +293,32 @@ internal object EditorialCatalogParser {
             val palette = PALETTES[identity.seed % PALETTES.size]
             val artwork = publishedArtworkUrl(item.optString("artworkUrl"))
             val youtubeMusic = item.optJSONObject("youtubeMusic")
+            val genericYoutubeConfidence = youtubeMusic?.optInt("confidence", 0)?.coerceIn(0, 100) ?: 0
+            val youtubeAudioConfidence = youtubeMusic
+                ?.optInt("audioConfidence", genericYoutubeConfidence)
+                ?.coerceIn(0, 100)
+                ?: 0
+            val youtubeVideoConfidence = youtubeMusic
+                ?.optInt("videoConfidence", genericYoutubeConfidence)
+                ?.coerceIn(0, 100)
+                ?: 0
             val youtubeAudioVideoId = publishedYoutubeVideoId(youtubeMusic?.optString("audioVideoId"))
+                .takeIf { youtubeAudioConfidence >= MIN_AUDIO_MAPPING_CONFIDENCE }
+                .orEmpty()
             val youtubeOfficialVideoId = publishedYoutubeVideoId(youtubeMusic?.optString("videoId"))
-            val youtubePlaybackId = youtubeAudioVideoId.ifBlank { youtubeOfficialVideoId }
+                .takeIf {
+                    youtubeAudioVideoId.isNotBlank() &&
+                        youtubeVideoConfidence >= MIN_OFFICIAL_VIDEO_CONFIDENCE
+                }
+                .orEmpty()
+            val youtubePlaybackId = youtubeAudioVideoId
             val albumBrowseId = publishedYoutubeBrowseId(youtubeMusic?.optString("albumBrowseId"))
             val artistBrowseId = publishedYoutubeBrowseId(youtubeMusic?.optString("artistBrowseId"))
             val youtubeConfidence = maxOf(
-                youtubeMusic?.optInt("confidence", 0) ?: 0,
-                youtubeMusic?.optInt("audioConfidence", 0) ?: 0,
-                youtubeMusic?.optInt("videoConfidence", 0) ?: 0,
-            ).coerceIn(0, 100)
+                genericYoutubeConfidence,
+                youtubeAudioConfidence,
+                youtubeVideoConfidence,
+            )
             tracks += Track(
                 id = youtubePlaybackId.ifBlank { "chart-${identity.id}" },
                 title = title,
@@ -409,6 +425,8 @@ internal object EditorialCatalogParser {
     private const val EDITORIAL_ALBUM = "Levyra Top 50"
     private const val MAX_ARTWORK_URL_LENGTH = 512
     private const val HTTPS_DEFAULT_PORT = 443
+    private const val MIN_AUDIO_MAPPING_CONFIDENCE = 82
+    private const val MIN_OFFICIAL_VIDEO_CONFIDENCE = 90
 
     private val PALETTES = listOf(
         0xFF00E5FF.toInt() to 0xFF7B42FF.toInt(),

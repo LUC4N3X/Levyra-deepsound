@@ -102,6 +102,28 @@ class LevyraPersonalOrbitIdentityTest {
         assertFalse(LevyraPersonalOrbit.sameRecording(original, unrelated))
     }
 
+
+    @Test
+    fun preservesRealArtistNamesWhileStillSplittingCredits() {
+        val e40 = track(id = "e4000000001", title = "Same", artist = "E-40")
+        val forty = track(id = "forty000001", title = "Same", artist = "40")
+        val yLaBamba = track(id = "ylabamba001", title = "Same", artist = "Y La Bamba")
+        val laBamba = track(id = "labamba0001", title = "Same", artist = "La Bamba")
+        val acdc = track(id = "acdc0000001", title = "Same", artist = "AC/DC")
+        val splitAcDc = track(id = "acdc0000002", title = "Same", artist = "AC, DC")
+        val renee = track(id = "renee000001", title = "Same", artist = "Renée")
+        val rene = track(id = "rene0000001", title = "Same", artist = "Ren")
+
+        assertFalse(LevyraPersonalOrbit.sameRecording(e40, forty))
+        assertFalse(LevyraPersonalOrbit.sameRecording(yLaBamba, laBamba))
+        assertFalse(LevyraPersonalOrbit.sameRecording(acdc, splitAcDc))
+        assertFalse(LevyraPersonalOrbit.sameRecording(renee, rene))
+
+        val italianCredits = track(id = "credits00001", title = "Dai Dai", artist = "Shakira e Burna Boy")
+        val reorderedCredits = track(id = "credits00002", title = "Dai Dai", artist = "Burna Boy, Shakira")
+        assertTrue(LevyraPersonalOrbit.sameRecording(italianCredits, reorderedCredits))
+    }
+
     private fun track(
         id: String,
         title: String,

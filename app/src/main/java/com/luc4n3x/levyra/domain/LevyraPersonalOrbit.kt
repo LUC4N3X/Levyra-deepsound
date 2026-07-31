@@ -24,7 +24,7 @@ object LevyraPersonalOrbit {
         """(?i)\b(?:(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er)\b"""
     )
     private val artistSeparatorPattern = Regex(
-        """(?iU)(?<=\s)(?:feat\.?|featuring|ft\.?|and|with|e|ed|y|et|und)(?=\s)|[,&;+]"""
+        """(?iU)(?:(?<=\s)(?:feat\.?|featuring|ft\.?|and|with|e|ed|y|et|und|[,&;+])(?=\s)|(?<=[\p{L}\p{M}\p{N}])[,;&+](?=\s))"""
     )
     private val nonMusicWordPattern = Regex("""[^\p{L}\p{M}\p{N}\s]""")
     private val whitespacePattern = Regex("""\s+""")
