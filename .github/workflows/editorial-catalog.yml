@@ -37,7 +37,28 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Apply strict dual mapping
-        run: python tools/apply_dual_ytm_mapping_patch.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/apply_dual_ytm_mapping_patch.py
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("tools/levyra-editorial/levyra_editorial/youtube_music.py")
+          text = path.read_text(encoding="utf-8")
+          old = '        video_type = str(config.get("musicVideoType") or "").strip().upper() if isinstance(config, Mapping) else ""\n'
+          new = '''        video_type = (
+              str(config.get("musicVideoType") or "").strip().upper()
+              if isinstance(config, Mapping)
+              else ""
+          )
+          '''
+          if new not in text:
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f"video type formatting anchor count: {count}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
 
       - name: Verify collector
         run: |
@@ -64,7 +85,7 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          git checkout HEAD^ -- .github/workflows/editorial-catalog.yml
+          git checkout 45c784ae0611348214ad9064f8f0156f16bf844b -- .github/workflows/editorial-catalog.yml
           git rm -f \
             tools/apply_dual_ytm_mapping_patch.py \
             .github/workflows/apply-dual-ytm-mapping.yml \
