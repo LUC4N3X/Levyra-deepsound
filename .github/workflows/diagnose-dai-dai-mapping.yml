@@ -26,7 +26,7 @@ jobs:
           python-version: "3.12"
       - name: Install collector
         run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial"
-      - name: Print sanitized candidates
+      - name: Print sanitized YouTube Web candidates
         shell: bash
         run: |
           set -euo pipefail
@@ -34,16 +34,100 @@ jobs:
           python - <<'PY'
           import json
           import os
-          from levyra_editorial.youtube_music import YoutubeMusicWebClient, parse_search_candidates
+          import re
+          import requests
+          from collections.abc import Mapping
+          from levyra_editorial.youtube_music import DEFAULT_USER_AGENT, normalize_youtube_music_cookie
 
-          client = YoutubeMusicWebClient(os.environ["LEVYRA_EDITORIAL_YTM_COOKIE"], workers=1)
-          try:
-              for query in (
-                  "Shakira Burna Boy Dai Dai official video",
-                  "Dai Dai Shakira Burna Boy",
-              ):
-                  candidates = parse_search_candidates(client._search(query))
-                  print(json.dumps({"query": query, "candidates": candidates}, ensure_ascii=False, indent=2))
-          finally:
-              client.close()
+          cookie, _ = normalize_youtube_music_cookie(os.environ["LEVYRA_EDITORIAL_YTM_COOKIE"])
+          session = requests.Session()
+          session.headers.update({"User-Agent": DEFAULT_USER_AGENT})
+          home = session.get(
+              "https://www.youtube.com/",
+              headers={"Cookie": cookie, "Accept-Language": "en-US,en;q=0.9"},
+              timeout=12,
+          )
+          home.raise_for_status()
+          key = re.search(r'"INNERTUBE_API_KEY":"([^"\\]+)"', home.text)
+          version = re.search(r'"INNERTUBE_CLIENT_VERSION":"([^"\\]+)"', home.text)
+          if key is None or version is None:
+              raise RuntimeError("Unable to bootstrap YouTube Web")
+
+          payload = {
+              "context": {
+                  "client": {
+                      "clientName": "WEB",
+                      "clientVersion": version.group(1),
+                      "hl": "en",
+                      "gl": "US",
+                  }
+              },
+              "query": "Shakira Burna Boy Dai Dai official video",
+          }
+          response = session.post(
+              f"https://www.youtube.com/youtubei/v1/search?key={key.group(1)}",
+              json=payload,
+              headers={
+                  "Cookie": cookie,
+                  "Origin": "https://www.youtube.com",
+                  "Referer": "https://www.youtube.com/",
+                  "Content-Type": "application/json",
+                  "X-Youtube-Client-Name": "1",
+                  "X-Youtube-Client-Version": version.group(1),
+              },
+              timeout=12,
+          )
+          response.raise_for_status()
+
+          def walk(value):
+              if isinstance(value, Mapping):
+                  yield value
+                  for child in value.values():
+                      yield from walk(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      yield from walk(child)
+
+          def text(value):
+              if not isinstance(value, Mapping):
+                  return ""
+              if value.get("simpleText"):
+                  return str(value["simpleText"])
+              runs = value.get("runs")
+              if isinstance(runs, list):
+                  return "".join(str(run.get("text") or "") for run in runs if isinstance(run, Mapping))
+              return ""
+
+          output = []
+          for node in walk(response.json()):
+              renderer = node.get("videoRenderer")
+              if not isinstance(renderer, Mapping):
+                  continue
+              owner_runs = renderer.get("ownerText", {}).get("runs", [])
+              owner = text(renderer.get("ownerText"))
+              channel_id = ""
+              if owner_runs and isinstance(owner_runs[0], Mapping):
+                  endpoint = owner_runs[0].get("navigationEndpoint", {})
+                  browse = endpoint.get("browseEndpoint", {}) if isinstance(endpoint, Mapping) else {}
+                  channel_id = str(browse.get("browseId") or "") if isinstance(browse, Mapping) else ""
+              badges = []
+              for badge in renderer.get("ownerBadges", []) or []:
+                  if not isinstance(badge, Mapping):
+                      continue
+                  metadata = badge.get("metadataBadgeRenderer")
+                  if isinstance(metadata, Mapping):
+                      badges.append({
+                          "style": str(metadata.get("style") or ""),
+                          "label": str(metadata.get("label") or ""),
+                          "tooltip": str(metadata.get("tooltip") or ""),
+                      })
+              output.append({
+                  "videoId": renderer.get("videoId"),
+                  "title": text(renderer.get("title")),
+                  "owner": owner,
+                  "channelId": channel_id,
+                  "duration": text(renderer.get("lengthText")),
+                  "badges": badges,
+              })
+          print(json.dumps(output, ensure_ascii=False, indent=2))
           PY
