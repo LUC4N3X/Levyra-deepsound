@@ -27,13 +27,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
       - name: Apply strict video selection fixes
         shell: bash
@@ -52,72 +52,55 @@ jobs:
                   raise SystemExit(f"Expected one anchor in {path}, found {count}")
               file.write_text(text.replace(old, new, 1))
 
-          ytm = "tools/levyra-editorial/levyra_editorial/youtube_music.py"
+          youtube_music = "tools/levyra-editorial/levyra_editorial/youtube_music.py"
           replace_once(
-              ytm,
+              youtube_music,
               'NON_OFFICIAL_VIDEO_TERMS = {"lyrics", "lyric", "visualizer", "visualiser", "audio"}\n',
-              '''NON_OFFICIAL_VIDEO_TERMS = {"lyrics", "lyric", "visualizer", "visualiser", "audio"}\nFORBIDDEN_OFFICIAL_VIDEO_VARIANTS = {\n    "live",\n    "live performance",\n    "performance",\n    "concert",\n    "festival",\n    "acoustic",\n    "session",\n    "stage",\n    "ceremony",\n    "halftime",\n    "half time",\n    "award show",\n    "tour",\n}\n'''
+              '''NON_OFFICIAL_VIDEO_TERMS = {"lyrics", "lyric", "visualizer", "visualiser", "audio"}\nFORBIDDEN_OFFICIAL_VIDEO_VARIANT = re.compile(\n    r"(?i)(?:^|[^a-z0-9])(?:live(?:\\s+performance)?|performance|concert|festival|acoustic|session|stage|ceremony|halftime|half\\s+time|award\\s+show|tour)(?:$|[^a-z0-9])"\n)\n''',
           )
           replace_once(
-              ytm,
-              '''def _contains_unrequested_variant(target_title: str, candidate: Mapping[str, Any]) -> bool:\n    target_blob = _text_key(target_title)\n    candidate_blob = _text_key(f"{candidate.get('title') or ''} {candidate.get('album') or ''}")\n    return any(term in candidate_blob and term not in target_blob for term in HARD_VARIANT_TERMS)\n''',
-              '''def _contains_phrase(value: str, phrase: str) -> bool:\n    return f" {phrase} " in f" {value} "\n\n\ndef _contains_unrequested_variant(target_title: str, candidate: Mapping[str, Any]) -> bool:\n    target_blob = _text_key(target_title)\n    candidate_blob = _text_key(f"{candidate.get('title') or ''} {candidate.get('album') or ''}")\n    return any(\n        _contains_phrase(candidate_blob, term) and not _contains_phrase(target_blob, term)\n        for term in HARD_VARIANT_TERMS\n    )\n'''
-          )
-          replace_once(
-              ytm,
+              youtube_music,
               '''    if any(term in title_key for term in ("lyrics", "lyric", "visualizer", "visualiser", "reaction")):\n        return None\n    if not candidate.get("verifiedArtist"):\n''',
-              '''    if any(term in title_key for term in ("lyrics", "lyric", "visualizer", "visualiser", "reaction")):\n        return None\n    if any(_contains_phrase(title_key, term) for term in FORBIDDEN_OFFICIAL_VIDEO_VARIANTS):\n        return None\n    if not candidate.get("verifiedArtist"):\n'''
-          )
-          replace_once(
-              ytm,
-              '        maximum = max(90_000, round(duration_ms * 0.40))\n',
-              '        maximum = max(45_000, round(duration_ms * 0.22))\n'
+              '''    if any(term in title_key for term in ("lyrics", "lyric", "visualizer", "visualiser", "reaction")):\n        return None\n    if FORBIDDEN_OFFICIAL_VIDEO_VARIANT.search(title_key):\n        return None\n    if not candidate.get("verifiedArtist"):\n''',
           )
 
-          py_test = "tools/levyra-editorial/tests/test_youtube_music.py"
+          python_test = "tools/levyra-editorial/tests/test_youtube_music.py"
           replace_once(
-              py_test,
+              python_test,
               '\ndef test_web_selector_abstains_without_official_artist_channel() -> None:\n',
-              '''\ndef test_web_selector_rejects_live_performance_even_when_oac_and_duration_match() -> None:\n    candidates = [\n        {\n            "videoId": "Live1234567",\n            "title": "Shakira, Burna Boy - Dai Dai (Official Video) Live Performance at World Cup Halftime",\n            "owner": "Shakira",\n            "channelId": "UCOfficial",\n            "durationMs": 223_448,\n            "verifiedArtist": True,\n        },\n        {\n            "videoId": "fcnDmrtj6Sk",\n            "title": "Shakira, Burna Boy - Dai Dai (Official Video)",\n            "owner": "Shakira",\n            "channelId": "UCOfficial",\n            "durationMs": 241_000,\n            "verifiedArtist": True,\n        },\n    ]\n\n    mapping = select_official_youtube_video(\n        "Dai Dai",\n        "Shakira, Burna Boy",\n        223_448,\n        candidates,\n    )\n\n    assert mapping is not None\n    assert mapping["videoId"] == "fcnDmrtj6Sk"\n\n\ndef test_web_selector_abstains_without_official_artist_channel() -> None:\n'''
-          )
-
-          repository = "app/src/main/java/com/luc4n3x/levyra/data/YoutubeMusicRepository.kt"
-          replace_once(
-              repository,
-              '''            source = "YouTube Music",\n            artistBrowseIds = artistReferences.map { it.browseId }\n        )\n''',
-              '''            source = "YouTube Music",\n            artistBrowseIds = artistReferences.map { it.browseId },\n            videoType = findStringUnderKey(two, "musicVideoType").orEmpty()\n        )\n'''
+              '''\ndef test_web_selector_rejects_live_performance_from_official_artist_channel() -> None:\n    mapping = select_official_youtube_video(\n        "Dai Dai",\n        "Shakira, Burna Boy",\n        223_448,\n        [\n            {\n                "videoId": "Live1234567",\n                "title": "Shakira, Burna Boy - Dai Dai (Official Video) Live Performance at Halftime",\n                "owner": "Shakira",\n                "channelId": "UCOfficial",\n                "durationMs": 223_448,\n                "verifiedArtist": True,\n            }\n        ],\n    )\n\n    assert mapping is None\n\n\ndef test_web_selector_abstains_without_official_artist_channel() -> None:\n''',
           )
 
           viewmodel = "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
           replace_once(
               viewmodel,
-              '''            val chartFallback = current.charts.filter { track ->\n                track.counterpartVideoId.isNotBlank() || track.videoType.contains("video", ignoreCase = true)\n            }\n            val videos = LevyraPersonalOrbit.distinctRecordings(remoteVideos + chartFallback)\n''',
-              '''            val chartFallback = current.charts.filter { track ->\n                track.counterpartVideoId.isNotBlank()\n            }\n            val safeRemoteVideos = remoteVideos.filter { track ->\n                youtubePlayableTrack(track, preferVideo = true) != null\n            }\n            val videos = LevyraPersonalOrbit.distinctRecordings(chartFallback + safeRemoteVideos)\n'''
-          )
-          replace_once(
-              viewmodel,
-              '''private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")\n\ninternal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {\n''',
-              '''private val YOUTUBE_PLAYABLE_VIDEO_ID = Regex("^[A-Za-z0-9_-]{11}$")\nprivate val REJECTED_VIDEO_VARIANT = Regex(\n    """(?i)(?:^|[^\\p{L}\\p{N}])(?:live|live\\s+performance|performance|concert|festival|acoustic|session|stage|ceremony|halftime|half\\s+time|award\\s+show|tour)(?:$|[^\\p{L}\\p{N}])"""\n)\n\nprivate fun isRejectedVideoVariant(track: Track): Boolean {\n    val metadata = listOf(track.title, track.album, track.source, track.videoType).joinToString(" ")\n    return REJECTED_VIDEO_VARIANT.containsMatchIn(metadata)\n}\n\ninternal fun youtubePlayableTrack(track: Track, preferVideo: Boolean = false): Track? {\n'''
-          )
-          replace_once(
-              viewmodel,
               '    val videoId = if (preferVideo) counterpart.ifBlank { regular } else regular.ifBlank { counterpart }\n',
-              '''    val safeCurrentVideo = track.videoType.endsWith("_OMV", ignoreCase = true) &&\n        !isRejectedVideoVariant(track)\n    val videoId = if (preferVideo) {\n        counterpart.ifBlank { regular.takeIf { safeCurrentVideo }.orEmpty() }\n    } else {\n        regular.ifBlank { counterpart }\n    }\n'''
+              '''    val videoId = if (preferVideo) counterpart else regular.ifBlank { counterpart }\n''',
+          )
+          replace_once(
+              viewmodel,
+              '''        val requestedVideoMode = _state.value.isVideoMode\n        val playableTrack = youtubePlayableTrack(track, preferVideo = requestedVideoMode) ?: track\n        val instant = localDownloadedTrack(track) ?: resolver.cached(playableTrack, requestedVideoMode)\n''',
+              '''        val requestedVideoMode = _state.value.isVideoMode\n        val playableTrack = youtubePlayableTrack(track, preferVideo = requestedVideoMode)\n        if (requestedVideoMode && playableTrack == null) {\n            if (!isActive || requestId != playRequestId) return\n            player.stop()\n            _state.update {\n                it.copy(\n                    isVideoMode = false,\n                    isResolving = false,\n                    isPlaying = false,\n                    currentTrack = track.copy(streamUrl = ""),\n                    playerError = "Video ufficiale non verificato per questo brano"\n                )\n            }\n            return\n        }\n        val selectedTrack = playableTrack ?: track\n        val instant = localDownloadedTrack(track) ?: resolver.cached(selectedTrack, requestedVideoMode)\n''',
+          )
+          replace_once(
+              viewmodel,
+              '            val playable = resolveForPlayback(track)\n',
+              '            val playable = resolveForPlayback(selectedTrack)\n',
           )
 
           player_test = "app/src/test/java/com/luc4n3x/levyra/player/LevyraPlayerTest.kt"
           replace_once(
               player_test,
               'import org.junit.Assert.assertEquals\n',
-              'import org.junit.Assert.assertEquals\nimport org.junit.Assert.assertNull\n'
+              'import org.junit.Assert.assertEquals\nimport org.junit.Assert.assertNull\n',
           )
           replace_once(
               player_test,
               '''    private fun track(streamUrl: String): Track = Track(\n''',
-              '''    @Test\n    fun youtubePlayableTrackRejectsLiveOmvAsVideoFallback() {\n        val liveTrack = track(streamUrl = "").copy(\n            title = "Dai Dai (Live Performance at World Cup Halftime)",\n            counterpartVideoId = "",\n            videoType = "MUSIC_VIDEO_TYPE_OMV"\n        )\n\n        assertNull(youtubePlayableTrack(liveTrack, preferVideo = true))\n    }\n\n    @Test\n    fun youtubePlayableTrackRejectsUnclassifiedVideoFallback() {\n        val unverifiedTrack = track(streamUrl = "").copy(\n            counterpartVideoId = "",\n            videoType = ""\n        )\n\n        assertNull(youtubePlayableTrack(unverifiedTrack, preferVideo = true))\n    }\n\n    private fun track(streamUrl: String): Track = Track(\n'''
+              '''    @Test\n    fun youtubePlayableTrackDoesNotUseUnverifiedCurrentVideoInVideoMode() {\n        val unverified = track(streamUrl = "").copy(counterpartVideoId = "")\n\n        assertNull(youtubePlayableTrack(unverified, preferVideo = true))\n    }\n\n    private fun track(streamUrl: String): Track = Track(\n''',
           )
 
-          Path('.github/workflows/apply-strict-official-video-guard.yml').unlink()
+          Path(".github/workflows/apply-strict-official-video-guard.yml").unlink()
           PY
 
       - name: Run editorial selector tests
@@ -146,5 +129,5 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
           git diff --cached --check
-          git commit -m "fix(video): reject live performance substitutes"
+          git commit -m "fix(video): reject unverified and live substitutes"
           git push origin "HEAD:${HEAD_REF}"
