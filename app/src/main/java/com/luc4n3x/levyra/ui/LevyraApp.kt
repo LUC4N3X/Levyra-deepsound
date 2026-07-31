@@ -5348,7 +5348,7 @@ private fun HomeScreen(
     val rawOtherSections = homeDerivedState.otherSections
     val homeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts) {
         val sectionVideos = rawOtherSections
-            .filter { section -> isMusicVideoSectionTitle(section.title) }
+            .filter { section -> isMusicVideoSectionTitle(section.title, strings) }
             .flatMap { section -> section.tracks }
         val chartVideos = state.charts.filter { track ->
             track.counterpartVideoId.isNotBlank() || track.videoUrl.isNotBlank()
@@ -5363,7 +5363,7 @@ private fun HomeScreen(
     }
     val otherSections = remember(rawOtherSections, homeVideoTracks) {
         if (homeVideoTracks.isEmpty()) rawOtherSections
-        else rawOtherSections.filterNot { section -> isMusicVideoSectionTitle(section.title) }
+        else rawOtherSections.filterNot { section -> isMusicVideoSectionTitle(section.title, strings) }
     }
     val spotlightCandidates = homeDerivedState.spotlightCandidates
     val editorialCollections = homeDerivedState.editorialCollections
@@ -7026,9 +7026,13 @@ private fun HomeMusicVideoShelf(
     }
 }
 
-private fun isMusicVideoSectionTitle(title: String): Boolean {
-    val normalized = title.lowercase(java.util.Locale.ROOT)
-    return normalized.contains("video musical") ||
+private fun isMusicVideoSectionTitle(title: String, strings: LevyraStrings): Boolean {
+    val normalized = title.trim().lowercase(java.util.Locale.ROOT)
+    val localizedLabels = listOf(strings.exploreNewVideos)
+        .map { label -> label.trim().lowercase(java.util.Locale.ROOT) }
+        .filter(String::isNotBlank)
+    return localizedLabels.any { label -> normalized == label || normalized.contains(label) } ||
+        normalized.contains("video musical") ||
         normalized.contains("music video") ||
         normalized.contains("official video") ||
         normalized.contains("videoclip") ||
