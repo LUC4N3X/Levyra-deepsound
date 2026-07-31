@@ -18,6 +18,12 @@ class StartupSmokeTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val device = UiDevice.getInstance(instrumentation)
 
+        // Runtime permission dialogs belong to Android's permission controller,
+        // not Levyra. Grant the notification permission so this test verifies
+        // the application window and process rather than stopping on that dialog.
+        device.executeShellCommand(
+            "pm grant $PACKAGE_NAME android.permission.POST_NOTIFICATIONS"
+        )
         device.executeShellCommand("am force-stop $PACKAGE_NAME")
         val launchResult = device.executeShellCommand(
             "am start -W -n $PACKAGE_NAME/.MainActivity"
