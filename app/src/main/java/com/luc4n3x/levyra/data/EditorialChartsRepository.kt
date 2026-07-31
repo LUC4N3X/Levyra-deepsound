@@ -293,20 +293,24 @@ internal object EditorialCatalogParser {
             val palette = PALETTES[identity.seed % PALETTES.size]
             val artwork = publishedArtworkUrl(item.optString("artworkUrl"))
             val youtubeMusic = item.optJSONObject("youtubeMusic")
-            val youtubeVideoId = publishedYoutubeVideoId(youtubeMusic?.optString("videoId"))
+            val youtubeAudioVideoId = publishedYoutubeVideoId(youtubeMusic?.optString("audioVideoId"))
+            val youtubeOfficialVideoId = publishedYoutubeVideoId(youtubeMusic?.optString("videoId"))
+            val youtubePlaybackId = youtubeAudioVideoId.ifBlank { youtubeOfficialVideoId }
             val albumBrowseId = publishedYoutubeBrowseId(youtubeMusic?.optString("albumBrowseId"))
             val artistBrowseId = publishedYoutubeBrowseId(youtubeMusic?.optString("artistBrowseId"))
-            val youtubeConfidence = youtubeMusic?.optInt("confidence", 0)?.coerceIn(0, 100) ?: 0
+            val youtubeConfidence = maxOf(
+                youtubeMusic?.optInt("confidence", 0) ?: 0,
+                youtubeMusic?.optInt("audioConfidence", 0) ?: 0,
+                youtubeMusic?.optInt("videoConfidence", 0) ?: 0,
+            ).coerceIn(0, 100)
             tracks += Track(
-                id = youtubeVideoId.ifBlank { "chart-${identity.id}" },
+                id = youtubePlaybackId.ifBlank { "chart-${identity.id}" },
                 title = title,
                 artist = artist,
                 album = album?.optString("name").orEmpty().trim().ifBlank { EDITORIAL_ALBUM },
                 durationMs = item.optLong("durationMs", 0L).coerceAtLeast(0L),
                 streamUrl = "",
-                videoUrl = youtubeVideoId.takeIf(String::isNotBlank)
-                    ?.let { "https://www.youtube.com/watch?v=$it" }
-                    .orEmpty(),
+                videoUrl = "",
                 thumbnailUrl = artwork,
                 largeThumbnailUrl = artwork,
                 source = EDITORIAL_SOURCE,
@@ -323,9 +327,14 @@ internal object EditorialCatalogParser {
                 isrc = item.optString("isrc").uppercase(Locale.ROOT).filter(Char::isLetterOrDigit),
                 albumBrowseId = albumBrowseId,
                 artistBrowseIds = listOfNotNull(artistBrowseId.takeIf(String::isNotBlank)),
-                counterpartVideoId = youtubeVideoId,
-                metadataProvider = if (youtubeVideoId.isBlank()) EDITORIAL_SOURCE else "$EDITORIAL_SOURCE + YouTube Music",
-                metadataConfidence = if (youtubeVideoId.isBlank()) 94 else youtubeConfidence,
+                counterpartVideoId = youtubeOfficialVideoId,
+                videoType = when {
+                    youtubeOfficialVideoId.isNotBlank() -> "MUSIC_VIDEO_TYPE_OMV"
+                    youtubeAudioVideoId.isNotBlank() -> "MUSIC_VIDEO_TYPE_ATV"
+                    else -> ""
+                },
+                metadataProvider = if (youtubePlaybackId.isBlank()) EDITORIAL_SOURCE else "$EDITORIAL_SOURCE + YouTube Music",
+                metadataConfidence = if (youtubePlaybackId.isBlank()) 94 else youtubeConfidence,
             )
         }
         return tracks.distinctBy { it.id }

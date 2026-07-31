@@ -8,6 +8,7 @@ from levyra_editorial.youtube_music import (
     normalize_youtube_music_cookie,
     parse_search_candidates,
     score_candidate,
+    select_youtube_music_mapping,
 )
 
 
@@ -123,6 +124,106 @@ def test_parser_finds_video_id_inside_play_button_overlay() -> None:
 
     assert len(candidates) == 1
     assert candidates[0]["videoId"] == "ZyXwVu98765"
+
+
+
+def test_mapping_separates_art_track_from_official_music_video() -> None:
+    candidates = [
+        {
+            "videoId": "Audio123456",
+            "title": "Dai Dai",
+            "artist": "Shakira, Burna Boy",
+            "album": "Dai Dai",
+            "durationMs": 223_448,
+            "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
+        },
+        {
+            "videoId": "fcnDmrtj6Sk",
+            "title": "Dai Dai (Official Video)",
+            "artist": "Shakira, Burna Boy",
+            "album": "",
+            "durationMs": 226_000,
+            "musicVideoType": "MUSIC_VIDEO_TYPE_OMV",
+        },
+        {
+            "videoId": "Wrong123456",
+            "title": "Dai Dai",
+            "artist": "Shakira, Burna Boy",
+            "album": "",
+            "durationMs": 223_000,
+            "musicVideoType": "MUSIC_VIDEO_TYPE_UGC",
+        },
+    ]
+
+    mapping = select_youtube_music_mapping("Dai Dai", "Shakira, Burna Boy", 223_448, candidates)
+
+    assert mapping is not None
+    assert mapping["audioVideoId"] == "Audio123456"
+    assert mapping["videoId"] == "fcnDmrtj6Sk"
+    assert mapping["videoId"] != "Wrong123456"
+
+
+def test_mapping_never_promotes_an_art_track_to_official_video() -> None:
+    mapping = select_youtube_music_mapping(
+        "Exact Song",
+        "Exact Artist",
+        180_000,
+        [
+            {
+                "videoId": "OnlyAudio12",
+                "title": "Exact Song",
+                "artist": "Exact Artist",
+                "album": "Exact Song",
+                "durationMs": 180_000,
+                "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
+            }
+        ],
+    )
+
+    assert mapping is not None
+    assert mapping["audioVideoId"] == "OnlyAudio12"
+    assert "videoId" not in mapping
+
+
+def test_parser_keeps_video_type_attached_to_the_same_video_id() -> None:
+    payload = {
+        "contents": {
+            "musicResponsiveListItemRenderer": {
+                "playlistItemData": {"videoId": "Official123"},
+                "flexColumns": [
+                    {
+                        "musicResponsiveListItemFlexColumnRenderer": {
+                            "text": {"runs": [{"text": "Official Song"}]}
+                        }
+                    },
+                    {
+                        "musicResponsiveListItemFlexColumnRenderer": {
+                            "text": {"runs": [{"text": "Official Artist"}]}
+                        }
+                    },
+                ],
+                "overlay": {
+                    "musicPlayButtonRenderer": {
+                        "playNavigationEndpoint": {
+                            "watchEndpoint": {
+                                "videoId": "Official123",
+                                "watchEndpointMusicSupportedConfigs": {
+                                    "watchEndpointMusicConfig": {
+                                        "musicVideoType": "MUSIC_VIDEO_TYPE_OMV"
+                                    }
+                                },
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    candidate = parse_search_candidates(payload)[0]
+
+    assert candidate["videoId"] == "Official123"
+    assert candidate["musicVideoType"] == "MUSIC_VIDEO_TYPE_OMV"
 
 
 class BootstrapResponse:
