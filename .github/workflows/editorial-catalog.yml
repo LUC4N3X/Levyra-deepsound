@@ -59,6 +59,60 @@ jobs:
                   raise RuntimeError(f"video type formatting anchor count: {count}")
               path.write_text(text.replace(old, new, 1), encoding="utf-8")
           PY
+          mkdir -p app/src/test/java/com/luc4n3x/levyra/data
+          cat > app/src/test/java/com/luc4n3x/levyra/data/EditorialCatalogParserTest.kt <<'KOTLIN'
+          package com.luc4n3x.levyra.data
+
+          import org.junit.Assert.assertEquals
+          import org.junit.Assert.assertNotNull
+          import org.junit.Test
+
+          class EditorialCatalogParserTest {
+              @Test
+              fun separatesAudioPlaybackFromOfficialVideoCounterpart() {
+                  val body = """
+                      {
+                        "schemaVersion": 1,
+                        "generatedAt": "2026-07-31T09:00:00Z",
+                        "collections": [
+                          {
+                            "kind": "chart",
+                            "market": "IT",
+                            "tracks": [
+                              {
+                                "title": "Dai Dai",
+                                "artists": [
+                                  {"name": "Shakira"},
+                                  {"name": "Burna Boy"}
+                                ],
+                                "album": {"name": "Dai Dai"},
+                                "durationMs": 223448,
+                                "youtubeMusic": {
+                                  "audioVideoId": "Audio123456",
+                                  "audioConfidence": 99,
+                                  "videoId": "fcnDmrtj6Sk",
+                                  "videoConfidence": 97,
+                                  "confidence": 99
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                  """.trimIndent()
+
+                  val snapshot = EditorialCatalogParser.parse(body, loadedAt = 0L)
+                  assertNotNull(snapshot)
+                  val track = snapshot!!.byMarket.getValue("IT").single()
+
+                  assertEquals("Audio123456", track.id)
+                  assertEquals("", track.videoUrl)
+                  assertEquals("fcnDmrtj6Sk", track.counterpartVideoId)
+                  assertEquals("MUSIC_VIDEO_TYPE_OMV", track.videoType)
+                  assertEquals(99, track.metadataConfidence)
+              }
+          }
+          KOTLIN
 
       - name: Verify collector
         run: |
@@ -66,8 +120,14 @@ jobs:
           ruff check tools/levyra-editorial
           pytest -q tools/levyra-editorial/tests
 
-      - name: Verify Android
-        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:compileDebugKotlin
+      - name: Verify Android mapping
+        run: >-
+          ./gradlew --no-daemon
+          :app:testDebugUnitTest
+          --tests com.luc4n3x.levyra.data.EditorialCatalogParserTest
+          --tests com.luc4n3x.levyra.player.LevyraPlayerTest
+          :app:lintDebug
+          :app:compileDebugKotlin
 
       - name: Verify mapping contract
         shell: bash
@@ -98,6 +158,7 @@ jobs:
             tools/levyra-editorial/levyra_editorial/collector.py \
             tools/levyra-editorial/tests/test_youtube_music.py \
             tools/levyra-editorial/tests/test_collector.py \
-            app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
+            app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt \
+            app/src/test/java/com/luc4n3x/levyra/data/EditorialCatalogParserTest.kt
           git commit -m "fix(video): map audio and official music videos separately"
           git push origin "HEAD:$HEAD_REF"
