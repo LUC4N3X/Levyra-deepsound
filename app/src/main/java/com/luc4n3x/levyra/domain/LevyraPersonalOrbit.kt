@@ -24,7 +24,7 @@ object LevyraPersonalOrbit {
         """(?i)\b(?:(?:official\s+)?(?:music\s+)?(?:video|audio)|lyrics?|visuali[sz]er)\b"""
     )
     private val artistSeparatorPattern = Regex(
-        """(?i)\b(?:feat|featuring|ft|and|with|e|ed|y|et|und)\b|[,&;/+]"""
+        """(?iU)(?<=\s)(?:feat\.?|featuring|ft\.?|and|with|e|ed|y|et|und)(?=\s)|[,&;+]"""
     )
     private val nonMusicWordPattern = Regex("""[^\p{L}\p{M}\p{N}\s]""")
     private val whitespacePattern = Regex("""\s+""")
@@ -45,6 +45,19 @@ object LevyraPersonalOrbit {
         val primaryArtist: String = artists.firstOrNull().orEmpty()
         val artistSet: Set<String> = artists.toSet()
     }
+
+    private data class NormalizedTasteSeed(
+        val artists: Set<String>,
+        val album: String,
+        val moodTags: Set<String>
+    )
+
+    private data class RankedTrack(
+        val track: Track,
+        val affinity: Int,
+        val metadata: Int,
+        val title: String
+    )
 
     fun build(
         currentTrack: Track?,
@@ -94,12 +107,29 @@ object LevyraPersonalOrbit {
         val favoritesPool = viable(favorites)
         val fallbackTracks = viable(donorPool)
         val tasteSeeds = distinctRecordings(playbackHistory + favoritesPool + restoredOrbit)
+        val normalizedTasteSeeds = tasteSeeds.map { seed ->
+            NormalizedTasteSeed(
+                artists = normalizedArtists(seed.artist).toSet(),
+                album = normalizedMusicTitle(seed.album),
+                moodTags = seed.moodTags.map { it.lowercase(Locale.ROOT) }.toSet()
+            )
+        }
 
-        val orderedFallback = fallbackTracks.sortedWith(
-            compareByDescending<Track> { tasteAffinity(it, tasteSeeds, normalizedLanguage) }
-                .thenByDescending(::recordingMetadataScore)
-                .thenBy { normalizedMusicTitle(it.title) }
-        )
+        val orderedFallback = fallbackTracks
+            .map { candidate ->
+                RankedTrack(
+                    track = candidate,
+                    affinity = tasteAffinity(candidate, normalizedTasteSeeds, normalizedLanguage),
+                    metadata = recordingMetadataScore(candidate),
+                    title = normalizedMusicTitle(candidate.title)
+                )
+            }
+            .sortedWith(
+                compareByDescending<RankedTrack> { it.affinity }
+                    .thenByDescending { it.metadata }
+                    .thenBy { it.title }
+            )
+            .map(RankedTrack::track)
 
         val selected = ArrayList<Track>(max)
 
@@ -364,17 +394,20 @@ object LevyraPersonalOrbit {
         return score
     }
 
-    private fun tasteAffinity(track: Track, seeds: List<Track>, languageCode: String): Int {
+    private fun tasteAffinity(
+        track: Track,
+        seeds: List<NormalizedTasteSeed>,
+        languageCode: String
+    ): Int {
         if (seeds.isEmpty()) {
             return (if (isLanguagePreferred(track, languageCode)) 80 else 0) + recordingMetadataScore(track)
         }
         val candidateArtists = normalizedArtists(track.artist).toSet()
         val candidateAlbum = normalizedMusicTitle(track.album)
-        val artistHits = seeds.count { seed ->
-            candidateArtists.intersect(normalizedArtists(seed.artist).toSet()).isNotEmpty()
-        }
-        val albumHits = seeds.count { normalizedMusicTitle(it.album) == candidateAlbum && candidateAlbum.isNotBlank() }
-        val moodHits = seeds.sumOf { seed -> track.moodTags.intersect(seed.moodTags).size }
+        val candidateMoods = track.moodTags.map { it.lowercase(Locale.ROOT) }.toSet()
+        val artistHits = seeds.count { seed -> candidateArtists.intersect(seed.artists).isNotEmpty() }
+        val albumHits = seeds.count { seed -> seed.album == candidateAlbum && candidateAlbum.isNotBlank() }
+        val moodHits = seeds.sumOf { seed -> candidateMoods.intersect(seed.moodTags).size }
         return artistHits * 180 + albumHits * 70 + moodHits * 18 +
             (if (isLanguagePreferred(track, languageCode)) 55 else 0) +
             recordingMetadataScore(track)
