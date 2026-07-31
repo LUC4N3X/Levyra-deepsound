@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: apply-editorial-audit-fixes-v3
+  group: apply-editorial-audit-fixes-v4
   cancel-in-progress: true
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: tools/levyra-editorial/pyproject.toml
-      - name: Apply, verify, and commit
+      - name: Apply, verify, and commit code fixes
         shell: bash
         run: |
           set +e
@@ -49,7 +49,6 @@ jobs:
           run_logged python tools/apply_editorial_audit_fixes.py || status=$?
           if [ "$status" -eq 0 ]; then
             run_logged python -c 'from pathlib import Path; p=Path("tools/levyra-editorial/levyra_editorial/youtube_music.py"); s=p.read_text(); old="        maximum = max(45_000, round(duration_ms * 0.20))"; new="        maximum = max(90_000, round(duration_ms * 0.40))"; assert s.count(old) == 1; p.write_text(s.replace(old, new, 1))' || status=$?
-            rm -f tools/editorial-audit-fix-error.txt
           fi
           if [ "$status" -eq 0 ]; then
             run_logged python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]" || status=$?
@@ -71,6 +70,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if [ "$status" -eq 0 ]; then
+            git checkout "$original_head" -- \
+              .github/workflows/editorial-catalog.yml \
+              .github/workflows/apply-editorial-audit-fixes.yml \
+              tools/apply_editorial_audit_fixes.py
+            rm -f tools/editorial-audit-fix-error.txt
             git add -A
             if git diff --cached --quiet; then
               echo "No changes to commit" | tee -a "$log"
