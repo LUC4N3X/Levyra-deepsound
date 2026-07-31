@@ -1,0 +1,53 @@
+name: Apply Editorial Audit Fixes
+
+on:
+  push:
+    branches:
+      - feat/central-ytm-editorial
+    paths:
+      - tools/apply_editorial_audit_fixes.py
+      - .github/workflows/apply-editorial-audit-fixes.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-editorial-audit-fixes
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/central-ytm-editorial
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/levyra-editorial/pyproject.toml
+      - name: Apply confirmed editorial fixes
+        run: python tools/apply_editorial_audit_fixes.py
+      - name: Install collector tests
+        run: python -m pip install --disable-pip-version-check -e "tools/levyra-editorial[dev]"
+      - name: Verify editorial code
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools/levyra-editorial/levyra_editorial
+          ruff check tools/levyra-editorial
+          pytest tools/levyra-editorial/tests
+          python scripts/check_android_regex_compatibility.py
+      - name: Commit verified fixes
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "No changes to commit"; exit 1; }
+          git commit -m "fix(editorial): address resolver audit regressions"
+          git push origin HEAD:feat/central-ytm-editorial
