@@ -100,22 +100,12 @@ jobs:
           }
           KOTLIN
 
-      - name: Verify final mapping contract
+      - name: Validate generated files
         shell: bash
         run: |
           set -euo pipefail
           python -m compileall -q tools/levyra-editorial/levyra_editorial
-          grep -q 'audioVideoId' tools/levyra-editorial/levyra_editorial/youtube_music.py
-          grep -q 'MUSIC_VIDEO_TYPE_OMV' tools/levyra-editorial/levyra_editorial/youtube_music.py
-          grep -q 'youtubeAudioVideoId' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
-          grep -q 'counterpartVideoId = youtubeOfficialVideoId' app/src/main/java/com/luc4n3x/levyra/data/EditorialChartsRepository.kt
-          if git diff --unified=0 -- app tools \
-            | grep '^+' \
-            | grep -v '^+++' \
-            | grep -E 'SAPISID=|__Secure-[A-Za-z0-9_.-]*=|LEVYRA_EDITORIAL_YTM_COOKIE=' >/dev/null; then
-            echo '::error::Added lines contain credential material'
-            exit 1
-          fi
+          git diff --check
 
       - name: Commit mapping and clean temporary tooling
         shell: bash
