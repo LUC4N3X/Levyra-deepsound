@@ -37,26 +37,24 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
           text = path.read_text(encoding="utf-8")
-          old = '''    val visiblePersonalTracks = remember(personalTracks, spotlightCandidate?.track) {
-              val spotlightTrack = spotlightCandidate?.track
-              LevyraPersonalOrbit.distinctRecordings(personalTracks).filterNot { track ->
-                  spotlightTrack != null && LevyraPersonalOrbit.sameRecording(track, spotlightTrack)
-              }
-          }
-          '''
-          new = '''    val visiblePersonalTracks = remember(personalTracks) {
+          replacement = '''    val visiblePersonalTracks = remember(personalTracks) {
               LevyraPersonalOrbit.distinctRecordings(personalTracks)
                   .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
           }
-          '''
-          if new not in text:
-              count = text.count(old)
+          val visibleEditorialCollections'''
+          if "val visiblePersonalTracks = remember(personalTracks)" not in text:
+              pattern = re.compile(
+                  r"    val visiblePersonalTracks = remember\([^\n]*\) \{.*?\n    \}\n    val visibleEditorialCollections",
+                  re.DOTALL,
+              )
+              text, count = pattern.subn(replacement, text, count=1)
               if count != 1:
-                  raise RuntimeError(f"personal orbit visibility anchor count: {count}")
-              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+                  raise RuntimeError(f"personal orbit visibility block count: {count}")
+              path.write_text(text, encoding="utf-8")
           PY
 
       - name: Verify and compile
