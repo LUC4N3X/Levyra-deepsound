@@ -1,0 +1,75 @@
+name: Apply Home Video Identity Fixes
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: >-
+      github.event.pull_request.head.ref == 'feat/central-ytm-editorial' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Apply guarded fixes
+        run: python tools/apply_home_video_identity_fixes.py
+
+      - name: Verify patch contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -z "$(git status --porcelain)"
+          grep -q 'preferVideo = targetMode' app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          grep -q 'HomeMusicVideoShelf' app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          grep -q 'distinctRecordings' app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt
+          ! git diff -- app/src/main | grep -E 'LEVYRA_EDITORIAL_YTM_COOKIE|SAPISID|__Secure-' >/dev/null
+
+      - name: Focused unit tests
+        run: >-
+          ./gradlew --no-daemon
+          :app:testDebugUnitTest
+          --tests com.luc4n3x.levyra.player.LevyraPlayerTest
+          --tests com.luc4n3x.levyra.domain.LevyraPersonalOrbitIdentityTest
+
+      - name: Android lint and compile
+        run: ./gradlew --no-daemon :app:lintDebug :app:compileDebugKotlin
+
+      - name: Commit verified fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbit.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
+            app/src/test/java/com/luc4n3x/levyra/player/LevyraPlayerTest.kt \
+            app/src/test/java/com/luc4n3x/levyra/domain/LevyraPersonalOrbitIdentityTest.kt
+          git commit -m "fix(home): stabilize official videos and recording identity"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
