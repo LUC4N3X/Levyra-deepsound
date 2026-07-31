@@ -1,2 +1,4 @@
 line-length = 111
-fix = true
+
+[lint]
+ignore = ["I001"]
