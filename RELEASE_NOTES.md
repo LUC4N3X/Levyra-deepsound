@@ -1,8 +1,8 @@
-# Levyra 2.3.17
+# Levyra 2.3.18
 
 ## Highlights
 
-Levyra 2.3.17 focuses on reliable playback, safer updates, faster access to music, and a more consistent Android experience. The release strengthens YouTube Music recovery, introduces Levyra Nexus as a shared reliability layer, expands chart and track actions, and improves accessibility without changing existing libraries, downloads, or preferences.
+Levyra 2.3.18 focuses on reliable playback, safer updates, faster access to music, and a more consistent Android experience. The release strengthens YouTube Music recovery, introduces Levyra Nexus as a shared reliability layer, expands chart and track actions, and improves accessibility without changing existing libraries, downloads, or preferences.
 
 ## What's New
 
@@ -71,12 +71,12 @@ This Android release includes the application-side integration required by Levyr
 
 ## Versioning
 
-- Version name: `2.3.17`
-- Version code: `2031700`
+- Version name: `2.3.18`
+- Version code: `2031800`
 
 ## Validation
 
-- Android release metadata, Gradle fallbacks, documentation badges, user agents, and Fastlane changelogs were aligned to version `2.3.17`.
+- Android release metadata, Gradle fallbacks, documentation badges, user agents, and Fastlane changelogs were aligned to version `2.3.18`.
 - The release guard verifies version-name, version-code, tag, release-notes, signing, and publishing consistency.
 - The signed GitHub APK and the reproducible F-Droid APK are produced from the same commit by the protected release workflow.
 - Nexus route, playback-transition, and update-verification behavior is covered by automated tests.
@@ -88,4 +88,4 @@ No migration is required. Existing libraries, favorites, downloads, playback sta
 
 ## Final note
 
-Levyra 2.3.17 makes playback and updates more dependable while bringing faster chart access, richer track actions, and a cleaner, more accessible experience.
+Levyra 2.3.18 makes playback and updates more dependable while bringing faster chart access, richer track actions, and a cleaner, more accessible experience.
