@@ -37,7 +37,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Apply guarded fixes
-        run: python tools/apply_home_video_identity_fixes.py
+        run: |
+          python tools/apply_home_video_identity_fixes.py
+          python tools/fix_generated_artist_signature.py
 
       - name: Verify patch contract
         shell: bash
