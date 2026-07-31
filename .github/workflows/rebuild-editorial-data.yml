@@ -1,0 +1,23 @@
+name: Rebuild Editorial Data
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/rebuild-editorial-data.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    name: Start Editorial Catalog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch Editorial Catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run editorial-catalog.yml --ref main
