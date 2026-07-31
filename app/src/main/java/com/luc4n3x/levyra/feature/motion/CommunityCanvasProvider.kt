@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -28,8 +29,8 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     private val client: OkHttpClient = LevyraHttpClientFactory.media(context).newBuilder()
         .connectTimeout(3, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
-        .callTimeout(7, TimeUnit.SECONDS)
+        .readTimeout(4, TimeUnit.SECONDS)
+        .callTimeout(4_500, TimeUnit.MILLISECONDS)
         .build()
     private val catalogMutex = Mutex()
 
@@ -62,18 +63,33 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
             cachedEntries.takeIf { it.isNotEmpty() && refreshedAt < catalogExpiresAtMs }?.let {
                 return@withLock it
             }
-            val payload = fetchCatalog()
-            val parsed = parseCommunityCanvasCatalog(payload)
-            if (parsed.isEmpty()) throw CommunityCanvasException("Community canvas catalog is empty")
+            val parsed = loadFirstUsableCatalog()
             cachedEntries = parsed
             catalogExpiresAtMs = refreshedAt + CATALOG_TTL_MS
             parsed
         }
     }
 
-    private suspend fun fetchCatalog(): String = withContext(Dispatchers.IO) {
+    private suspend fun loadFirstUsableCatalog(): List<CommunityCanvasEntry> {
+        var lastError: Throwable? = null
+        for (source in CATALOG_URLS) {
+            val parsed = try {
+                parseCommunityCanvasCatalog(fetchCatalog(source))
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                lastError = error
+                continue
+            }
+            if (parsed.isNotEmpty()) return parsed
+            lastError = CommunityCanvasException("Community canvas catalog is empty")
+        }
+        throw lastError ?: CommunityCanvasException("Community canvas catalog is unavailable")
+    }
+
+    private suspend fun fetchCatalog(source: String): String = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url(CATALOG_URL)
+            .url(source)
             .header("Accept", "application/json")
             .header("User-Agent", USER_AGENT)
             .build()
@@ -114,8 +130,11 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     companion object {
         const val PROVIDER_ID = "community-canvas"
-        const val CATALOG_URL =
+        const val MIRROR_CATALOG_URL =
+            "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/canvas-data/catalog/community-canvas.json"
+        const val UPSTREAM_CATALOG_URL =
             "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json"
+        val CATALOG_URLS = listOf(MIRROR_CATALOG_URL, UPSTREAM_CATALOG_URL)
         const val USER_AGENT =
             "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/142 Mobile Safari/537.36 Levyra/CommunityCanvas"
         const val MAX_CATALOG_BYTES = 1024 * 1024
@@ -129,6 +148,7 @@ internal data class CommunityCanvasEntry(
     val album: String,
     val url: String,
     val scope: MotionArtworkScope,
+    val pathScope: MotionArtworkScope? = null,
     val isrc: String = "",
     val width: Int? = null,
     val height: Int? = null
@@ -152,10 +172,13 @@ internal fun parseCommunityCanvasCatalog(payload: String): List<CommunityCanvasE
         }
         val extension = url.encodedPath.substringAfterLast('.', "").lowercase(Locale.ROOT)
         if (extension !in COMMUNITY_MEDIA_EXTENSIONS) continue
-        val scope = when (item.optString("scope").trim().lowercase(Locale.ROOT)) {
+        val declaredScope = when (item.optString("scope").trim().lowercase(Locale.ROOT)) {
             "album" -> MotionArtworkScope.ALBUM
-            else -> MotionArtworkScope.TRACK
+            "track", "song" -> MotionArtworkScope.TRACK
+            else -> null
         }
+        val scope = declaredScope ?: MotionArtworkScope.TRACK
+        val pathScope = if (declaredScope == null) communityCanvasScopeFromPath(url) else null
         val key = listOf(
             normalizeMotionText(song),
             normalizeMotionText(artist),
@@ -170,12 +193,27 @@ internal fun parseCommunityCanvasCatalog(payload: String): List<CommunityCanvasE
             album = album,
             url = rawUrl,
             scope = scope,
-            isrc = item.optString("isrc").trim().uppercase(Locale.ROOT),
+            pathScope = pathScope,
+            isrc = communityCanvasIsrc(item.optString("isrc")),
             width = item.optInt("width").takeIf { it > 0 },
             height = item.optInt("height").takeIf { it > 0 }
         )
     }
     return output
+}
+
+private fun communityCanvasScopeFromPath(url: HttpUrl): MotionArtworkScope? {
+    val marker = url.pathSegments
+        .dropLast(1)
+        .map { segment -> segment.lowercase(Locale.ROOT) }
+        .lastOrNull { segment -> segment == "album" || segment == "song" }
+        ?: return null
+    return if (marker == "album") MotionArtworkScope.ALBUM else MotionArtworkScope.TRACK
+}
+
+private fun communityCanvasIsrc(value: String): String {
+    val normalized = value.trim().uppercase(Locale.ROOT)
+    return if (COMMUNITY_ISRC_PATTERN.matches(normalized)) normalized else ""
 }
 
 internal fun communityCanvasCandidates(
@@ -195,7 +233,11 @@ internal fun communityCanvasCandidates(
         .values
         .mapNotNull { group ->
             val first = group.firstOrNull() ?: return@mapNotNull null
-            if (first.scope == MotionArtworkScope.ALBUM || group.map { it.song }.distinct().size >= 2) {
+            if (
+                first.scope == MotionArtworkScope.ALBUM ||
+                first.pathScope == MotionArtworkScope.ALBUM ||
+                group.map { it.song }.distinct().size >= 2
+            ) {
                 first.copy(scope = MotionArtworkScope.ALBUM)
             } else {
                 null
@@ -273,6 +315,7 @@ internal val COMMUNITY_MEDIA_HOSTS = setOf(
 )
 
 private val COMMUNITY_MEDIA_EXTENSIONS = setOf("mp4", "m3u8")
+private val COMMUNITY_ISRC_PATTERN = Regex("^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$")
 private const val MIN_COMMUNITY_QUICK_SCORE = 70
 private const val MAX_COMMUNITY_CANDIDATES = 8
 
