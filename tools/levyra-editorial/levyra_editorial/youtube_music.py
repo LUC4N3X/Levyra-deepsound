@@ -372,9 +372,21 @@ HARD_VARIANT_TERMS = {
     "remix",
 }
 NON_OFFICIAL_VIDEO_TERMS = {"lyrics", "lyric", "visualizer", "visualiser", "audio"}
-FORBIDDEN_OFFICIAL_VIDEO_VARIANT = re.compile(
-    r"(?i)(?:^|[^a-z0-9])(?:live(?:\s+performance)?|performance|concert|festival|acoustic|session|stage|ceremony|halftime|half\s+time|award\s+show|tour)(?:$|[^a-z0-9])"
-)
+OFFICIAL_VIDEO_VARIANT_TERMS = {
+    "live",
+    "live performance",
+    "performance",
+    "concert",
+    "festival",
+    "acoustic",
+    "session",
+    "stage",
+    "ceremony",
+    "halftime",
+    "half time",
+    "award show",
+    "tour",
+}
 
 
 def _recording_title_key(value: str) -> str:
@@ -422,10 +434,23 @@ def _duration_score(target_ms: int, candidate_ms: Any, *, official_video: bool) 
     return 6
 
 
+def _matched_variant_terms(value: str, terms: set[str]) -> set[str]:
+    normalized = _text_key(value)
+    tokens = _tokens(normalized)
+    return {
+        term
+        for term in terms
+        if (term in normalized if " " in term else term in tokens)
+    }
+
+
 def _contains_unrequested_variant(target_title: str, candidate: Mapping[str, Any]) -> bool:
-    target_blob = _text_key(target_title)
-    candidate_blob = _text_key(f"{candidate.get('title') or ''} {candidate.get('album') or ''}")
-    return any(term in candidate_blob and term not in target_blob for term in HARD_VARIANT_TERMS)
+    target_terms = _matched_variant_terms(target_title, HARD_VARIANT_TERMS)
+    candidate_terms = _matched_variant_terms(
+        f"{candidate.get('title') or ''} {candidate.get('album') or ''}",
+        HARD_VARIANT_TERMS,
+    )
+    return bool(candidate_terms - target_terms)
 
 
 def _audio_candidate_score(
@@ -637,7 +662,9 @@ def _official_web_video_score(
         return None
     if any(term in title_key for term in ("lyrics", "lyric", "visualizer", "visualiser", "reaction")):
         return None
-    if FORBIDDEN_OFFICIAL_VIDEO_VARIANT.search(title_key):
+    target_variants = _matched_variant_terms(title, OFFICIAL_VIDEO_VARIANT_TERMS)
+    candidate_variants = _matched_variant_terms(title_key, OFFICIAL_VIDEO_VARIANT_TERMS)
+    if candidate_variants - target_variants:
         return None
     if not candidate.get("verifiedArtist"):
         return None
@@ -744,11 +771,30 @@ class YoutubeMusicWebClient:
         self._web_bootstrap_failed = False
         self._cache_lock = threading.Lock()
         self._cache: dict[str, dict[str, Any] | None] = {}
-        self._query_count = 0
-        self._max_queries = max(1, int(os.environ.get("LEVYRA_EDITORIAL_YTM_MAX_QUERIES", "700")))
+        self._request_count = 0
+        legacy_recording_budget = max(
+            1,
+            int(os.environ.get("LEVYRA_EDITORIAL_YTM_MAX_QUERIES", "1000")),
+        )
+        self._max_requests = max(
+            1,
+            int(
+                os.environ.get(
+                    "LEVYRA_EDITORIAL_YTM_MAX_REQUESTS",
+                    str(legacy_recording_budget * 2),
+                )
+            ),
+        )
 
     def close(self) -> None:
         self._session.close()
+
+    def _reserve_request(self) -> bool:
+        with self._cache_lock:
+            if self._request_count >= self._max_requests:
+                return False
+            self._request_count += 1
+            return True
 
     def _authorization(self) -> str:
         timestamp = int(time.time())
@@ -907,10 +953,11 @@ class YoutubeMusicWebClient:
         with self._cache_lock:
             if cache_key in self._cache:
                 return self._cache[cache_key]
-            if self._query_count >= self._max_queries:
+
+        if not self._reserve_request():
+            with self._cache_lock:
                 self._cache[cache_key] = None
-                return None
-            self._query_count += 1
+            return None
 
         audio_result: dict[str, Any] | None = None
         try:
@@ -926,7 +973,7 @@ class YoutubeMusicWebClient:
 
         verified_audio = combine_verified_youtube_mapping(audio_result, None)
         official_video: dict[str, Any] | None = None
-        if verified_audio is not None:
+        if verified_audio is not None and self._reserve_request():
             try:
                 official_video = self._resolve_official_video(title, artist, duration_ms)
             except (requests.RequestException, ValueError, YoutubeMusicError) as error:
