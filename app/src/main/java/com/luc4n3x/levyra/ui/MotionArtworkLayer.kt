@@ -180,7 +180,12 @@ private fun MotionArtworkVideo(
         }
         player.addListener(listener)
         player.setVideoTextureView(textureView)
-        player.setMediaItem(MediaItem.fromUri(artwork.url))
+        player.setMediaItem(
+            MediaItem.Builder()
+                .setUri(artwork.url)
+                .setMimeType(artwork.mimeType.takeIf { it.isNotBlank() })
+                .build()
+        )
         player.prepare()
         onDispose {
             player.removeListener(listener)

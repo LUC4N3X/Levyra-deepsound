@@ -1,0 +1,110 @@
+name: Community Canvas Mirror
+
+on:
+  pull_request:
+    paths:
+      - "scripts/sync_community_canvas.py"
+      - "app/src/main/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasProvider.kt"
+      - ".github/workflows/community-canvas-mirror.yml"
+  schedule:
+    - cron: "37 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: community-canvas-mirror-${{ github.event_name == 'pull_request' && github.ref || 'publisher' }}
+  cancel-in-progress: true
+
+env:
+  CANVAS_MIN_ENTRIES: "150"
+
+jobs:
+  normalize:
+    name: Normalize Upstream Catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Normalize Catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/sync_community_canvas.py \
+            --output build/canvas/community-canvas.json \
+            --min-entries "${CANVAS_MIN_ENTRIES}"
+          jq -e '.version == 1 and (.items | length) > 0' build/canvas/community-canvas.json >/dev/null
+
+      - name: Upload Normalized Catalog
+        uses: actions/upload-artifact@v7
+        with:
+          name: community-canvas-${{ github.run_number }}
+          path: build/canvas/community-canvas.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish Mirror Branch
+    if: github.event_name != 'pull_request'
+    needs: normalize
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Publish Validated Snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="canvas-data"
+          source_ref="$(git rev-parse HEAD)"
+          python3 scripts/sync_community_canvas.py \
+            --output /tmp/community-canvas.json \
+            --min-entries "${CANVAS_MIN_ENTRIES}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
+            git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
+            git switch --force-create "${branch}" "origin/${branch}"
+            if [ -f catalog/community-canvas.json ]; then
+              jq -S 'del(.generatedAt)' catalog/community-canvas.json > /tmp/current-canvas-content.json
+              jq -S 'del(.generatedAt)' /tmp/community-canvas.json > /tmp/new-canvas-content.json
+              if cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json; then
+                echo "Community canvas catalog is unchanged; publication skipped."
+                git switch --detach "${source_ref}"
+                exit 0
+              fi
+            fi
+          else
+            git switch --orphan "${branch}"
+            git rm -rf --ignore-unmatch .
+          fi
+
+          mkdir -p catalog
+          cp /tmp/community-canvas.json catalog/community-canvas.json
+          git add catalog/community-canvas.json
+          git commit -m "chore(canvas): refresh community catalog from run ${GITHUB_RUN_NUMBER}"
+          git push origin "HEAD:refs/heads/${branch}"
+          git switch --detach "${source_ref}"
+          echo "Published catalog to ${branch}/catalog/community-canvas.json"
