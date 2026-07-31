@@ -176,6 +176,46 @@ def _video_id_from(value: Any) -> str:
     return ""
 
 
+
+def _playback_identity_from(value: Any) -> tuple[str, str]:
+    playlist_id = ""
+    typed: list[tuple[str, str]] = []
+    untyped: list[str] = []
+    for node in _walk(value):
+        playlist_data = node.get("playlistItemData")
+        if isinstance(playlist_data, Mapping):
+            candidate = str(playlist_data.get("videoId") or "")
+            if VIDEO_ID.fullmatch(candidate) and not playlist_id:
+                playlist_id = candidate
+        watch = node.get("watchEndpoint")
+        if not isinstance(watch, Mapping):
+            continue
+        candidate = str(watch.get("videoId") or "")
+        if not VIDEO_ID.fullmatch(candidate):
+            continue
+        supported = watch.get("watchEndpointMusicSupportedConfigs")
+        config = supported.get("watchEndpointMusicConfig") if isinstance(supported, Mapping) else None
+        video_type = (
+    str(config.get("musicVideoType") or "").strip().upper()
+    if isinstance(config, Mapping)
+    else ""
+)
+        if video_type:
+            typed.append((candidate, video_type))
+        else:
+            untyped.append(candidate)
+    if playlist_id:
+        matching = next((item for item in typed if item[0] == playlist_id), None)
+        if matching is not None:
+            return matching
+        return playlist_id, ""
+    if typed:
+        return typed[0]
+    if untyped:
+        return untyped[0], ""
+    return "", ""
+
+
 def parse_search_candidates(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     output: list[dict[str, Any]] = []
     for node in _walk(payload):
@@ -192,7 +232,7 @@ def parse_search_candidates(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         title = _runs_text(first_renderer.get("text"))
         if not title:
             continue
-        video_id = _video_id_from(renderer)
+        video_id, music_video_type = _playback_identity_from(renderer)
         if not video_id:
             continue
 
@@ -251,6 +291,7 @@ def parse_search_candidates(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "artistBrowseId": artist_browse_id,
                 "albumBrowseId": album_browse_id,
                 "durationMs": duration,
+                "musicVideoType": music_video_type,
             }
         )
     return output
@@ -304,6 +345,202 @@ def score_candidate(
     if any(term in blob for term in PENALTY_TERMS) and not any(term in target_blob for term in PENALTY_TERMS):
         score -= 28
     return score
+
+
+
+OFFICIAL_ANNOTATION = re.compile(
+    r"(?i)\s*[\[(](?:official\s+)?(?:music\s+)?(?:video|audio|visuali[sz]er|lyrics?(?:\s+video)?)[^\])]*[\])]\s*"
+)
+TRAILING_MEDIA_ANNOTATION = re.compile(
+    r"(?i)\s*(?:[-–—|:]\s*)?(?:official\s+)?(?:music\s+)?(?:video|audio|visuali[sz]er|lyrics?(?:\s+video)?)\s*$"
+)
+HARD_VARIANT_TERMS = {
+    "karaoke",
+    "cover",
+    "reaction",
+    "sped up",
+    "slowed",
+    "instrumental",
+    "nightcore",
+    "live",
+    "remix",
+}
+NON_OFFICIAL_VIDEO_TERMS = {"lyrics", "lyric", "visualizer", "visualiser", "audio"}
+
+
+def _recording_title_key(value: str) -> str:
+    cleaned = OFFICIAL_ANNOTATION.sub(" ", value)
+    cleaned = TRAILING_MEDIA_ANNOTATION.sub(" ", cleaned)
+    return _text_key(cleaned)
+
+
+def _artist_similarity(target: str, actual: str) -> float:
+    target_key = _text_key(target)
+    actual_key = _text_key(actual)
+    if not target_key or not actual_key:
+        return 0.0
+    if target_key == actual_key:
+        return 1.0
+    target_tokens = _tokens(target_key)
+    actual_tokens = _tokens(actual_key)
+    if not target_tokens or not actual_tokens:
+        return 0.0
+    if actual_tokens <= target_tokens:
+        return 0.90
+    if target_tokens <= actual_tokens:
+        return 0.95
+    overlap = len(target_tokens & actual_tokens)
+    if overlap == 0:
+        return 0.0
+    precision = overlap / len(actual_tokens)
+    recall = overlap / len(target_tokens)
+    return 2 * precision * recall / (precision + recall)
+
+
+def _duration_score(target_ms: int, candidate_ms: Any, *, official_video: bool) -> int | None:
+    if not isinstance(candidate_ms, int) or candidate_ms <= 0 or target_ms <= 0:
+        return 8 if official_video else None
+    delta = abs(candidate_ms - target_ms)
+    maximum = max(75_000, round(target_ms * 0.30)) if official_video else 12_000
+    if delta > maximum:
+        return None
+    if delta <= 3_000:
+        return 22
+    if delta <= 10_000:
+        return 18
+    if official_video and delta <= 30_000:
+        return 12
+    return 6
+
+
+def _contains_unrequested_variant(target_title: str, candidate: Mapping[str, Any]) -> bool:
+    target_blob = _text_key(target_title)
+    candidate_blob = _text_key(f"{candidate.get('title') or ''} {candidate.get('album') or ''}")
+    return any(term in candidate_blob and term not in target_blob for term in HARD_VARIANT_TERMS)
+
+
+def _audio_candidate_score(
+    title: str,
+    artist: str,
+    duration_ms: int,
+    candidate: Mapping[str, Any],
+) -> int | None:
+    kind = str(candidate.get("musicVideoType") or "").upper()
+    if kind.endswith("_OMV") or kind.endswith("_UGC"):
+        return None
+    if kind and not kind.endswith("_ATV"):
+        return None
+    if _contains_unrequested_variant(title, candidate):
+        return None
+    if _recording_title_key(title) != _recording_title_key(str(candidate.get("title") or "")):
+        return None
+    artist_score = _artist_similarity(artist, str(candidate.get("artist") or ""))
+    if artist_score < 0.72:
+        return None
+    duration_score = _duration_score(duration_ms, candidate.get("durationMs"), official_video=False)
+    if duration_score is None:
+        return None
+    kind_score = 48 if kind.endswith("_ATV") else 12
+    return min(100, round(35 + artist_score * 25 + duration_score + kind_score))
+
+
+def _official_video_candidate_score(
+    title: str,
+    artist: str,
+    duration_ms: int,
+    candidate: Mapping[str, Any],
+) -> int | None:
+    kind = str(candidate.get("musicVideoType") or "").upper()
+    raw_title = str(candidate.get("title") or "")
+    title_blob = _text_key(raw_title)
+    explicitly_official = "official video" in title_blob or "official music video" in title_blob
+    if kind.endswith("_ATV") or kind.endswith("_UGC"):
+        return None
+    if not kind.endswith("_OMV") and not explicitly_official:
+        return None
+    if _contains_unrequested_variant(title, candidate):
+        return None
+    if any(term in title_blob for term in NON_OFFICIAL_VIDEO_TERMS) and not explicitly_official:
+        return None
+    if _recording_title_key(title) != _recording_title_key(raw_title):
+        return None
+    artist_score = _artist_similarity(artist, str(candidate.get("artist") or ""))
+    if artist_score < 0.72:
+        return None
+    duration_score = _duration_score(duration_ms, candidate.get("durationMs"), official_video=True)
+    if duration_score is None:
+        return None
+    kind_score = 55 if kind.endswith("_OMV") else 36
+    official_title_score = 8 if explicitly_official else 0
+    return min(100, round(35 + artist_score * 25 + duration_score + kind_score + official_title_score))
+
+
+def _best_unambiguous(
+    ranked: list[tuple[int, Mapping[str, Any]]],
+    *,
+    minimum: int,
+) -> tuple[int, Mapping[str, Any]] | None:
+    if not ranked:
+        return None
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    best = ranked[0]
+    if best[0] < minimum:
+        return None
+    if len(ranked) > 1 and best[0] - ranked[1][0] < 7:
+        best_kind = str(best[1].get("musicVideoType") or "").upper()
+        second_kind = str(ranked[1][1].get("musicVideoType") or "").upper()
+        if not (best_kind.endswith("_OMV") and not second_kind.endswith("_OMV")):
+            return None
+    return best
+
+
+def select_youtube_music_mapping(
+    title: str,
+    artist: str,
+    duration_ms: int,
+    candidates: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    unique = {
+        str(candidate.get("videoId") or ""): candidate
+        for candidate in candidates
+        if VIDEO_ID.fullmatch(str(candidate.get("videoId") or ""))
+    }
+    audio_ranked = [
+        (score, candidate)
+        for candidate in unique.values()
+        if (score := _audio_candidate_score(title, artist, duration_ms, candidate)) is not None
+    ]
+    video_ranked = [
+        (score, candidate)
+        for candidate in unique.values()
+        if (score := _official_video_candidate_score(title, artist, duration_ms, candidate)) is not None
+    ]
+    audio = _best_unambiguous(audio_ranked, minimum=82)
+    video = _best_unambiguous(video_ranked, minimum=90)
+    if audio is None and video is None:
+        return None
+
+    output: dict[str, Any] = {}
+    selected: list[Mapping[str, Any]] = []
+    if audio is not None:
+        audio_score, audio_candidate = audio
+        output["audioVideoId"] = audio_candidate["videoId"]
+        output["audioConfidence"] = audio_score
+        selected.append(audio_candidate)
+    if video is not None:
+        video_score, video_candidate = video
+        output["videoId"] = video_candidate["videoId"]
+        output["videoConfidence"] = video_score
+        selected.insert(0, video_candidate)
+    output["confidence"] = max(
+        int(output.get("audioConfidence") or 0),
+        int(output.get("videoConfidence") or 0),
+    )
+    for key in ("albumBrowseId", "artistBrowseId", "durationMs"):
+        value = next((candidate.get(key) for candidate in selected if candidate.get(key)), None)
+        if value:
+            output[key] = value
+    return output
 
 
 class YoutubeMusicWebClient:
@@ -419,32 +656,32 @@ class YoutubeMusicWebClient:
                 self._cache[cache_key] = None
                 return None
             self._query_count += 1
-        try:
-            payload = self._search(f"{title} {artist}")
-            candidates = parse_search_candidates(payload)
-            ranked = sorted(
-                (
-            (score_candidate(title, artist, duration_ms, candidate), candidate)
-            for candidate in candidates
-        ),
-                key=lambda item: item[0],
-                reverse=True,
+
+        candidates_by_id: dict[str, dict[str, Any]] = {}
+        result: dict[str, Any] | None = None
+        queries = (
+            f"{artist} {title} official video",
+            f"{title} {artist}",
+        )
+        for query in dict.fromkeys(queries):
+            try:
+                payload = self._search(query)
+            except (requests.RequestException, ValueError, YoutubeMusicError) as error:
+                LOGGER.warning("Central YouTube Music resolution query skipped: %s", type(error).__name__)
+                continue
+            for candidate in parse_search_candidates(payload):
+                video_id = str(candidate.get("videoId") or "")
+                if VIDEO_ID.fullmatch(video_id):
+                    candidates_by_id[video_id] = candidate
+            result = select_youtube_music_mapping(
+                title,
+                artist,
+                duration_ms,
+                list(candidates_by_id.values()),
             )
-            if not ranked or ranked[0][0] < 70:
-                result = None
-            else:
-                score, candidate = ranked[0]
-                result = {
-                    "videoId": candidate["videoId"],
-                    "confidence": min(100, max(0, score)),
-                }
-                for key in ("albumBrowseId", "artistBrowseId", "durationMs"):
-                    value = candidate.get(key)
-                    if value:
-                        result[key] = value
-        except (requests.RequestException, ValueError, YoutubeMusicError) as error:
-            LOGGER.warning("Central YouTube Music resolution skipped: %s", type(error).__name__)
-            result = None
+            if result and result.get("audioVideoId") and result.get("videoId"):
+                break
+
         with self._cache_lock:
             self._cache[cache_key] = result
         return result

@@ -282,13 +282,35 @@ def _assert_safe_keys(value: Any) -> None:
 def _safe_youtube_music_match(value: Any) -> dict[str, Any] | None:
     if not isinstance(value, Mapping):
         return None
-    video_id = _optional_string(value.get("videoId"))
-    if video_id is None or re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) is None:
+
+    def safe_video_id(key: str) -> str | None:
+        candidate = _optional_string(value.get(key))
+        if candidate and re.fullmatch(r"[A-Za-z0-9_-]{11}", candidate):
+            return candidate
         return None
-    confidence = value.get("confidence")
-    if not isinstance(confidence, int) or confidence not in range(0, 101):
+
+    audio_video_id = safe_video_id("audioVideoId")
+    official_video_id = safe_video_id("videoId")
+    if audio_video_id is None and official_video_id is None:
         return None
-    output: dict[str, Any] = {"videoId": video_id, "confidence": confidence}
+
+    fallback_confidence = value.get("confidence")
+    output: dict[str, Any] = {}
+    confidence_values: list[int] = []
+    for video_key, confidence_key, video_id in (
+        ("audioVideoId", "audioConfidence", audio_video_id),
+        ("videoId", "videoConfidence", official_video_id),
+    ):
+        if video_id is None:
+            continue
+        confidence = value.get(confidence_key, fallback_confidence)
+        if not isinstance(confidence, int) or confidence not in range(0, 101):
+            return None
+        output[video_key] = video_id
+        output[confidence_key] = confidence
+        confidence_values.append(confidence)
+    output["confidence"] = max(confidence_values)
+
     for source_key, public_key in (
         ("albumBrowseId", "albumBrowseId"),
         ("artistBrowseId", "artistBrowseId"),
