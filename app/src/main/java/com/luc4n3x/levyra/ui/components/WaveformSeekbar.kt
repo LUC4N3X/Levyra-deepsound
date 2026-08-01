@@ -24,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -32,6 +31,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -42,8 +45,8 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 /**
- * Interactive Waveform Seekbar component with real-time waveform bars
- * and a floating time preview tooltip on finger drag.
+ * Interactive Waveform Seekbar component with real-time waveform bars,
+ * full accessibility semantics (TalkBack adjustable seekbar), and drag preview time tooltip.
  */
 @Composable
 fun WaveformSeekbar(
@@ -134,6 +137,21 @@ fun WaveformSeekbar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp)
+                .semantics {
+                    progressBarRangeInfo = ProgressBarRangeInfo(
+                        current = effectiveProgress,
+                        range = 0f..1f,
+                        steps = 0
+                    )
+                    setProgress { targetValue ->
+                        if (durationMs > 0L) {
+                            onSeekTo((targetValue.coerceIn(0f, 1f) * durationMs).toLong())
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                }
                 .pointerInput(durationMs) {
                     detectTapGestures { offset ->
                         if (durationMs > 0L && widthPx > 0f) {
