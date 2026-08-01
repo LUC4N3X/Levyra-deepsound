@@ -11042,7 +11042,9 @@ private fun PlayerYoutubeEngagementRow(
                     if (comments.visible) primary.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.105f)
                 ),
                 shape = CircleShape,
-                modifier = Modifier.pressable(enabled = canOpenComments, onClick = onComments)
+                modifier = Modifier
+                    .sizeIn(minHeight = 48.dp)
+                    .pressable(enabled = canOpenComments, onClick = onComments)
             ) {
                 Row(
                     modifier = Modifier
@@ -11548,7 +11550,6 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                         scaleX = artScale
                                         scaleY = artScale
                                         translationY = artOffset.toPx()
-                                        shadowElevation = artShadow
                                         shape = RoundedCornerShape(artCorner)
                                     }
                             )
@@ -12533,7 +12534,7 @@ private fun PlayerTimeline(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (compact) 31.dp else 33.dp)
+                .sizeIn(minHeight = 48.dp)
                 .semantics {
                     progressBarRangeInfo = ProgressBarRangeInfo(
                         current = fraction,
