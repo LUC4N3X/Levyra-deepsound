@@ -62,9 +62,28 @@ The compact shard row intentionally omits title, artist and album text. The exac
 identifies the requested recording, and the candidate identity is reconstructed from the track
 already playing. A row only needs the digest, media URL, scope and optional ISRC/dimensions.
 
-This architecture supports millions of mappings on the client. Actual coverage still depends on
-how many valid canvas sources and curated entries are supplied; the index removes the client-side
-scaling limit but does not invent missing videos.
+This architecture supports millions of mappings on the client. Actual real-canvas coverage still
+depends on how many valid canvas sources and curated entries are supplied; the index removes the
+client-side scaling limit but does not invent missing videos.
+
+## Universal local artwork fallback
+
+Levyra keeps a real verified canvas as the preferred result. When no real canvas exists, the network
+is unavailable, or a selected video errors or fails to render its first frame within six seconds,
+the player animates the existing album artwork locally instead of leaving it completely static.
+
+The fallback uses a subtle Ken Burns-style movement:
+
+* slow scale, translation and fractional rotation over a 12-second reversible cycle;
+* active only while the track is playing;
+* stopped immediately when playback is paused;
+* disabled in Android power-save mode and on low-RAM devices;
+* independent of network access and background-data permission.
+
+It does not generate, download, cache or bundle an additional video. It reuses the artwork already
+on screen, so it adds no catalog assets and no meaningful APK-size growth. This guarantees visible
+motion for unsupported recordings while preserving real artist-provided canvases whenever one is
+available.
 
 ## Rollout-safe layouts
 
