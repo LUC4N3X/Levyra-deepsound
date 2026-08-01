@@ -106,7 +106,7 @@ fun PremiumSeekbar(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .offset { IntOffset(with(density) { tooltipOffsetDp.toPx().toInt() }, -6.dp.roundToPx()) }
+                    .offset { IntOffset(with(density) { tooltipOffsetDp.toPx().toInt() }, -36.dp.roundToPx()) }
                     .shadow(8.dp, RoundedCornerShape(8.dp))
                     .background(Color(0xFF1E1E24), RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
