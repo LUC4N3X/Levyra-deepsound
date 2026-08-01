@@ -10,6 +10,7 @@ class EditorialArtworkContinuityTest {
         val presented = track(
             source = "Levyra Editorial",
             thumbnail = "https://is1-ssl.mzstatic.com/image/thumb/source/600x600bb.jpg",
+            moodTags = setOf("chart"),
         )
         val resolved = track(
             source = "YouTube Music",
@@ -31,6 +32,35 @@ class EditorialArtworkContinuityTest {
     }
 
     @Test
+    fun chartMoodTagDoesNotLockNonEditorialArtwork() {
+        val presented = track(
+            source = "Search",
+            thumbnail = "https://charts.example.test/red-cover.jpg",
+            moodTags = setOf("chart"),
+        )
+        val resolved = track(
+            source = "YouTube Music",
+            thumbnail = "https://charts.example.test/white-cover.jpg",
+        )
+
+        assertEquals(resolved, preserveEditorialArtwork(presented, resolved))
+    }
+
+    @Test
+    fun chartSourceNameDoesNotLockNonEditorialArtwork() {
+        val presented = track(
+            source = "Apple Music Charts",
+            thumbnail = "https://charts.example.test/presented-cover.jpg",
+        )
+        val resolved = track(
+            source = "YouTube Music",
+            thumbnail = "https://charts.example.test/resolved-cover.jpg",
+        )
+
+        assertEquals(resolved, preserveEditorialArtwork(presented, resolved))
+    }
+
+    @Test
     fun normalTracksKeepTheResolvedArtwork() {
         val presented = track(source = "Search", thumbnail = "https://example.test/old.jpg")
         val resolved = track(source = "YouTube Music", thumbnail = "https://example.test/new.jpg")
@@ -38,7 +68,11 @@ class EditorialArtworkContinuityTest {
         assertEquals(resolved, preserveEditorialArtwork(presented, resolved))
     }
 
-    private fun track(source: String, thumbnail: String): Track = Track(
+    private fun track(
+        source: String,
+        thumbnail: String,
+        moodTags: Set<String> = emptySet(),
+    ): Track = Track(
         id = "chart-id",
         title = "Titolo",
         artist = "Artista",
@@ -49,7 +83,7 @@ class EditorialArtworkContinuityTest {
         thumbnailUrl = thumbnail,
         largeThumbnailUrl = thumbnail,
         source = source,
-        moodTags = setOf("chart"),
+        moodTags = moodTags,
         energy = 70,
         vocal = 55,
         replayScore = 90,

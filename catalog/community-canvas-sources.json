@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "name": "levyra-curated",
+      "path": "catalog/community-canvas-extra.json",
+      "required": false
+    },
+    {
+      "name": "vivimusicanvas",
+      "url": "https://raw.githubusercontent.com/vivizzz007/vivimusicanvas/main/canvas.json",
+      "required": true
+    }
+  ]
+}
