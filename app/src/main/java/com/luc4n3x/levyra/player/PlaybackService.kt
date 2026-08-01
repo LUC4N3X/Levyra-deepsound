@@ -158,6 +158,8 @@ class PlaybackService : MediaLibraryService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val queuePreviousCommand by lazy { SessionCommand(ACTION_QUEUE_PREVIOUS, Bundle.EMPTY) }
     private val queueNextCommand by lazy { SessionCommand(ACTION_QUEUE_NEXT, Bundle.EMPTY) }
+    private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
+    private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
 
     override fun onCreate() {
         super.onCreate()
@@ -306,6 +308,11 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
+        val queueShuffleButton = CommandButton.Builder(CommandButton.ICON_SHUFFLE)
+            .setDisplayName("Casuale")
+            .setSessionCommand(queueShuffleCommand)
+            .setIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_shuffle)
+            .build()
         val queuePreviousButton = CommandButton.Builder(CommandButton.ICON_PREVIOUS)
             .setDisplayName("Precedente")
             .setSessionCommand(queuePreviousCommand)
@@ -313,6 +320,11 @@ class PlaybackService : MediaLibraryService() {
         val queueNextButton = CommandButton.Builder(CommandButton.ICON_NEXT)
             .setDisplayName("Successivo")
             .setSessionCommand(queueNextCommand)
+            .build()
+        val queueLikeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+            .setDisplayName("Mi piace")
+            .setSessionCommand(queueLikeCommand)
+            .setIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_like)
             .build()
 
         val callback = object : MediaLibrarySession.Callback {
@@ -322,8 +334,10 @@ class PlaybackService : MediaLibraryService() {
             ): MediaSession.ConnectionResult {
                 val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                     .buildUpon()
+                    .add(queueShuffleCommand)
                     .add(queuePreviousCommand)
                     .add(queueNextCommand)
+                    .add(queueLikeCommand)
                     .build()
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(sessionCommands)
@@ -379,6 +393,22 @@ class PlaybackService : MediaLibraryService() {
                     }
                     ACTION_QUEUE_NEXT -> {
                         skipQueue(forward = true, respectRepeatOne = false)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    "levyra.queue.shuffle" -> {
+                        queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    "levyra.favorite.like" -> {
+                        serviceScope.launch(Dispatchers.IO) {
+                            queueEngine.state.value.currentTrack?.let { track ->
+                                // Optional: Dispatch to favorites store if accessible, or broadcast
+                                // For simplicity, we can just send an intent broadcast for the UI to pick up
+                                val intent = Intent("com.luc4n3x.levyra.ACTION_TOGGLE_FAVORITE")
+                                intent.putExtra("track_id", track.id)
+                                sendBroadcast(intent)
+                            }
+                        }
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
                     else -> super.onCustomCommand(session, controller, customCommand, args)
@@ -454,7 +484,7 @@ class PlaybackService : MediaLibraryService() {
 
         mediaSession = MediaLibrarySession.Builder(this, player, callback)
             .setSessionActivity(sessionActivity)
-            .setMediaButtonPreferences(ImmutableList.of(queuePreviousButton, queueNextButton))
+            .setMediaButtonPreferences(ImmutableList.of(queueShuffleButton, queuePreviousButton, queueNextButton, queueLikeButton))
             .build()
 
         val notificationProvider = DefaultMediaNotificationProvider(this)
