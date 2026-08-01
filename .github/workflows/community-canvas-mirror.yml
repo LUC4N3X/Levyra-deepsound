@@ -24,6 +24,8 @@ concurrency:
 
 env:
   CANVAS_MIN_ENTRIES: "150"
+  CANVAS_COMPAT_MIN_ENTRIES: "100"
+  CANVAS_COMPAT_MAX_BYTES: "921600"
 
 jobs:
   normalize:
@@ -50,16 +52,23 @@ jobs:
           set -euo pipefail
           python3 scripts/sync_community_canvas.py \
             --sources-file catalog/community-canvas-sources.json \
-            --output build/canvas/community-canvas.json \
+            --output build/canvas/community-canvas-full.json \
+            --compat-output build/canvas/community-canvas.json \
+            --compat-max-bytes "${CANVAS_COMPAT_MAX_BYTES}" \
+            --compat-min-entries "${CANVAS_COMPAT_MIN_ENTRIES}" \
             --min-entries "${CANVAS_MIN_ENTRIES}"
-          jq -e '.version == 1 and (.items | length) > 0' build/canvas/community-canvas.json >/dev/null
+          jq -e '.version == 1 and (.items | length) >= (env.CANVAS_MIN_ENTRIES | tonumber)' \
+            build/canvas/community-canvas-full.json >/dev/null
+          jq -e '.version == 1 and (.items | length) >= (env.CANVAS_COMPAT_MIN_ENTRIES | tonumber)' \
+            build/canvas/community-canvas.json >/dev/null
+          test "$(wc -c < build/canvas/community-canvas.json)" -le "${CANVAS_COMPAT_MAX_BYTES}"
 
       - name: Build Sharded Lookup Index
         shell: bash
         run: |
           set -euo pipefail
           python3 scripts/build_community_canvas_index.py \
-            --input build/canvas/community-canvas.json \
+            --input build/canvas/community-canvas-full.json \
             --output-dir build/canvas/index
           manifest="build/canvas/index/v2/manifest.json"
           jq -e '
@@ -83,6 +92,7 @@ jobs:
         with:
           name: community-canvas-${{ github.run_number }}
           path: |
+            build/canvas/community-canvas-full.json
             build/canvas/community-canvas.json
             build/canvas/index
           if-no-files-found: error
@@ -116,14 +126,18 @@ jobs:
           python3 scripts/build_community_canvas_index.py --self-test
           python3 scripts/sync_community_canvas.py \
             --sources-file catalog/community-canvas-sources.json \
-            --output /tmp/community-canvas.json \
+            --output /tmp/community-canvas-full.json \
+            --compat-output /tmp/community-canvas.json \
+            --compat-max-bytes "${CANVAS_COMPAT_MAX_BYTES}" \
+            --compat-min-entries "${CANVAS_COMPAT_MIN_ENTRIES}" \
             --min-entries "${CANVAS_MIN_ENTRIES}"
           python3 scripts/build_community_canvas_index.py \
-            --input /tmp/community-canvas.json \
+            --input /tmp/community-canvas-full.json \
             --output-dir /tmp/canvas-index
           new_manifest="/tmp/canvas-index/v2/manifest.json"
           new_shard_dir="$(jq -r '.shardDirectory' "${new_manifest}")"
           [[ "${new_shard_dir}" =~ ^p[2-5]$ ]]
+          test "$(wc -c < /tmp/community-canvas.json)" -le "${CANVAS_COMPAT_MAX_BYTES}"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -138,7 +152,7 @@ jobs:
               jq -S 'del(.generatedAt)' "${new_manifest}" > /tmp/new-index-manifest.json
               if cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json && \
                  cmp -s /tmp/current-index-manifest.json /tmp/new-index-manifest.json; then
-                echo "Community canvas catalog and sharded index are unchanged; publication skipped."
+                echo "Community canvas compatibility snapshot and sharded index are unchanged; publication skipped."
                 git switch --detach "${source_ref}"
                 exit 0
               fi
@@ -157,4 +171,4 @@ jobs:
           git commit -m "chore(canvas): refresh sharded community index from run ${GITHUB_RUN_NUMBER}"
           git push origin "HEAD:refs/heads/${branch}"
           git switch --detach "${source_ref}"
-          echo "Published flat fallback and ${new_shard_dir} index to ${branch}/catalog"
+          echo "Published bounded fallback and ${new_shard_dir} index to ${branch}/catalog"
