@@ -92,10 +92,11 @@ jobs:
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
-      - name: Motion and Canvas Unit Tests
+      - name: Motion, Canvas, and Artwork Continuity Unit Tests
         run: |
           ./gradlew --no-daemon :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.feature.motion.*'
+            --tests 'com.luc4n3x.levyra.feature.motion.*' \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest'
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
