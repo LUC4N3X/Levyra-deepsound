@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-01T12:18:57Z",
+  "generatedAt": "2026-08-01T12:41:49Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1824,7 +1824,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -1832,12 +1832,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 28,
@@ -2399,7 +2399,7 @@
         },
         {
           "position": 2,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -2407,8 +2407,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -2418,7 +2418,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 3,
@@ -3040,11 +3040,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 31,
@@ -3088,7 +3088,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-07bfa81c9a33aafde0f1",
+          "id": "levyra-4c886bf7b578fe1d1532",
           "title": "Nice To Each Other",
           "artists": [
             {
@@ -3096,8 +3096,8 @@
             }
           ],
           "album": {
-            "name": "Nice To Each Other",
-            "releaseDate": "2025-05-30"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 209000,
           "explicit": false,
@@ -3107,7 +3107,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9e75099d7065c71cc7ede72"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 34,
@@ -5601,6 +5601,12 @@
           },
           "durationMs": 192432,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "LPDvKF_h8_o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm6FmMolN-n38Oj8-ZHVuHg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f4aec0b976368624d9281ace"
         },
         {
@@ -8991,6 +8997,12 @@
           },
           "durationMs": 156517,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "o_kGoqLWnXg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCDB1S6gqvv0wfPoqlX8ubGA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023bc78f16328cc9ebef1b4010"
         },
         {
@@ -10331,11 +10343,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 38,
@@ -19415,12 +19427,6 @@
           },
           "durationMs": 155024,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "7A58WJikeyE",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCZpmeLoLLb3vmxgscRyLPgw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0229728fe23025da14d5695ddb"
         },
         {
@@ -26862,6 +26868,12 @@
           },
           "durationMs": 206416,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "44DrBGXCm9g",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCdCskNuCMMAU7FqK9pW7wiQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02afbae55931618ecd661b6db0"
         },
         {
