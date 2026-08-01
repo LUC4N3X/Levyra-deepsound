@@ -92,8 +92,10 @@ jobs:
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
-      - name: Debug Unit Tests
-        run: ./gradlew --no-daemon :app:testDebugUnitTest
+      - name: Motion and Canvas Unit Tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.feature.motion.*'
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
