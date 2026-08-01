@@ -405,19 +405,7 @@ class PlaybackService : MediaLibraryService() {
                     "levyra.favorite.like" -> {
                         serviceScope.launch(Dispatchers.IO) {
                             queueEngine.state.value.currentTrack?.let { track ->
-                                val favorites = favoritesStore.load()
-                                fun favoriteKey(item: com.luc4n3x.levyra.domain.Track): String =
-                                    item.id.ifBlank { "${item.artist.trim()}|${item.title.trim()}" }
-                                val trackKey = favoriteKey(track)
-                                val existingIndex = favorites.indexOfFirst { favorite ->
-                                    favoriteKey(favorite).equals(trackKey, ignoreCase = true)
-                                }
-                                val updated = if (existingIndex >= 0) {
-                                    favorites.filterIndexed { index, _ -> index != existingIndex }
-                                } else {
-                                    listOf(track) + favorites
-                                }
-                                favoritesStore.saveSuspending(updated)
+                                favoritesStore.toggleFavorite(track)
                             }
                         }
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
