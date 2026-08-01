@@ -14,6 +14,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.view.TextureView
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -26,12 +28,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -43,6 +48,10 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun MotionArtworkLayer(
@@ -54,14 +63,80 @@ internal fun MotionArtworkLayer(
     staticArtwork: @Composable () -> Unit
 ) {
     val lifecycleActive = rememberMotionArtworkLifecycleActive()
-    val environmentAllowed = rememberMotionArtworkEnvironmentAllowed(enabled && lifecycleActive)
+    val environment = rememberMotionArtworkEnvironment(enabled && lifecycleActive)
+    var videoUnavailable by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType) {
+        mutableStateOf(false)
+    }
+    var videoReady by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType) {
+        mutableStateOf(false)
+    }
+    var videoRetryCount by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType) {
+        mutableStateOf(0)
+    }
+    val videoArtwork = artwork?.takeIf {
+        enabled &&
+            lifecycleActive &&
+            environment.remoteAllowed &&
+            !videoUnavailable
+    }
+    LaunchedEffect(videoArtwork) {
+        if (videoArtwork == null) videoReady = false
+    }
+    LaunchedEffect(
+        videoUnavailable,
+        enabled,
+        lifecycleActive,
+        environment.remoteAllowed,
+        isPlaying,
+    ) {
+        if (
+            !videoUnavailable ||
+            !enabled ||
+            !lifecycleActive ||
+            !environment.remoteAllowed ||
+            !isPlaying ||
+            videoRetryCount >= MAX_VIDEO_RETRIES
+        ) {
+            return@LaunchedEffect
+        }
+        delay(VIDEO_RETRY_DELAY_MS)
+        if (
+            enabled &&
+            lifecycleActive &&
+            environment.remoteAllowed &&
+            isPlaying &&
+            videoRetryCount < MAX_VIDEO_RETRIES
+        ) {
+            videoRetryCount += 1
+            videoUnavailable = false
+        }
+    }
+    val animateStatic = enabled &&
+        lifecycleActive &&
+        environment.localAllowed &&
+        isPlaying &&
+        !videoReady
+
     Box(modifier = modifier) {
-        staticArtwork()
-        if (artwork != null && enabled && lifecycleActive && environmentAllowed) {
+        MotionArtworkStaticFallback(
+            animated = animateStatic,
+            cornerRadius = cornerRadius,
+            modifier = Modifier.fillMaxSize(),
+            content = staticArtwork
+        )
+        if (videoArtwork != null) {
             MotionArtworkVideo(
-                artwork = artwork,
+                artwork = videoArtwork,
                 isPlaying = isPlaying,
                 cornerRadius = cornerRadius,
+                onFirstFrame = {
+                    videoReady = true
+                    videoRetryCount = 0
+                },
+                onUnavailable = {
+                    videoReady = false
+                    videoUnavailable = true
+                },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -85,7 +160,7 @@ private fun rememberMotionArtworkLifecycleActive(): Boolean {
 }
 
 @Composable
-private fun rememberMotionArtworkEnvironmentAllowed(observe: Boolean): Boolean {
+private fun rememberMotionArtworkEnvironment(observe: Boolean): MotionArtworkEnvironment {
     val context = LocalContext.current.applicationContext
     var revision by remember { mutableIntStateOf(0) }
     DisposableEffect(context, observe) {
@@ -135,7 +210,138 @@ private fun rememberMotionArtworkEnvironmentAllowed(observe: Boolean): Boolean {
         }
     }
     return remember(context, observe, revision) {
-        observe && MotionArtworkNetworkPolicy.canUseMotionArtwork(context)
+        if (!observe) {
+            MotionArtworkEnvironment(remoteAllowed = false, localAllowed = false)
+        } else {
+            MotionArtworkEnvironment(
+                remoteAllowed = MotionArtworkNetworkPolicy.canUseMotionArtwork(context),
+                localAllowed = MotionArtworkNetworkPolicy.canAnimateLocally(context)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MotionArtworkStaticFallback(
+    animated: Boolean,
+    cornerRadius: Dp,
+    modifier: Modifier,
+    content: @Composable () -> Unit
+) {
+    val shape = RoundedCornerShape(cornerRadius)
+    var artworkSize by remember { mutableStateOf(IntSize.Zero) }
+    val zoomPhase = remember { Animatable(0f) }
+    val horizontalDrift = remember { Animatable(0f) }
+    val verticalDrift = remember { Animatable(0f) }
+    val tiltPhase = remember { Animatable(0f) }
+    val motionAmount by animateFloatAsState(
+        targetValue = if (animated) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (animated) STATIC_ARTWORK_MOTION_ENTER_MS else STATIC_ARTWORK_MOTION_EXIT_MS,
+            easing = FastOutSlowInEasing
+        ),
+        label = "static-artwork-motion-amount"
+    )
+
+    LaunchedEffect(animated) {
+        if (!animated) {
+            coroutineScope {
+                launch {
+                    zoomPhase.animateTo(
+                        0f,
+                        tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+                launch {
+                    horizontalDrift.animateTo(
+                        0f,
+                        tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+                launch {
+                    verticalDrift.animateTo(
+                        0f,
+                        tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+                launch {
+                    tiltPhase.animateTo(
+                        0f,
+                        tween(STATIC_ARTWORK_MOTION_EXIT_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+            return@LaunchedEffect
+        }
+        coroutineScope {
+            launch {
+                while (isActive) {
+                    zoomPhase.animateTo(
+                        1f,
+                        tween(STATIC_ARTWORK_ZOOM_DURATION_MS, easing = FastOutSlowInEasing)
+                    )
+                    zoomPhase.animateTo(
+                        0f,
+                        tween(STATIC_ARTWORK_ZOOM_DURATION_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+            launch {
+                while (isActive) {
+                    horizontalDrift.animateTo(
+                        1f,
+                        tween(STATIC_ARTWORK_HORIZONTAL_DURATION_MS, easing = FastOutSlowInEasing)
+                    )
+                    horizontalDrift.animateTo(
+                        -1f,
+                        tween(STATIC_ARTWORK_HORIZONTAL_DURATION_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+            launch {
+                while (isActive) {
+                    verticalDrift.animateTo(
+                        -1f,
+                        tween(STATIC_ARTWORK_VERTICAL_DURATION_MS, easing = FastOutSlowInEasing)
+                    )
+                    verticalDrift.animateTo(
+                        1f,
+                        tween(STATIC_ARTWORK_VERTICAL_DURATION_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+            launch {
+                while (isActive) {
+                    tiltPhase.animateTo(
+                        1f,
+                        tween(STATIC_ARTWORK_TILT_DURATION_MS, easing = FastOutSlowInEasing)
+                    )
+                    tiltPhase.animateTo(
+                        -1f,
+                        tween(STATIC_ARTWORK_TILT_DURATION_MS, easing = FastOutSlowInEasing)
+                    )
+                }
+            }
+        }
+    }
+
+    Box(modifier = modifier.clip(shape)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { artworkSize = it }
+                .graphicsLayer {
+                    val amount = motionAmount
+                    val scale = 1f + amount * (0.058f + zoomPhase.value * 0.026f)
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = artworkSize.width * 0.021f * horizontalDrift.value * amount
+                    translationY = artworkSize.height * 0.016f * verticalDrift.value * amount
+                    rotationZ = 0.18f * tiltPhase.value * amount
+                }
+        ) {
+            content()
+        }
     }
 }
 
@@ -144,9 +350,13 @@ private fun MotionArtworkVideo(
     artwork: MotionArtwork,
     isPlaying: Boolean,
     cornerRadius: Dp,
+    onFirstFrame: () -> Unit,
+    onUnavailable: () -> Unit,
     modifier: Modifier
 ) {
     val context = LocalContext.current
+    val currentOnFirstFrame by rememberUpdatedState(onFirstFrame)
+    val currentOnUnavailable by rememberUpdatedState(onUnavailable)
     var firstFrameRendered by remember(artwork.identityKey, artwork.url, artwork.mimeType) {
         mutableStateOf(false)
     }
@@ -166,18 +376,20 @@ private fun MotionArtworkVideo(
     val textureView = remember(player) { TextureView(context) }
     val videoAlpha by animateFloatAsState(
         targetValue = if (firstFrameRendered && !failed) 1f else 0f,
-        animationSpec = tween(durationMillis = 320),
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "motion-artwork-alpha"
     )
 
-    DisposableEffect(player, textureView, artwork.url) {
+    DisposableEffect(player, textureView, artwork.url, artwork.mimeType) {
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() {
                 firstFrameRendered = true
+                currentOnFirstFrame()
             }
 
             override fun onPlayerError(error: PlaybackException) {
                 failed = true
+                currentOnUnavailable()
             }
         }
         player.addListener(listener)
@@ -206,6 +418,12 @@ private fun MotionArtworkVideo(
         }
     }
 
+    LaunchedEffect(player, isPlaying, firstFrameRendered, failed) {
+        if (!isPlaying || firstFrameRendered || failed) return@LaunchedEffect
+        delay(VIDEO_FIRST_FRAME_TIMEOUT_MS)
+        if (!firstFrameRendered && !failed) currentOnUnavailable()
+    }
+
     AndroidView(
         factory = { textureView },
         modifier = modifier
@@ -213,3 +431,18 @@ private fun MotionArtworkVideo(
             .graphicsLayer { alpha = videoAlpha }
     )
 }
+
+private data class MotionArtworkEnvironment(
+    val remoteAllowed: Boolean,
+    val localAllowed: Boolean
+)
+
+private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 9_000
+private const val STATIC_ARTWORK_HORIZONTAL_DURATION_MS = 11_500
+private const val STATIC_ARTWORK_VERTICAL_DURATION_MS = 13_500
+private const val STATIC_ARTWORK_TILT_DURATION_MS = 17_000
+private const val STATIC_ARTWORK_MOTION_ENTER_MS = 360
+private const val STATIC_ARTWORK_MOTION_EXIT_MS = 220
+private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
+private const val VIDEO_RETRY_DELAY_MS = 4_000L
+private const val MAX_VIDEO_RETRIES = 1
