@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-01T19:36:48Z",
+  "generatedAt": "2026-08-01T19:42:11Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1715,7 +1715,7 @@
         },
         {
           "position": 22,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -1723,8 +1723,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1734,7 +1734,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 23,
@@ -6646,7 +6646,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -6654,12 +6654,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 33,
@@ -10619,11 +10619,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 49,
@@ -11789,6 +11789,12 @@
           },
           "durationMs": 125333,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "iVmQSP198jI",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCj9PxUKTXHICjZUHvC-63zQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0224481489b94a5c2e21661d8a"
         },
         {
@@ -11829,6 +11835,14 @@
           },
           "durationMs": 133135,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "tauhQ-GIgFg",
+            "audioConfidence": 100,
+            "videoId": "k9WN_ahN_zg",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UC9AOse7mrU67qbcc24JOmbw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bbe51a9c898b95c234a58ff6"
         },
         {
@@ -14719,11 +14733,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 18,
@@ -15059,7 +15073,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -15067,8 +15081,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15078,7 +15092,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 34,
@@ -15354,7 +15368,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-e09beec9b76bb06bdf72",
+          "id": "levyra-8e00e58819f76bb1bccd",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15362,12 +15376,12 @@
             }
           ],
           "album": {
-            "name": "Nyårsfest",
-            "releaseDate": "2020-12-18"
+            "name": "Det kommer aldrig va över för mig",
+            "releaseDate": "2013-04-17"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
         },
         {
           "position": 47,
@@ -23923,7 +23937,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -23937,12 +23951,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         },
         {
           "position": 41,
