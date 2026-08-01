@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 import urllib.error
 import urllib.request
 from collections import deque
@@ -21,6 +22,13 @@ ALLOWED_HOSTS = ("vivimusicanvas.mkmdevilmi.workers.dev", "vivimusicanvas-mtih.v
 ALLOWED_EXTENSIONS = (".mp4", ".m3u8")
 DECLARED_SCOPES = {"track": "track", "song": "track", "album": "album"}
 ISRC_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$")
+ARTIST_SEPARATOR_PATTERN = re.compile(
+    r"(?:\s*,\s*|\s*&\s*|\s+×\s+|\s+[xX]\s+|\bfeat\.?\b|\bft\.?\b|"
+    r"\bfeaturing\b|\bwith\b|\bcon\b)",
+    re.IGNORECASE,
+)
+APOSTROPHES = {"’", "'", "`", "´"}
+BRACKETS = set("()[]{}")
 USER_AGENT = "Levyra-community-canvas-mirror/2.0 (+https://github.com/LUC4N3X/Levyra-deepsound)"
 MAX_PAYLOAD_BYTES = 256 * 1024 * 1024
 DEFAULT_COMPAT_MAX_BYTES = 900 * 1024
@@ -178,29 +186,72 @@ def catalog_entry_key(entry: dict[str, Any]) -> tuple[str, ...]:
     )
 
 
+def normalize_identity_text(value: str) -> str:
+    output: list[str] = []
+    pending_space = False
+    for char in value.lower():
+        if char in APOSTROPHES:
+            continue
+        if char in BRACKETS:
+            pending_space = bool(output)
+            continue
+        category = unicodedata.category(char)
+        if category.startswith("L") or category.startswith("N"):
+            if pending_space and output:
+                output.append(" ")
+            output.append(char)
+            pending_space = False
+        else:
+            pending_space = bool(output)
+    return "".join(output).strip()
+
+
+def split_identity_artists(value: str) -> list[str]:
+    output: list[str] = []
+    seen: set[str] = set()
+    for candidate in ARTIST_SEPARATOR_PATTERN.split(value):
+        candidate = candidate.strip()
+        normalized = normalize_identity_text(candidate)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            output.append(candidate)
+    return output
+
+
+def artist_identity_signature(value: str) -> str:
+    return normalize_identity_text(" ".join(split_identity_artists(value)))
+
+
 def catalog_effective_scope(entry: dict[str, Any]) -> str:
     declared = str(entry.get("scope", "")).strip().lower()
     if declared in {"track", "album"}:
         return declared
     path_segments = [segment.lower() for segment in urlsplit(str(entry["url"])).path.split("/")[:-1]]
-    return "album" if "album" in path_segments else "track"
+    for segment in reversed(path_segments):
+        if segment in {"album", "song"}:
+            return "album" if segment == "album" else "track"
+    return "track"
 
 
-def catalog_source_identity_key(entry: dict[str, Any]) -> tuple[str, ...]:
+def catalog_source_identity_keys(entry: dict[str, Any]) -> set[tuple[str, ...]]:
     scope = catalog_effective_scope(entry)
-    artist = str(entry["artist"]).casefold()
-    album = str(entry["album"]).casefold()
+    artist = artist_identity_signature(str(entry["artist"]))
+    album = normalize_identity_text(str(entry["album"]))
     if scope == "album":
-        return ("album", artist, album)
+        return {("album", artist, album)}
+
+    identities = {
+        (
+            "track-metadata",
+            normalize_identity_text(str(entry["song"])),
+            artist,
+            album,
+        )
+    }
     isrc = str(entry.get("isrc", "")).strip().upper()
     if ISRC_PATTERN.fullmatch(isrc):
-        return ("track-isrc", isrc)
-    return (
-        "track-metadata",
-        str(entry["song"]).casefold(),
-        artist,
-        album,
-    )
+        identities.add(("track-isrc", isrc))
+    return identities
 
 
 def catalog_sort_key(entry: dict[str, Any]) -> tuple[str, ...]:
@@ -229,8 +280,8 @@ def compatibility_round_robin(items: list[dict[str, Any]]) -> list[dict[str, Any
 
 def verify_sync_invariants() -> None:
     curated = {
-        "song": "Exact Song",
-        "artist": "Exact Artist",
+        "song": "Don't Stop (Live)",
+        "artist": "Artist One feat. Artist Two",
         "album": "Exact Album",
         "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/curated.mp4",
         "scope": "track",
@@ -238,10 +289,15 @@ def verify_sync_invariants() -> None:
     }
     upstream = {
         **curated,
+        "song": "Dont Stop Live",
+        "artist": "Artist One, Artist Two",
         "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/upstream.mp4",
+        "isrc": "GBAYE0601498",
     }
-    if catalog_source_identity_key(curated) != catalog_source_identity_key(upstream):
-        raise CatalogError("ordered source identity matching changed")
+    if not catalog_source_identity_keys(curated).intersection(
+        catalog_source_identity_keys(upstream)
+    ):
+        raise CatalogError("ordered source identity normalization changed")
 
     sample = [
         {**curated, "song": "A1", "artist": "Artist A"},
@@ -360,12 +416,12 @@ def merge_sources(
             if key in seen:
                 rejects.append(f"{source.name}: duplicate across sources")
                 continue
-            identity_key = catalog_source_identity_key(item)
-            if identity_key in claimed_identities:
+            identity_keys = catalog_source_identity_keys(item)
+            if identity_keys.intersection(claimed_identities):
                 rejects.append(f"{source.name}: shadowed by higher-priority source")
                 continue
             seen.add(key)
-            source_identities.add(identity_key)
+            source_identities.update(identity_keys)
             merged.append(item)
             accepted += 1
         claimed_identities.update(source_identities)
