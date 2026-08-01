@@ -1,0 +1,42 @@
+name: Apply CodeRabbit Follow-ups
+
+on:
+  push:
+    branches:
+      - agent/scalable-canvas-index
+    paths:
+      - .github/workflows/apply-coderabbit-followups.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/scalable-canvas-index
+          fetch-depth: 0
+
+      - name: Apply verified review fixes
+        run: python3 scripts/apply_coderabbit_followups.py
+
+      - name: Validate patch
+        run: |
+          python3 -m py_compile scripts/build_community_canvas_index.py
+          git diff --check
+
+      - name: Remove one-shot helpers
+        run: |
+          rm scripts/apply_coderabbit_followups.py
+          rm .github/workflows/apply-coderabbit-followups.yml
+
+      - name: Commit follow-up fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: address CodeRabbit player and index findings"
+          git push origin HEAD:agent/scalable-canvas-index
