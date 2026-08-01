@@ -147,9 +147,11 @@ private fun MotionArtworkVideo(
     modifier: Modifier
 ) {
     val context = LocalContext.current
-    var firstFrameRendered by remember(artwork.identityKey, artwork.url) { mutableStateOf(false) }
-    var failed by remember(artwork.identityKey, artwork.url) { mutableStateOf(false) }
-    val player = remember(artwork.identityKey, artwork.url) {
+    var firstFrameRendered by remember(artwork.identityKey, artwork.url, artwork.mimeType) {
+        mutableStateOf(false)
+    }
+    var failed by remember(artwork.identityKey, artwork.url, artwork.mimeType) { mutableStateOf(false) }
+    val player = remember(artwork.identityKey, artwork.url, artwork.mimeType) {
         ExoPlayer.Builder(context).build().apply {
             repeatMode = Player.REPEAT_MODE_ONE
             volume = 0f
@@ -180,7 +182,12 @@ private fun MotionArtworkVideo(
         }
         player.addListener(listener)
         player.setVideoTextureView(textureView)
-        player.setMediaItem(MediaItem.fromUri(artwork.url))
+        player.setMediaItem(
+            MediaItem.Builder()
+                .setUri(artwork.url)
+                .setMimeType(artwork.mimeType.takeIf { it.isNotBlank() })
+                .build()
+        )
         player.prepare()
         onDispose {
             player.removeListener(listener)
