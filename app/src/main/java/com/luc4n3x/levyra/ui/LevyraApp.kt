@@ -10553,7 +10553,7 @@ private fun PlayerArtworkCanvas(
         label = "player-artwork-halo-alpha"
     )
     val artworkShadow by animateFloatAsState(
-        targetValue = if (isPlaying) 27f else 17f,
+        targetValue = if (isPlaying) 24f else 15f,
         animationSpec = tween(190, easing = FastOutSlowInEasing),
         label = "player-artwork-shadow"
     )
@@ -10956,9 +10956,9 @@ private fun PlayerYoutubeEngagementRow(
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = if (compact) 9.dp else 11.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 9.dp),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 8.dp)
+                .padding(top = if (compact) 7.dp else 9.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 8.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 7.dp)
         ) {
             Surface(
                 color = Color.White.copy(alpha = 0.085f),
@@ -10966,7 +10966,7 @@ private fun PlayerYoutubeEngagementRow(
                 shape = CircleShape
             ) {
                 Row(
-                    modifier = Modifier.height(if (compact) 40.dp else 42.dp),
+                    modifier = Modifier.height(if (compact) 38.dp else 40.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
@@ -10981,13 +10981,13 @@ private fun PlayerYoutubeEngagementRow(
                             imageVector = Icons.Rounded.ThumbUp,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = if (hasLikes) 0.94f else 0.48f),
-                            modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                            modifier = Modifier.size(if (compact) 18.dp else 19.dp)
                         )
                         if (hasLikes) {
                             Text(
                                 text = compactYoutubeCount(track.youtubeLikeCount),
                                 color = Color.White.copy(alpha = 0.94f),
-                                fontSize = if (compact) 12.5.sp else 13.sp,
+                                fontSize = if (compact) 12.sp else 12.5.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 maxLines = 1
                             )
@@ -11015,7 +11015,7 @@ private fun PlayerYoutubeEngagementRow(
                             } else {
                                 Color.White.copy(alpha = 0.48f)
                             },
-                            modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                            modifier = Modifier.size(if (compact) 18.dp else 19.dp)
                         )
                         when {
                             engagement.dislikeEstimateLoading -> CircularProgressIndicator(
@@ -11026,7 +11026,7 @@ private fun PlayerYoutubeEngagementRow(
                             hasDislikeEstimate -> Text(
                                 text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
                                 color = Color.White.copy(alpha = 0.90f),
-                                fontSize = if (compact) 12.5.sp else 13.sp,
+                                fontSize = if (compact) 12.sp else 12.5.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 maxLines = 1
                             )
@@ -11046,8 +11046,8 @@ private fun PlayerYoutubeEngagementRow(
             ) {
                 Row(
                     modifier = Modifier
-                        .height(if (compact) 40.dp else 42.dp)
-                        .padding(horizontal = if (compact) 13.dp else 14.dp),
+                        .height(if (compact) 38.dp else 40.dp)
+                        .padding(horizontal = if (compact) 12.dp else 13.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -11055,7 +11055,7 @@ private fun PlayerYoutubeEngagementRow(
                         imageVector = Icons.Rounded.ChatBubbleOutline,
                         contentDescription = null,
                         tint = if (canOpenComments) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.42f),
-                        modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                        modifier = Modifier.size(if (compact) 18.dp else 19.dp)
                     )
                     when {
                         comments.loading && !comments.loaded -> CircularProgressIndicator(
@@ -11066,7 +11066,7 @@ private fun PlayerYoutubeEngagementRow(
                         commentBadge.isNotBlank() -> Text(
                             text = commentBadge,
                             color = Color.White.copy(alpha = 0.92f),
-                            fontSize = if (compact) 12.5.sp else 13.sp,
+                            fontSize = if (compact) 12.sp else 12.5.sp,
                             fontWeight = FontWeight.ExtraBold,
                             maxLines = 1
                         )
@@ -11344,7 +11344,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
         label = "artwork-corner"
     )
     val artShadow by animateFloatAsState(
-        targetValue = if (state.isPlaying) 27f else 17f,
+        targetValue = if (state.isPlaying) 24f else 15f,
         animationSpec = tween(190, easing = FastOutSlowInEasing),
         label = "artwork-shadow"
     )
@@ -11368,7 +11368,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
             compactPlayer -> 18.dp
             else -> 20.dp
         }
-        val playerItemSpacing = if (compactPlayer) 9.dp else 12.dp
+        val playerItemSpacing = if (compactPlayer) 8.dp else 10.dp
         val artworkSize = minOf(
             (maxWidth - playerHorizontalPadding * 2f).coerceAtLeast(180.dp),
             520.dp
@@ -11733,10 +11733,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(
-                                horizontal = 4.dp,
-                                vertical = if (compactPlayer) 1.dp else 2.dp
-                            )
+                            .padding(horizontal = 4.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -12514,19 +12511,14 @@ private fun PlayerTimeline(
     var dragFraction by remember { mutableFloatStateOf(-1f) }
     val isDragging = dragFraction >= 0f
     val fraction = (if (isDragging) dragFraction else progressOf(positionMs, durationMs)).coerceIn(0f, 1f)
-    val ribbonAmplitude by animateDpAsState(
-        targetValue = if (isDragging) 3.5.dp else 2.4.dp,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-ribbon-amplitude"
-    )
-    val ribbonStroke by animateDpAsState(
-        targetValue = if (isDragging) 3.7.dp else 2.9.dp,
+    val railStroke by animateDpAsState(
+        targetValue = if (isDragging) 3.1.dp else 2.35.dp,
         animationSpec = spring(dampingRatio = 0.84f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-ribbon-stroke"
+        label = "timeline-rail-stroke"
     )
     val markerHalfSize by animateDpAsState(
-        targetValue = if (isDragging) 5.6.dp else 4.2.dp,
-        animationSpec = spring(dampingRatio = 0.76f, stiffness = Spring.StiffnessMedium),
+        targetValue = if (isDragging) 5.7.dp else 4.55.dp,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMedium),
         label = "timeline-marker-size"
     )
 
@@ -12534,14 +12526,14 @@ private fun PlayerTimeline(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                top = if (compact) 1.dp else 2.dp,
-                bottom = if (compact) 3.dp else 4.dp
+                top = if (compact) 0.dp else 1.dp,
+                bottom = if (compact) 2.dp else 3.dp
             )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (compact) 30.dp else 32.dp)
+                .height(if (compact) 31.dp else 33.dp)
                 .semantics {
                     progressBarRangeInfo = ProgressBarRangeInfo(
                         current = fraction,
@@ -12560,7 +12552,7 @@ private fun PlayerTimeline(
                 .pointerInput(durationMs) {
                     if (durationMs > 0L) {
                         detectTapGestures { offset ->
-                            val inset = 8.dp.toPx()
+                            val inset = 7.dp.toPx()
                             val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                             onSeek(((offset.x - inset) / usable).coerceIn(0f, 1f))
                         }
@@ -12570,7 +12562,7 @@ private fun PlayerTimeline(
                     if (durationMs > 0L) {
                         detectHorizontalDragGestures(
                             onDragStart = { offset ->
-                                val inset = 8.dp.toPx()
+                                val inset = 7.dp.toPx()
                                 val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                                 dragFraction = ((offset.x - inset) / usable).coerceIn(0f, 1f)
                             },
@@ -12581,7 +12573,7 @@ private fun PlayerTimeline(
                             onDragCancel = { dragFraction = -1f },
                             onHorizontalDrag = { change, _ ->
                                 change.consume()
-                                val inset = 8.dp.toPx()
+                                val inset = 7.dp.toPx()
                                 val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                                 dragFraction = ((change.position.x - inset) / usable).coerceIn(0f, 1f)
                             }
@@ -12590,130 +12582,100 @@ private fun PlayerTimeline(
                 }
                 .drawBehind {
                     val centerY = size.height / 2f
-                    val inset = 8.dp.toPx()
+                    val inset = 7.dp.toPx()
                     val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                     val playedX = inset + usable * fraction
                     val endX = inset + usable
-                    val amplitude = ribbonAmplitude.toPx()
-                    val stroke = ribbonStroke.toPx()
                     val marker = markerHalfSize.toPx()
-                    val markerGap = marker + 3.5.dp.toPx()
-                    val playedEnd = (playedX - markerGap).coerceAtLeast(inset)
-                    val futureStart = (playedX + markerGap).coerceAtMost(endX)
-                    val amplitudePattern = floatArrayOf(0.74f, 1f, 0.82f, 0.64f, 0.9f, 0.7f)
+                    val rail = railStroke.toPx()
+                    val start = androidx.compose.ui.geometry.Offset(inset, centerY)
+                    val end = androidx.compose.ui.geometry.Offset(endX, centerY)
+                    val playedEnd = androidx.compose.ui.geometry.Offset(playedX, centerY)
 
-                    fun waveformPath(
-                        startX: Float,
-                        finishX: Float,
-                        baselineY: Float,
-                        amplitudeScale: Float,
-                        phaseOffset: Int
-                    ): Path {
-                        val width = (finishX - startX).coerceAtLeast(0f)
-                        val path = Path().apply { moveTo(startX, baselineY) }
-                        if (width <= 0.5f) return path
-                        val preferredSegmentWidth = 43.dp.toPx()
-                        val segmentCount = kotlin.math.ceil(width / preferredSegmentWidth)
-                            .toInt()
-                            .coerceIn(1, 7)
-                        val segmentWidth = width / segmentCount
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.13f),
+                        start = start,
+                        end = end,
+                        strokeWidth = 1.8.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.045f),
+                        start = androidx.compose.ui.geometry.Offset(inset, centerY - 2.1.dp.toPx()),
+                        end = androidx.compose.ui.geometry.Offset(endX, centerY - 2.1.dp.toPx()),
+                        strokeWidth = 0.7.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
 
-                        repeat(segmentCount) { index ->
-                            val segmentStartX = startX + segmentWidth * index
-                            val segmentEndX = if (index == segmentCount - 1) finishX else segmentStartX + segmentWidth
-                            val controlOneX = segmentStartX + (segmentEndX - segmentStartX) * 0.30f
-                            val controlTwoX = segmentStartX + (segmentEndX - segmentStartX) * 0.70f
-                            val patternIndex = (index + phaseOffset) % amplitudePattern.size
-                            val direction = if ((index + phaseOffset) % 2 == 0) -1f else 1f
-                            val segmentAmplitude = amplitude * amplitudePattern[patternIndex] * amplitudeScale
-
-                            path.cubicTo(
-                                controlOneX,
-                                baselineY + segmentAmplitude * direction,
-                                controlTwoX,
-                                baselineY - segmentAmplitude * direction,
-                                segmentEndX,
-                                baselineY
-                            )
-                        }
-                        return path
-                    }
-
-                    if (playedEnd > inset + 0.5f) {
-                        val playedPath = waveformPath(
-                            startX = inset,
-                            finishX = playedEnd,
-                            baselineY = centerY - 0.5.dp.toPx(),
-                            amplitudeScale = 1f,
-                            phaseOffset = 0
-                        )
-                        val playedEchoPath = waveformPath(
-                            startX = inset,
-                            finishX = playedEnd,
-                            baselineY = centerY + 3.3.dp.toPx(),
-                            amplitudeScale = 0.48f,
-                            phaseOffset = 1
-                        )
-
-                        drawPath(
-                            path = playedEchoPath,
-                            color = secondaryColor.playerMix(activeColor, 0.42f).copy(alpha = 0.20f),
-                            style = Stroke(width = 1.35.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawPath(
-                            path = playedPath,
-                            color = activeColor.playerMix(secondaryColor, 0.28f).copy(alpha = 0.22f),
-                            style = Stroke(width = stroke + 2.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawPath(
-                            path = playedPath,
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.88f),
-                                    Color.White,
-                                    secondaryColor.playerMix(Color.White, 0.58f)
-                                ),
-                                startX = inset,
-                                endX = playedEnd.coerceAtLeast(inset + 1f)
+                    if (playedX > inset + 0.5f) {
+                        val playedBrush = Brush.horizontalGradient(
+                            colors = listOf(
+                                activeColor.playerMix(Color.White, 0.38f),
+                                activeColor.playerMix(secondaryColor, 0.22f),
+                                secondaryColor.playerMix(Color.White, 0.18f)
                             ),
-                            style = Stroke(width = stroke, cap = StrokeCap.Round)
+                            startX = inset,
+                            endX = playedX.coerceAtLeast(inset + 1f)
                         )
-                    }
+                        val glowBrush = Brush.horizontalGradient(
+                            colors = listOf(
+                                activeColor.copy(alpha = 0.06f),
+                                activeColor.playerMix(secondaryColor, 0.35f).copy(alpha = 0.13f),
+                                secondaryColor.copy(alpha = 0.19f)
+                            ),
+                            startX = inset,
+                            endX = playedX.coerceAtLeast(inset + 1f)
+                        )
+                        drawLine(
+                            brush = glowBrush,
+                            start = start,
+                            end = playedEnd,
+                            strokeWidth = if (isDragging) 8.dp.toPx() else 6.5.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                        drawLine(
+                            brush = playedBrush,
+                            start = start,
+                            end = playedEnd,
+                            strokeWidth = rail,
+                            cap = StrokeCap.Round
+                        )
 
-                    if (futureStart < endX - 0.5f) {
-                        val futurePath = waveformPath(
-                            startX = futureStart,
-                            finishX = endX,
-                            baselineY = centerY - 0.3.dp.toPx(),
-                            amplitudeScale = 0.58f,
-                            phaseOffset = 2
-                        )
-                        val futureEchoPath = waveformPath(
-                            startX = futureStart,
-                            finishX = endX,
-                            baselineY = centerY + 3.dp.toPx(),
-                            amplitudeScale = 0.34f,
-                            phaseOffset = 3
-                        )
-
+                        val whisperPath = Path().apply {
+                            moveTo(inset, centerY)
+                            val width = playedX - inset
+                            val segments = kotlin.math.ceil(width / 58.dp.toPx())
+                                .toInt()
+                                .coerceIn(1, 6)
+                            val segmentWidth = width / segments
+                            repeat(segments) { index ->
+                                val x0 = inset + segmentWidth * index
+                                val x1 = if (index == segments - 1) playedX else x0 + segmentWidth
+                                val direction = if (index % 2 == 0) -1f else 1f
+                                val amplitude = (if (isDragging) 0.78.dp else 0.58.dp).toPx() * direction
+                                cubicTo(
+                                    x0 + (x1 - x0) * 0.30f,
+                                    centerY + amplitude,
+                                    x0 + (x1 - x0) * 0.70f,
+                                    centerY - amplitude,
+                                    x1,
+                                    centerY
+                                )
+                            }
+                        }
                         drawPath(
-                            path = futureEchoPath,
-                            color = Color.White.copy(alpha = 0.075f),
-                            style = Stroke(width = 1.1.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawPath(
-                            path = futurePath,
-                            color = Color.White.copy(alpha = 0.18f),
-                            style = Stroke(width = 1.9.dp.toPx(), cap = StrokeCap.Round)
+                            path = whisperPath,
+                            color = Color.White.copy(alpha = if (isDragging) 0.46f else 0.31f),
+                            style = Stroke(width = 0.75.dp.toPx(), cap = StrokeCap.Round)
                         )
                     }
 
                     if (isDragging) {
                         drawLine(
-                            color = Color.White.copy(alpha = 0.32f),
+                            color = Color.White.copy(alpha = 0.18f),
                             start = androidx.compose.ui.geometry.Offset(playedX, centerY - 11.dp.toPx()),
                             end = androidx.compose.ui.geometry.Offset(playedX, centerY + 11.dp.toPx()),
-                            strokeWidth = 1.dp.toPx(),
+                            strokeWidth = 0.8.dp.toPx(),
                             cap = StrokeCap.Round
                         )
                     }
@@ -12726,17 +12688,31 @@ private fun PlayerTimeline(
                         close()
                     }
 
-                    drawPath(
-                        path = diamondPath(marker + 3.5.dp.toPx()),
-                        color = activeColor.playerMix(secondaryColor, 0.46f).copy(alpha = if (isDragging) 0.24f else 0.16f)
+                    drawCircle(
+                        color = activeColor.playerMix(secondaryColor, 0.44f)
+                            .copy(alpha = if (isDragging) 0.18f else 0.11f),
+                        radius = marker + 5.2.dp.toPx(),
+                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
                     )
                     drawPath(
-                        path = diamondPath(marker + 1.25.dp.toPx()),
-                        color = secondaryColor.playerMix(activeColor, 0.48f).copy(alpha = 0.76f)
+                        path = diamondPath(marker + 1.8.dp.toPx()),
+                        color = Color.Black.copy(alpha = 0.38f)
                     )
                     drawPath(
-                        path = diamondPath(marker),
-                        color = Color.White
+                        path = diamondPath(marker + 0.7.dp.toPx()),
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                activeColor.playerMix(Color.White, 0.30f),
+                                secondaryColor.playerMix(Color.White, 0.16f)
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(playedX - marker, centerY - marker),
+                            end = androidx.compose.ui.geometry.Offset(playedX + marker, centerY + marker)
+                        )
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.94f),
+                        radius = if (isDragging) 1.9.dp.toPx() else 1.55.dp.toPx(),
+                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
                     )
                 }
         )
@@ -12748,14 +12724,14 @@ private fun PlayerTimeline(
         ) {
             Text(
                 text = formatDuration(if (isDragging) (durationMs * fraction).toLong() else positionMs),
-                color = if (isDragging) Color.White else Color.White.copy(alpha = 0.64f),
+                color = if (isDragging) Color.White else Color.White.copy(alpha = 0.68f),
                 fontSize = if (compact) 10.5.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = formatDuration(durationMs),
-                color = Color.White.copy(alpha = 0.52f),
+                color = Color.White.copy(alpha = 0.50f),
                 fontSize = if (compact) 10.5.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
