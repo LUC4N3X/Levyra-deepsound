@@ -98,10 +98,12 @@ fun PremiumSeekbar(
         val seekPosMs = (effectiveProgress * durationMs.coerceAtLeast(0L)).toLong()
 
         if (isDragging) {
-            val tooltipMin = 40f
-            val tooltipMax = (widthPx - 40f).coerceAtLeast(tooltipMin)
-            val tooltipOffsetPx = (effectiveProgress * widthPx).coerceIn(tooltipMin, tooltipMax)
-            val tooltipOffsetDp = with(density) { (tooltipOffsetPx - 32.dp.toPx()).toDp() }
+            val tooltipHalfWidthPx = with(density) { 32.dp.toPx() }
+                .coerceAtMost(widthPx / 2f)
+            val tooltipMax = (widthPx - tooltipHalfWidthPx).coerceAtLeast(tooltipHalfWidthPx)
+            val tooltipOffsetPx = (effectiveProgress * widthPx)
+                .coerceIn(tooltipHalfWidthPx, tooltipMax)
+            val tooltipOffsetDp = with(density) { (tooltipOffsetPx - tooltipHalfWidthPx).toDp() }
 
             Box(
                 modifier = Modifier
@@ -149,6 +151,7 @@ fun PremiumSeekbar(
                     }
                 }
                 .pointerInput(durationMs) {
+                    if (durationMs <= 0L) return@pointerInput
                     detectHorizontalDragGestures(
                         onDragStart = { offset ->
                             isDragging = true
