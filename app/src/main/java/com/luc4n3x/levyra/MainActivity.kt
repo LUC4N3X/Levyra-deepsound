@@ -24,8 +24,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.player.LevyraPipBridge
-import com.luc4n3x.levyra.ui.AdaptiveLiquidGlassHost
 import com.luc4n3x.levyra.ui.LevyraApp
+import com.luc4n3x.levyra.ui.PlatformSafeLiquidGlassHost
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
             LevyraTheme {
                 val viewModel: LevyraViewModel = viewModel()
                 val uiState by viewModel.state.collectAsStateWithLifecycle()
-                AdaptiveLiquidGlassHost(enabled = !pipMode.value) {
+                PlatformSafeLiquidGlassHost(enabled = !pipMode.value) {
                     LevyraApp(
                         viewModel = viewModel,
                         isInPictureInPicture = pipMode.value
