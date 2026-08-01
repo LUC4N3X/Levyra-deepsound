@@ -44,6 +44,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.luc4n3x.levyra.MainActivity
+import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
@@ -69,6 +70,7 @@ class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private lateinit var autoLibrary: AndroidAutoLibrary
     private lateinit var queueEngine: PersistentQueueEngine
+    private lateinit var favoritesStore: FavoritesStore
     private lateinit var resolver: PlaybackResolver
     private lateinit var musicRepository: YoutubeMusicRepository
     private lateinit var sharedMediaSourceFactory: MediaSource.Factory
@@ -158,6 +160,8 @@ class PlaybackService : MediaLibraryService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val queuePreviousCommand by lazy { SessionCommand(ACTION_QUEUE_PREVIOUS, Bundle.EMPTY) }
     private val queueNextCommand by lazy { SessionCommand(ACTION_QUEUE_NEXT, Bundle.EMPTY) }
+    private val queueShuffleCommand by lazy { SessionCommand("levyra.queue.shuffle", Bundle.EMPTY) }
+    private val queueLikeCommand by lazy { SessionCommand("levyra.favorite.like", Bundle.EMPTY) }
 
     override fun onCreate() {
         super.onCreate()
@@ -166,6 +170,7 @@ class PlaybackService : MediaLibraryService() {
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:PlaybackService")
             .apply { setReferenceCounted(false) }
         queueEngine = PersistentQueueEngine.get(this)
+        favoritesStore = FavoritesStore(this)
         resolver = PlaybackResolver.getInstance(this)
         musicRepository = YoutubeMusicRepository(this)
         autoLibrary = AndroidAutoLibrary(this)
@@ -306,6 +311,11 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
+        val queueShuffleButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+            .setDisplayName("Casuale")
+            .setSessionCommand(queueShuffleCommand)
+            .setIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_shuffle)
+            .build()
         val queuePreviousButton = CommandButton.Builder(CommandButton.ICON_PREVIOUS)
             .setDisplayName("Precedente")
             .setSessionCommand(queuePreviousCommand)
@@ -313,6 +323,11 @@ class PlaybackService : MediaLibraryService() {
         val queueNextButton = CommandButton.Builder(CommandButton.ICON_NEXT)
             .setDisplayName("Successivo")
             .setSessionCommand(queueNextCommand)
+            .build()
+        val queueLikeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+            .setDisplayName("Mi piace")
+            .setSessionCommand(queueLikeCommand)
+            .setIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_like)
             .build()
 
         val callback = object : MediaLibrarySession.Callback {
@@ -322,8 +337,10 @@ class PlaybackService : MediaLibraryService() {
             ): MediaSession.ConnectionResult {
                 val sessionCommands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                     .buildUpon()
+                    .add(queueShuffleCommand)
                     .add(queuePreviousCommand)
                     .add(queueNextCommand)
+                    .add(queueLikeCommand)
                     .build()
                 return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
                     .setAvailableSessionCommands(sessionCommands)
@@ -379,6 +396,18 @@ class PlaybackService : MediaLibraryService() {
                     }
                     ACTION_QUEUE_NEXT -> {
                         skipQueue(forward = true, respectRepeatOne = false)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    "levyra.queue.shuffle" -> {
+                        queueEngine.setShuffle(!queueEngine.state.value.shuffleEnabled)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    "levyra.favorite.like" -> {
+                        serviceScope.launch(Dispatchers.IO) {
+                            queueEngine.state.value.currentTrack?.let { track ->
+                                favoritesStore.toggleFavorite(track)
+                            }
+                        }
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
                     else -> super.onCustomCommand(session, controller, customCommand, args)
@@ -452,9 +481,38 @@ class PlaybackService : MediaLibraryService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        mediaSession = MediaLibrarySession.Builder(this, player, callback)
+        val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(player) {
+            override fun getDuration(): Long {
+                val realDuration = super.getDuration()
+                if (realDuration > 0L) return realDuration
+                val metadataDuration = currentMediaItem?.mediaMetadata?.extras
+                    ?.getLong("levyra.durationMs", androidx.media3.common.C.TIME_UNSET)
+                    ?: androidx.media3.common.C.TIME_UNSET
+                return metadataDuration.takeIf { it > 0L } ?: androidx.media3.common.C.TIME_UNSET
+            }
+
+            override fun isCurrentMediaItemSeekable(): Boolean {
+                return getDuration() > 0L && !isCurrentMediaItemLive
+            }
+
+            override fun isCurrentMediaItemLive(): Boolean {
+                return super.isCurrentMediaItemLive()
+            }
+
+            override fun getAvailableCommands(): androidx.media3.common.Player.Commands {
+                val commands = super.getAvailableCommands().buildUpon()
+                if (isCurrentMediaItemSeekable) {
+                    commands.add(androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                } else {
+                    commands.remove(androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                }
+                return commands.build()
+            }
+        }
+
+        mediaSession = MediaLibrarySession.Builder(this, forwardingPlayer, callback)
             .setSessionActivity(sessionActivity)
-            .setMediaButtonPreferences(ImmutableList.of(queuePreviousButton, queueNextButton))
+            .setMediaButtonPreferences(ImmutableList.of(queueShuffleButton, queuePreviousButton, queueNextButton, queueLikeButton))
             .build()
 
         val notificationProvider = DefaultMediaNotificationProvider(this)
