@@ -10535,6 +10535,8 @@ private fun PlayerImmersiveBackdrop(
 private fun PlayerArtworkCanvas(
     track: Track,
     artworkUrl: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    animationsEnabled: Boolean,
     isPlaying: Boolean,
     cornerRadius: Dp,
     modifier: Modifier = Modifier
@@ -10595,20 +10597,28 @@ private fun PlayerArtworkCanvas(
                     shape = artworkShape
                 )
         ) {
-            if (artworkUrl.isNotBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(artworkUrl)
-                        .crossfade(true)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            MotionArtworkLayer(
+                artwork = motionArtwork,
+                enabled = animationsEnabled,
+                isPlaying = isPlaying,
+                cornerRadius = cornerRadius,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (artworkUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(artworkUrl)
+                            .crossfade(true)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                }
             }
             Box(
                 modifier = Modifier
@@ -11525,9 +11535,11 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 }
                             }
                         } else {
-                            MotionArtworkLayer(
-                                artwork = state.motionArtwork,
-                                enabled = state.animationsEnabled && !state.isVideoMode,
+                            PlayerArtworkCanvas(
+                                track = track,
+                                artworkUrl = artworkUrl,
+                                motionArtwork = state.motionArtwork,
+                                animationsEnabled = state.animationsEnabled && !state.isVideoMode,
                                 isPlaying = state.isPlaying,
                                 cornerRadius = artCorner,
                                 modifier = Modifier
@@ -11536,15 +11548,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                         scaleX = artScale
                                         scaleY = artScale
                                     }
-                            ) {
-                                PlayerArtworkCanvas(
-                                    track = track,
-                                    artworkUrl = artworkUrl,
-                                    isPlaying = state.isPlaying,
-                                    cornerRadius = artCorner,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
+                            )
                         }
 
                         if (state.interfaceSettings.playerGesturesEnabled) {
