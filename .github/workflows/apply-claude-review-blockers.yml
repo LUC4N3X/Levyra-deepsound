@@ -34,6 +34,31 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Repair and validate one-shot helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/apply_claude_review_blockers.py")
+          text = path.read_text(encoding="utf-8")
+          marker = 'index_test = Path("app/src/test/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasIndexTest.kt")'
+          if text.count(marker) != 1:
+              raise SystemExit(f"expected one index-test marker, found {text.count(marker)}")
+          head, tail = text.split(marker, 1)
+          opening = 'addition = """'
+          closing = '"""\nindex_test.write_text'
+          if tail.count(opening) != 1 or tail.count(closing) != 1:
+              raise SystemExit(
+                  f"unexpected helper quoting: opening={tail.count(opening)}, closing={tail.count(closing)}"
+              )
+          tail = tail.replace(opening, "addition = '''", 1)
+          tail = tail.replace(closing, "'''\nindex_test.write_text", 1)
+          path.write_text(head + marker + tail, encoding="utf-8")
+          PY
+          python3 -m py_compile scripts/apply_claude_review_blockers.py
+
       - name: Apply verified review fixes
         run: python3 scripts/apply_claude_review_blockers.py
 
