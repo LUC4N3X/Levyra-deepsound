@@ -1,6 +1,7 @@
 name: Apply Player Motion Layer Fix
 
 # One-shot branch repair; the job deletes this workflow after applying the patch.
+# Retry after correcting the validation guard.
 on:
   push:
     branches:
