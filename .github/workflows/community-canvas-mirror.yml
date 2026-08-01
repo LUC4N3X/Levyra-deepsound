@@ -142,6 +142,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          content_changed=true
 
           if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
             git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
@@ -153,9 +154,8 @@ jobs:
               jq -S 'del(.generatedAt)' "${new_manifest}" > /tmp/new-index-manifest.json
               if cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json && \
                  cmp -s /tmp/current-index-manifest.json /tmp/new-index-manifest.json; then
-                echo "Community canvas compatibility snapshot and sharded index are unchanged; publication skipped."
-                git switch --detach "${source_ref}"
-                exit 0
+                content_changed=false
+                echo "Community canvas content is unchanged; checking generation retention only."
               fi
             fi
           else
@@ -163,11 +163,13 @@ jobs:
             git rm -rf --ignore-unmatch .
           fi
 
-          mkdir -p "catalog/index/v2/${new_shard_dir}/shards"
-          cp /tmp/community-canvas.json catalog/community-canvas.json
-          cp "${new_manifest}" catalog/index/v2/manifest.json
-          cp -R "/tmp/canvas-index/v2/${new_shard_dir}/shards/." \
-            "catalog/index/v2/${new_shard_dir}/shards/"
+          if [ "${content_changed}" = true ]; then
+            mkdir -p "catalog/index/v2/${new_shard_dir}/shards"
+            cp /tmp/community-canvas.json catalog/community-canvas.json
+            cp "${new_manifest}" catalog/index/v2/manifest.json
+            cp -R "/tmp/canvas-index/v2/${new_shard_dir}/shards/." \
+              "catalog/index/v2/${new_shard_dir}/shards/"
+          fi
 
           new_generation="${new_shard_dir%%/*}"
           cutoff_epoch=$(($(date +%s) - CANVAS_GENERATION_RETENTION_HOURS * 3600))
@@ -182,6 +184,12 @@ jobs:
           done
 
           git add -A catalog
+          if git diff --cached --quiet; then
+            echo "Community canvas catalog, index and retained generations are unchanged."
+            git switch --detach "${source_ref}"
+            exit 0
+          fi
+
           git commit -m "chore(canvas): refresh sharded community index from run ${GITHUB_RUN_NUMBER}"
           git push origin "HEAD:refs/heads/${branch}"
           git switch --detach "${source_ref}"
