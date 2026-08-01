@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 
@@ -57,18 +59,23 @@ fun SpringIconButton(
                 scaleX = scale.value
                 scaleY = scale.value
             }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                onClickLabel = contentDescription,
-                onClick = onClick
-            )
-            .semantics {
+            .semantics(mergeDescendants = true) {
                 role = Role.Button
+                contentDescription?.let { this.contentDescription = it }
             },
         contentAlignment = Alignment.Center
     ) {
         content()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    onClickLabel = contentDescription,
+                    onClick = onClick
+                )
+        )
     }
 }
