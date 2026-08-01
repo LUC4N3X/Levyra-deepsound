@@ -7,17 +7,18 @@ media must use HTTPS, an approved host and an MP4 or HLS path.
 
 ## Runtime lookup order
 
-The provider now uses three layers:
+The provider uses three layers:
 
 | Order | Source | Purpose |
 |:--|:--|:--|
 | 1 | `canvas-data/catalog/index/v2` | Hash-sharded Levyra index used for normal lookups |
-| 2 | `canvas-data/catalog/community-canvas.json` | Flat validated mirror used only as rollout/failure fallback |
+| 2 | `canvas-data/catalog/community-canvas.json` | Bounded compatibility snapshot used during rollout or index failure |
 | 3 | `vivizzz007/vivimusicanvas@main:canvas.json` | Original upstream fallback |
 
 When the indexed mirror is healthy, the app never downloads the full catalog. A missing result in a
-healthy index is conclusive and does not trigger the legacy flat download. The flat mirror and
-upstream are only consulted when the manifest or a required shard is unavailable or invalid.
+healthy index is conclusive and does not trigger the legacy flat download. The bounded mirror and
+upstream are consulted only when the manifest or every relevant shard is unavailable or invalid.
+If one shard fails but another relevant shard produces a valid exact match, Levyra keeps that result.
 
 ## Scalable sharded index
 
@@ -30,6 +31,10 @@ For the current track, Android derives at most three canonical lookup keys:
 * `t|<normalized title>|<normalized artists>|<normalized album>`;
 * `a|<normalized artists>|<normalized album>`.
 
+Python and Android use the same artist separators, normalization rules, SHA-256 digest and Base64
+URL-safe encoding. CI runs fixed cross-language compatibility vectors before building or publishing
+an index, preventing a silent lookup break when either implementation changes.
+
 Each key is hashed with SHA-256. The complete digest is encoded as unpadded Base64 URL-safe text and
 stored in a compact row. A short hexadecimal prefix selects one shard. The app therefore fetches:
 
@@ -37,9 +42,16 @@ stored in a compact row. A short hexadecimal prefix selects one shard. The app t
 2. zero to three shards that can contain the current recording;
 3. no other catalog data.
 
-The manifest contains a bitset of existing shard prefixes. That lets the client prove that a shard
-does not exist without making a 404 request. Shards are cached in an eight-entry in-memory LRU for
-six hours, so albums and queues normally reuse already downloaded data.
+The manifest contains:
+
+* a bitset of existing prefixes, avoiding pointless 404 requests;
+* a `contentDigest`, separating cached shards from a newer index generation;
+* a validated `shardDirectory` such as `p2` or `p3`;
+* counts and the maximum generated shard size.
+
+Shards are cached in an eight-entry in-memory LRU for six hours, so albums and queues normally reuse
+already downloaded data. The cache key includes the index content digest and layout directory, so a
+new manifest cannot accidentally reuse rows from an older generation.
 
 `scripts/build_community_canvas_index.py` selects between two and five hexadecimal prefix
 characters. It increases the depth automatically until every generated shard is below the 96 KiB
@@ -50,17 +62,25 @@ The compact shard row intentionally omits title, artist and album text. The exac
 identifies the requested recording, and the candidate identity is reconstructed from the track
 already playing. A row only needs the digest, media URL, scope and optional ISRC/dimensions.
 
-This architecture supports millions of mappings. Actual coverage still depends on how many valid
-canvas sources and curated entries are supplied; the index removes the client-side scaling limit but
-does not invent missing videos.
+This architecture supports millions of mappings on the client. Actual coverage still depends on
+how many valid canvas sources and curated entries are supplied; the index removes the client-side
+scaling limit but does not invent missing videos.
+
+## Rollout-safe layouts
+
+Shard directories are versioned by prefix depth, for example `v2/p2/shards` and `v2/p3/shards`.
+Publishing a deeper layout does not delete the previous directory immediately. A device that cached
+the previous manifest can therefore finish its six-hour cache window without receiving 404s after
+a catalog expansion changes the prefix depth.
+
+Within the current layout, newly generated files overwrite matching prefixes while obsolete files
+may remain physically present. The manifest bitmap makes those files unreachable to current clients.
+The manifest and new shards are committed together, and `contentDigest` forces newly refreshed
+clients onto the matching cache generation.
 
 ## Multi-source aggregation
 
-Catalog growth is configured in `catalog/community-canvas-sources.json`. Sources are processed in
-listed order, so a curated Levyra entry can intentionally win before a duplicate from an external
-catalog.
-
-A source can be:
+Catalog growth is configured in `catalog/community-canvas-sources.json`. A source can be:
 
 * a repository-local JSON file declared with `path`;
 * an HTTPS JSON catalog declared with `url`;
@@ -74,14 +94,31 @@ The repository currently defines:
 
 Adding another reviewed source or importing thousands of validated entries into the curated overlay
 requires only a data/workflow change. No Android release is needed because the next scheduled mirror
-run rebuilds the flat snapshot and every shard.
+run merges, validates, deduplicates and rebuilds every shard.
 
-All sources are merged, normalized, deduplicated and sorted. Any media host outside the allowlist
-fails the run instead of silently broadening the app's network permissions.
+Exact duplicate rows are discarded across sources. Different approved media URLs for the same
+recording remain separate candidates so the normal verifier and ranking path can choose a playable
+one. Any media host outside the allowlist fails the run instead of silently broadening the app's
+network permissions.
 
-## Flat entry schema
+## Full build catalog and compatibility snapshot
 
-The normalized flat snapshot remains available for compatibility:
+CI creates a complete normalized catalog only as a temporary build input and workflow artifact. It
+is used to generate every shard but is not committed to `canvas-data`. This avoids GitHub's single
+file limits when the collection grows very large.
+
+For older Levyra builds and index rollout failures, the workflow separately creates
+`catalog/community-canvas.json`. This compatibility snapshot:
+
+* is hard-capped at 900 KiB, below Android's 1 MiB response limit;
+* always contains at least 100 valid entries or publication fails;
+* records `fullEntryCount` so its partial nature is explicit;
+* remains schema version 1 for clients introduced by the previous mirror PR.
+
+With today's 187 entries the snapshot contains the entire collection. As the full index grows, only
+the bounded compatibility layer is truncated; current clients continue to query all indexed rows.
+
+A compatibility snapshot looks like this:
 
 ```json
 {
@@ -96,33 +133,32 @@ The normalized flat snapshot remains available for compatibility:
       "status": "ok"
     }
   ],
+  "fullEntryCount": 187,
   "items": [
     {
       "song": "Dracula",
       "artist": "Tame Impala",
       "album": "Deadbeat",
-      "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4",
-      "scope": "track",
-      "isrc": "AUUM72500123",
-      "width": 720,
-      "height": 1280
+      "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4"
     }
   ]
 }
 ```
 
+## Source entry schema
+
 | Field | Required | Notes |
 |:--|:--|:--|
 | `song` | yes | Recording title. Blank entries are dropped. |
-| `artist` | yes | Used to build the canonical artist signature. |
+| `artist` | yes | Split with the same separators used by Android before hashing. |
 | `album` | yes | Blank entries are dropped. |
 | `url` | yes | HTTPS, port 443, allowlisted host, `.mp4` or `.m3u8`. |
 | `scope` | no | `track`, `song` or `album`. Anything else is treated as absent. |
 | `isrc` | no | Must match `^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$`. |
 | `width` / `height` | no | Positive integers, published together. |
 
-Unknown fields are ignored. The mirror version match is exact: optional fields do not require a
-bump, while an incompatible schema must bump the version so older clients fall back safely.
+Unknown fields are ignored. An incompatible index format must bump its version so older clients
+fall back safely.
 
 ## Scope resolution
 
@@ -135,7 +171,8 @@ Scope is resolved in this order:
 
 A path-inferred `/Album/` entry keeps its exact track lookup and also receives an album lookup. The
 same URL repeated across at least two songs of the same artist and album also produces one album
-lookup. Album rows never carry the listed track's ISRC, so sibling tracks are not rejected.
+lookup. Album inference examines every row in the group rather than depending on source order. Album
+rows never carry the listed track's ISRC, so sibling tracks are not rejected.
 
 ## Security and resource limits
 
@@ -147,7 +184,8 @@ reviewing and changing both:
 
 Other limits:
 
-* each configured source is capped at 64 MiB during CI ingestion;
+* each configured source is capped at 256 MiB during CI ingestion;
+* the published compatibility snapshot is capped at 900 KiB;
 * Android caps the legacy flat response at 1 MiB;
 * the index manifest is capped at 256 KiB;
 * each index shard is capped at 192 KiB;
@@ -155,35 +193,40 @@ Other limits:
 * legacy mirror/upstream fallback has a separate 6 s total budget;
 * all OkHttp requests are cancellable with their coroutine.
 
-The client caches only parsed results, never both HTTP responses. There is no clock-based freshness
-check because publication intentionally skips commits when only `generatedAt` changes.
+The client caches parsed manifests, shards and fallback entries, never both raw HTTP responses.
+There is no clock-based freshness check because publication intentionally skips commits when only
+`generatedAt` changes.
 
 ## Mirror pipeline
 
 `.github/workflows/community-canvas-mirror.yml` runs on relevant pull requests, daily at 04:37 UTC
 and on demand. It:
 
-1. loads every configured source;
-2. validates, merges and normalizes entries;
-3. enforces the minimum usable-entry count and host drift alarm;
-4. builds the compact hash-sharded index;
-5. verifies the manifest and the number/size of generated shards;
-6. publishes the flat fallback and index together to the orphan `canvas-data` branch.
+1. verifies Python/Android lookup compatibility vectors;
+2. loads every configured source;
+3. validates, merges and normalizes the full collection;
+4. creates the bounded compatibility snapshot;
+5. builds the compact hash-sharded index from the complete collection;
+6. verifies the manifest, content digest, layout, file count and size limits;
+7. publishes the bounded fallback, manifest and new shards together to `canvas-data`.
 
-The publish is one Git commit, so clients never observe a manifest pointing at a partially uploaded
-set of shards.
+The publisher compares both the compatibility snapshot and manifest without `generatedAt`, so a
+pure timestamp change creates no commit while an index-builder or content change is not skipped.
 
 ## Local commands
 
-Normalize all configured sources and build the index:
+Normalize all configured sources, create the bounded compatibility snapshot and build the index:
 
 ```bash
 python3 scripts/sync_community_canvas.py \
   --sources-file catalog/community-canvas-sources.json \
-  --output build/canvas/community-canvas.json
+  --output build/canvas/community-canvas-full.json \
+  --compat-output build/canvas/community-canvas.json
+
+python3 scripts/build_community_canvas_index.py --self-test
 
 python3 scripts/build_community_canvas_index.py \
-  --input build/canvas/community-canvas.json \
+  --input build/canvas/community-canvas-full.json \
   --output-dir build/canvas/index
 ```
 
@@ -192,8 +235,10 @@ Normalize a local fixture instead:
 ```bash
 python3 scripts/sync_community_canvas.py \
   --input canvas.json \
-  --output build/canvas/community-canvas.json \
-  --min-entries 1
+  --output build/canvas/community-canvas-full.json \
+  --compat-output build/canvas/community-canvas.json \
+  --min-entries 1 \
+  --compat-min-entries 1
 ```
 
 Run the Android compatibility tests and release checks:
