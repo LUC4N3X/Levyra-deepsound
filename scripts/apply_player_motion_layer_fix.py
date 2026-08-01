@@ -112,8 +112,10 @@ for old, new, label in replacements:
         raise SystemExit(f"Expected exactly one {label} block, found {count}")
     text = text.replace(old, new, 1)
 
-if text.count("MotionArtworkLayer(") < 2:
-    raise SystemExit("Expected the component definition and the nested Now Playing usage")
+if text.count("MotionArtworkLayer(") != 1:
+    raise SystemExit("Expected exactly one nested MotionArtworkLayer usage in LevyraApp.kt")
+if "motionArtwork = state.motionArtwork" not in text:
+    raise SystemExit("Now Playing motion artwork parameter was not wired")
 
 PATH.write_text(text, encoding="utf-8")
 print("Moved motion artwork inside the stable player frame")
