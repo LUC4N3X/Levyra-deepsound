@@ -38,8 +38,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
@@ -311,61 +313,29 @@ private fun AdaptiveLiquidGlassChrome(
         if (size.width <= 0f || size.height <= 0f) return@Canvas
         val chromeTop = (size.height - chromeHeightPx).coerceAtLeast(0f)
         val chromeHeight = size.height - chromeTop
-        val source = state.layer
 
-        if (
-            profile.tier == LiquidGlassTier.Full &&
-            state.enabled &&
-            source != null &&
-            blurEffect != null
-        ) {
-            frostLayer.renderEffect = blurEffect
-            frostLayer.alpha = profile.sampleAlpha
-            frostLayer.record(size = size.toIntSize()) {
-                val refractionShift = (sheenPhase - 0.5f) * 8.dp.toPx()
-                translate(left = refractionShift, top = 0f) {
-                    drawLayer(source)
-                }
-            }
-            clipRect(left = 0f, top = chromeTop, right = size.width, bottom = size.height) {
-                drawLayer(frostLayer)
-            }
-            frostLayer.renderEffect = null
-            frostLayer.alpha = 1f
-        }
-
-        drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    baseTint.copy(alpha = profile.tintAlpha * 0.45f),
-                    baseTint.copy(alpha = profile.tintAlpha)
-                ),
-                startY = chromeTop,
-                endY = size.height
-            ),
-            topLeft = Offset(0f, chromeTop),
-            size = Size(size.width, chromeHeight)
+        drawLiquidGlassBackdrop(
+            state = state,
+            profile = profile,
+            frostLayer = frostLayer,
+            blurEffect = blurEffect,
+            sheenPhase = sheenPhase,
+            chromeTop = chromeTop,
+            chromeHeight = chromeHeight
         )
-
-        if (profile.animated) {
-            val centerX = size.width * sheenPhase
-            val sheenWidth = size.width * 0.42f
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color.Transparent,
-                        sheenColor.copy(alpha = 0.065f),
-                        Color.Transparent
-                    ),
-                    startX = centerX - sheenWidth,
-                    endX = centerX + sheenWidth
-                ),
-                topLeft = Offset(0f, chromeTop),
-                size = Size(size.width, chromeHeight)
-            )
-        }
-
+        drawLiquidGlassTint(
+            baseTint = baseTint,
+            tintAlpha = profile.tintAlpha,
+            chromeTop = chromeTop,
+            chromeHeight = chromeHeight
+        )
+        drawLiquidGlassSheen(
+            animated = profile.animated,
+            sheenColor = sheenColor,
+            sheenPhase = sheenPhase,
+            chromeTop = chromeTop,
+            chromeHeight = chromeHeight
+        )
         drawLine(
             color = borderColor.copy(alpha = 0.55f),
             start = Offset(0f, chromeTop),
@@ -373,6 +343,81 @@ private fun AdaptiveLiquidGlassChrome(
             strokeWidth = borderWidthPx
         )
     }
+}
+
+private fun DrawScope.drawLiquidGlassBackdrop(
+    state: GlassBackdropState,
+    profile: AdaptiveLiquidGlassProfile,
+    frostLayer: GraphicsLayer,
+    blurEffect: RenderEffect?,
+    sheenPhase: Float,
+    chromeTop: Float,
+    chromeHeight: Float
+) {
+    val source = state.layer ?: return
+    if (profile.tier != LiquidGlassTier.Full || !state.enabled || blurEffect == null) return
+
+    frostLayer.renderEffect = blurEffect
+    frostLayer.alpha = profile.sampleAlpha
+    frostLayer.record(size = Size(size.width, chromeHeight).toIntSize()) {
+        val refractionShift = (sheenPhase - 0.5f) * 8.dp.toPx()
+        translate(left = refractionShift, top = -chromeTop) {
+            drawLayer(source)
+        }
+    }
+    clipRect(left = 0f, top = chromeTop, right = size.width, bottom = size.height) {
+        translate(top = chromeTop) {
+            drawLayer(frostLayer)
+        }
+    }
+    frostLayer.renderEffect = null
+    frostLayer.alpha = 1f
+}
+
+private fun DrawScope.drawLiquidGlassTint(
+    baseTint: Color,
+    tintAlpha: Float,
+    chromeTop: Float,
+    chromeHeight: Float
+) {
+    drawRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(
+                Color.Transparent,
+                baseTint.copy(alpha = tintAlpha * 0.45f),
+                baseTint.copy(alpha = tintAlpha)
+            ),
+            startY = chromeTop,
+            endY = size.height
+        ),
+        topLeft = Offset(0f, chromeTop),
+        size = Size(size.width, chromeHeight)
+    )
+}
+
+private fun DrawScope.drawLiquidGlassSheen(
+    animated: Boolean,
+    sheenColor: Color,
+    sheenPhase: Float,
+    chromeTop: Float,
+    chromeHeight: Float
+) {
+    if (!animated) return
+    val centerX = size.width * sheenPhase
+    val sheenWidth = size.width * 0.42f
+    drawRect(
+        brush = Brush.horizontalGradient(
+            colors = listOf(
+                Color.Transparent,
+                sheenColor.copy(alpha = 0.065f),
+                Color.Transparent
+            ),
+            startX = centerX - sheenWidth,
+            endX = centerX + sheenWidth
+        ),
+        topLeft = Offset(0f, chromeTop),
+        size = Size(size.width, chromeHeight)
+    )
 }
 
 /**
