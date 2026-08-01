@@ -72,7 +72,7 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
             val entries = when (val indexed = indexedEntries(identity)) {
-                is CommunityCanvasIndexLookup.Available -> indexed.entries.ifEmpty { catalog() }
+                is CommunityCanvasIndexLookup.Available -> indexed.entries
                 CommunityCanvasIndexLookup.Unavailable -> catalog()
             }
             val candidates = communityCanvasCandidates(identity, entries, System.currentTimeMillis())
@@ -140,10 +140,14 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
     private suspend fun indexManifest(): CommunityCanvasIndexManifest? {
         val now = System.currentTimeMillis()
         cachedIndexManifest?.takeIf { now < indexManifestExpiresAtMs }?.let { return it }
+        if (cachedIndexManifest == null && now < indexManifestExpiresAtMs) return null
         return indexManifestMutex.withLock {
             val refreshedAt = System.currentTimeMillis()
             cachedIndexManifest?.takeIf { refreshedAt < indexManifestExpiresAtMs }?.let {
                 return@withLock it
+            }
+            if (cachedIndexManifest == null && refreshedAt < indexManifestExpiresAtMs) {
+                return@withLock null
             }
             val payload = try {
                 withTimeoutOrNull(INDEX_MANIFEST_TIMEOUT_MS) {
@@ -152,15 +156,30 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
+                Timber.d(error, "Community canvas index manifest request failed")
                 null
-            } ?: return@withLock null
+            }
+            if (payload == null) {
+                Timber.d("Community canvas index manifest unavailable; backing off")
+                cacheIndexManifestFailure(refreshedAt)
+                return@withLock null
+            }
             val manifest = parseCommunityCanvasIndexManifest(payload)
                 ?.takeIf { it.largestShardBytes <= MAX_INDEX_SHARD_BYTES }
-                ?: return@withLock null
+            if (manifest == null) {
+                Timber.d("Community canvas index manifest is invalid; backing off")
+                cacheIndexManifestFailure(refreshedAt)
+                return@withLock null
+            }
             cachedIndexManifest = manifest
             indexManifestExpiresAtMs = refreshedAt + INDEX_CACHE_TTL_MS
             manifest
         }
+    }
+
+    private fun cacheIndexManifestFailure(nowMs: Long) {
+        cachedIndexManifest = null
+        indexManifestExpiresAtMs = nowMs + INDEX_FAILURE_TTL_MS
     }
 
     private suspend fun indexShard(
@@ -314,6 +333,7 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
         const val MAX_INDEX_SHARD_BYTES = 192 * 1024
         const val CATALOG_TTL_MS = 6L * 60L * 60L * 1000L
         const val INDEX_CACHE_TTL_MS = 6L * 60L * 60L * 1000L
+        const val INDEX_FAILURE_TTL_MS = 5L * 60L * 1000L
         const val CATALOG_BUDGET_MS = 6_000L
         const val INDEX_LOOKUP_BUDGET_MS = 4_500L
         const val CATALOG_FALLBACK_RESERVE_MS = 4_000L
