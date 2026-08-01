@@ -238,6 +238,32 @@ class CommunityCanvasProviderTest {
     }
 
     @Test
+    fun fuzzyCatalogMatchingPreservesMetadataVariantCoverage() {
+        val entries = listOf(
+            CommunityCanvasEntry(
+                song = "Flowers",
+                artist = "Miley Cyrus",
+                album = "Endless Summer Vacation",
+                url = "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/flowers.mp4",
+                scope = MotionArtworkScope.TRACK,
+            )
+        )
+        val identity = MotionTrackIdentity(
+            title = "Flowers",
+            artists = listOf("Miley Cyrus"),
+            album = "Endless Summer Vacation (Deluxe)",
+            durationMs = 200_000L,
+            isrc = "",
+            upc = "",
+            year = "",
+            trackId = "flowers",
+            albumId = "endless-summer-vacation",
+        )
+
+        assertTrue(communityCanvasCandidates(identity, entries, nowMs = 1_000L).isNotEmpty())
+    }
+
+    @Test
     fun mirrorCatalogVersionIsExposedForUsabilityChecks() {
         val document = parseCommunityCanvasDocument(
             """

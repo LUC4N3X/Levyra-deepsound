@@ -238,6 +238,7 @@ def partition_rows(
         if requested_prefix_chars is not None
         else list(range(MIN_PREFIX_CHARS, MAX_PREFIX_CHARS + 1))
     )
+    largest_valid: tuple[int, dict[str, list[dict[str, Any]]], int] | None = None
     for prefix_chars in candidates:
         if prefix_chars is None or prefix_chars not in range(MIN_PREFIX_CHARS, MAX_PREFIX_CHARS + 1):
             raise IndexBuildError(
@@ -253,8 +254,12 @@ def partition_rows(
             (len(serialized_shard(shard_rows)) for shard_rows in shards.values()),
             default=0,
         )
-        if largest <= max_bytes and (requested_prefix_chars is not None or largest <= target_bytes):
-            return prefix_chars, dict(shards), largest
+        if largest <= max_bytes:
+            largest_valid = (prefix_chars, dict(shards), largest)
+            if requested_prefix_chars is not None or largest <= target_bytes:
+                return largest_valid
+    if largest_valid is not None:
+        return largest_valid
     raise IndexBuildError(
         f"unable to keep every shard below {max_bytes} bytes with at most {MAX_PREFIX_CHARS} prefix chars"
     )
@@ -381,6 +386,23 @@ def verify_compatibility_vectors() -> None:
         raise IndexBuildError(
             f"lookup row generation changed: expected (2 track, 1 ISRC, 1 album), got {row_shape}"
         )
+
+    fallback_prefix, _, fallback_largest = partition_rows(
+        rows=[
+            {
+                "_key": f"test-key-{index}",
+                "h": "A" * 43,
+                "u": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/test.mp4",
+                "s": "t",
+            }
+            for index in range(8)
+        ],
+        target_bytes=1,
+        max_bytes=4096,
+        requested_prefix_chars=None,
+    )
+    if fallback_prefix != MAX_PREFIX_CHARS or fallback_largest > 4096:
+        raise IndexBuildError("valid shard fallback no longer reaches the maximum prefix depth")
 
 
 def parse_arguments() -> argparse.Namespace:

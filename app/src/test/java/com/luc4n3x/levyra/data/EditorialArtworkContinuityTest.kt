@@ -32,9 +32,9 @@ class EditorialArtworkContinuityTest {
     }
 
     @Test
-    fun fallbackChartSourcesAlsoKeepTheArtworkTheUserOpened() {
+    fun chartMoodTagDoesNotLockNonEditorialArtwork() {
         val presented = track(
-            source = "YouTube Music Charts",
+            source = "Search",
             thumbnail = "https://charts.example.test/red-cover.jpg",
             moodTags = setOf("chart"),
         )
@@ -43,14 +43,11 @@ class EditorialArtworkContinuityTest {
             thumbnail = "https://charts.example.test/white-cover.jpg",
         )
 
-        val result = preserveEditorialArtwork(presented, resolved)
-
-        assertEquals(presented.thumbnailUrl, result.thumbnailUrl)
-        assertEquals(presented.thumbnailUrl, result.largeThumbnailUrl)
+        assertEquals(resolved, preserveEditorialArtwork(presented, resolved))
     }
 
     @Test
-    fun chartSourceNameLocksArtworkEvenAfterTagsAreLostInTransit() {
+    fun chartSourceNameDoesNotLockNonEditorialArtwork() {
         val presented = track(
             source = "Apple Music Charts",
             thumbnail = "https://charts.example.test/presented-cover.jpg",
@@ -60,10 +57,7 @@ class EditorialArtworkContinuityTest {
             thumbnail = "https://charts.example.test/resolved-cover.jpg",
         )
 
-        assertEquals(
-            presented.thumbnailUrl,
-            preserveEditorialArtwork(presented, resolved).thumbnailUrl,
-        )
+        assertEquals(resolved, preserveEditorialArtwork(presented, resolved))
     }
 
     @Test

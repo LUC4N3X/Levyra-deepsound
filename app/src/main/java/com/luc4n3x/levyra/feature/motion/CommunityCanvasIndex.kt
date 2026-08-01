@@ -135,10 +135,15 @@ internal fun parseCommunityCanvasIndexManifest(payload: String): CommunityCanvas
     )
 }
 
-internal fun parseCommunityCanvasIndexShard(payload: String): List<CommunityCanvasIndexedEntry> {
-    val root = runCatching { JSONObject(payload) }.getOrNull() ?: return emptyList()
-    if (root.optInt("version") != COMMUNITY_CANVAS_INDEX_VERSION) return emptyList()
-    val items = root.optJSONArray("items") ?: return emptyList()
+internal fun parseCommunityCanvasIndexShard(payload: String): List<CommunityCanvasIndexedEntry> =
+    parseCommunityCanvasIndexShardOrNull(payload).orEmpty()
+
+internal fun parseCommunityCanvasIndexShardOrNull(
+    payload: String
+): List<CommunityCanvasIndexedEntry>? {
+    val root = runCatching { JSONObject(payload) }.getOrNull() ?: return null
+    if (root.optInt("version") != COMMUNITY_CANVAS_INDEX_VERSION) return null
+    val items = root.optJSONArray("items") ?: return null
     return buildList {
         for (index in 0 until items.length()) {
             val item = items.optJSONObject(index) ?: continue
