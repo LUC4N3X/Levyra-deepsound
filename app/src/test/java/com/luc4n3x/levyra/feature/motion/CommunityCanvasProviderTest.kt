@@ -152,6 +152,117 @@ class CommunityCanvasProviderTest {
     }
 
     @Test
+    fun albumCanvasIgnoresTheIsrcOfTheListedTrack() {
+        val albumUrl = "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/dawn.m3u8"
+        val entries = parseCommunityCanvasCatalog(
+            """
+            {
+              "items": [
+                {
+                  "song": "Track A",
+                  "artist": "Exact Artist",
+                  "album": "Exact Album",
+                  "url": "$albumUrl",
+                  "isrc": "USUM71703861"
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+        val identity = MotionTrackIdentity(
+            title = "Track B",
+            artists = listOf("Exact Artist"),
+            album = "Exact Album",
+            durationMs = 195_000L,
+            isrc = "GBAYE0601498",
+            upc = "",
+            year = "",
+            trackId = "track-b",
+            albumId = "exact-album"
+        )
+
+        val candidate = communityCanvasCandidates(identity, entries, nowMs = 1_000L)
+            .single { it.scope == MotionArtworkScope.ALBUM }
+
+        assertEquals(albumUrl, candidate.url)
+        assertEquals("", candidate.identity.isrc)
+        assertTrue(CanonicalTrackMatcher.match(identity, candidate).accepted)
+    }
+
+    @Test
+    fun repeatedAlbumScopeEntriesCollapseIntoOneCandidate() {
+        val albumUrl = "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/dawn.m3u8"
+        val entries = parseCommunityCanvasCatalog(
+            """
+            {
+              "items": [
+                {
+                  "song": "One",
+                  "artist": "Exact Artist",
+                  "album": "Exact Album",
+                  "url": "$albumUrl",
+                  "scope": "album"
+                },
+                {
+                  "song": "Two",
+                  "artist": "Exact Artist",
+                  "album": "Exact Album",
+                  "url": "$albumUrl",
+                  "scope": "album"
+                },
+                {
+                  "song": "Three",
+                  "artist": "Exact Artist",
+                  "album": "Exact Album",
+                  "url": "$albumUrl",
+                  "scope": "album"
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+        val identity = MotionTrackIdentity(
+            title = "Four",
+            artists = listOf("Exact Artist"),
+            album = "Exact Album",
+            durationMs = 195_000L,
+            isrc = "",
+            upc = "",
+            year = "",
+            trackId = "four",
+            albumId = "exact-album"
+        )
+
+        assertEquals(3, entries.size)
+        assertEquals(1, communityCanvasCandidates(identity, entries, nowMs = 1_000L).count { it.url == albumUrl })
+    }
+
+    @Test
+    fun mirrorCatalogVersionIsExposedForUsabilityChecks() {
+        val document = parseCommunityCanvasDocument(
+            """
+            {
+              "version": 1,
+              "generatedAt": "2026-07-31T04:37:00Z",
+              "items": [
+                {
+                  "song": "Exact Song",
+                  "artist": "Exact Artist",
+                  "album": "Exact Album",
+                  "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/1.mp4"
+                }
+              ]
+            }
+            """.trimIndent()
+        )
+
+        assertEquals(1, document.version)
+        assertEquals(1, document.entries.size)
+        assertEquals(0, parseCommunityCanvasDocument("{\"items\":[]}").version)
+        assertEquals(0, parseCommunityCanvasDocument("{ truncated").version)
+    }
+
+    @Test
     fun conflictingIsrcStillRejectsTheEntry() {
         val entries = listOf(
             CommunityCanvasEntry(
