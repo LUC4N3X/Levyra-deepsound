@@ -17,12 +17,24 @@ usable entry:
 | 2 | `vivizzz007/vivimusicanvas@main:canvas.json` | Upstream community catalog |
 
 The mirror is the pinned copy Levyra controls. Upstream stays as a fallback so the feature keeps
-working when the mirror branch is missing, stale or unreachable. Both responses are capped at
-1 MiB and cached in memory for six hours.
+working when the mirror branch is missing, unreachable or structurally unusable. Both responses are
+capped at 1 MiB and cached in memory for six hours.
 
-Per-source network timeouts are deliberately short (4.5 s call budget) because the motion-artwork
-engine caps the whole provider call at `MotionArtworkConfig.requestTimeoutMs` (6.5 s by default).
-A fast failure on the first source is what leaves room for the second one.
+The mirror is only accepted when it declares `version: 1` and yields at least 100 usable entries,
+which is below the 150-entry floor the publishing pipeline enforces. A truncated or gutted mirror
+therefore falls through to upstream instead of being cached for six hours. Upstream itself is
+accepted whenever it yields at least one usable entry, because nothing else backs it up.
+
+There is no freshness check: neither `generatedAt` nor the branch commit date is compared against
+the clock, and a mirror that stops being refreshed keeps being served. That is deliberate — the
+pipeline skips the commit when only `generatedAt` changed, so the timestamp does not track staleness
+— but it means an abandoned mirror is served until it fails one of the structural checks above.
+
+The whole two-source attempt is bounded by a 6 s budget that sits inside the motion-artwork engine's
+`MotionArtworkConfig.requestTimeoutMs` (6.5 s by default). Each source gets the remaining budget
+divided by the number of sources left, with a 2 s floor, so a slow mirror cannot starve the upstream
+fallback. Fetches run on `Call.enqueue` inside `suspendCancellableCoroutine`, so cancelling the
+coroutine cancels the HTTP call instead of leaving a blocked thread holding the catalog lock.
 
 ## Entry schema
 

@@ -3,20 +3,25 @@ package com.luc4n3x.levyra.feature.motion
 import android.content.Context
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Curated community canvases are an optional, read-only motion-artwork source.
@@ -30,7 +35,7 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
     private val client: OkHttpClient = LevyraHttpClientFactory.media(context).newBuilder()
         .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(4, TimeUnit.SECONDS)
-        .callTimeout(4_500, TimeUnit.MILLISECONDS)
+        .callTimeout(5, TimeUnit.SECONDS)
         .build()
     private val catalogMutex = Mutex()
 
@@ -72,60 +77,95 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     private suspend fun loadFirstUsableCatalog(): List<CommunityCanvasEntry> {
         var lastError: Throwable? = null
-        for (source in CATALOG_URLS) {
-            val parsed = try {
-                parseCommunityCanvasCatalog(fetchCatalog(source))
+        val deadlineMs = System.currentTimeMillis() + CATALOG_BUDGET_MS
+        for ((index, source) in CATALOG_URLS.withIndex()) {
+            val remainingMs = deadlineMs - System.currentTimeMillis()
+            if (remainingMs <= 0L) break
+            val sliceMs = (remainingMs / (CATALOG_URLS.size - index))
+                .coerceAtLeast(MIN_SOURCE_BUDGET_MS)
+            val payload = try {
+                withTimeoutOrNull(sliceMs) { fetchCatalog(source) }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
                 lastError = error
                 continue
             }
-            if (parsed.isNotEmpty()) return parsed
-            lastError = CommunityCanvasException("Community canvas catalog is empty")
+            if (payload == null) {
+                lastError = CommunityCanvasException("Community canvas source timed out")
+                continue
+            }
+            val document = parseCommunityCanvasDocument(payload)
+            if (isUsableCatalog(source, document)) return document.entries
+            lastError = CommunityCanvasException("Community canvas catalog is not usable")
         }
         throw lastError ?: CommunityCanvasException("Community canvas catalog is unavailable")
     }
 
-    private suspend fun fetchCatalog(source: String): String = withContext(Dispatchers.IO) {
+    private fun isUsableCatalog(source: String, catalog: CommunityCanvasCatalog): Boolean =
+        if (source == MIRROR_CATALOG_URL) {
+            catalog.version == MIRROR_CATALOG_VERSION &&
+                catalog.entries.size >= MIN_MIRROR_CATALOG_ENTRIES
+        } else {
+            catalog.entries.isNotEmpty()
+        }
+
+    private suspend fun fetchCatalog(source: String): String = suspendCancellableCoroutine { continuation ->
         val request = Request.Builder()
             .url(source)
             .header("Accept", "application/json")
             .header("User-Agent", USER_AGENT)
             .build()
-        try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw CommunityCanvasException("Community canvas HTTP ${response.code}")
+        val call = client.newCall(request)
+        continuation.invokeOnCancellation { call.cancel() }
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (continuation.isActive) {
+                    continuation.resumeWithException(
+                        CommunityCanvasException("Unable to load community canvas catalog", e)
+                    )
                 }
-                val body = response.body
-                val declaredLength = body.contentLength()
-                if (declaredLength > MAX_CATALOG_BYTES) {
-                    throw CommunityCanvasException("Community canvas catalog is too large")
-                }
-                val input = body.byteStream()
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8 * 1024)
-                var total = 0
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read < 0) break
-                    total += read
-                    if (total > MAX_CATALOG_BYTES) {
-                        throw CommunityCanvasException("Community canvas catalog is too large")
-                    }
-                    output.write(buffer, 0, read)
-                }
-                output.toString(Charsets.UTF_8.name()).takeIf { it.isNotBlank() }
-                    ?: throw CommunityCanvasException("Community canvas catalog is empty")
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: CommunityCanvasException) {
-            throw error
-        } catch (error: Exception) {
-            throw CommunityCanvasException("Unable to load community canvas catalog", error)
+
+            override fun onResponse(call: Call, response: Response) {
+                val payload = runCatching { readCatalogPayload(response) }
+                if (!continuation.isActive) return
+                payload.fold(
+                    onSuccess = { body -> continuation.resume(body) },
+                    onFailure = { error ->
+                        continuation.resumeWithException(
+                            error as? CommunityCanvasException
+                                ?: CommunityCanvasException("Unable to load community canvas catalog", error)
+                        )
+                    }
+                )
+            }
+        })
+    }
+
+    private fun readCatalogPayload(response: Response): String = response.use { current ->
+        if (!current.isSuccessful) {
+            throw CommunityCanvasException("Community canvas HTTP ${current.code}")
         }
+        val body = current.body
+        if (body.contentLength() > MAX_CATALOG_BYTES) {
+            throw CommunityCanvasException("Community canvas catalog is too large")
+        }
+        val input = body.byteStream()
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8 * 1024)
+        var total = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            if (total > MAX_CATALOG_BYTES) {
+                throw CommunityCanvasException("Community canvas catalog is too large")
+            }
+            output.write(buffer, 0, read)
+        }
+        output.toString(Charsets.UTF_8.name()).takeIf { it.isNotBlank() }
+            ?: throw CommunityCanvasException("Community canvas catalog is empty")
     }
 
     companion object {
@@ -139,6 +179,10 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
             "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/142 Mobile Safari/537.36 Levyra/CommunityCanvas"
         const val MAX_CATALOG_BYTES = 1024 * 1024
         const val CATALOG_TTL_MS = 6L * 60L * 60L * 1000L
+        const val CATALOG_BUDGET_MS = 6_000L
+        const val MIN_SOURCE_BUDGET_MS = 2_000L
+        const val MIRROR_CATALOG_VERSION = 1
+        const val MIN_MIRROR_CATALOG_ENTRIES = 100
     }
 }
 
@@ -154,9 +198,19 @@ internal data class CommunityCanvasEntry(
     val height: Int? = null
 )
 
-internal fun parseCommunityCanvasCatalog(payload: String): List<CommunityCanvasEntry> {
-    val root = runCatching { JSONObject(payload) }.getOrNull() ?: return emptyList()
-    val items = root.optJSONArray("items") ?: return emptyList()
+internal data class CommunityCanvasCatalog(
+    val version: Int,
+    val entries: List<CommunityCanvasEntry>
+)
+
+internal fun parseCommunityCanvasCatalog(payload: String): List<CommunityCanvasEntry> =
+    parseCommunityCanvasDocument(payload).entries
+
+internal fun parseCommunityCanvasDocument(payload: String): CommunityCanvasCatalog {
+    val root = runCatching { JSONObject(payload) }.getOrNull()
+        ?: return CommunityCanvasCatalog(0, emptyList())
+    val version = root.optInt("version")
+    val items = root.optJSONArray("items") ?: return CommunityCanvasCatalog(version, emptyList())
     val output = ArrayList<CommunityCanvasEntry>(items.length())
     val seen = HashSet<String>()
     for (index in 0 until items.length()) {
@@ -199,7 +253,7 @@ internal fun parseCommunityCanvasCatalog(payload: String): List<CommunityCanvasE
             height = item.optInt("height").takeIf { it > 0 }
         )
     }
-    return output
+    return CommunityCanvasCatalog(version, output)
 }
 
 private fun communityCanvasScopeFromPath(url: HttpUrl): MotionArtworkScope? {
@@ -248,7 +302,7 @@ internal fun communityCanvasCandidates(
         .map { entry -> entry to communityCanvasQuickScore(identity, entry) }
         .filter { (_, score) -> score >= MIN_COMMUNITY_QUICK_SCORE }
         .sortedByDescending { (_, score) -> score }
-        .distinctBy { (entry, _) -> "${entry.scope}|${entry.url}|${normalizeMotionText(entry.song)}" }
+        .distinctBy { (entry, _) -> communityCanvasCandidateKey(entry) }
         .take(MAX_COMMUNITY_CANDIDATES)
         .map { (entry, _) ->
             MotionArtworkCandidate(
@@ -259,7 +313,7 @@ internal fun communityCanvasCandidates(
                     artists = splitArtists(entry.artist),
                     album = entry.album,
                     durationMs = 0L,
-                    isrc = entry.isrc,
+                    isrc = if (entry.scope == MotionArtworkScope.TRACK) entry.isrc else "",
                     upc = "",
                     year = "",
                     trackId = "",
@@ -279,13 +333,31 @@ internal fun communityCanvasCandidates(
         .toList()
 }
 
+private fun communityCanvasCandidateKey(entry: CommunityCanvasEntry): String = when (entry.scope) {
+    MotionArtworkScope.ALBUM -> listOf(
+        MotionArtworkScope.ALBUM.name,
+        normalizeMotionText(entry.artist),
+        normalizeMotionText(entry.album),
+        entry.url
+    ).joinToString("|")
+    MotionArtworkScope.TRACK -> listOf(
+        MotionArtworkScope.TRACK.name,
+        entry.url,
+        normalizeMotionText(entry.song)
+    ).joinToString("|")
+}
+
 private fun communityCanvasQuickScore(
     identity: MotionTrackIdentity,
     entry: CommunityCanvasEntry
 ): Int {
     val entryArtists = splitArtists(entry.artist)
     if (!primaryMotionArtistMatches(identity.artists, entryArtists)) return Int.MIN_VALUE
-    if (identity.isrc.isNotBlank() && entry.isrc.isNotBlank()) {
+    if (
+        entry.scope == MotionArtworkScope.TRACK &&
+        identity.isrc.isNotBlank() &&
+        entry.isrc.isNotBlank()
+    ) {
         return if (identity.isrc == entry.isrc) 100 else Int.MIN_VALUE
     }
     val titleScore = communityTextSimilarity(identity.title, entry.song)
