@@ -1,9 +1,9 @@
 # Community canvas catalog
 
 Levyra's `community-canvas` provider is an optional, read-only motion-artwork source. It maps a
-recording to a short looping video and passes every candidate through the shared motion-artwork
-matcher and URL verifier before rendering it. Catalog data never controls arbitrary destinations:
-media must use HTTPS, an approved host and an MP4 or HLS path.
+recording to a short looping video and sends every candidate through the shared matcher and URL
+verifier before rendering it. Catalog data never controls arbitrary destinations: media must use
+HTTPS, an approved host and an MP4 or HLS path.
 
 ## Runtime lookup order
 
@@ -15,8 +15,8 @@ The provider uses three layers:
 | 2 | `canvas-data/catalog/community-canvas.json` | Bounded compatibility snapshot used during rollout or index failure |
 | 3 | `vivizzz007/vivimusicanvas@main:canvas.json` | Original upstream fallback |
 
-When the indexed mirror is healthy, the app never downloads the full catalog. A missing result in a
-healthy index is conclusive and does not trigger the legacy flat download. The bounded mirror and
+When the indexed mirror is healthy, the app never downloads the complete catalog. A missing result
+in a healthy index is conclusive and does not trigger the flat download. The bounded mirror and
 upstream are consulted only when the manifest or every relevant shard is unavailable or invalid.
 If one shard fails but another relevant shard produces a valid exact match, Levyra keeps that result.
 
@@ -45,13 +45,13 @@ stored in a compact row. A short hexadecimal prefix selects one shard. The app t
 The manifest contains:
 
 * a bitset of existing prefixes, avoiding pointless 404 requests;
-* a `contentDigest`, separating cached shards from a newer index generation;
-* a validated `shardDirectory` such as `p2` or `p3`;
+* a `contentDigest` identifying the exact index generation;
+* an immutable `shardDirectory` such as `g8fac2af10c9a06ad/p2`;
 * counts and the maximum generated shard size.
 
 Shards are cached in an eight-entry in-memory LRU for six hours, so albums and queues normally reuse
-already downloaded data. The cache key includes the index content digest and layout directory, so a
-new manifest cannot accidentally reuse rows from an older generation.
+already downloaded data. The cache key includes the content digest and immutable directory, so a
+new manifest cannot reuse rows from an older generation.
 
 `scripts/build_community_canvas_index.py` selects between two and five hexadecimal prefix
 characters. It increases the depth automatically until every generated shard is below the 96 KiB
@@ -63,8 +63,8 @@ identifies the requested recording, and the candidate identity is reconstructed 
 already playing. A row only needs the digest, media URL, scope and optional ISRC/dimensions.
 
 This architecture supports millions of mappings on the client. Actual real-canvas coverage still
-depends on how many valid canvas sources and curated entries are supplied; the index removes the
-client-side scaling limit but does not invent missing videos.
+depends on how many legitimate canvas sources and curated entries are supplied; the index removes
+the client-side scaling limit but does not invent missing artist videos.
 
 ## Universal local artwork fallback
 
@@ -85,17 +85,21 @@ on screen, so it adds no catalog assets and no meaningful APK-size growth. This 
 motion for unsupported recordings while preserving real artist-provided canvases whenever one is
 available.
 
-## Rollout-safe layouts
+## Immutable generation publishing
 
-Shard directories are versioned by prefix depth, for example `v2/p2/shards` and `v2/p3/shards`.
-Publishing a deeper layout does not delete the previous directory immediately. A device that cached
-the previous manifest can therefore finish its six-hour cache window without receiving 404s after
-a catalog expansion changes the prefix depth.
+Every content generation receives its own directory:
 
-Within the current layout, newly generated files overwrite matching prefixes while obsolete files
-may remain physically present. The manifest bitmap makes those files unreachable to current clients.
-The manifest and new shards are committed together, and `contentDigest` forces newly refreshed
-clients onto the matching cache generation.
+```text
+catalog/index/v2/g<first-16-hex-of-contentDigest>/p<prefixChars>/shards/<prefix>.json
+```
+
+The manifest requires its directory generation to match its own `contentDigest`. New publications
+never overwrite files referenced by an older manifest. A device that cached the previous manifest
+can therefore complete its six-hour cache window and still retrieve the exact matching shards.
+
+The manifest is the only mutable pointer. It and the newly generated directory are committed in one
+Git transaction. Old generation directories remain available for compatibility; current clients
+cannot reach them after refreshing the manifest.
 
 ## Multi-source aggregation
 
@@ -126,7 +130,7 @@ CI creates a complete normalized catalog only as a temporary build input and wor
 is used to generate every shard but is not committed to `canvas-data`. This avoids GitHub's single
 file limits when the collection grows very large.
 
-For older Levyra builds and index rollout failures, the workflow separately creates
+For older Levyra builds and index failure recovery, the workflow separately creates
 `catalog/community-canvas.json`. This compatibility snapshot:
 
 * is hard-capped at 900 KiB, below Android's 1 MiB response limit;
@@ -226,8 +230,8 @@ and on demand. It:
 3. validates, merges and normalizes the full collection;
 4. creates the bounded compatibility snapshot;
 5. builds the compact hash-sharded index from the complete collection;
-6. verifies the manifest, content digest, layout, file count and size limits;
-7. publishes the bounded fallback, manifest and new shards together to `canvas-data`.
+6. verifies the manifest, immutable generation path, file count and size limits;
+7. publishes the bounded fallback, manifest and new generation together to `canvas-data`.
 
 The publisher compares both the compatibility snapshot and manifest without `generatedAt`, so a
 pure timestamp change creates no commit while an index-builder or content change is not skipped.
