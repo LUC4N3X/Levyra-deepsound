@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-01T19:35:01Z",
+  "generatedAt": "2026-08-01T19:36:48Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -6646,7 +6646,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -6654,12 +6654,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 33,
@@ -10619,11 +10619,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 49,
@@ -11789,12 +11789,6 @@
           },
           "durationMs": 125333,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "iVmQSP198jI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCj9PxUKTXHICjZUHvC-63zQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0224481489b94a5c2e21661d8a"
         },
         {
@@ -11835,14 +11829,6 @@
           },
           "durationMs": 133135,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "tauhQ-GIgFg",
-            "audioConfidence": 100,
-            "videoId": "k9WN_ahN_zg",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UC9AOse7mrU67qbcc24JOmbw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bbe51a9c898b95c234a58ff6"
         },
         {
@@ -14733,11 +14719,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 18,
@@ -15073,7 +15059,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -15081,8 +15067,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15092,7 +15078,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 34,
@@ -15368,7 +15354,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-8e00e58819f76bb1bccd",
+          "id": "levyra-e09beec9b76bb06bdf72",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15376,12 +15362,12 @@
             }
           ],
           "album": {
-            "name": "Det kommer aldrig va över för mig",
-            "releaseDate": "2013-04-17"
+            "name": "Nyårsfest",
+            "releaseDate": "2020-12-18"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
         },
         {
           "position": 47,
@@ -19282,6 +19268,14 @@
           },
           "durationMs": 157800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "4tBnjRrPSDI",
+            "audioConfidence": 100,
+            "videoId": "Y9AXKgqGwN4",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCZpmeLoLLb3vmxgscRyLPgw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0229728fe23025da14d5695ddb"
         },
         {
@@ -27383,6 +27377,8 @@
           "youtubeMusic": {
             "audioVideoId": "S_-DiJ3CPSc",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCi20r6dnEOtYLThuIKwHicw"
           },
@@ -27932,6 +27928,12 @@
           },
           "durationMs": 195428,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "XoBuaGgV80Y",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC7llhk76kGE6jeB3_FZDjbA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029568b0205dda7e2b8d7465ee"
         },
         {
@@ -28085,6 +28087,12 @@
           },
           "durationMs": 227619,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "XHez_iYD60Q",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCQwnhPZOvjAvZAJAQg7NYMQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02768834ced010a03f7c11a666"
         },
         {
@@ -28102,7 +28110,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
         },
         {
           "position": 22,
