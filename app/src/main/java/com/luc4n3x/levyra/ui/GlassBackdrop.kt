@@ -9,6 +9,7 @@ import android.graphics.RenderEffect as AndroidRenderEffect
 import android.graphics.Shader as AndroidShader
 import android.os.Build
 import android.os.PowerManager
+import android.view.View
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,9 +18,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.toIntSize
 
 /** Rendering level selected automatically for the current device and power state. */
 internal enum class LiquidGlassTier {
+    Off,
     Full,
     Lite,
     Static
@@ -70,7 +72,7 @@ internal data class LiquidGlassCapabilities(
 
 /** Pure selector kept separate so device-policy changes stay deterministic and testable. */
 internal fun resolveLiquidGlassTier(capabilities: LiquidGlassCapabilities): LiquidGlassTier = when {
-    !capabilities.enabled -> LiquidGlassTier.Static
+    !capabilities.enabled -> LiquidGlassTier.Off
     !capabilities.hardwareAccelerated -> LiquidGlassTier.Static
     capabilities.lowRamDevice -> LiquidGlassTier.Static
     capabilities.apiLevel < Build.VERSION_CODES.S -> LiquidGlassTier.Lite
@@ -116,6 +118,26 @@ private fun rememberAdaptiveLiquidGlassProfile(enabled: Boolean): AdaptiveLiquid
     var powerSaveMode by remember(powerManager) {
         mutableStateOf(powerManager?.isPowerSaveMode == true)
     }
+    var hardwareAccelerated by remember(view) {
+        mutableStateOf(view.isAttachedToWindow && view.isHardwareAccelerated)
+    }
+
+    DisposableEffect(view) {
+        val listener = object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(attachedView: View) {
+                hardwareAccelerated = attachedView.isHardwareAccelerated
+            }
+
+            override fun onViewDetachedFromWindow(detachedView: View) {
+                hardwareAccelerated = false
+            }
+        }
+        view.addOnAttachStateChangeListener(listener)
+        if (view.isAttachedToWindow) {
+            hardwareAccelerated = view.isHardwareAccelerated
+        }
+        onDispose { view.removeOnAttachStateChangeListener(listener) }
+    }
 
     DisposableEffect(context, powerManager) {
         val receiver = object : BroadcastReceiver() {
@@ -140,11 +162,18 @@ private fun rememberAdaptiveLiquidGlassProfile(enabled: Boolean): AdaptiveLiquid
             apiLevel = Build.VERSION.SDK_INT,
             lowRamDevice = activityManager?.isLowRamDevice == true,
             powerSaveMode = powerSaveMode,
-            hardwareAccelerated = view.isHardwareAccelerated,
+            hardwareAccelerated = hardwareAccelerated,
             enabled = enabled
         )
     )
     return when (tier) {
+        LiquidGlassTier.Off -> AdaptiveLiquidGlassProfile(
+            tier = tier,
+            blurRadius = 0.dp,
+            sampleAlpha = 0f,
+            tintAlpha = 0f,
+            animated = false
+        )
         LiquidGlassTier.Full -> AdaptiveLiquidGlassProfile(
             tier = tier,
             blurRadius = 24.dp,
@@ -200,8 +229,9 @@ fun Modifier.glassBackdropSource(state: GlassBackdropState): Modifier {
  * Root host for Levyra's adaptive Liquid Glass chrome.
  *
  * Full mode re-samples and softly refracts the real pixels beneath the lower player/navigation
- * area. Lite and Static modes keep only a low-cost optical tint. The overlay has no pointer input,
- * so navigation and player controls retain their original behavior and accessibility semantics.
+ * area. Lite and Static modes keep only a low-cost optical tint. Off draws nothing at all, which
+ * keeps Picture-in-Picture untouched. The overlay has no pointer input, so existing controls and
+ * accessibility semantics remain unchanged.
  */
 @Composable
 fun AdaptiveLiquidGlassHost(
@@ -211,7 +241,7 @@ fun AdaptiveLiquidGlassHost(
 ) {
     val profile = rememberAdaptiveLiquidGlassProfile(enabled)
     val backdrop = rememberGlassBackdropState(profile.tier == LiquidGlassTier.Full)
-    val dark = isSystemInDarkTheme()
+    val colors = MaterialTheme.colorScheme
 
     CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
         Box(modifier = modifier.fillMaxSize()) {
@@ -222,21 +252,43 @@ fun AdaptiveLiquidGlassHost(
             ) {
                 content()
             }
-            AdaptiveLiquidGlassChrome(
-                state = backdrop,
-                profile = profile,
-                dark = dark,
-                modifier = Modifier.matchParentSize()
-            )
+            if (profile.tier != LiquidGlassTier.Off) {
+                AdaptiveLiquidGlassChrome(
+                    state = backdrop,
+                    profile = profile,
+                    baseTint = colors.surface,
+                    sheenColor = colors.onSurface,
+                    borderColor = colors.outlineVariant,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun rememberLiquidGlassSheenPhase(animated: Boolean): Float {
+    if (!animated) return -0.35f
+    val transition = rememberInfiniteTransition(label = "levyraLiquidGlass")
+    val phase by transition.animateFloat(
+        initialValue = -0.35f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 7_200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "liquidGlassSheen"
+    )
+    return phase
 }
 
 @Composable
 private fun AdaptiveLiquidGlassChrome(
     state: GlassBackdropState,
     profile: AdaptiveLiquidGlassProfile,
-    dark: Boolean,
+    baseTint: Color,
+    sheenColor: Color,
+    borderColor: Color,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -253,16 +305,7 @@ private fun AdaptiveLiquidGlassChrome(
             null
         }
     }
-    val transition = rememberInfiniteTransition(label = "levyraLiquidGlass")
-    val sheenPhase by transition.animateFloat(
-        initialValue = -0.35f,
-        targetValue = if (profile.animated) 1.35f else -0.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 7_200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "liquidGlassSheen"
-    )
+    val sheenPhase = rememberLiquidGlassSheenPhase(profile.animated)
 
     Canvas(modifier = modifier) {
         if (size.width <= 0f || size.height <= 0f) return@Canvas
@@ -291,7 +334,6 @@ private fun AdaptiveLiquidGlassChrome(
             frostLayer.alpha = 1f
         }
 
-        val baseTint = if (dark) Color(0xFF080A10) else Color.White
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
@@ -313,7 +355,7 @@ private fun AdaptiveLiquidGlassChrome(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
                         Color.Transparent,
-                        Color.White.copy(alpha = if (dark) 0.045f else 0.09f),
+                        sheenColor.copy(alpha = 0.065f),
                         Color.Transparent
                     ),
                     startX = centerX - sheenWidth,
@@ -325,7 +367,7 @@ private fun AdaptiveLiquidGlassChrome(
         }
 
         drawLine(
-            color = Color.White.copy(alpha = if (dark) 0.12f else 0.28f),
+            color = borderColor.copy(alpha = 0.55f),
             start = Offset(0f, chromeTop),
             end = Offset(size.width, chromeTop),
             strokeWidth = borderWidthPx
