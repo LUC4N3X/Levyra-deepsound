@@ -332,12 +332,12 @@ private fun MotionArtworkStaticFallback(
                 .onSizeChanged { artworkSize = it }
                 .graphicsLayer {
                     val amount = motionAmount
-                    val scale = 1f + amount * (0.045f + zoomPhase.value * 0.020f)
+                    val scale = 1f + amount * (0.058f + zoomPhase.value * 0.026f)
                     scaleX = scale
                     scaleY = scale
-                    translationX = artworkSize.width * 0.014f * horizontalDrift.value * amount
-                    translationY = artworkSize.height * 0.012f * verticalDrift.value * amount
-                    rotationZ = 0.12f * tiltPhase.value * amount
+                    translationX = artworkSize.width * 0.021f * horizontalDrift.value * amount
+                    translationY = artworkSize.height * 0.016f * verticalDrift.value * amount
+                    rotationZ = 0.18f * tiltPhase.value * amount
                 }
         ) {
             content()
@@ -437,11 +437,11 @@ private data class MotionArtworkEnvironment(
     val localAllowed: Boolean
 )
 
-private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 12_000
-private const val STATIC_ARTWORK_HORIZONTAL_DURATION_MS = 15_000
-private const val STATIC_ARTWORK_VERTICAL_DURATION_MS = 18_000
-private const val STATIC_ARTWORK_TILT_DURATION_MS = 21_000
-private const val STATIC_ARTWORK_MOTION_ENTER_MS = 480
+private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 9_000
+private const val STATIC_ARTWORK_HORIZONTAL_DURATION_MS = 11_500
+private const val STATIC_ARTWORK_VERTICAL_DURATION_MS = 13_500
+private const val STATIC_ARTWORK_TILT_DURATION_MS = 17_000
+private const val STATIC_ARTWORK_MOTION_ENTER_MS = 360
 private const val STATIC_ARTWORK_MOTION_EXIT_MS = 220
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 9_000L
 private const val VIDEO_RETRY_DELAY_MS = 4_000L
