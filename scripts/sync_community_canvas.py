@@ -21,7 +21,9 @@ ALLOWED_EXTENSIONS = (".mp4", ".m3u8")
 DECLARED_SCOPES = {"track": "track", "song": "track", "album": "album"}
 ISRC_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$")
 USER_AGENT = "Levyra-community-canvas-mirror/2.0 (+https://github.com/LUC4N3X/Levyra-deepsound)"
-MAX_PAYLOAD_BYTES = 64 * 1024 * 1024
+MAX_PAYLOAD_BYTES = 256 * 1024 * 1024
+DEFAULT_COMPAT_MAX_BYTES = 900 * 1024
+DEFAULT_COMPAT_MIN_ENTRIES = 100
 CATALOG_VERSION = 1
 SOURCES_VERSION = 1
 MAX_REPORTED_REJECTS = 20
@@ -51,7 +53,10 @@ def fetch_payload(url: str, timeout: float) -> str:
         raise CatalogError(f"Unable to download {url}: {error}") from error
     if len(raw) > MAX_PAYLOAD_BYTES:
         raise CatalogError(f"Catalog at {url} exceeds {MAX_PAYLOAD_BYTES} bytes")
-    return raw.decode("utf-8")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise CatalogError(f"Catalog at {url} is not UTF-8: {error}") from error
 
 
 def read_local_payload(path: Path) -> str:
@@ -300,22 +305,88 @@ def merge_sources(
     return merged, rejects, sorted(set(blocked_hosts)), metadata
 
 
+def generated_at() -> str:
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
+def catalog_document(
+    sources: list[dict[str, Any]],
+    items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "version": CATALOG_VERSION,
+        "generatedAt": generated_at(),
+        "sources": sources,
+        "items": items,
+    }
+
+
 def write_catalog(
     path: Path,
     sources: list[dict[str, Any]],
     items: list[dict[str, Any]],
 ) -> None:
-    document = {
-        "version": CATALOG_VERSION,
-        "generatedAt": datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z"),
-        "sources": sources,
-        "items": items,
-    }
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(
+            catalog_document(sources, items),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_compatibility_catalog(
+    path: Path,
+    sources: list[dict[str, Any]],
+    items: list[dict[str, Any]],
+    max_bytes: int,
+    min_entries: int,
+) -> int:
+    if max_bytes <= 0 or min_entries <= 0:
+        raise CatalogError("compatibility catalog limits must be positive")
+    metadata = {
+        "version": CATALOG_VERSION,
+        "generatedAt": generated_at(),
+        "sources": sources,
+        "fullEntryCount": len(items),
+    }
+    prefix = (
+        json.dumps(metadata, ensure_ascii=False, separators=(",", ":"))[:-1]
+        + ',"items":['
+    ).encode("utf-8")
+    suffix = b"]}\n"
+    encoded_items: list[bytes] = []
+    used_bytes = len(prefix) + len(suffix)
+
+    for item in items:
+        encoded = json.dumps(
+            item,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        separator_bytes = 1 if encoded_items else 0
+        if used_bytes + separator_bytes + len(encoded) > max_bytes:
+            break
+        encoded_items.append(encoded)
+        used_bytes += separator_bytes + len(encoded)
+
+    if len(encoded_items) < min_entries:
+        raise CatalogError(
+            f"compatibility catalog fits only {len(encoded_items)} entries, "
+            f"expected at least {min_entries}"
+        )
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(prefix + b",".join(encoded_items) + suffix)
+    return len(encoded_items)
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -324,6 +395,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--sources-file", type=Path)
     parser.add_argument("--input", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--compat-output", type=Path)
+    parser.add_argument("--compat-max-bytes", type=int, default=DEFAULT_COMPAT_MAX_BYTES)
+    parser.add_argument("--compat-min-entries", type=int, default=DEFAULT_COMPAT_MIN_ENTRIES)
     parser.add_argument("--min-entries", type=int, default=150)
     parser.add_argument("--timeout", type=float, default=30.0)
     return parser.parse_args()
@@ -337,6 +411,9 @@ def main() -> int:
     )
     if selected_modes > 1:
         print("Choose only one of --source-url, --sources-file or --input", file=sys.stderr)
+        return 1
+    if arguments.compat_output is not None and arguments.compat_output == arguments.output:
+        print("--compat-output must differ from --output", file=sys.stderr)
         return 1
     try:
         sources = resolve_sources(arguments)
@@ -366,14 +443,35 @@ def main() -> int:
         )
         return 1
 
-    write_catalog(arguments.output, source_metadata, items)
+    try:
+        write_catalog(arguments.output, source_metadata, items)
+        compatibility_entries = (
+            write_compatibility_catalog(
+                arguments.compat_output,
+                source_metadata,
+                items,
+                max_bytes=arguments.compat_max_bytes,
+                min_entries=arguments.compat_min_entries,
+            )
+            if arguments.compat_output is not None
+            else None
+        )
+    except (CatalogError, OSError) as error:
+        print(f"Community canvas sync failed while writing output: {error}", file=sys.stderr)
+        return 1
+
     album_scoped = sum(1 for entry in items if entry.get("scope") == "album")
     with_isrc = sum(1 for entry in items if "isrc" in entry)
     healthy_sources = sum(1 for source in source_metadata if source["status"] == "ok")
+    compatibility_summary = (
+        f", {compatibility_entries} in bounded compatibility snapshot"
+        if compatibility_entries is not None
+        else ""
+    )
     print(
         f"Normalized {len(items)} entries from {healthy_sources}/{len(source_metadata)} sources "
-        f"({album_scoped} album-scoped, {with_isrc} with ISRC, {len(rejects)} rejected) "
-        f"into {arguments.output}"
+        f"({album_scoped} album-scoped, {with_isrc} with ISRC, {len(rejects)} rejected"
+        f"{compatibility_summary}) into {arguments.output}"
     )
     return 0
 
