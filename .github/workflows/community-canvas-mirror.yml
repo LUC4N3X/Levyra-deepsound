@@ -3,6 +3,8 @@ name: Community Canvas Mirror
 on:
   pull_request:
     paths:
+      - "catalog/community-canvas-sources.json"
+      - "catalog/community-canvas-extra.json"
       - "scripts/sync_community_canvas.py"
       - "scripts/build_community_canvas_index.py"
       - "app/src/main/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasProvider.kt"
@@ -44,6 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/sync_community_canvas.py \
+            --sources-file catalog/community-canvas-sources.json \
             --output build/canvas/community-canvas.json \
             --min-entries "${CANVAS_MIN_ENTRIES}"
           jq -e '.version == 1 and (.items | length) > 0' build/canvas/community-canvas.json >/dev/null
@@ -103,6 +106,7 @@ jobs:
           branch="canvas-data"
           source_ref="$(git rev-parse HEAD)"
           python3 scripts/sync_community_canvas.py \
+            --sources-file catalog/community-canvas-sources.json \
             --output /tmp/community-canvas.json \
             --min-entries "${CANVAS_MIN_ENTRIES}"
           python3 scripts/build_community_canvas_index.py \
