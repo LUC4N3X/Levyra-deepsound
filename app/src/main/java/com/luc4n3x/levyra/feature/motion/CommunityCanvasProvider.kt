@@ -88,8 +88,12 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     private suspend fun indexedEntries(identity: MotionTrackIdentity): CommunityCanvasIndexLookup {
         val lookupKeys = communityCanvasLookupKeys(identity)
-        if (lookupKeys.isEmpty()) return CommunityCanvasIndexLookup.Available(emptyList())
-        return withTimeoutOrNull(INDEX_LOOKUP_BUDGET_MS) {
+        if (lookupKeys.isEmpty()) return CommunityCanvasIndexLookup.Unavailable
+        val indexBudgetMs = communityCanvasIndexBudgetMs(
+            MotionArtworkRuntime.snapshot().value.requestTimeoutMs
+        )
+        if (indexBudgetMs <= 0L) return CommunityCanvasIndexLookup.Unavailable
+        return withTimeoutOrNull(indexBudgetMs) {
             val manifest = indexManifest() ?: return@withTimeoutOrNull CommunityCanvasIndexLookup.Unavailable
             val requests = lookupKeys
                 .groupBy { key -> communityCanvasShardPrefix(key, manifest.prefixChars) }
@@ -312,6 +316,7 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
         const val INDEX_CACHE_TTL_MS = 6L * 60L * 60L * 1000L
         const val CATALOG_BUDGET_MS = 6_000L
         const val INDEX_LOOKUP_BUDGET_MS = 4_500L
+        const val CATALOG_FALLBACK_RESERVE_MS = 4_000L
         const val INDEX_MANIFEST_TIMEOUT_MS = 1_800L
         const val MIN_SOURCE_BUDGET_MS = 2_000L
         const val MIRROR_CATALOG_VERSION = 1
@@ -319,6 +324,13 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
         const val MAX_CACHED_INDEX_SHARDS = 8
     }
 }
+
+internal fun communityCanvasIndexBudgetMs(providerTimeoutMs: Long): Long =
+    minOf(
+        CommunityCanvasProvider.INDEX_LOOKUP_BUDGET_MS,
+        (providerTimeoutMs - CommunityCanvasProvider.CATALOG_FALLBACK_RESERVE_MS)
+            .coerceAtLeast(0L)
+    )
 
 private sealed interface CommunityCanvasIndexLookup {
     data class Available(val entries: List<CommunityCanvasEntry>) : CommunityCanvasIndexLookup
