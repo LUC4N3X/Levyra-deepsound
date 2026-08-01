@@ -67,16 +67,17 @@ internal fun MotionArtworkLayer(
     var videoUnavailable by remember(artwork?.identityKey, artwork?.url, artwork?.mimeType) {
         mutableStateOf(false)
     }
-    val showVideo = artwork != null &&
+    val videoArtwork = artwork?.takeIf {
         enabled &&
-        lifecycleActive &&
-        environment.remoteAllowed &&
-        !videoUnavailable
+            lifecycleActive &&
+            environment.remoteAllowed &&
+            !videoUnavailable
+    }
     val animateStatic = enabled &&
         lifecycleActive &&
         environment.localAllowed &&
         isPlaying &&
-        !showVideo
+        videoArtwork == null
 
     Box(modifier = modifier) {
         MotionArtworkStaticFallback(
@@ -85,9 +86,9 @@ internal fun MotionArtworkLayer(
             modifier = Modifier.fillMaxSize(),
             content = staticArtwork
         )
-        if (showVideo && artwork != null) {
+        if (videoArtwork != null) {
             MotionArtworkVideo(
-                artwork = artwork,
+                artwork = videoArtwork,
                 isPlaying = isPlaying,
                 cornerRadius = cornerRadius,
                 onUnavailable = { videoUnavailable = true },
