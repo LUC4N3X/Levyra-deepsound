@@ -18,10 +18,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 
-/**
- * Universal Icon Button wrapper with tactile spring physics and full accessibility semantics.
- * Preserves accessibility click actions (TalkBack) while providing spring scale animation.
- */
 @Composable
 fun SpringIconButton(
     onClick: () -> Unit,
