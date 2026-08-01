@@ -308,7 +308,7 @@ class PlaybackService : MediaLibraryService() {
             }
         }
 
-        val queueShuffleButton = CommandButton.Builder(CommandButton.ICON_SHUFFLE)
+        val queueShuffleButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
             .setDisplayName("Casuale")
             .setSessionCommand(queueShuffleCommand)
             .setIconResId(com.luc4n3x.levyra.R.drawable.ic_notification_shuffle)
@@ -498,7 +498,7 @@ class PlaybackService : MediaLibraryService() {
             }
 
             override fun getAvailableCommands(): androidx.media3.common.Player.Commands {
-                return super.getAvailableCommands().buildUpon().add(androidx.media3.common.Player.COMMAND_SEEK_IN_MEDIA).build()
+                return super.getAvailableCommands().buildUpon().add(androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM).build()
             }
         }
 
