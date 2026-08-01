@@ -91,8 +91,12 @@ internal fun parseCommunityCanvasIndexManifest(payload: String): CommunityCanvas
     if (prefixChars !in COMMUNITY_CANVAS_INDEX_MIN_PREFIX_CHARS..COMMUNITY_CANVAS_INDEX_MAX_PREFIX_CHARS) {
         return null
     }
+    val expectedDirectory = "g${contentDigest.take(COMMUNITY_GENERATION_PREFIX_CHARS)}/p$prefixChars"
     val shardDirectory = root.optString("shardDirectory").trim()
-    if (shardDirectory != "p$prefixChars" || !COMMUNITY_SHARD_DIRECTORY_PATTERN.matches(shardDirectory)) {
+    if (
+        shardDirectory != expectedDirectory ||
+        !COMMUNITY_SHARD_DIRECTORY_PATTERN.matches(shardDirectory)
+    ) {
         return null
     }
 
@@ -161,6 +165,7 @@ internal fun parseCommunityCanvasIndexShard(payload: String): List<CommunityCanv
     }
 }
 
+private const val COMMUNITY_GENERATION_PREFIX_CHARS = 16
 private val COMMUNITY_LOOKUP_HASH_PATTERN = Regex("^[A-Za-z0-9_-]{43}$")
 private val COMMUNITY_CONTENT_DIGEST_PATTERN = Regex("^[0-9a-f]{64}$")
-private val COMMUNITY_SHARD_DIRECTORY_PATTERN = Regex("^p[2-5]$")
+private val COMMUNITY_SHARD_DIRECTORY_PATTERN = Regex("^g[0-9a-f]{16}/p[2-5]$")
