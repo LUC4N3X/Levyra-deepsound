@@ -17,8 +17,8 @@ usable entry:
 | 2 | `vivizzz007/vivimusicanvas@main:canvas.json` | Upstream community catalog |
 
 The mirror is the pinned copy Levyra controls. Upstream stays as a fallback so the feature keeps
-working when the mirror branch is missing, unreachable or structurally unusable. Both responses are
-capped at 1 MiB and cached in memory for six hours.
+working when the mirror branch is missing, unreachable or structurally unusable. Each response is
+capped at 1 MiB. The first usable parsed catalog is cached in memory for six hours.
 
 The mirror is only accepted when it declares `version: 1` and yields at least 100 usable entries,
 which is below the 150-entry floor the publishing pipeline enforces. A truncated or gutted mirror
@@ -33,8 +33,9 @@ pipeline skips the commit when only `generatedAt` changed, so the timestamp does
 The whole two-source attempt is bounded by a 6 s budget that sits inside the motion-artwork engine's
 `MotionArtworkConfig.requestTimeoutMs` (6.5 s by default). Each source gets the remaining budget
 divided by the number of sources left, with a 2 s floor, so a slow mirror cannot starve the upstream
-fallback. Fetches run on `Call.enqueue` inside `suspendCancellableCoroutine`, so cancelling the
-coroutine cancels the HTTP call instead of leaving a blocked thread holding the catalog lock.
+fallback. Fetches run on `Call.enqueue` inside `suspendCancellableCoroutine`; cancelling the
+coroutine cancels the HTTP call, and the catalog mutex is released when the cancellable suspension
+exits.
 
 ## Entry schema
 
