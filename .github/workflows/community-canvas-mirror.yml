@@ -76,14 +76,14 @@ jobs:
             .hash == "sha256" and
             .hashEncoding == "base64url" and
             (.contentDigest | test("^[0-9a-f]{64}$")) and
-            (.shardDirectory == ("p" + (.prefixChars | tostring))) and
+            (.shardDirectory == ("g" + (.contentDigest[0:16]) + "/p" + (.prefixChars | tostring))) and
             .entryCount >= (env.CANVAS_MIN_ENTRIES | tonumber) and
             .keyCount >= .entryCount and
             .shardCount > 0 and
             .largestShardBytes <= 196608
           ' "${manifest}" >/dev/null
           shard_dir="$(jq -r '.shardDirectory' "${manifest}")"
-          [[ "${shard_dir}" =~ ^p[2-5]$ ]]
+          [[ "${shard_dir}" =~ ^g[0-9a-f]{16}/p[2-5]$ ]]
           test "$(find "build/canvas/index/v2/${shard_dir}/shards" -type f -name '*.json' | wc -l)" \
             -eq "$(jq -r '.shardCount' "${manifest}")"
 
@@ -136,7 +136,7 @@ jobs:
             --output-dir /tmp/canvas-index
           new_manifest="/tmp/canvas-index/v2/manifest.json"
           new_shard_dir="$(jq -r '.shardDirectory' "${new_manifest}")"
-          [[ "${new_shard_dir}" =~ ^p[2-5]$ ]]
+          [[ "${new_shard_dir}" =~ ^g[0-9a-f]{16}/p[2-5]$ ]]
           test "$(wc -c < /tmp/community-canvas.json)" -le "${CANVAS_COMPAT_MAX_BYTES}"
 
           git config user.name "github-actions[bot]"
@@ -171,4 +171,4 @@ jobs:
           git commit -m "chore(canvas): refresh sharded community index from run ${GITHUB_RUN_NUMBER}"
           git push origin "HEAD:refs/heads/${branch}"
           git switch --detach "${source_ref}"
-          echo "Published bounded fallback and ${new_shard_dir} index to ${branch}/catalog"
+          echo "Published bounded fallback and immutable ${new_shard_dir} index to ${branch}/catalog"
