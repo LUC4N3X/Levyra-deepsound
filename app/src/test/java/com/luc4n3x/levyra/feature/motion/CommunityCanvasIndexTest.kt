@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.feature.motion
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -32,6 +33,29 @@ class CommunityCanvasIndexTest {
     }
 
     @Test
+    fun featuredArtistSeparatorsMatchThePythonIndexer() {
+        val identity = MotionTrackIdentity(
+            title = "Song",
+            artists = splitArtists("Artist One feat. Artist Two"),
+            album = "Album",
+            durationMs = 180_000L,
+            isrc = "",
+            upc = "",
+            year = "",
+            trackId = "track-id",
+            albumId = "album-id"
+        )
+
+        assertEquals(
+            listOf(
+                "t|song|artist one artist two|album",
+                "a|artist one artist two|album"
+            ),
+            communityCanvasLookupKeys(identity)
+        )
+    }
+
+    @Test
     fun lookupHashAndShardPrefixMatchThePythonIndexer() {
         val key = "t|flowers|miley cyrus|endless summer vacation"
 
@@ -47,21 +71,50 @@ class CommunityCanvasIndexTest {
               "version": 2,
               "hash": "sha256",
               "hashEncoding": "base64url",
+              "contentDigest": "8fac2af10c9a06ad09e84cb8b7bbf6b8d6b23d60e12197b6c5dcc74d5f1ef00c",
               "prefixChars": 2,
+              "shardDirectory": "p2",
               "entryCount": 3,
               "keyCount": 5,
-              "shardCount": 5,
+              "shardCount": 2,
               "largestShardBytes": 166,
-              "shardBitmap": "QAAAAAAAAAQAAAAgAAAAAAAAAAAAAAAAAAAAABAAAAE="
+              "shardBitmap": "QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE="
             }
             """.trimIndent()
         )
 
         assertNotNull(manifest)
-        assertTrue(manifest!!.hasShard("06"))
+        assertEquals(
+            "8fac2af10c9a06ad09e84cb8b7bbf6b8d6b23d60e12197b6c5dcc74d5f1ef00c:p2",
+            manifest!!.cacheKey
+        )
+        assertTrue(manifest.hasShard("06"))
         assertTrue(manifest.hasShard("f8"))
         assertFalse(manifest.hasShard("ff"))
         assertFalse(manifest.hasShard("f"))
+    }
+
+    @Test
+    fun manifestRejectsAPathThatDoesNotMatchItsPrefixDepth() {
+        val manifest = parseCommunityCanvasIndexManifest(
+            """
+            {
+              "version": 2,
+              "hash": "sha256",
+              "hashEncoding": "base64url",
+              "contentDigest": "8fac2af10c9a06ad09e84cb8b7bbf6b8d6b23d60e12197b6c5dcc74d5f1ef00c",
+              "prefixChars": 2,
+              "shardDirectory": "p3",
+              "entryCount": 3,
+              "keyCount": 5,
+              "shardCount": 2,
+              "largestShardBytes": 166,
+              "shardBitmap": "QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE="
+            }
+            """.trimIndent()
+        )
+
+        assertNull(manifest)
     }
 
     @Test
