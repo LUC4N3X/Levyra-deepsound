@@ -11303,8 +11303,13 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     val audioManager = remember(playerContext) { playerContext.getSystemService(AudioManager::class.java) }
     val hapticFeedback = LocalHapticFeedback.current
     val seekStepMs = state.interfaceSettings.doubleTapSeekSeconds.toLong() * 1_000L
-    val primaryTarget = track?.let { Color(it.accentStart) } ?: LevyraCyan
-    val secondaryTarget = track?.let { Color(it.accentEnd) } ?: LevyraViolet
+    val rawPrimaryTarget = track?.let { Color(it.accentStart) } ?: LevyraCyan
+    val rawSecondaryTarget = track?.let { Color(it.accentEnd) } ?: LevyraViolet
+    val harmonizedTargets = remember(rawPrimaryTarget, rawSecondaryTarget) {
+        harmonizePlayerAccents(rawPrimaryTarget, rawSecondaryTarget)
+    }
+    val primaryTarget = harmonizedTargets.primary
+    val secondaryTarget = harmonizedTargets.secondary
     val primary by animateColorAsState(
         targetValue = primaryTarget,
         animationSpec = tween(700, easing = LinearOutSlowInEasing),
