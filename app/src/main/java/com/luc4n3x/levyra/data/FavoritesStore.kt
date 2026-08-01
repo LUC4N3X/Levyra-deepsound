@@ -67,10 +67,10 @@ class FavoritesStore(context: Context) {
     }
 
     private suspend fun saveAndCompleteMigration(tracks: List<Track>) {
-        runCatching {
+        try {
             replaceAll(tracks)
             completeLegacyMigration()
-        }.onFailure { error ->
+        } catch (error: Throwable) {
             Timber.w(error, "Favorite tracks save failed")
             throw error
         }
@@ -111,6 +111,8 @@ class FavoritesStore(context: Context) {
     private companion object {
         const val KEY = "liked_tracks"
         const val MIGRATION_COMPLETE_KEY = "liked_tracks_migrated_to_room"
+
+        // Shared by every store instance so UI and service mutations cannot interleave.
         val mutationMutex = Mutex()
     }
 }
