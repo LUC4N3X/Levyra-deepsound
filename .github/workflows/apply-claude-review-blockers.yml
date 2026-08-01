@@ -1,0 +1,93 @@
+name: Apply Verified Claude Review Fixes
+
+on:
+  push:
+    branches:
+      - agent/scalable-canvas-index
+    paths:
+      - scripts/apply_claude_review_blockers.py
+      - .github/workflows/apply-claude-review-blockers.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/scalable-canvas-index
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Apply verified review fixes
+        run: python3 scripts/apply_claude_review_blockers.py
+
+      - name: Validate Python and diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/build_community_canvas_index.py scripts/sync_community_canvas.py
+          python3 scripts/build_community_canvas_index.py --self-test
+          git diff --check
+
+      - name: Prepare ephemeral CI signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run focused unit tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.feature.motion.CommunityCanvasProviderTest' \
+            --tests 'com.luc4n3x.levyra.feature.motion.CommunityCanvasIndexTest' \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest'
+
+      - name: Compile release Kotlin
+        run: ./gradlew --no-daemon :app:compileReleaseKotlin
+
+      - name: Remove one-shot helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm scripts/apply_claude_review_blockers.py
+          rm .github/workflows/apply-claude-review-blockers.yml
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+
+      - name: Commit verified review fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(motion): address verified runtime review findings"
+          git push origin HEAD:agent/scalable-canvas-index
