@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-31T21:16:42Z",
+  "generatedAt": "2026-08-01T03:53:35Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -548,12 +548,6 @@
           },
           "durationMs": 150001,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "SEY1UKEmOrQ",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCPsX2ybNiGsJU8C_H9nkVLA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c0353d023daf5ebda0eb003b"
         },
         {
@@ -718,6 +712,14 @@
           },
           "durationMs": 207230,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "8-dHPCGKbPg",
+            "audioConfidence": 100,
+            "videoId": "IFpCda-lgQI",
+            "videoConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCe7uJ_G05_SoncfGmgleTGg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0261e1eb765192dae01672b56a"
         },
         {
@@ -846,6 +848,12 @@
           },
           "durationMs": 175101,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "Ngg0sM-i4sc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCWzLntTTpu5aUhvoXoLOIbQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027265c7cbbc7f89bba30614ff"
         },
         {
@@ -1442,7 +1450,7 @@
           "durationMs": 217240,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "A0ttKAXj1xU",
+            "audioVideoId": "2xklUpzCXcQ",
             "audioConfidence": 100,
             "videoId": "Dg47eNL_Usw",
             "videoConfidence": 100,
@@ -1622,6 +1630,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -2379,7 +2393,7 @@
         },
         {
           "position": 2,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -2387,8 +2401,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -2398,7 +2412,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 3,
@@ -2962,6 +2976,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -3064,11 +3084,17 @@
           },
           "durationMs": 178016,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "qz6hApXSHAM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCf5GUgSQC4CU8idz_OH8jqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0231990a335ce5d02dc159e5c4"
         },
         {
           "position": 33,
-          "id": "levyra-4c886bf7b578fe1d1532",
+          "id": "levyra-07bfa81c9a33aafde0f1",
           "title": "Nice To Each Other",
           "artists": [
             {
@@ -3076,8 +3102,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Nice To Each Other",
+            "releaseDate": "2025-05-30"
           },
           "durationMs": 209000,
           "explicit": false,
@@ -3087,7 +3113,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9e75099d7065c71cc7ede72"
         },
         {
           "position": 34,
@@ -3861,12 +3887,6 @@
           },
           "durationMs": 150001,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "SEY1UKEmOrQ",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCPsX2ybNiGsJU8C_H9nkVLA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c0353d023daf5ebda0eb003b"
         },
         {
@@ -9872,6 +9892,12 @@
           },
           "durationMs": 198425,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "SkHJ5ChXcDo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -10242,14 +10268,6 @@
           },
           "durationMs": 161075,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "elvaKRmP2PU",
-            "audioConfidence": 100,
-            "videoId": "63k0kNuCPak",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCHpZsd8IriyQ-znFZQWRrlQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02bcfaf15333e6956697a5a98f"
         },
         {
@@ -10325,11 +10343,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 38,
@@ -10556,6 +10574,12 @@
           },
           "durationMs": 257800,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "swJOIjjW69U",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCzULu3prrEaPvM2ZtkJlYQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
@@ -12323,6 +12347,12 @@
           },
           "durationMs": 148453,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "yXbJrm-XzAo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm5s8ZhhrkBhOIikmS_QcRw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0294f8c9168a79ba591e7b0a3b"
         },
         {
@@ -12933,6 +12963,12 @@
           },
           "durationMs": 164837,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "8LVPnVOEnxw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCcXYkqHBSxOx0e4JkFHFUKA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02df398182b06448740d321a0c"
         },
         {
@@ -14364,12 +14400,6 @@
           },
           "durationMs": 334053,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "eC4X_y21Qkw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC0TV38yNPp2b8r1AilfwEOQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c4a9b2f7b917402f799b1ecd"
         },
         {
@@ -15997,12 +16027,6 @@
           },
           "durationMs": 186843,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "1yvcQFvPPMY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCKb6aBhrABSRjUWhKaPEMsQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023f6cfee0762fba2678f07091"
         },
         {
@@ -18398,6 +18422,8 @@
           "youtubeMusic": {
             "audioVideoId": "nF8tpNRO89I",
             "audioConfidence": 100,
+            "videoId": "I7-Djz-CBOY",
+            "videoConfidence": 97,
             "confidence": 100,
             "artistBrowseId": "UCEu1MLny5crjlbBtuoVlK6Q"
           },
@@ -18609,14 +18635,6 @@
           },
           "durationMs": 245669,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "qRKUM9k0ntY",
-            "audioConfidence": 100,
-            "videoId": "EQQNb4iJVIk",
-            "videoConfidence": 97,
-            "confidence": 100,
-            "artistBrowseId": "UCavTTSUSD6aYPeF-F3ND9Yg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0265529d64da7ebede606463ae"
         },
         {
@@ -20794,6 +20812,12 @@
           },
           "durationMs": 211666,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "UZ4an60Zmvc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCFB0qxwNwayGQ4Ksj8QpCXg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028bc6d0a539486bdb1a9f2968"
         },
         {
@@ -22317,12 +22341,6 @@
           },
           "durationMs": 180000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "hGqYdubpcCM",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC_Cx288SDUD9liYn7CiJLAA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d179b01c0b9baac10170d1ad"
         },
         {
@@ -22417,6 +22435,12 @@
           },
           "durationMs": 265000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "t8P-zdkoeJA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC8-EI2rTBYgkZl5kB_b-2Pw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f694adfa02990eaca79fec1b"
         },
         {
@@ -22520,6 +22544,12 @@
           },
           "durationMs": 165229,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "dgZlLjfh6q4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCH-aM6ae8RUTNtNGwrKI3Fg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cccd0bf2843a65a3d45ea190"
         },
         {
@@ -22537,6 +22567,12 @@
           },
           "durationMs": 217760,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "p1tsL0YmNqU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCtrbtNbdI4jwRQPG35Mtn2A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e022d68ffbcaeaa5e6fbe102202"
         },
         {
@@ -23840,7 +23876,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -23854,12 +23890,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         },
         {
           "position": 41,
@@ -23974,12 +24010,6 @@
           },
           "durationMs": 347040,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "XA_uBJjutgc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCCTN01plFzn4npREHKT2_9Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f2706d41aa1ec24c04135ba"
         },
         {
@@ -25063,12 +25093,6 @@
           },
           "durationMs": 222706,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "M2QKS9tte9g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC2ArcMzVC3E4X_hTXpQNzlg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9d1f9b5d3275b0625e13e79"
         },
         {
@@ -26464,11 +26488,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 50,
@@ -28289,12 +28313,6 @@
           },
           "durationMs": 246410,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "Gp5wVTNYmjk",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC_7s69e1mDS3lgcTMJEPjCg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023f97d4244eff5852477d9ee0"
         },
         {
@@ -28537,7 +28555,7 @@
         },
         {
           "position": 45,
-          "id": "levyra-de2cf0aa252b54a0d4e0",
+          "id": "levyra-f41d49a15798e2aa96b6",
           "title": "Just the Way You Are",
           "artists": [
             {
@@ -28545,7 +28563,7 @@
             }
           ],
           "album": {
-            "name": "Doo-Wops & Hooligans",
+            "name": "Doo-Wops & Hooligans (Deluxe)",
             "releaseDate": "2010-05-11"
           },
           "durationMs": 220734,
@@ -28558,7 +28576,7 @@
             "confidence": 100,
             "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028a9eb5a1f701d1d367a5ea10"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0239745621c00acfd747c29bea"
         },
         {
           "position": 46,
@@ -28709,6 +28727,12 @@
           },
           "durationMs": 157959,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "DGIGqbBAm3c",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC2-rG7DMkCdDL3lE15wUrSw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021f50eee9553ec21741a42c38"
         },
         {
