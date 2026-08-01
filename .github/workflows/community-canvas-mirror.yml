@@ -45,7 +45,9 @@ jobs:
           python-version: "3.12"
 
       - name: Verify Lookup Compatibility
-        run: python3 scripts/build_community_canvas_index.py --self-test
+        run: |
+          python3 scripts/build_community_canvas_index.py --self-test
+          python3 scripts/sync_community_canvas.py --self-test
 
       - name: Normalize Catalog
         shell: bash
@@ -125,6 +127,7 @@ jobs:
           branch="canvas-data"
           source_ref="$(git rev-parse HEAD)"
           python3 scripts/build_community_canvas_index.py --self-test
+          python3 scripts/sync_community_canvas.py --self-test
           python3 scripts/sync_community_canvas.py \
             --sources-file catalog/community-canvas-sources.json \
             --output /tmp/community-canvas-full.json \
@@ -143,10 +146,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           content_changed=true
+          previous_generation=""
 
           if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
             git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
             git switch --force-create "${branch}" "origin/${branch}"
+            if [ -f catalog/index/v2/manifest.json ]; then
+              previous_shard_dir="$(jq -r '.shardDirectory // empty' catalog/index/v2/manifest.json)"
+              if [[ "${previous_shard_dir}" =~ ^g[0-9a-f]{16}/p[2-5]$ ]]; then
+                previous_generation="${previous_shard_dir%%/*}"
+              fi
+            fi
             if [ -f catalog/community-canvas.json ] && [ -f catalog/index/v2/manifest.json ]; then
               jq -S 'del(.generatedAt)' catalog/community-canvas.json > /tmp/current-canvas-content.json
               jq -S 'del(.generatedAt)' /tmp/community-canvas.json > /tmp/new-canvas-content.json
@@ -172,12 +182,34 @@ jobs:
           fi
 
           new_generation="${new_shard_dir%%/*}"
-          cutoff_epoch=$(($(date +%s) - CANVAS_GENERATION_RETENTION_HOURS * 3600))
+          now_epoch="$(date +%s)"
+          if [ -n "${previous_generation}" ] && \
+             [ "${previous_generation}" != "${new_generation}" ] && \
+             [ -d "catalog/index/v2/${previous_generation}" ]; then
+            previous_marker="catalog/index/v2/${previous_generation}/.superseded-at"
+            if [ ! -f "${previous_marker}" ]; then
+              printf '%s\n' "${now_epoch}" > "${previous_marker}"
+              echo "Marked ${previous_generation} as superseded at ${now_epoch}."
+            fi
+          fi
+
+          cutoff_epoch=$((now_epoch - CANVAS_GENERATION_RETENTION_HOURS * 3600))
           for generation_dir in catalog/index/v2/g*; do
             [ -d "${generation_dir}" ] || continue
             [ "$(basename "${generation_dir}")" = "${new_generation}" ] && continue
-            last_touch="$(git log -1 --format=%ct -- "${generation_dir}" 2>/dev/null || true)"
-            if [[ "${last_touch}" =~ ^[0-9]+$ ]] && (( last_touch < cutoff_epoch )); then
+            marker="${generation_dir}/.superseded-at"
+            if [ ! -f "${marker}" ]; then
+              printf '%s\n' "${now_epoch}" > "${marker}"
+              echo "Marked legacy generation ${generation_dir} as superseded at ${now_epoch}."
+              continue
+            fi
+            superseded_epoch="$(tr -d '[:space:]' < "${marker}")"
+            if ! [[ "${superseded_epoch}" =~ ^[0-9]+$ ]]; then
+              printf '%s\n' "${now_epoch}" > "${marker}"
+              echo "Reset invalid superseded marker for ${generation_dir}."
+              continue
+            fi
+            if (( superseded_epoch < cutoff_epoch )); then
               echo "Removing expired canvas index generation ${generation_dir}"
               rm -rf "${generation_dir}"
             fi
