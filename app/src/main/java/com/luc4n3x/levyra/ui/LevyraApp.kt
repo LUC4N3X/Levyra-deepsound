@@ -90,6 +90,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -10535,25 +10536,27 @@ private fun PlayerImmersiveBackdrop(
 private fun PlayerArtworkCanvas(
     track: Track,
     artworkUrl: String,
+    motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
+    animationsEnabled: Boolean,
     isPlaying: Boolean,
     cornerRadius: Dp,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val artworkScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.965f,
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessLow),
-        label = "player-artwork-stage-scale"
-    )
     val haloScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1.04f else 0.97f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
+        targetValue = if (isPlaying) 1.015f else 0.995f,
+        animationSpec = tween(190, easing = FastOutSlowInEasing),
         label = "player-artwork-halo-scale"
     )
     val haloAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.92f else 0.64f,
-        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        targetValue = if (isPlaying) 0.58f else 0.42f,
+        animationSpec = tween(190, easing = FastOutSlowInEasing),
         label = "player-artwork-halo-alpha"
+    )
+    val artworkShadow by animateFloatAsState(
+        targetValue = if (isPlaying) 24f else 15f,
+        animationSpec = tween(190, easing = FastOutSlowInEasing),
+        label = "player-artwork-shadow"
     )
     val primary = Color(track.accentStart)
     val secondary = Color(track.accentEnd)
@@ -10562,7 +10565,7 @@ private fun PlayerArtworkCanvas(
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
-                .fillMaxSize(0.98f)
+                .fillMaxSize(0.94f)
                 .graphicsLayer {
                     scaleX = haloScale
                     scaleY = haloScale
@@ -10571,66 +10574,66 @@ private fun PlayerArtworkCanvas(
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            primary.playerMix(Color.White, 0.18f).copy(alpha = 0.72f),
-                            secondary.copy(alpha = 0.38f),
-                            primary.playerMix(Color.Black, 0.58f).copy(alpha = 0.18f),
+                            primary.playerMix(Color.White, 0.10f).copy(alpha = 0.34f),
+                            secondary.copy(alpha = 0.18f),
+                            primary.playerMix(Color.Black, 0.68f).copy(alpha = 0.08f),
                             Color.Transparent
                         )
                     ),
-                    RoundedCornerShape(cornerRadius + 30.dp)
+                    RoundedCornerShape(cornerRadius + 22.dp)
                 )
         )
         Box(
             modifier = Modifier
-                .fillMaxSize(0.865f)
+                .fillMaxSize(0.91f)
                 .graphicsLayer {
-                    scaleX = artworkScale
-                    scaleY = artworkScale
-                    shadowElevation = if (isPlaying) 34f else 18f
+                    shadowElevation = artworkShadow
                     shape = artworkShape
                     clip = true
                 }
-                .background(primary.playerMix(Color.Black, 0.76f), artworkShape)
+                .background(Color.Black.copy(alpha = 0.16f), artworkShape)
                 .border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.20f),
+                    color = Color.White.copy(alpha = 0.14f),
                     shape = artworkShape
                 )
         ) {
-            if (artworkUrl.isNotBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(artworkUrl)
-                        .crossfade(true)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+            MotionArtworkLayer(
+                artwork = motionArtwork,
+                enabled = animationsEnabled,
+                isPlaying = isPlaying,
+                cornerRadius = cornerRadius,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (artworkUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(artworkUrl)
+                            .crossfade(true)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    InstantArtworkPlaceholder(track = track, modifier = Modifier.fillMaxSize())
+                }
             }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.linearGradient(
+                        Brush.verticalGradient(
                             listOf(
-                                Color.White.copy(alpha = 0.13f),
+                                Color.White.copy(alpha = 0.07f),
                                 Color.Transparent,
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.22f)
+                                Color.Black.copy(alpha = 0.11f)
                             )
                         )
                     )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color.White.copy(alpha = 0.22f))
             )
         }
     }
@@ -10951,20 +10954,22 @@ private fun PlayerYoutubeEngagementRow(
         enter = fadeIn(animationSpec = tween(220)) + slideInVertically(initialOffsetY = { it / 3 }),
         exit = fadeOut(animationSpec = tween(140))
     ) {
-        FlowRow(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = if (compact) 9.dp else 11.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 9.dp),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 8.dp)
+                .padding(top = if (compact) 7.dp else 9.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
             Surface(
                 color = Color.White.copy(alpha = 0.085f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.105f)),
+                border = BorderStroke(
+                    1.dp,
+                    if (comments.visible) primary.copy(alpha = 0.46f) else Color.White.copy(alpha = 0.105f)
+                ),
                 shape = CircleShape
             ) {
                 Row(
-                    modifier = Modifier.height(if (compact) 40.dp else 42.dp),
+                    modifier = Modifier.height(48.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
@@ -10979,13 +10984,13 @@ private fun PlayerYoutubeEngagementRow(
                             imageVector = Icons.Rounded.ThumbUp,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = if (hasLikes) 0.94f else 0.48f),
-                            modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                            modifier = Modifier.size(if (compact) 18.dp else 19.dp)
                         )
                         if (hasLikes) {
                             Text(
                                 text = compactYoutubeCount(track.youtubeLikeCount),
                                 color = Color.White.copy(alpha = 0.94f),
-                                fontSize = if (compact) 12.5.sp else 13.sp,
+                                fontSize = if (compact) 12.sp else 12.5.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 maxLines = 1
                             )
@@ -10994,13 +10999,13 @@ private fun PlayerYoutubeEngagementRow(
                     Box(
                         modifier = Modifier
                             .width(1.dp)
-                            .height(if (compact) 23.dp else 24.dp)
+                            .height(24.dp)
                             .background(Color.White.copy(alpha = 0.14f))
                     )
                     Row(
                         modifier = Modifier.padding(
                             start = if (compact) 10.dp else 11.dp,
-                            end = if (compact) 12.dp else 13.dp
+                            end = if (compact) 10.dp else 11.dp
                         ),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -11013,7 +11018,7 @@ private fun PlayerYoutubeEngagementRow(
                             } else {
                                 Color.White.copy(alpha = 0.48f)
                             },
-                            modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                            modifier = Modifier.size(if (compact) 18.dp else 19.dp)
                         )
                         when {
                             engagement.dislikeEstimateLoading -> CircularProgressIndicator(
@@ -11024,50 +11029,55 @@ private fun PlayerYoutubeEngagementRow(
                             hasDislikeEstimate -> Text(
                                 text = "~${compactYoutubeCount(engagement.estimatedDislikeCount)}",
                                 color = Color.White.copy(alpha = 0.90f),
-                                fontSize = if (compact) 12.5.sp else 13.sp,
+                                fontSize = if (compact) 12.sp else 12.5.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 maxLines = 1
                             )
                         }
                     }
-                }
-            }
-
-            Surface(
-                color = Color.White.copy(alpha = 0.085f),
-                border = BorderStroke(
-                    1.dp,
-                    if (comments.visible) primary.copy(alpha = 0.52f) else Color.White.copy(alpha = 0.105f)
-                ),
-                shape = CircleShape,
-                modifier = Modifier.pressable(enabled = canOpenComments, onClick = onComments)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .height(if (compact) 40.dp else 42.dp)
-                        .padding(horizontal = if (compact) 13.dp else 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ChatBubbleOutline,
-                        contentDescription = null,
-                        tint = if (canOpenComments) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.42f),
-                        modifier = Modifier.size(if (compact) 19.dp else 20.dp)
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(Color.White.copy(alpha = 0.14f))
                     )
-                    when {
-                        comments.loading && !comments.loaded -> CircularProgressIndicator(
-                            modifier = Modifier.size(if (compact) 12.dp else 13.dp),
-                            strokeWidth = 1.8.dp,
-                            color = primary.playerMix(Color.White, 0.52f)
-                        )
-                        commentBadge.isNotBlank() -> Text(
-                            text = commentBadge,
-                            color = Color.White.copy(alpha = 0.92f),
-                            fontSize = if (compact) 12.5.sp else 13.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .sizeIn(minWidth = 48.dp)
+                            .pressable(enabled = canOpenComments, onClick = onComments)
+                            .padding(horizontal = if (compact) 10.dp else 11.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ChatBubbleOutline,
+                                contentDescription = null,
+                                tint = if (canOpenComments) {
+                                    primary.playerMix(Color.White, 0.58f)
+                                } else {
+                                    Color.White.copy(alpha = 0.42f)
+                                },
+                                modifier = Modifier.size(if (compact) 18.dp else 19.dp)
+                            )
+                            when {
+                                comments.loading && !comments.loaded -> CircularProgressIndicator(
+                                    modifier = Modifier.size(if (compact) 12.dp else 13.dp),
+                                    strokeWidth = 1.8.dp,
+                                    color = primary.playerMix(Color.White, 0.52f)
+                                )
+                                commentBadge.isNotBlank() -> Text(
+                                    text = commentBadge,
+                                    color = Color.White.copy(alpha = 0.92f),
+                                    fontSize = if (compact) 12.sp else 12.5.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -11332,19 +11342,24 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     }
 
     val artScale by animateFloatAsState(
-        targetValue = if (state.isPlaying) 1f else 0.975f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        targetValue = if (state.isPlaying) 1f else 0.972f,
+        animationSpec = tween(190, easing = FastOutSlowInEasing),
         label = "artwork-scale"
     )
     val artCorner by animateDpAsState(
-        targetValue = if (state.isPlaying) 30.dp else 22.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        targetValue = if (state.isPlaying) 26.dp else 28.dp,
+        animationSpec = tween(190, easing = FastOutSlowInEasing),
         label = "artwork-corner"
     )
     val artShadow by animateFloatAsState(
-        targetValue = if (state.isPlaying) 30f else 16f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        targetValue = if (state.isPlaying) 24f else 15f,
+        animationSpec = tween(190, easing = FastOutSlowInEasing),
         label = "artwork-shadow"
+    )
+    val artOffset by animateDpAsState(
+        targetValue = if (state.isPlaying) 0.dp else 3.dp,
+        animationSpec = tween(190, easing = FastOutSlowInEasing),
+        label = "artwork-offset"
     )
 
     BoxWithConstraints(
@@ -11361,7 +11376,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
             compactPlayer -> 18.dp
             else -> 20.dp
         }
-        val playerItemSpacing = if (compactPlayer) 9.dp else 12.dp
+        val playerItemSpacing = if (compactPlayer) 8.dp else 10.dp
         val artworkSize = minOf(
             (maxWidth - playerHorizontalPadding * 2f).coerceAtLeast(180.dp),
             520.dp
@@ -11487,6 +11502,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     .graphicsLayer {
                                         scaleX = artScale
                                         scaleY = artScale
+                                        translationY = artOffset.toPx()
                                         shadowElevation = artShadow
                                         shape = RoundedCornerShape(artCorner)
                                         clip = true
@@ -11527,9 +11543,11 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 }
                             }
                         } else {
-                            MotionArtworkLayer(
-                                artwork = state.motionArtwork,
-                                enabled = state.animationsEnabled && !state.isVideoMode,
+                            PlayerArtworkCanvas(
+                                track = track,
+                                artworkUrl = artworkUrl,
+                                motionArtwork = state.motionArtwork,
+                                animationsEnabled = state.animationsEnabled && !state.isVideoMode,
                                 isPlaying = state.isPlaying,
                                 cornerRadius = artCorner,
                                 modifier = Modifier
@@ -11537,16 +11555,10 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     .graphicsLayer {
                                         scaleX = artScale
                                         scaleY = artScale
+                                        translationY = artOffset.toPx()
+                                        shape = RoundedCornerShape(artCorner)
                                     }
-                            ) {
-                                PlayerArtworkCanvas(
-                                    track = track,
-                                    artworkUrl = artworkUrl,
-                                    isPlaying = state.isPlaying,
-                                    cornerRadius = artCorner,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
+                            )
                         }
 
                         if (state.interfaceSettings.playerGesturesEnabled) {
@@ -11728,10 +11740,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(
-                                horizontal = 4.dp,
-                                vertical = if (compactPlayer) 1.dp else 2.dp
-                            )
+                            .padding(horizontal = 4.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -12509,19 +12518,14 @@ private fun PlayerTimeline(
     var dragFraction by remember { mutableFloatStateOf(-1f) }
     val isDragging = dragFraction >= 0f
     val fraction = (if (isDragging) dragFraction else progressOf(positionMs, durationMs)).coerceIn(0f, 1f)
-    val ribbonAmplitude by animateDpAsState(
-        targetValue = if (isDragging) 3.5.dp else 2.4.dp,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-ribbon-amplitude"
-    )
-    val ribbonStroke by animateDpAsState(
-        targetValue = if (isDragging) 3.7.dp else 2.9.dp,
+    val railStroke by animateDpAsState(
+        targetValue = if (isDragging) 3.1.dp else 2.35.dp,
         animationSpec = spring(dampingRatio = 0.84f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-ribbon-stroke"
+        label = "timeline-rail-stroke"
     )
     val markerHalfSize by animateDpAsState(
-        targetValue = if (isDragging) 5.6.dp else 4.2.dp,
-        animationSpec = spring(dampingRatio = 0.76f, stiffness = Spring.StiffnessMedium),
+        targetValue = if (isDragging) 5.7.dp else 4.55.dp,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMedium),
         label = "timeline-marker-size"
     )
 
@@ -12529,14 +12533,14 @@ private fun PlayerTimeline(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
-                top = if (compact) 1.dp else 2.dp,
-                bottom = if (compact) 3.dp else 4.dp
+                top = if (compact) 0.dp else 1.dp,
+                bottom = if (compact) 2.dp else 3.dp
             )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (compact) 30.dp else 32.dp)
+                .sizeIn(minHeight = 48.dp)
                 .semantics {
                     progressBarRangeInfo = ProgressBarRangeInfo(
                         current = fraction,
@@ -12555,7 +12559,7 @@ private fun PlayerTimeline(
                 .pointerInput(durationMs) {
                     if (durationMs > 0L) {
                         detectTapGestures { offset ->
-                            val inset = 8.dp.toPx()
+                            val inset = 7.dp.toPx()
                             val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                             onSeek(((offset.x - inset) / usable).coerceIn(0f, 1f))
                         }
@@ -12565,7 +12569,7 @@ private fun PlayerTimeline(
                     if (durationMs > 0L) {
                         detectHorizontalDragGestures(
                             onDragStart = { offset ->
-                                val inset = 8.dp.toPx()
+                                val inset = 7.dp.toPx()
                                 val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                                 dragFraction = ((offset.x - inset) / usable).coerceIn(0f, 1f)
                             },
@@ -12576,7 +12580,7 @@ private fun PlayerTimeline(
                             onDragCancel = { dragFraction = -1f },
                             onHorizontalDrag = { change, _ ->
                                 change.consume()
-                                val inset = 8.dp.toPx()
+                                val inset = 7.dp.toPx()
                                 val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                                 dragFraction = ((change.position.x - inset) / usable).coerceIn(0f, 1f)
                             }
@@ -12585,130 +12589,100 @@ private fun PlayerTimeline(
                 }
                 .drawBehind {
                     val centerY = size.height / 2f
-                    val inset = 8.dp.toPx()
+                    val inset = 7.dp.toPx()
                     val usable = (size.width - inset * 2f).coerceAtLeast(1f)
                     val playedX = inset + usable * fraction
                     val endX = inset + usable
-                    val amplitude = ribbonAmplitude.toPx()
-                    val stroke = ribbonStroke.toPx()
                     val marker = markerHalfSize.toPx()
-                    val markerGap = marker + 3.5.dp.toPx()
-                    val playedEnd = (playedX - markerGap).coerceAtLeast(inset)
-                    val futureStart = (playedX + markerGap).coerceAtMost(endX)
-                    val amplitudePattern = floatArrayOf(0.74f, 1f, 0.82f, 0.64f, 0.9f, 0.7f)
+                    val rail = railStroke.toPx()
+                    val start = androidx.compose.ui.geometry.Offset(inset, centerY)
+                    val end = androidx.compose.ui.geometry.Offset(endX, centerY)
+                    val playedEnd = androidx.compose.ui.geometry.Offset(playedX, centerY)
 
-                    fun waveformPath(
-                        startX: Float,
-                        finishX: Float,
-                        baselineY: Float,
-                        amplitudeScale: Float,
-                        phaseOffset: Int
-                    ): Path {
-                        val width = (finishX - startX).coerceAtLeast(0f)
-                        val path = Path().apply { moveTo(startX, baselineY) }
-                        if (width <= 0.5f) return path
-                        val preferredSegmentWidth = 43.dp.toPx()
-                        val segmentCount = kotlin.math.ceil(width / preferredSegmentWidth)
-                            .toInt()
-                            .coerceIn(1, 7)
-                        val segmentWidth = width / segmentCount
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.13f),
+                        start = start,
+                        end = end,
+                        strokeWidth = 1.8.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.045f),
+                        start = androidx.compose.ui.geometry.Offset(inset, centerY - 2.1.dp.toPx()),
+                        end = androidx.compose.ui.geometry.Offset(endX, centerY - 2.1.dp.toPx()),
+                        strokeWidth = 0.7.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
 
-                        repeat(segmentCount) { index ->
-                            val segmentStartX = startX + segmentWidth * index
-                            val segmentEndX = if (index == segmentCount - 1) finishX else segmentStartX + segmentWidth
-                            val controlOneX = segmentStartX + (segmentEndX - segmentStartX) * 0.30f
-                            val controlTwoX = segmentStartX + (segmentEndX - segmentStartX) * 0.70f
-                            val patternIndex = (index + phaseOffset) % amplitudePattern.size
-                            val direction = if ((index + phaseOffset) % 2 == 0) -1f else 1f
-                            val segmentAmplitude = amplitude * amplitudePattern[patternIndex] * amplitudeScale
-
-                            path.cubicTo(
-                                controlOneX,
-                                baselineY + segmentAmplitude * direction,
-                                controlTwoX,
-                                baselineY - segmentAmplitude * direction,
-                                segmentEndX,
-                                baselineY
-                            )
-                        }
-                        return path
-                    }
-
-                    if (playedEnd > inset + 0.5f) {
-                        val playedPath = waveformPath(
-                            startX = inset,
-                            finishX = playedEnd,
-                            baselineY = centerY - 0.5.dp.toPx(),
-                            amplitudeScale = 1f,
-                            phaseOffset = 0
-                        )
-                        val playedEchoPath = waveformPath(
-                            startX = inset,
-                            finishX = playedEnd,
-                            baselineY = centerY + 3.3.dp.toPx(),
-                            amplitudeScale = 0.48f,
-                            phaseOffset = 1
-                        )
-
-                        drawPath(
-                            path = playedEchoPath,
-                            color = secondaryColor.playerMix(activeColor, 0.42f).copy(alpha = 0.20f),
-                            style = Stroke(width = 1.35.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawPath(
-                            path = playedPath,
-                            color = activeColor.playerMix(secondaryColor, 0.28f).copy(alpha = 0.22f),
-                            style = Stroke(width = stroke + 2.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawPath(
-                            path = playedPath,
-                            brush = Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.88f),
-                                    Color.White,
-                                    secondaryColor.playerMix(Color.White, 0.58f)
-                                ),
-                                startX = inset,
-                                endX = playedEnd.coerceAtLeast(inset + 1f)
+                    if (playedX > inset + 0.5f) {
+                        val playedBrush = Brush.horizontalGradient(
+                            colors = listOf(
+                                activeColor.playerMix(Color.White, 0.38f),
+                                activeColor.playerMix(secondaryColor, 0.22f),
+                                secondaryColor.playerMix(Color.White, 0.18f)
                             ),
-                            style = Stroke(width = stroke, cap = StrokeCap.Round)
+                            startX = inset,
+                            endX = playedX.coerceAtLeast(inset + 1f)
                         )
-                    }
+                        val glowBrush = Brush.horizontalGradient(
+                            colors = listOf(
+                                activeColor.copy(alpha = 0.06f),
+                                activeColor.playerMix(secondaryColor, 0.35f).copy(alpha = 0.13f),
+                                secondaryColor.copy(alpha = 0.19f)
+                            ),
+                            startX = inset,
+                            endX = playedX.coerceAtLeast(inset + 1f)
+                        )
+                        drawLine(
+                            brush = glowBrush,
+                            start = start,
+                            end = playedEnd,
+                            strokeWidth = if (isDragging) 8.dp.toPx() else 6.5.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                        drawLine(
+                            brush = playedBrush,
+                            start = start,
+                            end = playedEnd,
+                            strokeWidth = rail,
+                            cap = StrokeCap.Round
+                        )
 
-                    if (futureStart < endX - 0.5f) {
-                        val futurePath = waveformPath(
-                            startX = futureStart,
-                            finishX = endX,
-                            baselineY = centerY - 0.3.dp.toPx(),
-                            amplitudeScale = 0.58f,
-                            phaseOffset = 2
-                        )
-                        val futureEchoPath = waveformPath(
-                            startX = futureStart,
-                            finishX = endX,
-                            baselineY = centerY + 3.dp.toPx(),
-                            amplitudeScale = 0.34f,
-                            phaseOffset = 3
-                        )
-
+                        val whisperPath = Path().apply {
+                            moveTo(inset, centerY)
+                            val width = playedX - inset
+                            val segments = kotlin.math.ceil(width / 58.dp.toPx())
+                                .toInt()
+                                .coerceIn(1, 6)
+                            val segmentWidth = width / segments
+                            repeat(segments) { index ->
+                                val x0 = inset + segmentWidth * index
+                                val x1 = if (index == segments - 1) playedX else x0 + segmentWidth
+                                val direction = if (index % 2 == 0) -1f else 1f
+                                val amplitude = (if (isDragging) 0.78.dp else 0.58.dp).toPx() * direction
+                                cubicTo(
+                                    x0 + (x1 - x0) * 0.30f,
+                                    centerY + amplitude,
+                                    x0 + (x1 - x0) * 0.70f,
+                                    centerY - amplitude,
+                                    x1,
+                                    centerY
+                                )
+                            }
+                        }
                         drawPath(
-                            path = futureEchoPath,
-                            color = Color.White.copy(alpha = 0.075f),
-                            style = Stroke(width = 1.1.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawPath(
-                            path = futurePath,
-                            color = Color.White.copy(alpha = 0.18f),
-                            style = Stroke(width = 1.9.dp.toPx(), cap = StrokeCap.Round)
+                            path = whisperPath,
+                            color = Color.White.copy(alpha = if (isDragging) 0.46f else 0.31f),
+                            style = Stroke(width = 0.75.dp.toPx(), cap = StrokeCap.Round)
                         )
                     }
 
                     if (isDragging) {
                         drawLine(
-                            color = Color.White.copy(alpha = 0.32f),
+                            color = Color.White.copy(alpha = 0.18f),
                             start = androidx.compose.ui.geometry.Offset(playedX, centerY - 11.dp.toPx()),
                             end = androidx.compose.ui.geometry.Offset(playedX, centerY + 11.dp.toPx()),
-                            strokeWidth = 1.dp.toPx(),
+                            strokeWidth = 0.8.dp.toPx(),
                             cap = StrokeCap.Round
                         )
                     }
@@ -12721,17 +12695,31 @@ private fun PlayerTimeline(
                         close()
                     }
 
-                    drawPath(
-                        path = diamondPath(marker + 3.5.dp.toPx()),
-                        color = activeColor.playerMix(secondaryColor, 0.46f).copy(alpha = if (isDragging) 0.24f else 0.16f)
+                    drawCircle(
+                        color = activeColor.playerMix(secondaryColor, 0.44f)
+                            .copy(alpha = if (isDragging) 0.18f else 0.11f),
+                        radius = marker + 5.2.dp.toPx(),
+                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
                     )
                     drawPath(
-                        path = diamondPath(marker + 1.25.dp.toPx()),
-                        color = secondaryColor.playerMix(activeColor, 0.48f).copy(alpha = 0.76f)
+                        path = diamondPath(marker + 1.8.dp.toPx()),
+                        color = Color.Black.copy(alpha = 0.38f)
                     )
                     drawPath(
-                        path = diamondPath(marker),
-                        color = Color.White
+                        path = diamondPath(marker + 0.7.dp.toPx()),
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                activeColor.playerMix(Color.White, 0.30f),
+                                secondaryColor.playerMix(Color.White, 0.16f)
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(playedX - marker, centerY - marker),
+                            end = androidx.compose.ui.geometry.Offset(playedX + marker, centerY + marker)
+                        )
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.94f),
+                        radius = if (isDragging) 1.9.dp.toPx() else 1.55.dp.toPx(),
+                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
                     )
                 }
         )
@@ -12743,14 +12731,14 @@ private fun PlayerTimeline(
         ) {
             Text(
                 text = formatDuration(if (isDragging) (durationMs * fraction).toLong() else positionMs),
-                color = if (isDragging) Color.White else Color.White.copy(alpha = 0.64f),
+                color = if (isDragging) Color.White else Color.White.copy(alpha = 0.68f),
                 fontSize = if (compact) 10.5.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = formatDuration(durationMs),
-                color = Color.White.copy(alpha = 0.52f),
+                color = Color.White.copy(alpha = 0.50f),
                 fontSize = if (compact) 10.5.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
@@ -12802,12 +12790,7 @@ private fun MainPlayerControls(
             compact = compact,
             onClick = onPrevious
         )
-        val playCorner by animateDpAsState(
-            targetValue = if (isPlaying) 24.dp else 34.dp,
-            animationSpec = spring(dampingRatio = 0.67f, stiffness = Spring.StiffnessMediumLow),
-            label = "play-corner"
-        )
-        val playShape = RoundedCornerShape(playCorner)
+        val playShape = RoundedCornerShape(30.dp)
         val playGradient = remember(activeColor, secondaryColor) {
             playerContrastGradient(
                 start = activeColor.playerMix(Color.White, 0.16f),
@@ -12848,17 +12831,24 @@ private fun MainPlayerControls(
                 AnimatedContent(
                     targetState = isPlaying,
                     transitionSpec = {
-                        (fadeIn(tween(150)) + scaleIn(initialScale = 0.72f, animationSpec = tween(150))) togetherWith
-                            (fadeOut(tween(110)) + scaleOut(targetScale = 0.72f, animationSpec = tween(110)))
+                        fadeIn(tween(120, easing = FastOutSlowInEasing)) togetherWith
+                            fadeOut(tween(90, easing = FastOutSlowInEasing))
                     },
                     label = "play-icon"
                 ) { playing ->
-                    Icon(
-                        imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
-                        tint = playGradient.content,
-                        modifier = Modifier.size(if (compact) 37.dp else 39.dp)
-                    )
+                    Box(
+                        modifier = Modifier.size(if (compact) 39.dp else 41.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
+                            tint = playGradient.content,
+                            modifier = Modifier
+                                .size(if (compact) 35.dp else 36.dp)
+                                .offset(x = if (playing) 0.dp else 1.dp)
+                        )
+                    }
                 }
             }
         }
