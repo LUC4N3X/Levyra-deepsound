@@ -103,7 +103,7 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
                         try {
                             IndexedShardResult(
                                 acceptedHashes = acceptedKeys.map(::communityCanvasLookupHash).toSet(),
-                                rows = indexShard(prefix)
+                                rows = indexShard(manifest, prefix)
                             )
                         } catch (error: CancellationException) {
                             throw error
@@ -114,20 +114,21 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
                     }
                 }.awaitAll()
             }
-            if (loaded.any { it == null }) {
-                CommunityCanvasIndexLookup.Unavailable
-            } else {
-                val entries = loaded.filterNotNull()
-                    .flatMap { result ->
-                        result.rows.asSequence()
-                            .filter { indexed -> indexed.lookupHash in result.acceptedHashes }
-                            .map { indexed -> indexed.toCatalogEntry(identity) }
-                            .toList()
-                    }
-                    .distinctBy { entry ->
-                        listOf(entry.scope.name, entry.url, normalizeMotionText(entry.song)).joinToString("|")
-                    }
-                CommunityCanvasIndexLookup.Available(entries)
+            val successful = loaded.filterNotNull()
+            val entries = successful
+                .flatMap { result ->
+                    result.rows.asSequence()
+                        .filter { indexed -> indexed.lookupHash in result.acceptedHashes }
+                        .map { indexed -> indexed.toCatalogEntry(identity) }
+                        .toList()
+                }
+                .distinctBy { entry ->
+                    listOf(entry.scope.name, entry.url, normalizeMotionText(entry.song)).joinToString("|")
+                }
+            when {
+                entries.isNotEmpty() -> CommunityCanvasIndexLookup.Available(entries)
+                successful.size == loaded.size -> CommunityCanvasIndexLookup.Available(emptyList())
+                else -> CommunityCanvasIndexLookup.Unavailable
             }
         } ?: CommunityCanvasIndexLookup.Unavailable
     }
@@ -158,18 +159,23 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
         }
     }
 
-    private suspend fun indexShard(prefix: String): List<CommunityCanvasIndexedEntry> {
+    private suspend fun indexShard(
+        manifest: CommunityCanvasIndexManifest,
+        prefix: String
+    ): List<CommunityCanvasIndexedEntry> {
+        val cacheKey = "${manifest.cacheKey}:$prefix"
         val now = System.currentTimeMillis()
         indexShardCacheMutex.withLock {
-            val cached = indexShardCache[prefix]
+            val cached = indexShardCache[cacheKey]
             if (cached != null && now < cached.expiresAtMs) return cached.rows
-            if (cached != null) indexShardCache.remove(prefix)
+            if (cached != null) indexShardCache.remove(cacheKey)
         }
-        val payload = fetchPayload("$INDEX_SHARD_BASE_URL/$prefix.json", MAX_INDEX_SHARD_BYTES)
+        val url = "$INDEX_ROOT_URL/${manifest.shardDirectory}/shards/$prefix.json"
+        val payload = fetchPayload(url, MAX_INDEX_SHARD_BYTES)
         val rows = parseCommunityCanvasIndexShard(payload)
         if (rows.isEmpty()) throw CommunityCanvasException("Community canvas index shard is empty")
         indexShardCacheMutex.withLock {
-            indexShardCache[prefix] = CachedCommunityCanvasIndexShard(
+            indexShardCache[cacheKey] = CachedCommunityCanvasIndexShard(
                 rows = rows,
                 expiresAtMs = System.currentTimeMillis() + INDEX_CACHE_TTL_MS
             )
@@ -289,10 +295,9 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
 
     companion object {
         const val PROVIDER_ID = "community-canvas"
-        const val INDEX_MANIFEST_URL =
-            "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/canvas-data/catalog/index/v2/manifest.json"
-        const val INDEX_SHARD_BASE_URL =
-            "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/canvas-data/catalog/index/v2/shards"
+        const val INDEX_ROOT_URL =
+            "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/canvas-data/catalog/index/v2"
+        const val INDEX_MANIFEST_URL = "$INDEX_ROOT_URL/manifest.json"
         const val MIRROR_CATALOG_URL =
             "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/canvas-data/catalog/community-canvas.json"
         const val UPSTREAM_CATALOG_URL =
