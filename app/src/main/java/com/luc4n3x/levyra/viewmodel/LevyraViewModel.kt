@@ -2923,13 +2923,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleFavorite(track: Track) {
-        val current = _state.value.favorites
-        val exists = current.any { it.id == track.id }
-        val updated = if (exists) current.filterNot { it.id == track.id } else listOf(track) + current
-        viewModelScope.launch(Dispatchers.IO) { favoritesStore.save(updated) }
-        LevyraArtworkCache.preloadPriority(getApplication<Application>().applicationContext, updated, 6)
-        _state.update { it.copy(favorites = updated, favoriteIds = updated.map { fav -> fav.id }.toSet()) }
-        recordSmartFavorite(track, !exists)
+        viewModelScope.launch {
+            val updated = favoritesStore.toggleFavorite(track)
+            val targetKey = track.id.ifBlank { "${track.artist.trim()}|${track.title.trim()}" }
+            val isFavorite = updated.any { favorite ->
+                val favoriteKey = favorite.id.ifBlank {
+                    "${favorite.artist.trim()}|${favorite.title.trim()}"
+                }
+                favoriteKey.equals(targetKey, ignoreCase = true)
+            }
+            LevyraArtworkCache.preloadPriority(
+                getApplication<Application>().applicationContext,
+                updated,
+                6
+            )
+            _state.update { state ->
+                state.copy(
+                    favorites = updated,
+                    favoriteIds = updated.map { favorite -> favorite.id }.toSet()
+                )
+            }
+            recordSmartFavorite(track, isFavorite)
+        }
     }
 
     fun removeFavorites(tracks: List<Track>) {
