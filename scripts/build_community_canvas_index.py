@@ -282,7 +282,9 @@ def build_index(
         max_bytes=max_bytes,
         requested_prefix_chars=prefix_chars,
     )
-    shard_directory = f"p{selected_prefix_chars}"
+    digest = content_digest(rows)
+    generation = digest[:16]
+    shard_directory = f"g{generation}/p{selected_prefix_chars}"
 
     if output_dir.exists():
         shutil.rmtree(output_dir)
@@ -299,7 +301,7 @@ def build_index(
         .replace("+00:00", "Z"),
         "hash": "sha256",
         "hashEncoding": "base64url",
-        "contentDigest": content_digest(rows),
+        "contentDigest": digest,
         "prefixChars": selected_prefix_chars,
         "shardDirectory": shard_directory,
         "entryCount": len(items),
