@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.sin
 
@@ -113,7 +114,9 @@ fun WaveformSeekbar(
 
         // Floating Tooltip on Drag
         if (isDragging) {
-            val tooltipOffsetPx = (effectiveProgress * widthPx).coerceIn(40f, widthPx - 40f)
+            val tooltipMin = 40f
+            val tooltipMax = (widthPx - 40f).coerceAtLeast(tooltipMin)
+            val tooltipOffsetPx = (effectiveProgress * widthPx).coerceIn(tooltipMin, tooltipMax)
             val tooltipOffsetDp = with(density) { (tooltipOffsetPx - 32.dp.toPx()).toDp() }
 
             Box(
@@ -189,15 +192,21 @@ fun WaveformSeekbar(
             val totalWidth = size.width
             val totalHeight = size.height
             val barGap = 2.dp.toPx()
-            val totalGaps = (numBars - 1) * barGap
-            val barWidth = ((totalWidth - totalGaps) / numBars).coerceAtLeast(1f)
+            val minBarWidth = 2f
+            
+            val maxBars = ((totalWidth + barGap) / (minBarWidth + barGap)).toInt()
+            val drawBars = numBars.coerceAtMost(maxBars).coerceAtLeast(1)
+            
+            val totalGaps = (drawBars - 1) * barGap
+            val barWidth = ((totalWidth - totalGaps) / drawBars).coerceAtLeast(1f)
             val centerY = totalHeight / 2f
 
             val activeWidth = totalWidth * effectiveProgress
 
-            for (i in 0 until numBars) {
+            for (i in 0 until drawBars) {
+                val profileIndex = (i * numBars) / drawBars
                 val barLeft = i * (barWidth + barGap)
-                val barHeight = (barProfile[i] * totalHeight * 0.85f).coerceAtLeast(4.dp.toPx())
+                val barHeight = (barProfile[profileIndex] * totalHeight * 0.85f).coerceAtLeast(4.dp.toPx())
                 val barTop = centerY - barHeight / 2f
 
                 val isPlayed = (barLeft + barWidth / 2f) <= activeWidth
@@ -233,5 +242,5 @@ private fun formatMs(ms: Long): String {
     val totalSec = (ms / 1000L).coerceAtLeast(0L)
     val mins = totalSec / 60L
     val secs = totalSec % 60L
-    return String.format("%02d:%02d", mins, secs)
+    return String.format(Locale.US, "%02d:%02d", mins, secs)
 }
