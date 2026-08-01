@@ -189,7 +189,7 @@ def load_sources_file(path: Path) -> list[SourceSpec]:
         raise CatalogError("Source configuration must contain a non-empty sources array")
 
     sources: list[SourceSpec] = []
-    root_dir = path.parent.parent.resolve()
+    root_dir = Path(__file__).resolve().parent.parent
     for index, raw_source in enumerate(raw_sources):
         if not isinstance(raw_source, dict):
             raise CatalogError(f"Source {index} is not an object")
@@ -412,7 +412,10 @@ def main() -> int:
     if selected_modes > 1:
         print("Choose only one of --source-url, --sources-file or --input", file=sys.stderr)
         return 1
-    if arguments.compat_output is not None and arguments.compat_output == arguments.output:
+    if (
+        arguments.compat_output is not None
+        and arguments.compat_output.resolve() == arguments.output.resolve()
+    ):
         print("--compat-output must differ from --output", file=sys.stderr)
         return 1
     try:
