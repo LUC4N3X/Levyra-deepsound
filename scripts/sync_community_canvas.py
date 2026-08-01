@@ -9,6 +9,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -177,6 +178,82 @@ def catalog_entry_key(entry: dict[str, Any]) -> tuple[str, ...]:
     )
 
 
+def catalog_effective_scope(entry: dict[str, Any]) -> str:
+    declared = str(entry.get("scope", "")).strip().lower()
+    if declared in {"track", "album"}:
+        return declared
+    path_segments = [segment.lower() for segment in urlsplit(str(entry["url"])).path.split("/")[:-1]]
+    return "album" if "album" in path_segments else "track"
+
+
+def catalog_source_identity_key(entry: dict[str, Any]) -> tuple[str, ...]:
+    scope = catalog_effective_scope(entry)
+    artist = str(entry["artist"]).casefold()
+    album = str(entry["album"]).casefold()
+    if scope == "album":
+        return ("album", artist, album)
+    isrc = str(entry.get("isrc", "")).strip().upper()
+    if ISRC_PATTERN.fullmatch(isrc):
+        return ("track-isrc", isrc)
+    return (
+        "track-metadata",
+        str(entry["song"]).casefold(),
+        artist,
+        album,
+    )
+
+
+def catalog_sort_key(entry: dict[str, Any]) -> tuple[str, ...]:
+    return (
+        str(entry["artist"]).casefold(),
+        str(entry["album"]).casefold(),
+        str(entry["song"]).casefold(),
+        str(entry["url"]),
+    )
+
+
+def compatibility_round_robin(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_artist: dict[str, deque[dict[str, Any]]] = {}
+    for item in items:
+        artist = str(item["artist"]).casefold()
+        by_artist.setdefault(artist, deque()).append(item)
+
+    ordered: list[dict[str, Any]] = []
+    while by_artist:
+        for artist in list(by_artist):
+            ordered.append(by_artist[artist].popleft())
+            if not by_artist[artist]:
+                del by_artist[artist]
+    return ordered
+
+
+def verify_sync_invariants() -> None:
+    curated = {
+        "song": "Exact Song",
+        "artist": "Exact Artist",
+        "album": "Exact Album",
+        "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/curated.mp4",
+        "scope": "track",
+        "isrc": "USUM71703861",
+    }
+    upstream = {
+        **curated,
+        "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Song/upstream.mp4",
+    }
+    if catalog_source_identity_key(curated) != catalog_source_identity_key(upstream):
+        raise CatalogError("ordered source identity matching changed")
+
+    sample = [
+        {**curated, "song": "A1", "artist": "Artist A"},
+        {**curated, "song": "A2", "artist": "Artist A"},
+        {**curated, "song": "B1", "artist": "Artist B"},
+        {**curated, "song": "C1", "artist": "Artist C"},
+    ]
+    order = [str(item["song"]) for item in compatibility_round_robin(sample)]
+    if order != ["A1", "B1", "C1", "A2"]:
+        raise CatalogError(f"compatibility round-robin changed: {order}")
+
+
 def load_sources_file(path: Path) -> list[SourceSpec]:
     try:
         root = json.loads(path.read_text(encoding="utf-8"))
@@ -249,6 +326,7 @@ def merge_sources(
     blocked_hosts: list[str] = []
     metadata: list[dict[str, Any]] = []
     seen: set[tuple[str, ...]] = set()
+    claimed_identities: set[tuple[str, ...]] = set()
 
     for source in sources:
         try:
@@ -276,14 +354,21 @@ def merge_sources(
         rejects.extend(source_rejects)
         blocked_hosts.extend(source_blocked_hosts)
         accepted = 0
-        for item in items:
+        source_identities: set[tuple[str, ...]] = set()
+        for item in sorted(items, key=catalog_sort_key):
             key = catalog_entry_key(item)
             if key in seen:
                 rejects.append(f"{source.name}: duplicate across sources")
                 continue
+            identity_key = catalog_source_identity_key(item)
+            if identity_key in claimed_identities:
+                rejects.append(f"{source.name}: shadowed by higher-priority source")
+                continue
             seen.add(key)
+            source_identities.add(identity_key)
             merged.append(item)
             accepted += 1
+        claimed_identities.update(source_identities)
         metadata.append(
             {
                 "name": source.name,
@@ -294,14 +379,6 @@ def merge_sources(
             }
         )
 
-    merged.sort(
-        key=lambda entry: (
-            entry["artist"].casefold(),
-            entry["album"].casefold(),
-            entry["song"].casefold(),
-            entry["url"],
-        )
-    )
     return merged, rejects, sorted(set(blocked_hosts)), metadata
 
 
@@ -366,7 +443,7 @@ def write_compatibility_catalog(
     encoded_items: list[bytes] = []
     used_bytes = len(prefix) + len(suffix)
 
-    for item in items:
+    for item in compatibility_round_robin(items):
         encoded = json.dumps(
             item,
             ensure_ascii=False,
@@ -374,7 +451,7 @@ def write_compatibility_catalog(
         ).encode("utf-8")
         separator_bytes = 1 if encoded_items else 0
         if used_bytes + separator_bytes + len(encoded) > max_bytes:
-            break
+            continue
         encoded_items.append(encoded)
         used_bytes += separator_bytes + len(encoded)
 
@@ -394,17 +471,30 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--source-url")
     parser.add_argument("--sources-file", type=Path)
     parser.add_argument("--input", type=Path)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--compat-output", type=Path)
     parser.add_argument("--compat-max-bytes", type=int, default=DEFAULT_COMPAT_MAX_BYTES)
     parser.add_argument("--compat-min-entries", type=int, default=DEFAULT_COMPAT_MIN_ENTRIES)
     parser.add_argument("--min-entries", type=int, default=150)
     parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument("--self-test", action="store_true")
     return parser.parse_args()
 
 
 def main() -> int:
     arguments = parse_arguments()
+    if arguments.self_test:
+        try:
+            verify_sync_invariants()
+        except CatalogError as error:
+            print(f"Community canvas sync self-test failed: {error}", file=sys.stderr)
+            return 1
+        print("Community canvas sync self-test passed")
+        return 0
+    if arguments.output is None:
+        print("--output is required unless --self-test is used", file=sys.stderr)
+        return 1
+
     selected_modes = sum(
         value is not None
         for value in (arguments.source_url, arguments.sources_file, arguments.input)
