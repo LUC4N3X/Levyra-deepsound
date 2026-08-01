@@ -19,6 +19,8 @@ When the indexed mirror is healthy, the app never downloads the complete catalog
 in a healthy index is conclusive and does not trigger the flat download. The bounded mirror and
 upstream are consulted only when the manifest or every relevant shard is unavailable or invalid.
 If one shard fails but another relevant shard produces a valid exact match, Levyra keeps that result.
+Identities that cannot produce an index key also use the legacy catalog path instead of being treated
+as a conclusive indexed miss.
 
 ## Scalable sharded index
 
@@ -81,8 +83,9 @@ The fallback uses a subtle Ken Burns-style movement:
 * independent of network access and background-data permission.
 
 It does not generate, download, cache or bundle an additional video. It reuses the artwork already
-on screen, so it adds no catalog assets and no meaningful APK-size growth. This guarantees visible
-motion for unsupported recordings while preserving real artist-provided canvases whenever one is
+on screen, so it adds no catalog assets and no meaningful APK-size growth. It provides visible
+motion for unsupported recordings only while playback is active and the power-save and device-memory
+eligibility checks permit animation, while preserving real artist-provided canvases whenever one is
 available.
 
 ## Immutable generation publishing
@@ -212,8 +215,8 @@ Other limits:
 * Android caps the legacy flat response at 1 MiB;
 * the index manifest is capped at 256 KiB;
 * each index shard is capped at 192 KiB;
-* index lookup has a 4.5 s total budget;
-* legacy mirror/upstream fallback has a separate 6 s total budget;
+* indexed lookup is capped at 4.5 s but is shortened dynamically to reserve 4 s of the provider timeout for catalog fallback; with the default 6.5 s provider timeout the index receives at most 2.5 s;
+* legacy mirror/upstream fallback has a 6 s internal budget but remains bounded by the provider timeout left after the indexed attempt;
 * all OkHttp requests are cancellable with their coroutine.
 
 The client caches parsed manifests, shards and fallback entries, never both raw HTTP responses.
@@ -264,8 +267,10 @@ python3 scripts/sync_community_canvas.py \
   --compat-min-entries 1
 ```
 
-Run the Android compatibility tests and release checks:
+Run the relevant Android compatibility tests and release checks:
 
 ```bash
-./gradlew --no-daemon :app:testReleaseUnitTest :app:lintRelease :app:assembleRelease
+./gradlew --no-daemon :app:testDebugUnitTest \
+  --tests 'com.luc4n3x.levyra.feature.motion.*'
+./gradlew --no-daemon :app:lintRelease :app:assembleRelease
 ```
