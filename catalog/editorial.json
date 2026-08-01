@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-01T19:21:01Z",
+  "generatedAt": "2026-08-01T19:35:01Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1715,7 +1715,7 @@
         },
         {
           "position": 22,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1723,8 +1723,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1734,7 +1734,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 23,
@@ -12077,6 +12077,12 @@
           },
           "durationMs": 167578,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "OT1G3ahhNys",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm5s8ZhhrkBhOIikmS_QcRw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0252f5e70b8b1dfd9feeabb5fa"
         },
         {
@@ -15362,7 +15368,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-e09beec9b76bb06bdf72",
+          "id": "levyra-8e00e58819f76bb1bccd",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15370,12 +15376,12 @@
             }
           ],
           "album": {
-            "name": "Nyårsfest",
-            "releaseDate": "2020-12-18"
+            "name": "Det kommer aldrig va över för mig",
+            "releaseDate": "2013-04-17"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
         },
         {
           "position": 47,
@@ -19276,14 +19282,6 @@
           },
           "durationMs": 157800,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "4tBnjRrPSDI",
-            "audioConfidence": 100,
-            "videoId": "Y9AXKgqGwN4",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCZpmeLoLLb3vmxgscRyLPgw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0229728fe23025da14d5695ddb"
         },
         {
@@ -22282,6 +22280,12 @@
           },
           "durationMs": 179586,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "MUny_GDYIDM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCfCiP0obFQZOB6fJqN-eF8A"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020cc65398388cbc486fa4fff7"
         },
         {
@@ -27928,12 +27932,6 @@
           },
           "durationMs": 195428,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "XoBuaGgV80Y",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC7llhk76kGE6jeB3_FZDjbA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029568b0205dda7e2b8d7465ee"
         },
         {
@@ -28087,12 +28085,6 @@
           },
           "durationMs": 227619,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "XHez_iYD60Q",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCQwnhPZOvjAvZAJAQg7NYMQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02768834ced010a03f7c11a666"
         },
         {
