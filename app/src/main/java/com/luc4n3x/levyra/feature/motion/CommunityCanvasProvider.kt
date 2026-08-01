@@ -72,7 +72,7 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
     override suspend fun find(identity: MotionTrackIdentity): MotionArtworkProviderResult {
         return try {
             val entries = when (val indexed = indexedEntries(identity)) {
-                is CommunityCanvasIndexLookup.Available -> indexed.entries
+                is CommunityCanvasIndexLookup.Available -> indexed.entries.ifEmpty { catalog() }
                 CommunityCanvasIndexLookup.Unavailable -> catalog()
             }
             val candidates = communityCanvasCandidates(identity, entries, System.currentTimeMillis())
@@ -176,8 +176,8 @@ class CommunityCanvasProvider(context: Context) : MotionArtworkProvider {
         }
         val url = "$INDEX_ROOT_URL/${manifest.shardDirectory}/shards/$prefix.json"
         val payload = fetchPayload(url, MAX_INDEX_SHARD_BYTES)
-        val rows = parseCommunityCanvasIndexShard(payload)
-        if (rows.isEmpty()) throw CommunityCanvasException("Community canvas index shard is empty")
+        val rows = parseCommunityCanvasIndexShardOrNull(payload)
+            ?: throw CommunityCanvasException("Community canvas index shard is invalid")
         indexShardCacheMutex.withLock {
             indexShardCache[cacheKey] = CachedCommunityCanvasIndexShard(
                 rows = rows,

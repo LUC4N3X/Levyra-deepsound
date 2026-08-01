@@ -155,4 +155,31 @@ class CommunityCanvasIndexTest {
         assertEquals(1920, rows[0].height)
         assertEquals(MotionArtworkScope.ALBUM, rows[1].scope)
     }
+
+    @Test
+    fun safeButUnsupportedShardRowsAreAValidCachedMiss() {
+        val payload = """
+            {
+              "version": 2,
+              "items": [
+                {
+                  "h": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                  "u": "https://example.com/not-allowed.mp4",
+                  "s": "t"
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val parsed = parseCommunityCanvasIndexShardOrNull(payload)
+
+        assertNotNull(parsed)
+        assertTrue(parsed!!.isEmpty())
+    }
+
+    @Test
+    fun malformedShardRemainsUnavailable() {
+        assertNull(parseCommunityCanvasIndexShardOrNull("{ truncated"))
+    }
+
 }
