@@ -4,7 +4,10 @@ on:
   pull_request:
     paths:
       - "scripts/sync_community_canvas.py"
+      - "scripts/build_community_canvas_index.py"
       - "app/src/main/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasProvider.kt"
+      - "app/src/main/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasIndex.kt"
+      - "app/src/test/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasIndexTest.kt"
       - ".github/workflows/community-canvas-mirror.yml"
   schedule:
     - cron: "37 4 * * *"
@@ -22,7 +25,7 @@ env:
 
 jobs:
   normalize:
-    name: Normalize Upstream Catalog
+    name: Normalize and Index Upstream Catalog
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -45,11 +48,32 @@ jobs:
             --min-entries "${CANVAS_MIN_ENTRIES}"
           jq -e '.version == 1 and (.items | length) > 0' build/canvas/community-canvas.json >/dev/null
 
+      - name: Build Sharded Lookup Index
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/build_community_canvas_index.py \
+            --input build/canvas/community-canvas.json \
+            --output-dir build/canvas/index
+          jq -e '
+            .version == 2 and
+            .hash == "sha256" and
+            .hashEncoding == "base64url" and
+            .entryCount >= (env.CANVAS_MIN_ENTRIES | tonumber) and
+            .keyCount >= .entryCount and
+            .shardCount > 0 and
+            .largestShardBytes <= 196608
+          ' build/canvas/index/v2/manifest.json >/dev/null
+          test "$(find build/canvas/index/v2/shards -type f -name '*.json' | wc -l)" \
+            -eq "$(jq -r '.shardCount' build/canvas/index/v2/manifest.json)"
+
       - name: Upload Normalized Catalog
         uses: actions/upload-artifact@v7
         with:
           name: community-canvas-${{ github.run_number }}
-          path: build/canvas/community-canvas.json
+          path: |
+            build/canvas/community-canvas.json
+            build/canvas/index
           if-no-files-found: error
           retention-days: 7
 
@@ -81,6 +105,9 @@ jobs:
           python3 scripts/sync_community_canvas.py \
             --output /tmp/community-canvas.json \
             --min-entries "${CANVAS_MIN_ENTRIES}"
+          python3 scripts/build_community_canvas_index.py \
+            --input /tmp/community-canvas.json \
+            --output-dir /tmp/canvas-index
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -90,8 +117,9 @@ jobs:
             if [ -f catalog/community-canvas.json ]; then
               jq -S 'del(.generatedAt)' catalog/community-canvas.json > /tmp/current-canvas-content.json
               jq -S 'del(.generatedAt)' /tmp/community-canvas.json > /tmp/new-canvas-content.json
-              if cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json; then
-                echo "Community canvas catalog is unchanged; publication skipped."
+              if cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json && \
+                 [ -f catalog/index/v2/manifest.json ]; then
+                echo "Community canvas catalog and index are unchanged; publication skipped."
                 git switch --detach "${source_ref}"
                 exit 0
               fi
@@ -102,9 +130,11 @@ jobs:
           fi
 
           mkdir -p catalog
+          rm -rf catalog/index
           cp /tmp/community-canvas.json catalog/community-canvas.json
-          git add catalog/community-canvas.json
-          git commit -m "chore(canvas): refresh community catalog from run ${GITHUB_RUN_NUMBER}"
+          cp -R /tmp/canvas-index catalog/index
+          git add catalog/community-canvas.json catalog/index
+          git commit -m "chore(canvas): refresh sharded community index from run ${GITHUB_RUN_NUMBER}"
           git push origin "HEAD:refs/heads/${branch}"
           git switch --detach "${source_ref}"
-          echo "Published catalog to ${branch}/catalog/community-canvas.json"
+          echo "Published flat fallback and sharded index to ${branch}/catalog"
