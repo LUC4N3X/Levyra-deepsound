@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,7 +32,7 @@ fun SpringIconButton(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale = remember { Animatable(1f) }
 
-    LaunchedEffect(isPressed) {
+    LaunchedEffect(isPressed, enabled, pressedScale) {
         if (isPressed && enabled) {
             scale.animateTo(
                 targetValue = pressedScale,
@@ -68,7 +67,7 @@ fun SpringIconButton(
         content()
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
