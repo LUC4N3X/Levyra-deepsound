@@ -12590,16 +12590,16 @@ private fun MainPlayerControls(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        SpringIconButton(onClick = onShuffle) {
+        SpringIconButton(onClick = onShuffle, contentDescription = LocalLevyraStrings.current.shuffle) {
             PlayerRoundIconButton(
                 icon = Icons.Rounded.Shuffle,
-                contentDescription = LocalLevyraStrings.current.shuffle,
+                contentDescription = null,
                 size = if (compact) 38.dp else 40.dp,
                 iconSize = if (compact) 21.dp else 22.dp,
                 tint = if (shuffleOn) activeContentColor else Color.White.copy(alpha = 0.58f),
                 background = Color.Transparent,
                 borderColor = Color.Transparent,
-                onClick = onShuffle
+                onClick = {}
             )
         }
         PlayerTransportButton(
@@ -12616,7 +12616,8 @@ private fun MainPlayerControls(
                 minimumContrast = PlayerMinimumContrast
             )
         }
-        SpringIconButton(onClick = onToggle, pressedScale = 0.90f) {
+        val playToggleDescription = if (isPlaying) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play
+        SpringIconButton(onClick = onToggle, pressedScale = 0.90f, contentDescription = playToggleDescription) {
             Box(
                 modifier = Modifier
                     .size(
@@ -12660,7 +12661,7 @@ private fun MainPlayerControls(
                         ) {
                             Icon(
                                 imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
+                                contentDescription = null,
                                 tint = playGradient.content,
                                 modifier = Modifier
                                     .size(if (compact) 35.dp else 36.dp)
@@ -12678,16 +12679,16 @@ private fun MainPlayerControls(
             onClick = onNext
         )
         val repeatIcon = if (repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
-        SpringIconButton(onClick = onRepeat) {
+        SpringIconButton(onClick = onRepeat, contentDescription = LocalLevyraStrings.current.repeat) {
             PlayerRoundIconButton(
                 icon = repeatIcon,
-                contentDescription = LocalLevyraStrings.current.repeat,
+                contentDescription = null,
                 size = if (compact) 38.dp else 40.dp,
                 iconSize = if (compact) 21.dp else 22.dp,
                 tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) secondaryContentColor else Color.White.copy(alpha = 0.58f),
                 background = Color.Transparent,
                 borderColor = Color.Transparent,
-                onClick = onRepeat
+                onClick = {}
             )
         }
     }
@@ -12700,7 +12701,7 @@ private fun PlayerTransportButton(
     compact: Boolean,
     onClick: () -> Unit
 ) {
-    SpringIconButton(onClick = onClick, pressedScale = 0.88f) {
+    SpringIconButton(onClick = onClick, pressedScale = 0.88f, contentDescription = contentDescription) {
         Box(
             modifier = Modifier
                 .size(
@@ -12713,13 +12714,14 @@ private fun PlayerTransportButton(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = contentDescription,
+                contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(if (compact) 30.dp else 31.dp)
             )
         }
     }
 }
+
 
 
 @Composable
