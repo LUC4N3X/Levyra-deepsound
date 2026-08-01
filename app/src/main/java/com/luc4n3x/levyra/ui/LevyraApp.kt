@@ -11340,19 +11340,24 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     }
 
     val artScale by animateFloatAsState(
-        targetValue = if (state.isPlaying) 1f else 0.992f,
-        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        targetValue = if (state.isPlaying) 1f else 0.965f,
+        animationSpec = tween(210, easing = FastOutSlowInEasing),
         label = "artwork-scale"
     )
     val artCorner by animateDpAsState(
-        targetValue = if (state.isPlaying) 28.dp else 26.dp,
-        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        targetValue = if (state.isPlaying) 28.dp else 30.dp,
+        animationSpec = tween(210, easing = FastOutSlowInEasing),
         label = "artwork-corner"
     )
     val artShadow by animateFloatAsState(
-        targetValue = if (state.isPlaying) 28f else 22f,
-        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        targetValue = if (state.isPlaying) 32f else 14f,
+        animationSpec = tween(210, easing = FastOutSlowInEasing),
         label = "artwork-shadow"
+    )
+    val artOffset by animateDpAsState(
+        targetValue = if (state.isPlaying) 0.dp else 5.dp,
+        animationSpec = tween(210, easing = FastOutSlowInEasing),
+        label = "artwork-offset"
     )
 
     BoxWithConstraints(
@@ -11495,6 +11500,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     .graphicsLayer {
                                         scaleX = artScale
                                         scaleY = artScale
+                                        translationY = artOffset.toPx()
                                         shadowElevation = artShadow
                                         shape = RoundedCornerShape(artCorner)
                                         clip = true
@@ -11547,6 +11553,9 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     .graphicsLayer {
                                         scaleX = artScale
                                         scaleY = artScale
+                                        translationY = artOffset.toPx()
+                                        shadowElevation = artShadow
+                                        shape = RoundedCornerShape(artCorner)
                                     }
                             )
                         }
