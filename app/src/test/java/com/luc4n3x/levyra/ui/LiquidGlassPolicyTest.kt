@@ -78,7 +78,7 @@ class LiquidGlassPolicyTest {
     }
 
     @Test
-    fun `disabled host never records a hardware backdrop`() {
+    fun `disabled host renders no glass chrome`() {
         val tier = resolveLiquidGlassTier(
             LiquidGlassCapabilities(
                 apiLevel = 35,
@@ -89,6 +89,6 @@ class LiquidGlassPolicyTest {
             )
         )
 
-        assertEquals(LiquidGlassTier.Static, tier)
+        assertEquals(LiquidGlassTier.Off, tier)
     }
 }
