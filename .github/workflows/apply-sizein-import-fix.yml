@@ -14,6 +14,8 @@ permissions:
 jobs:
   apply:
     runs-on: ubuntu-latest
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
