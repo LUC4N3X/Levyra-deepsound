@@ -23,8 +23,14 @@ MAX_PREFIX_CHARS = 5
 DEFAULT_TARGET_SHARD_BYTES = 96 * 1024
 DEFAULT_MAX_SHARD_BYTES = 192 * 1024
 ISRC_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$")
+ARTIST_SEPARATOR_PATTERN = re.compile(
+    r"(?:\s*,\s*|\s*&\s*|\s+×\s+|\s+[xX]\s+|\bfeat\.?\b|\bft\.?\b|"
+    r"\bfeaturing\b|\bwith\b|\bcon\b)",
+    re.IGNORECASE,
+)
 APOSTROPHES = {"’", "'", "`", "´"}
 BRACKETS = set("()[]{}")
+CONTENT_DIGEST_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 class IndexBuildError(RuntimeError):
@@ -51,8 +57,20 @@ def normalize_lookup_text(value: str) -> str:
     return "".join(output).strip()
 
 
+def split_artists(value: str) -> list[str]:
+    output: list[str] = []
+    seen: set[str] = set()
+    for candidate in ARTIST_SEPARATOR_PATTERN.split(value):
+        candidate = candidate.strip()
+        normalized = normalize_lookup_text(candidate)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            output.append(candidate)
+    return output
+
+
 def artist_signature(value: str) -> str:
-    return normalize_lookup_text(value)
+    return normalize_lookup_text(" ".join(split_artists(value)))
 
 
 def track_lookup_key(item: dict[str, Any]) -> str:
@@ -119,13 +137,31 @@ def build_lookup_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rows.append({"_key": key, **row})
 
     for group in album_groups.values():
-        first = group[0]
-        declared_scope = str(first.get("scope", "")).strip().lower()
-        path_scope = url_path_scope(str(first["url"])) if not declared_scope else None
+        declared_album = next(
+            (
+                item
+                for item in group
+                if str(item.get("scope", "")).strip().lower() == "album"
+            ),
+            None,
+        )
+        path_album = next(
+            (
+                item
+                for item in group
+                if not str(item.get("scope", "")).strip()
+                and url_path_scope(str(item["url"])) == "album"
+            ),
+            None,
+        )
+        distinct_songs = {
+            normalize_lookup_text(str(item["song"]))
+            for item in group
+        }
         inferred_album = (
-            declared_scope == "album"
-            or path_scope == "album"
-            or len({normalize_lookup_text(str(item["song"])) for item in group}) >= 2
+            declared_album is not None
+            or path_album is not None
+            or len(distinct_songs) >= 2
         )
 
         for item in group:
@@ -138,7 +174,8 @@ def build_lookup_rows(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     add(isrc_key, item, "track", include_isrc=True)
 
         if inferred_album:
-            add(album_lookup_key(first), first, "album", include_isrc=False)
+            representative = declared_album or path_album or group[0]
+            add(album_lookup_key(representative), representative, "album", include_isrc=False)
 
     rows.sort(key=lambda row: (row["_key"], row["u"], row["s"]))
     return rows
@@ -168,6 +205,26 @@ def serialized_shard(rows: list[dict[str, Any]]) -> bytes:
     ).encode("utf-8")
 
 
+def public_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {key: value for key, value in row.items() if key != "_key"}
+        for row in rows
+    ]
+
+
+def content_digest(rows: list[dict[str, Any]]) -> str:
+    canonical = json.dumps(
+        public_rows(rows),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    digest = hashlib.sha256(canonical).hexdigest()
+    if not CONTENT_DIGEST_PATTERN.fullmatch(digest):
+        raise IndexBuildError("invalid generated content digest")
+    return digest
+
+
 def partition_rows(
     rows: list[dict[str, Any]],
     target_bytes: int,
@@ -187,8 +244,9 @@ def partition_rows(
         shards: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for row in rows:
             prefix = hash_key(str(row["_key"]))[:prefix_chars]
-            public_row = {key: value for key, value in row.items() if key != "_key"}
-            shards[prefix].append(public_row)
+            shards[prefix].append(
+                {key: value for key, value in row.items() if key != "_key"}
+            )
         largest = max(
             (len(serialized_shard(shard_rows)) for shard_rows in shards.values()),
             default=0,
@@ -224,10 +282,11 @@ def build_index(
         max_bytes=max_bytes,
         requested_prefix_chars=prefix_chars,
     )
+    shard_directory = f"p{selected_prefix_chars}"
 
     if output_dir.exists():
         shutil.rmtree(output_dir)
-    shards_dir = output_dir / "v2" / "shards"
+    shards_dir = output_dir / "v2" / shard_directory / "shards"
     shards_dir.mkdir(parents=True, exist_ok=True)
     for prefix, shard_rows in sorted(shards.items()):
         (shards_dir / f"{prefix}.json").write_bytes(serialized_shard(shard_rows))
@@ -240,7 +299,9 @@ def build_index(
         .replace("+00:00", "Z"),
         "hash": "sha256",
         "hashEncoding": "base64url",
+        "contentDigest": content_digest(rows),
         "prefixChars": selected_prefix_chars,
+        "shardDirectory": shard_directory,
         "entryCount": len(items),
         "keyCount": len(rows),
         "shardCount": len(shards),
@@ -255,18 +316,57 @@ def build_index(
     return manifest
 
 
+def verify_compatibility_vectors() -> None:
+    vectors = {
+        "normalize": normalize_lookup_text("Don't Stop (Live)"),
+        "artists": artist_signature("Artist One feat. Artist Two"),
+        "track_key": track_lookup_key(
+            {
+                "song": "Flowers",
+                "artist": "Miley Cyrus",
+                "album": "Endless Summer Vacation",
+            }
+        ),
+    }
+    expected = {
+        "normalize": "dont stop live",
+        "artists": "artist one artist two",
+        "track_key": "t|flowers|miley cyrus|endless summer vacation",
+    }
+    if vectors != expected:
+        raise IndexBuildError(
+            f"lookup compatibility vectors changed: expected {expected}, got {vectors}"
+        )
+    digest = hashlib.sha256(vectors["track_key"].encode("utf-8")).digest()
+    encoded = base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+    if encoded != "-K6RoUVvFyzLwspAVDpboQ9Ad9om6Fpv3P29SRtmU08":
+        raise IndexBuildError("Base64 URL-safe lookup digest compatibility changed")
+    if digest.hex()[:3] != "f8a":
+        raise IndexBuildError("hex shard prefix compatibility changed")
+
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--input", type=Path)
+    parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--target-shard-bytes", type=int, default=DEFAULT_TARGET_SHARD_BYTES)
     parser.add_argument("--max-shard-bytes", type=int, default=DEFAULT_MAX_SHARD_BYTES)
     parser.add_argument("--prefix-chars", type=int)
+    parser.add_argument("--self-test", action="store_true")
     return parser.parse_args()
 
 
 def main() -> int:
     arguments = parse_arguments()
+    try:
+        verify_compatibility_vectors()
+    except IndexBuildError as error:
+        raise SystemExit(f"Community canvas index self-test failed: {error}") from error
+    if arguments.self_test:
+        print("Community canvas index compatibility vectors passed")
+        return 0
+    if arguments.input is None or arguments.output_dir is None:
+        raise SystemExit("--input and --output-dir are required unless --self-test is used")
     if arguments.target_shard_bytes <= 0 or arguments.max_shard_bytes <= 0:
         raise SystemExit("shard byte limits must be positive")
     if arguments.target_shard_bytes > arguments.max_shard_bytes:
@@ -284,7 +384,7 @@ def main() -> int:
     print(
         "Built community canvas index: "
         f"{manifest['entryCount']} entries, {manifest['keyCount']} lookup rows, "
-        f"{manifest['shardCount']} shards, {manifest['prefixChars']} prefix chars, "
+        f"{manifest['shardCount']} shards in {manifest['shardDirectory']}, "
         f"largest shard {manifest['largestShardBytes']} bytes"
     )
     return 0
