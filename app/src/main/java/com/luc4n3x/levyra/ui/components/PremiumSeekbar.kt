@@ -42,20 +42,13 @@ import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.sin
 
-/**
- * Interactive Waveform Seekbar component with real-time waveform bars,
- * full accessibility semantics (TalkBack adjustable seekbar), and drag preview time tooltip.
- */
 @Composable
-fun WaveformSeekbar(
+fun PremiumSeekbar(
     positionMs: Long,
     durationMs: Long,
     onSeekTo: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    waveformAmplitudes: FloatArray? = null,
     activeColor: Color = LevyraCyan,
     inactiveColor: Color = LevyraMuted.copy(alpha = 0.35f),
     thumbColor: Color = Color.White
@@ -69,33 +62,25 @@ fun WaveformSeekbar(
         if (durationMs > 0L) (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
     }
 
-    val numBars = 75
-    val barProfile = remember(durationMs, waveformAmplitudes) {
-        if (waveformAmplitudes != null && waveformAmplitudes.size >= numBars) {
-            FloatArray(numBars) { i ->
-                val idx = (i * waveformAmplitudes.size) / numBars
-                waveformAmplitudes.getOrElse(idx) { 0.5f }.coerceIn(0.15f, 1f)
-            }
-        } else {
-            // Generate deterministic waveform pattern for tracks without precomputed waveform data
-            FloatArray(numBars) { i ->
-                val seed = (durationMs % 10000 + i * 17).toDouble()
-                val val1 = abs(sin(i * 0.22 + seed))
-                val val2 = abs(sin(i * 0.55 + seed * 0.3))
-                val amplitude = ((val1 + val2) / 2.0).toFloat().coerceIn(0.18f, 0.95f)
-                amplitude
-            }
-        }
-    }
-
-    val thumbScale = remember { Animatable(1f) }
+    val trackThicknessScale = remember { Animatable(1f) }
+    val thumbScale = remember { Animatable(0.4f) }
 
     LaunchedEffect(isDragging) {
-        thumbScale.animateTo(
-            targetValue = if (isDragging) 1.4f else 1f,
+        trackThicknessScale.animateTo(
+            targetValue = if (isDragging) 1.5f else 1f,
             animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
+                dampingRatio = 0.7f,
+                stiffness = Spring.StiffnessMedium
+            )
+        )
+    }
+    
+    LaunchedEffect(isDragging) {
+        thumbScale.animateTo(
+            targetValue = if (isDragging) 1f else 0.4f,
+            animationSpec = spring(
+                dampingRatio = 0.8f,
+                stiffness = Spring.StiffnessMedium
             )
         )
     }
@@ -106,13 +91,12 @@ fun WaveformSeekbar(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
-            .padding(vertical = 4.dp)
+            .padding(vertical = 4.dp),
+        contentAlignment = Alignment.Center
     ) {
         val widthPx = with(density) { constraints.maxWidth.toDp().toPx() }
-
         val seekPosMs = (effectiveProgress * durationMs.coerceAtLeast(0L)).toLong()
 
-        // Floating Tooltip on Drag
         if (isDragging) {
             val tooltipMin = 40f
             val tooltipMax = (widthPx - 40f).coerceAtLeast(tooltipMin)
@@ -121,7 +105,8 @@ fun WaveformSeekbar(
 
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(with(density) { tooltipOffsetDp.toPx().toInt() }, -36.dp.roundToPx()) }
+                    .align(Alignment.TopStart)
+                    .offset { IntOffset(with(density) { tooltipOffsetDp.toPx().toInt() }, -6.dp.roundToPx()) }
                     .shadow(8.dp, RoundedCornerShape(8.dp))
                     .background(Color(0xFF1E1E24), RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -191,49 +176,52 @@ fun WaveformSeekbar(
         ) {
             val totalWidth = size.width
             val totalHeight = size.height
-            val barGap = 2.dp.toPx()
-            val minBarWidth = 2f
-            
-            val maxBars = ((totalWidth + barGap) / (minBarWidth + barGap)).toInt()
-            val drawBars = numBars.coerceAtMost(maxBars).coerceAtLeast(1)
-            
-            val totalGaps = (drawBars - 1) * barGap
-            val barWidth = ((totalWidth - totalGaps) / drawBars).coerceAtLeast(1f)
             val centerY = totalHeight / 2f
-
+            
+            val baseTrackHeight = 3.dp.toPx()
+            val currentTrackHeight = baseTrackHeight * trackThicknessScale.value
+            
             val activeWidth = totalWidth * effectiveProgress
 
-            for (i in 0 until drawBars) {
-                val profileIndex = (i * numBars) / drawBars
-                val barLeft = i * (barWidth + barGap)
-                val barHeight = (barProfile[profileIndex] * totalHeight * 0.85f).coerceAtLeast(4.dp.toPx())
-                val barTop = centerY - barHeight / 2f
+            drawRoundRect(
+                color = inactiveColor,
+                topLeft = Offset(0f, centerY - currentTrackHeight / 2f),
+                size = Size(totalWidth, currentTrackHeight),
+                cornerRadius = CornerRadius(currentTrackHeight / 2f, currentTrackHeight / 2f)
+            )
 
-                val isPlayed = (barLeft + barWidth / 2f) <= activeWidth
-                val color = if (isPlayed) activeColor else inactiveColor
+            val activeTrackHeight = currentTrackHeight * 1.15f
+            
+            drawRoundRect(
+                color = activeColor.copy(alpha = 0.20f),
+                topLeft = Offset(0f, centerY - activeTrackHeight * 1.5f),
+                size = Size(activeWidth, activeTrackHeight * 3f),
+                cornerRadius = CornerRadius(activeTrackHeight * 1.5f, activeTrackHeight * 1.5f)
+            )
 
-                drawRoundRect(
-                    color = color,
-                    topLeft = Offset(barLeft, barTop),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f)
+            drawRoundRect(
+                color = activeColor,
+                topLeft = Offset(0f, centerY - activeTrackHeight / 2f),
+                size = Size(activeWidth, activeTrackHeight),
+                cornerRadius = CornerRadius(activeTrackHeight / 2f, activeTrackHeight / 2f)
+            )
+
+            val thumbX = activeWidth.coerceIn(0f, totalWidth)
+            val baseThumbRadius = 8.dp.toPx()
+            val currentThumbRadius = baseThumbRadius * thumbScale.value
+
+            if (currentThumbRadius > 0.5f) {
+                drawCircle(
+                    color = activeColor.copy(alpha = 0.35f),
+                    radius = currentThumbRadius * 1.8f,
+                    center = Offset(thumbX, centerY)
+                )
+                drawCircle(
+                    color = thumbColor,
+                    radius = currentThumbRadius,
+                    center = Offset(thumbX, centerY)
                 )
             }
-
-            // Scrubbing Thumb Line / Handle
-            val thumbX = activeWidth.coerceIn(0f, totalWidth)
-            val currentThumbScale = thumbScale.value
-
-            drawCircle(
-                color = activeColor.copy(alpha = 0.35f),
-                radius = 12.dp.toPx() * currentThumbScale,
-                center = Offset(thumbX, centerY)
-            )
-            drawCircle(
-                color = thumbColor,
-                radius = 6.dp.toPx() * currentThumbScale,
-                center = Offset(thumbX, centerY)
-            )
         }
     }
 }
