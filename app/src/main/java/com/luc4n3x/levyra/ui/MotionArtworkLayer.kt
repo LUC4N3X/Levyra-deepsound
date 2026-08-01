@@ -338,6 +338,10 @@ private fun MotionArtworkStaticFallback(
                     translationX = artworkSize.width * 0.021f * horizontalDrift.value * amount
                     translationY = artworkSize.height * 0.016f * verticalDrift.value * amount
                     rotationZ = 0.18f * tiltPhase.value * amount
+                    rotationX = 3.5f * verticalDrift.value * amount
+                    rotationY = 4.2f * horizontalDrift.value * amount
+                    val maxDim = maxOf(artworkSize.width, artworkSize.height).toFloat()
+                    cameraDistance = (maxDim * 4f).coerceAtLeast(12f * density)
                 }
         ) {
             content()
