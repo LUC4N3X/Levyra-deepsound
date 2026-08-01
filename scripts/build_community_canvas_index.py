@@ -22,6 +22,8 @@ MIN_PREFIX_CHARS = 2
 MAX_PREFIX_CHARS = 5
 DEFAULT_TARGET_SHARD_BYTES = 96 * 1024
 DEFAULT_MAX_SHARD_BYTES = 192 * 1024
+MAX_MANIFEST_BYTES = 256 * 1024
+MANIFEST_SAFETY_MARGIN_BYTES = 8 * 1024
 ISRC_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$")
 ARTIST_SEPARATOR_PATTERN = re.compile(
     r"(?:\s*,\s*|\s*&\s*|\s+×\s+|\s+[xX]\s+|\bfeat\.?\b|\bft\.?\b|"
@@ -310,11 +312,17 @@ def build_index(
         "largestShardBytes": largest,
         "shardBitmap": encode_shard_bitmap(set(shards), selected_prefix_chars),
     }
+    manifest_payload = (
+        json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
+    manifest_limit = MAX_MANIFEST_BYTES - MANIFEST_SAFETY_MARGIN_BYTES
+    if len(manifest_payload) > manifest_limit:
+        raise IndexBuildError(
+            f"generated manifest is {len(manifest_payload)} bytes; "
+            f"client-safe limit is {manifest_limit} bytes"
+        )
     manifest_path = output_dir / "v2" / "manifest.json"
-    manifest_path.write_text(
-        json.dumps(manifest, ensure_ascii=False, separators=(",", ":")) + "\n",
-        encoding="utf-8",
-    )
+    manifest_path.write_bytes(manifest_payload)
     return manifest
 
 
@@ -345,6 +353,34 @@ def verify_compatibility_vectors() -> None:
         raise IndexBuildError("Base64 URL-safe lookup digest compatibility changed")
     if digest.hex()[:3] != "f8a":
         raise IndexBuildError("hex shard prefix compatibility changed")
+
+    lookup_rows = build_lookup_rows(
+        [
+            {
+                "song": "Track One",
+                "artist": "Exact Artist",
+                "album": "Exact Album",
+                "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/1.m3u8",
+                "isrc": "USUM71703861",
+            },
+            {
+                "song": "Track Two",
+                "artist": "Exact Artist",
+                "album": "Exact Album",
+                "url": "https://vivimusicanvas.mkmdevilmi.workers.dev/Album/1.m3u8",
+            },
+        ]
+    )
+    row_keys = [str(row["_key"]) for row in lookup_rows]
+    row_shape = (
+        sum(key.startswith("t|") for key in row_keys),
+        sum(key.startswith("i|") for key in row_keys),
+        sum(key.startswith("a|") for key in row_keys),
+    )
+    if row_shape != (2, 1, 1):
+        raise IndexBuildError(
+            f"lookup row generation changed: expected (2 track, 1 ISRC, 1 album), got {row_shape}"
+        )
 
 
 def parse_arguments() -> argparse.Namespace:
