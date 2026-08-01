@@ -341,4 +341,11 @@ class CommunityCanvasProviderTest {
         assertEquals(MotionArtworkScope.TRACK, candidate.scope)
         assertEquals("application/x-mpegURL", candidate.mimeType)
     }
+
+    @Test
+    fun indexBudgetReservesCatalogFallbackTime() {
+        assertEquals(2_500L, communityCanvasIndexBudgetMs(MotionArtworkConfig().requestTimeoutMs))
+        assertEquals(0L, communityCanvasIndexBudgetMs(2_500L))
+        assertEquals(4_500L, communityCanvasIndexBudgetMs(12_000L))
+    }
 }
