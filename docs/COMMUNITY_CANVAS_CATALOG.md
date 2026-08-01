@@ -20,10 +20,14 @@ The mirror is the pinned copy Levyra controls. Upstream stays as a fallback so t
 working when the mirror branch is missing, unreachable or structurally unusable. Each response is
 capped at 1 MiB. The first usable parsed catalog is cached in memory for six hours.
 
-The mirror is only accepted when it declares `version: 1` and yields at least 100 usable entries,
-which is below the 150-entry floor the publishing pipeline enforces. A truncated or gutted mirror
-therefore falls through to upstream instead of being cached for six hours. Upstream itself is
+The mirror is only accepted when it declares exactly `version: 1` and yields at least 100 usable
+entries, which is below the 150-entry floor the publishing pipeline enforces. A truncated or gutted
+mirror therefore falls through to upstream instead of being cached for six hours. Upstream itself is
 accepted whenever it yields at least one usable entry, because nothing else backs it up.
+
+The version match is exact on purpose. Optional fields can be added without a bump, because the
+parser ignores what it does not know, so a bump is reserved for a schema an older client would read
+incorrectly. Rejecting it sends those clients to the upstream fallback instead.
 
 There is no freshness check: neither `generatedAt` nor the branch commit date is compared against
 the clock, and a mirror that stops being refreshed keeps being served. That is deliberate — the
@@ -72,10 +76,10 @@ keys, so the upstream shape (`items` alone) is accepted unchanged.
 | `isrc` | no | Must match `^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$`; malformed values are discarded instead of blocking the match. |
 | `width` / `height` | no | Positive integers, published together. |
 
-`scope`, `isrc`, `width` and `height` are optional extensions. Upstream does not emit them yet, and
-the mirror only passes through what upstream publishes, so today every mirrored entry carries the
-four required fields alone. The parser and the mirror already accept the extended form so the
-catalog can adopt it without an app release.
+`scope`, `isrc`, `width` and `height` are optional extensions. The mirror only passes through what
+upstream publishes, and in the 2026-07-31 snapshot upstream emitted none of them, so every mirrored
+entry carried the four required fields alone. The parser and the mirror already accept the extended
+form so the catalog can adopt it without an app release.
 
 ## Scope resolution
 
@@ -85,15 +89,18 @@ and rejected below 0.82, while a track-scope candidate is scored mostly on title
 
 Levyra resolves the scope in this order:
 
-1. A recognized `scope` field wins and is authoritative.
-2. Otherwise the URL directory is used as a hint: upstream stores album canvases under `/Album/`
-   and track canvases under `/Song/`, and their PR validator enforces that layout.
-3. Otherwise the entry is treated as a track canvas.
+1. A recognized `scope` field wins and is authoritative. It is used as declared and no path-derived
+   variant is added, so `scope: "track"` on a `/Album/` URL yields a track candidate only.
+2. When the field is absent or unrecognized, the URL directory becomes a hint: upstream stores album
+   canvases under `/Album/` and track canvases under `/Song/`, and their PR validator enforces that
+   layout.
+3. Failing both, the entry is treated as a track canvas.
 
-The directory hint is additive. An entry under `/Album/` keeps its track-scope form *and* gains an
-album-scope variant, so a canvas listed once can also cover the rest of the release without losing
-the exact-title match it already had. The older heuristic — the same URL repeated across two or
-more songs implies an album canvas — still applies on top of both.
+That directory hint is additive. An entry under `/Album/` **with no declared scope** keeps its
+track-scope form *and* gains an album-scope variant, so a canvas listed once can also cover the rest
+of the release without losing the exact-title match it already had. The older heuristic — the same
+URL repeated across two or more songs implies an album canvas — is evaluated per group and still
+applies regardless of how the scope was resolved.
 
 ## Mirror pipeline
 
@@ -105,7 +112,8 @@ skipping the commit when only `generatedAt` changed.
 The normalizer refuses to publish when:
 
 * upstream is unreachable, oversized or not valid JSON;
-* fewer than `--min-entries` usable entries survive (150 in CI, against 187 upstream entries today);
+* fewer than `--min-entries` usable entries survive (150 in CI, against the 187 upstream entries of
+  the 2026-07-31 snapshot);
 * any entry points at a host outside the allowlist.
 
 The last point is the drift alarm. A new upstream host fails the run and leaves the previous
