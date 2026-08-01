@@ -1,6 +1,10 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.WaveformSeekbar
+import com.luc4n3x.levyra.ui.components.SpringIconButton
+
+
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Spring
@@ -12515,20 +12519,6 @@ private fun PlayerTimeline(
     compact: Boolean,
     onSeek: (Float) -> Unit
 ) {
-    var dragFraction by remember { mutableFloatStateOf(-1f) }
-    val isDragging = dragFraction >= 0f
-    val fraction = (if (isDragging) dragFraction else progressOf(positionMs, durationMs)).coerceIn(0f, 1f)
-    val railStroke by animateDpAsState(
-        targetValue = if (isDragging) 3.1.dp else 2.35.dp,
-        animationSpec = spring(dampingRatio = 0.84f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-rail-stroke"
-    )
-    val markerHalfSize by animateDpAsState(
-        targetValue = if (isDragging) 5.7.dp else 4.55.dp,
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMedium),
-        label = "timeline-marker-size"
-    )
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -12537,191 +12527,16 @@ private fun PlayerTimeline(
                 bottom = if (compact) 2.dp else 3.dp
             )
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .sizeIn(minHeight = 48.dp)
-                .semantics {
-                    progressBarRangeInfo = ProgressBarRangeInfo(
-                        current = fraction,
-                        range = 0f..1f,
-                        steps = 0
-                    )
-                    setProgress { targetValue ->
-                        if (durationMs <= 0L) {
-                            false
-                        } else {
-                            onSeek(targetValue.coerceIn(0f, 1f))
-                            true
-                        }
-                    }
+        WaveformSeekbar(
+            positionMs = positionMs,
+            durationMs = durationMs,
+            onSeekTo = { seekMs ->
+                if (durationMs > 0L) {
+                    onSeek((seekMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f))
                 }
-                .pointerInput(durationMs) {
-                    if (durationMs > 0L) {
-                        detectTapGestures { offset ->
-                            val inset = 7.dp.toPx()
-                            val usable = (size.width - inset * 2f).coerceAtLeast(1f)
-                            onSeek(((offset.x - inset) / usable).coerceIn(0f, 1f))
-                        }
-                    }
-                }
-                .pointerInput(durationMs) {
-                    if (durationMs > 0L) {
-                        detectHorizontalDragGestures(
-                            onDragStart = { offset ->
-                                val inset = 7.dp.toPx()
-                                val usable = (size.width - inset * 2f).coerceAtLeast(1f)
-                                dragFraction = ((offset.x - inset) / usable).coerceIn(0f, 1f)
-                            },
-                            onDragEnd = {
-                                if (dragFraction >= 0f) onSeek(dragFraction)
-                                dragFraction = -1f
-                            },
-                            onDragCancel = { dragFraction = -1f },
-                            onHorizontalDrag = { change, _ ->
-                                change.consume()
-                                val inset = 7.dp.toPx()
-                                val usable = (size.width - inset * 2f).coerceAtLeast(1f)
-                                dragFraction = ((change.position.x - inset) / usable).coerceIn(0f, 1f)
-                            }
-                        )
-                    }
-                }
-                .drawBehind {
-                    val centerY = size.height / 2f
-                    val inset = 7.dp.toPx()
-                    val usable = (size.width - inset * 2f).coerceAtLeast(1f)
-                    val playedX = inset + usable * fraction
-                    val endX = inset + usable
-                    val marker = markerHalfSize.toPx()
-                    val rail = railStroke.toPx()
-                    val start = androidx.compose.ui.geometry.Offset(inset, centerY)
-                    val end = androidx.compose.ui.geometry.Offset(endX, centerY)
-                    val playedEnd = androidx.compose.ui.geometry.Offset(playedX, centerY)
-
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.13f),
-                        start = start,
-                        end = end,
-                        strokeWidth = 1.8.dp.toPx(),
-                        cap = StrokeCap.Round
-                    )
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.045f),
-                        start = androidx.compose.ui.geometry.Offset(inset, centerY - 2.1.dp.toPx()),
-                        end = androidx.compose.ui.geometry.Offset(endX, centerY - 2.1.dp.toPx()),
-                        strokeWidth = 0.7.dp.toPx(),
-                        cap = StrokeCap.Round
-                    )
-
-                    if (playedX > inset + 0.5f) {
-                        val playedBrush = Brush.horizontalGradient(
-                            colors = listOf(
-                                activeColor.playerMix(Color.White, 0.38f),
-                                activeColor.playerMix(secondaryColor, 0.22f),
-                                secondaryColor.playerMix(Color.White, 0.18f)
-                            ),
-                            startX = inset,
-                            endX = playedX.coerceAtLeast(inset + 1f)
-                        )
-                        val glowBrush = Brush.horizontalGradient(
-                            colors = listOf(
-                                activeColor.copy(alpha = 0.06f),
-                                activeColor.playerMix(secondaryColor, 0.35f).copy(alpha = 0.13f),
-                                secondaryColor.copy(alpha = 0.19f)
-                            ),
-                            startX = inset,
-                            endX = playedX.coerceAtLeast(inset + 1f)
-                        )
-                        drawLine(
-                            brush = glowBrush,
-                            start = start,
-                            end = playedEnd,
-                            strokeWidth = if (isDragging) 8.dp.toPx() else 6.5.dp.toPx(),
-                            cap = StrokeCap.Round
-                        )
-                        drawLine(
-                            brush = playedBrush,
-                            start = start,
-                            end = playedEnd,
-                            strokeWidth = rail,
-                            cap = StrokeCap.Round
-                        )
-
-                        val whisperPath = Path().apply {
-                            moveTo(inset, centerY)
-                            val width = playedX - inset
-                            val segments = kotlin.math.ceil(width / 58.dp.toPx())
-                                .toInt()
-                                .coerceIn(1, 6)
-                            val segmentWidth = width / segments
-                            repeat(segments) { index ->
-                                val x0 = inset + segmentWidth * index
-                                val x1 = if (index == segments - 1) playedX else x0 + segmentWidth
-                                val direction = if (index % 2 == 0) -1f else 1f
-                                val amplitude = (if (isDragging) 0.78.dp else 0.58.dp).toPx() * direction
-                                cubicTo(
-                                    x0 + (x1 - x0) * 0.30f,
-                                    centerY + amplitude,
-                                    x0 + (x1 - x0) * 0.70f,
-                                    centerY - amplitude,
-                                    x1,
-                                    centerY
-                                )
-                            }
-                        }
-                        drawPath(
-                            path = whisperPath,
-                            color = Color.White.copy(alpha = if (isDragging) 0.46f else 0.31f),
-                            style = Stroke(width = 0.75.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                    }
-
-                    if (isDragging) {
-                        drawLine(
-                            color = Color.White.copy(alpha = 0.18f),
-                            start = androidx.compose.ui.geometry.Offset(playedX, centerY - 11.dp.toPx()),
-                            end = androidx.compose.ui.geometry.Offset(playedX, centerY + 11.dp.toPx()),
-                            strokeWidth = 0.8.dp.toPx(),
-                            cap = StrokeCap.Round
-                        )
-                    }
-
-                    fun diamondPath(halfSize: Float): Path = Path().apply {
-                        moveTo(playedX, centerY - halfSize)
-                        lineTo(playedX + halfSize, centerY)
-                        lineTo(playedX, centerY + halfSize)
-                        lineTo(playedX - halfSize, centerY)
-                        close()
-                    }
-
-                    drawCircle(
-                        color = activeColor.playerMix(secondaryColor, 0.44f)
-                            .copy(alpha = if (isDragging) 0.18f else 0.11f),
-                        radius = marker + 5.2.dp.toPx(),
-                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
-                    )
-                    drawPath(
-                        path = diamondPath(marker + 1.8.dp.toPx()),
-                        color = Color.Black.copy(alpha = 0.38f)
-                    )
-                    drawPath(
-                        path = diamondPath(marker + 0.7.dp.toPx()),
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                activeColor.playerMix(Color.White, 0.30f),
-                                secondaryColor.playerMix(Color.White, 0.16f)
-                            ),
-                            start = androidx.compose.ui.geometry.Offset(playedX - marker, centerY - marker),
-                            end = androidx.compose.ui.geometry.Offset(playedX + marker, centerY + marker)
-                        )
-                    )
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.94f),
-                        radius = if (isDragging) 1.9.dp.toPx() else 1.55.dp.toPx(),
-                        center = androidx.compose.ui.geometry.Offset(playedX, centerY)
-                    )
-                }
+            },
+            activeColor = activeColor,
+            inactiveColor = secondaryColor.copy(alpha = 0.35f)
         )
         Row(
             modifier = Modifier
@@ -12730,8 +12545,8 @@ private fun PlayerTimeline(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = formatDuration(if (isDragging) (durationMs * fraction).toLong() else positionMs),
-                color = if (isDragging) Color.White else Color.White.copy(alpha = 0.68f),
+                text = formatDuration(positionMs),
+                color = Color.White.copy(alpha = 0.68f),
                 fontSize = if (compact) 10.5.sp else 11.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.SemiBold
@@ -12746,6 +12561,7 @@ private fun PlayerTimeline(
         }
     }
 }
+
 
 @Composable
 private fun MainPlayerControls(
@@ -12774,16 +12590,18 @@ private fun MainPlayerControls(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        PlayerRoundIconButton(
-            icon = Icons.Rounded.Shuffle,
-            contentDescription = LocalLevyraStrings.current.shuffle,
-            size = if (compact) 38.dp else 40.dp,
-            iconSize = if (compact) 21.dp else 22.dp,
-            tint = if (shuffleOn) activeContentColor else Color.White.copy(alpha = 0.58f),
-            background = Color.Transparent,
-            borderColor = Color.Transparent,
-            onClick = onShuffle
-        )
+        SpringIconButton(onClick = onShuffle) {
+            PlayerRoundIconButton(
+                icon = Icons.Rounded.Shuffle,
+                contentDescription = LocalLevyraStrings.current.shuffle,
+                size = if (compact) 38.dp else 40.dp,
+                iconSize = if (compact) 21.dp else 22.dp,
+                tint = if (shuffleOn) activeContentColor else Color.White.copy(alpha = 0.58f),
+                background = Color.Transparent,
+                borderColor = Color.Transparent,
+                onClick = onShuffle
+            )
+        }
         PlayerTransportButton(
             icon = Icons.Rounded.SkipPrevious,
             contentDescription = LocalLevyraStrings.current.previous,
@@ -12798,56 +12616,57 @@ private fun MainPlayerControls(
                 minimumContrast = PlayerMinimumContrast
             )
         }
-        Box(
-            modifier = Modifier
-                .size(
-                    width = if (compact) 78.dp else 82.dp,
-                    height = if (compact) 64.dp else 66.dp
-                )
-                .shadow(
-                    elevation = if (compact) 16.dp else 18.dp,
-                    shape = playShape,
-                    clip = false,
-                    ambientColor = activeColor.copy(alpha = 0.46f),
-                    spotColor = secondaryColor.copy(alpha = 0.52f)
-                )
-                .background(
-                    Brush.linearGradient(
-                        listOf(playGradient.start, playGradient.end)
-                    ),
-                    playShape
-                )
-                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), playShape)
-                .pressable(onClick = onToggle),
-            contentAlignment = Alignment.Center
-        ) {
-            if (isResolving) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(if (compact) 28.dp else 29.dp),
-                    strokeWidth = 3.2.dp,
-                    color = playGradient.content
-                )
-            } else {
-                AnimatedContent(
-                    targetState = isPlaying,
-                    transitionSpec = {
-                        fadeIn(tween(120, easing = FastOutSlowInEasing)) togetherWith
-                            fadeOut(tween(90, easing = FastOutSlowInEasing))
-                    },
-                    label = "play-icon"
-                ) { playing ->
-                    Box(
-                        modifier = Modifier.size(if (compact) 39.dp else 41.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
-                            tint = playGradient.content,
-                            modifier = Modifier
-                                .size(if (compact) 35.dp else 36.dp)
-                                .offset(x = if (playing) 0.dp else 1.dp)
-                        )
+        SpringIconButton(onClick = onToggle, pressedScale = 0.90f) {
+            Box(
+                modifier = Modifier
+                    .size(
+                        width = if (compact) 78.dp else 82.dp,
+                        height = if (compact) 64.dp else 66.dp
+                    )
+                    .shadow(
+                        elevation = if (compact) 16.dp else 18.dp,
+                        shape = playShape,
+                        clip = false,
+                        ambientColor = activeColor.copy(alpha = 0.46f),
+                        spotColor = secondaryColor.copy(alpha = 0.52f)
+                    )
+                    .background(
+                        Brush.linearGradient(
+                            listOf(playGradient.start, playGradient.end)
+                        ),
+                        playShape
+                    )
+                    .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)), playShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isResolving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(if (compact) 28.dp else 29.dp),
+                        strokeWidth = 3.2.dp,
+                        color = playGradient.content
+                    )
+                } else {
+                    AnimatedContent(
+                        targetState = isPlaying,
+                        transitionSpec = {
+                            fadeIn(tween(120, easing = FastOutSlowInEasing)) togetherWith
+                                fadeOut(tween(90, easing = FastOutSlowInEasing))
+                        },
+                        label = "play-icon"
+                    ) { playing ->
+                        Box(
+                            modifier = Modifier.size(if (compact) 39.dp else 41.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = if (playing) LocalLevyraStrings.current.pause else LocalLevyraStrings.current.play,
+                                tint = playGradient.content,
+                                modifier = Modifier
+                                    .size(if (compact) 35.dp else 36.dp)
+                                    .offset(x = if (playing) 0.dp else 1.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -12859,16 +12678,18 @@ private fun MainPlayerControls(
             onClick = onNext
         )
         val repeatIcon = if (repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
-        PlayerRoundIconButton(
-            icon = repeatIcon,
-            contentDescription = LocalLevyraStrings.current.repeat,
-            size = if (compact) 38.dp else 40.dp,
-            iconSize = if (compact) 21.dp else 22.dp,
-            tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) secondaryContentColor else Color.White.copy(alpha = 0.58f),
-            background = Color.Transparent,
-            borderColor = Color.Transparent,
-            onClick = onRepeat
-        )
+        SpringIconButton(onClick = onRepeat) {
+            PlayerRoundIconButton(
+                icon = repeatIcon,
+                contentDescription = LocalLevyraStrings.current.repeat,
+                size = if (compact) 38.dp else 40.dp,
+                iconSize = if (compact) 21.dp else 22.dp,
+                tint = if (repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off) secondaryContentColor else Color.White.copy(alpha = 0.58f),
+                background = Color.Transparent,
+                borderColor = Color.Transparent,
+                onClick = onRepeat
+            )
+        }
     }
 }
 
@@ -12879,25 +12700,27 @@ private fun PlayerTransportButton(
     compact: Boolean,
     onClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .size(
-                width = if (compact) 54.dp else 56.dp,
-                height = if (compact) 52.dp else 54.dp
+    SpringIconButton(onClick = onClick, pressedScale = 0.88f) {
+        Box(
+            modifier = Modifier
+                .size(
+                    width = if (compact) 54.dp else 56.dp,
+                    height = if (compact) 52.dp else 54.dp
+                )
+                .background(Color.White.copy(alpha = 0.11f), RoundedCornerShape(20.dp))
+                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = Color.White,
+                modifier = Modifier.size(if (compact) 30.dp else 31.dp)
             )
-            .background(Color.White.copy(alpha = 0.11f), RoundedCornerShape(20.dp))
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(20.dp))
-            .pressable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = Color.White,
-            modifier = Modifier.size(if (compact) 30.dp else 31.dp)
-        )
+        }
     }
 }
+
 
 @Composable
 private fun PlayerOptionsRow(
