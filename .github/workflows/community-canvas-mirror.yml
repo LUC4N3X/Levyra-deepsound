@@ -27,7 +27,7 @@ env:
 
 jobs:
   normalize:
-    name: Normalize and Index Upstream Catalog
+    name: Normalize and Index Catalog Sources
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -40,6 +40,9 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      - name: Verify Lookup Compatibility
+        run: python3 scripts/build_community_canvas_index.py --self-test
 
       - name: Normalize Catalog
         shell: bash
@@ -58,17 +61,22 @@ jobs:
           python3 scripts/build_community_canvas_index.py \
             --input build/canvas/community-canvas.json \
             --output-dir build/canvas/index
+          manifest="build/canvas/index/v2/manifest.json"
           jq -e '
             .version == 2 and
             .hash == "sha256" and
             .hashEncoding == "base64url" and
+            (.contentDigest | test("^[0-9a-f]{64}$")) and
+            (.shardDirectory == ("p" + (.prefixChars | tostring))) and
             .entryCount >= (env.CANVAS_MIN_ENTRIES | tonumber) and
             .keyCount >= .entryCount and
             .shardCount > 0 and
             .largestShardBytes <= 196608
-          ' build/canvas/index/v2/manifest.json >/dev/null
-          test "$(find build/canvas/index/v2/shards -type f -name '*.json' | wc -l)" \
-            -eq "$(jq -r '.shardCount' build/canvas/index/v2/manifest.json)"
+          ' "${manifest}" >/dev/null
+          shard_dir="$(jq -r '.shardDirectory' "${manifest}")"
+          [[ "${shard_dir}" =~ ^p[2-5]$ ]]
+          test "$(find "build/canvas/index/v2/${shard_dir}/shards" -type f -name '*.json' | wc -l)" \
+            -eq "$(jq -r '.shardCount' "${manifest}")"
 
       - name: Upload Normalized Catalog
         uses: actions/upload-artifact@v7
@@ -105,6 +113,7 @@ jobs:
           set -euo pipefail
           branch="canvas-data"
           source_ref="$(git rev-parse HEAD)"
+          python3 scripts/build_community_canvas_index.py --self-test
           python3 scripts/sync_community_canvas.py \
             --sources-file catalog/community-canvas-sources.json \
             --output /tmp/community-canvas.json \
@@ -112,18 +121,24 @@ jobs:
           python3 scripts/build_community_canvas_index.py \
             --input /tmp/community-canvas.json \
             --output-dir /tmp/canvas-index
+          new_manifest="/tmp/canvas-index/v2/manifest.json"
+          new_shard_dir="$(jq -r '.shardDirectory' "${new_manifest}")"
+          [[ "${new_shard_dir}" =~ ^p[2-5]$ ]]
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           if git ls-remote --exit-code origin "refs/heads/${branch}" >/dev/null 2>&1; then
             git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
             git switch --force-create "${branch}" "origin/${branch}"
-            if [ -f catalog/community-canvas.json ]; then
+            if [ -f catalog/community-canvas.json ] && [ -f catalog/index/v2/manifest.json ]; then
               jq -S 'del(.generatedAt)' catalog/community-canvas.json > /tmp/current-canvas-content.json
               jq -S 'del(.generatedAt)' /tmp/community-canvas.json > /tmp/new-canvas-content.json
+              jq -S 'del(.generatedAt)' catalog/index/v2/manifest.json > /tmp/current-index-manifest.json
+              jq -S 'del(.generatedAt)' "${new_manifest}" > /tmp/new-index-manifest.json
               if cmp -s /tmp/current-canvas-content.json /tmp/new-canvas-content.json && \
-                 [ -f catalog/index/v2/manifest.json ]; then
-                echo "Community canvas catalog and index are unchanged; publication skipped."
+                 cmp -s /tmp/current-index-manifest.json /tmp/new-index-manifest.json; then
+                echo "Community canvas catalog and sharded index are unchanged; publication skipped."
                 git switch --detach "${source_ref}"
                 exit 0
               fi
@@ -133,12 +148,13 @@ jobs:
             git rm -rf --ignore-unmatch .
           fi
 
-          mkdir -p catalog
-          rm -rf catalog/index
+          mkdir -p "catalog/index/v2/${new_shard_dir}/shards"
           cp /tmp/community-canvas.json catalog/community-canvas.json
-          cp -R /tmp/canvas-index catalog/index
-          git add catalog/community-canvas.json catalog/index
+          cp "${new_manifest}" catalog/index/v2/manifest.json
+          cp -R "/tmp/canvas-index/v2/${new_shard_dir}/shards/." \
+            "catalog/index/v2/${new_shard_dir}/shards/"
+          git add -A catalog
           git commit -m "chore(canvas): refresh sharded community index from run ${GITHUB_RUN_NUMBER}"
           git push origin "HEAD:refs/heads/${branch}"
           git switch --detach "${source_ref}"
-          echo "Published flat fallback and sharded index to ${branch}/catalog"
+          echo "Published flat fallback and ${new_shard_dir} index to ${branch}/catalog"
