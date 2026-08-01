@@ -482,7 +482,27 @@ class PlaybackService : MediaLibraryService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        mediaSession = MediaLibrarySession.Builder(this, player, callback)
+        val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(player) {
+            override fun getDuration(): Long {
+                val realDuration = super.getDuration()
+                if (realDuration != androidx.media3.common.C.TIME_UNSET) return realDuration
+                return currentMediaItem?.mediaMetadata?.extras?.getLong("levyra.durationMs", androidx.media3.common.C.TIME_UNSET) ?: androidx.media3.common.C.TIME_UNSET
+            }
+
+            override fun isCurrentMediaItemSeekable(): Boolean {
+                return true
+            }
+
+            override fun isCurrentMediaItemLive(): Boolean {
+                return false
+            }
+
+            override fun getAvailableCommands(): androidx.media3.common.Player.Commands {
+                return super.getAvailableCommands().buildUpon().add(androidx.media3.common.Player.COMMAND_SEEK_IN_MEDIA).build()
+            }
+        }
+
+        mediaSession = MediaLibrarySession.Builder(this, forwardingPlayer, callback)
             .setSessionActivity(sessionActivity)
             .setMediaButtonPreferences(ImmutableList.of(queueShuffleButton, queuePreviousButton, queueNextButton, queueLikeButton))
             .build()
