@@ -1,7 +1,7 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
-import com.luc4n3x.levyra.ui.components.WaveformSeekbar
+import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.components.SpringIconButton
 
 
@@ -12527,7 +12527,7 @@ private fun PlayerTimeline(
                 bottom = if (compact) 2.dp else 3.dp
             )
     ) {
-        WaveformSeekbar(
+        PremiumSeekbar(
             positionMs = positionMs,
             durationMs = durationMs,
             onSeekTo = { seekMs ->
