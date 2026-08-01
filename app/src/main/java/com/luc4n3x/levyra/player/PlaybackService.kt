@@ -44,6 +44,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.luc4n3x.levyra.MainActivity
+import com.luc4n3x.levyra.data.FavoritesStore
 import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.data.PlaybackResolver
 import com.luc4n3x.levyra.data.YoutubeMusicRepository
@@ -69,6 +70,7 @@ class PlaybackService : MediaLibraryService() {
     private var mediaSession: MediaLibrarySession? = null
     private lateinit var autoLibrary: AndroidAutoLibrary
     private lateinit var queueEngine: PersistentQueueEngine
+    private lateinit var favoritesStore: FavoritesStore
     private lateinit var resolver: PlaybackResolver
     private lateinit var musicRepository: YoutubeMusicRepository
     private lateinit var sharedMediaSourceFactory: MediaSource.Factory
@@ -168,6 +170,7 @@ class PlaybackService : MediaLibraryService() {
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:PlaybackService")
             .apply { setReferenceCounted(false) }
         queueEngine = PersistentQueueEngine.get(this)
+        favoritesStore = FavoritesStore(this)
         resolver = PlaybackResolver.getInstance(this)
         musicRepository = YoutubeMusicRepository(this)
         autoLibrary = AndroidAutoLibrary(this)
@@ -402,11 +405,19 @@ class PlaybackService : MediaLibraryService() {
                     "levyra.favorite.like" -> {
                         serviceScope.launch(Dispatchers.IO) {
                             queueEngine.state.value.currentTrack?.let { track ->
-                                // Optional: Dispatch to favorites store if accessible, or broadcast
-                                // For simplicity, we can just send an intent broadcast for the UI to pick up
-                                val intent = Intent("com.luc4n3x.levyra.ACTION_TOGGLE_FAVORITE")
-                                intent.putExtra("track_id", track.id)
-                                sendBroadcast(intent)
+                                val favorites = favoritesStore.load()
+                                fun favoriteKey(item: com.luc4n3x.levyra.domain.Track): String =
+                                    item.id.ifBlank { "${item.artist.trim()}|${item.title.trim()}" }
+                                val trackKey = favoriteKey(track)
+                                val existingIndex = favorites.indexOfFirst { favorite ->
+                                    favoriteKey(favorite).equals(trackKey, ignoreCase = true)
+                                }
+                                val updated = if (existingIndex >= 0) {
+                                    favorites.filterIndexed { index, _ -> index != existingIndex }
+                                } else {
+                                    listOf(track) + favorites
+                                }
+                                favoritesStore.saveSuspending(updated)
                             }
                         }
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -485,20 +496,29 @@ class PlaybackService : MediaLibraryService() {
         val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(player) {
             override fun getDuration(): Long {
                 val realDuration = super.getDuration()
-                if (realDuration != androidx.media3.common.C.TIME_UNSET) return realDuration
-                return currentMediaItem?.mediaMetadata?.extras?.getLong("levyra.durationMs", androidx.media3.common.C.TIME_UNSET) ?: androidx.media3.common.C.TIME_UNSET
+                if (realDuration > 0L) return realDuration
+                val metadataDuration = currentMediaItem?.mediaMetadata?.extras
+                    ?.getLong("levyra.durationMs", androidx.media3.common.C.TIME_UNSET)
+                    ?: androidx.media3.common.C.TIME_UNSET
+                return metadataDuration.takeIf { it > 0L } ?: androidx.media3.common.C.TIME_UNSET
             }
 
             override fun isCurrentMediaItemSeekable(): Boolean {
-                return true
+                return getDuration() > 0L && !isCurrentMediaItemLive
             }
 
             override fun isCurrentMediaItemLive(): Boolean {
-                return false
+                return super.isCurrentMediaItemLive()
             }
 
             override fun getAvailableCommands(): androidx.media3.common.Player.Commands {
-                return super.getAvailableCommands().buildUpon().add(androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM).build()
+                val commands = super.getAvailableCommands().buildUpon()
+                if (isCurrentMediaItemSeekable) {
+                    commands.add(androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                } else {
+                    commands.remove(androidx.media3.common.Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
+                }
+                return commands.build()
             }
         }
 
