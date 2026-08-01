@@ -288,13 +288,6 @@ def build_index(
     generation = digest[:16]
     shard_directory = f"g{generation}/p{selected_prefix_chars}"
 
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
-    shards_dir = output_dir / "v2" / shard_directory / "shards"
-    shards_dir.mkdir(parents=True, exist_ok=True)
-    for prefix, shard_rows in sorted(shards.items()):
-        (shards_dir / f"{prefix}.json").write_bytes(serialized_shard(shard_rows))
-
     manifest = {
         "version": INDEX_VERSION,
         "generatedAt": datetime.now(timezone.utc)
@@ -321,6 +314,13 @@ def build_index(
             f"generated manifest is {len(manifest_payload)} bytes; "
             f"client-safe limit is {manifest_limit} bytes"
         )
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    shards_dir = output_dir / "v2" / shard_directory / "shards"
+    shards_dir.mkdir(parents=True, exist_ok=True)
+    for prefix, shard_rows in sorted(shards.items()):
+        (shards_dir / f"{prefix}.json").write_bytes(serialized_shard(shard_rows))
+
     manifest_path = output_dir / "v2" / "manifest.json"
     manifest_path.write_bytes(manifest_payload)
     return manifest

@@ -57,9 +57,7 @@ internal const val EDITORIAL_ARTWORK_LOCK_TAG = "editorial-artwork-lock"
 
 internal fun preserveEditorialArtwork(presented: Track, resolved: Track): Track {
     val artworkLocked = presented.source.equals("Levyra Editorial", ignoreCase = true) ||
-        EDITORIAL_ARTWORK_LOCK_TAG in presented.moodTags ||
-        presented.moodTags.any { it.equals("chart", ignoreCase = true) } ||
-        presented.source.contains("Charts", ignoreCase = true)
+        EDITORIAL_ARTWORK_LOCK_TAG in presented.moodTags
     if (!artworkLocked) return resolved
     val artwork = presented.largeThumbnailUrl.trim().ifBlank { presented.thumbnailUrl.trim() }
     if (artwork.isBlank()) return resolved
