@@ -183,6 +183,12 @@ jobs:
 
           new_generation="${new_shard_dir%%/*}"
           now_epoch="$(date +%s)"
+          current_marker="catalog/index/v2/${new_generation}/.superseded-at"
+          if [ -f "${current_marker}" ]; then
+            rm -f "${current_marker}"
+            echo "Reactivated ${new_generation}; removed its superseded marker."
+          fi
+
           if [ -n "${previous_generation}" ] && \
              [ "${previous_generation}" != "${new_generation}" ] && \
              [ -d "catalog/index/v2/${previous_generation}" ]; then
