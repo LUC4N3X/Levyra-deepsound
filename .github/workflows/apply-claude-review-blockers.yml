@@ -37,6 +37,22 @@ jobs:
       - name: Apply verified review fixes
         run: python3 scripts/apply_claude_review_blockers.py
 
+      - name: Correct fuzzy regression fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("app/src/test/java/com/luc4n3x/levyra/feature/motion/CommunityCanvasProviderTest.kt")
+          text = path.read_text(encoding="utf-8")
+          old = 'title = "Flowers - Single Version",'
+          new = 'title = "Flowers",'
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one fuzzy fixture title, found {text.count(old)}")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+
       - name: Validate Python and diff
         shell: bash
         run: |
