@@ -8,6 +8,7 @@ internal data class PlayerAccentPair(
     val secondary: Color
 )
 
+/** Keeps clashing red/green artwork accents within one visually coherent color family. */
 internal fun harmonizePlayerAccents(primary: Color, secondary: Color): PlayerAccentPair {
     val normalizedPrimary = primary.copy(alpha = 1f)
     val normalizedSecondary = secondary.copy(alpha = 1f)
@@ -23,8 +24,9 @@ internal fun harmonizePlayerAccents(primary: Color, secondary: Color): PlayerAcc
     }
 
     val redAnchor = if (primaryIsRed) normalizedPrimary else normalizedSecondary
-    val companionTarget = if (redAnchor.luminance() > 0.35f) Color.Black else Color.White
-    val companionAmount = if (redAnchor.luminance() > 0.35f) 0.28f else 0.18f
+    val redAnchorLuminance = redAnchor.luminance()
+    val companionTarget = if (redAnchorLuminance > 0.35f) Color.Black else Color.White
+    val companionAmount = if (redAnchorLuminance > 0.35f) 0.28f else 0.18f
     return PlayerAccentPair(
         primary = redAnchor,
         secondary = redAnchor.playerPaletteMix(companionTarget, companionAmount)
