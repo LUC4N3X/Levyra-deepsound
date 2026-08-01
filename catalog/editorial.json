@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-01T12:52:44Z",
+  "generatedAt": "2026-08-01T13:03:13Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1824,7 +1824,7 @@
         },
         {
           "position": 27,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -1832,12 +1832,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 28,
@@ -3354,11 +3354,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-08-24"
+            "releaseDate": "2010-01-01"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
           "position": 45,
@@ -5706,7 +5706,7 @@
         },
         {
           "position": 41,
-          "id": "levyra-8a068c113d7a329d1ef1",
+          "id": "levyra-00e1fc5f115e0c6575e3",
           "title": "Nightcall",
           "artists": [
             {
@@ -5714,12 +5714,12 @@
             }
           ],
           "album": {
-            "name": "OutRun",
-            "releaseDate": "2013-01-01"
+            "name": "Nightcall",
+            "releaseDate": "2010"
           },
-          "durationMs": 257320,
+          "durationMs": 258413,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021c08bca073e89ae32c68ffaa"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d6d8c2eaa1f9031b62f7a3f7"
         },
         {
           "position": 42,
@@ -10321,11 +10321,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 38,
@@ -16963,7 +16963,7 @@
         },
         {
           "position": 22,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -16971,12 +16971,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 23,
@@ -27137,6 +27137,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -28020,7 +28022,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
         },
         {
           "position": 23,
