@@ -73,7 +73,7 @@ class CommunityCanvasIndexTest {
               "hashEncoding": "base64url",
               "contentDigest": "8fac2af10c9a06ad09e84cb8b7bbf6b8d6b23d60e12197b6c5dcc74d5f1ef00c",
               "prefixChars": 2,
-              "shardDirectory": "p2",
+              "shardDirectory": "g8fac2af10c9a06ad/p2",
               "entryCount": 3,
               "keyCount": 5,
               "shardCount": 2,
@@ -85,7 +85,8 @@ class CommunityCanvasIndexTest {
 
         assertNotNull(manifest)
         assertEquals(
-            "8fac2af10c9a06ad09e84cb8b7bbf6b8d6b23d60e12197b6c5dcc74d5f1ef00c:p2",
+            "8fac2af10c9a06ad09e84cb8b7bbf6b8d6b23d60e12197b6c5dcc74d5f1ef00c:" +
+                "g8fac2af10c9a06ad/p2",
             manifest!!.cacheKey
         )
         assertTrue(manifest.hasShard("06"))
@@ -95,7 +96,7 @@ class CommunityCanvasIndexTest {
     }
 
     @Test
-    fun manifestRejectsAPathThatDoesNotMatchItsPrefixDepth() {
+    fun manifestRejectsAPathThatDoesNotMatchItsDigestOrPrefixDepth() {
         val manifest = parseCommunityCanvasIndexManifest(
             """
             {
@@ -104,7 +105,7 @@ class CommunityCanvasIndexTest {
               "hashEncoding": "base64url",
               "contentDigest": "8fac2af10c9a06ad09e84cb8b7bbf6b8d6b23d60e12197b6c5dcc74d5f1ef00c",
               "prefixChars": 2,
-              "shardDirectory": "p3",
+              "shardDirectory": "g0000000000000000/p3",
               "entryCount": 3,
               "keyCount": 5,
               "shardCount": 2,
