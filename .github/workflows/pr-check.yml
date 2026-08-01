@@ -92,8 +92,8 @@ jobs:
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
-      - name: Release Unit Tests
-        run: ./gradlew --no-daemon :app:testReleaseUnitTest
+      - name: Debug Unit Tests
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
