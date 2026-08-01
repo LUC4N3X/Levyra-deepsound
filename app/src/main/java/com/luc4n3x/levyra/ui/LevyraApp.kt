@@ -10540,20 +10540,20 @@ private fun PlayerArtworkCanvas(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val artworkScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1f else 0.965f,
-        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessLow),
-        label = "player-artwork-stage-scale"
-    )
     val haloScale by animateFloatAsState(
-        targetValue = if (isPlaying) 1.04f else 0.97f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
+        targetValue = if (isPlaying) 1.025f else 0.995f,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "player-artwork-halo-scale"
     )
     val haloAlpha by animateFloatAsState(
-        targetValue = if (isPlaying) 0.92f else 0.64f,
-        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        targetValue = if (isPlaying) 0.88f else 0.72f,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
         label = "player-artwork-halo-alpha"
+    )
+    val artworkShadow by animateFloatAsState(
+        targetValue = if (isPlaying) 30f else 22f,
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
+        label = "player-artwork-shadow"
     )
     val primary = Color(track.accentStart)
     val secondary = Color(track.accentEnd)
@@ -10584,9 +10584,7 @@ private fun PlayerArtworkCanvas(
             modifier = Modifier
                 .fillMaxSize(0.865f)
                 .graphicsLayer {
-                    scaleX = artworkScale
-                    scaleY = artworkScale
-                    shadowElevation = if (isPlaying) 34f else 18f
+                    shadowElevation = artworkShadow
                     shape = artworkShape
                     clip = true
                 }
@@ -11332,18 +11330,18 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     }
 
     val artScale by animateFloatAsState(
-        targetValue = if (state.isPlaying) 1f else 0.975f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        targetValue = if (state.isPlaying) 1f else 0.992f,
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
         label = "artwork-scale"
     )
     val artCorner by animateDpAsState(
-        targetValue = if (state.isPlaying) 30.dp else 22.dp,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        targetValue = if (state.isPlaying) 28.dp else 26.dp,
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
         label = "artwork-corner"
     )
     val artShadow by animateFloatAsState(
-        targetValue = if (state.isPlaying) 30f else 16f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        targetValue = if (state.isPlaying) 28f else 22f,
+        animationSpec = tween(180, easing = FastOutSlowInEasing),
         label = "artwork-shadow"
     )
 
