@@ -15,7 +15,6 @@ import android.os.Looper
 import android.os.PowerManager
 import android.view.TextureView
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -53,9 +52,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.motion.MotionArtworkNetworkPolicy
 import kotlinx.coroutines.delay
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Composable
 internal fun MotionArtworkLayer(
@@ -197,17 +193,53 @@ private fun MotionArtworkStaticFallback(
     val shape = RoundedCornerShape(cornerRadius)
     var artworkSize by remember { mutableStateOf(IntSize.Zero) }
     val transition = rememberInfiniteTransition(label = "static-artwork-motion")
-    val phase by transition.animateFloat(
+    val zoomPhase by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(
-                durationMillis = STATIC_ARTWORK_MOTION_DURATION_MS,
-                easing = LinearEasing
+                durationMillis = STATIC_ARTWORK_ZOOM_DURATION_MS,
+                easing = FastOutSlowInEasing
             ),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Reverse
         ),
-        label = "static-artwork-motion-phase"
+        label = "static-artwork-zoom"
+    )
+    val horizontalDrift by transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = STATIC_ARTWORK_HORIZONTAL_DURATION_MS,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "static-artwork-horizontal-drift"
+    )
+    val verticalDrift by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = -1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = STATIC_ARTWORK_VERTICAL_DURATION_MS,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "static-artwork-vertical-drift"
+    )
+    val tiltPhase by transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = STATIC_ARTWORK_TILT_DURATION_MS,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "static-artwork-tilt"
     )
     val motionAmount by animateFloatAsState(
         targetValue = if (animated) 1f else 0f,
@@ -217,11 +249,7 @@ private fun MotionArtworkStaticFallback(
         ),
         label = "static-artwork-motion-amount"
     )
-    val angle = phase * (2f * PI.toFloat())
-    val horizontalWave = sin(angle.toDouble()).toFloat()
-    val verticalWave = cos((angle * 2f).toDouble()).toFloat()
-    val breathingWave = ((sin((angle * 2f).toDouble()) + 1.0) * 0.5).toFloat()
-    val scale = 1f + motionAmount * (0.040f + breathingWave * 0.014f)
+    val scale = 1f + motionAmount * (0.032f + zoomPhase * 0.028f)
 
     Box(modifier = modifier.clip(shape)) {
         Box(
@@ -231,9 +259,9 @@ private fun MotionArtworkStaticFallback(
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
-                    translationX = artworkSize.width * 0.016f * horizontalWave * motionAmount
-                    translationY = artworkSize.height * 0.011f * verticalWave * motionAmount
-                    rotationZ = 0.12f * horizontalWave * motionAmount
+                    translationX = artworkSize.width * 0.018f * horizontalDrift * motionAmount
+                    translationY = artworkSize.height * 0.014f * verticalDrift * motionAmount
+                    rotationZ = 0.16f * tiltPhase * motionAmount
                 }
         ) {
             content()
@@ -272,7 +300,7 @@ private fun MotionArtworkVideo(
     val textureView = remember(player) { TextureView(context) }
     val videoAlpha by animateFloatAsState(
         targetValue = if (firstFrameRendered && !failed) 1f else 0f,
-        animationSpec = tween(durationMillis = 320),
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "motion-artwork-alpha"
     )
 
@@ -333,7 +361,10 @@ private data class MotionArtworkEnvironment(
     val localAllowed: Boolean
 )
 
-private const val STATIC_ARTWORK_MOTION_DURATION_MS = 18_000
-private const val STATIC_ARTWORK_MOTION_ENTER_MS = 420
+private const val STATIC_ARTWORK_ZOOM_DURATION_MS = 12_000
+private const val STATIC_ARTWORK_HORIZONTAL_DURATION_MS = 15_000
+private const val STATIC_ARTWORK_VERTICAL_DURATION_MS = 18_000
+private const val STATIC_ARTWORK_TILT_DURATION_MS = 21_000
+private const val STATIC_ARTWORK_MOTION_ENTER_MS = 480
 private const val STATIC_ARTWORK_MOTION_EXIT_MS = 220
 private const val VIDEO_FIRST_FRAME_TIMEOUT_MS = 6_000L
