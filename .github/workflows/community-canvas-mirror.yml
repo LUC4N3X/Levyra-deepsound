@@ -26,6 +26,7 @@ env:
   CANVAS_MIN_ENTRIES: "150"
   CANVAS_COMPAT_MIN_ENTRIES: "100"
   CANVAS_COMPAT_MAX_BYTES: "921600"
+  CANVAS_GENERATION_RETENTION_HOURS: "72"
 
 jobs:
   normalize:
@@ -167,6 +168,19 @@ jobs:
           cp "${new_manifest}" catalog/index/v2/manifest.json
           cp -R "/tmp/canvas-index/v2/${new_shard_dir}/shards/." \
             "catalog/index/v2/${new_shard_dir}/shards/"
+
+          new_generation="${new_shard_dir%%/*}"
+          cutoff_epoch=$(($(date +%s) - CANVAS_GENERATION_RETENTION_HOURS * 3600))
+          for generation_dir in catalog/index/v2/g*; do
+            [ -d "${generation_dir}" ] || continue
+            [ "$(basename "${generation_dir}")" = "${new_generation}" ] && continue
+            last_touch="$(git log -1 --format=%ct -- "${generation_dir}" 2>/dev/null || true)"
+            if [[ "${last_touch}" =~ ^[0-9]+$ ]] && (( last_touch < cutoff_epoch )); then
+              echo "Removing expired canvas index generation ${generation_dir}"
+              rm -rf "${generation_dir}"
+            fi
+          done
+
           git add -A catalog
           git commit -m "chore(canvas): refresh sharded community index from run ${GITHUB_RUN_NUMBER}"
           git push origin "HEAD:refs/heads/${branch}"
