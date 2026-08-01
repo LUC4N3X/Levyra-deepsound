@@ -1,9 +1,9 @@
 name: Apply Final Player Polish
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/scalable-canvas-index
+      - main
     paths:
       - scripts/apply_final_player_polish.py
       - .github/workflows/apply-final-player-polish.yml
