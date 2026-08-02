@@ -1,7 +1,6 @@
 ---
 name: Levyra Release Check
-description: Runs the Levyra pre-merge or pre-release validation checklist and reports evidence without publishing or releasing anything.
-disable-model-invocation: true
+description: Runs the Levyra pre-merge or pre-release validation checklist and reports evidence without publishing or releasing anything. Use before merging or releasing, and whenever the task touches versionName, versionCode, signing, APK output, or release workflows.
 allowed-tools: Read, Grep, Glob, Bash
 ---
 
