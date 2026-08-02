@@ -149,7 +149,8 @@ fun PlayerTransportControls(
 ) {
     val utilitySize = if (compact) LevyraPlayerDesign.UtilityButtonCompact else LevyraPlayerDesign.UtilityButton
     val transportSize = if (compact) LevyraPlayerDesign.TransportButtonCompact else LevyraPlayerDesign.TransportButton
-    val primarySize = if (compact) LevyraPlayerDesign.PrimaryButtonCompact else LevyraPlayerDesign.PrimaryButton
+    val primaryWidth = if (compact) LevyraPlayerDesign.PrimaryWidthCompact else LevyraPlayerDesign.PrimaryWidth
+    val primaryHeight = if (compact) LevyraPlayerDesign.PrimaryHeightCompact else LevyraPlayerDesign.PrimaryHeight
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -170,8 +171,7 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.SkipPrevious,
             contentDescription = labels.previous,
             size = transportSize,
-            iconSize = if (compact) 28.dp else 30.dp,
-            shape = LevyraPlayerDesign.ShapeMd,
+            iconSize = if (compact) 27.dp else 29.dp,
             onClick = onPrevious
         )
         PlayerPrimaryButton(
@@ -179,8 +179,8 @@ fun PlayerTransportControls(
             isResolving = isResolving,
             accent = accent,
             accentSecondary = accentSecondary,
-            size = primarySize,
-            animated = animated,
+            width = primaryWidth,
+            height = primaryHeight,
             playLabel = labels.play,
             pauseLabel = labels.pause,
             onClick = onToggle
@@ -189,8 +189,7 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.SkipNext,
             contentDescription = labels.next,
             size = transportSize,
-            iconSize = if (compact) 28.dp else 30.dp,
-            shape = LevyraPlayerDesign.ShapeMd,
+            iconSize = if (compact) 27.dp else 29.dp,
             onClick = onNext
         )
         PlayerModeToggleButton(
@@ -306,7 +305,7 @@ private fun Modifier.playerPrimarySurface(
     )
 
 @Composable
-private fun PlayerPrimaryIcon(isPlaying: Boolean, size: Dp, tint: Color) {
+private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color) {
     AnimatedContent(
         targetState = isPlaying,
         transitionSpec = { playerPrimaryIconTransition() },
@@ -317,8 +316,8 @@ private fun PlayerPrimaryIcon(isPlaying: Boolean, size: Dp, tint: Color) {
             contentDescription = null,
             tint = tint,
             modifier = Modifier
-                .size(size * 0.46f)
-                .offset(x = if (playing) 0.dp else size * 0.02f)
+                .size(iconSize)
+                .offset(x = if (playing) 0.dp else 1.dp)
         )
     }
 }
@@ -329,8 +328,8 @@ private fun PlayerPrimaryButton(
     isResolving: Boolean,
     accent: Color,
     accentSecondary: Color,
-    size: Dp,
-    animated: Boolean,
+    width: Dp,
+    height: Dp,
     playLabel: String,
     pauseLabel: String,
     onClick: () -> Unit
@@ -342,12 +341,7 @@ private fun PlayerPrimaryButton(
             minimumContrast = PlayerMinimumContrast
         )
     }
-    val corner by animateDpAsState(
-        targetValue = if (isPlaying) size * 0.34f else size / 2f,
-        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
-        label = "player-primary-corner"
-    )
-    val shape = RoundedCornerShape(corner)
+    val shape = RoundedCornerShape(LevyraPlayerDesign.PrimaryCorner)
 
     SpringIconButton(
         onClick = onClick,
@@ -356,7 +350,7 @@ private fun PlayerPrimaryButton(
     ) {
         Box(
             modifier = Modifier
-                .size(size)
+                .size(width = width, height = height)
                 .playerPrimarySurface(
                     shape = shape,
                     gradient = gradient,
@@ -367,14 +361,14 @@ private fun PlayerPrimaryButton(
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(size * 0.36f),
+                    modifier = Modifier.size(height * 0.44f),
                     strokeWidth = 3.dp,
                     color = gradient.content
                 )
             } else {
                 PlayerPrimaryIcon(
                     isPlaying = isPlaying,
-                    size = size,
+                    iconSize = height * 0.53f,
                     tint = gradient.content
                 )
             }

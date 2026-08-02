@@ -5926,8 +5926,8 @@ private fun HomeEditorialSpotlight(
                 Brush.linearGradient(
                     listOf(
                         Color(0xFF07080A),
-                        accentStart.copy(alpha = 0.34f),
-                        accentEnd.copy(alpha = 0.18f),
+                        accentStart.copy(alpha = 0.10f),
+                        accentEnd.copy(alpha = 0.06f),
                         Color(0xFF0A0B0F)
                     )
                 )
@@ -5961,8 +5961,8 @@ private fun HomeEditorialSpotlight(
                     Brush.horizontalGradient(
                         listOf(
                             Color(0xFF07080A),
-                            Color(0xFF07080A).copy(alpha = 0.96f),
-                            accentStart.copy(alpha = 0.70f),
+                            Color(0xFF07080A).copy(alpha = 0.94f),
+                            Color(0xFF07080A).copy(alpha = 0.62f),
                             Color.Transparent
                         )
                     )
@@ -5989,7 +5989,7 @@ private fun HomeEditorialSpotlight(
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            accentStart.copy(alpha = 0.18f),
+                            accentStart.copy(alpha = 0.07f),
                             Color.Transparent
                         )
                     ),
