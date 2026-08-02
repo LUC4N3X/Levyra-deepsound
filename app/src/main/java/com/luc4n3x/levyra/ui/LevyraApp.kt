@@ -2025,6 +2025,7 @@ private fun AlbumOverlay(
                 isPlaying = state.isPlaying,
                 isResolving = state.isResolving,
                 progress = progressOf(state.positionMs, state.durationMs),
+                animated = state.animationsEnabled,
                 onToggle = onTogglePlayback,
                 onOpenPlayer = onOpenPlayer,
                 modifier = Modifier
@@ -2310,6 +2311,7 @@ private fun AlbumNowPlayingDock(
     isPlaying: Boolean,
     isResolving: Boolean,
     progress: Float,
+    animated: Boolean,
     onToggle: () -> Unit,
     onOpenPlayer: () -> Unit,
     modifier: Modifier = Modifier
@@ -2361,6 +2363,7 @@ private fun AlbumNowPlayingDock(
                     isPlaying = isPlaying,
                     isResolving = isResolving,
                     buttonColor = if (LevyraIsLight) LevyraBlack else Color.White,
+                    animated = animated,
                     onToggle = onToggle
                 )
             }
@@ -10265,6 +10268,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
                 isPlaying = state.isPlaying,
                 isResolving = state.isResolving,
                 progress = progressOf(state.positionMs, state.durationMs),
+                animated = state.animationsEnabled,
                 onToggle = viewModel::togglePlay,
                 onOpenPlayer = viewModel::openPlayerScreen,
                 modifier = Modifier
