@@ -1,9 +1,11 @@
 package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -91,24 +93,26 @@ fun PremiumSeekbar(
     val handleScale = remember { Animatable(0f) }
     val waveAmplitude = remember { Animatable(0f) }
 
-    LaunchedEffect(isDragging) {
+    val scrubSpec: AnimationSpec<Float> =
+        if (animated) LevyraPlayerDesign.expressiveSpring() else snap()
+    LaunchedEffect(isDragging, animated) {
         trackScale.animateTo(
             targetValue = if (isDragging) 1.55f else 1f,
-            animationSpec = LevyraPlayerDesign.expressiveSpring()
+            animationSpec = scrubSpec
         )
     }
-    LaunchedEffect(isDragging) {
+    LaunchedEffect(isDragging, animated) {
         handleScale.animateTo(
             targetValue = if (isDragging) 1f else 0f,
-            animationSpec = LevyraPlayerDesign.expressiveSpring()
+            animationSpec = scrubSpec
         )
     }
 
     val waveActive = animated && isPlaying && !isDragging && durationMs > 0L
-    LaunchedEffect(waveActive) {
+    LaunchedEffect(waveActive, animated) {
         waveAmplitude.animateTo(
             targetValue = if (waveActive) 1f else 0f,
-            animationSpec = LevyraPlayerDesign.smoothSpring()
+            animationSpec = if (animated) LevyraPlayerDesign.smoothSpring() else snap()
         )
     }
 
