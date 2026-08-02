@@ -41,10 +41,13 @@ object LevyraPlayerDesign {
     val HeaderButtonCompact: Dp = 40.dp
     val UtilityButton: Dp = 46.dp
     val UtilityButtonCompact: Dp = 44.dp
-    val TransportButton: Dp = 58.dp
-    val TransportButtonCompact: Dp = 54.dp
-    val PrimaryButton: Dp = 76.dp
-    val PrimaryButtonCompact: Dp = 70.dp
+    val TransportButton: Dp = 54.dp
+    val TransportButtonCompact: Dp = 50.dp
+    val PrimaryWidth: Dp = 80.dp
+    val PrimaryWidthCompact: Dp = 74.dp
+    val PrimaryHeight: Dp = 66.dp
+    val PrimaryHeightCompact: Dp = 62.dp
+    val PrimaryCorner: Dp = 30.dp
     val MinimumTouchTarget: Dp = 48.dp
 
     val Hairline: Dp = 1.dp
