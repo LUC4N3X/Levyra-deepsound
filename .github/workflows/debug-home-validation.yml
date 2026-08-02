@@ -8,7 +8,7 @@ on:
       - .github/workflows/debug-home-validation.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   inspect:
@@ -25,19 +25,46 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           cache-disabled: true
-      - name: Locate validation source
+      - name: Capture validation diagnostics
         shell: bash
-        run: |
-          set -x
-          grep -R -n --exclude-dir=.git --exclude='*.class' --exclude='*.jar' \
-            -e 'validateHomeContentConfiguration' \
-            -e 'tracked Home sections' \
-            -e 'Expected 3 tracked' . || true
-      - name: Run validation with stacktrace
         env:
           YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
           LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
           LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
           LEVYRA_KEY_ALIAS: levyra_ci
           LEVYRA_KEY_PASSWORD: levyra_ci_password
-        run: ./gradlew --no-daemon :app:validateHomeContentConfiguration --stacktrace --info
+        run: |
+          set +e
+          REPORT=.github/home-validation-report.txt
+          : > "$REPORT"
+          echo '=== repository matches ===' >> "$REPORT"
+          grep -R -n --exclude-dir=.git --exclude='*.class' --exclude='*.jar' \
+            -e 'validateHomeContentConfiguration' \
+            -e 'tracked Home sections' \
+            -e 'Expected 3 tracked' . >> "$REPORT" 2>&1 || true
+
+          echo >> "$REPORT"
+          echo '=== Gradle task output ===' >> "$REPORT"
+          ./gradlew --no-daemon :app:validateHomeContentConfiguration --stacktrace --info \
+            > /tmp/home-validation.log 2>&1
+          STATUS=$?
+          tail -n 350 /tmp/home-validation.log >> "$REPORT"
+
+          echo >> "$REPORT"
+          echo '=== Gradle cache matches ===' >> "$REPORT"
+          grep -R -a -n -m 3 \
+            -e 'validateHomeContentConfiguration' \
+            -e 'Expected 3 tracked Home sections' \
+            "$HOME/.gradle/caches" >> "$REPORT" 2>&1 || true
+          echo >> "$REPORT"
+          echo "exit_status=$STATUS" >> "$REPORT"
+
+          rm .github/workflows/debug-home-validation.yml
+      - name: Publish diagnostics
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: capture Home validation diagnostics"
+          git push origin HEAD:refactor/home-experience
