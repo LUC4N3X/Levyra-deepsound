@@ -23,6 +23,7 @@ class HomeDesignTest {
         assertTrue(LevyraHomeDesign.TileCorner < LevyraPlayerDesign.CornerMd)
         assertTrue(LevyraHomeDesign.HeroCorner <= LevyraPlayerDesign.CornerMd)
         assertTrue(LevyraHomeDesign.AtmosphereHeight > LevyraHomeDesign.HeroHeight)
+        assertTrue(LevyraHomeDesign.HorizontalInset < LevyraHomeDesign.TileHeight)
         assertEquals(18f, LevyraHomeDesign.HorizontalInset.value, 0f)
     }
 }
