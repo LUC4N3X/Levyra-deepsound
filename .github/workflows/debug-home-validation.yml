@@ -1,0 +1,43 @@
+name: Debug Home validation
+
+on:
+  push:
+    branches:
+      - refactor/home-experience
+    paths:
+      - .github/workflows/debug-home-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+      - name: Locate validation source
+        shell: bash
+        run: |
+          set -x
+          grep -R -n --exclude-dir=.git --exclude='*.class' --exclude='*.jar' \
+            -e 'validateHomeContentConfiguration' \
+            -e 'tracked Home sections' \
+            -e 'Expected 3 tracked' . || true
+      - name: Run validation with stacktrace
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+          LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+          LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+          LEVYRA_KEY_ALIAS: levyra_ci
+          LEVYRA_KEY_PASSWORD: levyra_ci_password
+        run: ./gradlew --no-daemon :app:validateHomeContentConfiguration --stacktrace --info
