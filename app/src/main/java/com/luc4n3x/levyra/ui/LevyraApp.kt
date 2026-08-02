@@ -5266,7 +5266,7 @@ private fun HomeScreen(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
     )
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0C0A15))) {
         LevyraHomeAtmosphere(
             accentStart = animatedHomeAccentStart,
             accentEnd = animatedHomeAccentEnd,
@@ -5285,7 +5285,7 @@ private fun HomeScreen(
         item(key = "home-top", contentType = "home-header") {
             HomeSectionInset {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
+                    GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings, onSearch = viewModel::openSearchScreen)
                     MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
                 }
             }
@@ -14101,7 +14101,7 @@ private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
 }
 
 @Composable
-private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit) {
+private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -> Unit, onSearch: () -> Unit) {
     val strings = LocalLevyraStrings.current
     Row(
         modifier = Modifier
@@ -14154,7 +14154,9 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                 imageVector = Icons.Rounded.Search,
                 contentDescription = "Search",
                 tint = Color.White,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier
+                    .size(24.dp)
+                    .pressable(onClick = onSearch)
             )
             Box(
                 modifier = Modifier

@@ -108,6 +108,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
     fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
     fun searchNow() = root.searchNow()
+    fun openSearchScreen() = root.selectTab(LevyraTab.Search)
     fun searchNow(query: String) = root.searchNow(query)
     fun selectChart(regionId: String) = root.selectChart(regionId)
     fun selectMood(mood: Mood) = root.selectMood(mood)
