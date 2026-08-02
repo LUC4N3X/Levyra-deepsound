@@ -1587,6 +1587,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         isResolving = false,
                         isPlaying = playWhenReady,
                         positionMs = positionMs,
+                        bufferedPositionMs = positionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
                         playerError = null
                     )
