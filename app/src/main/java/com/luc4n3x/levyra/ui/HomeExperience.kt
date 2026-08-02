@@ -16,8 +16,59 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 
+/**
+ * Compatibility models kept only until the obsolete quick-access item is removed from LevyraApp.
+ * The composable intentionally renders nothing: the shortcut dashboard is no longer part of Home.
+ */
+internal data class LevyraHomeQuickAccessTracks(
+    val current: Track?,
+    val mix: Track?,
+    val favorite: Track?,
+    val release: Track?,
+    val chart: Track?
+)
+
+internal data class LevyraHomeQuickAccessAvailability(
+    val hasMix: Boolean,
+    val hasFavorites: Boolean,
+    val hasNewReleases: Boolean,
+    val hasCharts: Boolean
+)
+
+internal data class LevyraHomeQuickAccessPlayback(
+    val isPlaying: Boolean,
+    val isResolving: Boolean
+)
+
+internal data class LevyraHomeQuickAccessState(
+    val tracks: LevyraHomeQuickAccessTracks,
+    val availability: LevyraHomeQuickAccessAvailability,
+    val playback: LevyraHomeQuickAccessPlayback,
+    val isLight: Boolean
+)
+
+internal data class LevyraHomeQuickAccessActions(
+    val onContinue: () -> Unit,
+    val onMix: () -> Unit,
+    val onFavorites: () -> Unit,
+    val onNewReleases: () -> Unit,
+    val onCharts: () -> Unit,
+    val onSearch: () -> Unit
+)
+
+@Suppress("UNUSED_PARAMETER")
+@Composable
+internal fun LevyraHomeQuickAccessGrid(
+    state: LevyraHomeQuickAccessState,
+    actions: LevyraHomeQuickAccessActions
+) = Unit
+
+/**
+ * Artwork-led Home backdrop with cached drawing primitives and no permanently running animation.
+ */
 @Composable
 internal fun LevyraHomeAtmosphere(
     accentStart: Color,

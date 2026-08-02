@@ -12,6 +12,7 @@ import com.luc4n3x.levyra.ui.components.playerGlass
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import androidx.compose.material.icons.rounded.ChevronRight
 
+
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Spring
@@ -255,7 +256,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
@@ -405,9 +405,9 @@ private val HomeHorizontalShelfEndPadding = 30.dp
 private const val HOME_ARTIST_SHELF_SIZE = 13
 private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
 private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
-
+/** Tab row height, without the navigation bar spacer that `BottomTabs` adds under it. */
 private val LevyraTabBarHeight = 76.dp
-
+/** Mini player height: content row, progress line and its trailing spacer. */
 private val LevyraMiniPlayerHeight = 77.dp
 private val LevyraBottomContentGap = 16.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
@@ -1099,7 +1099,9 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             LevyraBackground()
 
             val homeListState = rememberLazyListState()
-
+            // Hoisted next to the list state: once the heavy home shelves are revealed they must stay
+            // mounted, otherwise leaving and re-entering the Home tab empties the list for a frame and
+            // the preserved scroll offset is clamped back to the top.
             val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
 
             AnimatedContent(
@@ -1627,6 +1629,14 @@ private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
     }
 }
 
+/**
+ * Bottom inset for a list that scrolls behind the tab bar, sized from the bars that actually cover it.
+ *
+ * A fixed inset large enough for the mini player leaves a tall band of dead space under the last shelf
+ * whenever nothing is playing, so the inset tracks the mini player instead. The change is animated with
+ * the mini player enter/exit duration: a list already scrolled to the end glides together with the bar
+ * rather than snapping when the scroll range shrinks.
+ */
 @Composable
 private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -1639,6 +1649,7 @@ private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabl
     )
 }
 
+/** Animates between two bottom insets without letting the change read as an unexplained jump. */
 @Composable
 private fun animatedBottomContentInset(
     collapsed: Dp,
@@ -1779,6 +1790,7 @@ private fun restartLevyra(activity: Activity?) {
     activity.startActivity(intent)
     activity.finish()
 }
+
 
 @Composable
 private fun AlbumOverlay(
@@ -2040,7 +2052,9 @@ private fun AlbumHeroCard(
 ) {
     val context = LocalContext.current
     var descriptionExpanded by remember { mutableStateOf(false) }
-
+    // Apple/Vercel hero: calm surface, one signature drop-shadow under the artwork,
+    // restrained hairline borders, tight negative-tracking display type, and a
+    // single primary action (Play) that owns the visual weight.
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -2097,6 +2111,7 @@ private fun AlbumHeroCard(
             )
         }
 
+        // Primary action: full-width Play, the way Apple Music anchors an album.
         AlbumPrimaryPlayButton(
             enabled = trackCount > 0,
             isPlaying = isPlaying,
@@ -2106,6 +2121,7 @@ private fun AlbumHeroCard(
             onClick = onPlayAll
         )
 
+        // Secondary actions: quiet, evenly weighted, hairline chips.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -2263,7 +2279,8 @@ private fun AlbumNowPlayingDock(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-
+    // Consistent with the global MiniPlayer: accent-tinted glass pill, rounded on
+    // all corners, hairline border, one gradient play button, thin progress rail.
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -5157,7 +5174,9 @@ private fun HomeScreen(
     val editorialCollections = homeDerivedState.editorialCollections
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
-
+    // `currentTrack` is read but intentionally not a key: avoiding the currently playing track is a
+    // preference for the initial pick only. Re-running this on every playback change could swap the hero
+    // above the viewport and shift everything below it, and `stableSpotlightId` pins the choice anyway.
     val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
         spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
             ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
@@ -5203,7 +5222,9 @@ private fun HomeScreen(
     val chartChunks = homeDerivedState.chartChunks
     val homeContent = homeDerivedState.contentAvailability
     val homeFingerprint = homeDerivedState.contentFingerprint
-
+    // The reveal is a first-paint budget, not a content switch: it defers the heavy shelves once so the
+    // greeting and the spotlight land first. Re-hiding them on every fingerprint change would unmount
+    // everything below the fold and force the LazyColumn to clamp the scroll offset back to the top.
     val showDeferredHomeSections by deferredSectionsRevealed
     LaunchedEffect(homeFingerprint) {
         if (deferredSectionsRevealed.value) return@LaunchedEffect
@@ -5242,29 +5263,12 @@ private fun HomeScreen(
             }
         }
     }
+    val homeMixTracks = remember(quickPicks, visiblePersonalTracks, resonanceTracks) {
+        quickPicks?.tracks?.takeIf { it.isNotEmpty() }
+            ?: visiblePersonalTracks.takeIf { it.isNotEmpty() }
+            ?: resonanceTracks
+    }
     val homeReleaseTracks = remember(newReleases) { newReleases?.tracks.orEmpty() }
-    val currentTrackIdentity = state.currentTrack?.let(LevyraPersonalOrbit::identityKey)
-val quickSelectionTracks = remember(
-    visiblePersonalTracks,
-    quickPicks,
-    state.favorites,
-    homeReleaseTracks,
-    resonanceTracks,
-    state.interfaceSettings.showPersonalOrbit,
-    state.interfaceSettings.showNewReleases,
-    state.interfaceSettings.showResonance
-) {
-    buildHomeQuickSelectionTracks(
-        personalTracks = visiblePersonalTracks,
-        quickPickTracks = quickPicks?.tracks.orEmpty(),
-        favoriteTracks = state.favorites,
-        newReleaseTracks = homeReleaseTracks,
-        resonanceTracks = resonanceTracks,
-        showPersonalOrbit = state.interfaceSettings.showPersonalOrbit,
-        showNewReleases = state.interfaceSettings.showNewReleases,
-        showResonance = state.interfaceSettings.showResonance
-    )
-}
     val homeBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
@@ -5293,6 +5297,40 @@ val quickSelectionTracks = remember(
                 }
             }
         }
+        item(key = "home-quick-access", contentType = "home-quick-access") {
+            HomeSectionInset {
+                LevyraHomeQuickAccessGrid(
+                    state = LevyraHomeQuickAccessState(
+                        tracks = LevyraHomeQuickAccessTracks(
+                            current = state.currentTrack,
+                            mix = homeMixTracks.firstOrNull(),
+                            favorite = state.favorites.firstOrNull(),
+                            release = homeReleaseTracks.firstOrNull(),
+                            chart = state.charts.firstOrNull()
+                        ),
+                        availability = LevyraHomeQuickAccessAvailability(
+                            hasMix = homeMixTracks.isNotEmpty(),
+                            hasFavorites = state.favorites.isNotEmpty(),
+                            hasNewReleases = homeReleaseTracks.isNotEmpty(),
+                            hasCharts = state.charts.isNotEmpty()
+                        ),
+                        playback = LevyraHomeQuickAccessPlayback(
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving
+                        ),
+                        isLight = LevyraIsLight
+                    ),
+                    actions = LevyraHomeQuickAccessActions(
+                        onContinue = viewModel::togglePlay,
+                        onMix = { viewModel.playAll(homeMixTracks) },
+                        onFavorites = { viewModel.playAll(state.favorites) },
+                        onNewReleases = { viewModel.playAll(homeReleaseTracks) },
+                        onCharts = { viewModel.playAll(state.charts) },
+                        onSearch = { viewModel.searchNow() }
+                    )
+                )
+            }
+        }
         spotlightCandidate?.let { candidate ->
             val heroTrack = candidate.track
             item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
@@ -5315,26 +5353,6 @@ val quickSelectionTracks = remember(
                 }
             }
         }
-        if (quickSelectionTracks.isNotEmpty()) {
-    item(key = "home-quick-access", contentType = "home-quick-access") {
-        HomeSectionInset {
-            HomeQuickSelectionGrid(
-                tracks = quickSelectionTracks,
-                currentIdentity = currentTrackIdentity,
-                isPlaying = state.isPlaying,
-                isResolving = state.isResolving,
-                onPlay = { track ->
-                    when {
-                        LevyraPersonalOrbit.identityKey(track) != currentTrackIdentity ->
-                            viewModel.playFrom(quickSelectionTracks, track)
-                        state.isResolving -> Unit
-                        else -> viewModel.togglePlay()
-                    }
-                }
-            )
-        }
-    }
-}
         if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {
             item(key = "home-continue", contentType = "home-card") {
                 HomeContinueListeningCard(
@@ -5551,7 +5569,8 @@ val quickSelectionTracks = remember(
                 }
             }
         }
-
+        // Only emitted when it actually renders: an always-present empty item still consumes the
+        // vertical arrangement spacing and leaves a visible gap under the last shelf.
         if (state.homeError != null || state.playerError != null) {
             item(key = "home-status", contentType = "home-card") {
                 HomeSectionInset { StatusBlock(state) }
@@ -6136,155 +6155,58 @@ private fun CollectionArtworkMosaic(
 }
 
 @Composable
-private fun HomeQuickSelectionGrid(
-    tracks: List<Track>,
-    currentIdentity: String?,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    onPlay: (Track) -> Unit
+private fun HomeQuickAccessGrid(
+    hasMix: Boolean,
+    hasFavorites: Boolean,
+    hasNewReleases: Boolean,
+    onMix: () -> Unit,
+    onFavorites: () -> Unit,
+    onNewReleases: () -> Unit,
+    onSearch: () -> Unit
 ) {
-    if (tracks.isEmpty()) return
-
-    val strings = LocalLevyraStrings.current
-    val rows = remember(tracks) { tracks.chunked(3) }
-
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            text = strings.quickPicks,
-            color = if (LevyraIsLight) LevyraText else Color.White,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.4).sp
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            rows.forEach { rowTracks ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    rowTracks.forEach { track ->
-                        val isCurrent = LevyraPersonalOrbit.identityKey(track) == currentIdentity
-                        HomeQuickSelectionCard(
-                            track = track,
-                            isCurrent = isCurrent,
-                            isPlaying = isPlaying && isCurrent,
-                            isResolving = isResolving && isCurrent,
-                            modifier = Modifier.weight(1f),
-                            onClick = { onPlay(track) }
-                        )
-                    }
-                    repeat(3 - rowTracks.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            QuickAction(
+                icon = Icons.Rounded.Shuffle,
+                label = LocalLevyraStrings.current.mixForYou,
+                accent = LevyraCyan,
+                enabled = hasMix,
+                modifier = Modifier.weight(1f),
+                onClick = onMix
+            )
+            QuickAction(
+                icon = Icons.Rounded.Favorite,
+                label = LocalLevyraStrings.current.favoritesPlain,
+                accent = LevyraPink,
+                enabled = hasFavorites,
+                modifier = Modifier.weight(1f),
+                onClick = onFavorites
+            )
         }
-    }
-}
-
-@Composable
-private fun HomeQuickSelectionCard(
-    track: Track,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    val strings = LocalLevyraStrings.current
-    val accessibilityDescription = if (isCurrent) {
-        val playbackState = when {
-            isResolving -> strings.searchingYouTubeMusic
-            isPlaying -> strings.currentlyPlaying
-            else -> strings.play
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            QuickAction(
+                icon = Icons.Rounded.Bolt,
+                label = LocalLevyraStrings.current.newReleases,
+                accent = LevyraViolet,
+                enabled = hasNewReleases,
+                modifier = Modifier.weight(1f),
+                onClick = onNewReleases
+            )
+            QuickAction(
+                icon = Icons.Rounded.Search,
+                label = LocalLevyraStrings.current.search,
+                accent = Color(0xFFB7C7FF),
+                enabled = true,
+                modifier = Modifier.weight(1f),
+                onClick = onSearch
+            )
         }
-        "${track.title}. $playbackState"
-    } else {
-        track.title
-    }
-    val shape = RoundedCornerShape(14.dp)
-    val cardBackground = if (LevyraIsLight) Color.White else Color(0xFF12141D)
-    val borderColor = when {
-        isCurrent -> LevyraCyan
-        LevyraIsLight -> LevyraInk.copy(alpha = 0.14f)
-        else -> Color.White.copy(alpha = 0.08f)
-    }
-    val borderWidth = if (isCurrent) 1.5.dp else 1.dp
-
-    Box(
-        modifier = modifier
-            .aspectRatio(1.05f)
-            .clip(shape)
-            .background(cardBackground, shape)
-            .border(BorderStroke(borderWidth, borderColor), shape)
-            .semantics(mergeDescendants = true) {
-                role = Role.Button
-                selected = isCurrent
-                contentDescription = accessibilityDescription
-            }
-            .pressable(onClick = onClick)
-    ) {
-        CoverImage(
-            track = track,
-            modifier = Modifier.fillMaxSize(),
-            highRes = false
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Transparent,
-                            0.38f to Color.Transparent,
-                            0.70f to Color.Black.copy(alpha = 0.55f),
-                            1.0f to Color.Black.copy(alpha = 0.92f)
-                        )
-                    )
-                )
-        )
-
-        if (isCurrent) {
-            Box(
-                modifier = Modifier
-                    .padding(6.dp)
-                    .align(Alignment.TopEnd)
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(LevyraCyan)
-                    .border(1.dp, Color.Black.copy(alpha = 0.3f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isResolving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(12.dp),
-                        strokeWidth = 1.5.dp,
-                        color = Color.Black
-                    )
-                } else {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(13.dp)
-                    )
-                }
-            }
-        }
-
-        Text(
-            text = track.title,
-            color = Color.White,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 16.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 8.dp, vertical = 7.dp)
-        )
     }
 }
 
@@ -7159,6 +7081,7 @@ private fun PersonalListeningCard(
     }
 }
 
+
 private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
     title = track.album.trim(),
     artist = track.artist.trim(),
@@ -7223,6 +7146,15 @@ private fun releaseKindFromSource(title: String, track: Track): String {
     }
 }
 
+/**
+ * True only when the track carries a genuine square album cover.
+ *
+ * YouTube Music serves album/song art from Google's image CDN as square,
+ * resizable URLs (`=w544-h544...` or `=s...`). "Songs" that are really music
+ * videos instead come back with a 16:9 video frame from `i.ytimg.com/vi/...`
+ * (hqdefault/mqdefault/…). Those framegrabs look wrong in a cover grid, so the
+ * personal orbit shelf keeps only tracks backed by real artwork.
+ */
 private val SQUARE_ART_WIDTH_HEIGHT_PATTERN = Regex("=w\\d+-h\\d+")
 private val SQUARE_ART_SIZE_PATTERN = Regex("=s\\d+")
 
@@ -16541,6 +16473,7 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
     }
 }
 
+
 @Composable
 private fun PageHeader(title: String, subtitle: String) {
     Column(
@@ -16560,6 +16493,7 @@ private fun PageHeader(title: String, subtitle: String) {
         Text(subtitle, color = LevyraMuted, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, lineHeight = 19.sp)
     }
 }
+
 
 @Composable
 private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
@@ -16694,7 +16628,7 @@ private fun LevyraVideoSurface(
         if (player != null) {
             AndroidView(
                 factory = { context ->
-
+                    // TextureView stays inside Compose bounds; SurfaceView can cover sibling controls.
                     (android.view.LayoutInflater.from(context).inflate(
                         R.layout.levyra_video_player_view,
                         null,
@@ -16769,6 +16703,11 @@ private fun GlassMessage(text: String, color: Color) {
         Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(15.dp))
     }
 }
+
+
+
+
+
 
 @Composable
 private fun AudioQualityPanel(
@@ -17082,6 +17021,7 @@ private fun LyricsButton(loading: Boolean, available: Boolean, onClick: () -> Un
         }
     }
 }
+
 
 private fun progressOf(positionMs: Long, durationMs: Long): Float {
     if (durationMs <= 0L) return 0f
