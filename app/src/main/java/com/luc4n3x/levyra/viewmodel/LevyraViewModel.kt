@@ -1526,6 +1526,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         isResolving = false,
                         isPlaying = shouldPlay,
                         positionMs = positionMs,
+                        bufferedPositionMs = positionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
                         playerError = null
                     )
@@ -1586,6 +1587,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         isResolving = false,
                         isPlaying = playWhenReady,
                         positionMs = positionMs,
+                        bufferedPositionMs = positionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
                         playerError = null
                     )
@@ -4300,6 +4302,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 youtubeEngagement = YoutubeEngagementState(videoId = engagementVideoId),
                 isPlaying = false,
                 positionMs = 0L,
+                bufferedPositionMs = 0L,
                 durationMs = track.durationMs,
                 motionArtwork = null,
                 motionArtworkLoading = it.animationsEnabled
@@ -4385,6 +4388,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isResolving = false,
                 isPlaying = false,
                 positionMs = 0L,
+                bufferedPositionMs = 0L,
                 durationMs = track.durationMs,
                 currentTrack = track.copy(streamUrl = ""),
                 playerError = if (retryWhenOnline) null else cleanUserError(error)
@@ -5438,6 +5442,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isPlaying = false,
                 isResolving = false,
                 positionMs = 0L,
+                bufferedPositionMs = 0L,
                 durationMs = 0L,
                 motionArtwork = null,
                 motionArtworkLoading = false,
@@ -5621,6 +5626,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     player.positionMs
                 }
+                val buffered = (player.bufferedPositionMs / 1_000L) * 1_000L
                 val active = lyricsEngine.currentLine(position, snapshot.lyrics)
                 val playbackStateChanged = snapshot.isPlaying != player.isPlaying
                 val shouldPublishUi = snapshot.selectedTab == LevyraTab.Player ||
@@ -5632,6 +5638,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     _state.update {
                         it.copy(
                             positionMs = position,
+                            bufferedPositionMs = buffered.coerceAtLeast(position),
                             durationMs = duration,
                             isPlaying = player.isPlaying,
                             activeLyric = active
