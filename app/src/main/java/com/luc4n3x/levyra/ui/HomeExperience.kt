@@ -30,7 +30,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -224,21 +223,7 @@ internal fun LevyraHomeQuickAccessGrid(
     onSearch: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val items = remember(
-        currentTrack,
-        mixTrack,
-        favoriteTrack,
-        releaseTrack,
-        chartTrack,
-        isPlaying,
-        isResolving,
-        hasMix,
-        hasFavorites,
-        hasNewReleases,
-        hasCharts,
-        strings
-    ) {
-        listOf(
+    val items = listOf(
             HomeQuickAccessItem(
                 label = strings.continueListening,
                 track = currentTrack,
@@ -291,7 +276,6 @@ internal fun LevyraHomeQuickAccessGrid(
                 onClick = onSearch
             )
         )
-    }
 
     Column(verticalArrangement = Arrangement.spacedBy(LevyraHomeDesign.TileGap)) {
         items.chunked(2).forEach { rowItems ->
