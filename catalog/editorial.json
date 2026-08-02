@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T18:38:11Z",
+  "generatedAt": "2026-08-02T18:55:06Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -136,8 +136,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -1871,7 +1869,7 @@
         },
         {
           "position": 29,
-          "id": "levyra-62f091057573870630ff",
+          "id": "levyra-5d7a8244a6022b4ddba4",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1879,12 +1877,12 @@
             }
           ],
           "album": {
-            "name": "Rumours (Super Deluxe)",
+            "name": "Rumours",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
         },
         {
           "position": 30,
@@ -2072,7 +2070,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -2080,12 +2078,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 39,
@@ -2245,8 +2243,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -2631,8 +2627,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -3726,8 +3720,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -4870,8 +4862,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -5980,8 +5970,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -9611,8 +9599,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -10468,7 +10454,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -10476,8 +10462,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -10487,7 +10473,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 41,
@@ -10645,11 +10631,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 49,
@@ -10817,8 +10803,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -12410,8 +12394,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -13885,8 +13867,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -14393,8 +14373,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -15388,7 +15366,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-8e00e58819f76bb1bccd",
+          "id": "levyra-e09beec9b76bb06bdf72",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15396,12 +15374,12 @@
             }
           ],
           "album": {
-            "name": "Det kommer aldrig va över för mig",
-            "releaseDate": "2013-04-17"
+            "name": "Nyårsfest",
+            "releaseDate": "2020-12-18"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
         },
         {
           "position": 47,
@@ -15660,8 +15638,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -16304,7 +16280,7 @@
         },
         {
           "position": 39,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -16312,8 +16288,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16323,7 +16299,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 40,
@@ -16655,8 +16631,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -17124,11 +17098,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-08-24"
+            "releaseDate": "2010-01-01"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
           "position": 27,
@@ -20844,8 +20818,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
@@ -25250,6 +25222,12 @@
           },
           "durationMs": 222706,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "M2QKS9tte9g",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC2ArcMzVC3E4X_hTXpQNzlg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9d1f9b5d3275b0625e13e79"
         },
         {
@@ -27253,8 +27231,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -27692,12 +27668,6 @@
           },
           "durationMs": 317077,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "tHJyXh5z1A8",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCKJOobV0GEsdFnP2DneFWYg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b24fad04acb0e57d8042ca26"
         },
         {
@@ -27925,6 +27895,12 @@
           },
           "durationMs": 194887,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "YMUsAAwd8GA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVJJot2WTh-OLjiKpxzU-bw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c3857d4eec0e38b496b06ef8"
         },
         {
@@ -28917,8 +28893,6 @@
           "youtubeMusic": {
             "audioVideoId": "lFQdcPTTzSg",
             "audioConfidence": 100,
-            "videoId": "fcnDmrtj6Sk",
-            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCo6JijJGA3IvIiPsawDK3Ww"
           },
