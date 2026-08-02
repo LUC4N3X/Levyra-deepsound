@@ -10,12 +10,14 @@ class HomeDesignTest {
         assertTrue(LevyraHomeDesign.TileHeight >= LevyraPlayerDesign.MinimumTouchTarget)
         assertTrue(LevyraHomeDesign.ArtworkSize <= LevyraHomeDesign.TileHeight)
         assertTrue(LevyraHomeDesign.TileGap.value > 0f)
+        assertTrue(LevyraHomeDesign.TileCorner < LevyraHomeDesign.TileHeight)
     }
 
     @Test
     fun `home hierarchy stays tighter than the expressive player scale`() {
         assertTrue(LevyraHomeDesign.TileCorner < LevyraPlayerDesign.CornerMd)
         assertTrue(LevyraHomeDesign.HeroCorner <= LevyraPlayerDesign.CornerMd)
+        assertTrue(LevyraHomeDesign.AtmosphereHeight > LevyraHomeDesign.HeroHeight)
         assertEquals(18f, LevyraHomeDesign.HorizontalInset.value, 0f)
     }
 }
