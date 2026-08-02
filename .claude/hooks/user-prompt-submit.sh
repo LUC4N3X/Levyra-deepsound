@@ -35,6 +35,18 @@ prompt = str(data.get("prompt", "")).lower()
 if not prompt.strip():
     sys.exit(0)
 
+# Automated payloads (GitHub webhook activity, wrapped external data) arrive as
+# user turns and are mostly bot prose. Routing on them is always noise: a
+# CodeRabbit rate-limit notice matches "review", "release", "security", and "ui"
+# at once while asking for no work at all. Route real requests only.
+AUTOMATED_MARKERS = (
+    "<github-webhook-activity",
+    "<untrusted_external_data",
+    "<system-reminder",
+)
+if any(marker in prompt for marker in AUTOMATED_MARKERS):
+    sys.exit(0)
+
 # (skill, topic shown back to the model, trigger pattern)
 ROUTES = [
     (

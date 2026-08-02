@@ -78,6 +78,8 @@ That third row is the gap. A description is a hint the model may or may not act 
 
 The hook stays silent when nothing matches, when the payload is unreadable, and when `python3` is absent, so an unrelated request costs nothing. It always exits 0.
 
+It also stays silent on automated payloads — GitHub webhook activity and wrapped external data arrive as user turns but are bot prose, not requests. Without that guard a CodeRabbit rate-limit notice matches `review`, `release`, `security`, and `ui` at once and routes four skills for a message asking no work at all.
+
 `CLAUDE.md` carries the same routing table, so the behavior degrades to documented-but-unenforced rather than disappearing if the hook cannot run.
 
 To see what a given request would route to:
