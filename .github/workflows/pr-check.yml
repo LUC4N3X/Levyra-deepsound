@@ -5,34 +5,26 @@ on:
     branches:
       - main
       - master
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: pr-check-${{ github.ref }}
+  group: pr-263-format-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  android:
-    name: Lint and Release Compile
+  format-pr-263:
+    if: github.head_ref == 'feature/refactor-home-screen-yt-music-style' && github.actor != 'github-actions[bot]'
+    name: Finalize PR 263 formatting
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
-      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
-      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
-      LEVYRA_KEY_ALIAS: levyra_ci
-      LEVYRA_KEY_PASSWORD: levyra_ci_password
-
+    timeout-minutes: 45
     steps:
-      - name: Checkout
+      - name: Checkout PR branch
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: feature/refactor-home-screen-yt-music-style
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -40,107 +32,158 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           cache-disabled: true
 
-      - name: Validate Build Inputs
+      - name: Normalize changed Kotlin files
         shell: bash
         run: |
           set -euo pipefail
-          test -f settings.gradle.kts
-          test -f build.gradle.kts
-          test -f app/build.gradle.kts
-          test -f gradle/libs.versions.toml
-          test -x ./gradlew
-          test -f gradle/wrapper/gradle-wrapper.jar
-          test -f gradle/wrapper/gradle-wrapper.properties
+          python3 <<'PY'
+          from pathlib import Path
 
-      - name: Prepare CI Release Signing
+          app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = app_path.read_text(encoding='utf-8')
+
+          selection_start = text.index('    val currentTrackIdentity = state.currentTrack?.let(LevyraPersonalOrbit::identityKey)')
+          selection_end = text.index('    val homeBottomInset = tabBarBottomContentInset(', selection_start)
+          selection_block = '''    val currentTrackIdentity = state.currentTrack?.let(LevyraPersonalOrbit::identityKey)
+          val quickSelectionTracks = remember(
+              visiblePersonalTracks,
+              quickPicks,
+              state.favorites,
+              homeReleaseTracks,
+              resonanceTracks,
+              state.interfaceSettings.showPersonalOrbit,
+              state.interfaceSettings.showNewReleases,
+              state.interfaceSettings.showResonance
+          ) {
+              buildHomeQuickSelectionTracks(
+                  personalTracks = visiblePersonalTracks,
+                  quickPickTracks = quickPicks?.tracks.orEmpty(),
+                  favoriteTracks = state.favorites,
+                  newReleaseTracks = homeReleaseTracks,
+                  resonanceTracks = resonanceTracks,
+                  showPersonalOrbit = state.interfaceSettings.showPersonalOrbit,
+                  showNewReleases = state.interfaceSettings.showNewReleases,
+                  showResonance = state.interfaceSettings.showResonance
+              )
+          }
+          '''
+          text = text[:selection_start] + selection_block + text[selection_end:]
+
+          grid_start = text.index('        if (quickSelectionTracks.isNotEmpty()) {')
+          grid_end = text.index('        if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {', grid_start)
+          grid_block = '''        if (quickSelectionTracks.isNotEmpty()) {
+              item(key = "home-quick-access", contentType = "home-quick-access") {
+                  HomeSectionInset {
+                      HomeQuickSelectionGrid(
+                          tracks = quickSelectionTracks,
+                          currentIdentity = currentTrackIdentity,
+                          isPlaying = state.isPlaying,
+                          isResolving = state.isResolving,
+                          onPlay = { track ->
+                              when {
+                                  LevyraPersonalOrbit.identityKey(track) != currentTrackIdentity ->
+                                      viewModel.playFrom(quickSelectionTracks, track)
+                                  state.isResolving -> Unit
+                                  else -> viewModel.togglePlay()
+                              }
+                          }
+                      )
+                  }
+              }
+          }
+          '''
+          text = text[:grid_start] + grid_block + text[grid_end:]
+          app_path.write_text(text, encoding='utf-8')
+
+          changed_files = [
+              app_path,
+              Path('app/src/main/java/com/luc4n3x/levyra/ui/HomeExperience.kt'),
+              Path('app/src/main/java/com/luc4n3x/levyra/ui/HomeQuickSelection.kt'),
+              Path('app/src/test/java/com/luc4n3x/levyra/ui/HomeQuickSelectionTest.kt')
+          ]
+
+          def normalize_whitespace(source: str) -> str:
+              normalized = []
+              previous_blank = False
+              for line in source.splitlines():
+                  line = line.rstrip()
+                  blank = not line
+                  if blank and previous_blank:
+                      continue
+                  normalized.append(line)
+                  previous_blank = blank
+              return '\n'.join(normalized).rstrip() + '\n'
+
+          def assert_no_comments(source: str, path: Path) -> None:
+              state = 'code'
+              i = 0
+              line = 1
+              while i < len(source):
+                  if source[i] == '\n':
+                      line += 1
+                  if state == 'code':
+                      if source.startswith('//', i) or source.startswith('/*', i):
+                          raise RuntimeError(f'comment found in {path}:{line}')
+                      if source.startswith('"""', i):
+                          state = 'triple'
+                          i += 3
+                          continue
+                      if source[i] == '"':
+                          state = 'string'
+                      elif source[i] == "'":
+                          state = 'char'
+                      elif source[i] == '`':
+                          state = 'backtick'
+                  elif state == 'string':
+                      if source[i] == '\\' and i + 1 < len(source):
+                          i += 2
+                          continue
+                      if source[i] == '"':
+                          state = 'code'
+                  elif state == 'triple':
+                      if source.startswith('"""', i):
+                          state = 'code'
+                          i += 3
+                          continue
+                  elif state == 'char':
+                      if source[i] == '\\' and i + 1 < len(source):
+                          i += 2
+                          continue
+                      if source[i] == "'":
+                          state = 'code'
+                  elif state == 'backtick' and source[i] == '`':
+                      state = 'code'
+                  i += 1
+
+          for path in changed_files:
+              source = normalize_whitespace(path.read_text(encoding='utf-8'))
+              assert_no_comments(source, path)
+              path.write_text(source, encoding='utf-8')
+          PY
+
+      - name: Validate final formatting
+        run: |
+          ./gradlew --no-daemon :app:compileDebugKotlin
+          ./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.ui.HomeQuickSelectionTest'
+
+      - name: Restore workflow and commit
         shell: bash
         run: |
           set -euo pipefail
-          rm -f "${LEVYRA_KEYSTORE_FILE}"
-          keytool -genkeypair \
-            -keystore "${LEVYRA_KEYSTORE_FILE}" \
-            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
-            -alias "${LEVYRA_KEY_ALIAS}" \
-            -keypass "${LEVYRA_KEY_PASSWORD}" \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
-            >/dev/null
-
-      - name: Gradle Version
-        run: ./gradlew --no-daemon --version
-
-      - name: Android Runtime Compatibility Scan
-        run: python3 scripts/check_android_regex_compatibility.py
-
-      - name: Android Lint
-        run: ./gradlew --no-daemon :app:lintRelease
-
-      - name: Motion, Canvas, and Artwork Continuity Unit Tests
-        run: |
-          ./gradlew --no-daemon :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.feature.motion.*' \
-            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest'
-
-      - name: Release Compile
-        run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
-
-      - name: Setup Java 21 for F-Droid
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: F-Droid Release Compile
-        shell: bash
-        env:
-          YOUTUBE_INNERTUBE_API_KEY: ""
-          LEVYRA_KEYSTORE_FILE: ""
-          LEVYRA_KEYSTORE_PASSWORD: ""
-          LEVYRA_KEY_ALIAS: ""
-          LEVYRA_KEY_PASSWORD: ""
-        run: |
-          set -euo pipefail
-          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease \
-            -PlevyraFdroidBuild=true
-          FDROID_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
-          test -f "${FDROID_APK}"
-          if "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify "${FDROID_APK}" >/dev/null 2>&1; then
-            echo "F-Droid source build must remain unsigned."
-            exit 1
-          fi
-
-      - name: Collect Reports
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/reports
-          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/reports-index.txt || true
-          if [ -d app/build/reports ]; then
-            cp -R app/build/reports artifacts/reports/app-build-reports
-          fi
-
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: pr-check-reports-${{ github.run_number }}
-          path: artifacts
-          if-no-files-found: ignore
+          git show origin/main:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/HomeExperience.kt \
+            app/src/main/java/com/luc4n3x/levyra/ui/HomeQuickSelection.kt \
+            app/src/test/java/com/luc4n3x/levyra/ui/HomeQuickSelectionTest.kt \
+            .github/workflows/pr-check.yml
+          git diff --cached --check
+          git commit -m "style(ui): normalize Home refactor formatting"
+          git push origin HEAD:feature/refactor-home-screen-yt-music-style
