@@ -5209,10 +5209,10 @@ private fun HomeScreen(
         label = "homeAccentEnd"
     )
     val visiblePersonalTracks = remember(personalTracks) {
-    LevyraPersonalOrbit.distinctRecordings(personalTracks)
-        .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
-}
-val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
+        LevyraPersonalOrbit.distinctRecordings(personalTracks)
+            .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
+    }
+    val visibleEditorialCollections = remember(editorialCollections, spotlightCandidate?.track?.id) {
         editorialCollections.mapNotNull { collection ->
             val filteredTracks = collection.tracks.filterNot { it.id == spotlightCandidate?.track?.id }
             collection.copy(tracks = filteredTracks).takeIf { filteredTracks.size >= 4 }
@@ -5262,37 +5262,62 @@ val visibleEditorialCollections = remember(editorialCollections, spotlightCandid
             }
         }
     }
+    val homeMixTracks = remember(quickPicks, visiblePersonalTracks, resonanceTracks) {
+        quickPicks?.tracks?.takeIf { it.isNotEmpty() }
+            ?: visiblePersonalTracks.takeIf { it.isNotEmpty() }
+            ?: resonanceTracks
+    }
+    val homeReleaseTracks = remember(newReleases) { newReleases?.tracks.orEmpty() }
     val homeBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
     )
     Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(430.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            animatedHomeAccentStart.copy(alpha = 0.28f),
-                            animatedHomeAccentEnd.copy(alpha = 0.14f),
-                            Color.Transparent
-                        )
-                    )
-                )
+        LevyraHomeAtmosphere(
+            accentStart = animatedHomeAccentStart,
+            accentEnd = animatedHomeAccentEnd,
+            isLight = LevyraIsLight,
+            animationsEnabled = state.animationsEnabled,
+            modifier = Modifier.fillMaxWidth()
         )
         LazyColumn(
-        state = homeListState,
-        modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset),
-        verticalArrangement = Arrangement.spacedBy(if (state.interfaceSettings.compactHome) 14.dp else 26.dp)
-    ) {
+            state = homeListState,
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            contentPadding = PaddingValues(top = 10.dp, bottom = homeBottomInset),
+            verticalArrangement = Arrangement.spacedBy(
+                if (state.interfaceSettings.compactHome) 12.dp else 22.dp
+            )
+        ) {
         item(key = "home-top", contentType = "home-header") {
             HomeSectionInset {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
                     MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
                 }
+            }
+        }
+        item(key = "home-quick-access", contentType = "home-quick-access") {
+            HomeSectionInset {
+                LevyraHomeQuickAccessGrid(
+                    currentTrack = state.currentTrack,
+                    mixTrack = homeMixTracks.firstOrNull(),
+                    favoriteTrack = state.favorites.firstOrNull(),
+                    releaseTrack = homeReleaseTracks.firstOrNull(),
+                    chartTrack = state.charts.firstOrNull(),
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    hasMix = homeMixTracks.isNotEmpty(),
+                    hasFavorites = state.favorites.isNotEmpty(),
+                    hasNewReleases = homeReleaseTracks.isNotEmpty(),
+                    hasCharts = state.charts.isNotEmpty(),
+                    isLight = LevyraIsLight,
+                    onContinue = viewModel::togglePlay,
+                    onMix = { viewModel.playAll(homeMixTracks) },
+                    onFavorites = { viewModel.playAll(state.favorites) },
+                    onNewReleases = { viewModel.playAll(homeReleaseTracks) },
+                    onCharts = { viewModel.playAll(state.charts) },
+                    onSearch = { viewModel.searchNow() }
+                )
             }
         }
         spotlightCandidate?.let { candidate ->
@@ -5317,6 +5342,14 @@ val visibleEditorialCollections = remember(editorialCollections, spotlightCandid
                 }
             }
         }
+        if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {
+            item(key = "home-continue", contentType = "home-card") {
+                HomeContinueListeningCard(
+                    viewModel = viewModel,
+                    track = state.currentTrack
+                )
+            }
+        }
         if (state.interfaceSettings.showPersonalOrbit && visiblePersonalTracks.isNotEmpty()) {
             item(key = "home-personal", contentType = "home-shelf") {
                 PersonalListeningShelf(
@@ -5330,16 +5363,16 @@ val visibleEditorialCollections = remember(editorialCollections, spotlightCandid
                 )
             }
         }
-        if (showDeferredHomeSections && homeVideoTracks.isNotEmpty()) {
-            item(key = "home-music-videos", contentType = "home-horizontal-row") {
-                HomeMusicVideoShelf(
-                    title = strings.exploreNewVideos,
-                    tracks = homeVideoTracks,
+        if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
+            item(key = "home-quick-picks", contentType = "home-dense-shelf") {
+                HomeQuickPicksShelf(
+                    title = quickPicks.title.ifBlank { strings.quickPicks },
+                    tracks = quickPicks.tracks,
                     currentId = state.currentTrack?.id,
                     isPlaying = state.isPlaying,
                     isResolving = state.isResolving,
-                    onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) },
-                    onPlayAll = { viewModel.playAll(homeVideoTracks) }
+                    onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
+                    onPlayAll = { viewModel.playAll(quickPicks.tracks) }
                 )
             }
         }
@@ -5352,14 +5385,6 @@ val visibleEditorialCollections = remember(editorialCollections, spotlightCandid
                 )
             }
         }
-        if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {
-            item(key = "home-continue", contentType = "home-card") {
-                HomeContinueListeningCard(
-                    viewModel = viewModel,
-                    track = state.currentTrack
-                )
-            }
-        }
         if (showDeferredHomeSections && state.interfaceSettings.showResonance && resonanceTracks.isNotEmpty()) {
             item(key = "home-resonance", contentType = "home-shelf") {
                 ResonanceShelf(
@@ -5369,19 +5394,6 @@ val visibleEditorialCollections = remember(editorialCollections, spotlightCandid
                     isResolving = state.isResolving,
                     onPlay = { track -> viewModel.playFrom(resonanceTracks, track) },
                     onPlayAll = { viewModel.playAll(resonanceTracks) }
-                )
-            }
-        }
-        if (showDeferredHomeSections && quickPicks != null && quickPicks.tracks.isNotEmpty()) {
-            item(key = "home-quick-picks", contentType = "home-dense-shelf") {
-                HomeQuickPicksShelf(
-                    title = quickPicks.title.ifBlank { strings.quickPicks },
-                    tracks = quickPicks.tracks,
-                    currentId = state.currentTrack?.id,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    onPlay = { track -> viewModel.playFrom(quickPicks.tracks, track) },
-                    onPlayAll = { viewModel.playAll(quickPicks.tracks) }
                 )
             }
         }
@@ -5448,6 +5460,19 @@ val visibleEditorialCollections = remember(editorialCollections, spotlightCandid
                     artists = state.homeArtists.take(HOME_ARTIST_SHELF_SIZE),
                     loadingSlots = if (state.homeArtists.isEmpty() && state.homeArtistsLoading) HOME_ARTIST_SHELF_SIZE else 0,
                     onArtistClick = viewModel::openArtistFromHit
+                )
+            }
+        }
+        if (showDeferredHomeSections && homeVideoTracks.isNotEmpty()) {
+            item(key = "home-music-videos", contentType = "home-horizontal-row") {
+                HomeMusicVideoShelf(
+                    title = strings.exploreNewVideos,
+                    tracks = homeVideoTracks,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) },
+                    onPlayAll = { viewModel.playAll(homeVideoTracks) }
                 )
             }
         }
@@ -5607,7 +5632,7 @@ private fun HomeEditorialSpotlight(
         animationSpec = tween(durationMillis = 160, easing = FastOutSlowInEasing),
         label = "homeSpotlightScale"
     )
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(22.dp)
     val context = LocalContext.current
     val fallbackPalette = remember(track.accentStart, track.accentEnd) {
         ArtworkPalette(track.accentStart, track.accentEnd)
@@ -5698,13 +5723,13 @@ private fun HomeEditorialSpotlight(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(232.dp)
+            .height(216.dp)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
             .shadow(
-                elevation = 18.dp,
+                elevation = 12.dp,
                 shape = shape,
                 clip = false,
                 ambientColor = accentStart.copy(alpha = 0.14f),
@@ -5728,7 +5753,7 @@ private fun HomeEditorialSpotlight(
                 onClick = onOpen
             )
     ) {
-        val artworkWidth = maxWidth * 0.66f
+        val artworkWidth = maxWidth * 0.62f
         CoverImage(
             track = track,
             modifier = Modifier
@@ -14031,17 +14056,17 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
     val settingsBorderTop = Color.White.copy(alpha = if (isLight) 0.24f else 0.20f)
     val settingsBorderBottom = Color.White.copy(alpha = if (isLight) 0.06f else 0.05f)
     val settingsIconTint = if (isLight) LevyraText.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
-    val settingsElevation = if (isLight) 3.dp else 10.dp
+    val settingsElevation = if (isLight) 2.dp else 8.dp
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val greetingShape = RoundedCornerShape(999.dp)
             Row(
@@ -14101,13 +14126,13 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                LevyraLogoMark(size = 46.dp)
-                LevyraWordmark(fontSize = 31.sp, dotSize = 5.dp)
+                LevyraLogoMark(size = 40.dp)
+                LevyraWordmark(fontSize = 29.sp, dotSize = 4.dp)
             }
         }
         Box(
             modifier = Modifier
-                .size(46.dp)
+                .size(42.dp)
                 .shadow(
                     elevation = settingsElevation,
                     shape = CircleShape,
@@ -14484,7 +14509,7 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(9.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(
             items = moods,
@@ -14515,7 +14540,7 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
                     fontSize = 13.sp,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 17.dp, vertical = 11.dp)
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
                 )
             }
         }
