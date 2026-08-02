@@ -5263,12 +5263,6 @@ private fun HomeScreen(
             }
         }
     }
-    val homeMixTracks = remember(quickPicks, visiblePersonalTracks, resonanceTracks) {
-        quickPicks?.tracks?.takeIf { it.isNotEmpty() }
-            ?: visiblePersonalTracks.takeIf { it.isNotEmpty() }
-            ?: resonanceTracks
-    }
-    val homeReleaseTracks = remember(newReleases) { newReleases?.tracks.orEmpty() }
     val homeBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
@@ -5295,40 +5289,6 @@ private fun HomeScreen(
                     GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings)
                     MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
                 }
-            }
-        }
-        item(key = "home-quick-access", contentType = "home-quick-access") {
-            HomeSectionInset {
-                LevyraHomeQuickAccessGrid(
-                    state = LevyraHomeQuickAccessState(
-                        tracks = LevyraHomeQuickAccessTracks(
-                            current = state.currentTrack,
-                            mix = homeMixTracks.firstOrNull(),
-                            favorite = state.favorites.firstOrNull(),
-                            release = homeReleaseTracks.firstOrNull(),
-                            chart = state.charts.firstOrNull()
-                        ),
-                        availability = LevyraHomeQuickAccessAvailability(
-                            hasMix = homeMixTracks.isNotEmpty(),
-                            hasFavorites = state.favorites.isNotEmpty(),
-                            hasNewReleases = homeReleaseTracks.isNotEmpty(),
-                            hasCharts = state.charts.isNotEmpty()
-                        ),
-                        playback = LevyraHomeQuickAccessPlayback(
-                            isPlaying = state.isPlaying,
-                            isResolving = state.isResolving
-                        ),
-                        isLight = LevyraIsLight
-                    ),
-                    actions = LevyraHomeQuickAccessActions(
-                        onContinue = viewModel::togglePlay,
-                        onMix = { viewModel.playAll(homeMixTracks) },
-                        onFavorites = { viewModel.playAll(state.favorites) },
-                        onNewReleases = { viewModel.playAll(homeReleaseTracks) },
-                        onCharts = { viewModel.playAll(state.charts) },
-                        onSearch = { viewModel.searchNow() }
-                    )
-                )
             }
         }
         spotlightCandidate?.let { candidate ->
