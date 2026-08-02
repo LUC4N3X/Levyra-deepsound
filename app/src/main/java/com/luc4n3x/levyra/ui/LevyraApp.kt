@@ -296,6 +296,7 @@ import com.luc4n3x.levyra.data.HomeLoadingPolicy
 import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
+import com.luc4n3x.levyra.data.PlaybackSourceIdentity
 import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
@@ -5485,13 +5486,12 @@ private fun HomeScreen(
             if (showDeferredHomeSections && homeVideoTracks.isNotEmpty()) {
                 item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                     HomeMusicVideoShelf(
-                        title = strings.exploreNewVideos,
+                        title = strings.video,
                         tracks = homeVideoTracks,
                         currentId = state.currentTrack?.id,
                         isPlaying = state.isPlaying,
                         isResolving = state.isResolving,
-                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) },
-                        onPlayAll = { viewModel.playAll(homeVideoTracks) }
+                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) }
                     )
                 }
             }
@@ -6854,12 +6854,15 @@ private fun HomeMusicVideoShelf(
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
-    onPlay: (Track) -> Unit,
-    onPlayAll: () -> Unit
+    onPlay: (Track) -> Unit
 ) {
-    val videos = remember(tracks) { LevyraPersonalOrbit.distinctRecordings(tracks).take(12) }
+    val videos = remember(tracks) {
+        LevyraPersonalOrbit.distinctRecordings(tracks)
+            .take(12)
+            .map(::homeMusicVideoPreviewTrack)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        HomeSectionInset { SectionHeaderAction(title, onPlayAll) }
+        HomeSectionInset { HomeSectionHeader(title) }
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -6872,21 +6875,21 @@ private fun HomeMusicVideoShelf(
             ) { _, track ->
                 val active = currentId != null && track.id == currentId
                 Column(
-                    modifier = Modifier.width(154.dp).pressable(onClick = { onPlay(track) }),
+                    modifier = Modifier.width(236.dp).pressable(onClick = { onPlay(track) }),
                     verticalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(22.dp))
+                            .aspectRatio(16f / 9f)
+                            .clip(LevyraHomeDesign.ShelfShape)
                             .border(
                                 if (active) 1.5.dp else Dp.Hairline,
                                 if (active) LevyraCyan.copy(alpha = 0.82f) else LevyraAdaptiveSoftHairline,
-                                RoundedCornerShape(22.dp)
+                                LevyraHomeDesign.ShelfShape
                             )
                     ) {
-                        CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true, zoom = 1.03f)
+                        CoverImage(track = track, modifier = Modifier.fillMaxSize(), highRes = true, zoom = 1f)
                         Box(
                             modifier = Modifier.matchParentSize().background(
                                 Brush.verticalGradient(
@@ -6945,6 +6948,22 @@ private fun HomeMusicVideoShelf(
             }
         }
     }
+}
+
+private val HomeVideoIdPattern = Regex("[A-Za-z0-9_-]{11}")
+
+private fun homeMusicVideoPreviewTrack(track: Track): Track {
+    val videoId = track.counterpartVideoId
+        .trim()
+        .takeIf(HomeVideoIdPattern::matches)
+        ?: PlaybackSourceIdentity.sourceVideoId(track)
+            .trim()
+            .takeIf(HomeVideoIdPattern::matches)
+        ?: return track
+    return track.copy(
+        thumbnailUrl = "https://i.ytimg.com/vi/$videoId/mqdefault.jpg",
+        largeThumbnailUrl = "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg"
+    )
 }
 
 private fun isMusicVideoSectionTitle(title: String, strings: LevyraStrings): Boolean {
@@ -8390,39 +8409,91 @@ private fun SearchHeader(
             )
         }
 
+        val searchShape = RoundedCornerShape(20.dp)
         Surface(
-            color = CinematicGlass.copy(alpha = 0.78f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-            shape = CircleShape,
-            shadowElevation = 10.dp,
-            modifier = Modifier.weight(1f)
+            color = if (LevyraIsLight) Color.White.copy(alpha = 0.92f) else Color(0xFF11131A),
+            border = BorderStroke(
+                Dp.Hairline,
+                if (LevyraIsLight) Color(0x1811131F) else Color.White.copy(alpha = 0.09f)
+            ),
+            shape = searchShape,
+            shadowElevation = if (LevyraIsLight) 3.dp else 8.dp,
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 58.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 2.dp),
+                    .padding(start = 9.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    LevyraCyan.copy(alpha = 0.22f),
+                                    LevyraViolet.copy(alpha = 0.14f)
+                                )
+                            ),
+                            RoundedCornerShape(13.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = LevyraCyan,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
                 BasicTextField(
                     value = query,
                     onValueChange = onQuery,
-                    modifier = Modifier.weight(1f).padding(vertical = 10.dp),
+                    modifier = Modifier.weight(1f),
                     singleLine = true,
-                    textStyle = TextStyle(color = LevyraText, fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
+                    textStyle = TextStyle(
+                        color = LevyraText,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp
+                    ),
                     cursorBrush = SolidColor(LevyraCyan),
                     decorationBox = { innerTextField ->
-                        if (query.isEmpty()) {
-                            Text(strings.searchPlaceholder, color = LevyraMuted, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (query.isEmpty()) {
+                                Text(
+                                    text = strings.searchPlaceholder,
+                                    color = LevyraMuted.copy(alpha = 0.86f),
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 14.5.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            innerTextField()
                         }
-                        innerTextField()
                     }
                 )
 
-                if (query.isNotEmpty()) {
+                if (isSearching) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = LevyraCyan
+                    )
+                } else if (query.isNotEmpty()) {
                     IconButton(
                         onClick = onClear,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier
+                            .size(34.dp)
+                            .background(
+                                if (LevyraIsLight) Color(0x0D11131F) else Color.White.copy(alpha = 0.05f),
+                                RoundedCornerShape(12.dp)
+                            )
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Close,
