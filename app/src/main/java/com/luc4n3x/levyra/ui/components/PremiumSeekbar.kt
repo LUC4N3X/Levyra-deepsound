@@ -1,22 +1,24 @@
 package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,14 +26,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
@@ -41,7 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luc4n3x.levyra.ui.theme.LevyraCyan
 import com.luc4n3x.levyra.ui.theme.LevyraMuted
+import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.roundToInt
 
 @Composable
 fun PremiumSeekbar(
@@ -49,73 +62,98 @@ fun PremiumSeekbar(
     durationMs: Long,
     onSeekTo: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    bufferedPositionMs: Long = 0L,
     activeColor: Color = LevyraCyan,
+    trailingColor: Color = activeColor,
     inactiveColor: Color = LevyraMuted.copy(alpha = 0.35f),
-    thumbColor: Color = Color.White
+    thumbColor: Color = Color.White,
+    isPlaying: Boolean = false,
+    animated: Boolean = true,
+    contentDescription: String? = null
 ) {
+    val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
+
     var isDragging by remember { mutableStateOf(false) }
     var dragProgressFraction by remember { mutableFloatStateOf(0f) }
+    var widthPx by remember { mutableFloatStateOf(0f) }
 
     val effectiveProgress = if (isDragging) {
         dragProgressFraction
     } else {
-        if (durationMs > 0L) (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+        seekbarProgressFraction(positionMs, durationMs)
+    }
+    val bufferedProgress = remember(bufferedPositionMs, durationMs, effectiveProgress) {
+        seekbarProgressFraction(bufferedPositionMs, durationMs).coerceAtLeast(effectiveProgress)
     }
 
-    val trackThicknessScale = remember { Animatable(1f) }
-    val thumbScale = remember { Animatable(0.4f) }
+    val trackScale = remember { Animatable(1f) }
+    val handleScale = remember { Animatable(0f) }
+    val waveAmplitude = remember { Animatable(0f) }
 
     LaunchedEffect(isDragging) {
-        trackThicknessScale.animateTo(
-            targetValue = if (isDragging) 1.5f else 1f,
-            animationSpec = spring(
-                dampingRatio = 0.7f,
-                stiffness = Spring.StiffnessMedium
-            )
+        trackScale.animateTo(
+            targetValue = if (isDragging) 1.55f else 1f,
+            animationSpec = LevyraPlayerDesign.expressiveSpring()
         )
     }
-    
     LaunchedEffect(isDragging) {
-        thumbScale.animateTo(
-            targetValue = if (isDragging) 1f else 0.4f,
-            animationSpec = spring(
-                dampingRatio = 0.8f,
-                stiffness = Spring.StiffnessMedium
-            )
+        handleScale.animateTo(
+            targetValue = if (isDragging) 1f else 0f,
+            animationSpec = LevyraPlayerDesign.expressiveSpring()
         )
     }
 
-    val density = LocalDensity.current
+    val waveActive = animated && isPlaying && !isDragging && durationMs > 0L
+    LaunchedEffect(waveActive) {
+        waveAmplitude.animateTo(
+            targetValue = if (waveActive) 1f else 0f,
+            animationSpec = LevyraPlayerDesign.smoothSpring()
+        )
+    }
 
-    BoxWithConstraints(
+    val wavePath = remember { Path() }
+    val wavePhase = remember { Animatable(0f) }
+    LaunchedEffect(waveActive) {
+        if (!waveActive) return@LaunchedEffect
+        wavePhase.snapTo(0f)
+        wavePhase.animateTo(
+            targetValue = -2f * PI.toFloat(),
+            animationSpec = infiniteRepeatable(
+                animation = tween(LevyraPlayerDesign.WaveCycleMillis, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            )
+        )
+    }
+
+    val scrubMillis by remember(durationMs) {
+        derivedStateOf { seekbarSeekMillis(dragProgressFraction, durationMs) }
+    }
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .padding(vertical = 4.dp),
-        contentAlignment = Alignment.Center
+            .height(LevyraPlayerDesign.MinimumTouchTarget)
+            .onSizeChanged { widthPx = it.width.toFloat() },
+        contentAlignment = Alignment.CenterStart
     ) {
-        val widthPx = with(density) { constraints.maxWidth.toDp().toPx() }
-        val seekPosMs = (effectiveProgress * durationMs.coerceAtLeast(0L)).toLong()
-
-        if (isDragging) {
-            val tooltipHalfWidthPx = with(density) { 32.dp.toPx() }
-                .coerceAtMost(widthPx / 2f)
-            val tooltipMax = (widthPx - tooltipHalfWidthPx).coerceAtLeast(tooltipHalfWidthPx)
-            val tooltipOffsetPx = (effectiveProgress * widthPx)
-                .coerceIn(tooltipHalfWidthPx, tooltipMax)
-            val tooltipOffsetDp = with(density) { (tooltipOffsetPx - tooltipHalfWidthPx).toDp() }
-
+        if (isDragging && widthPx > 0f) {
+            val tooltipWidthPx = with(density) { 74.dp.toPx() }
+            val offsetX = seekbarTooltipOffsetX(effectiveProgress, widthPx, tooltipWidthPx)
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset { IntOffset(with(density) { tooltipOffsetDp.toPx().toInt() }, -36.dp.roundToPx()) }
-                    .shadow(8.dp, RoundedCornerShape(8.dp))
-                    .background(Color(0xFF1E1E24), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                    .offset { IntOffset(offsetX.roundToInt(), with(density) { (-34).dp.roundToPx() }) }
+                    .background(Color(0xFF101014).copy(alpha = 0.94f), LevyraPlayerDesign.ShapeXs)
+                    .border(
+                        width = LevyraPlayerDesign.Hairline,
+                        color = activeColor.copy(alpha = 0.55f),
+                        shape = LevyraPlayerDesign.ShapeXs
+                    )
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = formatMs(seekPosMs),
+                    text = formatSeekbarMillis(scrubMillis),
                     color = Color.White,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
@@ -126,8 +164,10 @@ fun PremiumSeekbar(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(LevyraPlayerDesign.MinimumTouchTarget)
+                .clipToBounds()
                 .semantics {
+                    contentDescription?.let { this.contentDescription = it }
                     progressBarRangeInfo = ProgressBarRangeInfo(
                         current = effectiveProgress,
                         range = 0f..1f,
@@ -135,7 +175,7 @@ fun PremiumSeekbar(
                     )
                     setProgress { targetValue ->
                         if (durationMs > 0L) {
-                            onSeekTo((targetValue.coerceIn(0f, 1f) * durationMs).toLong())
+                            onSeekTo(seekbarSeekMillis(targetValue, durationMs))
                             true
                         } else {
                             false
@@ -144,9 +184,10 @@ fun PremiumSeekbar(
                 }
                 .pointerInput(durationMs) {
                     detectTapGestures { offset ->
-                        if (durationMs > 0L && widthPx > 0f) {
-                            val targetFrac = (offset.x / widthPx).coerceIn(0f, 1f)
-                            onSeekTo((targetFrac * durationMs).toLong())
+                        if (durationMs > 0L && size.width > 0) {
+                            val fraction = seekbarFractionAt(offset.x, size.width.toFloat())
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onSeekTo(seekbarSeekMillis(fraction, durationMs))
                         }
                     }
                 }
@@ -155,83 +196,120 @@ fun PremiumSeekbar(
                     detectHorizontalDragGestures(
                         onDragStart = { offset ->
                             isDragging = true
-                            if (widthPx > 0f) {
-                                dragProgressFraction = (offset.x / widthPx).coerceIn(0f, 1f)
-                            }
+                            dragProgressFraction = seekbarFractionAt(offset.x, size.width.toFloat())
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         },
                         onDragEnd = {
                             isDragging = false
-                            if (durationMs > 0L) {
-                                onSeekTo((dragProgressFraction * durationMs).toLong())
-                            }
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onSeekTo(seekbarSeekMillis(dragProgressFraction, durationMs))
                         },
-                        onDragCancel = {
-                            isDragging = false
-                        },
+                        onDragCancel = { isDragging = false },
                         onHorizontalDrag = { change, _ ->
                             change.consume()
-                            if (widthPx > 0f) {
-                                dragProgressFraction = (change.position.x / widthPx).coerceIn(0f, 1f)
-                            }
+                            dragProgressFraction = seekbarFractionAt(change.position.x, size.width.toFloat())
                         }
                     )
                 }
         ) {
             val totalWidth = size.width
-            val totalHeight = size.height
-            val centerY = totalHeight / 2f
-            
-            val baseTrackHeight = 3.dp.toPx()
-            val currentTrackHeight = baseTrackHeight * trackThicknessScale.value
-            
-            val activeWidth = totalWidth * effectiveProgress
+            if (totalWidth <= 0f) return@Canvas
+            val centerY = size.height / 2f
 
-            drawRoundRect(
-                color = inactiveColor,
-                topLeft = Offset(0f, centerY - currentTrackHeight / 2f),
-                size = Size(totalWidth, currentTrackHeight),
-                cornerRadius = CornerRadius(currentTrackHeight / 2f, currentTrackHeight / 2f)
-            )
+            val baseTrackHeight = LevyraPlayerDesign.TrackHeight.toPx()
+            val trackHeight = baseTrackHeight * trackScale.value
+            val handleWidth = LevyraPlayerDesign.HandleWidth.toPx() +
+                (LevyraPlayerDesign.HandleWidthActive - LevyraPlayerDesign.HandleWidth).toPx() * handleScale.value
+            val handleHeight = LevyraPlayerDesign.HandleHeight.toPx() +
+                (LevyraPlayerDesign.HandleHeightActive - LevyraPlayerDesign.HandleHeight).toPx() * handleScale.value
+            val gap = trackHeight * 1.1f
 
-            val activeTrackHeight = currentTrackHeight * 1.15f
-            
-            drawRoundRect(
-                color = activeColor.copy(alpha = 0.20f),
-                topLeft = Offset(0f, centerY - activeTrackHeight * 1.5f),
-                size = Size(activeWidth, activeTrackHeight * 3f),
-                cornerRadius = CornerRadius(activeTrackHeight * 1.5f, activeTrackHeight * 1.5f)
-            )
+            val handleX = seekbarHandleCenterX(effectiveProgress, totalWidth, handleWidth)
+            val activeEnd = (handleX - handleWidth / 2f - gap).coerceAtLeast(0f)
+            val inactiveStart = (handleX + handleWidth / 2f + gap).coerceAtMost(totalWidth)
 
-            drawRoundRect(
-                color = activeColor,
-                topLeft = Offset(0f, centerY - activeTrackHeight / 2f),
-                size = Size(activeWidth, activeTrackHeight),
-                cornerRadius = CornerRadius(activeTrackHeight / 2f, activeTrackHeight / 2f)
-            )
-
-            val thumbX = activeWidth.coerceIn(0f, totalWidth)
-            val baseThumbRadius = 8.dp.toPx()
-            val currentThumbRadius = baseThumbRadius * thumbScale.value
-
-            if (currentThumbRadius > 0.5f) {
-                drawCircle(
-                    color = activeColor.copy(alpha = 0.35f),
-                    radius = currentThumbRadius * 1.8f,
-                    center = Offset(thumbX, centerY)
-                )
-                drawCircle(
-                    color = thumbColor,
-                    radius = currentThumbRadius,
-                    center = Offset(thumbX, centerY)
+            if (inactiveStart < totalWidth) {
+                drawRoundRect(
+                    color = inactiveColor,
+                    topLeft = Offset(inactiveStart, centerY - trackHeight / 2f),
+                    size = Size(totalWidth - inactiveStart, trackHeight),
+                    cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
                 )
             }
+
+            val bufferedEnd = (bufferedProgress * totalWidth).coerceIn(0f, totalWidth)
+            if (bufferedEnd > inactiveStart) {
+                drawRoundRect(
+                    color = thumbColor.copy(alpha = 0.22f),
+                    topLeft = Offset(inactiveStart, centerY - trackHeight / 2f),
+                    size = Size(bufferedEnd - inactiveStart, trackHeight),
+                    cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+                )
+            }
+
+            if (activeEnd > 0f) {
+                val amplitudePx = LevyraPlayerDesign.WaveAmplitude.toPx() * waveAmplitude.value
+                if (amplitudePx > 0.4f) {
+                    val wavelength = LevyraPlayerDesign.WavePeriodDp.dp.toPx()
+                    val taper = wavelength * 0.75f
+                    val samples = seekbarWaveSampleCount(activeEnd)
+                    val step = activeEnd / samples
+                    wavePath.rewind()
+                    var x = 0f
+                    var index = 0
+                    while (index <= samples) {
+                        val local = seekbarWaveTaper(x, activeEnd, taper)
+                        val y = centerY + seekbarWaveOffset(x, amplitudePx * local, wavelength, wavePhase.value)
+                        if (index == 0) wavePath.moveTo(x, y) else wavePath.lineTo(x, y)
+                        x += step
+                        index += 1
+                    }
+                    drawPath(
+                        path = wavePath,
+                        color = activeColor,
+                        style = Stroke(
+                            width = trackHeight,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                } else {
+                    drawRoundRect(
+                        color = activeColor,
+                        topLeft = Offset(0f, centerY - trackHeight / 2f),
+                        size = Size(activeEnd, trackHeight),
+                        cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+                    )
+                }
+            }
+
+            if (handleScale.value > 0.01f) {
+                drawRoundRect(
+                    color = trailingColor.copy(alpha = 0.30f * handleScale.value),
+                    topLeft = Offset(handleX - handleWidth * 1.6f, centerY - handleHeight * 0.65f),
+                    size = Size(handleWidth * 3.2f, handleHeight * 1.30f),
+                    cornerRadius = CornerRadius(handleWidth * 1.6f, handleWidth * 1.6f)
+                )
+            }
+
+            drawRoundRect(
+                color = thumbColor,
+                topLeft = Offset(handleX - handleWidth / 2f, centerY - handleHeight / 2f),
+                size = Size(handleWidth, handleHeight),
+                cornerRadius = CornerRadius(handleWidth / 2f, handleWidth / 2f)
+            )
         }
     }
 }
 
-private fun formatMs(ms: Long): String {
-    val totalSec = (ms / 1000L).coerceAtLeast(0L)
-    val mins = totalSec / 60L
-    val secs = totalSec % 60L
-    return String.format(Locale.US, "%02d:%02d", mins, secs)
+internal fun formatSeekbarMillis(ms: Long): String {
+    val totalSeconds = (ms / 1_000L).coerceAtLeast(0L)
+    val hours = totalSeconds / 3_600L
+    val minutes = (totalSeconds % 3_600L) / 60L
+    val seconds = totalSeconds % 60L
+    return if (hours > 0L) {
+        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format(Locale.US, "%02d:%02d", minutes, seconds)
+    }
 }
