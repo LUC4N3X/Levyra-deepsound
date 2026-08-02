@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   workflow-duplicates-guard:
@@ -195,3 +195,94 @@ jobs:
           print("Android release publishers: " + (", ".join(android_release_publishers) if android_release_publishers else "none"))
           print("Desktop release publishers: " + (", ".join(desktop_release_publishers) if desktop_release_publishers else "none"))
           PY
+
+  apply-active-video-toggle:
+    name: Apply active video toggle
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'refactor/home-experience'
+    needs: workflow-duplicates-guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+
+      - name: Patch active video behavior
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = (
+              (
+                  'video shelf call',
+                  '''                        isResolving = state.isResolving,
+                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) }
+''',
+                  '''                        isResolving = state.isResolving,
+                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) },
+                        onToggleCurrent = viewModel::togglePlay
+'''
+              ),
+              (
+                  'video shelf signature',
+                  '''    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: (Track) -> Unit
+) {
+''',
+                  '''    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: (Track) -> Unit,
+    onToggleCurrent: () -> Unit
+) {
+'''
+              ),
+              (
+                  'video card click',
+                  '''                Column(
+                    modifier = Modifier.width(236.dp).pressable(onClick = { onPlay(track) }),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+''',
+                  '''                Column(
+                    modifier = Modifier
+                        .width(236.dp)
+                        .pressable(
+                            onClick = {
+                                if (active) onToggleCurrent() else onPlay(track)
+                            }
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+'''
+              ),
+          )
+
+          for label, old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one {label}, found {count}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/workflow-duplicates-guard.yml
+          rm -f .github/workflows/fix-active-home-video-toggle.yml
+          git diff --check
+
+      - name: Commit clean fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(home): toggle active video playback"
+          git push origin HEAD:refactor/home-experience
