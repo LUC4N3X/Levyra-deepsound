@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T20:54:03Z",
+  "generatedAt": "2026-08-02T21:17:32Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1640,7 +1640,7 @@
         },
         {
           "position": 19,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1648,8 +1648,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1659,7 +1659,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 20,
@@ -2023,7 +2023,7 @@
         },
         {
           "position": 36,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2031,12 +2031,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 37,
@@ -4967,12 +4967,6 @@
           },
           "durationMs": 176213,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "O2tKlnfrLkY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCLxywkV1hSsZPvRvRGjQh3g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02690365cf88e5be15e0f91652"
         },
         {
@@ -5775,7 +5769,7 @@
           "durationMs": 192432,
           "explicit": true,
           "youtubeMusic": {
-            "audioVideoId": "jVPTGvUQc8s",
+            "audioVideoId": "LPDvKF_h8_o",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCm6FmMolN-n38Oj8-ZHVuHg"
@@ -6380,12 +6374,6 @@
           },
           "durationMs": 149677,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "luxCEnkpTmI",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC9IBdRWHeNkg7QRsi2B_dFA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023843258b0c6a95bf3c12c915"
         },
         {
@@ -6839,6 +6827,14 @@
           },
           "durationMs": 284866,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "WivOyYEdjEE",
+            "audioConfidence": 100,
+            "videoId": "t4H_Zoh7G5A",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCXDcGa1H1axtr1wkxOR3hZQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7b2aa3834b82b1cbe899a48"
         },
         {
@@ -7581,7 +7577,7 @@
         },
         {
           "position": 18,
-          "id": "levyra-7fd08f9e4c7d58013a4d",
+          "id": "levyra-68fcfb916bb338f70aa5",
           "title": "Apaga Apaga Apaga - Ao Vivo",
           "artists": [
             {
@@ -7589,8 +7585,8 @@
             }
           ],
           "album": {
-            "name": "As Mais Tocadas Danilo e Davi - 2026 (Ao Vivo)",
-            "releaseDate": "2025-09-23"
+            "name": "Toma Essa Verdade (Ao Vivo)",
+            "releaseDate": "2024-08-09"
           },
           "durationMs": 178882,
           "explicit": false,
@@ -7600,7 +7596,7 @@
             "confidence": 100,
             "artistBrowseId": "UCffWjqUO0JDOvH_F05qF4JA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ee575d99f001805ca93ac8da"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020d5f00c853be5debb5eba851"
         },
         {
           "position": 19,
@@ -7642,7 +7638,7 @@
           ],
           "album": {
             "name": "MOLHO (Ao Vivo)",
-            "releaseDate": "2026-04-16"
+            "releaseDate": "2025-10-16"
           },
           "durationMs": 192367,
           "explicit": false,
@@ -7652,7 +7648,7 @@
             "confidence": 100,
             "artistBrowseId": "UChn53L2iJ2EY1CGZcO4aV6A"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f04abb4f70f72b26963eab5"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c89ff3434d85f33354c929b8"
         },
         {
           "position": 21,
@@ -7924,7 +7920,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-b13bf7899897168372d0",
+          "id": "levyra-9f7f7ed97ef04e3a1b78",
           "title": "Foi por Conveniência",
           "artists": [
             {
@@ -7932,8 +7928,8 @@
             }
           ],
           "album": {
-            "name": "Manuscritos, Capítulo I",
-            "releaseDate": "2026-04-22"
+            "name": "Foi por Conveniência",
+            "releaseDate": "2021-01-15"
           },
           "durationMs": 205586,
           "explicit": false,
@@ -7943,7 +7939,7 @@
             "confidence": 100,
             "artistBrowseId": "UCj14PDgkcQQMz6v-g2eruBA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029cea79f4d67ac59fc57191bc"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbdde8a138debae4178aaaa4"
         },
         {
           "position": 33,
@@ -8147,7 +8143,7 @@
           ],
           "album": {
             "name": "MOLHO (Ao Vivo)",
-            "releaseDate": "2026-04-16"
+            "releaseDate": "2025-10-16"
           },
           "durationMs": 162325,
           "explicit": false,
@@ -8157,7 +8153,7 @@
             "confidence": 100,
             "artistBrowseId": "UChn53L2iJ2EY1CGZcO4aV6A"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f04abb4f70f72b26963eab5"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c89ff3434d85f33354c929b8"
         },
         {
           "position": 41,
@@ -8329,7 +8325,7 @@
         },
         {
           "position": 47,
-          "id": "levyra-54155f7ab085dc881c4e",
+          "id": "levyra-aba489167179a0a636b8",
           "title": "Barulho Do Foguete - Ao Vivo",
           "artists": [
             {
@@ -8337,8 +8333,8 @@
             }
           ],
           "album": {
-            "name": "As Mais Tocadas Do Zé Neto & Cristiano",
-            "releaseDate": "2023-12-05"
+            "name": "Escolhas (Ao Vivo)",
+            "releaseDate": "2023-10-05"
           },
           "durationMs": 133546,
           "explicit": false,
@@ -8348,7 +8344,7 @@
             "confidence": 100,
             "artistBrowseId": "UCm6Kk_E9qUcPEEAiwsOzzXQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b475f624e8f5cfe8a69286f4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023354017c31f2d6623236f571"
         },
         {
           "position": 48,
@@ -9987,12 +9983,6 @@
           },
           "durationMs": 198425,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "SkHJ5ChXcDo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -10536,7 +10526,7 @@
         },
         {
           "position": 43,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -10544,12 +10534,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 44,
@@ -12517,6 +12507,12 @@
           },
           "durationMs": 148453,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "yXbJrm-XzAo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm5s8ZhhrkBhOIikmS_QcRw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0294f8c9168a79ba591e7b0a3b"
         },
         {
@@ -17310,6 +17306,14 @@
           },
           "durationMs": 284866,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "WivOyYEdjEE",
+            "audioConfidence": 100,
+            "videoId": "t4H_Zoh7G5A",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCXDcGa1H1axtr1wkxOR3hZQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7b2aa3834b82b1cbe899a48"
         },
         {
@@ -22527,6 +22531,12 @@
           },
           "durationMs": 265000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "t8P-zdkoeJA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC8-EI2rTBYgkZl5kB_b-2Pw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f694adfa02990eaca79fec1b"
         },
         {
@@ -24034,7 +24044,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-0212b4c8036ae7ca6989",
+          "id": "levyra-e58c98ea589fa449e1d7",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24051,12 +24061,12 @@
             }
           ],
           "album": {
-            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
-            "releaseDate": "2009-02-19"
+            "name": "Guru (Original Motion Picture Soundtrack)",
+            "releaseDate": "2006-09-11"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
         },
         {
           "position": 47,
@@ -25136,12 +25146,6 @@
           },
           "durationMs": 222706,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "M2QKS9tte9g",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC2ArcMzVC3E4X_hTXpQNzlg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a9d1f9b5d3275b0625e13e79"
         },
         {
@@ -26199,11 +26203,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2021-07-11"
+            "releaseDate": "2026-01-21"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
         },
         {
           "position": 37,
@@ -26445,29 +26449,26 @@
         },
         {
           "position": 47,
-          "id": "levyra-a72a886ba586ee413e49",
-          "title": "24H",
+          "id": "levyra-50adcb205c108ed5f4ed",
+          "title": "24h",
           "artists": [
             {
               "name": "Lyly"
-            },
-            {
-              "name": "Magazine"
             }
           ],
           "album": {
-            "name": "24H",
-            "releaseDate": "2020-04-25"
+            "name": "24h",
+            "releaseDate": "2020-10-28"
           },
-          "durationMs": 256905,
-          "explicit": true,
+          "durationMs": 257000,
+          "explicit": false,
           "youtubeMusic": {
             "audioVideoId": "w8DEtCin4uI",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCtc2b3gvR1OjvaOScz3QM0Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fa10ce68802568a9f53ecb8a"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9a33a39e11f920fabf6a5b0"
         },
         {
           "position": 48,
@@ -27311,12 +27312,6 @@
           },
           "durationMs": 236062,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "yBV8KpxIlHU",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC_FFKwisPiEXk5EH_ipTHcA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cc05ec584ca006c1a29e54f0"
         },
         {
@@ -27388,6 +27383,12 @@
           },
           "durationMs": 276315,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "pKZ1sraf-Eo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCTKJyum8atjrmRTi5OXxTyw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ba88f47523d8dfe21480e45e"
         },
         {
