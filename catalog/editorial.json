@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T11:00:37Z",
+  "generatedAt": "2026-08-02T11:15:27Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2072,7 +2072,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2080,12 +2080,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 39,
@@ -3092,7 +3092,7 @@
         },
         {
           "position": 32,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -3100,12 +3100,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 33,
@@ -9952,12 +9952,6 @@
           },
           "durationMs": 198425,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "SkHJ5ChXcDo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -15360,7 +15354,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-8e00e58819f76bb1bccd",
+          "id": "levyra-e09beec9b76bb06bdf72",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15368,12 +15362,12 @@
             }
           ],
           "album": {
-            "name": "Det kommer aldrig va över för mig",
-            "releaseDate": "2013-04-17"
+            "name": "Nyårsfest",
+            "releaseDate": "2020-12-18"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
         },
         {
           "position": 47,
@@ -15484,7 +15478,8 @@
             }
           ],
           "album": {
-            "name": "PPC"
+            "name": "PPC",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 196175,
           "explicit": true,
@@ -15503,7 +15498,8 @@
             }
           ],
           "album": {
-            "name": "WAVY"
+            "name": "WAVY",
+            "releaseDate": "2026-06-18"
           },
           "durationMs": 163437,
           "explicit": false,
@@ -15519,7 +15515,8 @@
             }
           ],
           "album": {
-            "name": "Desperado"
+            "name": "Desperado",
+            "releaseDate": "2026-06-26"
           },
           "durationMs": 193306,
           "explicit": false,
@@ -15541,7 +15538,8 @@
             }
           ],
           "album": {
-            "name": "Ringer Om Natten"
+            "name": "Ringer Om Natten",
+            "releaseDate": "2026-05-29"
           },
           "durationMs": 164000,
           "explicit": true,
@@ -15563,7 +15561,8 @@
             }
           ],
           "album": {
-            "name": "mig&mine"
+            "name": "mig&mine",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 130666,
           "explicit": false,
@@ -15582,7 +15581,8 @@
             }
           ],
           "album": {
-            "name": "MEN SÅ KOM I MORGEN"
+            "name": "MEN SÅ KOM I MORGEN",
+            "releaseDate": "2026-05-08"
           },
           "durationMs": 197724,
           "explicit": false,
@@ -15598,7 +15598,8 @@
             }
           ],
           "album": {
-            "name": "spøgelse"
+            "name": "spøgelse",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 242727,
           "explicit": true,
@@ -15617,7 +15618,8 @@
             }
           ],
           "album": {
-            "name": "Dai Dai"
+            "name": "Dai Dai",
+            "releaseDate": "2026-05-14"
           },
           "durationMs": 223448,
           "explicit": false,
@@ -15641,7 +15643,8 @@
             }
           ],
           "album": {
-            "name": "splittet til atomer"
+            "name": "splittet til atomer",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 172165,
           "explicit": true,
@@ -15657,7 +15660,8 @@
             }
           ],
           "album": {
-            "name": "Ham Med Guitaren"
+            "name": "Ham Med Guitaren",
+            "releaseDate": "2026-03-13"
           },
           "durationMs": 194080,
           "explicit": true,
@@ -15676,7 +15680,8 @@
             }
           ],
           "album": {
-            "name": "Vil du noget?"
+            "name": "Vil du noget?",
+            "releaseDate": "2025-10-03"
           },
           "durationMs": 185326,
           "explicit": false,
@@ -15695,7 +15700,8 @@
             }
           ],
           "album": {
-            "name": "Jeg Ka' Ik' Mærke Noget (feat. Thomas Helmig)"
+            "name": "Jeg Ka' Ik' Mærke Noget (feat. Thomas Helmig)",
+            "releaseDate": "2026-07-17"
           },
           "durationMs": 158413,
           "explicit": false,
@@ -15717,7 +15723,8 @@
             }
           ],
           "album": {
-            "name": "VILD UNGDOM"
+            "name": "VILD UNGDOM",
+            "releaseDate": "2026-02-27"
           },
           "durationMs": 178041,
           "explicit": false,
@@ -15733,7 +15740,8 @@
             }
           ],
           "album": {
-            "name": "Livsforladt"
+            "name": "Livsforladt",
+            "releaseDate": "2026-03-20"
           },
           "durationMs": 182204,
           "explicit": false,
@@ -15755,7 +15763,8 @@
             }
           ],
           "album": {
-            "name": "GØR NOGET"
+            "name": "GØR NOGET",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 147121,
           "explicit": false,
@@ -15774,7 +15783,8 @@
             }
           ],
           "album": {
-            "name": "AW"
+            "name": "AW",
+            "releaseDate": "2025-05-08"
           },
           "durationMs": 212472,
           "explicit": true,
@@ -15793,7 +15803,8 @@
             }
           ],
           "album": {
-            "name": "Den Danske Sommer (feat. Birthe Kjær)"
+            "name": "Den Danske Sommer (feat. Birthe Kjær)",
+            "releaseDate": "2026-04-10"
           },
           "durationMs": 145620,
           "explicit": false,
@@ -15815,7 +15826,8 @@
             }
           ],
           "album": {
-            "name": "family"
+            "name": "family",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 202615,
           "explicit": false,
@@ -15834,7 +15846,8 @@
             }
           ],
           "album": {
-            "name": "Bag Gardinerne S1+S2"
+            "name": "Bag Gardinerne S1+S2",
+            "releaseDate": "2026-05-01"
           },
           "durationMs": 152821,
           "explicit": false,
@@ -15850,7 +15863,8 @@
             }
           ],
           "album": {
-            "name": "VILD UNGDOM"
+            "name": "VILD UNGDOM",
+            "releaseDate": "2026-02-27"
           },
           "durationMs": 224812,
           "explicit": false,
@@ -15866,7 +15880,8 @@
             }
           ],
           "album": {
-            "name": "Visitor"
+            "name": "Visitor",
+            "releaseDate": "2026-07-02"
           },
           "durationMs": 173975,
           "explicit": false,
@@ -15893,7 +15908,8 @@
             }
           ],
           "album": {
-            "name": "Højt At Flyve Dybt At Falde"
+            "name": "Højt At Flyve Dybt At Falde",
+            "releaseDate": "2026-01-16"
           },
           "durationMs": 177618,
           "explicit": false,
@@ -15918,7 +15934,8 @@
             }
           ],
           "album": {
-            "name": "Lige Her, Lige Nu"
+            "name": "Lige Her, Lige Nu",
+            "releaseDate": "2026-04-17"
           },
           "durationMs": 172844,
           "explicit": true,
@@ -15940,7 +15957,8 @@
             }
           ],
           "album": {
-            "name": "WAVY"
+            "name": "WAVY",
+            "releaseDate": "2026-06-18"
           },
           "durationMs": 137755,
           "explicit": false,
@@ -15968,7 +15986,8 @@
             }
           ],
           "album": {
-            "name": "En Som Dig (feat. Blæst, ADAAM & Back To Back)"
+            "name": "En Som Dig (feat. Blæst, ADAAM & Back To Back)",
+            "releaseDate": "2026-07-10"
           },
           "durationMs": 165412,
           "explicit": false,
@@ -15984,7 +16003,8 @@
             }
           ],
           "album": {
-            "name": "petal"
+            "name": "petal",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 197949,
           "explicit": false,
@@ -16006,7 +16026,8 @@
             }
           ],
           "album": {
-            "name": "Dét Der Udenfor"
+            "name": "Dét Der Udenfor",
+            "releaseDate": "2026-03-20"
           },
           "durationMs": 214739,
           "explicit": false,
@@ -16022,7 +16043,8 @@
             }
           ],
           "album": {
-            "name": "Portugal"
+            "name": "Portugal",
+            "releaseDate": "2026-05-22"
           },
           "durationMs": 209763,
           "explicit": false,
@@ -16044,7 +16066,8 @@
             }
           ],
           "album": {
-            "name": "petal"
+            "name": "petal",
+            "releaseDate": "2026-07-31"
           },
           "durationMs": 184248,
           "explicit": true,
@@ -16069,7 +16092,8 @@
             }
           ],
           "album": {
-            "name": "Wild (feat. Englando)"
+            "name": "Wild (feat. Englando)",
+            "releaseDate": "2026-07-29"
           },
           "durationMs": 162929,
           "explicit": true,
@@ -16085,7 +16109,8 @@
             }
           ],
           "album": {
-            "name": "Smelter Under Månen"
+            "name": "Smelter Under Månen",
+            "releaseDate": "2024-06-21"
           },
           "durationMs": 198388,
           "explicit": false,
@@ -16101,7 +16126,8 @@
             }
           ],
           "album": {
-            "name": "Den lange vej"
+            "name": "Den lange vej",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 172111,
           "explicit": false,
@@ -16117,7 +16143,8 @@
             }
           ],
           "album": {
-            "name": "(over)lever"
+            "name": "(over)lever",
+            "releaseDate": "2026-01-23"
           },
           "durationMs": 136503,
           "explicit": false,
@@ -16151,7 +16178,8 @@
             }
           ],
           "album": {
-            "name": "Godaften"
+            "name": "Godaften",
+            "releaseDate": "2025-05-22"
           },
           "durationMs": 214976,
           "explicit": false,
@@ -16167,7 +16195,8 @@
             }
           ],
           "album": {
-            "name": "Ved du jeg en snerle"
+            "name": "Ved du jeg en snerle",
+            "releaseDate": "2026-04-10"
           },
           "durationMs": 157097,
           "explicit": false,
@@ -16192,7 +16221,8 @@
             }
           ],
           "album": {
-            "name": "Den lange vej"
+            "name": "Den lange vej",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 178695,
           "explicit": false,
@@ -16208,7 +16238,8 @@
             }
           ],
           "album": {
-            "name": "kendt mig en uge"
+            "name": "kendt mig en uge",
+            "releaseDate": "2025-03-21"
           },
           "durationMs": 186843,
           "explicit": false,
@@ -16230,7 +16261,8 @@
             }
           ],
           "album": {
-            "name": "Den lange vej"
+            "name": "Den lange vej",
+            "releaseDate": "2026-06-05"
           },
           "durationMs": 168285,
           "explicit": false,
@@ -16238,7 +16270,7 @@
         },
         {
           "position": 39,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -16246,7 +16278,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16256,7 +16289,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 40,
@@ -16268,7 +16301,8 @@
             }
           ],
           "album": {
-            "name": "WAVY"
+            "name": "WAVY",
+            "releaseDate": "2026-06-18"
           },
           "durationMs": 178347,
           "explicit": false,
@@ -16284,7 +16318,8 @@
             }
           ],
           "album": {
-            "name": "Det Modsatte"
+            "name": "Det Modsatte",
+            "releaseDate": "2023-09-22"
           },
           "durationMs": 201863,
           "explicit": false,
@@ -16303,7 +16338,8 @@
             }
           ],
           "album": {
-            "name": "Jeg vil bare gerne være et godt menneske, men det er ikke let."
+            "name": "Jeg vil bare gerne være et godt menneske, men det er ikke let.",
+            "releaseDate": "2025-01-31"
           },
           "durationMs": 187078,
           "explicit": false,
@@ -16325,7 +16361,8 @@
             }
           ],
           "album": {
-            "name": "Copenhagen City"
+            "name": "Copenhagen City",
+            "releaseDate": "2025-10-17"
           },
           "durationMs": 171467,
           "explicit": false,
@@ -16344,7 +16381,8 @@
             }
           ],
           "album": {
-            "name": "Believe"
+            "name": "Believe",
+            "releaseDate": "2012-01-01"
           },
           "durationMs": 227986,
           "explicit": false,
@@ -16363,7 +16401,8 @@
             }
           ],
           "album": {
-            "name": "Godaften"
+            "name": "Godaften",
+            "releaseDate": "2025-05-22"
           },
           "durationMs": 182608,
           "explicit": true,
@@ -16382,7 +16421,8 @@
             }
           ],
           "album": {
-            "name": "(over)lever"
+            "name": "(over)lever",
+            "releaseDate": "2026-01-23"
           },
           "durationMs": 150617,
           "explicit": false,
@@ -16398,7 +16438,8 @@
             }
           ],
           "album": {
-            "name": "Thriller"
+            "name": "Thriller",
+            "releaseDate": "1982-11-30"
           },
           "durationMs": 293802,
           "explicit": false,
@@ -16414,7 +16455,8 @@
             }
           ],
           "album": {
-            "name": "MEN SÅ KOM I MORGEN"
+            "name": "MEN SÅ KOM I MORGEN",
+            "releaseDate": "2026-05-08"
           },
           "durationMs": 146335,
           "explicit": false,
@@ -16436,7 +16478,8 @@
             }
           ],
           "album": {
-            "name": "Lige Her, Lige Nu"
+            "name": "Lige Her, Lige Nu",
+            "releaseDate": "2026-04-17"
           },
           "durationMs": 173259,
           "explicit": false,
@@ -16455,7 +16498,8 @@
             }
           ],
           "album": {
-            "name": "Wide Awake"
+            "name": "Wide Awake",
+            "releaseDate": "2026-06-19"
           },
           "durationMs": 134310,
           "explicit": false,
@@ -19695,6 +19739,12 @@
           },
           "durationMs": 81290,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ho7xMWPh2Zw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCFXVUQU-Q3qX6AToPFhBmCw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02719f202314ef636d44191b65"
         },
         {
@@ -22380,7 +22430,7 @@
           ],
           "album": {
             "name": "Traveler",
-            "releaseDate": "2019-08-31"
+            "releaseDate": "2019-09-30"
           },
           "durationMs": 326842,
           "explicit": false,
@@ -22390,7 +22440,7 @@
             "confidence": 100,
             "artistBrowseId": "UC84Rm0a3gimYXPtqp5O_JRw"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029c4ba827e585fabd3cfd90f2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fc273337d7aafc7e907c383d"
         },
         {
           "position": 28,
@@ -27607,12 +27657,6 @@
           },
           "durationMs": 276000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "FpJxPzveHzA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCVZoM1H-jFwni_C4nogarjw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0201cb2e736602194466522135"
         },
         {
