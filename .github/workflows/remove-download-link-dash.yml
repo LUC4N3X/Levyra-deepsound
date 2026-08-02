@@ -1,0 +1,61 @@
+name: Remove README card link dash
+
+on:
+  push:
+    branches:
+      - agent/pro-readme-badges-docs
+    paths:
+      - .github/workflows/remove-download-link-dash.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/pro-readme-badges-docs
+          fetch-depth: 0
+      - name: Remove linked-image whitespace underline
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          readme = Path('README.md')
+          text = readme.read_text(encoding='utf-8')
+          old = '''<p>
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
+            <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="365" />
+          </a>&nbsp;&nbsp;
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true">
+            <img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="365" />
+          </a>
+          </p>'''
+          new = '''<p>
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="365" /></a>&nbsp;&nbsp;
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="365" /></a>
+          </p>'''
+          if old not in text:
+              raise SystemExit('README download card block not found')
+          readme.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          script = Path('scripts/update-readme-badges.mjs')
+          text = script.read_text(encoding='utf-8')
+          old = '''const downloadBlock = `<sub><strong>CHOOSE YOUR PLATFORM</strong></sub>\\n\\n<p>\\n<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">\\n  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="365" />\\n</a>&nbsp;&nbsp;\\n<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true">\\n  <img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="365" />\\n</a>\\n</p>`'''
+          new = '''const downloadBlock = `<sub><strong>CHOOSE YOUR PLATFORM</strong></sub>\\n\\n<p>\\n<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="365" /></a>&nbsp;&nbsp;\\n<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="365" /></a>\\n</p>`'''
+          if old not in text:
+              raise SystemExit('Badge updater downloadBlock not found')
+          script.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit fix
+        run: |
+          if git diff --quiet -- README.md scripts/update-readme-badges.mjs; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md scripts/update-readme-badges.mjs
+          git commit -m "docs: remove download card link artifact"
+          git push origin HEAD:agent/pro-readme-badges-docs
