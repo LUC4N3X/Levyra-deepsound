@@ -1,0 +1,43 @@
+name: Remove unused Home accent
+
+on:
+  push:
+    branches:
+      - refactor/home-experience
+    paths:
+      - .github/workflows/remove-unused-home-accent.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+      - name: Remove unused variable
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          text = path.read_text(encoding="utf-8")
+          target = "    val accentEnd = Color(collection.accentEnd)\n"
+          if text.count(target) != 1:
+              raise SystemExit(f"Expected one unused accentEnd declaration, found {text.count(target)}")
+          path.write_text(text.replace(target, "", 1), encoding="utf-8")
+          PY
+          git diff --check
+          rm .github/workflows/remove-unused-home-accent.yml
+      - name: Commit clean fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(home): remove unused editorial accent"
+          git push origin HEAD:refactor/home-experience
