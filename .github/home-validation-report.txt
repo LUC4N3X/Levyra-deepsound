@@ -1,0 +1,364 @@
+=== repository matches ===
+./.github/workflows/debug-home-validation.yml:42:            -e 'validateHomeContentConfiguration' \
+./.github/workflows/debug-home-validation.yml:43:            -e 'tracked Home sections' \
+./.github/workflows/debug-home-validation.yml:44:            -e 'Expected 3 tracked' . >> "$REPORT" 2>&1 || true
+./.github/workflows/debug-home-validation.yml:48:          ./gradlew --no-daemon :app:validateHomeContentConfiguration --stacktrace --info \
+./.github/workflows/debug-home-validation.yml:56:            -e 'validateHomeContentConfiguration' \
+./.github/workflows/debug-home-validation.yml:57:            -e 'Expected 3 tracked Home sections' \
+grep: ./.github/home-validation-report.txt: input file is also the output
+
+=== Gradle task output ===
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.apache.maven/maven-artifact/3.9.11/b0f6b246f5626936ecae7531d0a3deb76789bab9/maven-artifact-3.9.11.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/14f68fd26f3f9a19684d3151e20afe72/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.apache.maven/maven-artifact/3.9.11/b0f6b246f5626936ecae7531d0a3deb76789bab9/maven-artifact-3.9.11.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.apache.maven/maven-model/3.9.11/67ea52736eaf94e26be0635e6084d7dd04d5700/maven-model-3.9.11.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/995b04fbd54150b6430fc88547a80227/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/995b04fbd54150b6430fc88547a80227/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/b740fcfd1b703bbdcbd9954587bd74e0/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/b740fcfd1b703bbdcbd9954587bd74e0/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.64/456a985ac9b12d34820e4d5de063b2c2fc43ed5a/jcommander-1.64.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.apache.maven/maven-builder-support/3.9.11/9abad6df5766e23e2f2772e842894c0347bffa4c/maven-builder-support-3.9.11.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/35d67e1eefb0f646d647cf6633cc9443/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/b194cd9d8fcee4b9caf78ec14610606b/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.apache.maven/maven-builder-support/3.9.11/9abad6df5766e23e2f2772e842894c0347bffa4c/maven-builder-support-3.9.11.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/16994c1186351015092f947a3abe6801/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/com.beust/jcommander/1.64/456a985ac9b12d34820e4d5de063b2c2fc43ed5a/jcommander-1.64.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/com.google.guava/failureaccess/1.0.2/c4a06a64e650562f30b7bf9aaec1bfed43aca12b/failureaccess-1.0.2.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/292851c50919917b94a6b9e97a3000a9/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/c975d0b24fb341963300614ed5700cdf/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/com.google.guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/b421526c5f297295adef1c886e5246c39d4ac629/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/79cf0da6a85845dc27332d115c91838a/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/com.google.guava/failureaccess/1.0.2/c4a06a64e650562f30b7bf9aaec1bfed43aca12b/failureaccess-1.0.2.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/com.google.guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/b421526c5f297295adef1c886e5246c39d4ac629/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/cd654bd96ee4f1e0ac0599c4d0d1c672/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/cd654bd96ee4f1e0ac0599c4d0d1c672/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/47c8da5a2ac17caf3fe5d44ecf98681f/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/47c8da5a2ac17caf3fe5d44ecf98681f/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-lang3/3.16.0/3eb54effe40946dfb06dc5cd6c7ce4116cd51ea4/commons-lang3-3.16.0.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/commons-codec/commons-codec/1.17.1/973638b7149d333563584137ebf13a691bb60579/commons-codec-1.17.1.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/4e0ba278abf22e925e7a8d4f453ce173/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/1fd098e279814008873a980e5d1d539e/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/commons-codec/commons-codec/1.17.1/973638b7149d333563584137ebf13a691bb60579/commons-codec-1.17.1.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/96cc31e38536ef2abc2b0e618c95d625/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/96cc31e38536ef2abc2b0e618c95d625/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/commons-logging/commons-logging/1.2/4bfc12adfe4842bf07b657f0369c4cb522955686/commons-logging-1.2.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/d9974c13a5bac84500ded9f9c697f093/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/commons-logging/commons-logging/1.2/4bfc12adfe4842bf07b657f0369c4cb522955686/commons-logging-1.2.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-lang3/3.16.0/3eb54effe40946dfb06dc5cd6c7ce4116cd51ea4/commons-lang3-3.16.0.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/1d7a2997b0ca2d5e2263607860cb1c1c/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/1d7a2997b0ca2d5e2263607860cb1c1c/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/net.java.dev.jna/jna/5.6.0/330f2244e9030119ab3030fc3fededc86713d9cc/jna-5.6.0.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/ea9774be7b4fb8850b9350e4bc653357/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/465dc9d85bb552caa043a2e49446e593/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/ea9774be7b4fb8850b9350e4bc653357/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-util-klib/2.4.10/4c70cfc757d717d056b9cec24932506677bb0f52/kotlin-util-klib-2.4.10.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/2d0be96fbbe91986e14de5655dfec4fb/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/net.java.dev.jna/jna/5.6.0/330f2244e9030119ab3030fc3fededc86713d9cc/jna-5.6.0.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/640066c368e8e654e5c35ad79869d21d/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/640066c368e8e654e5c35ad79869d21d/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-gradle-plugin-idea-proto/2.4.10/e3b327b851ffdd00917458e4e4240f349e04c234/kotlin-gradle-plugin-idea-proto-2.4.10.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.bouncycastle/bcprov-jdk18on/1.79/4d8e2732bcee15f1db93df266c3f5b70ce5cac21/bcprov-jdk18on-1.79.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/9d8ba27dade4e62af452225ffd8ca9a2/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/1704851f70ef752a542aa973cb30c614/transformed/analysis/instrumentation-hierarchy.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/9d8ba27dade4e62af452225ffd8ca9a2/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/9.6.1/transforms/1704851f70ef752a542aa973cb30c614/transformed/analysis/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-daemon-client/2.4.10/8c3aa7a03a90240de365985d93bc8ed39163f852/kotlin-daemon-client-2.4.10.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.codehaus.plexus/plexus-utils/3.6.0/e8bc129728f22671a36fff3b604edcd39073a7b1/plexus-utils-3.6.0.jar because:
+  Caching not enabled.
+Caching disabled for MergeInstrumentationAnalysisTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-util-io/2.4.10/22c395cc2a2833b5dd1aa368155c491b8a04be6d/kotlin-util-io-2.4.10.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/6685d3c87dbbd28610bd3ada13f95c2a/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/a1031b55c9ba33abb41e611f079785cf/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/9.6.1/transforms/115724ff840c44ba041d320cbb515873/transformed/merge/instrumentation-dependencies.bin because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-util-io/2.4.10/22c395cc2a2833b5dd1aa368155c491b8a04be6d/kotlin-util-io-2.4.10.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-util-klib/2.4.10/4c70cfc757d717d056b9cec24932506677bb0f52/kotlin-util-klib-2.4.10.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-daemon-client/2.4.10/8c3aa7a03a90240de365985d93bc8ed39163f852/kotlin-daemon-client-2.4.10.jar because:
+  Caching not enabled.
+Caching disabled for ExternalDependencyInstrumentingArtifactTransform: /home/runner/.gradle/caches/modules-2/files-2.1/org.codehaus.plexus/plexus-utils/3.6.0/e8bc129728f22671a36fff3b604edcd39073a7b1/plexus-utils-3.6.0.jar because:
+  Caching not enabled.
+Build cache key for Kotlin DSL accessors for root project 'Levyra' is a19a2a435f109d24df0ef017f423c767
+Stored cache entry for Kotlin DSL accessors for root project 'Levyra' with cache key a19a2a435f109d24df0ef017f423c767
+Build cache key for Kotlin DSL script compilation (Project/TopLevel/stage2) is 01010f828f3804a3bef60753ba1a5ee8
+Stored cache entry for Kotlin DSL script compilation (Project/TopLevel/stage2) with cache key 01010f828f3804a3bef60753ba1a5ee8
+
+> Configure project :app
+Evaluating project ':app' using build file '/home/runner/work/Levyra-deepsound/Levyra-deepsound/app/build.gradle.kts'.
+Build cache key for Kotlin DSL script compilation (Project/TopLevel/stage1) is aaa2fa9eadbf04048c916ee1fe372871
+Stored cache entry for Kotlin DSL script compilation (Project/TopLevel/stage1) with cache key aaa2fa9eadbf04048c916ee1fe372871
+Resolved plugin [id: 'com.android.application', version: '9.3.1']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.4.10']
+Resolved plugin [id: 'org.jetbrains.kotlin.plugin.serialization', version: '2.4.10']
+Resolved plugin [id: 'com.google.devtools.ksp', version: '2.3.10']
+Resolved plugin [id: 'app.cash.licensee', version: '1.14.1']
+Resolved plugin [id: 'androidx.baselineprofile', version: '1.5.0-alpha07']
+Using default execution profile
+Build cache key for Kotlin DSL accessors for project ':app' is 9364c90228ed4cdc64418a3143a9044d
+Stored cache entry for Kotlin DSL accessors for project ':app' with cache key 9364c90228ed4cdc64418a3143a9044d
+Build cache key for Kotlin DSL script compilation (Project/TopLevel/stage2) is 573a830d98403c75b4e8b936795130cb
+Stored cache entry for Kotlin DSL script compilation (Project/TopLevel/stage2) with cache key 573a830d98403c75b4e8b936795130cb
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+Detected Android Gradle Plugin compose compiler configuration
+
+> Configure project :baselineprofile
+Evaluating project ':baselineprofile' using build file '/home/runner/work/Levyra-deepsound/Levyra-deepsound/baselineprofile/build.gradle.kts'.
+Build cache key for Kotlin DSL script compilation (Project/TopLevel/stage1) is 588a2ff480a73eafba728debff9337ac
+Stored cache entry for Kotlin DSL script compilation (Project/TopLevel/stage1) with cache key 588a2ff480a73eafba728debff9337ac
+Resolved plugin [id: 'com.android.test', version: '9.3.1']
+Resolved plugin [id: 'androidx.baselineprofile', version: '1.5.0-alpha07']
+Using default execution profile
+Build cache key for Kotlin DSL accessors for project ':baselineprofile' is e0b755e68b2677bb6676795c7febaab9
+Stored cache entry for Kotlin DSL accessors for project ':baselineprofile' with cache key e0b755e68b2677bb6676795c7febaab9
+Build cache key for Kotlin DSL script compilation (Project/TopLevel/stage2) is c8bfcba678f1d42618946d0e505dad96
+Stored cache entry for Kotlin DSL script compilation (Project/TopLevel/stage2) with cache key c8bfcba678f1d42618946d0e505dad96
+All projects evaluated.
+Task path ':app:validateHomeContentConfiguration' matched project ':app'
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1785698700797.json
+
+[Incubating] Problems report is available at: file:///home/runner/work/Levyra-deepsound/Levyra-deepsound/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Selection failed
+  Cannot locate tasks that match ':app:validateHomeContentConfiguration' as task 'validateHomeContentConfiguration' not found in project ':app'.
+
+* Try:
+> Run gradlew tasks to get a list of available tasks.
+> For more on name expansion, please refer to https://docs.gradle.org/9.6.1/userguide/command_line_interface.html#sec:name_abbreviation in the Gradle documentation.
+> Run with --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+* Exception is:
+org.gradle.execution.TaskSelectionException: Cannot locate tasks that match ':app:validateHomeContentConfiguration' as task 'validateHomeContentConfiguration' not found in project ':app'.
+	at org.gradle.execution.DefaultTaskSelector.throwTaskSelectionException(DefaultTaskSelector.java:106)
+	at org.gradle.execution.DefaultTaskSelector.getSelection(DefaultTaskSelector.java:87)
+	at org.gradle.execution.selection.DefaultBuildTaskSelector.resolveTaskName(DefaultBuildTaskSelector.java:108)
+	at org.gradle.execution.commandline.CommandLineTaskParser.parseTasks(CommandLineTaskParser.java:49)
+	at org.gradle.execution.TaskNameResolvingBuildTaskScheduler.scheduleRequestedTasks(TaskNameResolvingBuildTaskScheduler.java:65)
+	at org.gradle.execution.DefaultTasksBuildTaskScheduler.scheduleRequestedTasks(DefaultTasksBuildTaskScheduler.java:70)
+	at org.gradle.initialization.DefaultTaskExecutionPreparer.lambda$scheduleRequestedTasks$0(DefaultTaskExecutionPreparer.java:47)
+	at org.gradle.internal.build.BuildProjectRegistry.lambda$withMutableStateOfAllProjects$0(BuildProjectRegistry.java:60)
+	at org.gradle.internal.build.BuildProjectRegistry.lambda$applyToMutableStateOfAllProjects$2(BuildProjectRegistry.java:78)
+	at org.gradle.api.internal.project.DefaultProjectStateRegistry$DefaultBuildProjectRegistry.lambda$fromMutableStateOfAllProjects$0(DefaultProjectStateRegistry.java:278)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$runAndReleaseLocks$0(DefaultWorkerLeaseService.java:300)
+	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAndReleaseLocks(DefaultWorkerLeaseService.java:298)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:294)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$withReplacedLocks$4(DefaultWorkerLeaseService.java:450)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:372)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withReplacedLocks(DefaultWorkerLeaseService.java:449)
+	at org.gradle.api.internal.project.DefaultProjectStateRegistry$DefaultBuildProjectRegistry.fromMutableStateOfAllProjects(DefaultProjectStateRegistry.java:277)
+	at org.gradle.internal.build.BuildProjectRegistry.applyToMutableStateOfAllProjects(BuildProjectRegistry.java:77)
+	at org.gradle.internal.build.BuildProjectRegistry.withMutableStateOfAllProjects(BuildProjectRegistry.java:60)
+	at org.gradle.initialization.DefaultTaskExecutionPreparer.scheduleRequestedTasks(DefaultTaskExecutionPreparer.java:46)
+	at org.gradle.initialization.VintageBuildModelController.lambda$scheduleRequestedTasks$0(VintageBuildModelController.java:75)
+	at org.gradle.internal.model.StateTransitionController.lambda$inState$1(StateTransitionController.java:119)
+	at org.gradle.internal.model.StateTransitionController.lambda$inState$2(StateTransitionController.java:134)
+	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:45)
+	at org.gradle.internal.model.StateTransitionController.inState(StateTransitionController.java:130)
+	at org.gradle.internal.model.StateTransitionController.inState(StateTransitionController.java:118)
+	at org.gradle.initialization.VintageBuildModelController.scheduleRequestedTasks(VintageBuildModelController.java:75)
+	at org.gradle.internal.build.DefaultBuildLifecycleController$DefaultWorkGraphBuilder.addRequestedTasks(DefaultBuildLifecycleController.java:414)
+	at org.gradle.internal.buildtree.DefaultBuildTreeWorkPreparer.lambda$scheduleRequestedTasks$0(DefaultBuildTreeWorkPreparer.java:40)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$populateWorkGraph$8(DefaultBuildLifecycleController.java:199)
+	at org.gradle.internal.build.DefaultBuildWorkPreparer.populateWorkGraph(DefaultBuildWorkPreparer.java:42)
+	at org.gradle.internal.build.BuildOperationFiringBuildWorkPreparer$PopulateWorkGraph.populateTaskGraph(BuildOperationFiringBuildWorkPreparer.java:106)
+	at org.gradle.internal.build.BuildOperationFiringBuildWorkPreparer$PopulateWorkGraph.run(BuildOperationFiringBuildWorkPreparer.java:92)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:30)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:27)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:48)
+	at org.gradle.internal.build.BuildOperationFiringBuildWorkPreparer.populateWorkGraph(BuildOperationFiringBuildWorkPreparer.java:67)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$populateWorkGraph$9(DefaultBuildLifecycleController.java:199)
+	at org.gradle.internal.model.StateTransitionController.lambda$inState$1(StateTransitionController.java:119)
+	at org.gradle.internal.model.StateTransitionController.lambda$inState$2(StateTransitionController.java:134)
+	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:45)
+	at org.gradle.internal.model.StateTransitionController.inState(StateTransitionController.java:130)
+	at org.gradle.internal.model.StateTransitionController.inState(StateTransitionController.java:118)
+	at org.gradle.internal.build.DefaultBuildLifecycleController.populateWorkGraph(DefaultBuildLifecycleController.java:199)
+	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.populateWorkGraph(DefaultBuildWorkGraphController.java:169)
+	at org.gradle.composite.internal.DefaultBuildController.populateWorkGraph(DefaultBuildController.java:76)
+	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph$DefaultBuildTreeWorkGraphBuilder.withWorkGraph(DefaultIncludedBuildTaskGraph.java:156)
+	at org.gradle.internal.buildtree.DefaultBuildTreeWorkPreparer.lambda$scheduleRequestedTasks$1(DefaultBuildTreeWorkPreparer.java:40)
+	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph$DefaultBuildTreeWorkGraph$1.run(DefaultIncludedBuildTaskGraph.java:212)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:30)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:27)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:48)
+	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph$DefaultBuildTreeWorkGraph.scheduleWork(DefaultIncludedBuildTaskGraph.java:207)
+	at org.gradle.internal.buildtree.DefaultBuildTreeWorkPreparer.scheduleRequestedTasks(DefaultBuildTreeWorkPreparer.java:36)
+	at org.gradle.internal.cc.impl.barrier.BarrierAwareBuildTreeWorkPreparer.scheduleRequestedTasks$lambda$0(BarrierAwareBuildTreeWorkPreparer.kt:34)
+	at org.gradle.internal.cc.impl.barrier.VintageConfigurationTimeActionRunner.runConfigurationTimeAction(VintageConfigurationTimeActionRunner.kt:48)
+	at org.gradle.internal.cc.impl.barrier.BarrierAwareBuildTreeWorkPreparer.scheduleRequestedTasks(BarrierAwareBuildTreeWorkPreparer.kt:33)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController$scheduleAndRunRequestedTasks$1$finalizedGraph$1.call(VintageBuildTreeWorkController.kt:37)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController$scheduleAndRunRequestedTasks$1$finalizedGraph$1.call(VintageBuildTreeWorkController.kt:37)
+	at org.gradle.internal.Try.ofFailable(Try.java:46)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController$scheduleAndRunRequestedTasks$1.apply(VintageBuildTreeWorkController.kt:37)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController$scheduleAndRunRequestedTasks$1.apply(VintageBuildTreeWorkController.kt:36)
+	at org.gradle.composite.internal.DefaultIncludedBuildTaskGraph.withNewWorkGraph(DefaultIncludedBuildTaskGraph.java:115)
+	at org.gradle.internal.cc.impl.VintageBuildTreeWorkController.scheduleAndRunRequestedTasks(VintageBuildTreeWorkController.kt:36)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.lambda$scheduleAndRunTasks$1(DefaultBuildTreeLifecycleController.java:76)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.lambda$runBuild$5(DefaultBuildTreeLifecycleController.java:121)
+	at org.gradle.internal.model.StateTransitionController.lambda$transition$7(StateTransitionController.java:207)
+	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:304)
+	at org.gradle.internal.model.StateTransitionController.lambda$transition$8(StateTransitionController.java:207)
+	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:45)
+	at org.gradle.internal.model.StateTransitionController.transition(StateTransitionController.java:207)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.runBuild(DefaultBuildTreeLifecycleController.java:118)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.scheduleAndRunTasks(DefaultBuildTreeLifecycleController.java:76)
+	at org.gradle.internal.buildtree.DefaultBuildTreeLifecycleController.scheduleAndRunTasks(DefaultBuildTreeLifecycleController.java:71)
+	at org.gradle.tooling.internal.provider.ExecuteBuildActionRunner.run(ExecuteBuildActionRunner.java:31)
+	at org.gradle.launcher.exec.ChainingBuildActionRunner.run(ChainingBuildActionRunner.java:35)
+	at org.gradle.internal.buildtree.ProblemReportingBuildActionRunner.run(ProblemReportingBuildActionRunner.java:55)
+	at org.gradle.launcher.exec.BuildOutcomeReportingBuildActionRunner.run(BuildOutcomeReportingBuildActionRunner.java:83)
+	at org.gradle.tooling.internal.provider.FileSystemWatchingBuildActionRunner.run(FileSystemWatchingBuildActionRunner.java:135)
+	at org.gradle.launcher.exec.BuildCompletionNotifyingBuildActionRunner.run(BuildCompletionNotifyingBuildActionRunner.java:64)
+	at org.gradle.launcher.exec.RootBuildLifecycleBuildActionExecutor.lambda$execute$0(RootBuildLifecycleBuildActionExecutor.java:101)
+	at org.gradle.composite.internal.DefaultRootBuildState.run(DefaultRootBuildState.java:119)
+	at org.gradle.launcher.exec.RootBuildLifecycleBuildActionExecutor.execute(RootBuildLifecycleBuildActionExecutor.java:101)
+	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.runBuildTreeLifecycle(DefaultBuildTreeActionExecutor.java:126)
+	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.access$100(DefaultBuildTreeActionExecutor.java:52)
+	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor$2.call(DefaultBuildTreeActionExecutor.java:98)
+	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor$2.call(DefaultBuildTreeActionExecutor.java:94)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:210)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:205)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:67)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:167)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:60)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:54)
+	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.runAsBuildOperation(DefaultBuildTreeActionExecutor.java:94)
+	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.lambda$runBuildTreeAction$0(DefaultBuildTreeActionExecutor.java:88)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.lambda$runAndReleaseLocks$0(DefaultWorkerLeaseService.java:300)
+	at org.gradle.internal.work.ResourceLockStatistics$1.measure(ResourceLockStatistics.java:43)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAndReleaseLocks(DefaultWorkerLeaseService.java:298)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocksAcquired(DefaultWorkerLeaseService.java:294)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:286)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:130)
+	at org.gradle.launcher.exec.DefaultBuildTreeActionExecutor.runBuildTreeAction(DefaultBuildTreeActionExecutor.java:88)
+	at org.gradle.tooling.internal.provider.continuous.ContinuousBuildActionExecutor.execute(ContinuousBuildActionExecutor.java:111)
+	at org.gradle.tooling.internal.provider.SubscribableBuildActionExecutor.execute(SubscribableBuildActionExecutor.java:64)
+	at org.gradle.internal.session.DefaultBuildSessionContext.execute(DefaultBuildSessionContext.java:46)
+	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor$ActionImpl.apply(BuildSessionLifecycleBuildActionExecutor.java:106)
+	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor$ActionImpl.apply(BuildSessionLifecycleBuildActionExecutor.java:94)
+	at org.gradle.internal.session.BuildSessionState.run(BuildSessionState.java:73)
+	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor.execute(BuildSessionLifecycleBuildActionExecutor.java:67)
+	at org.gradle.internal.buildprocess.execution.BuildSessionLifecycleBuildActionExecutor.execute(BuildSessionLifecycleBuildActionExecutor.java:45)
+	at org.gradle.internal.buildprocess.execution.StartParamsValidatingActionExecutor.execute(StartParamsValidatingActionExecutor.java:57)
+	at org.gradle.internal.buildprocess.execution.StartParamsValidatingActionExecutor.execute(StartParamsValidatingActionExecutor.java:32)
+	at org.gradle.internal.buildprocess.execution.SessionFailureReportingActionExecutor.execute(SessionFailureReportingActionExecutor.java:51)
+	at org.gradle.internal.buildprocess.execution.SessionFailureReportingActionExecutor.execute(SessionFailureReportingActionExecutor.java:39)
+	at org.gradle.internal.buildprocess.execution.SetupLoggingActionExecutor.execute(SetupLoggingActionExecutor.java:47)
+	at org.gradle.internal.buildprocess.execution.SetupLoggingActionExecutor.execute(SetupLoggingActionExecutor.java:31)
+	at org.gradle.launcher.daemon.server.exec.ExecuteBuild.doBuild(ExecuteBuild.java:70)
+	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.WatchForDisconnection.execute(WatchForDisconnection.java:39)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.ResetDeprecationLogger.execute(ResetDeprecationLogger.java:29)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.RequestStopIfSingleUsedDaemon.execute(RequestStopIfSingleUsedDaemon.java:35)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.ForwardClientInput.lambda$execute$0(ForwardClientInput.java:40)
+	at org.gradle.internal.daemon.clientinput.ClientInputForwarder.forwardInput(ClientInputForwarder.java:80)
+	at org.gradle.launcher.daemon.server.exec.ForwardClientInput.execute(ForwardClientInput.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.LogAndCheckHealth.execute(LogAndCheckHealth.java:53)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.ApplyClientEnvironmentVariables.doBuild(ApplyClientEnvironmentVariables.java:80)
+	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.LogToClient.doBuild(LogToClient.java:63)
+	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment.doBuild(EstablishBuildEnvironment.java:74)
+	at org.gradle.launcher.daemon.server.exec.BuildCommandOnly.execute(BuildCommandOnly.java:37)
+	at org.gradle.launcher.daemon.server.api.DaemonCommandExecution.proceed(DaemonCommandExecution.java:104)
+	at org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy$1.run(StartBuildOrRespondWithBusy.java:52)
+	at org.gradle.launcher.daemon.server.DaemonStateCoordinator.lambda$runCommand$0(DaemonStateCoordinator.java:321)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.6.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 1m 5s
+
+=== Gradle cache matches ===
+
+exit_status=1
