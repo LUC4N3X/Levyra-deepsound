@@ -410,7 +410,7 @@ private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
 private val LevyraTabBarHeight = 76.dp
 /** Mini player height: content row, progress line and its trailing spacer. */
 private val LevyraMiniPlayerHeight = 77.dp
-private val LevyraBottomContentGap = 16.dp
+private val LevyraBottomContentGap = 48.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
 private val LevyraNavigationBlueDeep = Color(0xFF0066E6)
 private val LevyraHomeGlowViolet = Color(0xFF6E5CF0)
@@ -541,8 +541,8 @@ private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boole
                     .background(
                         brush = Brush.horizontalGradient(
                             listOf(
-                                LevyraNavigationBlue.copy(alpha = 0.92f * selectedProgress),
-                                LevyraNavigationBlueDeep.copy(alpha = 0.78f * selectedProgress)
+                                Color.White.copy(alpha = 0.12f * selectedProgress),
+                                Color.White.copy(alpha = 0.08f * selectedProgress)
                             )
                         ),
                         shape = pillShape
@@ -5809,7 +5809,7 @@ private fun HomeEditorialSpotlight(
                 fontSize = 14.sp,
                 lineHeight = 17.sp,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -5818,7 +5818,7 @@ private fun HomeEditorialSpotlight(
                 fontSize = 11.5.sp,
                 lineHeight = 14.sp,
                 fontWeight = FontWeight.Medium,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             if (isCurrent) {
@@ -7520,7 +7520,7 @@ private fun ContinueListeningCard(
                         fontSize = 10.8.sp,
                         lineHeight = 12.5.sp,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -14357,7 +14357,7 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
     LazyRow(
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = HomeHorizontalInset)
+        contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalInset + 24.dp)
     ) {
         items(
             items = moods,
