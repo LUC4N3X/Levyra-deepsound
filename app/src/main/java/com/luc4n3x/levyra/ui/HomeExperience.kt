@@ -170,14 +170,14 @@ private fun homeHaloBrush(
 )
 
 private fun homeHaloAlpha(isLight: Boolean, prominent: Boolean, leading: Boolean): Float = when {
-    isLight && prominent && leading -> 0.16f
-    isLight && prominent -> 0.045f
-    isLight && leading -> 0.10f
-    isLight -> 0.028f
-    prominent && leading -> 0.28f
-    prominent -> 0.075f
-    leading -> 0.20f
-    else -> 0.055f
+    isLight && prominent && leading -> 0.12f
+    isLight && prominent -> 0.035f
+    isLight && leading -> 0.08f
+    isLight -> 0.02f
+    prominent && leading -> 0.14f
+    prominent -> 0.04f
+    leading -> 0.10f
+    else -> 0.03f
 }
 
 private fun homeWaveBrush(primary: Color, secondary: Color, isLight: Boolean): Brush =

@@ -5269,6 +5269,11 @@ private fun HomeScreen(
             ?: resonanceTracks
     }
     val homeReleaseTracks = remember(newReleases) { newReleases?.tracks.orEmpty() }
+    val quickSelectionTracks = remember(visiblePersonalTracks, quickPicks, state.favorites, homeReleaseTracks, resonanceTracks) {
+        LevyraPersonalOrbit.distinctRecordings(
+            visiblePersonalTracks + (quickPicks?.tracks.orEmpty()) + state.favorites + homeReleaseTracks + resonanceTracks
+        ).take(9)
+    }
     val homeBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
@@ -5299,35 +5304,12 @@ private fun HomeScreen(
         }
         item(key = "home-quick-access", contentType = "home-quick-access") {
             HomeSectionInset {
-                LevyraHomeQuickAccessGrid(
-                    state = LevyraHomeQuickAccessState(
-                        tracks = LevyraHomeQuickAccessTracks(
-                            current = state.currentTrack,
-                            mix = homeMixTracks.firstOrNull(),
-                            favorite = state.favorites.firstOrNull(),
-                            release = homeReleaseTracks.firstOrNull(),
-                            chart = state.charts.firstOrNull()
-                        ),
-                        availability = LevyraHomeQuickAccessAvailability(
-                            hasMix = homeMixTracks.isNotEmpty(),
-                            hasFavorites = state.favorites.isNotEmpty(),
-                            hasNewReleases = homeReleaseTracks.isNotEmpty(),
-                            hasCharts = state.charts.isNotEmpty()
-                        ),
-                        playback = LevyraHomeQuickAccessPlayback(
-                            isPlaying = state.isPlaying,
-                            isResolving = state.isResolving
-                        ),
-                        isLight = LevyraIsLight
-                    ),
-                    actions = LevyraHomeQuickAccessActions(
-                        onContinue = viewModel::togglePlay,
-                        onMix = { viewModel.playAll(homeMixTracks) },
-                        onFavorites = { viewModel.playAll(state.favorites) },
-                        onNewReleases = { viewModel.playAll(homeReleaseTracks) },
-                        onCharts = { viewModel.playAll(state.charts) },
-                        onSearch = { viewModel.searchNow() }
-                    )
+                HomeQuickSelectionGrid(
+                    tracks = quickSelectionTracks,
+                    currentId = state.currentTrack?.id,
+                    isPlaying = state.isPlaying,
+                    isResolving = state.isResolving,
+                    onPlay = { track -> viewModel.playFrom(quickSelectionTracks, track) }
                 )
             }
         }
@@ -6155,58 +6137,147 @@ private fun CollectionArtworkMosaic(
 }
 
 @Composable
-private fun HomeQuickAccessGrid(
-    hasMix: Boolean,
-    hasFavorites: Boolean,
-    hasNewReleases: Boolean,
-    onMix: () -> Unit,
-    onFavorites: () -> Unit,
-    onNewReleases: () -> Unit,
-    onSearch: () -> Unit
+private fun HomeQuickSelectionGrid(
+    tracks: List<Track>,
+    currentId: String?,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    onPlay: (Track) -> Unit
 ) {
+    val displayTracks = remember(tracks) {
+        tracks
+            .distinctBy(LevyraPersonalOrbit::identityKey)
+            .take(9)
+    }
+    if (displayTracks.isEmpty()) return
+
+    val rows = remember(displayTracks) { displayTracks.chunked(3) }
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            QuickAction(
-                icon = Icons.Rounded.Shuffle,
-                label = LocalLevyraStrings.current.mixForYou,
-                accent = LevyraCyan,
-                enabled = hasMix,
-                modifier = Modifier.weight(1f),
-                onClick = onMix
+        Text(
+            text = "Selezione rapida",
+            color = if (LevyraIsLight) LevyraText else Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = (-0.4).sp
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            rows.forEach { rowTracks ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    rowTracks.forEach { track ->
+                        HomeQuickSelectionCard(
+                            track = track,
+                            isCurrent = track.id == currentId,
+                            isPlaying = isPlaying && track.id == currentId,
+                            isResolving = isResolving && track.id == currentId,
+                            modifier = Modifier.weight(1f),
+                            onClick = { onPlay(track) }
+                        )
+                    }
+                    repeat(3 - rowTracks.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeQuickSelectionCard(
+    track: Track,
+    isCurrent: Boolean,
+    isPlaying: Boolean,
+    isResolving: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(14.dp)
+    val cardBackground = if (LevyraIsLight) Color.White else Color(0xFF12141D)
+    val borderColor = if (isCurrent) LevyraCyan else Color.White.copy(alpha = if (LevyraIsLight) 0.12f else 0.08f)
+    val borderPx = if (isCurrent) 1.5.dp else 1.dp
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1.05f)
+            .clip(shape)
+            .background(cardBackground, shape)
+            .border(BorderStroke(borderPx, borderColor), shape)
+            .pressable(onClick = onClick)
+    ) {
+        if (track.artworkUrl.isNotBlank()) {
+            StableRemoteArtwork(
+                url = track.artworkUrl,
+                contentDescription = track.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                highRes = true
             )
-            QuickAction(
-                icon = Icons.Rounded.Favorite,
-                label = LocalLevyraStrings.current.favoritesPlain,
-                accent = LevyraPink,
-                enabled = hasFavorites,
-                modifier = Modifier.weight(1f),
-                onClick = onFavorites
+        } else {
+            InstantArtworkPlaceholder(
+                track = track,
+                modifier = Modifier.fillMaxSize()
             )
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            QuickAction(
-                icon = Icons.Rounded.Bolt,
-                label = LocalLevyraStrings.current.newReleases,
-                accent = LevyraViolet,
-                enabled = hasNewReleases,
-                modifier = Modifier.weight(1f),
-                onClick = onNewReleases
-            )
-            QuickAction(
-                icon = Icons.Rounded.Search,
-                label = LocalLevyraStrings.current.search,
-                accent = Color(0xFFB7C7FF),
-                enabled = true,
-                modifier = Modifier.weight(1f),
-                onClick = onSearch
-            )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Transparent,
+                            0.38f to Color.Transparent,
+                            0.70f to Color.Black.copy(alpha = 0.55f),
+                            1.0f to Color.Black.copy(alpha = 0.92f)
+                        )
+                    )
+                )
+        )
+
+        if (isCurrent) {
+            Box(
+                modifier = Modifier
+                    .padding(6.dp)
+                    .align(Alignment.TopEnd)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(LevyraCyan)
+                    .border(1.dp, Color.Black.copy(alpha = 0.3f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isResolving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(12.dp),
+                        strokeWidth = 1.5.dp,
+                        color = Color.Black
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+            }
         }
+
+        Text(
+            text = track.title,
+            color = Color.White,
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 14.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 8.dp, vertical = 7.dp)
+        )
     }
 }
 
