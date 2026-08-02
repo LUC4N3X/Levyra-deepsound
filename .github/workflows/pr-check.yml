@@ -5,26 +5,34 @@ on:
     branches:
       - main
       - master
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: pr-263-autofix-${{ github.ref }}
+  group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  autofix-pr-263:
-    if: github.head_ref == 'feature/refactor-home-screen-yt-music-style' && github.actor != 'github-actions[bot]'
-    name: Apply PR 263 fixes
+  android:
+    name: Lint and Release Compile
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
+
     steps:
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          ref: feature/refactor-home-screen-yt-music-style
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -32,426 +40,107 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Setup Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           cache-disabled: true
 
-      - name: Apply focused fixes
+      - name: Validate Build Inputs
         shell: bash
         run: |
           set -euo pipefail
-          python3 <<'PY'
-          from pathlib import Path
-          import re
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+          test -f gradle/libs.versions.toml
+          test -x ./gradlew
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
 
-          app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
-          text = app_path.read_text(encoding='utf-8')
-
-          def sub_once(pattern: str, replacement: str, source: str, label: str) -> str:
-              updated, count = re.subn(pattern, replacement, source, count=1, flags=re.MULTILINE | re.DOTALL)
-              if count != 1:
-                  raise RuntimeError(f'{label}: expected one match, found {count}')
-              return updated
-
-          import_line = 'import androidx.compose.ui.semantics.contentDescription\n'
-          if import_line not in text:
-              anchor = 'import androidx.compose.ui.semantics.ProgressBarRangeInfo\n'
-              if anchor not in text:
-                  raise RuntimeError('content description import anchor not found')
-              text = text.replace(anchor, anchor + import_line, 1)
-
-          text = sub_once(
-              r'^    val homeMixTracks = remember\(quickPicks, visiblePersonalTracks, resonanceTracks\) \{\n.*?^    \}\n',
-              '',
-              text,
-              'remove obsolete homeMixTracks'
-          )
-
-          new_selection = '''    val currentTrackIdentity = state.currentTrack?.let(LevyraPersonalOrbit::identityKey)
-          val quickSelectionTracks = remember(
-              visiblePersonalTracks,
-              quickPicks,
-              state.favorites,
-              homeReleaseTracks,
-              resonanceTracks,
-              state.interfaceSettings.showPersonalOrbit,
-              state.interfaceSettings.showNewReleases,
-              state.interfaceSettings.showResonance
-          ) {
-              buildHomeQuickSelectionTracks(
-                  personalTracks = visiblePersonalTracks,
-                  quickPickTracks = quickPicks?.tracks.orEmpty(),
-                  favoriteTracks = state.favorites,
-                  newReleaseTracks = homeReleaseTracks,
-                  resonanceTracks = resonanceTracks,
-                  showPersonalOrbit = state.interfaceSettings.showPersonalOrbit,
-                  showNewReleases = state.interfaceSettings.showNewReleases,
-                  showResonance = state.interfaceSettings.showResonance
-              )
-          }
-          '''
-          text = sub_once(
-              r'^    val quickSelectionTracks = remember\(visiblePersonalTracks, quickPicks, state\.favorites, homeReleaseTracks, resonanceTracks\) \{\n.*?^    \}\n',
-              new_selection,
-              text,
-              'replace quick selection policy'
-          )
-
-          spotlight_marker = '        spotlightCandidate?.let { candidate ->'
-          spotlight_index = text.index(spotlight_marker)
-          quick_item_start = text.rfind('        item(key = "home-quick-access", contentType = "home-quick-access") {', 0, spotlight_index)
-          if quick_item_start < 0:
-              raise RuntimeError('quick-selection item before spotlight not found')
-          quick_item_end = text.index(spotlight_marker, quick_item_start)
-          text = text[:quick_item_start] + text[quick_item_end:]
-
-          spotlight_index = text.index(spotlight_marker)
-          continue_marker = '        if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {'
-          insert_at = text.index(continue_marker, spotlight_index)
-          grid_block = '''        if (quickSelectionTracks.isNotEmpty()) {
-              item(key = "home-quick-access", contentType = "home-quick-access") {
-                  HomeSectionInset {
-                      HomeQuickSelectionGrid(
-                          tracks = quickSelectionTracks,
-                          currentIdentity = currentTrackIdentity,
-                          isPlaying = state.isPlaying,
-                          isResolving = state.isResolving,
-                          onPlay = { track ->
-                              when {
-                                  LevyraPersonalOrbit.identityKey(track) != currentTrackIdentity ->
-                                      viewModel.playFrom(quickSelectionTracks, track)
-                                  state.isResolving -> Unit
-                                  else -> viewModel.togglePlay()
-                              }
-                          }
-                      )
-                  }
-              }
-          }
-          '''
-          text = text[:insert_at] + grid_block + text[insert_at:]
-
-          grid_start = text.index('@Composable\nprivate fun HomeQuickSelectionGrid(')
-          next_component = text.index('@Composable\nprivate fun HomeQuickPicksShelf(', grid_start)
-          new_components = '''@Composable
-          private fun HomeQuickSelectionGrid(
-              tracks: List<Track>,
-              currentIdentity: String?,
-              isPlaying: Boolean,
-              isResolving: Boolean,
-              onPlay: (Track) -> Unit
-          ) {
-              if (tracks.isEmpty()) return
-
-              val strings = LocalLevyraStrings.current
-              val rows = remember(tracks) { tracks.chunked(3) }
-
-              Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                  Text(
-                      text = strings.quickPicks,
-                      color = if (LevyraIsLight) LevyraText else Color.White,
-                      fontSize = 20.sp,
-                      fontWeight = FontWeight.ExtraBold,
-                      letterSpacing = (-0.4).sp
-                  )
-                  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                      rows.forEach { rowTracks ->
-                          Row(
-                              modifier = Modifier.fillMaxWidth(),
-                              horizontalArrangement = Arrangement.spacedBy(10.dp)
-                          ) {
-                              rowTracks.forEach { track ->
-                                  val isCurrent = LevyraPersonalOrbit.identityKey(track) == currentIdentity
-                                  HomeQuickSelectionCard(
-                                      track = track,
-                                      isCurrent = isCurrent,
-                                      isPlaying = isPlaying && isCurrent,
-                                      isResolving = isResolving && isCurrent,
-                                      modifier = Modifier.weight(1f),
-                                      onClick = { onPlay(track) }
-                                  )
-                              }
-                              repeat(3 - rowTracks.size) {
-                                  Spacer(modifier = Modifier.weight(1f))
-                              }
-                          }
-                      }
-                  }
-              }
-          }
-
-          @Composable
-          private fun HomeQuickSelectionCard(
-              track: Track,
-              isCurrent: Boolean,
-              isPlaying: Boolean,
-              isResolving: Boolean,
-              modifier: Modifier = Modifier,
-              onClick: () -> Unit
-          ) {
-              val shape = RoundedCornerShape(14.dp)
-              val cardBackground = if (LevyraIsLight) Color.White else Color(0xFF12141D)
-              val borderColor = when {
-                  isCurrent -> LevyraCyan
-                  LevyraIsLight -> LevyraInk.copy(alpha = 0.14f)
-                  else -> Color.White.copy(alpha = 0.08f)
-              }
-              val borderWidth = if (isCurrent) 1.5.dp else 1.dp
-
-              Box(
-                  modifier = modifier
-                      .aspectRatio(1.05f)
-                      .clip(shape)
-                      .background(cardBackground, shape)
-                      .border(BorderStroke(borderWidth, borderColor), shape)
-                      .semantics(mergeDescendants = true) {
-                          role = Role.Button
-                          selected = isCurrent
-                          contentDescription = track.title
-                      }
-                      .pressable(onClick = onClick)
-              ) {
-                  CoverImage(
-                      track = track,
-                      modifier = Modifier.fillMaxSize(),
-                      highRes = false
-                  )
-
-                  Box(
-                      modifier = Modifier
-                          .fillMaxSize()
-                          .background(
-                              Brush.verticalGradient(
-                                  colorStops = arrayOf(
-                                      0.0f to Color.Transparent,
-                                      0.38f to Color.Transparent,
-                                      0.70f to Color.Black.copy(alpha = 0.55f),
-                                      1.0f to Color.Black.copy(alpha = 0.92f)
-                                  )
-                              )
-                          )
-                  )
-
-                  if (isCurrent) {
-                      Box(
-                          modifier = Modifier
-                              .padding(6.dp)
-                              .align(Alignment.TopEnd)
-                              .size(22.dp)
-                              .clip(CircleShape)
-                              .background(LevyraCyan)
-                              .border(1.dp, Color.Black.copy(alpha = 0.3f), CircleShape),
-                          contentAlignment = Alignment.Center
-                      ) {
-                          if (isResolving) {
-                              CircularProgressIndicator(
-                                  modifier = Modifier.size(12.dp),
-                                  strokeWidth = 1.5.dp,
-                                  color = Color.Black
-                              )
-                          } else {
-                              Icon(
-                                  imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
-                                  contentDescription = null,
-                                  tint = Color.Black,
-                                  modifier = Modifier.size(13.dp)
-                              )
-                          }
-                      }
-                  }
-
-                  Text(
-                      text = track.title,
-                      color = Color.White,
-                      fontSize = 13.sp,
-                      fontWeight = FontWeight.Bold,
-                      lineHeight = 16.sp,
-                      maxLines = 2,
-                      overflow = TextOverflow.Ellipsis,
-                      modifier = Modifier
-                          .align(Alignment.BottomStart)
-                          .padding(horizontal = 8.dp, vertical = 7.dp)
-                  )
-              }
-          }
-
-          '''
-          text = text[:grid_start] + new_components + text[next_component:]
-          app_path.write_text(text, encoding='utf-8')
-
-          def strip_kotlin_comments(source: str) -> str:
-              output = []
-              stack = [('code', None)]
-              i = 0
-
-              while i < len(source):
-                  mode, data = stack[-1]
-
-                  if mode in ('code', 'template'):
-                      if source.startswith('//', i):
-                          output.append(' ')
-                          stack.append(('line_comment', None))
-                          i += 2
-                          continue
-                      if source.startswith('/*', i):
-                          output.append(' ')
-                          stack.append(('block_comment', 1))
-                          i += 2
-                          continue
-                      if source.startswith('"""', i):
-                          output.append('"""')
-                          stack.append(('triple', None))
-                          i += 3
-                          continue
-                      char = source[i]
-                      if char == '"':
-                          output.append(char)
-                          stack.append(('string', None))
-                          i += 1
-                          continue
-                      if char == "'":
-                          output.append(char)
-                          stack.append(('char', None))
-                          i += 1
-                          continue
-                      if char == '`':
-                          output.append(char)
-                          stack.append(('backtick', None))
-                          i += 1
-                          continue
-                      if mode == 'template':
-                          depth = data
-                          if char == '{':
-                              stack[-1] = ('template', depth + 1)
-                          elif char == '}':
-                              depth -= 1
-                              if depth == 0:
-                                  output.append(char)
-                                  stack.pop()
-                                  i += 1
-                                  continue
-                              stack[-1] = ('template', depth)
-                      output.append(char)
-                      i += 1
-                      continue
-
-                  if mode == 'line_comment':
-                      if source[i] == '\n':
-                          output.append('\n')
-                          stack.pop()
-                      i += 1
-                      continue
-
-                  if mode == 'block_comment':
-                      depth = data
-                      if source.startswith('/*', i):
-                          stack[-1] = ('block_comment', depth + 1)
-                          i += 2
-                          continue
-                      if source.startswith('*/', i):
-                          depth -= 1
-                          i += 2
-                          if depth == 0:
-                              stack.pop()
-                          else:
-                              stack[-1] = ('block_comment', depth)
-                          continue
-                      if source[i] == '\n':
-                          output.append('\n')
-                      i += 1
-                      continue
-
-                  if mode == 'string':
-                      char = source[i]
-                      output.append(char)
-                      if char == '\\' and i + 1 < len(source):
-                          output.append(source[i + 1])
-                          i += 2
-                          continue
-                      if char == '"':
-                          stack.pop()
-                          i += 1
-                          continue
-                      if char == '$' and i + 1 < len(source) and source[i + 1] == '{':
-                          output.append('{')
-                          stack.append(('template', 1))
-                          i += 2
-                          continue
-                      i += 1
-                      continue
-
-                  if mode == 'triple':
-                      if source.startswith('"""', i):
-                          output.append('"""')
-                          stack.pop()
-                          i += 3
-                          continue
-                      if source.startswith('${', i):
-                          output.append('${')
-                          stack.append(('template', 1))
-                          i += 2
-                          continue
-                      output.append(source[i])
-                      i += 1
-                      continue
-
-                  if mode == 'char':
-                      char = source[i]
-                      output.append(char)
-                      if char == '\\' and i + 1 < len(source):
-                          output.append(source[i + 1])
-                          i += 2
-                          continue
-                      if char == "'":
-                          stack.pop()
-                      i += 1
-                      continue
-
-                  if mode == 'backtick':
-                      char = source[i]
-                      output.append(char)
-                      if char == '`':
-                          stack.pop()
-                      i += 1
-                      continue
-
-              if len(stack) != 1 or stack[0][0] != 'code':
-                  raise RuntimeError(f'unterminated Kotlin lexical state: {stack}')
-              return ''.join(output)
-
-          changed_files = [
-              Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt'),
-              Path('app/src/main/java/com/luc4n3x/levyra/ui/HomeExperience.kt'),
-              Path('app/src/main/java/com/luc4n3x/levyra/ui/HomeQuickSelection.kt'),
-              Path('app/src/test/java/com/luc4n3x/levyra/ui/HomeQuickSelectionTest.kt')
-          ]
-          for path in changed_files:
-              cleaned = strip_kotlin_comments(path.read_text(encoding='utf-8'))
-              cleaned = '\n'.join(line.rstrip() for line in cleaned.split('\n'))
-              path.write_text(cleaned, encoding='utf-8')
-          PY
-
-      - name: Validate focused changes
-        run: |
-          ./gradlew --no-daemon :app:compileDebugKotlin
-          ./gradlew --no-daemon :app:testDebugUnitTest --tests 'com.luc4n3x.levyra.ui.HomeQuickSelectionTest'
-
-      - name: Restore workflows and commit
+      - name: Prepare CI Release Signing
         shell: bash
         run: |
           set -euo pipefail
-          git show origin/main:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
-          rm -f .github/workflows/pr263-autofix.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
-            app/src/main/java/com/luc4n3x/levyra/ui/HomeExperience.kt \
-            app/src/main/java/com/luc4n3x/levyra/ui/HomeQuickSelection.kt \
-            app/src/test/java/com/luc4n3x/levyra/ui/HomeQuickSelectionTest.kt \
-            .github/workflows/pr-check.yml \
-            .github/workflows/pr263-autofix.yml
-          git diff --cached --check
-          git commit -m "fix(ui): harden Home quick selection"
-          git push origin HEAD:feature/refactor-home-screen-yt-music-style
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
+
+      - name: Gradle Version
+        run: ./gradlew --no-daemon --version
+
+      - name: Android Runtime Compatibility Scan
+        run: python3 scripts/check_android_regex_compatibility.py
+
+      - name: Android Lint
+        run: ./gradlew --no-daemon :app:lintRelease
+
+      - name: Motion, Canvas, and Artwork Continuity Unit Tests
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.feature.motion.*' \
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest'
+
+      - name: Release Compile
+        run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
+
+      - name: Setup Java 21 for F-Droid
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: F-Droid Release Compile
+        shell: bash
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: ""
+          LEVYRA_KEYSTORE_FILE: ""
+          LEVYRA_KEYSTORE_PASSWORD: ""
+          LEVYRA_KEY_ALIAS: ""
+          LEVYRA_KEY_PASSWORD: ""
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease \
+            -PlevyraFdroidBuild=true
+          FDROID_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "${FDROID_APK}"
+          if "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify "${FDROID_APK}" >/dev/null 2>&1; then
+            echo "F-Droid source build must remain unsigned."
+            exit 1
+          fi
+
+      - name: Collect Reports
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/reports
+          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/reports-index.txt || true
+          if [ -d app/build/reports ]; then
+            cp -R app/build/reports artifacts/reports/app-build-reports
+          fi
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-check-reports-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: ignore

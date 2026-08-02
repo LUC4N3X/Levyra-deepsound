@@ -256,6 +256,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
@@ -405,9 +406,9 @@ private val HomeHorizontalShelfEndPadding = 30.dp
 private const val HOME_ARTIST_SHELF_SIZE = 13
 private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
 private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
-/** Tab row height, without the navigation bar spacer that `BottomTabs` adds under it. */
+
 private val LevyraTabBarHeight = 76.dp
-/** Mini player height: content row, progress line and its trailing spacer. */
+
 private val LevyraMiniPlayerHeight = 77.dp
 private val LevyraBottomContentGap = 16.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
@@ -1099,9 +1100,9 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
             LevyraBackground()
 
             val homeListState = rememberLazyListState()
-            // Hoisted next to the list state: once the heavy home shelves are revealed they must stay
-            // mounted, otherwise leaving and re-entering the Home tab empties the list for a frame and
-            // the preserved scroll offset is clamped back to the top.
+
+
+
             val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
 
             AnimatedContent(
@@ -1629,14 +1630,14 @@ private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
     }
 }
 
-/**
- * Bottom inset for a list that scrolls behind the tab bar, sized from the bars that actually cover it.
- *
- * A fixed inset large enough for the mini player leaves a tall band of dead space under the last shelf
- * whenever nothing is playing, so the inset tracks the mini player instead. The change is animated with
- * the mini player enter/exit duration: a list already scrolled to the end glides together with the bar
- * rather than snapping when the scroll range shrinks.
- */
+
+
+
+
+
+
+
+
 @Composable
 private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -1649,7 +1650,7 @@ private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabl
     )
 }
 
-/** Animates between two bottom insets without letting the change read as an unexplained jump. */
+
 @Composable
 private fun animatedBottomContentInset(
     collapsed: Dp,
@@ -2052,9 +2053,9 @@ private fun AlbumHeroCard(
 ) {
     val context = LocalContext.current
     var descriptionExpanded by remember { mutableStateOf(false) }
-    // Apple/Vercel hero: calm surface, one signature drop-shadow under the artwork,
-    // restrained hairline borders, tight negative-tracking display type, and a
-    // single primary action (Play) that owns the visual weight.
+
+
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -2111,7 +2112,7 @@ private fun AlbumHeroCard(
             )
         }
 
-        // Primary action: full-width Play, the way Apple Music anchors an album.
+
         AlbumPrimaryPlayButton(
             enabled = trackCount > 0,
             isPlaying = isPlaying,
@@ -2121,7 +2122,7 @@ private fun AlbumHeroCard(
             onClick = onPlayAll
         )
 
-        // Secondary actions: quiet, evenly weighted, hairline chips.
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -2279,8 +2280,8 @@ private fun AlbumNowPlayingDock(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-    // Consistent with the global MiniPlayer: accent-tinted glass pill, rounded on
-    // all corners, hairline border, one gradient play button, thin progress rail.
+
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -5174,9 +5175,9 @@ private fun HomeScreen(
     val editorialCollections = homeDerivedState.editorialCollections
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
-    // `currentTrack` is read but intentionally not a key: avoiding the currently playing track is a
-    // preference for the initial pick only. Re-running this on every playback change could swap the hero
-    // above the viewport and shift everything below it, and `stableSpotlightId` pins the choice anyway.
+
+
+
     val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
         spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
             ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
@@ -5222,9 +5223,9 @@ private fun HomeScreen(
     val chartChunks = homeDerivedState.chartChunks
     val homeContent = homeDerivedState.contentAvailability
     val homeFingerprint = homeDerivedState.contentFingerprint
-    // The reveal is a first-paint budget, not a content switch: it defers the heavy shelves once so the
-    // greeting and the spotlight land first. Re-hiding them on every fingerprint change would unmount
-    // everything below the fold and force the LazyColumn to clamp the scroll offset back to the top.
+
+
+
     val showDeferredHomeSections by deferredSectionsRevealed
     LaunchedEffect(homeFingerprint) {
         if (deferredSectionsRevealed.value) return@LaunchedEffect
@@ -5263,17 +5264,29 @@ private fun HomeScreen(
             }
         }
     }
-    val homeMixTracks = remember(quickPicks, visiblePersonalTracks, resonanceTracks) {
-        quickPicks?.tracks?.takeIf { it.isNotEmpty() }
-            ?: visiblePersonalTracks.takeIf { it.isNotEmpty() }
-            ?: resonanceTracks
-    }
     val homeReleaseTracks = remember(newReleases) { newReleases?.tracks.orEmpty() }
-    val quickSelectionTracks = remember(visiblePersonalTracks, quickPicks, state.favorites, homeReleaseTracks, resonanceTracks) {
-        LevyraPersonalOrbit.distinctRecordings(
-            visiblePersonalTracks + (quickPicks?.tracks.orEmpty()) + state.favorites + homeReleaseTracks + resonanceTracks
-        ).take(9)
-    }
+    val currentTrackIdentity = state.currentTrack?.let(LevyraPersonalOrbit::identityKey)
+val quickSelectionTracks = remember(
+    visiblePersonalTracks,
+    quickPicks,
+    state.favorites,
+    homeReleaseTracks,
+    resonanceTracks,
+    state.interfaceSettings.showPersonalOrbit,
+    state.interfaceSettings.showNewReleases,
+    state.interfaceSettings.showResonance
+) {
+    buildHomeQuickSelectionTracks(
+        personalTracks = visiblePersonalTracks,
+        quickPickTracks = quickPicks?.tracks.orEmpty(),
+        favoriteTracks = state.favorites,
+        newReleaseTracks = homeReleaseTracks,
+        resonanceTracks = resonanceTracks,
+        showPersonalOrbit = state.interfaceSettings.showPersonalOrbit,
+        showNewReleases = state.interfaceSettings.showNewReleases,
+        showResonance = state.interfaceSettings.showResonance
+    )
+}
     val homeBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
@@ -5302,17 +5315,6 @@ private fun HomeScreen(
                 }
             }
         }
-        item(key = "home-quick-access", contentType = "home-quick-access") {
-            HomeSectionInset {
-                HomeQuickSelectionGrid(
-                    tracks = quickSelectionTracks,
-                    currentId = state.currentTrack?.id,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    onPlay = { track -> viewModel.playFrom(quickSelectionTracks, track) }
-                )
-            }
-        }
         spotlightCandidate?.let { candidate ->
             val heroTrack = candidate.track
             item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
@@ -5335,6 +5337,26 @@ private fun HomeScreen(
                 }
             }
         }
+        if (quickSelectionTracks.isNotEmpty()) {
+    item(key = "home-quick-access", contentType = "home-quick-access") {
+        HomeSectionInset {
+            HomeQuickSelectionGrid(
+                tracks = quickSelectionTracks,
+                currentIdentity = currentTrackIdentity,
+                isPlaying = state.isPlaying,
+                isResolving = state.isResolving,
+                onPlay = { track ->
+                    when {
+                        LevyraPersonalOrbit.identityKey(track) != currentTrackIdentity ->
+                            viewModel.playFrom(quickSelectionTracks, track)
+                        state.isResolving -> Unit
+                        else -> viewModel.togglePlay()
+                    }
+                }
+            )
+        }
+    }
+}
         if (state.currentTrack != null && !state.isPlaying && !state.isResolving) {
             item(key = "home-continue", contentType = "home-card") {
                 HomeContinueListeningCard(
@@ -5551,8 +5573,8 @@ private fun HomeScreen(
                 }
             }
         }
-        // Only emitted when it actually renders: an always-present empty item still consumes the
-        // vertical arrangement spacing and leaves a visible gap under the last shelf.
+
+
         if (state.homeError != null || state.playerError != null) {
             item(key = "home-status", contentType = "home-card") {
                 HomeSectionInset { StatusBlock(state) }
@@ -6139,25 +6161,19 @@ private fun CollectionArtworkMosaic(
 @Composable
 private fun HomeQuickSelectionGrid(
     tracks: List<Track>,
-    currentId: String?,
+    currentIdentity: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: (Track) -> Unit
 ) {
-    val displayTracks = remember(tracks) {
-        tracks
-            .distinctBy(LevyraPersonalOrbit::identityKey)
-            .take(9)
-    }
-    if (displayTracks.isEmpty()) return
+    if (tracks.isEmpty()) return
 
     val strings = LocalLevyraStrings.current
-    val headingText = remember(strings) { strings.quickPicks.ifBlank { "Selezione rapida" } }
-    val rows = remember(displayTracks) { displayTracks.chunked(3) }
+    val rows = remember(tracks) { tracks.chunked(3) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = headingText,
+            text = strings.quickPicks,
             color = if (LevyraIsLight) LevyraText else Color.White,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -6170,11 +6186,12 @@ private fun HomeQuickSelectionGrid(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     rowTracks.forEach { track ->
+                        val isCurrent = LevyraPersonalOrbit.identityKey(track) == currentIdentity
                         HomeQuickSelectionCard(
                             track = track,
-                            isCurrent = track.id == currentId,
-                            isPlaying = isPlaying && track.id == currentId,
-                            isResolving = isResolving && track.id == currentId,
+                            isCurrent = isCurrent,
+                            isPlaying = isPlaying && isCurrent,
+                            isResolving = isResolving && isCurrent,
                             modifier = Modifier.weight(1f),
                             onClick = { onPlay(track) }
                         )
@@ -6199,21 +6216,30 @@ private fun HomeQuickSelectionCard(
 ) {
     val shape = RoundedCornerShape(14.dp)
     val cardBackground = if (LevyraIsLight) Color.White else Color(0xFF12141D)
-    val borderColor = if (isCurrent) LevyraCyan else Color.White.copy(alpha = if (LevyraIsLight) 0.12f else 0.08f)
-    val borderPx = if (isCurrent) 1.5.dp else 1.dp
+    val borderColor = when {
+        isCurrent -> LevyraCyan
+        LevyraIsLight -> LevyraInk.copy(alpha = 0.14f)
+        else -> Color.White.copy(alpha = 0.08f)
+    }
+    val borderWidth = if (isCurrent) 1.5.dp else 1.dp
 
     Box(
         modifier = modifier
             .aspectRatio(1.05f)
             .clip(shape)
             .background(cardBackground, shape)
-            .border(BorderStroke(borderPx, borderColor), shape)
+            .border(BorderStroke(borderWidth, borderColor), shape)
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                selected = isCurrent
+                contentDescription = track.title
+            }
             .pressable(onClick = onClick)
     ) {
         CoverImage(
             track = track,
             modifier = Modifier.fillMaxSize(),
-            highRes = true
+            highRes = false
         )
 
         Box(
@@ -6262,9 +6288,9 @@ private fun HomeQuickSelectionCard(
         Text(
             text = track.title,
             color = Color.White,
-            fontSize = 11.5.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            lineHeight = 14.sp,
+            lineHeight = 16.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
@@ -7210,15 +7236,15 @@ private fun releaseKindFromSource(title: String, track: Track): String {
     }
 }
 
-/**
- * True only when the track carries a genuine square album cover.
- *
- * YouTube Music serves album/song art from Google's image CDN as square,
- * resizable URLs (`=w544-h544...` or `=s...`). "Songs" that are really music
- * videos instead come back with a 16:9 video frame from `i.ytimg.com/vi/...`
- * (hqdefault/mqdefault/…). Those framegrabs look wrong in a cover grid, so the
- * personal orbit shelf keeps only tracks backed by real artwork.
- */
+
+
+
+
+
+
+
+
+
 private val SQUARE_ART_WIDTH_HEIGHT_PATTERN = Regex("=w\\d+-h\\d+")
 private val SQUARE_ART_SIZE_PATTERN = Regex("=s\\d+")
 
@@ -16692,7 +16718,7 @@ private fun LevyraVideoSurface(
         if (player != null) {
             AndroidView(
                 factory = { context ->
-                    // TextureView stays inside Compose bounds; SurfaceView can cover sibling controls.
+
                     (android.view.LayoutInflater.from(context).inflate(
                         R.layout.levyra_video_player_view,
                         null,
