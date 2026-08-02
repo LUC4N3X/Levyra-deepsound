@@ -6,6 +6,7 @@ on:
       - refactor/home-experience
     paths:
       - .github/workflows/apply-home-review-fixes.yml
+      - .github/home-review-trigger
 
 permissions:
   contents: write
@@ -52,7 +53,7 @@ jobs:
 
           path.write_text(text, encoding="utf-8")
           PY
-          rm .github/workflows/apply-home-review-fixes.yml
+          rm -f .github/workflows/apply-home-review-fixes.yml .github/home-review-trigger
       - name: Commit fixes
         shell: bash
         run: |
