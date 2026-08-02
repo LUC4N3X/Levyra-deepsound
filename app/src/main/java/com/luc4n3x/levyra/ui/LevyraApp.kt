@@ -25,7 +25,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
 import android.media.AudioManager
@@ -768,6 +767,7 @@ private fun HomeSectionHeader(
             val shape = CircleShape
             Row(
                 modifier = Modifier
+                    .sizeIn(minHeight = LevyraPlayerDesign.MinimumTouchTarget)
                     .height(36.dp)
                     .clip(shape)
                     .background(
@@ -5319,7 +5319,7 @@ private fun HomeScreen(
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset + 28.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset + 64.dp),
             verticalArrangement = Arrangement.spacedBy(
                 if (state.interfaceSettings.compactHome) {
                     LevyraHomeDesign.SectionGapCompact
@@ -5329,20 +5329,20 @@ private fun HomeScreen(
             )
         ) {
             item(key = "home-top", contentType = "home-header") {
-                HomeSectionInset {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    HomeSectionInset {
                         GreetingBar(
                             userName = state.userName,
                             isResolving = state.isResolving,
                             onSearch = viewModel::openSearch,
                             onSettings = viewModel::openSettings
                         )
-                        MoodRow(
-                            moods = state.moods,
-                            selectedId = state.selectedMood?.id,
-                            onSelect = viewModel::selectMood
-                        )
                     }
+                    MoodRow(
+                        moods = state.moods,
+                        selectedId = state.selectedMood?.id,
+                        onSelect = viewModel::selectMood
+                    )
                 }
             }
 
@@ -5814,7 +5814,7 @@ private fun HomeEditorialSpotlight(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(LevyraHomeDesign.HeroHeight)
+            .heightIn(min = LevyraHomeDesign.HeroHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -6092,7 +6092,7 @@ private fun HomeEditorialCollectionCard(
     )
     val accentStart = Color(collection.accentStart)
     val accentEnd = Color(collection.accentEnd)
-    val shape = RoundedCornerShape(20.dp)
+    val shape = LevyraHomeDesign.ShelfShape
     val artists = remember(collection.tracks) {
         collection.tracks
             .asSequence()
@@ -6295,7 +6295,7 @@ private fun HomeQuickPicksShelf(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(
                 start = HomeHorizontalInset,
-                end = HomeHorizontalShelfEndPadding
+                end = 36.dp
             )
         ) {
             itemsIndexed(
@@ -6306,7 +6306,7 @@ private fun HomeQuickPicksShelf(
                 contentType = { _, _ -> "quick-picks-column" }
             ) { _, column ->
                 Column(
-                    modifier = Modifier.width(280.dp),
+                    modifier = Modifier.width(304.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     column.forEach { track ->
@@ -6332,7 +6332,7 @@ private fun HomeQuickPickRow(
     isResolving: Boolean,
     onPlay: () -> Unit
 ) {
-    val shape = RoundedCornerShape(15.dp)
+    val shape = LevyraHomeDesign.ShelfShape
     val neutralSurface = if (LevyraIsLight) {
         Color.White.copy(alpha = 0.72f)
     } else {
@@ -6365,9 +6365,9 @@ private fun HomeQuickPickRow(
             .background(background)
             .border(Dp.Hairline, outlineColor, shape)
             .pressable(onClick = onPlay)
-            .padding(start = 8.dp, end = 10.dp),
+            .padding(start = 8.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Box(
             modifier = Modifier
@@ -6430,7 +6430,7 @@ private fun HomeQuickPickRow(
         }
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(28.dp)
                 .background(
                     if (isCurrent) LevyraCyan.copy(alpha = 0.15f) else Color.Transparent,
                     CircleShape
@@ -14234,7 +14234,8 @@ private fun HomeHeaderIconButton(
             .clip(shape)
             .background(background)
             .border(Dp.Hairline, border, shape)
-            .pressable(onClick = onClick),
+            .pressable(onClick = onClick)
+            .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center
     ) {
         if (loading) {
@@ -14246,7 +14247,7 @@ private fun HomeHeaderIconButton(
         } else {
             Icon(
                 imageVector = icon,
-                contentDescription = contentDescription,
+                contentDescription = null,
                 tint = LevyraText.copy(alpha = 0.90f),
                 modifier = Modifier.size(21.dp)
             )
@@ -14591,15 +14592,15 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 
 @Composable
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
-    val listState = rememberLazyListState()
-    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
-
     LazyRow(
-        state = listState,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(start = 1.dp, end = 1.dp),
-        flingBehavior = flingBehavior
+        contentPadding = PaddingValues(
+            start = HomeHorizontalInset,
+            end = 48.dp
+        )
     ) {
         items(
             items = moods,
@@ -14607,7 +14608,7 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
             contentType = { "home-mood" }
         ) { mood ->
             val selected = mood.id == selectedId
-            val shape = RoundedCornerShape(14.dp)
+            val shape = LevyraHomeDesign.MoodChipShape
             val background = when {
                 selected -> Brush.linearGradient(
                     listOf(
