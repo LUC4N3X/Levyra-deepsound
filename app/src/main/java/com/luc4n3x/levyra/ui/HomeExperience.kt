@@ -104,18 +104,18 @@ private fun Modifier.homeAtmosphereBackground(
     val height = size.height
     val fadeTop = height * 0.4f
 
-    // Very dark premium gradient inspired by YT Music
+    // Cool deep cosmic gradient
     val topGradient = Brush.radialGradient(
         colors = listOf(
-            primary.copy(alpha = 0.15f),
-            secondary.copy(alpha = 0.05f),
+            primary.copy(alpha = 0.25f),
+            secondary.copy(alpha = 0.15f),
             Color.Transparent
         ),
         center = Offset(width / 2f, 0f),
-        radius = width.coerceAtLeast(height) * 0.8f
+        radius = width.coerceAtLeast(height) * 0.9f
     )
 
-    val backgroundDark = Color(0xFF030303) // Very deep dark gray/black
+    val backgroundDark = Color(0xFF0C0A15) // Deep cosmic purple-blue, not total black
 
     val bottomFade = Brush.verticalGradient(
         colors = listOf(
@@ -130,7 +130,7 @@ private fun Modifier.homeAtmosphereBackground(
     onDrawBehind {
         drawRect(backgroundDark)
         drawRect(topGradient)
-        // Draw the fade to ensure it completely blends to black at the bottom
+        // Draw the fade to ensure it completely blends to the cosmic color at the bottom
         drawRect(
             brush = bottomFade,
             topLeft = Offset(0f, 0f),

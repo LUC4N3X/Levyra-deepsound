@@ -5290,18 +5290,7 @@ private fun HomeScreen(
                 }
             }
         }
-        item(key = "home-quick-access", contentType = "home-quick-access") {
-            HomeSectionInset {
-                HomeQuickSelectionGrid(
-                    userName = state.userName,
-                    tracks = quickSelectionTracks,
-                    currentId = state.currentTrack?.id,
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    onPlay = { track -> viewModel.playFrom(quickSelectionTracks, track) }
-                )
-            }
-        }
+
         spotlightCandidate?.let { candidate ->
             val heroTrack = candidate.track
             item(key = "home-editorial-spotlight", contentType = "home-spotlight") {
@@ -14121,18 +14110,41 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        val currentHour = java.time.LocalTime.now().hour
+        val greeting = when (currentHour) {
+            in 5..11 -> "Buongiorno"
+            in 12..17 -> "Buon pomeriggio"
+            else -> "Buonasera"
+        }
+        val displayGreeting = if (userName.isNotBlank()) {
+            "$greeting, $userName"
+        } else {
+            "$greeting, Luca"
+        }
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            LevyraLogoMark(size = 32.dp)
             Text(
-                text = "Music",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp
+                text = displayGreeting,
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
             )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LevyraLogoMark(size = 32.dp)
+                Text(
+                    text = "Levyra",
+                    color = Color.White,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.8).sp,
+                    fontFamily = FontFamily.Default
+                )
+            }
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
