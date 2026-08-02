@@ -102,7 +102,7 @@ fun CollectionCard(
             )
         } else {
             Text(
-                text = if (circular) "Artist" else "",
+                text = "\u00A0",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Transparent,
                 maxLines = 1
