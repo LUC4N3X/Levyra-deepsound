@@ -9,7 +9,7 @@ class HomeDesignTest {
     fun `quick access keeps a compact touch friendly scale`() {
         assertTrue(LevyraHomeDesign.TileHeight >= LevyraPlayerDesign.MinimumTouchTarget)
         assertTrue(LevyraHomeDesign.ArtworkSize <= LevyraHomeDesign.TileHeight)
-        assertTrue(LevyraHomeDesign.TileGap > LevyraHomeDesign.TileBorderDark.alpha.dpCompat())
+        assertTrue(LevyraHomeDesign.TileGap.value > 0f)
     }
 
     @Test
@@ -19,5 +19,3 @@ class HomeDesignTest {
         assertEquals(18f, LevyraHomeDesign.HorizontalInset.value, 0f)
     }
 }
-
-private fun Float.dpCompat() = androidx.compose.ui.unit.dp
