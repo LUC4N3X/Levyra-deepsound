@@ -1,0 +1,86 @@
+name: Polish Home header
+
+on:
+  push:
+    branches:
+      - agent/home-levyra-aura
+
+permissions:
+  contents: write
+
+concurrency:
+  group: polish-home-header
+  cancel-in-progress: false
+
+jobs:
+  polish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/home-levyra-aura
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/remove_home_quick_access_and_polish_header.py
+      - name: Keep the header fully localized
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '    val secondaryText = if (isLight) LevyraMuted else Color.White.copy(alpha = 0.62f)\n',
+              ''
+          )
+          old = '''                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(42.dp)
+                            .height(3.dp)
+                            .background(
+                                Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)),
+                                RoundedCornerShape(999.dp)
+                            )
+                    )
+                    Text(
+                        text = "Your sound, your space",
+                        color = secondaryText,
+                        fontSize = 11.sp,
+                        lineHeight = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.15.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+'''
+          new = '''                Box(
+                    modifier = Modifier
+                        .width(52.dp)
+                        .height(3.dp)
+                        .background(
+                            Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)),
+                            RoundedCornerShape(999.dp)
+                        )
+                )
+'''
+          if old not in text:
+              raise SystemExit('localized header cleanup block not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit final Home revision and remove patch tooling
+        shell: bash
+        run: |
+          rm -f scripts/remove_home_quick_access_and_polish_header.py .github/workflows/polish-home-header.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor(home): remove shortcut grid and polish the Levyra header"
+          git push origin HEAD:agent/home-levyra-aura
