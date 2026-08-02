@@ -99,7 +99,7 @@ compose.desktop {
                 menu = true
                 menuGroup = "Levyra"
                 shortcut = true
-                dirChooser = true
+                dirChooser = false
                 perUserInstall = true
                 upgradeUuid = "0f3f2d8c-2f1e-4a7b-9a51-6d9c2a1f5b74"
             }
