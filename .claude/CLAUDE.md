@@ -56,4 +56,19 @@ Release tasks require the inputs documented in `app/build.gradle.kts` and mirror
  
 ## Specialized guidance
  
-Claude Code automatically loads topic and path-specific rules from `.claude/rules/`. Reusable procedures are available under `.claude/skills/`, including player, extractor, database, Compose, release, security, motion-artwork, and PR-review workflows.
+Rules under `.claude/rules/` load automatically from their `paths:` frontmatter. Skills do not load themselves. Invoke the matching skill with the Skill tool **before reading widely or editing**, without waiting to be asked.
+
+| The task touches | Invoke |
+| --- | --- |
+| Playback, queue, Media3, MediaSession, notification, Android Auto, prefetch, audio/video mode | `levyra-player` |
+| InnerTube, extractor, stream resolution, player-config sync, tokens, network fallback | `levyra-extractor` |
+| Room entities, DAOs, migrations, schema, caches, stores, backup | `levyra-database` |
+| Compose screens, state projections, animation, lifecycle, accessibility, localization | `levyra-compose` |
+| Decorative motion artwork | `levyra-motion-artwork` |
+| Secrets, remote URLs, redirects, SSRF, MIME confusion, permissions, privacy, workflow exposure | `levyra-security-review` |
+| Reviewing the current diff before merge | `levyra-pr-review` |
+| Pre-merge or pre-release validation, `levyraVersionName`/`levyraVersionCode`, signing, APK output | `levyra-release-check` |
+
+When several rows match, invoke each of them. A player change that also touches the extractor is both. If a skill turns out not to apply once read, say so in one line and continue rather than silently skipping it.
+
+A `UserPromptSubmit` hook restates the matching rows for each request, so this table is enforced rather than merely documented. The table remains authoritative if that hook is unavailable.
