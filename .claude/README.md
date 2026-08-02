@@ -28,7 +28,6 @@ Claude Code officially supports `.claude/CLAUDE.md` as the project instruction f
 └── skills/
     ├── levyra-compose/SKILL.md
     ├── levyra-database/SKILL.md
-    ├── levyra-desktop/SKILL.md
     ├── levyra-extractor/SKILL.md
     ├── levyra-motion-artwork/SKILL.md
     ├── levyra-player/SKILL.md
