@@ -65,7 +65,7 @@ When distributing Levyra or a modified build:
 
 ```text
 Keep LICENSE
-Keep docs/THIRD_PARTY_NOTICES.md
+Keep THIRD_PARTY_NOTICES.md
 Keep upstream copyright notices
 Keep upstream license notices
 State visible modifications
