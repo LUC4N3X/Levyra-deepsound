@@ -5491,7 +5491,8 @@ private fun HomeScreen(
                         currentId = state.currentTrack?.id,
                         isPlaying = state.isPlaying,
                         isResolving = state.isResolving,
-                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) }
+                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) },
+                        onToggleCurrent = viewModel::togglePlay
                     )
                 }
             }
@@ -6854,7 +6855,8 @@ private fun HomeMusicVideoShelf(
     currentId: String?,
     isPlaying: Boolean,
     isResolving: Boolean,
-    onPlay: (Track) -> Unit
+    onPlay: (Track) -> Unit,
+    onToggleCurrent: () -> Unit
 ) {
     val videos = remember(tracks) {
         LevyraPersonalOrbit.distinctRecordings(tracks)
@@ -6875,7 +6877,7 @@ private fun HomeMusicVideoShelf(
             ) { _, track ->
                 val active = currentId != null && track.id == currentId
                 Column(
-                    modifier = Modifier.width(236.dp).pressable(onClick = { onPlay(track) }),
+                    modifier = Modifier.width(236.dp).pressable(onClick = { if (active) onToggleCurrent() else onPlay(track) }),
                     verticalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
                     Box(
