@@ -92,7 +92,7 @@ internal fun vlcMp3TranscodeOptions(
     val destination = escapeVlcSoutPath(target.toAbsolutePath().normalize().toString())
     return arrayOf(
         ":no-video",
-        ":sout=#transcode{vcodec=none,acodec=mp3,ab=$safeBitrate,channels=2,samplerate=44100}:std{access=file,mux=raw,dst='$destination'}",
+        ":sout=#transcode{vcodec=none,acodec=mpga,ab=$safeBitrate,channels=2,samplerate=44100}:std{access=file,mux=raw,dst='$destination'}",
         ":sout-keep"
     )
 }
