@@ -320,6 +320,6 @@ internal fun formatSeekbarMillis(ms: Long): String {
     return if (hours > 0L) {
         String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
     } else {
-        String.format(Locale.US, "%02d:%02d", minutes, seconds)
+        String.format(Locale.US, "%d:%02d", minutes, seconds)
     }
 }
