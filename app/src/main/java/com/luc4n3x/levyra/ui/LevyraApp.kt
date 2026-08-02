@@ -25,6 +25,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.gestures.detectTapGestures
 import android.app.Activity
 import android.media.AudioManager
@@ -5318,7 +5319,7 @@ private fun HomeScreen(
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset),
+            contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset + 28.dp),
             verticalArrangement = Arrangement.spacedBy(
                 if (state.interfaceSettings.compactHome) {
                     LevyraHomeDesign.SectionGapCompact
@@ -5333,7 +5334,7 @@ private fun HomeScreen(
                         GreetingBar(
                             userName = state.userName,
                             isResolving = state.isResolving,
-                            onSearch = { viewModel.searchNow() },
+                            onSearch = viewModel::openSearch,
                             onSettings = viewModel::openSettings
                         )
                         MoodRow(
@@ -6305,7 +6306,7 @@ private fun HomeQuickPicksShelf(
                 contentType = { _, _ -> "quick-picks-column" }
             ) { _, column ->
                 Column(
-                    modifier = Modifier.width(304.dp),
+                    modifier = Modifier.width(280.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     column.forEach { track ->
@@ -6976,6 +6977,8 @@ private fun PersonalListeningShelf(
         LevyraPersonalOrbit.distinctRecordings(tracks)
             .take(LevyraPersonalOrbit.DISPLAY_LIMIT)
     }
+    val pages = remember(shelfTracks) { shelfTracks.chunked(6) }
+    val pagerState = rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HomeSectionHeader(
@@ -6985,32 +6988,88 @@ private fun PersonalListeningShelf(
             modifier = Modifier.padding(horizontal = HomeHorizontalInset)
         )
 
-        LazyRow(
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(
-                start = HomeHorizontalInset,
-                end = HomeHorizontalShelfEndPadding
-            )
-        ) {
-            itemsIndexed(
-                items = shelfTracks,
-                key = { index, track -> "personal-$index-${track.id}" },
-                contentType = { _, _ -> "personal-card" }
-            ) { _, track ->
-                PersonalListeningCard(
-                    track = track,
-                    active = track.id == currentId,
-                    playing = isPlaying && track.id == currentId,
-                    resolving = isResolving && track.id == currentId,
-                    onClick = { onPlay(track) },
-                    modifier = Modifier.width(150.dp),
-                    onLongClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onTrackActions(track)
-                    },
-                    onLongClickLabel = strings.songOptions
-                )
+            contentPadding = PaddingValues(horizontal = HomeHorizontalInset),
+            pageSpacing = 12.dp
+        ) { pageIndex ->
+            val pageTracks = pages.getOrElse(pageIndex) { emptyList() }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                repeat(2) { rowIndex ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        repeat(3) { columnIndex ->
+                            val track = pageTracks.getOrNull(rowIndex * 3 + columnIndex)
+                            if (track != null) {
+                                PersonalListeningCard(
+                                    track = track,
+                                    active = track.id == currentId,
+                                    playing = isPlaying && track.id == currentId,
+                                    resolving = isResolving && track.id == currentId,
+                                    onClick = { onPlay(track) },
+                                    modifier = Modifier.weight(1f),
+                                    onLongClick = {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        onTrackActions(track)
+                                    },
+                                    onLongClickLabel = strings.songOptions
+                                )
+                            } else {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Spacer(modifier = Modifier.height(34.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (pages.size > 1) {
+            Surface(
+                color = if (LevyraIsLight) {
+                    Color.White.copy(alpha = 0.62f)
+                } else {
+                    Color.White.copy(alpha = 0.045f)
+                },
+                border = BorderStroke(
+                    Dp.Hairline,
+                    if (LevyraIsLight) Color(0x1711131F) else Color.White.copy(alpha = 0.08f)
+                ),
+                shape = CircleShape,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    pages.indices.forEach { index ->
+                        val indicatorWidth by animateDpAsState(
+                            targetValue = if (pagerState.currentPage == index) 18.dp else 5.dp,
+                            animationSpec = tween(220, easing = FastOutSlowInEasing),
+                            label = "orbit-page-indicator-$index"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(5.dp)
+                                .width(indicatorWidth)
+                                .clip(CircleShape)
+                                .background(
+                                    if (pagerState.currentPage == index) {
+                                        Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet))
+                                    } else {
+                                        SolidColor(LevyraMuted.copy(alpha = 0.28f))
+                                    }
+                                )
+                        )
+                    }
+                }
             }
         }
     }
@@ -14108,23 +14167,15 @@ private fun GreetingBar(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = "LEVYRA",
-                        color = LevyraText,
-                        fontSize = 20.sp,
-                        lineHeight = 21.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-0.65).sp,
-                        maxLines = 1
-                    )
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 3.dp, bottom = 3.dp)
-                            .size(4.dp)
-                            .background(LevyraCyan, CircleShape)
-                    )
-                }
+                Text(
+                    text = "LEVYRA",
+                    color = LevyraText,
+                    fontSize = 20.sp,
+                    lineHeight = 21.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.65).sp,
+                    maxLines = 1
+                )
                 Text(
                     text = greeting,
                     color = LevyraMuted,
@@ -14540,9 +14591,15 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 
 @Composable
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
+    val listState = rememberLazyListState()
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
     LazyRow(
+        state = listState,
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(start = 1.dp, end = 1.dp),
+        flingBehavior = flingBehavior
     ) {
         items(
             items = moods,
