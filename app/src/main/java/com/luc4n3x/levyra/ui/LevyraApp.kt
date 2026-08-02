@@ -5284,11 +5284,11 @@ private fun HomeScreen(
             )
         ) {
         item(key = "home-top", contentType = "home-header") {
-            HomeSectionInset {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                HomeSectionInset {
                     GreetingBar(state.userName, state.isResolving, onSettings = viewModel::openSettings, onSearch = viewModel::openSearchScreen)
-                    MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
                 }
+                MoodRow(moods = state.moods, selectedId = state.selectedMood?.id, onSelect = viewModel::selectMood)
             }
         }
 
@@ -14524,8 +14524,9 @@ private fun SearchDock(query: String, isSearching: Boolean, onQuery: (String) ->
 @Composable
 private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> Unit) {
     LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = HomeHorizontalInset)
     ) {
         items(
             items = moods,
@@ -14533,22 +14534,36 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
             contentType = { "home-mood" }
         ) { mood ->
             val selected = mood.id == selectedId
-            val backgroundColor = if (selected) Color.White else Color.White.copy(alpha = 0.12f)
+            
+            val backgroundModifier = if (selected) {
+                Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+            } else {
+                Modifier.background(Color.White.copy(alpha = 0.08f))
+            }
+            
+            val borderModifier = if (selected) {
+                Modifier
+            } else {
+                Modifier.border(1.dp, Brush.horizontalGradient(listOf(LevyraCyan.copy(alpha = 0.3f), LevyraViolet.copy(alpha = 0.3f))), CircleShape)
+            }
+            
             val textColor = if (selected) Color.Black else Color.White
+            
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(backgroundColor)
-                    .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+                    .clip(CircleShape)
+                    .then(backgroundModifier)
+                    .then(borderModifier)
                     .pressable(onClick = { onSelect(mood) })
             ) {
                 Text(
-                    text = mood.title,
+                    text = mood.title.uppercase(),
                     color = textColor,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
                     maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
                 )
             }
         }
