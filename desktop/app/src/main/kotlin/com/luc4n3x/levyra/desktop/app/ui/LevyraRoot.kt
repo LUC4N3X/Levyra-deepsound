@@ -117,6 +117,7 @@ fun LevyraRoot(model: LevyraAppModel) {
     val strings = stringsFor(settings.language, settings.displayName)
     val layoutDirection = if (settings.language.isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
     val snackbarState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     var pendingPlaylistTrack by remember { mutableStateOf<Track?>(null) }
     var newPlaylistName by remember { mutableStateOf("") }
@@ -125,7 +126,9 @@ fun LevyraRoot(model: LevyraAppModel) {
 
     val currentArtwork = playback.current?.artworkUrl.orEmpty()
     val playerVisible = !playback.queue.isEmpty
-    val favoriteIds = remember(library.favorites) { library.favorites.mapTo(HashSet()) { it.id } }
+    val favoriteIds = remember(library.favorites) {
+        library.favorites.mapTo(HashSet<String>()) { it.id }
+    }
 
     LaunchedEffect(model) {
         model.notices.collect { message -> snackbarState.showSnackbar(message) }
@@ -287,7 +290,9 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     )
                                                 },
                                                 onOpenPlaylist = model::openPlaylist,
-                                                onCreatePlaylist = model.libraryStore::createPlaylist,
+                                                onCreatePlaylist = { name ->
+                                                    model.libraryStore.createPlaylist(name)
+                                                },
                                                 onImportUrl = model::openCollectionFromUrl,
                                                 onClearHistory = model.libraryStore::clearHistory
                                             )
@@ -394,7 +399,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                 appVersion = AppInfo.version(),
                                                 onUpdate = model::updateSettings,
                                                 onBrowseVlc = {
-                                                    rememberCoroutineScope().launch {
+                                                    scope.launch {
                                                         val selected = chooseDirectory()
                                                         if (selected.isNotBlank()) {
                                                             model.updateSettings { it.copy(vlcDirectory = selected) }
@@ -402,7 +407,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     }
                                                 },
                                                 onVerifyVlc = {
-                                                    rememberCoroutineScope().launch {
+                                                    scope.launch {
                                                         vlcStatus = verifyVlc(
                                                             settings.vlcDirectory,
                                                             strings.settingsVlcDetected,
@@ -411,7 +416,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                                                     }
                                                 },
                                                 onOpenDataFolder = {
-                                                    rememberCoroutineScope().launch {
+                                                    scope.launch {
                                                         openDirectory(model.paths.root.toString())
                                                     }
                                                 }
