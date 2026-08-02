@@ -320,7 +320,7 @@ private fun persistPlacement(
                 },
                 maximized = false
             )
-        }
+        )
     }
 }
 
