@@ -14,14 +14,16 @@
 
 <br>
 
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
-  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="370" />
-</a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true">
-  <img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="370" />
-</a>
+<sub><strong>CHOOSE YOUR PLATFORM</strong></sub>
 
-<sub>**Android and Windows. No account. No ads.** · Signed APK · MSI / EXE / Portable ZIP</sub>
+<p>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
+  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="365" />
+</a>&nbsp;&nbsp;
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true">
+  <img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="365" />
+</a>
+</p>
 
 </div>
 
