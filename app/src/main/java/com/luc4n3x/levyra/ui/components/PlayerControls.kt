@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.luc4n3x.levyra.ui.PlayerContrastGradient
 import com.luc4n3x.levyra.ui.PlayerDarkSurface
 import com.luc4n3x.levyra.ui.PlayerMinimumContrast
 import com.luc4n3x.levyra.ui.playerCompositeOver
@@ -260,6 +262,67 @@ private fun PlayerModeToggleButton(
     }
 }
 
+private fun playerPrimaryIconTransition(): ContentTransform =
+    (fadeIn(LevyraPlayerDesign.standardTween(140)) +
+        scaleIn(initialScale = 0.72f, animationSpec = LevyraPlayerDesign.standardTween(140))) togetherWith
+        (fadeOut(LevyraPlayerDesign.standardTween(100)) +
+            scaleOut(targetScale = 0.72f, animationSpec = LevyraPlayerDesign.standardTween(100)))
+
+private fun Modifier.playerPrimarySurface(
+    shape: Shape,
+    gradient: PlayerContrastGradient,
+    accent: Color,
+    accentSecondary: Color
+): Modifier = this
+    .shadow(
+        elevation = 20.dp,
+        shape = shape,
+        clip = false,
+        ambientColor = accent.copy(alpha = 0.50f),
+        spotColor = accentSecondary.copy(alpha = 0.58f)
+    )
+    .background(Brush.linearGradient(listOf(gradient.start, gradient.end)), shape)
+    .background(
+        Brush.verticalGradient(
+            listOf(
+                Color.White.copy(alpha = 0.18f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.10f)
+            )
+        ),
+        shape
+    )
+    .border(
+        BorderStroke(
+            LevyraPlayerDesign.Hairline,
+            Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.34f),
+                    Color.White.copy(alpha = 0.08f)
+                )
+            )
+        ),
+        shape
+    )
+
+@Composable
+private fun PlayerPrimaryIcon(isPlaying: Boolean, size: Dp, tint: Color) {
+    AnimatedContent(
+        targetState = isPlaying,
+        transitionSpec = { playerPrimaryIconTransition() },
+        label = "player-primary-icon"
+    ) { playing ->
+        Icon(
+            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier
+                .size(size * 0.46f)
+                .offset(x = if (playing) 0.dp else size * 0.02f)
+        )
+    }
+}
+
 @Composable
 private fun PlayerPrimaryButton(
     isPlaying: Boolean,
@@ -294,35 +357,11 @@ private fun PlayerPrimaryButton(
         Box(
             modifier = Modifier
                 .size(size)
-                .shadow(
-                    elevation = 20.dp,
+                .playerPrimarySurface(
                     shape = shape,
-                    clip = false,
-                    ambientColor = accent.copy(alpha = 0.50f),
-                    spotColor = accentSecondary.copy(alpha = 0.58f)
-                )
-                .background(Brush.linearGradient(listOf(gradient.start, gradient.end)), shape)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.White.copy(alpha = 0.18f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.10f)
-                        )
-                    ),
-                    shape
-                )
-                .border(
-                    BorderStroke(
-                        LevyraPlayerDesign.Hairline,
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.34f),
-                                Color.White.copy(alpha = 0.08f)
-                            )
-                        )
-                    ),
-                    shape
+                    gradient = gradient,
+                    accent = accent,
+                    accentSecondary = accentSecondary
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -333,25 +372,11 @@ private fun PlayerPrimaryButton(
                     color = gradient.content
                 )
             } else {
-                AnimatedContent(
-                    targetState = isPlaying,
-                    transitionSpec = {
-                        (fadeIn(LevyraPlayerDesign.standardTween(140)) +
-                            scaleIn(initialScale = 0.72f, animationSpec = LevyraPlayerDesign.standardTween(140))) togetherWith
-                            (fadeOut(LevyraPlayerDesign.standardTween(100)) +
-                                scaleOut(targetScale = 0.72f, animationSpec = LevyraPlayerDesign.standardTween(100)))
-                    },
-                    label = "player-primary-icon"
-                ) { playing ->
-                    Icon(
-                        imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = gradient.content,
-                        modifier = Modifier
-                            .size(size * 0.46f)
-                            .offset(x = if (playing) 0.dp else size * 0.02f)
-                    )
-                }
+                PlayerPrimaryIcon(
+                    isPlaying = isPlaying,
+                    size = size,
+                    tint = gradient.content
+                )
             }
         }
     }
