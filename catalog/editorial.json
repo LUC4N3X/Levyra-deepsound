@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T15:54:52Z",
+  "generatedAt": "2026-08-02T17:16:29Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2078,7 +2078,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2086,12 +2086,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 39,
@@ -2151,12 +2151,6 @@
           },
           "durationMs": 245565,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "wAoq__SQpwk",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCoIOOL7QKuBhQHVKL8y7BEQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0235f36cb686b0d5a12ab3a9f0"
         },
         {
@@ -4912,12 +4906,6 @@
           },
           "durationMs": 176213,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "O2tKlnfrLkY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCLxywkV1hSsZPvRvRGjQh3g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02690365cf88e5be15e0f91652"
         },
         {
@@ -6986,6 +6974,14 @@
           },
           "durationMs": 138440,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "QZdK0HvJQvE",
+            "audioConfidence": 100,
+            "videoId": "iYbnORRWhss",
+            "videoConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UChWiL80zqF95ZQ195oMYujg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cf1b99e31d22df504b0c23d4"
         },
         {
@@ -9964,12 +9960,6 @@
           },
           "durationMs": 198425,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "SkHJ5ChXcDo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -15079,7 +15069,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -15087,8 +15077,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15098,7 +15088,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 34,
@@ -19779,12 +19769,6 @@
           },
           "durationMs": 81290,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "ho7xMWPh2Zw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCFXVUQU-Q3qX6AToPFhBmCw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02719f202314ef636d44191b65"
         },
         {
@@ -22947,12 +22931,6 @@
           },
           "durationMs": 166000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "w0t18LgzTSA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCEdZAdnnKqbaHOlv8nM6OtA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02304c46fde5f5244a66f7317b"
         },
         {
@@ -23957,7 +23935,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
+          "id": "levyra-5e22b138c80d124b2eda",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -23971,12 +23949,12 @@
             }
           ],
           "album": {
-            "name": "Teri Deewani",
-            "releaseDate": "2007-03-05"
+            "name": "Kailasa",
+            "releaseDate": "2006-02-24"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
         },
         {
           "position": 41,
@@ -26694,6 +26672,8 @@
           "youtubeMusic": {
             "audioVideoId": "WmlGzY1iWAc",
             "audioConfidence": 100,
+            "videoId": "HTjkVCSsKv8",
+            "videoConfidence": 99,
             "confidence": 100,
             "artistBrowseId": "UCz8kusd-P42WEfu71ObB-aw"
           },
@@ -27261,6 +27241,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
