@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="161" height="36" role="img" aria-label="Release: v2.3.18"><title>Release: v2.3.18</title><rect x="0.75" y="0.75" width="159.5" height="34.5" rx="8" fill="#0d1117" stroke="#303b4d"/><path d="M92 1h61a8 8 0 0 1 8 8v18a8 8 0 0 1-8 8h-61Z" fill="#7C3AED"/><path d="M92 6v24" stroke="#ffffff" stroke-opacity=".16"/><svg x="12" y="10" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="#ffffff" d="M7.73 2.5a1.5 1.5 0 0 0-1.06.44L2.44 7.17a1.5 1.5 0 0 0 0 2.12l4.27 4.27a1.5 1.5 0 0 0 2.12 0l4.23-4.23a1.5 1.5 0 0 0 .44-1.06V4A1.5 1.5 0 0 0 12 2.5H7.73Zm0 1.5H12v4.27L7.77 12.5 3.5 8.23 7.73 4ZM9 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></svg><text x="36" y="22.5" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="11.5" font-weight="700" letter-spacing=".15">Release</text><text x="126.5" y="22.5" fill="#ffffff" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">v2.3.18</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="172" height="40" viewBox="0 0 172 40" role="img" aria-label="Latest: v2.3.18">
+<title>Latest: v2.3.18</title>
+<defs>
+  <linearGradient id="latest-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111A2B"/><stop offset=".58" stop-color="#0B1220"/><stop offset="1" stop-color="#080D18"/></linearGradient>
+  <linearGradient id="latest-accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#A78BFA"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
+</defs>
+<rect x=".5" y=".5" width="171" height="39" rx="12" fill="url(#latest-bg)" stroke="#2B3850"/>
+<path d="M13 1h146" stroke="#FFFFFF" stroke-opacity=".055" stroke-linecap="round"/>
+<rect x="2" y="9" width="3" height="22" rx="1.5" fill="url(#latest-accent)"/>
+<circle cx="22" cy="20" r="11" fill="#A78BFA" fill-opacity=".075" stroke="#A78BFA" stroke-opacity=".3"/>
+<g transform="translate(14 12)" fill="url(#latest-accent)"><path d="M7.73 2.5a1.5 1.5 0 0 0-1.06.44L2.44 7.17a1.5 1.5 0 0 0 0 2.12l4.27 4.27a1.5 1.5 0 0 0 2.12 0l4.23-4.23a1.5 1.5 0 0 0 .44-1.06V4A1.5 1.5 0 0 0 12 2.5H7.73Zm0 1.5H12v4.27L7.77 12.5 3.5 8.23 7.73 4ZM9 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></g>
+<text x="42" y="24.1" fill="#F8FAFC" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11.4" font-weight="800" letter-spacing=".12">Latest</text>
+<rect x="103" y="6" width="62" height="28" rx="9" fill="url(#latest-accent)"/>
+<rect x="103.5" y="6.5" width="61" height="27" rx="8.5" fill="none" stroke="#FFFFFF" stroke-opacity=".18"/>
+<text x="134" y="24.2" text-anchor="middle" fill="#FFFFFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11" font-weight="900">v2.3.18</text>
+</svg>

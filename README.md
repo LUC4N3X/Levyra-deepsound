@@ -6,22 +6,19 @@
 
 ### Stream everything. Keep what you love. Own every note.
 
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-android-platform.svg" alt="Download Levyra for Android"></a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-platform.svg" alt="Download Levyra for Windows"></a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>
-<a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest Levyra release"></a>&nbsp;
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>&nbsp;
+<a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>&nbsp;
 <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>
 
 <br>
 
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest">
-  <img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="370" />
-</a>
-<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true">
-  <img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="370" />
-</a>
+<sub><strong>CHOOSE YOUR PLATFORM</strong></sub>
 
-<sub>**Android and Windows. No account. No ads.** · Signed APK · MSI / EXE / Portable ZIP</sub>
+<p>
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-github-download.svg" alt="Download the latest signed Levyra APK from GitHub Releases" width="365" /></a>&nbsp;&nbsp;
+<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-download.svg" alt="Download Levyra Desktop for Windows from GitHub Releases" width="365" /></a>
+</p>
 
 </div>
 
@@ -336,7 +333,6 @@ Android publishes `v<version>` releases and remains the repository's **Latest** 
 `versionCode = major * 1_000_000 + minor * 10_000 + patch * 100 + build`, with every component bounded by the build logic and `build` restricted to `0–99`. The APK Artifact workflow verifies the signed APK independently from the Desktop Windows workflow.
 
 ---
-
 ## ✦ Privacy & data collection
 
 Your listening habits are nobody's business, including mine.
