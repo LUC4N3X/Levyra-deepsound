@@ -1,0 +1,113 @@
+name: Inspect Home validation task
+
+on:
+  push:
+    branches:
+      - refactor/home-experience
+    paths:
+      - .github/workflows/inspect-home-validation-task.yml
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+      - name: Inspect task definition and failure
+        shell: bash
+        env:
+          YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+          LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+          LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+          LEVYRA_KEY_ALIAS: levyra_ci
+          LEVYRA_KEY_PASSWORD: levyra_ci_password
+        run: |
+          set +e
+          REPORT=.github/home-validation-inspection.txt
+          : > "$REPORT"
+
+          cat > /tmp/inspect-home-validation.init.gradle <<'GRADLE'
+          gradle.projectsEvaluated {
+              def project = gradle.rootProject.findProject(':app')
+              def task = project?.tasks?.findByName('validateHomeContentConfiguration')
+              def report = gradle.rootProject.file('.github/home-validation-inspection.txt')
+              report.withWriterAppend('UTF-8') { out ->
+                  out.println('=== task metadata ===')
+                  out.println("task_present=${task != null}")
+                  if (task != null) {
+                      out.println("task_class=${task.class.name}")
+                      out.println("task_group=${task.group}")
+                      out.println("task_description=${task.description}")
+                      out.println("task_dependencies=${task.taskDependencies.getDependencies(task)*.path}")
+                      task.actions.eachWithIndex { action, index ->
+                          out.println("action_${index}_class=${action.class.name}")
+                          try {
+                              out.println("action_${index}_code_source=${action.class.protectionDomain?.codeSource?.location}")
+                          } catch (Throwable ignored) {
+                              out.println("action_${index}_code_source=<unavailable>")
+                          }
+                          try {
+                              action.class.declaredFields.each { field ->
+                                  field.accessible = true
+                                  def value = field.get(action)
+                                  out.println("action_${index}_field_${field.name}=${value?.class?.name}:${String.valueOf(value).take(500)}")
+                              }
+                          } catch (Throwable error) {
+                              out.println("action_${index}_fields_error=${error.class.name}:${error.message}")
+                          }
+                      }
+                  }
+                  out.println()
+              }
+          }
+          GRADLE
+
+          ./gradlew --no-daemon -I /tmp/inspect-home-validation.init.gradle \
+            :app:validateHomeContentConfiguration --stacktrace --info \
+            > /tmp/home-validation-full.log 2>&1
+          STATUS=$?
+
+          {
+            echo '=== focused Gradle output ==='
+            grep -n -E -B 25 -A 90 \
+              'Expected [0-9]+ tracked Home sections|validateHomeContentConfiguration|Caused by:|GradleException|build\.gradle(\.kts)?:[0-9]+' \
+              /tmp/home-validation-full.log || true
+            echo
+            echo '=== repository Gradle and script matches ==='
+            find . -type f \
+              \( -name '*.gradle' -o -name '*.gradle.kts' -o -name '*.kt' -o -name '*.kts' -o -name '*.py' -o -name '*.sh' \) \
+              -not -path './.git/*' -print0 \
+              | xargs -0 grep -n -E \
+                'validateHomeContent|tracked Home|trackedSections|HomeContentConfiguration|HOME_.*SECTION|home-section-header' \
+                2>/dev/null || true
+            echo
+            echo '=== Gradle cache phrase matches ==='
+            grep -R -a -n -m 5 \
+              -e 'Expected 3 tracked Home sections' \
+              -e 'tracked Home sections' \
+              "$HOME/.gradle/caches" 2>/dev/null || true
+            echo
+            echo "exit_status=$STATUS"
+          } >> "$REPORT"
+
+          rm -f .github/workflows/inspect-home-validation-task.yml
+      - name: Publish inspection
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: publish Home validation inspection"
+          git push origin HEAD:refactor/home-experience
