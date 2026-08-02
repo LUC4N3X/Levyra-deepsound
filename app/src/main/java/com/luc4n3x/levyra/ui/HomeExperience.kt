@@ -329,8 +329,8 @@ private fun HomeQuickAccessTile(
     isLight: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val artworkUrl = item.track?.thumbnailUrl
-        ?.ifBlank { item.track.largeThumbnailUrl }
+    val artworkUrl = item.track
+        ?.let { track -> track.thumbnailUrl.ifBlank { track.largeThumbnailUrl } }
         .orEmpty()
     val surface = if (isLight) LevyraHomeDesign.TileSurfaceLight else LevyraHomeDesign.TileSurfaceDark
     val border = when {
