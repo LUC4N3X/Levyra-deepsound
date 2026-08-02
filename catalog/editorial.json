@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T09:10:40Z",
+  "generatedAt": "2026-08-02T09:24:54Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2072,7 +2072,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2080,12 +2080,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 39,
@@ -10050,14 +10050,6 @@
           },
           "durationMs": 212973,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "8_C6lXoGB5Y",
-            "audioConfidence": 100,
-            "videoId": "mrV8kK5t0V8",
-            "videoConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -15067,7 +15059,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -15075,8 +15067,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15086,7 +15078,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 34,
@@ -27665,12 +27657,6 @@
           },
           "durationMs": 276000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "FpJxPzveHzA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCVZoM1H-jFwni_C4nogarjw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0201cb2e736602194466522135"
         },
         {
