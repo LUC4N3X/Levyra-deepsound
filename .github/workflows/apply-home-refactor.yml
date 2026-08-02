@@ -1,0 +1,45 @@
+name: Apply Home refactor
+
+on:
+  push:
+    branches:
+      - refactor/home-experience
+    paths:
+      - .github/home-refactor/**
+      - .github/workflows/apply-home-refactor.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+
+      - name: Rebuild and verify patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/home-refactor/chunk*.b64 > /tmp/home-refactor.patch.gz.b64
+          echo "ebbb2830087590fe84e6edddd3755d7e516f1ac0773407e68b5904deb1830045  /tmp/home-refactor.patch.gz.b64" | sha256sum --check
+          base64 --decode /tmp/home-refactor.patch.gz.b64 | gzip --decompress > /tmp/home-refactor.patch
+          echo "4f827cdfdc206fb598d10dd2e004f9d8c03fee230b852ef4400695e6596393be  /tmp/home-refactor.patch" | sha256sum --check
+          git apply --check /tmp/home-refactor.patch
+
+      - name: Apply refactor and clean staging files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply /tmp/home-refactor.patch
+          rm -rf .github/home-refactor
+          rm -f .github/workflows/apply-home-refactor.yml
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "refactor(home): redesign discovery experience and visual hierarchy"
+          git push origin HEAD:refactor/home-experience
