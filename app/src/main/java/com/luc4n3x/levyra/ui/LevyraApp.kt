@@ -14374,34 +14374,26 @@ private fun MoodRow(moods: List<Mood>, selectedId: String?, onSelect: (Mood) -> 
             val selected = mood.id == selectedId
             
             val backgroundModifier = if (selected) {
-                Modifier.background(Brush.horizontalGradient(listOf(LevyraCyan, LevyraViolet)))
+                Modifier.background(Color.White)
             } else {
-                Modifier.background(Color.White.copy(alpha = 0.08f))
-            }
-            
-            val borderModifier = if (selected) {
-                Modifier
-            } else {
-                Modifier.border(1.dp, Brush.horizontalGradient(listOf(LevyraCyan.copy(alpha = 0.3f), LevyraViolet.copy(alpha = 0.3f))), CircleShape)
+                Modifier.background(Color(0xFF2A2A2A))
             }
             
             val textColor = if (selected) Color.Black else Color.White
             
             Box(
                 modifier = Modifier
-                    .clip(CircleShape)
+                    .clip(RoundedCornerShape(32.dp))
                     .then(backgroundModifier)
-                    .then(borderModifier)
                     .pressable(onClick = { onSelect(mood) })
             ) {
                 Text(
-                    text = mood.title.uppercase(),
+                    text = mood.title,
                     color = textColor,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
         }

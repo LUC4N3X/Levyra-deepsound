@@ -107,8 +107,8 @@ private fun Modifier.homeAtmosphereBackground(
     // Cool deep cosmic gradient
     val topGradient = Brush.radialGradient(
         colors = listOf(
-            primary.copy(alpha = 0.25f),
-            secondary.copy(alpha = 0.15f),
+            primary.copy(alpha = 0.08f),
+            secondary.copy(alpha = 0.04f),
             Color.Transparent
         ),
         center = Offset(width / 2f, 0f),
