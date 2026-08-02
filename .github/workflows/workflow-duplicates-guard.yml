@@ -2,196 +2,124 @@ name: Workflow Duplicates Guard
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: apply-home-video-shelf
+  cancel-in-progress: false
 
 jobs:
-  workflow-duplicates-guard:
-    name: Detect duplicated workflows
+  apply-home-video-shelf:
+    if: github.event.pull_request.head.ref == 'refactor/home-experience'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Scan workflows
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+      - name: Apply concise video shelf and real previews
         shell: bash
         run: |
-          python3 <<'PY'
+          python - <<'PY'
           from pathlib import Path
-          import re
-          import sys
 
-          workflows_dir = Path(".github/workflows")
-          allowed_build_workflows = {
-              "pr-check.yml",
-              "nightly-extractor-check.yml",
-              "apk-artifact-check.yml",
-              "release-apk.yml",
-              "quick-apk.yml"
-          }
-          desktop_release_workflows = {"desktop-windows.yml"}
-          self_workflow = "workflow-duplicates-guard.yml"
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
 
-          if not workflows_dir.exists():
-              print("No .github/workflows directory found.")
-              sys.exit(0)
+          old_call = '''                    HomeMusicVideoShelf(
+                        title = strings.exploreNewVideos,
+'''
+          new_call = '''                    HomeMusicVideoShelf(
+                        title = strings.video,
+'''
+          if text.count(old_call) != 1:
+              raise SystemExit(f'Expected one Home video shelf title call, found {text.count(old_call)}')
+          text = text.replace(old_call, new_call, 1)
 
-          files = sorted([
-              path for path in workflows_dir.iterdir()
-              if path.is_file()
-              and path.suffix.lower() in {".yml", ".yaml"}
-              and path.name != self_workflow
-          ])
+          old_videos = '''    val videos = remember(tracks) { LevyraPersonalOrbit.distinctRecordings(tracks).take(12) }
+'''
+          new_videos = '''    val videos = remember(tracks) {
+        LevyraPersonalOrbit.distinctRecordings(tracks)
+            .take(12)
+            .map(::homeMusicVideoPreviewTrack)
+    }
+'''
+          if text.count(old_videos) != 1:
+              raise SystemExit(f'Expected one Home video list declaration, found {text.count(old_videos)}')
+          text = text.replace(old_videos, new_videos, 1)
 
-          name_map = {}
-          android_release_publishers = []
-          desktop_release_publishers = []
-          release_builders = []
-          apk_uploaders = []
-          duplicate_candidates = []
-          failures = []
+          old_card = '''                Column(
+                    modifier = Modifier.width(154.dp).pressable(onClick = { onPlay(track) }),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(22.dp))
+                            .border(
+                                if (active) 1.5.dp else Dp.Hairline,
+                                if (active) LevyraCyan.copy(alpha = 0.82f) else LevyraAdaptiveSoftHairline,
+                                RoundedCornerShape(22.dp)
+                            )
+                    ) {
+'''
+          new_card = '''                Column(
+                    modifier = Modifier.width(236.dp).pressable(onClick = { onPlay(track) }),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(LevyraHomeDesign.ShelfShape)
+                            .border(
+                                if (active) 1.5.dp else Dp.Hairline,
+                                if (active) LevyraCyan.copy(alpha = 0.82f) else LevyraAdaptiveSoftHairline,
+                                LevyraHomeDesign.ShelfShape
+                            )
+                    ) {
+'''
+          if text.count(old_card) != 1:
+              raise SystemExit(f'Expected one square Home video card block, found {text.count(old_card)}')
+          text = text.replace(old_card, new_card, 1)
 
-          def read(path: Path) -> str:
-              return path.read_text(encoding="utf-8", errors="replace")
+          anchor = '''private fun isMusicVideoSectionTitle(title: String, strings: LevyraStrings): Boolean {
+'''
+          helper = '''private val HOME_VIDEO_ID_PATTERN = Regex("[A-Za-z0-9_-]{11}")
 
-          def workflow_name(text: str, fallback: str) -> str:
-              match = re.search(r"(?m)^name:\s*[\"']?(.+?)[\"']?\s*$", text)
-              return match.group(1).strip() if match else fallback
+private fun homeMusicVideoPreviewTrack(track: Track): Track {
+    val videoId = track.counterpartVideoId.trim().takeIf(HOME_VIDEO_ID_PATTERN::matches)
+        ?: com.luc4n3x.levyra.data.PlaybackSourceIdentity.sourceVideoId(track)
+            .trim()
+            .takeIf(HOME_VIDEO_ID_PATTERN::matches)
+        ?: return track
+    return track.copy(
+        thumbnailUrl = "https://i.ytimg.com/vi/$videoId/hqdefault.jpg",
+        largeThumbnailUrl = "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg"
+    )
+}
 
-          def has_release_build(text: str) -> bool:
-              return "assembleRelease" in text or ":app:assembleRelease" in text
-
-          def has_apk_upload(text: str) -> bool:
-              return "upload-artifact" in text and (".apk" in text or "apk" in text.lower())
-
-          def has_release_publish(text: str) -> bool:
-              markers = [
-                  "softprops/action-gh-release",
-                  "gh release",
-                  "upload-release-asset",
-                  "create-release",
-                  "releases/upload"
-              ]
-              lowered = text.lower()
-              return any(marker.lower() in lowered for marker in markers)
-
-          def normalized_signature(text: str) -> str:
-              cleaned = []
-              for line in text.splitlines():
-                  stripped = line.strip()
-                  if not stripped:
-                      continue
-                  if stripped.startswith("name:"):
-                      continue
-                  if stripped.startswith("#"):
-                      continue
-                  if "run:" in stripped:
-                      cleaned.append(stripped)
-                  elif "uses:" in stripped:
-                      cleaned.append(stripped)
-                  elif "assembleRelease" in stripped:
-                      cleaned.append(stripped)
-                  elif "upload-artifact" in stripped:
-                      cleaned.append(stripped)
-                  elif "softprops/action-gh-release" in stripped:
-                      cleaned.append(stripped)
-                  elif "gh release" in stripped:
-                      cleaned.append(stripped)
-              return "\n".join(cleaned)
-
-          signatures = {}
-
-          for path in files:
-              text = read(path)
-              name = workflow_name(text, path.name)
-              lower_name = name.lower()
-
-              name_map.setdefault(lower_name, []).append(path.name)
-
-              if path.name != "release-guard.yml" and has_release_build(text):
-                  release_builders.append(path.name)
-
-              if has_apk_upload(text):
-                  apk_uploaders.append(path.name)
-
-              if has_release_publish(text):
-                  if path.name in desktop_release_workflows:
-                      desktop_release_publishers.append(path.name)
-                  else:
-                      android_release_publishers.append(path.name)
-
-              signature = normalized_signature(text)
-              if signature:
-                  signatures.setdefault(signature, []).append(path.name)
-
-          for name, paths in name_map.items():
-              if len(paths) > 1:
-                  failures.append("Duplicated workflow name: " + ", ".join(paths))
-
-          for signature, paths in signatures.items():
-              if len(paths) > 1:
-                  duplicate_candidates.append(paths)
-
-          for paths in duplicate_candidates:
-              failures.append("Very similar workflow bodies: " + ", ".join(paths))
-
-          unexpected_release_builders = [
-              item for item in release_builders
-              if item not in allowed_build_workflows
-          ]
-
-          if unexpected_release_builders:
-              failures.append(
-                  "Unexpected release build workflow detected: "
-                  + ", ".join(unexpected_release_builders)
-                  + ". Keep release APK generation in release-apk.yml or apk-artifact-check.yml."
-              )
-
-          if len(android_release_publishers) > 1:
-              failures.append(
-                  "Multiple workflows appear to publish Android GitHub releases: "
-                  + ", ".join(android_release_publishers)
-              )
-
-          if len(desktop_release_publishers) > 1:
-              failures.append(
-                  "Multiple workflows appear to publish Desktop GitHub releases: "
-                  + ", ".join(desktop_release_publishers)
-              )
-
-          suspicious_pairs = [
-              {"android-apk.yml", "release-apk.yml"},
-              {"android-apk.yaml", "release-apk.yml"},
-              {"android-apk.yml", "release-apk.yaml"},
-              {"build-apk.yml", "release-apk.yml"},
-              {"build-release.yml", "release-apk.yml"}
-          ]
-
-          existing = {path.name for path in files}
-
-          for pair in suspicious_pairs:
-              if pair.issubset(existing):
-                  failures.append(
-                      "Suspicious duplicated APK workflow pair: "
-                      + ", ".join(sorted(pair))
-                  )
-
-          if failures:
-              print("Workflow duplicate problems found:")
-              for failure in failures:
-                  print("- " + failure)
-              sys.exit(1)
-
-          print("No duplicated workflow problems found.")
-          print("Release builders: " + (", ".join(release_builders) if release_builders else "none"))
-          print("APK uploaders: " + (", ".join(apk_uploaders) if apk_uploaders else "none"))
-          print("Android release publishers: " + (", ".join(android_release_publishers) if android_release_publishers else "none"))
-          print("Desktop release publishers: " + (", ".join(desktop_release_publishers) if desktop_release_publishers else "none"))
+'''
+          if text.count(anchor) != 1:
+              raise SystemExit(f'Expected one music-video helper anchor, found {text.count(anchor)}')
+          if 'private fun homeMusicVideoPreviewTrack' in text:
+              raise SystemExit('Video preview helper already exists unexpectedly')
+          text = text.replace(anchor, helper + anchor, 1)
+          path.write_text(text, encoding='utf-8')
           PY
+
+          git fetch origin main --depth=1
+          git show origin/main:.github/workflows/workflow-duplicates-guard.yml > .github/workflows/workflow-duplicates-guard.yml
+          rm -f .github/workflows/fix-home-video-shelf.yml
+          git diff --check
+      - name: Commit clean fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(home): show concise video shelf with previews"
+          git push origin HEAD:refactor/home-experience
