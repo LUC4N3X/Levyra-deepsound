@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T13:59:19Z",
+  "generatedAt": "2026-08-02T15:00:52Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1715,7 +1715,7 @@
         },
         {
           "position": 22,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1723,8 +1723,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1734,7 +1734,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 23,
@@ -1794,6 +1794,14 @@
           },
           "durationMs": 193666,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "73ZD-sbo4UU",
+            "audioConfidence": 100,
+            "videoId": "U4NPZi2b0aQ",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCecnyZYofHiBVDJpx1XNYOQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02edf9ec71330d53881ee0c2d9"
         },
         {
@@ -2064,7 +2072,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2072,12 +2080,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 39,
@@ -3315,11 +3323,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 43,
@@ -10570,6 +10578,14 @@
           },
           "durationMs": 204068,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BF2_ipR1OI0",
+            "audioConfidence": 100,
+            "videoId": "lY5V4hSLWY8",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -15354,7 +15370,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-8e00e58819f76bb1bccd",
+          "id": "levyra-e09beec9b76bb06bdf72",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15362,12 +15378,12 @@
             }
           ],
           "album": {
-            "name": "Det kommer aldrig va över för mig",
-            "releaseDate": "2013-04-17"
+            "name": "Nyårsfest",
+            "releaseDate": "2020-12-18"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
         },
         {
           "position": 47,
@@ -17419,20 +17435,20 @@
         },
         {
           "position": 41,
-          "id": "levyra-9d3af210c1d9093eda1e",
-          "title": "Zakázané uvolnění",
+          "id": "levyra-a5a017fba38add2b0e35",
+          "title": "Zakazane uvolneni",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Hity & příběhy (Best Of 2001-2021)",
-            "releaseDate": "2021-11-26"
+            "name": "Den",
+            "releaseDate": "2014-05-12"
           },
-          "durationMs": 217013,
+          "durationMs": 217426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
         },
         {
           "position": 42,
@@ -19759,12 +19775,6 @@
           },
           "durationMs": 81290,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "ho7xMWPh2Zw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCFXVUQU-Q3qX6AToPFhBmCw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02719f202314ef636d44191b65"
         },
         {
@@ -22500,12 +22510,6 @@
           },
           "durationMs": 265000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "t8P-zdkoeJA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC8-EI2rTBYgkZl5kB_b-2Pw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f694adfa02990eaca79fec1b"
         },
         {
@@ -22841,12 +22845,6 @@
           },
           "durationMs": 193035,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "DMJHreaNruc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCz3jIN2-AvbR71j_4nVgFpA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0210cf31bcc4c8b192016e6fd9"
         },
         {
@@ -27249,6 +27247,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -28008,6 +28008,14 @@
           },
           "durationMs": 204068,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BF2_ipR1OI0",
+            "audioConfidence": 100,
+            "videoId": "lY5V4hSLWY8",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
