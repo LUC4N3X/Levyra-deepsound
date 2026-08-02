@@ -227,21 +227,25 @@ fun PremiumSeekbar(
             val handleHeight = LevyraPlayerDesign.HandleHeight.toPx() +
                 (LevyraPlayerDesign.HandleHeightActive - LevyraPlayerDesign.HandleHeight).toPx() * handleScale.value
             val gap = trackHeight * 1.1f
+            val capInset = trackHeight / 2f
+            val trackStart = capInset
+            val trackEnd = (totalWidth - capInset).coerceAtLeast(trackStart)
+            val trackSpan = trackEnd - trackStart
 
-            val handleX = seekbarHandleCenterX(effectiveProgress, totalWidth, handleWidth)
-            val activeEnd = (handleX - handleWidth / 2f - gap).coerceAtLeast(0f)
-            val inactiveStart = (handleX + handleWidth / 2f + gap).coerceAtMost(totalWidth)
+            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, handleWidth)
+            val activeEnd = (handleX - handleWidth / 2f - gap).coerceIn(trackStart, trackEnd)
+            val inactiveStart = (handleX + handleWidth / 2f + gap).coerceIn(trackStart, trackEnd)
 
-            if (inactiveStart < totalWidth) {
+            if (inactiveStart < trackEnd) {
                 drawRoundRect(
                     color = inactiveColor,
                     topLeft = Offset(inactiveStart, centerY - trackHeight / 2f),
-                    size = Size(totalWidth - inactiveStart, trackHeight),
+                    size = Size(trackEnd - inactiveStart, trackHeight),
                     cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
                 )
             }
 
-            val bufferedEnd = (bufferedProgress * totalWidth).coerceIn(0f, totalWidth)
+            val bufferedEnd = (trackStart + bufferedProgress * trackSpan).coerceIn(trackStart, trackEnd)
             if (bufferedEnd > inactiveStart) {
                 drawRoundRect(
                     color = thumbColor.copy(alpha = 0.22f),
@@ -251,21 +255,23 @@ fun PremiumSeekbar(
                 )
             }
 
-            if (activeEnd > 0f) {
+            val activeSpan = activeEnd - trackStart
+            if (activeSpan > 0f) {
                 val amplitudePx = LevyraPlayerDesign.WaveAmplitude.toPx() * waveAmplitude.value
                 if (amplitudePx > 0.4f) {
                     val wavelength = LevyraPlayerDesign.WavePeriodDp.dp.toPx()
                     val taper = wavelength * 0.75f
-                    val samples = seekbarWaveSampleCount(activeEnd)
-                    val step = activeEnd / samples
+                    val samples = seekbarWaveSampleCount(activeSpan)
+                    val step = activeSpan / samples
                     wavePath.rewind()
-                    var x = 0f
+                    var offsetX = 0f
                     var index = 0
                     while (index <= samples) {
-                        val local = seekbarWaveTaper(x, activeEnd, taper)
-                        val y = centerY + seekbarWaveOffset(x, amplitudePx * local, wavelength, wavePhase.value)
-                        if (index == 0) wavePath.moveTo(x, y) else wavePath.lineTo(x, y)
-                        x += step
+                        val local = seekbarWaveTaper(offsetX, activeSpan, taper)
+                        val y = centerY + seekbarWaveOffset(offsetX, amplitudePx * local, wavelength, wavePhase.value)
+                        val pointX = trackStart + offsetX
+                        if (index == 0) wavePath.moveTo(pointX, y) else wavePath.lineTo(pointX, y)
+                        offsetX += step
                         index += 1
                     }
                     drawPath(
@@ -280,8 +286,8 @@ fun PremiumSeekbar(
                 } else {
                     drawRoundRect(
                         color = activeColor,
-                        topLeft = Offset(0f, centerY - trackHeight / 2f),
-                        size = Size(activeEnd, trackHeight),
+                        topLeft = Offset(trackStart, centerY - trackHeight / 2f),
+                        size = Size(activeSpan, trackHeight),
                         cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
                     )
                 }
