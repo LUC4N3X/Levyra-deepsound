@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T17:23:52Z",
+  "generatedAt": "2026-08-02T17:31:07Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1189,6 +1189,12 @@
           },
           "durationMs": 211453,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "FWDgJ-Ku_J8",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCWoaWH-09froV-IlhV3bG1Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dcceee76ed8d7d01d0b0d109"
         },
         {
@@ -1871,7 +1877,7 @@
         },
         {
           "position": 29,
-          "id": "levyra-5d7a8244a6022b4ddba4",
+          "id": "levyra-62f091057573870630ff",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -1879,12 +1885,12 @@
             }
           ],
           "album": {
-            "name": "Rumours",
+            "name": "Rumours (Super Deluxe)",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
         },
         {
           "position": 30,
@@ -4906,12 +4912,6 @@
           },
           "durationMs": 176213,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "O2tKlnfrLkY",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCLxywkV1hSsZPvRvRGjQh3g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02690365cf88e5be15e0f91652"
         },
         {
@@ -7775,6 +7775,12 @@
           },
           "durationMs": 141692,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "Xb6zpm3U1NU",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCGHj3SD8U_UaQBgTKS5H0jQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b9afc53a8f8897cf8745ba97"
         },
         {
@@ -9960,12 +9966,6 @@
           },
           "durationMs": 198425,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "SkHJ5ChXcDo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -10456,7 +10456,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -10464,8 +10464,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -10475,7 +10475,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 41,
@@ -10633,11 +10633,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 49,
@@ -14888,12 +14888,6 @@
           },
           "durationMs": 190344,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "xwJ4BGeplQw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCMuloCchUrcVPeG0GpPmZkg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02280a25dc13dab7d7d4d89a27"
         },
         {
@@ -15075,7 +15069,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -15083,8 +15077,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15094,7 +15088,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 34,
@@ -15370,7 +15364,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-e09beec9b76bb06bdf72",
+          "id": "levyra-8e00e58819f76bb1bccd",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15378,12 +15372,12 @@
             }
           ],
           "album": {
-            "name": "Nyårsfest",
-            "releaseDate": "2020-12-18"
+            "name": "Det kommer aldrig va över för mig",
+            "releaseDate": "2013-04-17"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
         },
         {
           "position": 47,
@@ -17435,20 +17429,20 @@
         },
         {
           "position": 41,
-          "id": "levyra-a5a017fba38add2b0e35",
-          "title": "Zakazane uvolneni",
+          "id": "levyra-9d3af210c1d9093eda1e",
+          "title": "Zakázané uvolnění",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Den",
-            "releaseDate": "2014-05-12"
+            "name": "Hity & příběhy (Best Of 2001-2021)",
+            "releaseDate": "2021-11-26"
           },
-          "durationMs": 217426,
+          "durationMs": 217013,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
         },
         {
           "position": 42,
@@ -23935,7 +23929,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
+          "id": "levyra-5e22b138c80d124b2eda",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -23949,12 +23943,12 @@
             }
           ],
           "album": {
-            "name": "Teri Deewani",
-            "releaseDate": "2007-03-05"
+            "name": "Kailasa",
+            "releaseDate": "2006-02-24"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
         },
         {
           "position": 41,
