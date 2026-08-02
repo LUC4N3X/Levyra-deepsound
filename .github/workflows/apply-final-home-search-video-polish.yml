@@ -1,11 +1,11 @@
 name: Apply final Home and Search polish
 
 on:
-  push:
+  pull_request:
     branches:
-      - refactor/home-experience
+      - main
     paths:
-      - .github/workflows/apply-final-home-search-video-polish.yml
+      - .github/final-ui-trigger
 
 permissions:
   contents: write
@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   apply:
+    if: github.event.pull_request.head.ref == 'refactor/home-experience'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -307,6 +308,7 @@ private fun homeMusicVideoPreviewTrack(track: Track): Track {
           PY
 
           rm -f \
+            .github/final-ui-trigger \
             .github/workflows/apply-final-home-search-video-polish.yml \
             .github/workflows/export-levyra-app.yml
           git diff --check
