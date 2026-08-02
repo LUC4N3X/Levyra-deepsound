@@ -6091,7 +6091,6 @@ private fun HomeEditorialCollectionCard(
         label = "homeCollectionScale"
     )
     val accentStart = Color(collection.accentStart)
-    val accentEnd = Color(collection.accentEnd)
     val shape = LevyraHomeDesign.ShelfShape
     val artists = remember(collection.tracks) {
         collection.tracks
