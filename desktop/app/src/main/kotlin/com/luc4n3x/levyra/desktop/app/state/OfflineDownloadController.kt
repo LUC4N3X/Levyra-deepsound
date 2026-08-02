@@ -29,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -49,12 +50,14 @@ class OfflineDownloadController(
     private val catalog: CatalogRepository,
     private val settingsStore: SettingsStore,
     private val store: DownloadStore,
+    private val transcodeToMp3: suspend (source: Path, target: Path) -> Unit,
     baseClient: OkHttpClient = ExtractorHttp.client
 ) {
     private val client = baseClient.newBuilder()
         .callTimeout(0L, TimeUnit.MILLISECONDS)
         .readTimeout(0L, TimeUnit.MILLISECONDS)
         .build()
+    private val parallelDownloader = DesktopParallelDownloader(baseClient)
     private val jobs = ConcurrentHashMap<String, Job>()
     private val permits = Semaphore(MAX_CONCURRENT_DOWNLOADS)
 
@@ -116,7 +119,11 @@ class OfflineDownloadController(
         jobs.remove(id)?.cancel()
         val record = store.record(id) ?: return
         runCatching { record.filePath.takeIf { it.isNotBlank() }?.let { Files.deleteIfExists(Path.of(it)) } }
-        runCatching { record.temporaryPath.takeIf { it.isNotBlank() }?.let { Files.deleteIfExists(Path.of(it)) } }
+        record.temporaryPath.takeIf { it.isNotBlank() }?.let { rawPath ->
+            val temporary = Path.of(rawPath)
+            runCatching { Files.deleteIfExists(temporary) }
+            cleanupAuxiliaryPartials(temporary)
+        }
         store.remove(id)
     }
 
@@ -178,10 +185,12 @@ class OfflineDownloadController(
         track: Track,
         resolved: ResolvedAudio
     ) {
-        val extension = extensionFor(resolved.label)
+        val sourceExtension = extensionFor(resolved.label)
         val baseName = OfflineFileName.baseName(track)
-        val target = paths.downloadsDirectory.resolve("$baseName.$extension")
-        val temporary = paths.downloadsDirectory.resolve("$baseName.$extension.part")
+        val target = paths.downloadsDirectory.resolve("$baseName.mp3")
+        val sourceTemporary = paths.downloadsDirectory.resolve("$baseName.$sourceExtension.part")
+        val parallelTemporary = paths.downloadsDirectory.resolve("$baseName.$sourceExtension.ranges.part")
+        val mp3Temporary = paths.downloadsDirectory.resolve("$baseName.mp3.part")
         val currentStreamIdentity = OfflineStreamIdentity.from(track, resolved)
         Files.createDirectories(paths.downloadsDirectory)
 
@@ -189,59 +198,160 @@ class OfflineDownloadController(
         var resumedBytes = OfflinePartialFileMigration.prepare(
             downloadsDirectory = paths.downloadsDirectory,
             recordedPath = existingRecord.temporaryPath,
-            targetPath = temporary,
+            targetPath = sourceTemporary,
             recordedIdentity = existingRecord.streamIdentity,
             currentIdentity = currentStreamIdentity
         )
-        val requestBuilder = Request.Builder()
-            .url(resolved.url)
-            .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
-            .header("Accept", "*/*")
-        if (resumedBytes > 0L) {
-            requestBuilder.header("Range", "bytes=$resumedBytes-")
+        val hintedLength = desktopAudioContentLength(resolved.url)
+        val expectedLength = hintedLength.takeIf { it > 0L }
+            ?: existingRecord.totalBytes.takeIf { resumedBytes > 0L && it >= resumedBytes }
+            ?: -1L
+        if (expectedLength > 0L && resumedBytes > expectedLength) {
+            Files.deleteIfExists(sourceTemporary)
+            resumedBytes = 0L
         }
 
         store.update(id) { record ->
             record.copy(
                 track = track,
                 status = DownloadStatus.DOWNLOADING,
-                temporaryPath = temporary.toString(),
+                temporaryPath = sourceTemporary.toString(),
                 filePath = "",
                 bytesDownloaded = resumedBytes,
+                totalBytes = expectedLength.coerceAtLeast(0L),
                 mediaLabel = resolved.label,
                 streamIdentity = currentStreamIdentity,
                 error = ""
             )
         }
 
+        val sourceAlreadyComplete = expectedLength > 0L && resumedBytes == expectedLength
+        if (!sourceAlreadyComplete) {
+            val ranges = if (resumedBytes == 0L) {
+                planDesktopDownloadRanges(
+                    contentLength = expectedLength,
+                    chunkSize = desktopDownloadChunkSize(expectedLength)
+                )
+            } else {
+                emptyList()
+            }
+            val downloadedInParallel = if (ranges.isNotEmpty()) {
+                try {
+                    parallelDownloader.download(
+                        url = resolved.url,
+                        output = parallelTemporary,
+                        totalBytes = expectedLength,
+                        ranges = ranges,
+                        onProgress = { completed ->
+                            store.update(id) { record ->
+                                record.copy(
+                                    status = DownloadStatus.DOWNLOADING,
+                                    bytesDownloaded = completed.coerceAtMost(expectedLength),
+                                    totalBytes = expectedLength
+                                )
+                            }
+                        }
+                    )
+                    moveAtomically(parallelTemporary, sourceTemporary)
+                    true
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: IOException) {
+                    Files.deleteIfExists(parallelTemporary)
+                    store.update(id) { record ->
+                        record.copy(bytesDownloaded = 0L, totalBytes = expectedLength.coerceAtLeast(0L))
+                    }
+                    false
+                }
+            } else {
+                false
+            }
+            if (!downloadedInParallel) {
+                downloadSerial(
+                    id = id,
+                    url = resolved.url,
+                    output = sourceTemporary,
+                    resumedBytes = resumedBytes
+                )
+            }
+        }
+
+        val sourceSize = Files.size(sourceTemporary)
+        if (sourceSize <= 0L) throw IOException("Il file audio scaricato è vuoto")
+        if (expectedLength > 0L && sourceSize != expectedLength) {
+            throw IOException("Download incompleto: $sourceSize/$expectedLength byte")
+        }
+
+        Files.deleteIfExists(mp3Temporary)
+        transcodeToMp3(sourceTemporary, mp3Temporary)
+        if (!Files.isRegularFile(mp3Temporary) || Files.size(mp3Temporary) <= 0L) {
+            throw IOException("La conversione MP3 non ha prodotto un file valido")
+        }
+        moveAtomically(mp3Temporary, target)
+        runCatching { Files.deleteIfExists(sourceTemporary) }
+        runCatching { Files.deleteIfExists(parallelTemporary) }
+
+        val completedSize = Files.size(target)
+        store.update(id) { record ->
+            record.copy(
+                track = track,
+                status = DownloadStatus.COMPLETED,
+                filePath = target.toString(),
+                temporaryPath = "",
+                bytesDownloaded = completedSize,
+                totalBytes = completedSize,
+                mediaLabel = MP3_MEDIA_LABEL,
+                streamIdentity = currentStreamIdentity,
+                error = ""
+            )
+        }
+    }
+
+    private suspend fun downloadSerial(
+        id: String,
+        url: String,
+        output: Path,
+        resumedBytes: Long
+    ) {
+        var resumeOffset = resumedBytes
+        val requestBuilder = Request.Builder()
+            .url(stripDesktopAudioRangeParameter(url))
+            .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
+            .header("Accept", "audio/*,*/*;q=0.8")
+            .header("Accept-Encoding", "identity")
+            .header("Connection", "keep-alive")
+        if (resumeOffset > 0L) {
+            requestBuilder.header("Range", "bytes=$resumeOffset-")
+        }
+
         client.newCall(requestBuilder.build()).awaitResponse().use { response ->
             if (!response.isSuccessful) {
-                throw IllegalStateException("Download non disponibile: HTTP ${response.code}")
+                throw IOException("Download non disponibile: HTTP ${response.code}")
             }
             val body = response.body
-            val append = resumedBytes > 0L && response.code == 206
+            val append = resumeOffset > 0L && response.code == 206
             if (!append) {
-                resumedBytes = 0L
-                Files.deleteIfExists(temporary)
+                resumeOffset = 0L
+                Files.deleteIfExists(output)
             }
             val contentLength = body.contentLength().coerceAtLeast(0L)
-            val totalBytes = if (contentLength > 0L) resumedBytes + contentLength else 0L
+            val totalBytes = if (contentLength > 0L) resumeOffset + contentLength else 0L
             val options = if (append) {
                 arrayOf(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)
             } else {
                 arrayOf(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
             }
             BufferedInputStream(body.byteStream(), BUFFER_SIZE).use { input ->
-                BufferedOutputStream(Files.newOutputStream(temporary, *options), BUFFER_SIZE).use { output ->
+                BufferedOutputStream(Files.newOutputStream(output, *options), BUFFER_SIZE).use { target ->
                     val buffer = ByteArray(BUFFER_SIZE)
-                    var downloaded = resumedBytes
+                    var downloaded = resumeOffset
                     var lastPersistedBytes = downloaded
                     var lastPersistedAt = System.nanoTime()
                     while (true) {
-                        kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                        currentCoroutineContext().ensureActive()
                         val read = input.read(buffer)
                         if (read < 0) break
-                        output.write(buffer, 0, read)
+                        target.write(buffer, 0, read)
                         downloaded += read
                         val now = System.nanoTime()
                         if (
@@ -259,7 +369,7 @@ class OfflineDownloadController(
                             lastPersistedAt = now
                         }
                     }
-                    output.flush()
+                    target.flush()
                     store.update(id) { record ->
                         record.copy(
                             status = DownloadStatus.DOWNLOADING,
@@ -270,21 +380,18 @@ class OfflineDownloadController(
                 }
             }
         }
+    }
 
-        moveAtomically(temporary, target)
-        val completedSize = Files.size(target)
-        store.update(id) { record ->
-            record.copy(
-                track = track,
-                status = DownloadStatus.COMPLETED,
-                filePath = target.toString(),
-                temporaryPath = "",
-                bytesDownloaded = completedSize,
-                totalBytes = completedSize,
-                mediaLabel = resolved.label,
-                streamIdentity = currentStreamIdentity,
-                error = ""
-            )
+    private fun cleanupAuxiliaryPartials(sourceTemporary: Path) {
+        val name = sourceTemporary.fileName.toString()
+        if (!name.endsWith(".part", ignoreCase = true)) return
+        val sourceName = name.dropLast(PART_SUFFIX_LENGTH)
+        runCatching {
+            Files.deleteIfExists(sourceTemporary.resolveSibling("$sourceName.ranges.part"))
+        }
+        val baseName = sourceName.substringBeforeLast('.', sourceName)
+        runCatching {
+            Files.deleteIfExists(sourceTemporary.resolveSibling("$baseName.mp3.part"))
         }
     }
 
@@ -306,6 +413,8 @@ class OfflineDownloadController(
         private const val BUFFER_SIZE = 64 * 1024
         private const val PROGRESS_BYTES_INTERVAL = 512 * 1024L
         private const val PROGRESS_TIME_INTERVAL_NANOS = 250_000_000L
+        private const val MP3_MEDIA_LABEL = "MP3 · 256 kbps"
+        private const val PART_SUFFIX_LENGTH = 5
     }
 }
 
@@ -477,7 +586,7 @@ internal object OfflineFileName {
         .ifBlank { "track" }
 }
 
-private suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
+internal suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { continuation ->
     continuation.invokeOnCancellation { cancel() }
     enqueue(object : Callback {
         override fun onFailure(call: Call, e: IOException) {
