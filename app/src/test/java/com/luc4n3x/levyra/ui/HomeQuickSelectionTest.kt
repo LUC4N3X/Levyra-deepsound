@@ -95,6 +95,22 @@ class HomeQuickSelectionTest {
     }
 
     @Test
+    fun returnsEmptyListWhenEverySourceIsEmpty() {
+        val result = buildHomeQuickSelectionTracks(
+            personalTracks = emptyList(),
+            quickPickTracks = emptyList(),
+            favoriteTracks = emptyList(),
+            newReleaseTracks = emptyList(),
+            resonanceTracks = emptyList(),
+            showPersonalOrbit = true,
+            showNewReleases = true,
+            showResonance = true
+        )
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
     fun returnsEmptyListForNonPositiveLimit() {
         val result = buildHomeQuickSelectionTracks(
             personalTracks = listOf(track("p1", "P1")),
