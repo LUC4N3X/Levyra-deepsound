@@ -98,152 +98,43 @@ internal fun LevyraHomeAtmosphere(
 private fun Modifier.homeAtmosphereBackground(
     primary: Color,
     secondary: Color,
-    isLight: Boolean
+    isLight: Boolean // Ignored, always dark theme for Home
 ): Modifier = drawWithCache {
     val width = size.width
     val height = size.height
-    val safeRadius = width.coerceAtLeast(1f)
-    val leftCenter = Offset(width * 0.12f, height * 0.06f)
-    val rightCenter = Offset(width * 0.96f, height * 0.22f)
-    val leftRadius = safeRadius * 0.94f
-    val rightRadius = safeRadius * 0.78f
-    val fadeTop = height * 0.46f
+    val fadeTop = height * 0.4f
 
-    val base = homeBaseBrush(isLight)
-    val leftHalo = homeHaloBrush(primary, isLight, leftCenter, leftRadius, prominent = true)
-    val rightHalo = homeHaloBrush(secondary, isLight, rightCenter, rightRadius, prominent = false)
-    val wave = homeWavePath(width, height)
-    val echo = homeEchoPath(width, height)
-    val waveBrush = homeWaveBrush(primary, secondary, isLight)
-    val bottomFade = homeBottomFadeBrush(isLight, fadeTop, height)
+    // Very dark premium gradient inspired by YT Music
+    val topGradient = Brush.radialGradient(
+        colors = listOf(
+            primary.copy(alpha = 0.15f),
+            secondary.copy(alpha = 0.05f),
+            Color.Transparent
+        ),
+        center = Offset(width / 2f, 0f),
+        radius = width.coerceAtLeast(height) * 0.8f
+    )
+
+    val backgroundDark = Color(0xFF030303) // Very deep dark gray/black
+
+    val bottomFade = Brush.verticalGradient(
+        colors = listOf(
+            Color.Transparent,
+            backgroundDark.copy(alpha = 0.8f),
+            backgroundDark
+        ),
+        startY = 0f,
+        endY = fadeTop
+    )
 
     onDrawBehind {
-        drawRect(base)
-        drawCircle(leftHalo, radius = leftRadius, center = leftCenter)
-        drawCircle(rightHalo, radius = rightRadius, center = rightCenter)
-        drawPath(wave, brush = waveBrush, style = Stroke(width = 1.25.dp.toPx()))
-        drawPath(
-            echo,
-            color = homeEchoColor(primary, isLight),
-            style = Stroke(width = 0.75.dp.toPx())
-        )
+        drawRect(backgroundDark)
+        drawRect(topGradient)
+        // Draw the fade to ensure it completely blends to black at the bottom
         drawRect(
             brush = bottomFade,
-            topLeft = Offset(0f, fadeTop),
-            size = Size(width, height - fadeTop)
+            topLeft = Offset(0f, 0f),
+            size = Size(width, height)
         )
     }
-}
-
-private fun homeBaseBrush(isLight: Boolean): Brush = if (isLight) {
-    Brush.verticalGradient(
-        listOf(
-            Color(0xFFF9FAFF),
-            Color(0xFFF4F6FC),
-            Color(0xFFF1F3F8)
-        )
-    )
-} else {
-    Brush.verticalGradient(
-        colorStops = arrayOf(
-            0f to LevyraHomeDesign.CanvasMid,
-            0.34f to LevyraHomeDesign.CanvasDark,
-            1f to Color.Black
-        )
-    )
-}
-
-private fun homeHaloBrush(
-    color: Color,
-    isLight: Boolean,
-    center: Offset,
-    radius: Float,
-    prominent: Boolean
-): Brush = Brush.radialGradient(
-    colors = listOf(
-        color.copy(alpha = homeHaloAlpha(isLight, prominent, leading = true)),
-        color.copy(alpha = homeHaloAlpha(isLight, prominent, leading = false)),
-        Color.Transparent
-    ),
-    center = center,
-    radius = radius
-)
-
-private fun homeHaloAlpha(isLight: Boolean, prominent: Boolean, leading: Boolean): Float = when {
-    isLight && prominent && leading -> 0.12f
-    isLight && prominent -> 0.035f
-    isLight && leading -> 0.08f
-    isLight -> 0.02f
-    prominent && leading -> 0.14f
-    prominent -> 0.04f
-    leading -> 0.10f
-    else -> 0.03f
-}
-
-private fun homeWaveBrush(primary: Color, secondary: Color, isLight: Boolean): Brush =
-    Brush.horizontalGradient(
-        listOf(
-            Color.Transparent,
-            primary.copy(alpha = if (isLight) 0.08f else 0.16f),
-            secondary.copy(alpha = if (isLight) 0.06f else 0.12f),
-            Color.Transparent
-        )
-    )
-
-private fun homeBottomFadeBrush(isLight: Boolean, fadeTop: Float, height: Float): Brush =
-    Brush.verticalGradient(
-        colors = if (isLight) {
-            listOf(
-                Color.Transparent,
-                Color(0xFFF1F3F8).copy(alpha = 0.86f),
-                Color(0xFFF1F3F8)
-            )
-        } else {
-            listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f), Color.Black)
-        },
-        startY = fadeTop,
-        endY = height
-    )
-
-private fun homeEchoColor(primary: Color, isLight: Boolean): Color =
-    if (isLight) primary.copy(alpha = 0.035f) else Color.White.copy(alpha = 0.035f)
-
-private fun homeWavePath(width: Float, height: Float): Path = Path().apply {
-    moveTo(-width * 0.08f, height * 0.29f)
-    cubicTo(
-        width * 0.18f,
-        height * 0.19f,
-        width * 0.33f,
-        height * 0.37f,
-        width * 0.54f,
-        height * 0.25f
-    )
-    cubicTo(
-        width * 0.72f,
-        height * 0.15f,
-        width * 0.89f,
-        height * 0.31f,
-        width * 1.08f,
-        height * 0.21f
-    )
-}
-
-private fun homeEchoPath(width: Float, height: Float): Path = Path().apply {
-    moveTo(-width * 0.06f, height * 0.32f)
-    cubicTo(
-        width * 0.19f,
-        height * 0.23f,
-        width * 0.36f,
-        height * 0.41f,
-        width * 0.56f,
-        height * 0.29f
-    )
-    cubicTo(
-        width * 0.74f,
-        height * 0.19f,
-        width * 0.91f,
-        height * 0.34f,
-        width * 1.07f,
-        height * 0.25f
-    )
 }
