@@ -660,16 +660,6 @@ private fun ActiveTrackEqualizer(
     }
 }
 @Composable
-private fun SectionAccentBar(height: Dp = 22.dp, width: Dp = 4.dp) {
-    Box(
-        modifier = Modifier
-            .width(width)
-            .height(height)
-            .background(Brush.verticalGradient(listOf(LevyraCyan, LevyraViolet)), RoundedCornerShape(99.dp))
-    )
-}
-
-@Composable
 private fun HomePlayAllButton(onClick: () -> Unit, size: Dp = 36.dp) {
     Box(
         modifier = Modifier
@@ -738,64 +728,39 @@ private fun HomeSectionHeader(
 ) {
     val displayTitle = remember(title) { cleanHomeSectionTitle(title) }
     val displaySubtitle = subtitle?.trim().orEmpty()
-    Column(
+    Row(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(11.dp)
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(Dp.Hairline)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color.Transparent,
-                            LevyraAdaptiveSoftHairline,
-                            LevyraAdaptiveHairline.copy(alpha = 0.64f),
-                            LevyraAdaptiveSoftHairline,
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = if (displaySubtitle.isBlank()) Alignment.CenterVertically else Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(11.dp)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            SectionAccentBar(
-                height = if (displaySubtitle.isBlank()) 24.dp else 34.dp,
-                width = 4.dp
+            Text(
+                text = displayTitle,
+                color = LevyraText,
+                fontSize = 22.sp,
+                lineHeight = 26.sp,
+                letterSpacing = (-0.60).sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            if (displaySubtitle.isNotBlank()) {
                 Text(
-                    text = displayTitle,
-                    color = LevyraText,
-                    fontSize = 23.sp,
-                    lineHeight = 26.sp,
-                    letterSpacing = (-0.70).sp,
-                    fontWeight = FontWeight.Black,
+                    text = displaySubtitle,
+                    color = LevyraMuted,
+                    fontSize = 12.5.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (displaySubtitle.isNotBlank()) {
-                    Text(
-                        text = displaySubtitle,
-                        color = LevyraMuted,
-                        fontSize = 12.5.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
-            onPlayAll?.let { action ->
-                HomePlayAllButton(onClick = action, size = 34.dp)
-            }
+        }
+        onPlayAll?.let { action ->
+            HomePlayAllButton(onClick = action, size = 34.dp)
         }
     }
 }
@@ -5087,70 +5052,37 @@ private fun LevyraBackground() {
                 } else {
                     val backgroundBrush = Brush.verticalGradient(
                         colorStops = arrayOf(
-                            0f to Color(0xFF10121A),
-                            0.28f to Color(0xFF0A0C13),
-                            0.62f to Color(0xFF05060A),
+                            0f to Color(0xFF0B0C10),
+                            0.16f to Color(0xFF05060A),
+                            0.34f to Color(0xFF000000),
                             1f to Color(0xFF000000)
                         )
                     )
-                    val auroraCenter = androidx.compose.ui.geometry.Offset(width * 0.10f, -height * 0.04f)
-                    val auroraRadius = width * 1.25f
-                    val auroraBrush = Brush.radialGradient(
+                    val washCenter = androidx.compose.ui.geometry.Offset(width * 0.24f, -height * 0.10f)
+                    val washRadius = width * 1.30f
+                    val washBrush = Brush.radialGradient(
                         colors = listOf(
-                            LevyraNavigationBlue.copy(alpha = 0.26f),
-                            LevyraNavigationBlue.copy(alpha = 0.09f),
+                            LevyraNavigationBlue.copy(alpha = 0.13f),
+                            LevyraNavigationBlue.copy(alpha = 0.04f),
                             Color.Transparent
                         ),
-                        center = auroraCenter,
-                        radius = auroraRadius
+                        center = washCenter,
+                        radius = washRadius
                     )
-                    val violetCenter = androidx.compose.ui.geometry.Offset(width * 1.06f, height * 0.14f)
-                    val violetRadius = width * 0.95f
-                    val violetBrush = Brush.radialGradient(
-                        colors = listOf(
-                            LevyraHomeGlowViolet.copy(alpha = 0.20f),
-                            LevyraHomeGlowViolet.copy(alpha = 0.06f),
-                            Color.Transparent
-                        ),
-                        center = violetCenter,
-                        radius = violetRadius
-                    )
-                    val emberCenter = androidx.compose.ui.geometry.Offset(width * 0.82f, height * 0.44f)
-                    val emberRadius = width * 0.70f
-                    val emberBrush = Brush.radialGradient(
-                        colors = listOf(
-                            LevyraNavigationBlueDeep.copy(alpha = 0.10f),
-                            Color.Transparent
-                        ),
-                        center = emberCenter,
-                        radius = emberRadius
-                    )
-                    val sheenBrush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.White.copy(alpha = 0.030f),
-                            Color.Transparent
-                        ),
-                        startY = height * 0.04f,
-                        endY = height * 0.26f
-                    )
-                    val fadeTop = height * 0.40f
+                    val fadeTop = height * 0.18f
                     val bottomFadeBrush = Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.Black.copy(alpha = 0.55f),
+                            Color.Black.copy(alpha = 0.85f),
                             Color.Black
                         ),
                         startY = fadeTop,
-                        endY = height
+                        endY = height * 0.46f
                     )
                     val fadeSize = androidx.compose.ui.geometry.Size(width, height - fadeTop)
                     onDrawBehind {
                         drawRect(backgroundBrush)
-                        drawCircle(brush = auroraBrush, radius = auroraRadius, center = auroraCenter)
-                        drawCircle(brush = violetBrush, radius = violetRadius, center = violetCenter)
-                        drawCircle(brush = emberBrush, radius = emberRadius, center = emberCenter)
-                        drawRect(sheenBrush)
+                        drawCircle(brush = washBrush, radius = washRadius, center = washCenter)
                         drawRect(
                             brush = bottomFadeBrush,
                             topLeft = androidx.compose.ui.geometry.Offset(0f, fadeTop),
