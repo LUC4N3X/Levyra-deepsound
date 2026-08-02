@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.ui.components
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -135,6 +136,7 @@ fun PlayerTransportControls(
     accent: Color,
     accentSecondary: Color,
     compact: Boolean,
+    animated: Boolean,
     labels: PlayerControlLabels,
     onShuffle: () -> Unit,
     onPrevious: () -> Unit,
@@ -159,6 +161,7 @@ fun PlayerTransportControls(
             accent = accent,
             size = utilitySize,
             iconSize = if (compact) 20.dp else 21.dp,
+            animated = animated,
             onClick = onShuffle
         )
         PlayerGlassIconButton(
@@ -175,6 +178,7 @@ fun PlayerTransportControls(
             accent = accent,
             accentSecondary = accentSecondary,
             size = primarySize,
+            animated = animated,
             playLabel = labels.play,
             pauseLabel = labels.pause,
             onClick = onToggle
@@ -194,6 +198,7 @@ fun PlayerTransportControls(
             accent = accentSecondary,
             size = utilitySize,
             iconSize = if (compact) 20.dp else 21.dp,
+            animated = animated,
             onClick = onRepeat
         )
     }
@@ -207,6 +212,7 @@ private fun PlayerModeToggleButton(
     accent: Color,
     size: Dp,
     iconSize: Dp,
+    animated: Boolean,
     onClick: () -> Unit
 ) {
     val fill = if (active) accent.copy(alpha = 0.30f) else Color.Transparent
@@ -216,12 +222,12 @@ private fun PlayerModeToggleButton(
     val tint = if (active) activeTint else LevyraPlayerDesign.IconIdle
     val corner by animateDpAsState(
         targetValue = if (active) size / 2f else size * 0.34f,
-        animationSpec = LevyraPlayerDesign.expressiveSpring(),
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
         label = "player-toggle-corner"
     )
     val borderAlpha by animateFloatAsState(
         targetValue = if (active) 0.55f else 0f,
-        animationSpec = LevyraPlayerDesign.standardTween(),
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-border"
     )
 
@@ -261,6 +267,7 @@ private fun PlayerPrimaryButton(
     accent: Color,
     accentSecondary: Color,
     size: Dp,
+    animated: Boolean,
     playLabel: String,
     pauseLabel: String,
     onClick: () -> Unit
@@ -274,7 +281,7 @@ private fun PlayerPrimaryButton(
     }
     val corner by animateDpAsState(
         targetValue = if (isPlaying) size * 0.34f else size / 2f,
-        animationSpec = LevyraPlayerDesign.expressiveSpring(),
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
         label = "player-primary-corner"
     )
     val shape = RoundedCornerShape(corner)
