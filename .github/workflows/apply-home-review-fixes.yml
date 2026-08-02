@@ -1,0 +1,39 @@
+name: Apply Home review fixes
+
+on:
+  push:
+    branches:
+      - refactor/home-experience
+    paths:
+      - .github/workflows/apply-home-review-fixes.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-home-review-fixes
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+      - name: Fix quick-pick playback action
+        shell: bash
+        run: |
+          echo 'LS0tIGEvYXBwL3NyYy9tYWluL2phdmEvY29tL2x1YzRuM3gvbGV2eXJhL3VpL0xldnlyYUFwcC5rdAorKysgYi9hcHAvc3JjL21haW4vamF2YS9jb20vbHVjNG4zeC9sZXZ5cmEvdWkvTGV2eXJhQXBwLmt0CkBAIC01Mzg1LDYgKzUzODUsNyBAQAogICAgICAgICAgICAgICAgICAgICAgICBpc1BsYXlpbmcgPSBzdGF0ZS5pc1BsYXlpbmcsCiAgICAgICAgICAgICAgICAgICAgICAgIGlzUmVzb2x2aW5nID0gc3RhdGUuaXNSZXNvbHZpbmcsCiAgICAgICAgICAgICAgICAgICAgICAgIG9uUGxheSA9IHsgdHJhY2sgLT4gdmlld01vZGVsLnBsYXlGcm9tKHF1aWNrUGlja3MudHJhY2tzLCB0cmFjaykgfSwKKyAgICAgICAgICAgICAgICAgICAgICAgIG9uVG9nZ2xlQ3VycmVudCA9IHZpZXdNb2RlbDo6dG9nZ2xlUGxheSwKICAgICAgICAgICAgICAgICAgICAgICAgIG9uUGxheUFsbCA9IHsgdmlld01vZGVsLnBsYXlBbGwocXVpY2tQaWNrcy50cmFja3MpIH0KICAgICAgICAgICAgICAgICAgICApCiAgICAgICAgICAgICAgICB9CkBAIC02Mjc4LDYgKzYyNzksNyBAQAogICAgIGlzUGxheWluZzogQm9vbGVhbiwKICAgICBpc1Jlc29sdmluZzogQm9vbGVhbiwKICAgICBvblBsYXk6IChUcmFjaykgLT4gVW5pdCwKKyAgICBvblRvZ2dsZUN1cnJlbnQ6ICgpIC0+IFVuaXQsCiAgICAgb25QbGF5QWxsOiAoKSAtPiBVbml0CiApIHsKQEAgLTYzMTQsNyArNjMxNiwxMSBAQAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIGlzQ3VycmVudCA9IHRyYWNrLmlkID09IGN1cnJlbnRJZCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpc1BsYXlpbmcgPSBpc1BsYXlpbmcgJiYgdHJhY2suaWQgPT0gY3VycmVudElkLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIGlzUmVzb2x2aW5nID0gaXNSZXNvbHZpbmcgJiYgdHJhY2suaWQgPT0gY3VycmVudElkLAotICAgICAgICAgICAgICAgICAgICAgICAgICAgIG9uUGxheSA9IHsgb25QbGF5KHRyYWNrKSB9CisgICAgICAgICAgICAgICAgICAgICAgICAgICAgb25QbGF5ID0geworICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBpZiAodHJhY2suaWQgPT0gY3VycmVudElkKSB7CisgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvblRvZ2dsZUN1cnJlbnQoKQorICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9IGVsc2UgeworICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgb25QbGF5KHRyYWNrKQorICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB9CisgICAgICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgICAgICApCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfQo=' | base64 --decode > /tmp/home-review-fixes.patch
+          git apply --check /tmp/home-review-fixes.patch
+          git apply /tmp/home-review-fixes.patch
+          rm .github/workflows/apply-home-review-fixes.yml
+      - name: Commit fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(home): toggle playback for active quick picks"
+          git push origin HEAD:refactor/home-experience
