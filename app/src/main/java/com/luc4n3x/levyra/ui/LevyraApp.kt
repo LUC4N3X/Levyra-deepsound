@@ -14087,6 +14087,19 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
     val greeting = remember(userName, strings, greetingHour) {
         strings.formatGreeting(userName, greetingHour)
     }
+    val isLight = LevyraIsLight
+    val chipBackground = if (isLight) Color.White.copy(alpha = 0.90f) else Color(0xFF12141C)
+    val chipWash = LevyraCyan.copy(alpha = if (isLight) 0.10f else 0.16f)
+    val chipBorderStart = LevyraCyan.copy(alpha = if (isLight) 0.34f else 0.42f)
+    val chipBorderEnd = Color.White.copy(alpha = if (isLight) 0.06f else 0.08f)
+    val greetingTextColor = if (isLight) LevyraText.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.90f)
+    val settingsBackground = if (isLight) Color.White.copy(alpha = 0.94f) else Color(0xFF12141C)
+    val settingsWashTop = LevyraCyan.copy(alpha = if (isLight) 0.10f else 0.18f)
+    val settingsWashBottom = LevyraViolet.copy(alpha = if (isLight) 0.06f else 0.12f)
+    val settingsBorderTop = Color.White.copy(alpha = if (isLight) 0.24f else 0.20f)
+    val settingsBorderBottom = Color.White.copy(alpha = if (isLight) 0.06f else 0.05f)
+    val settingsIconTint = if (isLight) LevyraText.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f)
+    val settingsElevation = if (isLight) 3.dp else 10.dp
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -14102,27 +14115,10 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
             Row(
                 modifier = Modifier
                     .clip(greetingShape)
-                    .background(
-                        if (LevyraIsLight) Color.White.copy(alpha = 0.90f) else Color(0xFF12141C)
-                    )
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                LevyraCyan.copy(alpha = if (LevyraIsLight) 0.10f else 0.16f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+                    .background(chipBackground)
+                    .background(Brush.horizontalGradient(listOf(chipWash, Color.Transparent)))
                     .border(
-                        BorderStroke(
-                            1.dp,
-                            Brush.horizontalGradient(
-                                listOf(
-                                    LevyraCyan.copy(alpha = if (LevyraIsLight) 0.34f else 0.42f),
-                                    Color.White.copy(alpha = if (LevyraIsLight) 0.06f else 0.08f)
-                                )
-                            )
-                        ),
+                        BorderStroke(1.dp, Brush.horizontalGradient(listOf(chipBorderStart, chipBorderEnd))),
                         greetingShape
                     )
                     .padding(start = 5.dp, end = 14.dp, top = 5.dp, bottom = 5.dp),
@@ -14160,7 +14156,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                 }
                 Text(
                     text = greeting,
-                    color = if (LevyraIsLight) LevyraText.copy(alpha = 0.82f) else Color.White.copy(alpha = 0.90f),
+                    color = greetingTextColor,
                     fontSize = 13.sp,
                     lineHeight = 15.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -14181,36 +14177,19 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
             modifier = Modifier
                 .size(46.dp)
                 .shadow(
-                    elevation = if (LevyraIsLight) 3.dp else 10.dp,
+                    elevation = settingsElevation,
                     shape = CircleShape,
                     clip = false,
                     ambientColor = LevyraCyan.copy(alpha = 0.30f),
                     spotColor = Color.Black.copy(alpha = 0.60f)
                 )
+                .background(settingsBackground, CircleShape)
                 .background(
-                    if (LevyraIsLight) Color.White.copy(alpha = 0.94f) else Color(0xFF12141C),
-                    CircleShape
-                )
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            LevyraCyan.copy(alpha = if (LevyraIsLight) 0.10f else 0.18f),
-                            Color.Transparent,
-                            LevyraViolet.copy(alpha = if (LevyraIsLight) 0.06f else 0.12f)
-                        )
-                    ),
+                    Brush.linearGradient(listOf(settingsWashTop, Color.Transparent, settingsWashBottom)),
                     CircleShape
                 )
                 .border(
-                    BorderStroke(
-                        1.dp,
-                        Brush.verticalGradient(
-                            listOf(
-                                Color.White.copy(alpha = if (LevyraIsLight) 0.24f else 0.20f),
-                                Color.White.copy(alpha = if (LevyraIsLight) 0.06f else 0.05f)
-                            )
-                        )
-                    ),
+                    BorderStroke(1.dp, Brush.verticalGradient(listOf(settingsBorderTop, settingsBorderBottom))),
                     CircleShape
                 )
                 .pressable(onClick = onSettings),
@@ -14226,7 +14205,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                 Icon(
                     imageVector = Icons.Rounded.Settings,
                     contentDescription = strings.settings,
-                    tint = if (LevyraIsLight) LevyraText.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.92f),
+                    tint = settingsIconTint,
                     modifier = Modifier.size(21.dp)
                 )
             }
