@@ -404,7 +404,7 @@ private val HomeHorizontalInset = 18.dp
 private val HomeHorizontalShelfEndPadding = 30.dp
 private const val HOME_ARTIST_SHELF_SIZE = 13
 private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
-private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = HOME_HORIZONTAL_ROW_CONTENT_TYPE
+private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
 /** Tab row height, without the navigation bar spacer that `BottomTabs` adds under it. */
 private val LevyraTabBarHeight = 76.dp
 /** Mini player height: content row, progress line and its trailing spacer. */
