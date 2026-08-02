@@ -4,7 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -13,61 +13,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.unit.dp
-import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.ui.theme.LevyraHomeDesign
 
 /**
- * Compatibility models kept only until the obsolete quick-access item is removed from LevyraApp.
- * The composable intentionally renders nothing: the shortcut dashboard is no longer part of Home.
- */
-internal data class LevyraHomeQuickAccessTracks(
-    val current: Track?,
-    val mix: Track?,
-    val favorite: Track?,
-    val release: Track?,
-    val chart: Track?
-)
-
-internal data class LevyraHomeQuickAccessAvailability(
-    val hasMix: Boolean,
-    val hasFavorites: Boolean,
-    val hasNewReleases: Boolean,
-    val hasCharts: Boolean
-)
-
-internal data class LevyraHomeQuickAccessPlayback(
-    val isPlaying: Boolean,
-    val isResolving: Boolean
-)
-
-internal data class LevyraHomeQuickAccessState(
-    val tracks: LevyraHomeQuickAccessTracks,
-    val availability: LevyraHomeQuickAccessAvailability,
-    val playback: LevyraHomeQuickAccessPlayback,
-    val isLight: Boolean
-)
-
-internal data class LevyraHomeQuickAccessActions(
-    val onContinue: () -> Unit,
-    val onMix: () -> Unit,
-    val onFavorites: () -> Unit,
-    val onNewReleases: () -> Unit,
-    val onCharts: () -> Unit,
-    val onSearch: () -> Unit
-)
-
-@Suppress("UNUSED_PARAMETER")
-@Composable
-internal fun LevyraHomeQuickAccessGrid(
-    state: LevyraHomeQuickAccessState,
-    actions: LevyraHomeQuickAccessActions
-) = Unit
-
-/**
- * Artwork-led Home backdrop with cached drawing primitives and no permanently running animation.
+ * Full-screen artwork-led Home backdrop.
+ *
+ * The palette follows the current editorial spotlight, while the lower half stays deliberately
+ * quiet so shelves remain readable. There are no permanently running animations or bitmap effects.
  */
 @Composable
 internal fun LevyraHomeAtmosphere(
@@ -90,7 +42,7 @@ internal fun LevyraHomeAtmosphere(
 
     Box(
         modifier = modifier
-            .height(LevyraHomeDesign.AtmosphereHeight)
+            .fillMaxSize()
             .homeAtmosphereBackground(primary, secondary, isLight)
     )
 }
@@ -100,150 +52,120 @@ private fun Modifier.homeAtmosphereBackground(
     secondary: Color,
     isLight: Boolean
 ): Modifier = drawWithCache {
-    val width = size.width
-    val height = size.height
-    val safeRadius = width.coerceAtLeast(1f)
-    val leftCenter = Offset(width * 0.12f, height * 0.06f)
-    val rightCenter = Offset(width * 0.96f, height * 0.22f)
-    val leftRadius = safeRadius * 0.94f
-    val rightRadius = safeRadius * 0.78f
-    val fadeTop = height * 0.46f
+    val width = size.width.coerceAtLeast(1f)
+    val height = size.height.coerceAtLeast(1f)
 
-    val base = homeBaseBrush(isLight)
-    val leftHalo = homeHaloBrush(primary, isLight, leftCenter, leftRadius, prominent = true)
-    val rightHalo = homeHaloBrush(secondary, isLight, rightCenter, rightRadius, prominent = false)
-    val wave = homeWavePath(width, height)
-    val echo = homeEchoPath(width, height)
-    val waveBrush = homeWaveBrush(primary, secondary, isLight)
-    val bottomFade = homeBottomFadeBrush(isLight, fadeTop, height)
+    val base = if (isLight) {
+        Brush.verticalGradient(
+            colorStops = arrayOf(
+                0f to Color(0xFFF8FAFF),
+                0.28f to Color(0xFFF4F6FB),
+                0.58f to Color(0xFFF1F3F8),
+                1f to Color(0xFFF1F3F8)
+            )
+        )
+    } else {
+        Brush.verticalGradient(
+            colorStops = arrayOf(
+                0f to LevyraHomeDesign.CanvasMid,
+                0.24f to LevyraHomeDesign.CanvasDark,
+                0.52f to Color(0xFF030407),
+                1f to Color.Black
+            )
+        )
+    }
+
+    val primaryCenter = Offset(width * 0.12f, -height * 0.02f)
+    val primaryRadius = width * 1.18f
+    val primaryHalo = Brush.radialGradient(
+        colors = listOf(
+            primary.copy(alpha = if (isLight) 0.18f else 0.30f),
+            primary.copy(alpha = if (isLight) 0.055f else 0.085f),
+            Color.Transparent
+        ),
+        center = primaryCenter,
+        radius = primaryRadius
+    )
+
+    val secondaryCenter = Offset(width * 0.98f, height * 0.16f)
+    val secondaryRadius = width * 0.86f
+    val secondaryHalo = Brush.radialGradient(
+        colors = listOf(
+            secondary.copy(alpha = if (isLight) 0.12f else 0.22f),
+            secondary.copy(alpha = if (isLight) 0.035f else 0.06f),
+            Color.Transparent
+        ),
+        center = secondaryCenter,
+        radius = secondaryRadius
+    )
+
+    val centreCenter = Offset(width * 0.52f, height * 0.26f)
+    val centreRadius = width * 0.92f
+    val centreWash = Brush.radialGradient(
+        colors = listOf(
+            blendHomeAccents(primary, secondary).copy(alpha = if (isLight) 0.045f else 0.075f),
+            Color.Transparent
+        ),
+        center = centreCenter,
+        radius = centreRadius
+    )
+
+    val fadeTop = height * 0.25f
+    val lowerFade = Brush.verticalGradient(
+        colors = if (isLight) {
+            listOf(
+                Color.Transparent,
+                Color(0xFFF1F3F8).copy(alpha = 0.78f),
+                Color(0xFFF1F3F8)
+            )
+        } else {
+            listOf(
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.78f),
+                Color.Black
+            )
+        },
+        startY = fadeTop,
+        endY = height * 0.62f
+    )
+
+    val edgeVignette = if (isLight) {
+        Brush.horizontalGradient(
+            listOf(
+                Color(0xFFF1F3F8).copy(alpha = 0.22f),
+                Color.Transparent,
+                Color.Transparent,
+                Color(0xFFF1F3F8).copy(alpha = 0.18f)
+            )
+        )
+    } else {
+        Brush.horizontalGradient(
+            listOf(
+                Color.Black.copy(alpha = 0.22f),
+                Color.Transparent,
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.26f)
+            )
+        )
+    }
 
     onDrawBehind {
         drawRect(base)
-        drawCircle(leftHalo, radius = leftRadius, center = leftCenter)
-        drawCircle(rightHalo, radius = rightRadius, center = rightCenter)
-        drawPath(wave, brush = waveBrush, style = Stroke(width = 1.25.dp.toPx()))
-        drawPath(
-            echo,
-            color = homeEchoColor(primary, isLight),
-            style = Stroke(width = 0.75.dp.toPx())
-        )
+        drawCircle(primaryHalo, radius = primaryRadius, center = primaryCenter)
+        drawCircle(secondaryHalo, radius = secondaryRadius, center = secondaryCenter)
+        drawCircle(centreWash, radius = centreRadius, center = centreCenter)
+        drawRect(edgeVignette)
         drawRect(
-            brush = bottomFade,
+            brush = lowerFade,
             topLeft = Offset(0f, fadeTop),
             size = Size(width, height - fadeTop)
         )
     }
 }
 
-private fun homeBaseBrush(isLight: Boolean): Brush = if (isLight) {
-    Brush.verticalGradient(
-        listOf(
-            Color(0xFFF9FAFF),
-            Color(0xFFF4F6FC),
-            Color(0xFFF1F3F8)
-        )
-    )
-} else {
-    Brush.verticalGradient(
-        colorStops = arrayOf(
-            0f to LevyraHomeDesign.CanvasMid,
-            0.34f to LevyraHomeDesign.CanvasDark,
-            1f to Color.Black
-        )
-    )
-}
-
-private fun homeHaloBrush(
-    color: Color,
-    isLight: Boolean,
-    center: Offset,
-    radius: Float,
-    prominent: Boolean
-): Brush = Brush.radialGradient(
-    colors = listOf(
-        color.copy(alpha = homeHaloAlpha(isLight, prominent, leading = true)),
-        color.copy(alpha = homeHaloAlpha(isLight, prominent, leading = false)),
-        Color.Transparent
-    ),
-    center = center,
-    radius = radius
+private fun blendHomeAccents(first: Color, second: Color): Color = Color(
+    red = (first.red + second.red) / 2f,
+    green = (first.green + second.green) / 2f,
+    blue = (first.blue + second.blue) / 2f,
+    alpha = 1f
 )
-
-private fun homeHaloAlpha(isLight: Boolean, prominent: Boolean, leading: Boolean): Float = when {
-    isLight && prominent && leading -> 0.16f
-    isLight && prominent -> 0.045f
-    isLight && leading -> 0.10f
-    isLight -> 0.028f
-    prominent && leading -> 0.28f
-    prominent -> 0.075f
-    leading -> 0.20f
-    else -> 0.055f
-}
-
-private fun homeWaveBrush(primary: Color, secondary: Color, isLight: Boolean): Brush =
-    Brush.horizontalGradient(
-        listOf(
-            Color.Transparent,
-            primary.copy(alpha = if (isLight) 0.08f else 0.16f),
-            secondary.copy(alpha = if (isLight) 0.06f else 0.12f),
-            Color.Transparent
-        )
-    )
-
-private fun homeBottomFadeBrush(isLight: Boolean, fadeTop: Float, height: Float): Brush =
-    Brush.verticalGradient(
-        colors = if (isLight) {
-            listOf(
-                Color.Transparent,
-                Color(0xFFF1F3F8).copy(alpha = 0.86f),
-                Color(0xFFF1F3F8)
-            )
-        } else {
-            listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f), Color.Black)
-        },
-        startY = fadeTop,
-        endY = height
-    )
-
-private fun homeEchoColor(primary: Color, isLight: Boolean): Color =
-    if (isLight) primary.copy(alpha = 0.035f) else Color.White.copy(alpha = 0.035f)
-
-private fun homeWavePath(width: Float, height: Float): Path = Path().apply {
-    moveTo(-width * 0.08f, height * 0.29f)
-    cubicTo(
-        width * 0.18f,
-        height * 0.19f,
-        width * 0.33f,
-        height * 0.37f,
-        width * 0.54f,
-        height * 0.25f
-    )
-    cubicTo(
-        width * 0.72f,
-        height * 0.15f,
-        width * 0.89f,
-        height * 0.31f,
-        width * 1.08f,
-        height * 0.21f
-    )
-}
-
-private fun homeEchoPath(width: Float, height: Float): Path = Path().apply {
-    moveTo(-width * 0.06f, height * 0.32f)
-    cubicTo(
-        width * 0.19f,
-        height * 0.23f,
-        width * 0.36f,
-        height * 0.41f,
-        width * 0.56f,
-        height * 0.29f
-    )
-    cubicTo(
-        width * 0.74f,
-        height * 0.19f,
-        width * 0.91f,
-        height * 0.34f,
-        width * 1.07f,
-        height * 0.25f
-    )
-}

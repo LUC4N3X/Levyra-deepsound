@@ -13,9 +13,11 @@ class HomeDesignTest {
     }
 
     @Test
-    fun `home hierarchy stays tighter than the expressive player scale`() {
+    fun `home hierarchy keeps a clear editorial scale`() {
         assertTrue(LevyraHomeDesign.HeaderCorner <= LevyraPlayerDesign.CornerLg)
-        assertTrue(LevyraHomeDesign.HeroCorner <= LevyraPlayerDesign.CornerMd)
+        assertTrue(LevyraHomeDesign.HeroCorner > LevyraHomeDesign.ShelfCorner)
+        assertTrue(LevyraHomeDesign.HeroHeight.value >= 240f)
+        assertTrue(LevyraHomeDesign.SectionGap > LevyraHomeDesign.SectionGapCompact)
         assertTrue(LevyraHomeDesign.AtmosphereHeight > LevyraHomeDesign.HeroHeight)
         assertEquals(18f, LevyraHomeDesign.HorizontalInset.value, 0f)
     }
