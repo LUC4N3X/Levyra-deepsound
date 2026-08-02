@@ -11,6 +11,11 @@ class HomeDesignTest {
         assertTrue(LevyraHomeDesign.ArtworkSize <= LevyraHomeDesign.TileHeight)
         assertTrue(LevyraHomeDesign.TileGap.value > 0f)
         assertTrue(LevyraHomeDesign.TileCorner < LevyraHomeDesign.TileHeight)
+        assertEquals(
+            14f,
+            (LevyraHomeDesign.TileHeight - LevyraHomeDesign.ArtworkSize).value,
+            0f
+        )
     }
 
     @Test
