@@ -1,10 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="139" height="34" viewBox="0 0 139 34" role="img" aria-label="Stars: 4">
+<svg xmlns="http://www.w3.org/2000/svg" width="142" height="40" viewBox="0 0 142 40" role="img" aria-label="Stars: 4">
 <title>Stars: 4</title>
-<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0F172A"/><stop offset="1" stop-color="#0A0F1D"/></linearGradient><linearGradient id="a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FBBF24"/><stop offset="1" stop-color="#F59E0B"/></linearGradient></defs>
-<rect x=".5" y=".5" width="138" height="33" rx="10" fill="url(#bg)" stroke="#263248"/>
-<rect x="1.5" y="8" width="3" height="18" rx="1.5" fill="url(#a)"/>
-<circle cx="20" cy="17" r="9.75" fill="none" stroke="#FBBF24" stroke-opacity=".22"/>
-<g transform="translate(12 9)" fill="url(#a)"><path d="M8 .75a.75.75 0 0 1 .673.418L10.52 4.9l4.12.599a.75.75 0 0 1 .416 1.279l-2.98 2.905.704 4.103a.75.75 0 0 1-1.088.79L8 12.61l-3.694 1.943a.75.75 0 0 1-1.088-.79l.704-4.103-2.98-2.905a.75.75 0 0 1 .416-1.279l4.12-.599L7.327 1.168A.75.75 0 0 1 8 .75Z"/></g>
-<text x="37" y="20.5" fill="#F8FAFC" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="10.5" font-weight="800">Stars</text>
-<rect x="104" y="5" width="30" height="24" rx="8" fill="url(#a)"/><text x="119" y="20.5" text-anchor="middle" fill="#15110A" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="10.4" font-weight="900">4</text>
+<defs>
+  <linearGradient id="stars-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111A2B"/><stop offset=".58" stop-color="#0B1220"/><stop offset="1" stop-color="#080D18"/></linearGradient>
+  <linearGradient id="stars-accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FBBF24"/><stop offset="1" stop-color="#F59E0B"/></linearGradient>
+</defs>
+<rect x=".5" y=".5" width="141" height="39" rx="12" fill="url(#stars-bg)" stroke="#2B3850"/>
+<path d="M13 1h116" stroke="#FFFFFF" stroke-opacity=".055" stroke-linecap="round"/>
+<rect x="2" y="9" width="3" height="22" rx="1.5" fill="url(#stars-accent)"/>
+<circle cx="22" cy="20" r="11" fill="#FBBF24" fill-opacity=".075" stroke="#FBBF24" stroke-opacity=".3"/>
+<g transform="translate(14 12)" fill="url(#stars-accent)"><path d="M8 .75a.75.75 0 0 1 .673.418L10.52 4.9l4.12.599a.75.75 0 0 1 .416 1.279l-2.98 2.905.704 4.103a.75.75 0 0 1-1.088.79L8 12.61l-3.694 1.943a.75.75 0 0 1-1.088-.79l.704-4.103-2.98-2.905a.75.75 0 0 1 .416-1.279l4.12-.599L7.327 1.168A.75.75 0 0 1 8 .75Z"/></g>
+<text x="42" y="24.1" fill="#F8FAFC" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11.4" font-weight="800" letter-spacing=".12">Stars</text>
+<rect x="105" y="6" width="30" height="28" rx="9" fill="url(#stars-accent)"/>
+<rect x="105.5" y="6.5" width="29" height="27" rx="8.5" fill="none" stroke="#FFFFFF" stroke-opacity=".18"/>
+<text x="120" y="24.2" text-anchor="middle" fill="#15110A" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11" font-weight="900">4</text>
 </svg>
