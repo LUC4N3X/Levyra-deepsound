@@ -103,6 +103,7 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun openArtistByName(name: String) = root.openArtistByName(name)
     fun openArtistFromHit(hit: ArtistHit) = root.openArtistFromHit(hit)
     fun openSettings() = root.openSettings()
+    fun openSearch() = root.selectTab(LevyraTab.Search)
     fun playAlbumRecommendations(albums: List<AlbumHit>) = root.playAlbumRecommendations(albums)
     fun refreshHomeArtists() = root.refreshHomeArtists()
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
