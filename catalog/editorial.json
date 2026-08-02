@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T13:07:26Z",
+  "generatedAt": "2026-08-02T13:20:01Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -3323,11 +3323,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 43,
@@ -15360,7 +15360,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-8e00e58819f76bb1bccd",
+          "id": "levyra-e09beec9b76bb06bdf72",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15368,12 +15368,12 @@
             }
           ],
           "album": {
-            "name": "Det kommer aldrig va över för mig",
-            "releaseDate": "2013-04-17"
+            "name": "Nyårsfest",
+            "releaseDate": "2020-12-18"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
         },
         {
           "position": 47,
@@ -17127,7 +17127,7 @@
         },
         {
           "position": 28,
-          "id": "levyra-a9b8576a2fa18a7f2377",
+          "id": "levyra-8c89ffdb1212622f2dcf",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17135,12 +17135,12 @@
             }
           ],
           "album": {
-            "name": "Best Of",
-            "releaseDate": "2016-11-18"
+            "name": "Singles & Specials",
+            "releaseDate": "2020-12-04"
           },
-          "durationMs": 223426,
+          "durationMs": 223000,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
         },
         {
           "position": 29,
@@ -24205,12 +24205,6 @@
           },
           "durationMs": 347040,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "XA_uBJjutgc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCCTN01plFzn4npREHKT2_9Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f2706d41aa1ec24c04135ba"
         }
       ]
@@ -26028,10 +26022,10 @@
           "durationMs": 234168,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "5q906vfrzyY",
+            "audioVideoId": "-zNB1BT2mi4",
             "audioConfidence": 100,
             "confidence": 100,
-            "artistBrowseId": "UCjhtSjcSCUWbfFAWrp8Ow6w"
+            "artistBrowseId": "UCO2EZyzX5-X3Dc65bta6yDg"
           },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d6ebd978c7c460eaf3f75f85"
         },
