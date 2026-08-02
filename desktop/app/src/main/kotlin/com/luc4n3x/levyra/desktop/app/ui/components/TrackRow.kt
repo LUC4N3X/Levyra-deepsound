@@ -2,14 +2,15 @@ package com.luc4n3x.levyra.desktop.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,11 +30,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
 import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
+import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraMotion
+import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
@@ -55,45 +59,59 @@ fun TrackRow(
     position: Int? = null
 ) {
     val strings = LocalStrings.current
+    val accent = LocalAccentColor.current
     val downloadActions = LocalDownloadActions.current
     val downloadRecord = downloadActions?.recordFor?.invoke(track)
-    val interactionSource = remember { MutableInteractionSource() }
+    val interactionSource = remember(track.id) { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
-    var menuExpanded by remember { mutableStateOf(false) }
+    var menuExpanded by remember(track.id) { mutableStateOf(false) }
 
     val background = when {
-        isCurrent -> MaterialTheme.colorScheme.primaryContainer
-        hovered -> MaterialTheme.colorScheme.surfaceContainerHigh
-        else -> MaterialTheme.colorScheme.surface
+        isCurrent -> accent.copy(alpha = LevyraMotion.SELECTED_ALPHA)
+        hovered -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
+        else -> Color.Transparent
     }
+    val shape = RoundedCornerShape(9.dp)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(shape)
             .background(background)
             .hoverable(interactionSource)
-            .clickable(onClick = onPlay)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onPlay
+            )
+            .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .height(28.dp)
+                .clip(RoundedCornerShape(99.dp))
+                .background(if (isCurrent) accent else Color.Transparent)
+        )
+
         if (position != null) {
             Text(
                 text = position.toString(),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isCurrent) accent else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.width(24.dp)
             )
         }
 
-        Artwork(url = track.artworkUrl, modifier = Modifier.size(44.dp), cornerRadius = 8.dp, iconSize = 18.dp)
+        Artwork(url = track.artworkUrl, modifier = Modifier.size(42.dp), cornerRadius = 7.dp, iconSize = 18.dp)
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
                 style = MaterialTheme.typography.titleSmall,
-                color = if (isCurrent) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                color = if (isCurrent) accent else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -120,7 +138,7 @@ fun TrackRow(
             DownloadStatus.COMPLETED -> Icon(
                 imageVector = OfflineIcons.Check,
                 contentDescription = strings.downloadOfflineBadge,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = accent,
                 modifier = Modifier.size(18.dp)
             )
 
@@ -137,7 +155,7 @@ fun TrackRow(
             Icon(
                 imageVector = if (isFavorite) LevyraIcons.HeartFilled else LevyraIcons.Heart,
                 contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
-                tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (isFavorite) accent else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
         }
