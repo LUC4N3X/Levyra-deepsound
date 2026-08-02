@@ -59,3 +59,5 @@ jobs:
           git add README.md scripts/update-readme-badges.mjs
           git commit -m "docs: remove download card link artifact"
           git push origin HEAD:agent/pro-readme-badges-docs
+
+# trigger workflow after creation
