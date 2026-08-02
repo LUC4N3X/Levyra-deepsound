@@ -404,6 +404,7 @@ private val HomeHorizontalInset = 18.dp
 private val HomeHorizontalShelfEndPadding = 30.dp
 private const val HOME_ARTIST_SHELF_SIZE = 13
 private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
+private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = HOME_HORIZONTAL_ROW_CONTENT_TYPE
 /** Tab row height, without the navigation bar spacer that `BottomTabs` adds under it. */
 private val LevyraTabBarHeight = 76.dp
 /** Mini player height: content row, progress line and its trailing spacer. */
@@ -5299,24 +5300,34 @@ private fun HomeScreen(
         item(key = "home-quick-access", contentType = "home-quick-access") {
             HomeSectionInset {
                 LevyraHomeQuickAccessGrid(
-                    currentTrack = state.currentTrack,
-                    mixTrack = homeMixTracks.firstOrNull(),
-                    favoriteTrack = state.favorites.firstOrNull(),
-                    releaseTrack = homeReleaseTracks.firstOrNull(),
-                    chartTrack = state.charts.firstOrNull(),
-                    isPlaying = state.isPlaying,
-                    isResolving = state.isResolving,
-                    hasMix = homeMixTracks.isNotEmpty(),
-                    hasFavorites = state.favorites.isNotEmpty(),
-                    hasNewReleases = homeReleaseTracks.isNotEmpty(),
-                    hasCharts = state.charts.isNotEmpty(),
-                    isLight = LevyraIsLight,
-                    onContinue = viewModel::togglePlay,
-                    onMix = { viewModel.playAll(homeMixTracks) },
-                    onFavorites = { viewModel.playAll(state.favorites) },
-                    onNewReleases = { viewModel.playAll(homeReleaseTracks) },
-                    onCharts = { viewModel.playAll(state.charts) },
-                    onSearch = { viewModel.searchNow() }
+                    state = LevyraHomeQuickAccessState(
+                        tracks = LevyraHomeQuickAccessTracks(
+                            current = state.currentTrack,
+                            mix = homeMixTracks.firstOrNull(),
+                            favorite = state.favorites.firstOrNull(),
+                            release = homeReleaseTracks.firstOrNull(),
+                            chart = state.charts.firstOrNull()
+                        ),
+                        availability = LevyraHomeQuickAccessAvailability(
+                            hasMix = homeMixTracks.isNotEmpty(),
+                            hasFavorites = state.favorites.isNotEmpty(),
+                            hasNewReleases = homeReleaseTracks.isNotEmpty(),
+                            hasCharts = state.charts.isNotEmpty()
+                        ),
+                        playback = LevyraHomeQuickAccessPlayback(
+                            isPlaying = state.isPlaying,
+                            isResolving = state.isResolving
+                        ),
+                        isLight = LevyraIsLight
+                    ),
+                    actions = LevyraHomeQuickAccessActions(
+                        onContinue = viewModel::togglePlay,
+                        onMix = { viewModel.playAll(homeMixTracks) },
+                        onFavorites = { viewModel.playAll(state.favorites) },
+                        onNewReleases = { viewModel.playAll(homeReleaseTracks) },
+                        onCharts = { viewModel.playAll(state.charts) },
+                        onSearch = { viewModel.searchNow() }
+                    )
                 )
             }
         }
@@ -5402,7 +5413,7 @@ private fun HomeScreen(
             item(key = "sec-release-radar-header", contentType = "home-section-header") {
                 HomeSectionInset { HomeSectionHeader(strings.releaseRadar) }
             }
-            item(key = "sec-release-radar-row", contentType = "home-horizontal-row") {
+            item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                 ReleaseRadarRow(
                     entries = state.releaseRadar,
                     onOpen = { entry -> viewModel.searchNow("${entry.release.title} ${entry.artistName}") },
@@ -5414,7 +5425,7 @@ private fun HomeScreen(
             item(key = "sec-similar-artists-header", contentType = "home-section-header") {
                 HomeSectionInset { HomeSectionHeader(strings.similarToFollowed) }
             }
-            item(key = "sec-similar-artists-row", contentType = "home-horizontal-row") {
+            item(key = "sec-similar-artists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                 ArtistHitRow(
                     artists = state.similarArtists,
                     contentPadding = PaddingValues(start = HomeHorizontalInset, end = HomeHorizontalShelfEndPadding),
@@ -5426,7 +5437,7 @@ private fun HomeScreen(
             item(key = "sec-new-releases-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionHeaderAction(strings.newReleases, onPlayAll = { viewModel.playAll(newReleases.tracks) }) }
             }
-            item(key = "sec-new-releases-row", contentType = "home-horizontal-row") {
+            item(key = "sec-new-releases-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                 AlbumCardRow(
                     tracks = newReleases.tracks,
                     currentId = state.currentTrack?.id,
@@ -5439,7 +5450,7 @@ private fun HomeScreen(
             item(key = "sec-home-albums-header", contentType = "home-section-header") {
                 HomeSectionInset { SectionHeaderAction(strings.albumsForYou, onPlayAll = { viewModel.playAlbumRecommendations(homeAlbums) }) }
             }
-            item(key = "sec-home-albums-row", contentType = "home-horizontal-row") {
+            item(key = "sec-home-albums-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                 if (homeAlbums.isNotEmpty()) {
                     HomeAlbumHitRow(
                         albums = homeAlbums,
@@ -5464,7 +5475,7 @@ private fun HomeScreen(
             }
         }
         if (showDeferredHomeSections && homeVideoTracks.isNotEmpty()) {
-            item(key = "home-music-videos", contentType = "home-horizontal-row") {
+            item(key = "home-music-videos", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                 HomeMusicVideoShelf(
                     title = strings.exploreNewVideos,
                     tracks = homeVideoTracks,
@@ -5486,7 +5497,7 @@ private fun HomeScreen(
                 item(key = "sec-other-$sectionKey-header", contentType = "home-section-header") {
                     HomeSectionInset { SectionHeaderAction(section.title, onPlayAll = { viewModel.playAll(section.tracks) }) }
                 }
-                item(key = "sec-other-$sectionKey-row", contentType = "home-horizontal-row") {
+                item(key = "sec-other-$sectionKey-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                     AlbumCardRow(
                         tracks = section.tracks,
                         currentId = state.currentTrack?.id,
@@ -5505,7 +5516,7 @@ private fun HomeScreen(
                     }
                 }
             }
-            item(key = "home-chart-regions", contentType = "home-horizontal-row") {
+            item(key = "home-chart-regions", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                 ChartRegionRow(
                     regions = state.chartRegions,
                     selectedId = state.selectedChartId,
@@ -5525,7 +5536,7 @@ private fun HomeScreen(
                 }
             }
             if (state.charts.isNotEmpty()) {
-                item(key = "home-chart-row", contentType = "home-horizontal-row") {
+                item(key = "home-chart-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
                     LazyRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
