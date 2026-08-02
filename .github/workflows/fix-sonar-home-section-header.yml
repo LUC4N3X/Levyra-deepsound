@@ -1,0 +1,64 @@
+name: Fix Sonar Home section header literal
+
+on:
+  push:
+    branches:
+      - refactor/home-experience
+    paths:
+      - .github/workflows/fix-sonar-home-section-header.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+      - name: Extract duplicated Home content type
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+          literal = '"home-section-header"'
+          constant = 'HOME_SECTION_HEADER_CONTENT_TYPE'
+          anchor = 'private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"\n'
+
+          count = text.count(literal)
+          if count != 6:
+              raise SystemExit(f'Expected 6 duplicated literals, found {count}')
+          if constant in text:
+              raise SystemExit('Constant already exists unexpectedly')
+          if anchor not in text:
+              raise SystemExit('Content-type constant anchor not found')
+
+          text = text.replace(
+              anchor,
+              anchor + f'private const val {constant} = {literal}\n',
+              1,
+          )
+          text = text.replace(literal, constant)
+
+          if text.count(literal) != 1:
+              raise SystemExit('Expected only the constant declaration to retain the literal')
+          if text.count(constant) != 7:
+              raise SystemExit(f'Expected 7 constant references/declaration, found {text.count(constant)}')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          rm .github/workflows/fix-sonar-home-section-header.yml
+          git diff --check
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor(home): extract section header content type"
+          git push origin HEAD:refactor/home-experience
