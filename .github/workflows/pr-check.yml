@@ -416,8 +416,6 @@ jobs:
                       i += 1
                       continue
 
-              if stack == [('line_comment', None), ('code', None)]:
-                  stack = [('code', None)]
               if len(stack) != 1 or stack[0][0] != 'code':
                   raise RuntimeError(f'unterminated Kotlin lexical state: {stack}')
               return ''.join(output)
@@ -429,7 +427,9 @@ jobs:
               Path('app/src/test/java/com/luc4n3x/levyra/ui/HomeQuickSelectionTest.kt')
           ]
           for path in changed_files:
-              path.write_text(strip_kotlin_comments(path.read_text(encoding='utf-8')), encoding='utf-8')
+              cleaned = strip_kotlin_comments(path.read_text(encoding='utf-8'))
+              cleaned = '\n'.join(line.rstrip() for line in cleaned.split('\n'))
+              path.write_text(cleaned, encoding='utf-8')
           PY
 
       - name: Validate focused changes
