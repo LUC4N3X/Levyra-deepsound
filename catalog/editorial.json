@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T03:55:53Z",
+  "generatedAt": "2026-08-02T08:01:11Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2072,7 +2072,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -2080,12 +2080,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 39,
@@ -8897,6 +8897,12 @@
           },
           "durationMs": 156517,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "o_kGoqLWnXg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCDB1S6gqvv0wfPoqlX8ubGA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023bc78f16328cc9ebef1b4010"
         },
         {
@@ -9952,6 +9958,12 @@
           },
           "durationMs": 198425,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "SkHJ5ChXcDo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCAtlzufZmPhkiDApWM4bTRQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ecf61285415fd9c2a3f7d384"
         },
         {
@@ -10572,6 +10584,14 @@
           },
           "durationMs": 204068,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BF2_ipR1OI0",
+            "audioConfidence": 100,
+            "videoId": "lY5V4hSLWY8",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
@@ -10619,11 +10639,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 49,
@@ -12523,6 +12543,12 @@
           },
           "durationMs": 139687,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "7VQOWAa_tg4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3q6Guf9usRRepqD3I54eUg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b87978c200ea75dd990bc5f7"
         },
         {
@@ -12943,6 +12969,12 @@
           },
           "durationMs": 200471,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "fZjP7ELZiO4",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCwOHbMJAGZUXA6PAiDKemMg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e025aaf00a1bd08a470c6b1b947"
         },
         {
@@ -18083,12 +18115,6 @@
           },
           "durationMs": 195789,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "nF8tpNRO89I",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCEu1MLny5crjlbBtuoVlK6Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0238898009d002b12da70ea103"
         },
         {
@@ -22073,12 +22099,6 @@
           },
           "durationMs": 163000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "BEPSc8q6Bd8",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCC3Hg75KxQk4VTrBSphEbGw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02391fce8d3ef22f778a8c5c54"
         },
         {
@@ -23931,7 +23951,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-5e22b138c80d124b2eda",
+          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -23945,12 +23965,12 @@
             }
           ],
           "album": {
-            "name": "Kailasa",
-            "releaseDate": "2006-02-24"
+            "name": "Teri Deewani",
+            "releaseDate": "2007-03-05"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
         },
         {
           "position": 41,
@@ -24201,6 +24221,12 @@
           },
           "durationMs": 347040,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "XA_uBJjutgc",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCCTN01plFzn4npREHKT2_9Q"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f2706d41aa1ec24c04135ba"
         }
       ]
@@ -27435,12 +27461,6 @@
           },
           "durationMs": 276315,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "pKZ1sraf-Eo",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCTKJyum8atjrmRTi5OXxTyw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ba88f47523d8dfe21480e45e"
         },
         {
@@ -28010,6 +28030,14 @@
           },
           "durationMs": 204068,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "BF2_ipR1OI0",
+            "audioConfidence": 100,
+            "videoId": "lY5V4hSLWY8",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCZn4r7heNOPY-C43YIywnVA"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023eb8dc748f7efb1470f74395"
         },
         {
