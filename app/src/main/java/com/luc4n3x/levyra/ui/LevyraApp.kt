@@ -6151,11 +6151,13 @@ private fun HomeQuickSelectionGrid(
     }
     if (displayTracks.isEmpty()) return
 
+    val strings = LocalLevyraStrings.current
+    val headingText = remember(strings) { strings.quickPicks.ifBlank { "Selezione rapida" } }
     val rows = remember(displayTracks) { displayTracks.chunked(3) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = "Selezione rapida",
+            text = headingText,
             color = if (LevyraIsLight) LevyraText else Color.White,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -6208,20 +6210,11 @@ private fun HomeQuickSelectionCard(
             .border(BorderStroke(borderPx, borderColor), shape)
             .pressable(onClick = onClick)
     ) {
-        if (track.artworkUrl.isNotBlank()) {
-            StableRemoteArtwork(
-                url = track.artworkUrl,
-                contentDescription = track.title,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                highRes = true
-            )
-        } else {
-            InstantArtworkPlaceholder(
-                track = track,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+        CoverImage(
+            track = track,
+            modifier = Modifier.fillMaxSize(),
+            highRes = true
+        )
 
         Box(
             modifier = Modifier
