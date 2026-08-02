@@ -5321,7 +5321,7 @@ private fun HomeScreen(
         LazyColumn(
             state = homeListState,
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-            contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset + 64.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset + LevyraBottomContentGap),
             verticalArrangement = Arrangement.spacedBy(
                 if (state.interfaceSettings.compactHome) {
                     LevyraHomeDesign.SectionGapCompact
