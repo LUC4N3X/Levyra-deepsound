@@ -15,3 +15,6 @@ __pycache__/
 .ruff_cache/
 *.pyc
 *.egg-info/
+.agents/
+.claude/
+skills-lock.json
