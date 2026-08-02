@@ -310,7 +310,6 @@ internal fun chooseDesktopArtistName(requestedName: String, resolvedName: String
     return when {
         looksLikeTrackTitle -> requested
         requestedKey == resolvedKey -> requested
-        resolvedKey.contains(requestedKey) && resolved.length > requested.length + 3 -> requested
         else -> resolved
     }
 }
