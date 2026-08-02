@@ -1,8 +1,6 @@
 package com.luc4n3x.levyra.desktop.app.ui.player
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,7 +47,6 @@ import com.luc4n3x.levyra.desktop.core.model.SleepTimerState
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
 import com.luc4n3x.levyra.desktop.player.RepeatMode
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PlayerBar(
     state: PlaybackUiState,
@@ -82,50 +79,45 @@ fun PlayerBar(
 
     val duration = state.durationMs.coerceAtLeast(0L)
     val position = dragPosition?.toLong()
-        ?: state.positionMs.coerceIn(
-            0L,
-            if (duration > 0L) duration else Long.MAX_VALUE
-        )
+        ?: state.positionMs.coerceIn(0L, if (duration > 0L) duration else Long.MAX_VALUE)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(15.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 18.dp
+        shadowElevation = 0.dp
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(18.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(
-                    modifier = Modifier.width(350.dp),
+                    modifier = Modifier.width(315.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Artwork(
                         url = track?.artworkUrl.orEmpty(),
                         modifier = Modifier
-                            .size(54.dp)
-                            .clip(RoundedCornerShape(13.dp))
-                            .clickable(
-                                enabled = track != null,
-                                onClick = onOpenNowPlaying
-                            ),
-                        cornerRadius = 13.dp,
-                        iconSize = 21.dp
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .clickable(enabled = track != null, onClick = onOpenNowPlaying),
+                        cornerRadius = 9.dp,
+                        iconSize = 20.dp
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = track?.title.orEmpty(),
                             style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.basicMarquee()
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = track?.displaySubtitle.orEmpty(),
@@ -137,21 +129,9 @@ fun PlayerBar(
                     }
                     IconButton(onClick = onToggleFavorite, enabled = track != null) {
                         Icon(
-                            imageVector = if (isFavorite) {
-                                LevyraIcons.HeartFilled
-                            } else {
-                                LevyraIcons.Heart
-                            },
-                            contentDescription = if (isFavorite) {
-                                strings.removeFromFavorites
-                            } else {
-                                strings.addToFavorites
-                            },
-                            tint = if (isFavorite) {
-                                accent
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            imageVector = if (isFavorite) LevyraIcons.HeartFilled else LevyraIcons.Heart,
+                            contentDescription = if (isFavorite) strings.removeFromFavorites else strings.addToFavorites,
+                            tint = if (isFavorite) accent else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -175,7 +155,7 @@ fun PlayerBar(
                                 DownloadStatus.RESOLVING,
                                 DownloadStatus.DOWNLOADING -> CircularProgressIndicator(
                                     progress = { downloadRecord.progress },
-                                    modifier = Modifier.size(18.dp),
+                                    modifier = Modifier.size(17.dp),
                                     strokeWidth = 2.dp
                                 )
 
@@ -183,7 +163,7 @@ fun PlayerBar(
                                     imageVector = OfflineIcons.Check,
                                     contentDescription = strings.downloadOfflineBadge,
                                     tint = accent,
-                                    modifier = Modifier.size(19.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
 
                                 DownloadStatus.FAILED,
@@ -198,7 +178,7 @@ fun PlayerBar(
                                     imageVector = OfflineIcons.Download,
                                     contentDescription = strings.downloadAction,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(19.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -211,96 +191,56 @@ fun PlayerBar(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        IconButton(onClick = onToggleShuffle) {
-                            Icon(
-                                imageVector = LevyraIcons.Shuffle,
-                                contentDescription = strings.playbackShuffle,
-                                tint = if (state.queue.shuffle) {
-                                    accent
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                                modifier = Modifier.size(17.dp)
-                            )
-                        }
-                        IconButton(
-                            onClick = onPrevious,
-                            enabled = track != null
-                        ) {
+                        PlayerIconButton(
+                            icon = LevyraIcons.Shuffle,
+                            description = strings.playbackShuffle,
+                            active = state.queue.shuffle,
+                            onClick = onToggleShuffle
+                        )
+                        IconButton(onClick = onPrevious, enabled = track != null) {
                             Icon(
                                 imageVector = LevyraIcons.SkipPrevious,
                                 contentDescription = strings.playbackPrevious,
-                                modifier = Modifier.size(21.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                         Surface(
                             modifier = Modifier
-                                .size(46.dp)
-                                .clip(CircleShape)
+                                .size(42.dp)
                                 .clickable(enabled = track != null, onClick = onPlayPause),
                             shape = CircleShape,
-                            color = if (track != null) {
-                                accent
-                            } else {
-                                MaterialTheme.colorScheme.surfaceContainerHighest
-                            },
-                            shadowElevation = if (track != null) 8.dp else 0.dp
+                            color = if (track != null) accent else MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = if (track != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = if (state.isPlaying) {
-                                        LevyraIcons.Pause
-                                    } else {
-                                        LevyraIcons.Play
-                                    },
-                                    contentDescription = if (state.isPlaying) {
-                                        strings.playbackPause
-                                    } else {
-                                        strings.playbackPlay
-                                    },
-                                    tint = if (track != null) {
-                                        MaterialTheme.colorScheme.onPrimary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                                    modifier = Modifier.size(23.dp)
+                                    imageVector = if (state.isPlaying) LevyraIcons.Pause else LevyraIcons.Play,
+                                    contentDescription = if (state.isPlaying) strings.playbackPause else strings.playbackPlay,
+                                    modifier = Modifier.size(21.dp)
                                 )
                             }
                         }
-                        IconButton(
-                            onClick = onNext,
-                            enabled = track != null
-                        ) {
+                        IconButton(onClick = onNext, enabled = track != null) {
                             Icon(
                                 imageVector = LevyraIcons.SkipNext,
                                 contentDescription = strings.playbackNext,
-                                modifier = Modifier.size(21.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-                        IconButton(onClick = onCycleRepeat) {
-                            Icon(
-                                imageVector = if (state.queue.repeat == RepeatMode.ONE) {
-                                    LevyraIcons.RepeatOne
-                                } else {
-                                    LevyraIcons.Repeat
-                                },
-                                contentDescription = strings.playbackRepeat,
-                                tint = if (state.queue.repeat == RepeatMode.OFF) {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                } else {
-                                    accent
-                                },
-                                modifier = Modifier.size(17.dp)
-                            )
-                        }
+                        PlayerIconButton(
+                            icon = if (state.queue.repeat == RepeatMode.ONE) LevyraIcons.RepeatOne else LevyraIcons.Repeat,
+                            description = strings.playbackRepeat,
+                            active = state.queue.repeat != RepeatMode.OFF,
+                            onClick = onCycleRepeat
+                        )
                     }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text = Format.duration(position),
@@ -309,16 +249,12 @@ fun PlayerBar(
                         )
                         Slider(
                             value = if (duration > 0L) position.toFloat() else 0f,
-                            onValueChange = { value -> dragPosition = value },
+                            onValueChange = { dragPosition = it },
                             onValueChangeFinished = {
-                                dragPosition?.let { value -> onSeek(value.toLong()) }
+                                dragPosition?.let { onSeek(it.toLong()) }
                                 dragPosition = null
                             },
-                            valueRange = 0f..if (duration > 0L) {
-                                duration.toFloat()
-                            } else {
-                                1f
-                            },
+                            valueRange = 0f..if (duration > 0L) duration.toFloat() else 1f,
                             enabled = track != null && duration > 0L,
                             colors = SliderDefaults.colors(
                                 thumbColor = accent,
@@ -336,83 +272,51 @@ fun PlayerBar(
                 }
 
                 Row(
-                    modifier = Modifier.width(320.dp),
+                    modifier = Modifier.width(285.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
-                    val sleepLabel = when (state.sleepTimer.mode) {
-                        SleepTimerMode.DURATION -> Format.duration(state.sleepRemainingMs)
-                        SleepTimerMode.END_OF_TRACK -> strings.sleepTimerEndOfTrack
-                        SleepTimerMode.OFF -> ""
-                    }
-                    if (sleepLabel.isNotBlank()) {
+                    val statusLabel = playerStatusLabel(state)
+                    if (statusLabel.isNotBlank()) {
                         Text(
-                            text = sleepLabel,
+                            text = statusLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            color = accent,
-                            maxLines = 1,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                    }
-                    if (state.speed != DesktopSettings.DEFAULT_SPEED) {
-                        Text(
-                            text = Format.speed(state.speed),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = accent,
-                            maxLines = 1,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                    }
-                    if (state.streamLabel.isNotBlank()) {
-                        Text(
-                            text = state.streamLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (state.sleepTimer.active || state.speed != DesktopSettings.DEFAULT_SPEED) {
+                                accent
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier.padding(end = 6.dp)
                         )
                     }
                     val muted = state.muted || state.volume == 0
                     IconButton(onClick = onToggleMute) {
                         Icon(
-                            imageVector = if (muted) {
-                                LevyraIcons.VolumeMuted
-                            } else {
-                                LevyraIcons.VolumeHigh
-                            },
-                            contentDescription = if (muted) {
-                                strings.playbackUnmute
-                            } else {
-                                strings.playbackMute
-                            },
+                            imageVector = if (muted) LevyraIcons.VolumeMuted else LevyraIcons.VolumeHigh,
+                            contentDescription = if (muted) strings.playbackUnmute else strings.playbackMute,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }
                     Slider(
                         value = state.volume.toFloat(),
-                        onValueChange = { value -> onVolumeChange(value.toInt()) },
+                        onValueChange = { onVolumeChange(it.toInt()) },
                         valueRange = 0f..100f,
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.onSurface,
                             activeTrackColor = MaterialTheme.colorScheme.onSurface,
                             inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         ),
-                        modifier = Modifier.width(92.dp)
+                        modifier = Modifier.width(82.dp)
                     )
-                    IconButton(onClick = onToggleQueue) {
-                        Icon(
-                            imageVector = LevyraIcons.Queue,
-                            contentDescription = strings.queueTitle,
-                            tint = if (queueVisible) {
-                                accent
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    PlayerIconButton(
+                        icon = LevyraIcons.Queue,
+                        description = strings.queueTitle,
+                        active = queueVisible,
+                        onClick = onToggleQueue
+                    )
                     PlaybackToolsMenu(
                         state = state,
                         onSpeedChange = onSpeedChange,
@@ -436,14 +340,42 @@ fun PlayerBar(
                     text = state.unavailableReason,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 5.dp)
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PlayerIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    active: Boolean,
+    onClick: () -> Unit
+) {
+    val accent = LocalAccentColor.current
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = if (active) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(17.dp)
+        )
+    }
+}
+
+@Composable
+private fun playerStatusLabel(state: PlaybackUiState): String {
+    val strings = LocalStrings.current
+    return when {
+        state.sleepTimer.mode == SleepTimerMode.DURATION -> Format.duration(state.sleepRemainingMs)
+        state.sleepTimer.mode == SleepTimerMode.END_OF_TRACK -> strings.sleepTimerEndOfTrack
+        state.speed != DesktopSettings.DEFAULT_SPEED -> Format.speed(state.speed)
+        state.streamLabel.isNotBlank() -> state.streamLabel
+        else -> ""
     }
 }
 
@@ -559,8 +491,6 @@ private fun MenuSectionLabel(text: String) {
 
 private sealed interface SleepChoice {
     data object Off : SleepChoice
-
     data object EndOfTrack : SleepChoice
-
     data class Minutes(val value: Int) : SleepChoice
 }
