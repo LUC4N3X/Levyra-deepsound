@@ -54,100 +54,37 @@ private fun Modifier.homeAtmosphereBackground(
 ): Modifier = drawWithCache {
     val width = size.width.coerceAtLeast(1f)
     val height = size.height.coerceAtLeast(1f)
-
-    val base = if (isLight) {
-        Brush.verticalGradient(
-            colorStops = arrayOf(
-                0f to Color(0xFFF8FAFF),
-                0.28f to Color(0xFFF4F6FB),
-                0.58f to Color(0xFFF1F3F8),
-                1f to Color(0xFFF1F3F8)
-            )
-        )
-    } else {
-        Brush.verticalGradient(
-            colorStops = arrayOf(
-                0f to LevyraHomeDesign.CanvasMid,
-                0.24f to LevyraHomeDesign.CanvasDark,
-                0.52f to Color(0xFF030407),
-                1f to Color.Black
-            )
-        )
-    }
-
     val primaryCenter = Offset(width * 0.12f, -height * 0.02f)
-    val primaryRadius = width * 1.18f
-    val primaryHalo = Brush.radialGradient(
-        colors = listOf(
-            primary.copy(alpha = if (isLight) 0.18f else 0.30f),
-            primary.copy(alpha = if (isLight) 0.055f else 0.085f),
-            Color.Transparent
-        ),
-        center = primaryCenter,
-        radius = primaryRadius
-    )
-
     val secondaryCenter = Offset(width * 0.98f, height * 0.16f)
-    val secondaryRadius = width * 0.86f
-    val secondaryHalo = Brush.radialGradient(
-        colors = listOf(
-            secondary.copy(alpha = if (isLight) 0.12f else 0.22f),
-            secondary.copy(alpha = if (isLight) 0.035f else 0.06f),
-            Color.Transparent
-        ),
-        center = secondaryCenter,
-        radius = secondaryRadius
-    )
-
     val centreCenter = Offset(width * 0.52f, height * 0.26f)
+    val primaryRadius = width * 1.18f
+    val secondaryRadius = width * 0.86f
     val centreRadius = width * 0.92f
-    val centreWash = Brush.radialGradient(
-        colors = listOf(
-            blendHomeAccents(primary, secondary).copy(alpha = if (isLight) 0.045f else 0.075f),
-            Color.Transparent
-        ),
-        center = centreCenter,
-        radius = centreRadius
-    )
-
     val fadeTop = height * 0.25f
-    val lowerFade = Brush.verticalGradient(
-        colors = if (isLight) {
-            listOf(
-                Color.Transparent,
-                Color(0xFFF1F3F8).copy(alpha = 0.78f),
-                Color(0xFFF1F3F8)
-            )
-        } else {
-            listOf(
-                Color.Transparent,
-                Color.Black.copy(alpha = 0.78f),
-                Color.Black
-            )
-        },
-        startY = fadeTop,
-        endY = height * 0.62f
-    )
 
-    val edgeVignette = if (isLight) {
-        Brush.horizontalGradient(
-            listOf(
-                Color(0xFFF1F3F8).copy(alpha = 0.22f),
-                Color.Transparent,
-                Color.Transparent,
-                Color(0xFFF1F3F8).copy(alpha = 0.18f)
-            )
-        )
-    } else {
-        Brush.horizontalGradient(
-            listOf(
-                Color.Black.copy(alpha = 0.22f),
-                Color.Transparent,
-                Color.Transparent,
-                Color.Black.copy(alpha = 0.26f)
-            )
-        )
-    }
+    val base = homeBaseBrush(isLight)
+    val primaryHalo = homeHaloBrush(
+        color = primary,
+        center = primaryCenter,
+        radius = primaryRadius,
+        leadingAlpha = if (isLight) 0.18f else 0.30f,
+        trailingAlpha = if (isLight) 0.055f else 0.085f
+    )
+    val secondaryHalo = homeHaloBrush(
+        color = secondary,
+        center = secondaryCenter,
+        radius = secondaryRadius,
+        leadingAlpha = if (isLight) 0.12f else 0.22f,
+        trailingAlpha = if (isLight) 0.035f else 0.06f
+    )
+    val centreWash = homeCentreWashBrush(
+        color = blendHomeAccents(primary, secondary),
+        center = centreCenter,
+        radius = centreRadius,
+        alpha = if (isLight) 0.045f else 0.075f
+    )
+    val lowerFade = homeLowerFadeBrush(isLight, fadeTop, height)
+    val edgeVignette = homeEdgeVignetteBrush(isLight)
 
     onDrawBehind {
         drawRect(base)
@@ -161,6 +98,93 @@ private fun Modifier.homeAtmosphereBackground(
             size = Size(width, height - fadeTop)
         )
     }
+}
+
+private fun homeBaseBrush(isLight: Boolean): Brush = if (isLight) {
+    Brush.verticalGradient(
+        colorStops = arrayOf(
+            0f to Color(0xFFF8FAFF),
+            0.28f to Color(0xFFF4F6FB),
+            0.58f to Color(0xFFF1F3F8),
+            1f to Color(0xFFF1F3F8)
+        )
+    )
+} else {
+    Brush.verticalGradient(
+        colorStops = arrayOf(
+            0f to LevyraHomeDesign.CanvasMid,
+            0.24f to LevyraHomeDesign.CanvasDark,
+            0.52f to Color(0xFF030407),
+            1f to Color.Black
+        )
+    )
+}
+
+private fun homeHaloBrush(
+    color: Color,
+    center: Offset,
+    radius: Float,
+    leadingAlpha: Float,
+    trailingAlpha: Float
+): Brush = Brush.radialGradient(
+    colors = listOf(
+        color.copy(alpha = leadingAlpha),
+        color.copy(alpha = trailingAlpha),
+        Color.Transparent
+    ),
+    center = center,
+    radius = radius
+)
+
+private fun homeCentreWashBrush(
+    color: Color,
+    center: Offset,
+    radius: Float,
+    alpha: Float
+): Brush = Brush.radialGradient(
+    colors = listOf(color.copy(alpha = alpha), Color.Transparent),
+    center = center,
+    radius = radius
+)
+
+private fun homeLowerFadeBrush(isLight: Boolean, fadeTop: Float, height: Float): Brush {
+    val colors = if (isLight) {
+        listOf(
+            Color.Transparent,
+            Color(0xFFF1F3F8).copy(alpha = 0.78f),
+            Color(0xFFF1F3F8)
+        )
+    } else {
+        listOf(
+            Color.Transparent,
+            Color.Black.copy(alpha = 0.78f),
+            Color.Black
+        )
+    }
+    return Brush.verticalGradient(
+        colors = colors,
+        startY = fadeTop,
+        endY = height * 0.62f
+    )
+}
+
+private fun homeEdgeVignetteBrush(isLight: Boolean): Brush {
+    val colors = if (isLight) {
+        listOf(
+            Color(0xFFF1F3F8).copy(alpha = 0.22f),
+            Color.Transparent,
+            Color.Transparent,
+            Color(0xFFF1F3F8).copy(alpha = 0.18f)
+        )
+    } else {
+        listOf(
+            Color.Black.copy(alpha = 0.22f),
+            Color.Transparent,
+            Color.Transparent,
+            Color.Black.copy(alpha = 0.26f)
+        )
+    }
+    return Brush.horizontalGradient(colors)
 }
 
 private fun blendHomeAccents(first: Color, second: Color): Color = Color(
