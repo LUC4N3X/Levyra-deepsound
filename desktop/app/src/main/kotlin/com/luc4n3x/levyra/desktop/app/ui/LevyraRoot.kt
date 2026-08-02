@@ -223,6 +223,14 @@ fun LevyraRoot(model: LevyraAppModel) {
                         modifier = Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
+                            .background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    listOf(
+                                        accent.copy(alpha = 0.15f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
                     ) {
                         Column(
                             modifier = Modifier
@@ -712,20 +720,18 @@ private fun SidebarItem(
         hovered -> Color.White.copy(alpha = LevyraMotion.HOVER_ALPHA)
         else -> Color.Transparent
     }
-    val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
     val targetContentColor = when {
         selected -> accent
         hovered -> MaterialTheme.colorScheme.onSurface
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    val contentColor by androidx.compose.animation.animateColorAsState(targetValue = targetContentColor)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(45.dp)
             .clip(RoundedCornerShape(11.dp))
-            .background(background)
+            .background(targetBackground)
             .hoverable(interactionSource)
             .clickable(
                 interactionSource = interactionSource,
@@ -746,13 +752,13 @@ private fun SidebarItem(
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = contentColor,
+            tint = targetContentColor,
             modifier = Modifier.size(19.dp)
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = contentColor,
+            color = targetContentColor,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
         )
     }

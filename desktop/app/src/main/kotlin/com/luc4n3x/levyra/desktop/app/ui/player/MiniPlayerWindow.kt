@@ -193,7 +193,7 @@ private fun MiniPlayerContent(
         shape = RoundedCornerShape(22.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.98f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 24.dp
+        shadowElevation = 0.dp
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             MiniPlayerDragHandle(window)

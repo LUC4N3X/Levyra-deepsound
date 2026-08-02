@@ -33,17 +33,17 @@ private val DarkColors = darkColorScheme(
     onTertiary = Color(0xFF000000),
     background = Color(0xFF000000),
     onBackground = Color(0xFFFFFFFF),
-    surface = Color(0xFF121212),
+    surface = Color(0x0AFFFFFF), // White 4%
     onSurface = Color(0xFFFFFFFF),
-    surfaceVariant = Color(0xFF1A1A1A),
-    onSurfaceVariant = Color(0xFFB3B3B3),
-    surfaceContainerLowest = Color(0xFF000000),
-    surfaceContainerLow = Color(0xFF121212),
-    surfaceContainer = Color(0xFF1A1A1A),
-    surfaceContainerHigh = Color(0xFF282828),
-    surfaceContainerHighest = Color(0xFF3E3E3E),
-    outline = Color(0xFF404040),
-    outlineVariant = Color(0xFF282828),
+    surfaceVariant = Color(0x12FFFFFF), // White 7%
+    onSurfaceVariant = Color(0x99FFFFFF), // White 60%
+    surfaceContainerLowest = Color(0x00FFFFFF), // Transparent
+    surfaceContainerLow = Color(0x08FFFFFF), // White 3%
+    surfaceContainer = Color(0x0FFFFFFF), // White 6%
+    surfaceContainerHigh = Color(0x17FFFFFF), // White 9%
+    surfaceContainerHighest = Color(0x1EFFFFFF), // White 12%
+    outline = Color(0x26FFFFFF), // White 15%
+    outlineVariant = Color(0x0DFFFFFF), // White 5%
     error = Color(0xFFFF453A),
     onError = Color(0xFF000000),
     errorContainer = Color(0xFF4A1620),
@@ -79,65 +79,69 @@ private val LightColors = lightColorScheme(
 )
 
 private val LevyraTypography = Typography(
-    displaySmall = TextStyle(
+    headlineLarge = TextStyle(
         fontSize = 32.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-1.0).sp,
-        lineHeight = 38.sp
+        letterSpacing = (-0.5).sp,
+        lineHeight = 40.sp
     ),
     headlineMedium = TextStyle(
-        fontSize = 26.sp,
+        fontSize = 28.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.6).sp,
-        lineHeight = 32.sp
+        letterSpacing = (-0.5).sp,
+        lineHeight = 36.sp
     ),
     headlineSmall = TextStyle(
-        fontSize = 21.sp,
+        fontSize = 24.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.4).sp,
-        lineHeight = 27.sp
+        letterSpacing = 0.sp,
+        lineHeight = 32.sp
     ),
     titleLarge = TextStyle(
-        fontSize = 19.sp,
+        fontSize = 22.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.3).sp,
-        lineHeight = 25.sp
+        letterSpacing = 0.sp,
+        lineHeight = 28.sp
     ),
     titleMedium = TextStyle(
-        fontSize = 15.sp,
+        fontSize = 17.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.2).sp,
-        lineHeight = 21.sp
+        letterSpacing = 0.sp,
+        lineHeight = 24.sp
     ),
     titleSmall = TextStyle(
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        lineHeight = 18.sp
-    ),
-    bodyLarge = TextStyle(
         fontSize = 15.sp,
-        fontWeight = FontWeight.Normal,
-        lineHeight = 22.sp
-    ),
-    bodyMedium = TextStyle(
-        fontSize = 13.5.sp,
-        fontWeight = FontWeight.Normal,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.1.sp,
         lineHeight = 20.sp
     ),
-    bodySmall = TextStyle(
-        fontSize = 12.sp,
+    bodyLarge = TextStyle(
+        fontSize = 17.sp,
         fontWeight = FontWeight.Normal,
-        lineHeight = 17.sp
+        letterSpacing = (-0.2).sp,
+        lineHeight = 24.sp
+    ),
+    bodyMedium = TextStyle(
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Normal,
+        letterSpacing = (-0.1).sp,
+        lineHeight = 22.sp
+    ),
+    bodySmall = TextStyle(
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Normal,
+        letterSpacing = 0.sp,
+        lineHeight = 18.sp
     ),
     labelLarge = TextStyle(
-        fontSize = 13.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.05.sp
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
         fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.15.sp
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.2.sp
     ),
     labelSmall = TextStyle(
         fontSize = 10.5.sp,

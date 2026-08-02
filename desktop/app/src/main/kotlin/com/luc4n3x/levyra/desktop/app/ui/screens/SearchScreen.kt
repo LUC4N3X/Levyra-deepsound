@@ -95,7 +95,7 @@ fun SearchScreen(
                 shape = RoundedCornerShape(14.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                shadowElevation = 10.dp
+                shadowElevation = 0.dp
             ) {
                 Column {
                     state.suggestions.forEach { suggestion ->
@@ -229,7 +229,7 @@ private fun SearchField(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 8.dp
+        shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier.padding(8.dp),

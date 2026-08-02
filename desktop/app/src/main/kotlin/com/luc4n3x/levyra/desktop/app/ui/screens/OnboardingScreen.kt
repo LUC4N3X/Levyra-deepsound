@@ -112,7 +112,7 @@ fun OnboardingScreen(
                 shape = RoundedCornerShape(30.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                shadowElevation = 30.dp
+                shadowElevation = 0.dp
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     OnboardingRail(
@@ -653,7 +653,7 @@ private fun SelectableCard(
             if (selected) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.outlineVariant
         ),
-        shadowElevation = if (selected) 8.dp else 0.dp
+        shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier

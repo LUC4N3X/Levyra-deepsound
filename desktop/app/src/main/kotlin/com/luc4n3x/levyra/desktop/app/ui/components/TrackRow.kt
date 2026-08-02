@@ -71,14 +71,13 @@ fun TrackRow(
         hovered -> MaterialTheme.colorScheme.surfaceContainerHigh
         else -> Color.Transparent
     }
-    val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
     val shape = RoundedCornerShape(9.dp)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(background)
+            .background(targetBackground)
             .hoverable(interactionSource)
             .clickable(
                 interactionSource = interactionSource,

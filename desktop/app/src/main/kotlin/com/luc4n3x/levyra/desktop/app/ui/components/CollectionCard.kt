@@ -45,13 +45,12 @@ fun CollectionCard(
     } else {
         MaterialTheme.colorScheme.surfaceContainer
     }
-    val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
 
     Column(
         modifier = modifier
             .hoverScale()
             .clip(shape)
-            .background(background)
+            .background(targetBackground)
             .hoverable(interactionSource)
             .clickable(
                 interactionSource = interactionSource,

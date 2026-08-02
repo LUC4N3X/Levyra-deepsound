@@ -193,7 +193,7 @@ private fun PickerSurface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = 4.dp
+        shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp),
