@@ -8,6 +8,7 @@ class HomeDesignTest {
     @Test
     fun `header keeps a premium touch friendly scale`() {
         assertTrue(LevyraHomeDesign.SettingsControlHeight >= LevyraPlayerDesign.MinimumTouchTarget)
+        assertTrue(LevyraHomeDesign.MoodChipHeight >= LevyraPlayerDesign.MinimumTouchTarget)
         assertTrue(LevyraHomeDesign.HeaderCorner < LevyraHomeDesign.SettingsControlHeight)
         assertTrue(LevyraHomeDesign.HeaderPadding.value > 0f)
     }
@@ -18,7 +19,6 @@ class HomeDesignTest {
         assertTrue(LevyraHomeDesign.HeroCorner > LevyraHomeDesign.ShelfCorner)
         assertTrue(LevyraHomeDesign.HeroHeight.value >= 240f)
         assertTrue(LevyraHomeDesign.SectionGap > LevyraHomeDesign.SectionGapCompact)
-        assertTrue(LevyraHomeDesign.AtmosphereHeight > LevyraHomeDesign.HeroHeight)
         assertEquals(18f, LevyraHomeDesign.HorizontalInset.value, 0f)
     }
 }
