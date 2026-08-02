@@ -1,0 +1,144 @@
+name: Refine project badges
+
+on:
+  push:
+    branches:
+      - agent/pro-readme-badges-docs
+    paths:
+      - .github/workflows/refine-project-badges.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/pro-readme-badges-docs
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Refine README badge row
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('README.md')
+          text = path.read_text()
+          old = '''<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-android-platform.svg" alt="Download Levyra for Android"></a>
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases?q=Levyra+Desktop&expanded=true"><img src="docs/assets/levyra-windows-platform.svg" alt="Download Levyra for Windows"></a>
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>
+          <a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>'''.replace('          ', '')
+          new = '''<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-release.svg" alt="Latest Levyra release"></a>&nbsp;
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/releases"><img src="docs/assets/levyra-downloads.svg" alt="Total Levyra downloads"></a>&nbsp;
+          <a href="LICENSE"><img src="docs/assets/levyra-license.svg" alt="GPL-3.0 License"></a>&nbsp;
+          <a href="https://github.com/LUC4N3X/Levyra-deepsound/stargazers"><img src="docs/assets/levyra-stars.svg" alt="Star Levyra"></a>'''.replace('          ', '')
+          if old not in text:
+              raise SystemExit('Expected README badge row not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Install premium badge generator
+        run: |
+          cat > scripts/update-readme-badges.mjs <<'EOF'
+          import { mkdir, writeFile } from 'node:fs/promises'
+
+          const repository = process.env.GITHUB_REPOSITORY
+          const token = process.env.GITHUB_TOKEN
+          if (!repository) throw new Error('GITHUB_REPOSITORY is required')
+
+          const headers = {
+            Accept: 'application/vnd.github+json',
+            'User-Agent': 'Levyra-README-Badge-Updater',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+          if (token) headers.Authorization = `Bearer ${token}`
+
+          const requestJson = async url => {
+            const response = await fetch(url, { headers })
+            if (!response.ok) throw new Error(`GitHub API request failed with ${response.status}: ${await response.text()}`)
+            return response.json()
+          }
+
+          const listReleases = async () => {
+            const releases = []
+            for (let page = 1; page <= 100; page += 1) {
+              const batch = await requestJson(`https://api.github.com/repos/${repository}/releases?per_page=100&page=${page}`)
+              releases.push(...batch)
+              if (batch.length < 100) return releases
+            }
+            throw new Error('Release pagination exceeded 100 pages')
+          }
+
+          const escapeXml = value => String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&apos;')
+
+          const icons = {
+            latest: 'M7.73 2.5a1.5 1.5 0 0 0-1.06.44L2.44 7.17a1.5 1.5 0 0 0 0 2.12l4.27 4.27a1.5 1.5 0 0 0 2.12 0l4.23-4.23a1.5 1.5 0 0 0 .44-1.06V4A1.5 1.5 0 0 0 12 2.5H7.73Zm0 1.5H12v4.27L7.77 12.5 3.5 8.23 7.73 4ZM9 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z',
+            downloads: 'M8 2.25a.75.75 0 0 1 .75.75v5.69l1.97-1.97a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.78a.75.75 0 0 1 1.06-1.06l1.97 1.97V3A.75.75 0 0 1 8 2.25Zm-4.75 10a.75.75 0 0 1 .75-.75h8a.75.75 0 0 1 0 1.5H4a.75.75 0 0 1-.75-.75Z',
+            license: 'M8 1.25 2.5 3.2v4.16c0 3.42 2.29 6.55 5.5 7.39 3.21-.84 5.5-3.97 5.5-7.39V3.2L8 1.25Zm0 1.59 4 1.42v3.1c0 2.6-1.64 5.05-4 5.82-2.36-.77-4-3.22-4-5.82v-3.1l4-1.42Z',
+            stars: 'M8 .75a.75.75 0 0 1 .673.418L10.52 4.9l4.12.599a.75.75 0 0 1 .416 1.279l-2.98 2.905.704 4.103a.75.75 0 0 1-1.088.79L8 12.61l-3.694 1.943a.75.75 0 0 1-1.088-.79l.704-4.103-2.98-2.905a.75.75 0 0 1 .416-1.279l4.12-.599L7.327 1.168A.75.75 0 0 1 8 .75Z'
+          }
+
+          const makeBadge = ({ key, label, value, width, pillX, pillWidth, accentStart, accentEnd, valueColor = '#07111A' }) => {
+            const title = `${label}: ${value}`
+            const pillCenter = pillX + pillWidth / 2
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="40" viewBox="0 0 ${width} 40" role="img" aria-label="${escapeXml(title)}">
+          <title>${escapeXml(title)}</title>
+          <defs>
+            <linearGradient id="${key}-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111A2B"/><stop offset=".58" stop-color="#0B1220"/><stop offset="1" stop-color="#080D18"/></linearGradient>
+            <linearGradient id="${key}-accent" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${accentStart}"/><stop offset="1" stop-color="${accentEnd}"/></linearGradient>
+          </defs>
+          <rect x=".5" y=".5" width="${width - 1}" height="39" rx="12" fill="url(#${key}-bg)" stroke="#2B3850"/>
+          <path d="M13 1h${width - 26}" stroke="#FFFFFF" stroke-opacity=".055" stroke-linecap="round"/>
+          <rect x="2" y="9" width="3" height="22" rx="1.5" fill="url(#${key}-accent)"/>
+          <circle cx="22" cy="20" r="11" fill="${accentStart}" fill-opacity=".075" stroke="${accentStart}" stroke-opacity=".3"/>
+          <g transform="translate(14 12)" fill="url(#${key}-accent)"><path d="${icons[key]}"/></g>
+          <text x="42" y="24.1" fill="#F8FAFC" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11.4" font-weight="800" letter-spacing=".12">${escapeXml(label)}</text>
+          <rect x="${pillX}" y="6" width="${pillWidth}" height="28" rx="9" fill="url(#${key}-accent)"/>
+          <rect x="${pillX + .5}" y="6.5" width="${pillWidth - 1}" height="27" rx="8.5" fill="none" stroke="#FFFFFF" stroke-opacity=".18"/>
+          <text x="${pillCenter}" y="24.2" text-anchor="middle" fill="${valueColor}" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="11" font-weight="900">${escapeXml(value)}</text>
+          </svg>
+          `
+          }
+
+          const repositoryData = await requestJson(`https://api.github.com/repos/${repository}`)
+          const releases = (await listReleases()).filter(release => !release.draft)
+          const stableReleases = releases.filter(release => !release.prerelease)
+          const latestAndroid = stableReleases
+            .filter(release => !String(release.tag_name ?? '').startsWith('desktop-v') && /^v?\d+\.\d+\.\d+(?:[-+].*)?$/.test(String(release.tag_name ?? '')))
+            .sort((a, b) => new Date(b.published_at ?? b.created_at) - new Date(a.published_at ?? a.created_at))[0]
+          const totalDownloads = releases.reduce((total, release) => total + (release.assets ?? []).reduce((sum, asset) => sum + Number(asset.download_count ?? 0), 0), 0)
+
+          const releaseValue = latestAndroid?.tag_name ?? 'none'
+          const downloadsValue = new Intl.NumberFormat('en-US').format(totalDownloads)
+          const starsValue = new Intl.NumberFormat('en-US').format(repositoryData.stargazers_count ?? 0)
+
+          await mkdir('docs/assets', { recursive: true })
+          await Promise.all([
+            writeFile('docs/assets/levyra-release.svg', makeBadge({ key: 'latest', label: 'Latest', value: releaseValue, width: 172, pillX: 103, pillWidth: 62, accentStart: '#A78BFA', accentEnd: '#7C3AED', valueColor: '#FFFFFF' }), 'utf8'),
+            writeFile('docs/assets/levyra-downloads.svg', makeBadge({ key: 'downloads', label: 'Downloads', value: downloadsValue, width: 174, pillX: 127, pillWidth: 40, accentStart: '#60A5FA', accentEnd: '#22D3EE' }), 'utf8'),
+            writeFile('docs/assets/levyra-license.svg', makeBadge({ key: 'license', label: 'License', value: 'GPL-3.0', width: 176, pillX: 104, pillWidth: 65, accentStart: '#34D399', accentEnd: '#22C55E', valueColor: '#07130B' }), 'utf8'),
+            writeFile('docs/assets/levyra-stars.svg', makeBadge({ key: 'stars', label: 'Stars', value: starsValue, width: 142, pillX: 105, pillWidth: 30, accentStart: '#FBBF24', accentEnd: '#F59E0B', valueColor: '#15110A' }), 'utf8')
+          ])
+          EOF
+      - name: Generate current badges
+        run: node scripts/update-readme-badges.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit result and remove temporary workflow
+        run: |
+          rm .github/workflows/refine-project-badges.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md scripts/update-readme-badges.mjs docs/assets/levyra-release.svg docs/assets/levyra-downloads.svg docs/assets/levyra-license.svg docs/assets/levyra-stars.svg .github/workflows/refine-project-badges.yml
+          git commit -m "docs: refine project status badges"
+          git push origin HEAD:agent/pro-readme-badges-docs
