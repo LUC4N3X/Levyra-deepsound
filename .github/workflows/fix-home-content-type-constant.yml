@@ -1,0 +1,36 @@
+name: Fix Home content type constant
+
+on:
+  push:
+    branches:
+      - agent/home-levyra-aura
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-home-content-type-constant
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/home-levyra-aura
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/fix_home_content_type_constant.py
+      - name: Commit fix and remove patch tooling
+        shell: bash
+        run: |
+          rm -f scripts/fix_home_content_type_constant.py .github/workflows/fix-home-content-type-constant.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(home): define the shared content type literal"
+          git push origin HEAD:agent/home-levyra-aura
