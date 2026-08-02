@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "chrisbanes-skills": {
+      "source": {
+        "source": "github",
+        "repo": "chrisbanes/skills"
+      }
+    },
+    "Kotlin": {
+      "source": {
+        "source": "github",
+        "repo": "Kotlin/kotlin-agent-skills"
+      }
+    },
+    "karpathy-skills": {
+      "source": {
+        "source": "github",
+        "repo": "multica-ai/andrej-karpathy-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "chrisbanes-skills@chrisbanes-skills": true,
+    "kotlin-agent-skills@Kotlin": true,
+    "andrej-karpathy-skills@karpathy-skills": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew --no-daemon :app:testDebugUnitTest*)",
+      "Bash(./gradlew --no-daemon :app:lintRelease*)",
+      "Bash(./gradlew --no-daemon --version)",
+      "Bash(./gradlew --no-daemon tasks*)",
+      "Bash(./gradlew --no-daemon projects)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git status*)",
+      "Bash(git branch*)",
+      "Bash(python3 scripts/check_android_regex_compatibility.py)"
+    ],
+    "deny": [
+      "Read(./local.properties)",
+      "Read(./**/*.jks)",
+      "Read(./**/*.keystore)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Write(./local.properties)",
+      "Write(./**/*.jks)",
+      "Write(./**/*.keystore)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
