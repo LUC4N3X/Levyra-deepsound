@@ -12,7 +12,6 @@ import com.luc4n3x.levyra.ui.components.playerGlass
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import androidx.compose.material.icons.rounded.ChevronRight
 
-
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Spring
@@ -1101,8 +1100,6 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
 
             val homeListState = rememberLazyListState()
 
-
-
             val homeDeferredSectionsRevealed = remember { mutableStateOf(false) }
 
             AnimatedContent(
@@ -1630,14 +1627,6 @@ private fun downloadHudBottomPadding(state: LevyraUiState): Dp {
     }
 }
 
-
-
-
-
-
-
-
-
 @Composable
 private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabled: Boolean): Dp {
     val navigationBarInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -1649,7 +1638,6 @@ private fun tabBarBottomContentInset(miniPlayerVisible: Boolean, animationsEnabl
         animationsEnabled = animationsEnabled
     )
 }
-
 
 @Composable
 private fun animatedBottomContentInset(
@@ -1791,7 +1779,6 @@ private fun restartLevyra(activity: Activity?) {
     activity.startActivity(intent)
     activity.finish()
 }
-
 
 @Composable
 private fun AlbumOverlay(
@@ -2054,8 +2041,6 @@ private fun AlbumHeroCard(
     val context = LocalContext.current
     var descriptionExpanded by remember { mutableStateOf(false) }
 
-
-
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -2112,7 +2097,6 @@ private fun AlbumHeroCard(
             )
         }
 
-
         AlbumPrimaryPlayButton(
             enabled = trackCount > 0,
             isPlaying = isPlaying,
@@ -2121,7 +2105,6 @@ private fun AlbumHeroCard(
             accentEnd = accentEnd,
             onClick = onPlayAll
         )
-
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2280,7 +2263,6 @@ private fun AlbumNowPlayingDock(
 ) {
     val accentStart = Color(track.accentStart)
     val accentEnd = Color(track.accentEnd)
-
 
     Box(
         modifier = modifier
@@ -5176,8 +5158,6 @@ private fun HomeScreen(
     val spotlightDayKey = HomeEditorialEngine.localDayKey()
     var stableSpotlightId by rememberSaveable(spotlightDayKey) { mutableStateOf<String?>(null) }
 
-
-
     val spotlightCandidate = remember(spotlightCandidates, stableSpotlightId) {
         spotlightCandidates.firstOrNull { it.track.id == stableSpotlightId }
             ?: spotlightCandidates.firstOrNull { it.track.id != state.currentTrack?.id }
@@ -5223,8 +5203,6 @@ private fun HomeScreen(
     val chartChunks = homeDerivedState.chartChunks
     val homeContent = homeDerivedState.contentAvailability
     val homeFingerprint = homeDerivedState.contentFingerprint
-
-
 
     val showDeferredHomeSections by deferredSectionsRevealed
     LaunchedEffect(homeFingerprint) {
@@ -5573,7 +5551,6 @@ val quickSelectionTracks = remember(
                 }
             }
         }
-
 
         if (state.homeError != null || state.playerError != null) {
             item(key = "home-status", contentType = "home-card") {
@@ -7171,7 +7148,6 @@ private fun PersonalListeningCard(
     }
 }
 
-
 private fun trackAlbumHit(track: Track): AlbumHit = AlbumHit(
     title = track.album.trim(),
     artist = track.artist.trim(),
@@ -7235,15 +7211,6 @@ private fun releaseKindFromSource(title: String, track: Track): String {
         else -> "uscita"
     }
 }
-
-
-
-
-
-
-
-
-
 
 private val SQUARE_ART_WIDTH_HEIGHT_PATTERN = Regex("=w\\d+-h\\d+")
 private val SQUARE_ART_SIZE_PATTERN = Regex("=s\\d+")
@@ -16563,7 +16530,6 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
     }
 }
 
-
 @Composable
 private fun PageHeader(title: String, subtitle: String) {
     Column(
@@ -16583,7 +16549,6 @@ private fun PageHeader(title: String, subtitle: String) {
         Text(subtitle, color = LevyraMuted, fontSize = 14.5.sp, fontWeight = FontWeight.Medium, lineHeight = 19.sp)
     }
 }
-
 
 @Composable
 private fun QuickChips(languageCode: String, onClick: (String) -> Unit) {
@@ -16793,11 +16758,6 @@ private fun GlassMessage(text: String, color: Color) {
         Text(text, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(15.dp))
     }
 }
-
-
-
-
-
 
 @Composable
 private fun AudioQualityPanel(
@@ -17111,7 +17071,6 @@ private fun LyricsButton(loading: Boolean, available: Boolean, onClick: () -> Un
         }
     }
 }
-
 
 private fun progressOf(positionMs: Long, durationMs: Long): Float {
     if (durationMs <= 0L) return 0f
