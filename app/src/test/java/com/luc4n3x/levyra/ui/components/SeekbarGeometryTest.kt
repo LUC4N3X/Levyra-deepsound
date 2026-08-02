@@ -101,8 +101,8 @@ class SeekbarGeometryTest {
 
     @Test
     fun `scrub label switches to hours only for long tracks`() {
-        assertEquals("00:00", formatSeekbarMillis(-5_000L))
-        assertEquals("03:07", formatSeekbarMillis(187_000L))
+        assertEquals("0:00", formatSeekbarMillis(-5_000L))
+        assertEquals("3:07", formatSeekbarMillis(187_000L))
         assertEquals("1:00:05", formatSeekbarMillis(3_605_000L))
     }
 }

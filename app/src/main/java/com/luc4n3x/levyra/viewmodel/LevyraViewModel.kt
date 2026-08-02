@@ -1526,6 +1526,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                         isResolving = false,
                         isPlaying = shouldPlay,
                         positionMs = positionMs,
+                        bufferedPositionMs = positionMs,
                         durationMs = resolved.durationMs.takeIf { duration -> duration > 0L } ?: it.durationMs,
                         playerError = null
                     )
@@ -4300,6 +4301,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 youtubeEngagement = YoutubeEngagementState(videoId = engagementVideoId),
                 isPlaying = false,
                 positionMs = 0L,
+                bufferedPositionMs = 0L,
                 durationMs = track.durationMs,
                 motionArtwork = null,
                 motionArtworkLoading = it.animationsEnabled
@@ -4385,6 +4387,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isResolving = false,
                 isPlaying = false,
                 positionMs = 0L,
+                bufferedPositionMs = 0L,
                 durationMs = track.durationMs,
                 currentTrack = track.copy(streamUrl = ""),
                 playerError = if (retryWhenOnline) null else cleanUserError(error)
@@ -5438,6 +5441,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 isPlaying = false,
                 isResolving = false,
                 positionMs = 0L,
+                bufferedPositionMs = 0L,
                 durationMs = 0L,
                 motionArtwork = null,
                 motionArtworkLoading = false,
