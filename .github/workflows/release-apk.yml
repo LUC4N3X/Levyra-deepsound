@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - gradle.properties
-      - RELEASE_NOTES.md
+      - docs/RELEASE_NOTES.md
   workflow_dispatch:
     inputs:
       publish_fdroid_asset:
@@ -123,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          NOTES_FILE="RELEASE_NOTES.md"
+          NOTES_FILE="docs/RELEASE_NOTES.md"
           test -f "${NOTES_FILE}"
           test "$(sed -n '/./{p;q;}' "${NOTES_FILE}")" = "# Levyra ${VERSION}"
           grep -Fx -- "- Version name: \`${VERSION}\`" "${NOTES_FILE}"
@@ -287,7 +287,7 @@ jobs:
           RELEASE_FLAGS=(
             --target "${GITHUB_SHA}"
             --title "Levyra ${VERSION}"
-            --notes-file RELEASE_NOTES.md
+            --notes-file docs/RELEASE_NOTES.md
             --repo "${GITHUB_REPOSITORY}"
           )
 
