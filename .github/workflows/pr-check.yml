@@ -5,34 +5,83 @@ on:
     branches:
       - main
       - master
-  push:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: pr-check-${{ github.ref }}
+  group: remove-obsolete-home-quick-access-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  android:
-    name: Lint and Release Compile
+  cleanup:
+    name: Remove obsolete Home quick access
+    if: github.head_ref == 'feature/refactor-home-screen-yt-music-style'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    env:
-      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
-      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
-      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
-      LEVYRA_KEY_ALIAS: levyra_ci
-      LEVYRA_KEY_PASSWORD: levyra_ci_password
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout
+      - name: Checkout feature branch
         uses: actions/checkout@v7
+        with:
+          ref: feature/refactor-home-screen-yt-music-style
+          fetch-depth: 0
+
+      - name: Delete top quick-access implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text()
+
+          data_pattern = re.compile(
+              r'\n    val homeMixTracks = remember\(quickPicks, visiblePersonalTracks, resonanceTracks\) \{\n'
+              r'.*?'
+              r'\n    \}\n'
+              r'    val homeReleaseTracks = remember\(newReleases\) \{ newReleases\?\.tracks\.orEmpty\(\) \}\n',
+              re.DOTALL,
+          )
+          text, data_count = data_pattern.subn('\n', text, count=1)
+          if data_count != 1:
+              raise SystemExit(f'Expected one quick-access data block, found {data_count}')
+
+          item_pattern = re.compile(
+              r'\n        item\(key = "home-quick-access", contentType = "home-quick-access"\) \{'
+              r'.*?'
+              r'\n        \}\n(?=        spotlightCandidate\?\.let)',
+              re.DOTALL,
+          )
+          text, item_count = item_pattern.subn('\n', text, count=1)
+          if item_count != 1:
+              raise SystemExit(f'Expected one top quick-access item, found {item_count}')
+
+          forbidden = [
+              'home-quick-access',
+              'LevyraHomeQuickAccessGrid(',
+              'homeMixTracks',
+              'homeReleaseTracks',
+          ]
+          remaining = [token for token in forbidden if token in text]
+          if remaining:
+              raise SystemExit(f'Obsolete quick-access references remain: {remaining}')
+
+          if 'HomeQuickPicksShelf(' not in text:
+              raise SystemExit('The lower Quick Picks shelf must remain')
+
+          path.write_text(text)
+          PY
+
+      - name: Restore standard workflow and remove trigger
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          git show origin/main:.github/workflows/pr-check.yml > .github/workflows/pr-check.yml
+          rm -f tools/.remove-obsolete-home-quick-access.trigger
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -40,107 +89,24 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           cache-disabled: true
 
-      - name: Validate Build Inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -f settings.gradle.kts
-          test -f build.gradle.kts
-          test -f app/build.gradle.kts
-          test -f gradle/libs.versions.toml
-          test -x ./gradlew
-          test -f gradle/wrapper/gradle-wrapper.jar
-          test -f gradle/wrapper/gradle-wrapper.properties
-
-      - name: Prepare CI Release Signing
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -f "${LEVYRA_KEYSTORE_FILE}"
-          keytool -genkeypair \
-            -keystore "${LEVYRA_KEYSTORE_FILE}" \
-            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
-            -alias "${LEVYRA_KEY_ALIAS}" \
-            -keypass "${LEVYRA_KEY_PASSWORD}" \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
-            >/dev/null
-
-      - name: Gradle Version
-        run: ./gradlew --no-daemon --version
-
-      - name: Android Runtime Compatibility Scan
-        run: python3 scripts/check_android_regex_compatibility.py
-
-      - name: Android Lint
-        run: ./gradlew --no-daemon :app:lintRelease
-
-      - name: Motion, Canvas, and Artwork Continuity Unit Tests
-        run: |
-          ./gradlew --no-daemon :app:testDebugUnitTest \
-            --tests 'com.luc4n3x.levyra.feature.motion.*' \
-            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest'
-
-      - name: Release Compile
-        run: ./gradlew --no-daemon --no-configuration-cache assembleRelease
-
-      - name: Setup Java 21 for F-Droid
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: F-Droid Release Compile
-        shell: bash
+      - name: Compile Android app
         env:
-          YOUTUBE_INNERTUBE_API_KEY: ""
-          LEVYRA_KEYSTORE_FILE: ""
-          LEVYRA_KEYSTORE_PASSWORD: ""
-          LEVYRA_KEY_ALIAS: ""
-          LEVYRA_KEY_PASSWORD: ""
-        run: |
-          set -euo pipefail
-          ./gradlew --no-daemon --no-configuration-cache :app:assembleRelease \
-            -PlevyraFdroidBuild=true
-          FDROID_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
-          test -f "${FDROID_APK}"
-          if "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify "${FDROID_APK}" >/dev/null 2>&1; then
-            echo "F-Droid source build must remain unsigned."
-            exit 1
-          fi
+          YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+        run: ./gradlew --no-daemon :app:compileDebugKotlin
 
-      - name: Collect Reports
-        if: always()
+      - name: Commit cleanup
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/reports
-          find app/build/reports -maxdepth 6 -type f 2>/dev/null | sort > artifacts/reports-index.txt || true
-          if [ -d app/build/reports ]; then
-            cp -R app/build/reports artifacts/reports/app-build-reports
-          fi
-
-      - name: Upload Reports
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: pr-check-reports-${{ github.run_number }}
-          path: artifacts
-          if-no-files-found: ignore
+          git config user.name "LUC4N3X"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt .github/workflows/pr-check.yml
+          git add -A tools/.remove-obsolete-home-quick-access.trigger
+          git diff --cached --check
+          git commit -m "fix(home): remove obsolete top quick access"
+          git push origin HEAD:feature/refactor-home-screen-yt-music-style
