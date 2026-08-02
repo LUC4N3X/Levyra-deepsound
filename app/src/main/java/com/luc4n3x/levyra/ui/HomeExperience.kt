@@ -123,8 +123,8 @@ private fun Modifier.homeAtmosphereBackground(
             backgroundDark.copy(alpha = 0.8f),
             backgroundDark
         ),
-        startY = 0f,
-        endY = fadeTop
+        startY = fadeTop,
+        endY = height
     )
 
     onDrawBehind {

@@ -5258,11 +5258,6 @@ private fun HomeScreen(
             ?: resonanceTracks
     }
     val homeReleaseTracks = remember(newReleases) { newReleases?.tracks.orEmpty() }
-    val quickSelectionTracks = remember(visiblePersonalTracks, quickPicks, state.favorites, homeReleaseTracks, resonanceTracks) {
-        LevyraPersonalOrbit.distinctRecordings(
-            visiblePersonalTracks + (quickPicks?.tracks.orEmpty()) + state.favorites + homeReleaseTracks + resonanceTracks
-        ).take(9)
-    }
     val homeBottomInset = tabBarBottomContentInset(
         miniPlayerVisible = state.currentTrack != null,
         animationsEnabled = state.animationsEnabled
@@ -6112,154 +6107,6 @@ private fun CollectionArtworkMosaic(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun HomeQuickSelectionGrid(
-    userName: String,
-    tracks: List<Track>,
-    currentId: String?,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    onPlay: (Track) -> Unit
-) {
-    val displayTracks = remember(tracks) {
-        tracks
-            .distinctBy(LevyraPersonalOrbit::identityKey)
-            .take(9)
-    }
-    if (displayTracks.isEmpty()) return
-
-    val strings = LocalLevyraStrings.current
-    val headingText = remember(strings) { strings.quickPicks.ifBlank { "Selezione rapida" } }
-    val rows = remember(displayTracks) { displayTracks.chunked(3) }
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = userName.uppercase(),
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.5.sp
-            )
-            Text(
-                text = headingText,
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.5).sp
-            )
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            rows.forEach { rowTracks ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    rowTracks.forEach { track ->
-                        HomeQuickSelectionCard(
-                            track = track,
-                            isCurrent = track.id == currentId,
-                            isPlaying = isPlaying && track.id == currentId,
-                            isResolving = isResolving && track.id == currentId,
-                            modifier = Modifier.weight(1f),
-                            onClick = { onPlay(track) }
-                        )
-                    }
-                    repeat(3 - rowTracks.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeQuickSelectionCard(
-    track: Track,
-    isCurrent: Boolean,
-    isPlaying: Boolean,
-    isResolving: Boolean,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    val shape = RoundedCornerShape(8.dp)
-    val cardBackground = Color(0xFF12141D)
-    val borderColor = if (isCurrent) LevyraCyan else Color.White.copy(alpha = if (LevyraIsLight) 0.12f else 0.08f)
-    val borderPx = if (isCurrent) 1.5.dp else 1.dp
-
-    Box(
-        modifier = modifier
-            .aspectRatio(1.05f)
-            .clip(shape)
-            .background(cardBackground, shape)
-            .border(BorderStroke(borderPx, borderColor), shape)
-            .pressable(onClick = onClick)
-    ) {
-        CoverImage(
-            track = track,
-            modifier = Modifier.fillMaxSize(),
-            highRes = true
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Transparent,
-                            0.38f to Color.Transparent,
-                            0.70f to Color.Black.copy(alpha = 0.55f),
-                            1.0f to Color.Black.copy(alpha = 0.92f)
-                        )
-                    )
-                )
-        )
-
-        if (isCurrent) {
-            Box(
-                modifier = Modifier
-                    .padding(6.dp)
-                    .align(Alignment.TopEnd)
-                    .size(22.dp)
-                    .clip(CircleShape)
-                    .background(LevyraCyan)
-                    .border(1.dp, Color.Black.copy(alpha = 0.3f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isResolving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(12.dp),
-                        strokeWidth = 1.5.dp,
-                        color = Color.Black
-                    )
-                } else {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(13.dp)
-                    )
-                }
-            }
-        }
-
-        Text(
-            text = track.title,
-            color = Color.White,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 16.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(horizontal = 8.dp, vertical = 7.dp)
-        )
     }
 }
 
@@ -14112,16 +13959,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         val currentHour = java.time.LocalTime.now().hour
-        val greeting = when (currentHour) {
-            in 5..11 -> "Buongiorno"
-            in 12..17 -> "Buon pomeriggio"
-            else -> "Buonasera"
-        }
-        val displayGreeting = if (userName.isNotBlank()) {
-            "$greeting, $userName"
-        } else {
-            "$greeting, Luca"
-        }
+        val displayGreeting = strings.formatGreeting(userName, currentHour)
 
         Column(
             verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -14153,7 +13991,7 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
         ) {
             Icon(
                 imageVector = Icons.Rounded.Search,
-                contentDescription = "Search",
+                contentDescription = strings.search,
                 tint = Color.White,
                 modifier = Modifier
                     .size(24.dp)
