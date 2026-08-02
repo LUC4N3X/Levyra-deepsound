@@ -14,8 +14,14 @@ import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -26,6 +32,8 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
+import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
+import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -64,13 +72,28 @@ class MainActivity : ComponentActivity() {
             LevyraTheme {
                 val viewModel: LevyraViewModel = viewModel()
                 val uiState by viewModel.state.collectAsStateWithLifecycle()
-                LevyraApp(
-                    viewModel = viewModel,
-                    isInPictureInPicture = pipMode.value
-                )
+                Box {
+                    LevyraApp(
+                        viewModel = viewModel,
+                        isInPictureInPicture = pipMode.value
+                    )
+                    if (uiState.showSettings && !pipMode.value) {
+                        SupportLevyraSettingsCard(
+                            languageCode = uiState.languageCode,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                                .padding(horizontal = 18.dp, vertical = 14.dp)
+                        )
+                    }
+                }
                 RemoteAnnouncementGate(
                     enabled = !uiState.showOnboarding && !pipMode.value,
-                    languageCode = uiState.languageCode
+                    languageCode = uiState.languageCode,
+                    hasPositiveListeningMoment = RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(
+                        recentListenCount = uiState.recentListens.size,
+                        currentPositionMs = uiState.positionMs
+                    )
                 )
             }
         }
