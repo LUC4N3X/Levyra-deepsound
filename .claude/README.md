@@ -41,7 +41,7 @@ Claude Code officially supports `.claude/CLAUDE.md` as the project instruction f
 
 `settings.json` is checked in and applies to everyone who opens the repository in Claude Code.
 
-- `permissions.allow` pre-approves the read-only git commands and the Gradle verification tasks from `CLAUDE.md`, so routine checks do not stop for a prompt.
+- `permissions.allow` pre-approves the read-only git commands and the Gradle verification tasks from `CLAUDE.md`, so routine checks do not stop for a prompt. The git entries are deliberately narrow: `git branch` is allowed only as `--show-current` and `--list`, since a broader wildcard would also pre-approve `git branch -D`, `-M`, and `-f`, which mutate or delete refs.
 - `permissions.deny` blocks reads and writes of `local.properties`, keystores, and `.env` files. This is a guardrail, not a substitute for the release-safety rules in `CLAUDE.md`.
 - `hooks.SessionStart` runs `hooks/session-start.sh`.
 - `extraKnownMarketplaces` and `enabledPlugins` opt this repository into three external skill marketplaces: [`chrisbanes/skills`](https://github.com/chrisbanes/skills) (Android and Compose), [`Kotlin/kotlin-agent-skills`](https://github.com/Kotlin/kotlin-agent-skills) (Kotlin), and [`multica-ai/andrej-karpathy-skills`](https://github.com/multica-ai/andrej-karpathy-skills) (general coding discipline). These are third-party repositories that Claude Code fetches on demand; they supplement the Levyra skills but never override the rules in `CLAUDE.md`. Remove the entries to opt out.
@@ -50,9 +50,13 @@ Personal overrides belong in `.claude/settings.local.json`, which is git-ignored
 
 ## hooks/session-start.sh
 
-`CLAUDE.md` instructs Claude to verify work with `./gradlew :app:testDebugUnitTest`, `:app:lintRelease`, and `assembleRelease`. All three need an Android SDK, and cloud and CI containers frequently do not have one. The hook probes the environment at session start and reports the JDK, whether an Android SDK is present, whether the JVM-only desktop build is usable, and the current branch and dirty-path count.
+`CLAUDE.md` instructs Claude to verify work with `./gradlew :app:testDebugUnitTest`, `:app:lintRelease`, and `assembleRelease`. All three need an Android SDK, and cloud and CI containers frequently do not have one. The hook probes the environment at session start and reports the JDK, the state of the Android SDK, whether the JVM-only desktop build is usable, and the current branch and dirty-path count.
 
-When no SDK is found the hook tells Claude to say so plainly rather than claim a Gradle result it cannot produce, and points at `.github/workflows/pr-check.yml` as the authority. The hook always exits 0 and always prints valid JSON, so a probe failure can never break a session.
+A `platforms/` directory alone is not accepted as proof of a usable SDK, because a partial or stale install still fails at Gradle configuration time. The hook reads `compileSdk` from `app/build.gradle.kts` and requires both `platforms/android-<compileSdk>/android.jar` and a `build-tools` install, so it distinguishes three states: usable, incomplete (naming the missing packages), and absent. Reading `compileSdk` from the build file keeps the check correct when that value is bumped.
+
+Even in the usable case the hook says the tasks *should configure* — a precondition, not a result. Claude must still run the task and report only what actually ran. When the SDK is unusable the hook says so plainly and points at `.github/workflows/pr-check.yml` as the authority.
+
+The hook always exits 0 and always prints valid JSON, including when it cannot enter the project directory, so a probe failure can never break a session.
 
 Run it directly to check its output:
 

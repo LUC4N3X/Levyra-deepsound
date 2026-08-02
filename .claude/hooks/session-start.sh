@@ -12,8 +12,13 @@
 
 set -uo pipefail
 
+fallback_json='{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Levyra environment probe unavailable. Verify the toolchain before claiming any build or test result."}}'
+
 project_dir="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-cd "$project_dir" 2>/dev/null || exit 0
+if ! cd "$project_dir" 2>/dev/null; then
+  printf '%s\n' "$fallback_json"
+  exit 0
+fi
 
 lines=()
 
@@ -27,24 +32,52 @@ else
 fi
 
 # --- Android SDK -------------------------------------------------------------
+# A 'platforms' directory alone proves nothing: a partial or stale SDK can be
+# present while the platform the app compiles against is missing, and Gradle
+# still fails at configuration time. Require the compileSdk platform itself,
+# read from the build file so this does not drift when compileSdk is bumped.
+compile_sdk="$(sed -n 's/^[[:space:]]*compileSdk[[:space:]]*=[[:space:]]*\([0-9]\{1,\}\).*/\1/p' app/build.gradle.kts 2>/dev/null | head -1)"
+
+candidates=("${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "/usr/lib/android-sdk" "/opt/android-sdk")
+if [ -f local.properties ]; then
+  candidates+=("$(sed -n 's/^sdk\.dir=//p' local.properties | head -1)")
+fi
+
 sdk_root=""
-for candidate in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "/usr/lib/android-sdk" "/opt/android-sdk"; do
-  if [ -n "$candidate" ] && [ -d "$candidate/platforms" ]; then
+sdk_partial=""
+for candidate in "${candidates[@]}"; do
+  if [ -z "$candidate" ] || [ ! -d "$candidate" ]; then
+    continue
+  fi
+
+  missing=""
+  if [ -n "$compile_sdk" ]; then
+    if [ ! -f "$candidate/platforms/android-$compile_sdk/android.jar" ]; then
+      missing="platforms;android-$compile_sdk"
+    fi
+  elif ! compgen -G "$candidate/platforms/android-*/android.jar" >/dev/null 2>&1; then
+    missing="an android-<compileSdk> platform"
+  fi
+  if ! compgen -G "$candidate/build-tools/*/aapt2" >/dev/null 2>&1; then
+    missing="${missing:+$missing and }build-tools"
+  fi
+
+  if [ -z "$missing" ]; then
     sdk_root="$candidate"
     break
   fi
-done
-if [ -z "$sdk_root" ] && [ -f local.properties ]; then
-  configured="$(sed -n 's/^sdk\.dir=//p' local.properties | head -1)"
-  if [ -n "$configured" ] && [ -d "$configured/platforms" ]; then
-    sdk_root="$configured"
+  if [ -z "$sdk_partial" ]; then
+    sdk_partial="$candidate is missing $missing"
   fi
-fi
+done
 
+sdk_unusable_advice="Do not attempt them, and do not report them as passing or as skipped-by-choice: say the Android SDK is unusable in this environment and that CI (.github/workflows/pr-check.yml) is the authority."
 if [ -n "$sdk_root" ]; then
-  lines+=("Android SDK: $sdk_root - :app: Gradle tasks are runnable.")
+  lines+=("Android SDK: $sdk_root, with platform android-${compile_sdk:-unknown} and build-tools present. ':app:' Gradle tasks should configure. That is a precondition, not a result: still run the task and report only what actually ran.")
+elif [ -n "$sdk_partial" ]; then
+  lines+=("Android SDK: incomplete - $sdk_partial. Every ':app:' Gradle task (testDebugUnitTest, lintRelease, assembleRelease) still fails at configuration time until those packages are installed via sdkmanager. $sdk_unusable_advice")
 else
-  lines+=("Android SDK: NOT AVAILABLE. Every ':app:' Gradle task (testDebugUnitTest, lintRelease, assembleRelease) will fail at configuration time. Do not attempt them, and do not report them as passing or as skipped-by-choice: say the Android SDK is missing in this environment and that CI (.github/workflows/pr-check.yml) is the authority.")
+  lines+=("Android SDK: NOT AVAILABLE. Every ':app:' Gradle task (testDebugUnitTest, lintRelease, assembleRelease) will fail at configuration time. $sdk_unusable_advice")
 fi
 
 # --- Desktop build -----------------------------------------------------------
@@ -70,7 +103,7 @@ for line in "${lines[@]}"; do
   context+="- $line"$'\n'
 done
 
-python3 - "$context" <<'PY' 2>/dev/null || printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Levyra toolchain probe unavailable."}}'
+python3 - "$context" <<'PY' 2>/dev/null || printf '%s\n' "$fallback_json"
 import json
 import sys
 
