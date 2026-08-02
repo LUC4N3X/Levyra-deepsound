@@ -17,32 +17,45 @@ class RemoteAnnouncementRepositoryTest {
         title = "A useful announcement",
         body = "This is a complete announcement body that is long enough for the remote configuration rules.",
         starAction = "Open",
-        continueAction = "Continue"
+        laterAction = "Maybe later",
+        settingsTitle = "Support the project",
+        settingsSubtitle = "Leave a star so more people can discover it."
     )
 
     @Test
     fun packagedCatalogIsValidCompleteAndLocalized() {
         val catalog = loadPackagedCatalog()
+        assertEquals(2, catalog.schemaVersion)
         val announcement = catalog.announcements.single { it.id == BUILT_IN_SUPPORT_ANNOUNCEMENT_ID }
         val expectedLanguages = LevyraLanguageCatalog.languages.map { it.code }.toSet()
 
         assertEquals(expectedLanguages, announcement.translations.keys)
         assertEquals(AnnouncementStyle.OPEN_SOURCE, announcement.style)
+        assertEquals(2_031_800, announcement.minimumVersionCode)
         assertEquals(LEVYRA_REPOSITORY_URL, announcement.actionUrl)
         announcement.translations.forEach { (code, copy) ->
-            listOf(copy.badge, copy.title, copy.body, copy.starAction, copy.continueAction).forEach { value ->
+            listOf(
+                copy.badge,
+                copy.title,
+                copy.body,
+                copy.starAction,
+                copy.laterAction,
+                copy.settingsTitle,
+                copy.settingsSubtitle
+            ).forEach { value ->
                 assertTrue("Blank announcement copy for $code", value.isNotBlank())
             }
-            assertTrue("Announcement body is too short for $code", copy.body.length >= 45)
+            assertTrue("Announcement body is too short for $code", copy.body.length >= 20)
         }
 
-        val now = Instant.parse("2026-07-29T12:00:00Z").toEpochMilli()
-        val italian = RemoteAnnouncementRules.select(catalog, "it-IT", 2_031_700, emptySet(), now)
-        val arabic = RemoteAnnouncementRules.select(catalog, "ar-SA", 2_031_700, emptySet(), now)
-        val hebrew = RemoteAnnouncementRules.select(catalog, "he-IL", 2_031_700, emptySet(), now)
-        val unknown = RemoteAnnouncementRules.select(catalog, "xx-YY", 2_031_700, emptySet(), now)
+        val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
+        val italian = RemoteAnnouncementRules.select(catalog, "it-IT", 2_031_800, emptySet(), now)
+        val arabic = RemoteAnnouncementRules.select(catalog, "ar-SA", 2_031_800, emptySet(), now)
+        val hebrew = RemoteAnnouncementRules.select(catalog, "he-IL", 2_031_800, emptySet(), now)
+        val unknown = RemoteAnnouncementRules.select(catalog, "xx-YY", 2_031_800, emptySet(), now)
 
-        assertEquals("Levyra è gratuita. Davvero.", italian?.copy?.title)
+        assertEquals("Ti piace Levyra?", italian?.copy?.title)
+        assertEquals("Più tardi", italian?.copy?.laterAction)
         assertTrue(arabic?.copy?.body.orEmpty().contains("GitHub"))
         assertTrue(hebrew?.copy?.body.orEmpty().contains("GitHub"))
         assertEquals(announcement.translations.getValue("en"), unknown?.copy)
@@ -50,20 +63,20 @@ class RemoteAnnouncementRepositoryTest {
 
     @Test
     fun selectorHonorsPriorityVersionTimeAndDismissal() {
-        val now = Instant.parse("2026-07-29T12:00:00Z").toEpochMilli()
+        val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
         val lowerPriority = announcement(id = "notice-low", priority = 10)
         val higherPriority = announcement(id = "notice-high", priority = 90)
         val future = announcement(
             id = "notice-future",
             priority = 100,
-            startAtMs = Instant.parse("2026-08-01T00:00:00Z").toEpochMilli()
+            startAtMs = Instant.parse("2026-08-05T00:00:00Z").toEpochMilli()
         )
         val catalog = RemoteAnnouncementCatalog(1, listOf(lowerPriority, future, higherPriority))
 
         val selected = RemoteAnnouncementRules.select(
             catalog = catalog,
             languageCode = "it-IT",
-            versionCode = 2_031_700,
+            versionCode = 2_031_800,
             dismissedIds = emptySet(),
             nowMs = now
         )
@@ -73,7 +86,7 @@ class RemoteAnnouncementRepositoryTest {
         val afterDismissal = RemoteAnnouncementRules.select(
             catalog = catalog,
             languageCode = "en",
-            versionCode = 2_031_700,
+            versionCode = 2_031_800,
             dismissedIds = setOf("notice-high"),
             nowMs = now
         )
@@ -82,7 +95,7 @@ class RemoteAnnouncementRepositoryTest {
 
     @Test
     fun selectorRejectsUnsupportedVersionAndExpiredContent() {
-        val now = Instant.parse("2026-07-29T12:00:00Z").toEpochMilli()
+        val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
         val versionLocked = announcement(
             id = "version-locked",
             priority = 100,
@@ -91,7 +104,7 @@ class RemoteAnnouncementRepositoryTest {
         val expired = announcement(
             id = "expired",
             priority = 90,
-            endAtMs = Instant.parse("2026-07-01T00:00:00Z").toEpochMilli()
+            endAtMs = Instant.parse("2026-08-01T00:00:00Z").toEpochMilli()
         )
         val catalog = RemoteAnnouncementCatalog(1, listOf(versionLocked, expired))
 
@@ -99,11 +112,56 @@ class RemoteAnnouncementRepositoryTest {
             RemoteAnnouncementRules.select(
                 catalog = catalog,
                 languageCode = "en",
-                versionCode = 2_031_700,
+                versionCode = 2_031_800,
                 dismissedIds = emptySet(),
                 nowMs = now
             )
         )
+    }
+
+    @Test
+    fun promptPolicyWaitsForUsagePositiveListeningAndSnoozeExpiry() {
+        val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
+
+        assertFalse(
+            RemoteAnnouncementPromptPolicy.isEligible(
+                launchCount = 2,
+                hasPositiveListeningMoment = true,
+                snoozedUntilMs = 0L,
+                nowMs = now
+            )
+        )
+        assertFalse(
+            RemoteAnnouncementPromptPolicy.isEligible(
+                launchCount = 3,
+                hasPositiveListeningMoment = false,
+                snoozedUntilMs = 0L,
+                nowMs = now
+            )
+        )
+        assertFalse(
+            RemoteAnnouncementPromptPolicy.isEligible(
+                launchCount = 3,
+                hasPositiveListeningMoment = true,
+                snoozedUntilMs = now + 1L,
+                nowMs = now
+            )
+        )
+        assertTrue(
+            RemoteAnnouncementPromptPolicy.isEligible(
+                launchCount = 3,
+                hasPositiveListeningMoment = true,
+                snoozedUntilMs = now,
+                nowMs = now
+            )
+        )
+    }
+
+    @Test
+    fun positiveMomentCanComeFromHistoryOrCurrentListeningTime() {
+        assertFalse(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(2, 89_999L))
+        assertTrue(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(3, 0L))
+        assertTrue(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(0, 90_000L))
     }
 
     @Test
