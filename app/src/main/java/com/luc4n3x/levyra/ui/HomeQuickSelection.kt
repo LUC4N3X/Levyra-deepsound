@@ -22,7 +22,7 @@ internal fun buildHomeQuickSelectionTracks(
         favoriteTracks,
         newReleaseTracks.takeIf { showNewReleases }.orEmpty(),
         resonanceTracks.takeIf { showResonance }.orEmpty()
-    ).filter(List<Track>::isNotEmpty)
+    ).filter { it.isNotEmpty() }
 
     if (sources.isEmpty()) return emptyList()
 
