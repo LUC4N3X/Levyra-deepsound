@@ -12,76 +12,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: pr-check-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  apply-active-video-toggle:
-    name: Apply active video toggle
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'refactor/home-experience'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v7
-        with:
-          ref: refactor/home-experience
-          fetch-depth: 0
-
-      - name: Patch active video behavior
-        shell: bash
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
-          text = path.read_text(encoding='utf-8')
-
-          call_old = "                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) }\n"
-          call_new = "                        onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) },\n                        onToggleCurrent = viewModel::togglePlay\n"
-          if text.count(call_old) != 1:
-              raise SystemExit(f'Expected one video shelf callback, found {text.count(call_old)}')
-          text = text.replace(call_old, call_new, 1)
-
-          block_start = text.index('private fun HomeMusicVideoShelf(')
-          block_end = text.index('private val HomeVideoIdPattern', block_start)
-          block = text[block_start:block_end]
-
-          signature_old = "    onPlay: (Track) -> Unit\n) {"
-          signature_new = "    onPlay: (Track) -> Unit,\n    onToggleCurrent: () -> Unit\n) {"
-          if block.count(signature_old) != 1:
-              raise SystemExit(f'Expected one video shelf signature, found {block.count(signature_old)}')
-          block = block.replace(signature_old, signature_new, 1)
-
-          click_old = "modifier = Modifier.width(236.dp).pressable(onClick = { onPlay(track) }),"
-          click_new = "modifier = Modifier.width(236.dp).pressable(onClick = { if (active) onToggleCurrent() else onPlay(track) }),"
-          if block.count(click_old) != 1:
-              raise SystemExit(f'Expected one video card click, found {block.count(click_old)}')
-          block = block.replace(click_old, click_new, 1)
-
-          text = text[:block_start] + block + text[block_end:]
-          path.write_text(text, encoding='utf-8')
-          PY
-
-          git fetch origin main
-          git checkout origin/main -- \
-            .github/workflows/pr-check.yml \
-            .github/workflows/workflow-duplicates-guard.yml
-          rm -f .github/workflows/fix-active-home-video-toggle.yml
-          git diff --check
-
-      - name: Commit clean fix
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix(home): toggle active video playback"
-          git push origin HEAD:refactor/home-experience
-
   android:
     name: Lint and Release Compile
     runs-on: ubuntu-latest
