@@ -1,6 +1,6 @@
 package com.luc4n3x.levyra.ui
 
-import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -10,14 +10,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Favorite
@@ -247,7 +245,8 @@ internal fun LevyraHomeQuickAccessGrid(
                 icon = Icons.Rounded.History,
                 accent = LevyraCyan,
                 enabled = currentTrack != null,
-                active = currentTrack != null && isPlaying,
+                active = currentTrack != null,
+                playing = currentTrack != null && isPlaying,
                 resolving = currentTrack != null && isResolving,
                 onClick = onContinue
             ),
@@ -319,6 +318,7 @@ private data class HomeQuickAccessItem(
     val accent: Color,
     val enabled: Boolean,
     val active: Boolean = false,
+    val playing: Boolean = false,
     val resolving: Boolean = false,
     val onClick: () -> Unit
 )
@@ -358,8 +358,7 @@ private fun HomeQuickAccessTile(
         ) {
             Box(
                 modifier = Modifier
-                    .width(LevyraHomeDesign.ArtworkSize)
-                    .fillMaxHeight()
+                    .size(LevyraHomeDesign.ArtworkSize)
                     .clip(LevyraHomeDesign.ArtworkShape)
                     .background(
                         Brush.linearGradient(
@@ -392,7 +391,7 @@ private fun HomeQuickAccessTile(
                         strokeWidth = 2.2.dp,
                         color = Color.White
                     )
-                    item.active -> Icon(
+                    item.playing -> Icon(
                         imageVector = Icons.Rounded.GraphicEq,
                         contentDescription = null,
                         tint = Color.White,
@@ -437,7 +436,7 @@ private fun HomeQuickAccessTile(
 
             if (item.active && !item.resolving) {
                 Icon(
-                    imageVector = if (isPlayingIcon(item)) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+                    imageVector = if (item.playing) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
                     contentDescription = null,
                     tint = item.accent,
                     modifier = Modifier
@@ -449,4 +448,3 @@ private fun HomeQuickAccessTile(
     }
 }
 
-private fun isPlayingIcon(item: HomeQuickAccessItem): Boolean = item.active
