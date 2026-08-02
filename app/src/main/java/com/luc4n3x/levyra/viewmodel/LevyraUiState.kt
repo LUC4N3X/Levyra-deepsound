@@ -107,6 +107,7 @@ data class LevyraUiState(
     val searchError: String? = null,
     val playerError: String? = null,
     val positionMs: Long = 0L,
+    val bufferedPositionMs: Long = 0L,
     val durationMs: Long = 0L,
     val smartScore: Int = 94,
     val repeatMode: RepeatMode = RepeatMode.Off,

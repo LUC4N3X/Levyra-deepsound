@@ -888,6 +888,7 @@ private fun libraryProjection(state: LevyraUiState): LibraryProjection = Library
 private data class PlayerProjection(
     val animationsEnabled: Boolean,
     val audioNormalization: Boolean,
+    val bufferedPositionMs: Long,
     val currentTrack: Track?,
     val durationMs: Long,
     val favoriteIds: Set<String>,
@@ -910,6 +911,7 @@ private data class PlayerProjection(
 private fun playerProjection(state: LevyraUiState): PlayerProjection = PlayerProjection(
     animationsEnabled = state.animationsEnabled,
     audioNormalization = state.audioNormalization,
+    bufferedPositionMs = state.bufferedPositionMs,
     currentTrack = state.currentTrack,
     durationMs = state.durationMs,
     favoriteIds = state.favoriteIds,

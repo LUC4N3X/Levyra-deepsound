@@ -130,6 +130,9 @@ class LevyraPlayer(context: Context) {
     val positionMs: Long
         get() = controller?.currentPosition?.coerceAtLeast(0L) ?: pendingPlayback?.positionMs ?: 0L
 
+    val bufferedPositionMs: Long
+        get() = controller?.bufferedPosition?.coerceAtLeast(0L) ?: 0L
+
     val durationMs: Long
         get() {
             val duration = controller?.duration ?: return 0L
