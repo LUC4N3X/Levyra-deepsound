@@ -19,14 +19,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material3.Button
@@ -40,7 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,10 +54,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -69,24 +73,38 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-private const val PROMPT_DELAY_MS = 800L
+private const val PROMPT_DELAY_MS = 3_000L
 
 @Composable
 fun RemoteAnnouncementGate(
     enabled: Boolean,
-    languageCode: String
+    languageCode: String,
+    hasPositiveListeningMoment: Boolean
 ) {
     val context = LocalContext.current.applicationContext
     val repository = remember(context) { RemoteAnnouncementRepository(context) }
+    var launchCount by remember { mutableIntStateOf(0) }
     var announcement by remember { mutableStateOf<RemoteAnnouncementPresentation?>(null) }
 
-    LaunchedEffect(enabled, languageCode) {
-        announcement = null
-        if (!enabled) return@LaunchedEffect
+    LaunchedEffect(Unit) {
+        launchCount = withContext(Dispatchers.IO) { repository.recordAppLaunch() }
+    }
+
+    LaunchedEffect(enabled, languageCode, hasPositiveListeningMoment, launchCount) {
+        if (!enabled) {
+            announcement = null
+            return@LaunchedEffect
+        }
+        if (launchCount < RemoteAnnouncementPromptPolicy.MINIMUM_APP_LAUNCHES) return@LaunchedEffect
+        if (!hasPositiveListeningMoment) return@LaunchedEffect
         val onboarded = withContext(Dispatchers.IO) { LevyraPreferences(context).isOnboarded() }
         if (!onboarded) return@LaunchedEffect
         delay(PROMPT_DELAY_MS)
-        announcement = repository.resolve(languageCode)
+        announcement = repository.resolveForPrompt(
+            languageCode = languageCode,
+            launchCount = launchCount,
+            hasPositiveListeningMoment = hasPositiveListeningMoment
+        )
     }
 
     val current = announcement ?: return
@@ -98,30 +116,127 @@ fun RemoteAnnouncementGate(
     } else {
         LayoutDirection.Ltr
     }
-    val dismiss = {
-        repository.markDismissed(current.id)
+    val passiveDismiss = {
+        repository.snooze(current.id, RemoteAnnouncementPromptPolicy.PASSIVE_SNOOZE_MS)
+        announcement = null
+    }
+    val later = {
+        repository.snooze(current.id, RemoteAnnouncementPromptPolicy.LATER_SNOOZE_MS)
         announcement = null
     }
     val openAction = {
-        val target = current.actionUrl
-        if (target == null) {
-            dismiss()
-        } else {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { context.startActivity(intent) }
-                .onSuccess { dismiss() }
-                .onFailure { Toast.makeText(context, linkFailureMessage, Toast.LENGTH_LONG).show() }
-        }
-        Unit
+        openRepositoryLink(
+            context = context,
+            target = current.actionUrl ?: LEVYRA_REPOSITORY_URL,
+            failureMessage = linkFailureMessage,
+            onSuccess = {
+                repository.markCompleted(current.id)
+                announcement = null
+            }
+        )
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         RemoteAnnouncementDialog(
             announcement = current,
             onAction = openAction,
-            onDismiss = dismiss
+            onLater = later,
+            onPassiveDismiss = passiveDismiss
         )
+    }
+}
+
+@Composable
+fun SupportLevyraSettingsCard(
+    languageCode: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current.applicationContext
+    val repository = remember(context) { RemoteAnnouncementRepository(context) }
+    val announcement by produceState<RemoteAnnouncementPresentation?>(
+        initialValue = null,
+        key1 = languageCode
+    ) {
+        value = withContext(Dispatchers.IO) {
+            repository.bundledSupportPresentation(languageCode)
+        }
+    }
+    val current = announcement ?: return
+    val strings = remember(languageCode) { LevyraStrings.forCode(languageCode) }
+    val shape = RoundedCornerShape(20.dp)
+    val openAction = {
+        openRepositoryLink(
+            context = context,
+            target = current.actionUrl ?: LEVYRA_REPOSITORY_URL,
+            failureMessage = strings.cannotOpenExternalLink,
+            onSuccess = { repository.markCompleted(current.id) }
+        )
+    }
+
+    Surface(
+        onClick = openAction,
+        modifier = modifier.fillMaxWidth(),
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                LevyraCyan.copy(alpha = 0.95f),
+                                LevyraViolet.copy(alpha = 0.92f),
+                                LevyraOrange.copy(alpha = 0.88f)
+                            )
+                        ),
+                        RoundedCornerShape(15.dp)
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(15.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Star,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(23.dp)
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Text(
+                    text = current.copy.settingsTitle,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = current.copy.settingsSubtitle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 
@@ -129,14 +244,15 @@ fun RemoteAnnouncementGate(
 private fun RemoteAnnouncementDialog(
     announcement: RemoteAnnouncementPresentation,
     onAction: () -> Unit,
-    onDismiss: () -> Unit
+    onLater: () -> Unit,
+    onPassiveDismiss: () -> Unit
 ) {
     val shape = RoundedCornerShape(30.dp)
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val visuals = announcementVisuals(announcement.style)
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = onPassiveDismiss,
         properties = DialogProperties(
             dismissOnBackPress = true,
             dismissOnClickOutside = true,
@@ -271,11 +387,11 @@ private fun RemoteAnnouncementDialog(
                     }
 
                     TextButton(
-                        onClick = onDismiss,
+                        onClick = onLater,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = announcement.copy.continueAction,
+                            text = announcement.copy.laterAction,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -284,6 +400,19 @@ private fun RemoteAnnouncementDialog(
             }
         }
     }
+}
+
+private fun openRepositoryLink(
+    context: Context,
+    target: String,
+    failureMessage: String,
+    onSuccess: () -> Unit
+) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(target))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
+        .onSuccess { onSuccess() }
+        .onFailure { Toast.makeText(context, failureMessage, Toast.LENGTH_LONG).show() }
 }
 
 @Composable
