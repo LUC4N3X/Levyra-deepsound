@@ -1,0 +1,26 @@
+name: Export LevyraApp source
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/export-levyra-app.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+      - uses: actions/upload-artifact@v7
+        with:
+          name: levyra-app-source
+          path: app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt
+          if-no-files-found: error
+          retention-days: 1
