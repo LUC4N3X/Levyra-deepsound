@@ -2,6 +2,10 @@ package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -33,6 +37,7 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,9 +47,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.luc4n3x.levyra.ui.PlayerContrastGradient
 import com.luc4n3x.levyra.ui.PlayerDarkSurface
 import com.luc4n3x.levyra.ui.PlayerMinimumContrast
 import com.luc4n3x.levyra.ui.playerCompositeOver
@@ -52,6 +59,14 @@ import com.luc4n3x.levyra.ui.playerContentColor
 import com.luc4n3x.levyra.ui.playerContrastGradient
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
+
+@Immutable
+data class PlayerAccentColors(
+    val primary: Color,
+    val secondary: Color,
+    val primaryTarget: Color,
+    val secondaryTarget: Color
+)
 
 data class PlayerControlLabels(
     val shuffle: String,
@@ -135,8 +150,7 @@ fun PlayerTransportControls(
     shuffleOn: Boolean,
     repeatOn: Boolean,
     repeatOne: Boolean,
-    accent: Color,
-    accentSecondary: Color,
+    accents: PlayerAccentColors,
     compact: Boolean,
     animated: Boolean,
     labels: PlayerControlLabels,
@@ -161,7 +175,8 @@ fun PlayerTransportControls(
             icon = Icons.Rounded.Shuffle,
             contentDescription = labels.shuffle,
             active = shuffleOn,
-            accent = accent,
+            accent = accents.primary,
+            accentTarget = accents.primaryTarget,
             size = utilitySize,
             iconSize = if (compact) 20.dp else 21.dp,
             animated = animated,
@@ -177,10 +192,11 @@ fun PlayerTransportControls(
         PlayerPrimaryButton(
             isPlaying = isPlaying,
             isResolving = isResolving,
-            accent = accent,
-            accentSecondary = accentSecondary,
+            accentTarget = accents.primaryTarget,
+            accentSecondaryTarget = accents.secondaryTarget,
             width = primaryWidth,
             height = primaryHeight,
+            animated = animated,
             playLabel = labels.play,
             pauseLabel = labels.pause,
             onClick = onToggle
@@ -196,7 +212,8 @@ fun PlayerTransportControls(
             icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
             contentDescription = labels.repeat,
             active = repeatOn,
-            accent = accentSecondary,
+            accent = accents.secondary,
+            accentTarget = accents.secondaryTarget,
             size = utilitySize,
             iconSize = if (compact) 20.dp else 21.dp,
             animated = animated,
@@ -211,14 +228,17 @@ private fun PlayerModeToggleButton(
     contentDescription: String,
     active: Boolean,
     accent: Color,
+    accentTarget: Color,
     size: Dp,
     iconSize: Dp,
     animated: Boolean,
     onClick: () -> Unit
 ) {
     val fill = if (active) accent.copy(alpha = 0.30f) else Color.Transparent
-    val activeTint = remember(accent) {
-        accent.playerContentColor(listOf(accent.copy(alpha = 0.30f).playerCompositeOver(PlayerDarkSurface)))
+    val activeTint = remember(accentTarget) {
+        accentTarget.playerContentColor(
+            listOf(accentTarget.copy(alpha = 0.30f).playerCompositeOver(PlayerDarkSurface))
+        )
     }
     val tint = if (active) activeTint else LevyraPlayerDesign.IconIdle
     val corner by animateDpAsState(
@@ -234,10 +254,12 @@ private fun PlayerModeToggleButton(
 
     SpringIconButton(
         onClick = onClick,
-        modifier = Modifier.sizeIn(
-            minWidth = LevyraPlayerDesign.MinimumTouchTarget,
-            minHeight = LevyraPlayerDesign.MinimumTouchTarget
-        ),
+        modifier = Modifier
+            .sizeIn(
+                minWidth = LevyraPlayerDesign.MinimumTouchTarget,
+                minHeight = LevyraPlayerDesign.MinimumTouchTarget
+            )
+            .semantics { toggleableState = ToggleableState(active) },
         pressedScale = 0.86f,
         contentDescription = contentDescription
     ) {
@@ -269,18 +291,17 @@ private fun playerPrimaryIconTransition(): ContentTransform =
 
 private fun Modifier.playerPrimarySurface(
     shape: Shape,
-    gradient: PlayerContrastGradient,
-    accent: Color,
-    accentSecondary: Color
+    start: Color,
+    end: Color
 ): Modifier = this
     .shadow(
         elevation = 20.dp,
         shape = shape,
         clip = false,
-        ambientColor = accent.copy(alpha = 0.50f),
-        spotColor = accentSecondary.copy(alpha = 0.58f)
+        ambientColor = start.copy(alpha = 0.50f),
+        spotColor = end.copy(alpha = 0.58f)
     )
-    .background(Brush.linearGradient(listOf(gradient.start, gradient.end)), shape)
+    .background(Brush.linearGradient(listOf(start, end)), shape)
     .background(
         Brush.verticalGradient(
             listOf(
@@ -305,10 +326,16 @@ private fun Modifier.playerPrimarySurface(
     )
 
 @Composable
-private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color) {
+private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color, animated: Boolean) {
     AnimatedContent(
         targetState = isPlaying,
-        transitionSpec = { playerPrimaryIconTransition() },
+        transitionSpec = {
+            if (animated) {
+                playerPrimaryIconTransition()
+            } else {
+                EnterTransition.None togetherWith ExitTransition.None
+            }
+        },
         label = "player-primary-icon"
     ) { playing ->
         Icon(
@@ -326,21 +353,39 @@ private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color) {
 private fun PlayerPrimaryButton(
     isPlaying: Boolean,
     isResolving: Boolean,
-    accent: Color,
-    accentSecondary: Color,
+    accentTarget: Color,
+    accentSecondaryTarget: Color,
     width: Dp,
     height: Dp,
+    animated: Boolean,
     playLabel: String,
     pauseLabel: String,
     onClick: () -> Unit
 ) {
-    val gradient = remember(accent, accentSecondary) {
+    val gradient = remember(accentTarget, accentSecondaryTarget) {
         playerContrastGradient(
-            start = accent.playerMix(Color.White, 0.16f),
-            end = accentSecondary.playerMix(Color.White, 0.06f),
+            start = accentTarget.playerMix(Color.White, 0.16f),
+            end = accentSecondaryTarget.playerMix(Color.White, 0.06f),
             minimumContrast = PlayerMinimumContrast
         )
     }
+    val colorSpec: AnimationSpec<Color> =
+        if (animated) LevyraPlayerDesign.emphasizedTween(700) else snap()
+    val gradientStart by animateColorAsState(
+        targetValue = gradient.start,
+        animationSpec = colorSpec,
+        label = "player-primary-start"
+    )
+    val gradientEnd by animateColorAsState(
+        targetValue = gradient.end,
+        animationSpec = colorSpec,
+        label = "player-primary-end"
+    )
+    val gradientContent by animateColorAsState(
+        targetValue = gradient.content,
+        animationSpec = colorSpec,
+        label = "player-primary-content"
+    )
     val shape = RoundedCornerShape(LevyraPlayerDesign.PrimaryCorner)
 
     SpringIconButton(
@@ -353,9 +398,8 @@ private fun PlayerPrimaryButton(
                 .size(width = width, height = height)
                 .playerPrimarySurface(
                     shape = shape,
-                    gradient = gradient,
-                    accent = accent,
-                    accentSecondary = accentSecondary
+                    start = gradientStart,
+                    end = gradientEnd
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -363,13 +407,14 @@ private fun PlayerPrimaryButton(
                 CircularProgressIndicator(
                     modifier = Modifier.size(height * 0.44f),
                     strokeWidth = 3.dp,
-                    color = gradient.content
+                    color = gradientContent
                 )
             } else {
                 PlayerPrimaryIcon(
                     isPlaying = isPlaying,
                     iconSize = height * 0.53f,
-                    tint = gradient.content
+                    tint = gradientContent,
+                    animated = animated
                 )
             }
         }

@@ -1,11 +1,13 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.luc4n3x.levyra.ui
 
+import com.luc4n3x.levyra.ui.components.PlayerAccentColors
 import com.luc4n3x.levyra.ui.components.PlayerControlLabels
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.ui.components.PlayerTransportControls
 import com.luc4n3x.levyra.ui.components.PremiumSeekbar
 import com.luc4n3x.levyra.ui.components.SpringIconButton
+import com.luc4n3x.levyra.ui.components.formatSeekbarMillis
 import com.luc4n3x.levyra.ui.components.playerGlass
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
 import androidx.compose.material.icons.rounded.ChevronRight
@@ -256,6 +258,13 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.ui.semantics.setProgress
 import androidx.core.view.WindowCompat
 import androidx.media3.common.Player
@@ -10498,17 +10507,19 @@ private fun PlayerArtworkCanvas(
 private fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
+    activeColorTarget: Color,
     onSong: () -> Unit,
     onVideo: () -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val selectedContent = remember(activeColor) {
+    val selectedContent = remember(activeColorTarget) {
         Color.White.playerContentColor(
-            listOf(activeColor.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
+            listOf(activeColorTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
         )
     }
     Row(
         modifier = Modifier
+            .selectableGroup()
             .playerGlass(
                 shape = LevyraPlayerDesign.ShapePill,
                 fill = LevyraPlayerDesign.GlassFillSunken
@@ -10542,18 +10553,28 @@ private fun PlayerModeSwitchTab(
     selectedContent: Color,
     onClick: () -> Unit
 ) {
+    val isSelected = selected
+    val tabSpec: AnimationSpec<Color> = if (LocalAnimationsEnabled.current) {
+        LevyraPlayerDesign.standardTween(180)
+    } else {
+        snap()
+    }
     val background by animateColorAsState(
         targetValue = if (selected) activeColor.copy(alpha = 0.42f) else Color.Transparent,
-        animationSpec = LevyraPlayerDesign.standardTween(180),
+        animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
     val contentColor by animateColorAsState(
         targetValue = if (selected) selectedContent else LevyraPlayerDesign.TextSecondary,
-        animationSpec = LevyraPlayerDesign.standardTween(180),
+        animationSpec = tabSpec,
         label = "player-mode-tab-content"
     )
     Box(
         modifier = Modifier
+            .semantics {
+                this.selected = isSelected
+                role = Role.Tab
+            }
             .background(background, LevyraPlayerDesign.ShapePill)
             .pressable(enabled = !selected, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 7.dp)
@@ -11195,6 +11216,12 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
     val secondaryContent = remember(secondary) {
         secondary.playerContentColor(listOf(PlayerDarkSurface))
     }
+    val playerAccentColors = PlayerAccentColors(
+        primary = primary,
+        secondary = secondary,
+        primaryTarget = primaryTarget,
+        secondaryTarget = secondaryTarget
+    )
     val playerControlLabels = remember(strings) {
         PlayerControlLabels(
             shuffle = strings.shuffle,
@@ -11319,6 +11346,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                             PlayerModeSwitch(
                                 isVideoMode = state.isVideoMode,
                                 activeColor = primary,
+                                activeColorTarget = primaryTarget,
                                 onSong = viewModel::toggleVideoMode,
                                 onVideo = viewModel::toggleVideoMode
                             )
@@ -11619,8 +11647,10 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                 item {
                     val isFavorite = track.id in state.favoriteIds
                     val favoriteFill = primary.copy(alpha = 0.42f)
-                    val favoriteTint = remember(favoriteFill) {
-                        Color.White.playerContentColor(listOf(favoriteFill.playerCompositeOver(PlayerDarkSurface)))
+                    val favoriteTint = remember(primaryTarget) {
+                        Color.White.playerContentColor(
+                            listOf(primaryTarget.copy(alpha = 0.42f).playerCompositeOver(PlayerDarkSurface))
+                        )
                     }
                     val favoriteScale by animateFloatAsState(
                         targetValue = if (isFavorite) 1.08f else 1f,
@@ -11667,6 +11697,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                 Spacer(modifier = Modifier.height(LevyraPlayerDesign.SpaceXs))
                                 Row(
                                     modifier = Modifier
+                                        .heightIn(min = LevyraPlayerDesign.MinimumTouchTarget)
                                         .clip(LevyraPlayerDesign.ShapePill)
                                         .clickable(
                                             onClickLabel = strings.openArtist,
@@ -11720,10 +11751,12 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                                     } else {
                                         LevyraPlayerDesign.GlassBorderBottom
                                     },
-                                    modifier = Modifier.graphicsLayer {
-                                        scaleX = favoriteScale
-                                        scaleY = favoriteScale
-                                    },
+                                    modifier = Modifier
+                                        .graphicsLayer {
+                                            scaleX = favoriteScale
+                                            scaleY = favoriteScale
+                                        }
+                                        .semantics { toggleableState = ToggleableState(isFavorite) },
                                     onClick = { viewModel.toggleFavorite(track) }
                                 )
                             }
@@ -11758,8 +11791,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         shuffleOn = state.shuffleEnabled,
                         repeatOn = state.repeatMode != com.luc4n3x.levyra.domain.RepeatMode.Off,
                         repeatOne = state.repeatMode == com.luc4n3x.levyra.domain.RepeatMode.One,
-                        accent = primary,
-                        accentSecondary = secondary,
+                        accents = playerAccentColors,
                         compact = compactPlayer,
                         animated = state.animationsEnabled,
                         labels = playerControlLabels,
@@ -12477,14 +12509,14 @@ private fun PlayerTimeline(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = formatDuration(positionMs),
+                text = formatSeekbarMillis(positionMs),
                 color = LevyraPlayerDesign.TextSecondary,
                 fontSize = if (compact) 11.sp else 11.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.2.sp
             )
             Text(
-                text = formatDuration(durationMs),
+                text = if (durationMs > 0L) formatSeekbarMillis(durationMs) else formatDuration(durationMs),
                 color = LevyraPlayerDesign.TextTertiary,
                 fontSize = if (compact) 11.sp else 11.5.sp,
                 fontWeight = FontWeight.Medium,
@@ -16035,7 +16067,7 @@ private fun MiniPlayerToggleButton(
     onToggle: () -> Unit
 ) {
     val playBg = buttonColor.copy(alpha = 1f)
-    val playTint = Color.White.playerContentColor(listOf(playBg))
+    val playTint = remember(playBg) { Color.White.playerContentColor(listOf(playBg)) }
     val corner by animateDpAsState(
         targetValue = if (isPlaying) 14.dp else 20.dp,
         animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
