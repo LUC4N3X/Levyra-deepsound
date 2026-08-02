@@ -1217,6 +1217,7 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                             isPlaying = state.isPlaying,
                             isResolving = state.isResolving,
                             progress = progressOf(state.positionMs, state.durationMs),
+                            animated = state.animationsEnabled,
                             onOpen = { viewModel.selectTab(LevyraTab.Player) },
                             onToggle = viewModel::togglePlay,
                             onNext = viewModel::next,
@@ -11619,7 +11620,11 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                     }
                     val favoriteScale by animateFloatAsState(
                         targetValue = if (isFavorite) 1.08f else 1f,
-                        animationSpec = LevyraPlayerDesign.expressiveSpring(),
+                        animationSpec = if (state.animationsEnabled) {
+                            LevyraPlayerDesign.expressiveSpring()
+                        } else {
+                            snap()
+                        },
                         label = "player-favorite-scale"
                     )
                     val actionSize = if (compactPlayer) {
@@ -11752,6 +11757,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, state: LevyraUiState) {
                         accent = primary,
                         accentSecondary = secondary,
                         compact = compactPlayer,
+                        animated = state.animationsEnabled,
                         labels = playerControlLabels,
                         onShuffle = viewModel::toggleShuffle,
                         onPrevious = viewModel::previous,
@@ -15850,6 +15856,7 @@ private fun MiniPlayer(
     isPlaying: Boolean,
     isResolving: Boolean,
     progress: Float,
+    animated: Boolean,
     onOpen: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit,
@@ -15963,6 +15970,7 @@ private fun MiniPlayer(
                     isPlaying = isPlaying,
                     isResolving = isResolving,
                     buttonColor = miniPrimaryContent,
+                    animated = animated,
                     onToggle = onToggle
                 )
                 PlayerRoundIconButton(
@@ -16019,13 +16027,14 @@ private fun MiniPlayerToggleButton(
     isPlaying: Boolean,
     isResolving: Boolean,
     buttonColor: Color,
+    animated: Boolean,
     onToggle: () -> Unit
 ) {
     val playBg = buttonColor.copy(alpha = 1f)
     val playTint = Color.White.playerContentColor(listOf(playBg))
     val corner by animateDpAsState(
         targetValue = if (isPlaying) 14.dp else 20.dp,
-        animationSpec = LevyraPlayerDesign.expressiveSpring(),
+        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
         label = "mini-play-corner"
     )
     Box(
