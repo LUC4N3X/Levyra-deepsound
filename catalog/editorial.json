@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T15:00:52Z",
+  "generatedAt": "2026-08-02T15:04:06Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -3323,11 +3323,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 43,
@@ -6333,11 +6333,11 @@
           ],
           "album": {
             "name": "Teenage Dream",
-            "releaseDate": "2010-08-24"
+            "releaseDate": "2010-01-01"
           },
           "durationMs": 227333,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f619042d5f6b2149a4f5e0ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021d955011a3ed477dc77865ad"
         },
         {
           "position": 18,
@@ -7779,7 +7779,7 @@
         },
         {
           "position": 25,
-          "id": "levyra-68fcfb916bb338f70aa5",
+          "id": "levyra-7fd08f9e4c7d58013a4d",
           "title": "Apaga Apaga Apaga - Ao Vivo",
           "artists": [
             {
@@ -7787,8 +7787,8 @@
             }
           ],
           "album": {
-            "name": "Toma Essa Verdade (Ao Vivo)",
-            "releaseDate": "2024-08-09"
+            "name": "As Mais Tocadas Danilo e Davi - 2026 (Ao Vivo)",
+            "releaseDate": "2025-09-23"
           },
           "durationMs": 178882,
           "explicit": false,
@@ -7798,7 +7798,7 @@
             "confidence": 100,
             "artistBrowseId": "UCffWjqUO0JDOvH_F05qF4JA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020d5f00c853be5debb5eba851"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ee575d99f001805ca93ac8da"
         },
         {
           "position": 26,
@@ -7909,7 +7909,7 @@
           ],
           "album": {
             "name": "MOLHO (Ao Vivo)",
-            "releaseDate": "2025-10-16"
+            "releaseDate": "2026-04-16"
           },
           "durationMs": 192367,
           "explicit": false,
@@ -7919,7 +7919,7 @@
             "confidence": 100,
             "artistBrowseId": "UChn53L2iJ2EY1CGZcO4aV6A"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c89ff3434d85f33354c929b8"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f04abb4f70f72b26963eab5"
         },
         {
           "position": 31,
@@ -8211,7 +8211,7 @@
         },
         {
           "position": 43,
-          "id": "levyra-9f7f7ed97ef04e3a1b78",
+          "id": "levyra-b13bf7899897168372d0",
           "title": "Foi por Conveniência",
           "artists": [
             {
@@ -8219,8 +8219,8 @@
             }
           ],
           "album": {
-            "name": "Foi por Conveniência",
-            "releaseDate": "2021-01-15"
+            "name": "Manuscritos, Capítulo I",
+            "releaseDate": "2026-04-22"
           },
           "durationMs": 205586,
           "explicit": false,
@@ -8230,7 +8230,7 @@
             "confidence": 100,
             "artistBrowseId": "UCj14PDgkcQQMz6v-g2eruBA"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbdde8a138debae4178aaaa4"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029cea79f4d67ac59fc57191bc"
         },
         {
           "position": 44,
@@ -10633,11 +10633,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 49,
@@ -15075,7 +15075,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -15083,8 +15083,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15094,7 +15094,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 34,
@@ -15370,7 +15370,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-e09beec9b76bb06bdf72",
+          "id": "levyra-8e00e58819f76bb1bccd",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15378,12 +15378,12 @@
             }
           ],
           "album": {
-            "name": "Nyårsfest",
-            "releaseDate": "2020-12-18"
+            "name": "Det kommer aldrig va över för mig",
+            "releaseDate": "2013-04-17"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
         },
         {
           "position": 47,
@@ -19775,6 +19775,12 @@
           },
           "durationMs": 81290,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "ho7xMWPh2Zw",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCFXVUQU-Q3qX6AToPFhBmCw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02719f202314ef636d44191b65"
         },
         {
@@ -23941,7 +23947,7 @@
         },
         {
           "position": 40,
-          "id": "levyra-5f65a3c1e0b0b9b8dfd2",
+          "id": "levyra-5e22b138c80d124b2eda",
           "title": "Teri Deewani",
           "artists": [
             {
@@ -23955,12 +23961,12 @@
             }
           ],
           "album": {
-            "name": "Teri Deewani",
-            "releaseDate": "2007-03-05"
+            "name": "Kailasa",
+            "releaseDate": "2006-02-24"
           },
           "durationMs": 323520,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a2513aea484890d615756459"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a853b902decce7830d171841"
         },
         {
           "position": 41,
@@ -28124,7 +28130,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
         },
         {
           "position": 22,
