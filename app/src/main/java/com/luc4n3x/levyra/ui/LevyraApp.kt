@@ -407,6 +407,7 @@ private val HomeHorizontalShelfEndPadding = 30.dp
 private const val HOME_ARTIST_SHELF_SIZE = 13
 private const val HOME_DEFERRED_SECTION_REVEAL_MS = 180L
 private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"
+private const val HOME_SECTION_HEADER_CONTENT_TYPE = "home-section-header"
 /** Tab row height, without the navigation bar spacer that `BottomTabs` adds under it. */
 private val LevyraTabBarHeight = 76.dp
 /** Mini player height: content row, progress line and its trailing spacer. */
@@ -5411,7 +5412,7 @@ private fun HomeScreen(
                 showDeferredHomeSections && state.interfaceSettings.showNewReleases &&
                 newReleases != null && newReleases.tracks.isNotEmpty()
             ) {
-                item(key = "sec-new-releases-header", contentType = "home-section-header") {
+                item(key = "sec-new-releases-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionInset {
                         SectionHeaderAction(
                             strings.newReleases,
@@ -5433,7 +5434,7 @@ private fun HomeScreen(
                 showDeferredHomeSections && state.interfaceSettings.showAlbumsForYou &&
                 (homeAlbums.isNotEmpty() || showHomeAlbumShimmer)
             ) {
-                item(key = "sec-home-albums-header", contentType = "home-section-header") {
+                item(key = "sec-home-albums-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionInset {
                         SectionHeaderAction(
                             strings.albumsForYou,
@@ -5515,7 +5516,7 @@ private fun HomeScreen(
                 showDeferredHomeSections && state.interfaceSettings.showNewReleases &&
                 state.releaseRadar.isNotEmpty()
             ) {
-                item(key = "sec-release-radar-header", contentType = "home-section-header") {
+                item(key = "sec-release-radar-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionInset { HomeSectionHeader(strings.releaseRadar) }
                 }
                 item(key = "sec-release-radar-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -5531,7 +5532,7 @@ private fun HomeScreen(
                 showDeferredHomeSections && state.interfaceSettings.showTrendingArtists &&
                 state.similarArtists.isNotEmpty()
             ) {
-                item(key = "sec-similar-artists-header", contentType = "home-section-header") {
+                item(key = "sec-similar-artists-header", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                     HomeSectionInset { HomeSectionHeader(strings.similarToFollowed) }
                 }
                 item(key = "sec-similar-artists-row", contentType = HOME_HORIZONTAL_ROW_CONTENT_TYPE) {
@@ -5556,7 +5557,7 @@ private fun HomeScreen(
                         )
                         item(
                             key = "sec-other-$sectionKey-header",
-                            contentType = "home-section-header"
+                            contentType = HOME_SECTION_HEADER_CONTENT_TYPE
                         ) {
                             HomeSectionInset {
                                 SectionHeaderAction(
@@ -5582,7 +5583,7 @@ private fun HomeScreen(
 
             if (showDeferredHomeSections && state.interfaceSettings.showCharts) {
                 if (state.charts.isNotEmpty()) {
-                    item(key = "home-chart-title", contentType = "home-section-header") {
+                    item(key = "home-chart-title", contentType = HOME_SECTION_HEADER_CONTENT_TYPE) {
                         val region = state.chartRegions.firstOrNull { it.id == state.selectedChartId }
                         HomeSectionInset {
                             SectionHeaderAction(
