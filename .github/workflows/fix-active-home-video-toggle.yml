@@ -1,9 +1,9 @@
 name: Fix active Home video toggle
 
 on:
-  push:
+  pull_request:
     branches:
-      - refactor/home-experience
+      - main
     paths:
       - .github/workflows/fix-active-home-video-toggle.yml
 
@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   fix:
+    if: github.event.pull_request.head.ref == 'refactor/home-experience'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -31,32 +32,39 @@ jobs:
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text(encoding='utf-8')
 
-          old_call = '''                        isResolving = state.isResolving,
+          replacements = (
+              (
+                  'video shelf call',
+                  '''                        isResolving = state.isResolving,
                         onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) }
-'''
-          new_call = '''                        isResolving = state.isResolving,
+''',
+                  '''                        isResolving = state.isResolving,
                         onPlay = { track -> viewModel.playFrom(homeVideoTracks, track) },
                         onToggleCurrent = viewModel::togglePlay
 '''
-
-          old_signature = '''    isPlaying: Boolean,
+              ),
+              (
+                  'video shelf signature',
+                  '''    isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: (Track) -> Unit
 ) {
-'''
-          new_signature = '''    isPlaying: Boolean,
+''',
+                  '''    isPlaying: Boolean,
     isResolving: Boolean,
     onPlay: (Track) -> Unit,
     onToggleCurrent: () -> Unit
 ) {
 '''
-
-          old_click = '''                Column(
+              ),
+              (
+                  'video card click',
+                  '''                Column(
                     modifier = Modifier.width(236.dp).pressable(onClick = { onPlay(track) }),
                     verticalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
-'''
-          new_click = '''                Column(
+''',
+                  '''                Column(
                     modifier = Modifier
                         .width(236.dp)
                         .pressable(
@@ -67,12 +75,10 @@ jobs:
                     verticalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
 '''
+              ),
+          )
 
-          for label, old, new in (
-              ('video shelf call', old_call, new_call),
-              ('video shelf signature', old_signature, new_signature),
-              ('video card click', old_click, new_click),
-          ):
+          for label, old, new in replacements:
               count = text.count(old)
               if count != 1:
                   raise SystemExit(f'Expected one {label}, found {count}')
