@@ -3,6 +3,9 @@ package com.luc4n3x.levyra.desktop.app.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -325,7 +328,7 @@ private fun SearchLauncher(label: String, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(999.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 13.dp),
@@ -361,13 +364,12 @@ private fun FeaturedPanel(
         modifier = Modifier
             .fillMaxWidth()
             .height(220.dp)
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(
-                Brush.horizontalGradient(
+                Brush.verticalGradient(
                     listOf(
-                        accent.copy(alpha = 0.28f),
-                        LevyraBrand.violet.copy(alpha = 0.16f),
-                        MaterialTheme.colorScheme.surfaceContainer
+                        accent.copy(alpha = 0.15f),
+                        MaterialTheme.colorScheme.surfaceContainerHigh
                     )
                 )
             )
@@ -414,7 +416,7 @@ private fun FeaturedPanel(
 
         Surface(
             modifier = Modifier.size(172.dp),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shadowElevation = 18.dp
         ) {
@@ -422,7 +424,7 @@ private fun FeaturedPanel(
                 Artwork(
                     url = track.artworkUrl,
                     modifier = Modifier.size(172.dp),
-                    cornerRadius = 18.dp,
+                    cornerRadius = 12.dp,
                     iconSize = 38.dp
                 )
             } else {
@@ -453,24 +455,12 @@ private fun PersonalOrbitPanel(
     val columns = tracks.chunked(2)
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        color = Color.Transparent,
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.28f)),
-        shadowElevation = 12.dp
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 0.dp
     ) {
         Column(
-            modifier = Modifier
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            accent.copy(alpha = 0.17f),
-                            LevyraBrand.violet.copy(alpha = 0.1f),
-                            MaterialTheme.colorScheme.surfaceContainerHigh,
-                            MaterialTheme.colorScheme.surfaceContainer
-                        )
-                    )
-                )
-                .padding(22.dp),
+            modifier = Modifier.padding(22.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Row(
@@ -569,12 +559,8 @@ private fun OrbitTrackTile(
             .fillMaxWidth()
             .height(74.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = if (isCurrent) accent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.62f),
-        border = BorderStroke(
-            1.dp,
-            if (isCurrent) accent.copy(alpha = 0.68f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
-        )
+        shape = RoundedCornerShape(12.dp),
+        color = if (isCurrent) accent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceContainerHighest
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -632,20 +618,23 @@ private fun QuickAccessCard(
     modifier: Modifier = Modifier
 ) {
     val contentAlpha = if (enabled) 1f else 0.46f
+    val interactionSource = remember { MutableInteractionSource() }
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val bgAlpha = if (enabled) (if (hovered) 0.15f else 0.08f) else 0.04f
+
     Column(
         modifier = modifier
             .hoverScale()
             .height(118.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        tint.copy(alpha = if (enabled) 0.18f else 0.07f),
-                        MaterialTheme.colorScheme.surfaceContainer
-                    )
-                )
+            .clip(RoundedCornerShape(12.dp))
+            .background(tint.copy(alpha = bgAlpha))
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick
             )
-            .clickable(enabled = enabled, onClick = onClick)
             .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
@@ -788,9 +777,8 @@ private fun LibraryTools(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(
             modifier = Modifier.padding(20.dp),

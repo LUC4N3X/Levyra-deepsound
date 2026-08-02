@@ -222,15 +222,7 @@ fun LevyraRoot(model: LevyraAppModel) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        accent.copy(alpha = 0.045f),
-                                        MaterialTheme.colorScheme.background,
-                                        MaterialTheme.colorScheme.background
-                                    )
-                                )
-                            )
+                            .background(MaterialTheme.colorScheme.background)
                     ) {
                         Column(
                             modifier = Modifier
@@ -252,9 +244,8 @@ fun LevyraRoot(model: LevyraAppModel) {
                                     modifier = Modifier
                                         .weight(1f)
                                         .fillMaxHeight(),
-                                    shape = RoundedCornerShape(18.dp),
-                                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surface
                                 ) {
                                     Box(
                                         modifier = Modifier
@@ -612,9 +603,7 @@ private fun NavigationSidebar(
         modifier = Modifier
             .width(214.dp)
             .fillMaxHeight(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        color = Color.Transparent
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 15.dp)
@@ -720,7 +709,7 @@ private fun SidebarItem(
     val hovered by interactionSource.collectIsHoveredAsState()
     val targetBackground = when {
         selected -> accent.copy(alpha = LevyraMotion.SELECTED_ALPHA)
-        hovered -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
+        hovered -> Color.White.copy(alpha = LevyraMotion.HOVER_ALPHA)
         else -> Color.Transparent
     }
     val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)

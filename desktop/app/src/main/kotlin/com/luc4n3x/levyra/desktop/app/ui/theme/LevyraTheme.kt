@@ -22,30 +22,30 @@ private val LevyraDeepBlue = Color(0xFF0A1830)
 
 private val DarkColors = darkColorScheme(
     primary = LevyraCyan,
-    onPrimary = Color(0xFF001A20),
+    onPrimary = Color(0xFF000000),
     primaryContainer = Color(0xFF12343E),
     onPrimaryContainer = Color(0xFFD4F8FF),
     secondary = LevyraViolet,
-    onSecondary = Color(0xFF1B103B),
+    onSecondary = Color(0xFF000000),
     secondaryContainer = Color(0xFF30275A),
     onSecondaryContainer = Color(0xFFECE6FF),
     tertiary = Color(0xFF5EE0B6),
-    onTertiary = Color(0xFF00271D),
-    background = Color(0xFF060708),
-    onBackground = Color(0xFFF5F7FA),
-    surface = Color(0xFF0A0C0F),
-    onSurface = Color(0xFFF5F7FA),
-    surfaceVariant = Color(0xFF171B22),
-    onSurfaceVariant = Color(0xFFAAB2BE),
-    surfaceContainerLowest = Color(0xFF060708),
-    surfaceContainerLow = Color(0xFF0A0C0F),
-    surfaceContainer = Color(0xFF101318),
-    surfaceContainerHigh = Color(0xFF171B22),
-    surfaceContainerHighest = Color(0xFF202631),
-    outline = Color(0xFF35404F),
-    outlineVariant = Color(0xFF252C36),
-    error = Color(0xFFFF7585),
-    onError = Color(0xFF3B000B),
+    onTertiary = Color(0xFF000000),
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFFFFFFF),
+    surface = Color(0xFF121212),
+    onSurface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFF1A1A1A),
+    onSurfaceVariant = Color(0xFFB3B3B3),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF121212),
+    surfaceContainer = Color(0xFF1A1A1A),
+    surfaceContainerHigh = Color(0xFF282828),
+    surfaceContainerHighest = Color(0xFF3E3E3E),
+    outline = Color(0xFF404040),
+    outlineVariant = Color(0xFF282828),
+    error = Color(0xFFFF453A),
+    onError = Color(0xFF000000),
     errorContainer = Color(0xFF4A1620),
     onErrorContainer = Color(0xFFFFD9DE)
 )
@@ -82,30 +82,31 @@ private val LevyraTypography = Typography(
     displaySmall = TextStyle(
         fontSize = 32.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.7).sp,
+        letterSpacing = (-1.0).sp,
         lineHeight = 38.sp
     ),
     headlineMedium = TextStyle(
         fontSize = 26.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.45).sp,
+        letterSpacing = (-0.6).sp,
         lineHeight = 32.sp
     ),
     headlineSmall = TextStyle(
         fontSize = 21.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.25).sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.4).sp,
         lineHeight = 27.sp
     ),
     titleLarge = TextStyle(
         fontSize = 19.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.15).sp,
+        letterSpacing = (-0.3).sp,
         lineHeight = 25.sp
     ),
     titleMedium = TextStyle(
         fontSize = 15.sp,
         fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.2).sp,
         lineHeight = 21.sp
     ),
     titleSmall = TextStyle(
@@ -146,11 +147,11 @@ private val LevyraTypography = Typography(
 )
 
 private val LevyraShapes = Shapes(
-    extraSmall = RoundedCornerShape(6.dp),
-    small = RoundedCornerShape(9.dp),
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
     medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(17.dp),
-    extraLarge = RoundedCornerShape(22.dp)
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(24.dp)
 )
 
 object LevyraBrand {
@@ -160,8 +161,8 @@ object LevyraBrand {
 }
 
 object LevyraMotion {
-    const val HOVER_ALPHA = 0.78f
-    const val SELECTED_ALPHA = 0.18f
+    const val HOVER_ALPHA = 0.08f
+    const val SELECTED_ALPHA = 0.12f
 }
 
 val LocalAccentColor = compositionLocalOf { LevyraCyan }

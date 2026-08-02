@@ -39,11 +39,11 @@ fun CollectionCard(
     val circular = ref.kind == CollectionKind.ARTIST
     val accent = LocalAccentColor.current
     val (interactionSource, hovered) = rememberHoverState(ref.id)
-    val shape = RoundedCornerShape(13.dp)
+    val shape = RoundedCornerShape(12.dp)
     val targetBackground = if (hovered) {
-        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
+        MaterialTheme.colorScheme.surfaceContainerHigh
     } else {
-        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f)
+        MaterialTheme.colorScheme.surfaceContainer
     }
     val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
 

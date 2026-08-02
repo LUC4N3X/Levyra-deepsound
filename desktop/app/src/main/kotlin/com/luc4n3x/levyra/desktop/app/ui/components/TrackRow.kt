@@ -68,7 +68,7 @@ fun TrackRow(
 
     val targetBackground = when {
         isCurrent -> accent.copy(alpha = LevyraMotion.SELECTED_ALPHA)
-        hovered -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
+        hovered -> MaterialTheme.colorScheme.surfaceContainerHigh
         else -> Color.Transparent
     }
     val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
