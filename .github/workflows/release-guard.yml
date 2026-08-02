@@ -9,7 +9,7 @@ on:
       - gradle.properties
       - app/build.gradle.kts
       - README.md
-      - RELEASE_NOTES.md
+      - docs/RELEASE_NOTES.md
       - .github/workflows/apk-artifact-check.yml
       - .github/workflows/release-apk.yml
       - .github/workflows/release-guard.yml
@@ -88,7 +88,7 @@ jobs:
           grep -F "levyraVersionName=${VERSION}" README.md >/dev/null
           grep -F "levyraVersionCode=${VERSION_CODE}" README.md >/dev/null
 
-          NOTES_FILE="RELEASE_NOTES.md"
+          NOTES_FILE="docs/RELEASE_NOTES.md"
           test -f "${NOTES_FILE}"
           test "$(sed -n '/./{p;q;}' "${NOTES_FILE}")" = "# Levyra ${VERSION}"
           grep -Fx -- "- Version name: \`${VERSION}\`" "${NOTES_FILE}" >/dev/null
@@ -103,7 +103,7 @@ jobs:
           RELEASE_WORKFLOW=".github/workflows/release-apk.yml"
           test -f "${RELEASE_WORKFLOW}"
           grep -F "gradle.properties" "${RELEASE_WORKFLOW}" >/dev/null
-          grep -F "RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F "docs/RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F ":app:lintRelease" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F ":app:assembleRelease" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F "LEVYRA_KEYSTORE_BASE64" "${RELEASE_WORKFLOW}" >/dev/null
@@ -114,7 +114,7 @@ jobs:
           grep -F "LEVYRA_SIGNING_CERT_SHA256" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F "FDROID_TAG" "${RELEASE_WORKFLOW}" >/dev/null
           grep -F "FDROID_APK_NAME" "${RELEASE_WORKFLOW}" >/dev/null
-          grep -F -- "--notes-file RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
+          grep -F -- "--notes-file docs/RELEASE_NOTES.md" "${RELEASE_WORKFLOW}" >/dev/null
 
           if grep -Eq 'actions/artifacts|Wait for Matching APK Artifact|Download and Verify APK Artifact' "${RELEASE_WORKFLOW}"; then
             echo "release-apk.yml must build the signed APK directly and must not consume workflow artifacts" >&2
@@ -122,7 +122,7 @@ jobs:
           fi
 
           if grep -Eq 'generate[_-]release[_-]notes|generate-notes' "${RELEASE_WORKFLOW}"; then
-            echo "release-apk.yml must use the curated RELEASE_NOTES.md body" >&2
+            echo "release-apk.yml must use the curated docs/RELEASE_NOTES.md body" >&2
             exit 1
           fi
 
