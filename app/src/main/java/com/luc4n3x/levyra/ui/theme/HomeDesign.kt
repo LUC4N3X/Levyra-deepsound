@@ -6,31 +6,34 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Visual scale for the discovery surface.
+ * Shared visual scale for Levyra's discovery surface.
  *
- * Home stays quieter than the player: artwork supplies the colour, while the header and chrome
- * use a compact, predictable surface and radius family.
+ * Home deliberately uses one radius family, generous spacing and restrained chrome. Artwork is the
+ * source of colour; controls and shelves stay neutral so the page reads like one music product.
  */
 object LevyraHomeDesign {
-    val CanvasDark: Color = Color(0xFF08090D)
-    val CanvasMid: Color = Color(0xFF0C0D12)
+    val CanvasDark: Color = Color(0xFF050609)
+    val CanvasMid: Color = Color(0xFF0A0C12)
 
-    val HeaderSurfaceDark: Color = Color(0xD914151D)
-    val HeaderSurfaceLight: Color = Color.White.copy(alpha = 0.88f)
-    val HeaderBorderDark: Color = Color.White.copy(alpha = 0.085f)
-    val HeaderBorderLight: Color = Color(0x1A11131F)
+    val HeaderSurfaceDark: Color = Color(0xCC12141A)
+    val HeaderSurfaceLight: Color = Color.White.copy(alpha = 0.90f)
+    val HeaderBorderDark: Color = Color.White.copy(alpha = 0.08f)
+    val HeaderBorderLight: Color = Color(0x1811131F)
 
     val HorizontalInset: Dp = 18.dp
-    val SectionGap: Dp = 22.dp
-    val SectionGapCompact: Dp = 12.dp
-    val HeaderCorner: Dp = 26.dp
-    val HeaderPadding: Dp = 16.dp
+    val SectionGap: Dp = 28.dp
+    val SectionGapCompact: Dp = 18.dp
+    val HeaderCorner: Dp = 20.dp
+    val HeaderPadding: Dp = 14.dp
     val SettingsControlHeight: Dp = 48.dp
-    val HeroCorner: Dp = 22.dp
-    val HeroHeight: Dp = 216.dp
-    val AtmosphereHeight: Dp = 470.dp
+    val MoodChipHeight: Dp = 38.dp
+    val HeroCorner: Dp = 28.dp
+    val HeroHeight: Dp = 252.dp
+    val ShelfCorner: Dp = 18.dp
+    val AtmosphereHeight: Dp = 780.dp
 
     val HeaderShape = RoundedCornerShape(HeaderCorner)
-    val SettingsShape = RoundedCornerShape(17.dp)
+    val SettingsShape = RoundedCornerShape(16.dp)
     val HeroShape = RoundedCornerShape(HeroCorner)
+    val ShelfShape = RoundedCornerShape(ShelfCorner)
 }
