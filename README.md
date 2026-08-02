@@ -152,7 +152,7 @@ Levyra ships two native clients from one repository. Android uses strict unidire
 ```text
 📦 Android Application Specifications
 ├── Package Name      com.luc4n3x.levyra
-├── Target SDK        35 (Android 15)
+├── Target SDK        37
 ├── Min SDK           26 (Android 8.0)
 ├── Primary Language  100% Kotlin
 ├── UI Framework      Jetpack Compose + Material 3 (M3)
@@ -217,7 +217,7 @@ Levyra is built natively for Android and Windows, with platform-specific playbac
 
 ```yaml
 system:
-  language: "Kotlin 2.4.0"
+  language: "Kotlin 2.4.10"
   interface: "Jetpack Compose (Material 3)"
   state: "Mobius MVI"
 audio:
@@ -239,7 +239,7 @@ desktop:
 ```
 
 ### 📱 Core and UI
-* **Kotlin 2.4.0**: A 100% native codebase built with coroutines and flow APIs for asynchronous streaming.
+* **Kotlin 2.4.10**: A 100% native codebase built with coroutines and flow APIs for asynchronous streaming.
 * **Jetpack Compose** (via Compose BOM): Declarative layouts with Material 3 components and system-wide dynamic color adaptation.
 * **Mobius architecture**: A unidirectional data flow design (Model-Event-Effect-Update) for reliable player state transitions.
 * **Compose Multiplatform Desktop**: Native Windows layouts, lifecycle, onboarding, library and player surfaces.
@@ -266,9 +266,9 @@ desktop:
 ## ✦ Building from Source
 
 ### Android prerequisites
-* Android Studio Jellyfish (or newer)
+* Android Studio with Android Gradle Plugin 9.3.1 support
 * Java Development Kit (JDK) 17
-* Android SDK Platform 37 (`compileSdk = 37`, `targetSdk = 35`)
+* Android SDK Platform 37 (`compileSdk = 37`, `targetSdk = 37`)
 * Gradle 9.6.1 through the repository Gradle Wrapper
 
 ### Android build and install
@@ -316,7 +316,7 @@ compatibility with GitHub installations:
 ./gradlew --no-daemon -PlevyraFdroidBuild=true :app:assembleRelease
 ```
 
-Architecture and size-control notes live in `docs/APK_SIZE_RULER.md` and `docs/PLAYER_MOBIUS_SAMPLE_ARCHITECTURE.md`.
+Architecture and size-control details are summarized in the sections above and enforced by the Gradle and CI configuration.
 
 ### Versioning & CI
 
