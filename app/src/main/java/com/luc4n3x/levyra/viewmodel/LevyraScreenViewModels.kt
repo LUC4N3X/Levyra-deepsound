@@ -107,7 +107,13 @@ class HomeViewModel(root: LevyraViewModel) : LevyraScreenViewModel(root, ::homeP
     fun playAlbumRecommendations(albums: List<AlbumHit>) = root.playAlbumRecommendations(albums)
     fun refreshHomeArtists() = root.refreshHomeArtists()
     fun playAll(tracks: List<Track>) = root.playAll(tracks)
-    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) = root.playFrom(list, track, loopOnCompletion)
+    fun playFrom(list: List<Track>, track: Track, loopOnCompletion: Boolean = false) {
+        if (root.state.value.currentTrack?.id == track.id) {
+            root.togglePlay()
+        } else {
+            root.playFrom(list, track, loopOnCompletion)
+        }
+    }
     fun searchNow() = root.searchNow()
     fun searchNow(query: String) = root.searchNow(query)
     fun selectChart(regionId: String) = root.selectChart(regionId)
