@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: fix-sonar-home-section-header
+  cancel-in-progress: false
+
 jobs:
   fix:
     runs-on: ubuntu-latest
@@ -27,34 +31,40 @@ jobs:
           path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
           text = path.read_text(encoding='utf-8')
           literal = '"home-section-header"'
+          usage = 'contentType = "home-section-header"'
           constant = 'HOME_SECTION_HEADER_CONTENT_TYPE'
+          replacement = f'contentType = {constant}'
           anchor = 'private const val HOME_HORIZONTAL_ROW_CONTENT_TYPE = "home-horizontal-row"\n'
+          declaration = f'private const val {constant} = {literal}\n'
 
-          count = text.count(literal)
-          if count != 6:
-              raise SystemExit(f'Expected 6 duplicated literals, found {count}')
+          if text.count(usage) != 6:
+              raise SystemExit(f'Expected 6 duplicated contentType usages, found {text.count(usage)}')
           if constant in text:
               raise SystemExit('Constant already exists unexpectedly')
           if anchor not in text:
               raise SystemExit('Content-type constant anchor not found')
 
-          text = text.replace(
-              anchor,
-              anchor + f'private const val {constant} = {literal}\n',
-              1,
-          )
-          text = text.replace(literal, constant)
+          text = text.replace(usage, replacement)
+          text = text.replace(anchor, anchor + declaration, 1)
 
           if text.count(literal) != 1:
-              raise SystemExit('Expected only the constant declaration to retain the literal')
-          if text.count(constant) != 7:
-              raise SystemExit(f'Expected 7 constant references/declaration, found {text.count(constant)}')
+              raise SystemExit(f'Expected one literal in the declaration, found {text.count(literal)}')
+          if text.count(replacement) != 6:
+              raise SystemExit(f'Expected 6 constant usages, found {text.count(replacement)}')
+          if text.count(declaration) != 1:
+              raise SystemExit('Expected exactly one constant declaration')
 
           path.write_text(text, encoding='utf-8')
           PY
-          rm .github/workflows/fix-sonar-home-section-header.yml
+          rm -f \
+            .github/workflows/fix-sonar-home-section-header.yml \
+            .github/workflows/debug-home-validation.yml \
+            .github/workflows/inspect-home-validation-task.yml \
+            .github/workflows/export-pr-source-debug.yml \
+            .github/home-validation-report.txt \
+            .github/home-validation-inspection.txt
           git diff --check
-      - name: Commit fix
+      - name: Commit clean fix
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
