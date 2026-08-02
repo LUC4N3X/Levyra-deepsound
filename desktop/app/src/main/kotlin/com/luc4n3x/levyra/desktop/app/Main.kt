@@ -82,7 +82,7 @@ fun main(args: Array<String>) {
                         .maxSizeBytes(ARTWORK_CACHE_BYTES)
                         .build()
                 }
-                .crossfade(true)
+                .crossfade(false)
                 .build()
         }
 
@@ -320,7 +320,7 @@ private fun persistPlacement(
                 },
                 maximized = false
             )
-        )
+        }
     }
 }
 
