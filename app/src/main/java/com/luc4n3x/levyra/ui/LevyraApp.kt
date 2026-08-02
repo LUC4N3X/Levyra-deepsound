@@ -6191,6 +6191,17 @@ private fun HomeQuickSelectionCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val strings = LocalLevyraStrings.current
+val accessibilityDescription = if (isCurrent) {
+    val playbackState = when {
+        isResolving -> strings.searchingYouTubeMusic
+        isPlaying -> strings.currentlyPlaying
+        else -> strings.play
+    }
+    "${track.title}. $playbackState"
+} else {
+    track.title
+}
     val shape = RoundedCornerShape(14.dp)
     val cardBackground = if (LevyraIsLight) Color.White else Color(0xFF12141D)
     val borderColor = when {
@@ -6209,7 +6220,7 @@ private fun HomeQuickSelectionCard(
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 selected = isCurrent
-                contentDescription = track.title
+                contentDescription = accessibilityDescription
             }
             .pressable(onClick = onClick)
     ) {
