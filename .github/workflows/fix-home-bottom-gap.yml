@@ -1,0 +1,50 @@
+name: Fix Home bottom gap
+
+on:
+  push:
+    branches:
+      - refactor/home-experience
+    paths:
+      - .github/workflows/fix-home-bottom-gap.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-home-bottom-gap
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refactor/home-experience
+          fetch-depth: 0
+      - name: Reduce redundant Home bottom padding
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = path.read_text(encoding='utf-8')
+          old = 'contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset + 64.dp),'
+          new = 'contentPadding = PaddingValues(top = 8.dp, bottom = homeBottomInset + LevyraBottomContentGap),'
+
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one oversized Home bottom padding, found {text.count(old)}')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+          rm .github/workflows/fix-home-bottom-gap.yml
+          git diff --check
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(home): remove excessive bottom whitespace"
+          git push origin HEAD:refactor/home-experience
