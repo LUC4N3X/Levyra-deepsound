@@ -1,51 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="154" viewBox="0 0 760 154" role="img" aria-labelledby="title desc">
-  <title id="title">Download Levyra from GitHub Releases</title>
-  <desc id="desc">Official signed Levyra APK download button</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="160" viewBox="0 0 760 160" role="img" aria-labelledby="title desc">
+  <title id="title">Download Levyra for Android</title>
+  <desc id="desc">Official signed Levyra APK for Android 8.0 and newer</desc>
   <defs>
     <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#151b27"/>
-      <stop offset="55%" stop-color="#0d1117"/>
-      <stop offset="100%" stop-color="#090c12"/>
+      <stop offset="0" stop-color="#15182A"/>
+      <stop offset="0.48" stop-color="#0A0E19"/>
+      <stop offset="1" stop-color="#05070D"/>
     </linearGradient>
     <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#9b87ff"/>
-      <stop offset="52%" stop-color="#7c3aed"/>
-      <stop offset="100%" stop-color="#5b4cf0"/>
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="0.52" stop-color="#D946EF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
     </linearGradient>
     <linearGradient id="button" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#8b5cf6"/>
-      <stop offset="100%" stop-color="#6d3ee8"/>
+      <stop offset="0" stop-color="#9B5CF6"/>
+      <stop offset="0.55" stop-color="#D946EF"/>
+      <stop offset="1" stop-color="#4F8BFF"/>
     </linearGradient>
+    <radialGradient id="orb" cx="0.5" cy="0.5" r="0.65">
+      <stop offset="0" stop-color="#D946EF" stop-opacity="0.54"/>
+      <stop offset="0.48" stop-color="#8B5CF6" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
     <filter id="shadow" x="-20%" y="-35%" width="140%" height="190%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.34"/>
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.48"/>
     </filter>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#7c3aed" flood-opacity="0.35"/>
+    <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
+      <feGaussianBlur stdDeviation="10"/>
     </filter>
+    <clipPath id="clip"><rect x="5" y="5" width="750" height="150" rx="26"/></clipPath>
   </defs>
-
   <g filter="url(#shadow)">
-    <rect x="8" y="8" width="744" height="138" rx="24" fill="url(#panel)" stroke="#30394a" stroke-width="2"/>
-    <rect x="9" y="9" width="742" height="136" rx="23" fill="none" stroke="#ffffff" stroke-opacity="0.05"/>
+    <rect x="5" y="5" width="750" height="150" rx="26" fill="url(#panel)" stroke="#303A52" stroke-width="2"/>
   </g>
-
-  <rect x="31" y="31" width="92" height="92" rx="24" fill="url(#accent)" filter="url(#glow)"/>
-  <rect x="32" y="32" width="90" height="90" rx="23" fill="none" stroke="#ffffff" stroke-opacity="0.18"/>
-  <circle cx="77" cy="77" r="29" fill="#ffffff"/>
-  <g transform="translate(53 53) scale(2)">
-    <path fill="#6d3ee8" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.089-.745.084-.729.084-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.305-5.466-1.334-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.5 11.5 0 0 1 3-.405c1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+  <g clip-path="url(#clip)">
+    <circle cx="95" cy="78" r="104" fill="url(#orb)"/>
+    <circle cx="700" cy="15" r="150" fill="url(#orb)" opacity="0.48"/>
+    <path d="M0 140C54 107 92 152 144 118s90-17 139 5 93-12 139-4 76 32 123 2 91-9 125 8 55 10 80-3" fill="none" stroke="url(#accent)" stroke-width="2.2" stroke-opacity="0.32"/>
+    <path d="M0 148C52 122 91 161 143 131s91-11 139 9 94-7 140 1 76 24 122-2 91-7 126 7 56 9 80-1" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity="0.08"/>
+    <g opacity="0.09" fill="#FFFFFF">
+      <rect x="208" y="20" width="3" height="20" rx="1.5"/><rect x="215" y="14" width="3" height="32" rx="1.5"/>
+      <rect x="222" y="25" width="3" height="10" rx="1.5"/><rect x="229" y="18" width="3" height="24" rx="1.5"/>
+      <rect x="236" y="11" width="3" height="38" rx="1.5"/><rect x="243" y="21" width="3" height="18" rx="1.5"/>
+    </g>
   </g>
-
-  <text x="148" y="49" fill="#b9a8ff" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="1.8">OFFICIAL GITHUB RELEASE</text>
-  <text x="146" y="83" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="31" font-weight="800">Download Levyra</text>
-  <text x="148" y="109" fill="#9aa7bc" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="600">Signed APK · Android 8.0+ · No Play Store</text>
-
-  <g transform="translate(576 49)">
-    <rect width="146" height="56" rx="17" fill="url(#button)"/>
-    <rect x="0.75" y="0.75" width="144.5" height="54.5" rx="16.25" fill="none" stroke="#ffffff" stroke-opacity="0.20"/>
-    <text x="61" y="35" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="800">Get APK</text>
-    <path d="M106 20.5 114 28l-8 7.5M113 28H94" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="25" y="25" width="104" height="104" rx="28" fill="#101426" stroke="#FFFFFF" stroke-opacity="0.13"/>
+  <circle cx="77" cy="77" r="42" fill="url(#accent)" opacity="0.20" filter="url(#glow)"/>
+  <circle cx="77" cy="77" r="39" fill="#0B0E18" stroke="url(#accent)" stroke-width="2.5"/>
+  <path d="M55 66.3 51.5 60l2.8-1.6 3.7 6.1A23 23 0 0 1 77 59c6.7 0 13 2 18.4 5.5l3.7-6.1 2.8 1.6-3.5 6.3A22.3 22.3 0 0 1 106 82H48a22.3 22.3 0 0 1 7-15.7ZM62 74a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm30 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM48 86h58v8a8 8 0 0 1-8 8H56a8 8 0 0 1-8-8v-8Z" fill="url(#accent)"/>
+  <text x="154" y="40" fill="#C4B5FD" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="13" font-weight="800" letter-spacing="2.1">OFFICIAL LEVYRA RELEASE</text>
+  <text x="152" y="78" fill="#FFFFFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="31" font-weight="900">Music, without the limits.</text>
+  <text x="154" y="108" fill="#A7B1C5" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="16" font-weight="650">Signed APK  ·  Android 8.0+  ·  No account  ·  No ads</text>
+  <g transform="translate(574 50)">
+    <rect width="150" height="60" rx="19" fill="url(#button)"/>
+    <rect x="0.75" y="0.75" width="148.5" height="58.5" rx="18.25" fill="none" stroke="#FFFFFF" stroke-opacity="0.28"/>
+    <text x="62" y="37" text-anchor="middle" fill="#FFFFFF" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="16" font-weight="900">GET APK</text>
+    <path d="M108 22 117 30l-9 8M116 30H96" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
-
-  <rect x="148" y="121" width="386" height="2" rx="1" fill="#7c3aed" fill-opacity="0.34"/>
+  <rect x="154" y="124" width="365" height="2" rx="1" fill="url(#accent)" opacity="0.48"/>
 </svg>

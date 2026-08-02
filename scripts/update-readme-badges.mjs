@@ -48,10 +48,10 @@ const escapeXml = value => String(value)
 const measure = value => {
   let width = 0
   for (const character of String(value)) {
-    if ('WM@%#'.includes(character)) width += 10
-    else if ('Il1|'.includes(character)) width += 4.2
-    else if (' .,:;'.includes(character)) width += 4
-    else width += 7.2
+    if ('WM@%#'.includes(character)) width += 8.7
+    else if ('Il1|'.includes(character)) width += 3.7
+    else if (' .,:;·'.includes(character)) width += 3.7
+    else width += 6.15
   }
   return width
 }
@@ -64,14 +64,53 @@ const icons = {
   stars: 'M8 .75a.75.75 0 0 1 .673.418L10.52 4.9l4.12.599a.75.75 0 0 1 .416 1.279l-2.98 2.905.704 4.103a.75.75 0 0 1-1.088.79L8 12.61l-3.694 1.943a.75.75 0 0 1-1.088-.79l.704-4.103-2.98-2.905a.75.75 0 0 1 .416-1.279l4.12-.599L7.327 1.168A.75.75 0 0 1 8 .75Z'
 }
 
-const makeBadge = ({ label, value, color, icon, valueTextColor = '#ffffff' }) => {
-  const labelWidth = Math.max(92, Math.ceil(measure(label) + 44))
-  const valueWidth = Math.max(52, Math.ceil(measure(value) + 28))
-  const totalWidth = labelWidth + valueWidth
-  const valueCenter = labelWidth + valueWidth / 2
+const makeBadge = ({ label, value, color, secondaryColor, icon }) => {
+  const labelWidth = Math.max(70, Math.ceil(measure(label) + 39))
+  const valueWidth = Math.max(36, Math.ceil(measure(value) + 18))
+  const totalWidth = labelWidth + valueWidth + 10
+  const pillX = totalWidth - valueWidth - 5
+  const barsX = pillX - 18
+  const valueCenter = pillX + valueWidth / 2
   const title = `${label}: ${value}`
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="36" role="img" aria-label="${escapeXml(title)}"><title>${escapeXml(title)}</title><rect x="0.75" y="0.75" width="${totalWidth - 1.5}" height="34.5" rx="8" fill="#0d1117" stroke="#303b4d"/><path d="M${labelWidth} 1h${valueWidth - 8}a8 8 0 0 1 8 8v18a8 8 0 0 1-8 8h-${valueWidth - 8}Z" fill="${color}"/><path d="M${labelWidth} 6v24" stroke="#ffffff" stroke-opacity=".16"/><svg x="12" y="10" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="#ffffff" d="${icon}"/></svg><text x="36" y="22.5" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="11.5" font-weight="700" letter-spacing=".15">${escapeXml(label)}</text><text x="${valueCenter}" y="22.5" fill="${valueTextColor}" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">${escapeXml(value)}</text></svg>\n`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="34" viewBox="0 0 ${totalWidth} 34" role="img" aria-label="${escapeXml(title)}">
+<title>${escapeXml(title)}</title>
+<defs>
+  <linearGradient id="${id}-bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#111827"/>
+    <stop offset=".55" stop-color="#0B1020"/>
+    <stop offset="1" stop-color="#070A12"/>
+  </linearGradient>
+  <linearGradient id="${id}-accent" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="${color}"/>
+    <stop offset="1" stop-color="${secondaryColor}"/>
+  </linearGradient>
+  <filter id="${id}-glow" x="-70%" y="-70%" width="240%" height="240%">
+    <feGaussianBlur stdDeviation="3.2"/>
+  </filter>
+</defs>
+<rect x=".5" y=".5" width="${totalWidth - 1}" height="33" rx="10" fill="url(#${id}-bg)" stroke="#28344A"/>
+<path d="M1 10C32 1 63 5 92 1h${Math.max(1, totalWidth - 93)}v6C${Math.max(1, totalWidth - 34)} 4 ${Math.max(1, totalWidth - 18)} 8 ${totalWidth - 1} 2v8C${Math.max(1, totalWidth - 30)} 15 ${Math.max(1, totalWidth - 58)} 10 1 18Z" fill="#FFFFFF" opacity=".025"/>
+<rect x="1.5" y="8" width="3" height="18" rx="1.5" fill="url(#${id}-accent)"/>
+<circle cx="20" cy="17" r="11" fill="${color}" opacity=".12"/>
+<circle cx="20" cy="17" r="10.5" fill="none" stroke="${color}" stroke-opacity=".35"/>
+<circle cx="20" cy="17" r="7" fill="${color}" opacity=".12" filter="url(#${id}-glow)"/>
+<g transform="translate(12 9)" fill="url(#${id}-accent)">
+  <path d="${icon}"/>
+</g>
+<text x="37" y="20.5" fill="#F8FAFC" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="10.5" font-weight="800" letter-spacing=".12">${escapeXml(label)}</text>
+<g opacity=".18" fill="${secondaryColor}">
+  <rect x="${barsX}" y="13" width="1.7" height="8" rx=".85"/>
+  <rect x="${barsX + 4}" y="10" width="1.7" height="14" rx=".85"/>
+  <rect x="${barsX + 8}" y="12" width="1.7" height="10" rx=".85"/>
+  <rect x="${barsX + 12}" y="8" width="1.7" height="18" rx=".85"/>
+</g>
+<rect x="${pillX}" y="5" width="${valueWidth}" height="24" rx="8" fill="url(#${id}-accent)"/>
+<rect x="${pillX + 0.5}" y="5.5" width="${valueWidth - 1}" height="23" rx="7.5" fill="none" stroke="#FFFFFF" stroke-opacity=".20"/>
+<text x="${valueCenter}" y="20.5" fill="#07111F" text-anchor="middle" font-family="Segoe UI,Inter,Arial,sans-serif" font-size="10.4" font-weight="900">${escapeXml(value)}</text>
+</svg>
+`
 }
 
 const releaseTimestamp = release => new Date(release.published_at ?? release.created_at).getTime()
@@ -98,11 +137,11 @@ const starsValue = formatNumber(repositoryData.stargazers_count ?? 0)
 
 await mkdir('docs/assets', { recursive: true })
 await Promise.all([
-  writeFile('docs/assets/levyra-android-platform.svg', makeBadge({ label: 'Android', value: releaseValue, color: '#3DDC84', icon: icons.android, valueTextColor: '#07160d' }), 'utf8'),
-  writeFile('docs/assets/levyra-release.svg', makeBadge({ label: 'Release', value: releaseValue, color: '#7C3AED', icon: icons.release }), 'utf8'),
-  writeFile('docs/assets/levyra-downloads.svg', makeBadge({ label: 'Downloads', value: downloadsValue, color: '#1689E8', icon: icons.downloads }), 'utf8'),
-  writeFile('docs/assets/levyra-license.svg', makeBadge({ label: 'License', value: 'GPL-3.0', color: '#22C776', icon: icons.license }), 'utf8'),
-  writeFile('docs/assets/levyra-stars.svg', makeBadge({ label: 'Stars', value: starsValue, color: '#F2A900', icon: icons.stars }), 'utf8')
+  writeFile('docs/assets/levyra-android-platform.svg', makeBadge({ label: 'Android', value: releaseValue, color: '#4ADE80', secondaryColor: '#22D3EE', icon: icons.android }), 'utf8'),
+  writeFile('docs/assets/levyra-release.svg', makeBadge({ label: 'Release', value: releaseValue, color: '#A78BFA', secondaryColor: '#7C3AED', icon: icons.release }), 'utf8'),
+  writeFile('docs/assets/levyra-downloads.svg', makeBadge({ label: 'Downloads', value: downloadsValue, color: '#A78BFA', secondaryColor: '#60A5FA', icon: icons.downloads }), 'utf8'),
+  writeFile('docs/assets/levyra-license.svg', makeBadge({ label: 'License', value: 'GPL-3.0', color: '#2DD4BF', secondaryColor: '#34D399', icon: icons.license }), 'utf8'),
+  writeFile('docs/assets/levyra-stars.svg', makeBadge({ label: 'Stars', value: starsValue, color: '#FBBF24', secondaryColor: '#F472B6', icon: icons.stars }), 'utf8')
 ])
 
 const badgeBlock = `<a href="https://github.com/LUC4N3X/Levyra-deepsound/releases/latest"><img src="docs/assets/levyra-android-platform.svg" alt="Download Levyra for Android"></a>
