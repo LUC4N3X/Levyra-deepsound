@@ -5621,6 +5621,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 } else {
                     player.positionMs
                 }
+                val buffered = (player.bufferedPositionMs / 1_000L) * 1_000L
                 val active = lyricsEngine.currentLine(position, snapshot.lyrics)
                 val playbackStateChanged = snapshot.isPlaying != player.isPlaying
                 val shouldPublishUi = snapshot.selectedTab == LevyraTab.Player ||
@@ -5632,6 +5633,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                     _state.update {
                         it.copy(
                             positionMs = position,
+                            bufferedPositionMs = buffered.coerceAtLeast(position),
                             durationMs = duration,
                             isPlaying = player.isPlaying,
                             activeLyric = active
