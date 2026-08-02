@@ -78,6 +78,23 @@ class HomeQuickSelectionTest {
     }
 
     @Test
+    fun respectsRequestedLimitAcrossSources() {
+        val result = buildHomeQuickSelectionTracks(
+            personalTracks = listOf(track("p1", "P1"), track("p2", "P2")),
+            quickPickTracks = listOf(track("q1", "Q1"), track("q2", "Q2")),
+            favoriteTracks = listOf(track("f1", "F1"), track("f2", "F2")),
+            newReleaseTracks = listOf(track("n1", "N1")),
+            resonanceTracks = listOf(track("r1", "R1")),
+            showPersonalOrbit = true,
+            showNewReleases = true,
+            showResonance = true,
+            limit = 3
+        )
+
+        assertEquals(listOf("P1", "Q1", "F1"), result.map(Track::title))
+    }
+
+    @Test
     fun returnsEmptyListForNonPositiveLimit() {
         val result = buildHomeQuickSelectionTracks(
             personalTracks = listOf(track("p1", "P1")),
