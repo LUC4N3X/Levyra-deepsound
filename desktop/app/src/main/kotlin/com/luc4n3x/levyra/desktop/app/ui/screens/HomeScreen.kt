@@ -46,6 +46,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.Artwork
 import com.luc4n3x.levyra.desktop.app.ui.components.SectionHeader
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
+import com.luc4n3x.levyra.desktop.app.ui.components.hoverScale
 import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
@@ -564,6 +565,7 @@ private fun OrbitTrackTile(
 ) {
     Surface(
         modifier = Modifier
+            .hoverScale()
             .fillMaxWidth()
             .height(74.dp)
             .clickable(onClick = onClick),
@@ -632,6 +634,7 @@ private fun QuickAccessCard(
     val contentAlpha = if (enabled) 1f else 0.46f
     Column(
         modifier = modifier
+            .hoverScale()
             .height(118.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(
@@ -687,6 +690,7 @@ private fun MusicCard(
 ) {
     Column(
         modifier = Modifier
+            .hoverScale()
             .width(166.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
@@ -739,6 +743,7 @@ private fun PlaylistTile(playlist: LocalPlaylist, onClick: () -> Unit) {
     val strings = LocalStrings.current
     Column(
         modifier = Modifier
+            .hoverScale()
             .width(166.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)

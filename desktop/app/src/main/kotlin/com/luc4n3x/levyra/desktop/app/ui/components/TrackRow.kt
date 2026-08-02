@@ -66,11 +66,12 @@ fun TrackRow(
     val hovered by interactionSource.collectIsHoveredAsState()
     var menuExpanded by remember(track.id) { mutableStateOf(false) }
 
-    val background = when {
+    val targetBackground = when {
         isCurrent -> accent.copy(alpha = LevyraMotion.SELECTED_ALPHA)
         hovered -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
         else -> Color.Transparent
     }
+    val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
     val shape = RoundedCornerShape(9.dp)
 
     Row(

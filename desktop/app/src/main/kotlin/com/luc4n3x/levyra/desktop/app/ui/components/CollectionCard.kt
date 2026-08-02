@@ -39,14 +39,16 @@ fun CollectionCard(
     val accent = LocalAccentColor.current
     val (interactionSource, hovered) = rememberHoverState(ref.id)
     val shape = RoundedCornerShape(13.dp)
-    val background = if (hovered) {
+    val targetBackground = if (hovered) {
         MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
     } else {
         MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.72f)
     }
+    val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
 
     Column(
         modifier = modifier
+            .hoverScale()
             .clip(shape)
             .background(background)
             .hoverable(interactionSource)

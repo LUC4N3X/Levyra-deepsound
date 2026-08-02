@@ -718,16 +718,18 @@ private fun SidebarItem(
     val accent = LocalAccentColor.current
     val interactionSource = remember(label) { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
-    val background = when {
+    val targetBackground = when {
         selected -> accent.copy(alpha = LevyraMotion.SELECTED_ALPHA)
         hovered -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
         else -> Color.Transparent
     }
-    val contentColor = when {
+    val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
+    val targetContentColor = when {
         selected -> accent
         hovered -> MaterialTheme.colorScheme.onSurface
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
+    val contentColor by androidx.compose.animation.animateColorAsState(targetValue = targetContentColor)
 
     Row(
         modifier = Modifier
