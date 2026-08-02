@@ -13997,28 +13997,21 @@ private fun GreetingBar(userName: String, isResolving: Boolean, onSettings: () -
                     .size(24.dp)
                     .pressable(onClick = onSearch)
             )
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF333333))
-                    .pressable(onClick = onSettings),
-                contentAlignment = Alignment.Center
-            ) {
-                if (isResolving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = LevyraCyan
-                    )
-                } else {
-                    Text(
-                        text = userName.take(1).uppercase(),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                }
+            if (isResolving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp).padding(4.dp),
+                    strokeWidth = 2.dp,
+                    color = LevyraCyan
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Settings,
+                    contentDescription = "Settings",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .pressable(onClick = onSettings)
+                )
             }
         }
     }
