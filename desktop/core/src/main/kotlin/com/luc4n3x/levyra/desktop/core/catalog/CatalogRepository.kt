@@ -1,6 +1,7 @@
 package com.luc4n3x.levyra.desktop.core.catalog
 
 import com.luc4n3x.levyra.desktop.core.charts.PlayableMatcher
+import com.luc4n3x.levyra.desktop.core.model.ArtistDetail
 import com.luc4n3x.levyra.desktop.core.model.CatalogPage
 import com.luc4n3x.levyra.desktop.core.model.CollectionDetail
 import com.luc4n3x.levyra.desktop.core.model.CollectionKind
@@ -8,12 +9,14 @@ import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.PageCursor
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
+import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.channel.ChannelInfo
+import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import org.schabi.newpipe.extractor.channel.ChannelTabInfo
 import org.schabi.newpipe.extractor.linkhandler.ChannelTabs
 import org.schabi.newpipe.extractor.linkhandler.ListLinkHandler
@@ -144,32 +147,197 @@ class CatalogRepository(
         )
     }
 
-    private fun artistDetail(ref: CollectionRef): CollectionDetail {
+    private suspend fun artistDetail(ref: CollectionRef): CollectionDetail {
         val info = ChannelInfo.getInfo(service, ref.url)
-        val tabs = info.tabs.orEmpty()
-        val merged = preferredTabs(tabs)
-            .mapNotNull { tab -> runCatching { ChannelTabInfo.getInfo(service, tab) }.getOrNull() }
-            .map { tab -> CatalogMapper.toPage(tab.relatedItems.orEmpty(), null, null) }
+        val resolvedName = chooseDesktopArtistName(ref.title, info.name.orEmpty())
+        val tabPages = info.tabs.orEmpty().mapNotNull { handler ->
+            val page = runCatching { ChannelTabInfo.getInfo(service, handler) }
+                .getOrNull()
+                ?.let { CatalogMapper.toPage(it.relatedItems.orEmpty(), null, null) }
+                ?: return@mapNotNull null
+            ArtistTabPage(desktopArtistTabKind(handler), page)
+        }
+        val merged = tabPages
+            .map(ArtistTabPage::page)
             .fold(CatalogPage()) { accumulator, page -> accumulator.mergedWith(page) }
+
+        val tracksFromTab = tabPages
+            .filter { it.kind == DesktopArtistTabKind.TRACKS }
+            .flatMap { it.page.tracks }
+            .distinctBy { it.id }
+        val topTracks = tracksFromTab
+            .ifEmpty { merged.tracks.filter { artistLabelMatches(it.artist, resolvedName) } }
+            .ifEmpty { fallbackArtistTracks(ref.title.ifBlank { resolvedName }) }
+            .distinctBy { it.id }
+            .take(MAX_ARTIST_TRACKS)
+
+        val videos = tabPages
+            .filter { it.kind == DesktopArtistTabKind.VIDEOS }
+            .flatMap { it.page.tracks }
+            .filterNot { video -> topTracks.any { it.id == video.id } }
+            .distinctBy { it.id }
+            .take(MAX_ARTIST_VIDEOS)
+
+        val albumsFromTab = tabPages
+            .filter { it.kind == DesktopArtistTabKind.ALBUMS }
+            .flatMap { it.page.collections }
+            .map { it.copy(kind = CollectionKind.ALBUM) }
+            .distinctBy { it.id }
+        val albums = albumsFromTab
+            .ifEmpty { fallbackArtistAlbums(ref.title.ifBlank { resolvedName }) }
+            .distinctBy { it.id }
+            .take(MAX_ARTIST_ALBUMS)
+
+        val playlists = tabPages
+            .filter { it.kind == DesktopArtistTabKind.PLAYLISTS }
+            .flatMap { it.page.collections }
+            .map { it.copy(kind = CollectionKind.PLAYLIST) }
+            .distinctBy { it.id }
+            .take(MAX_ARTIST_PLAYLISTS)
+
+        val relatedArtists = info.relatedItems
+            .orEmpty()
+            .filterIsInstance<ChannelInfoItem>()
+            .mapNotNull(CatalogMapper::toCollection)
+            .filterNot { artistLabelMatches(it.title, resolvedName) }
+            .distinctBy { it.id }
+            .take(MAX_RELATED_ARTISTS)
+
+        val portrait = desktopArtistArtworkUrl(
+            info.avatarUrl.orEmpty().ifBlank { ref.artworkUrl },
+            ARTIST_PORTRAIT_SIZE
+        )
+        val banner = info.bannerUrl.orEmpty().trim()
+        val biography = info.description.orEmpty()
+            .replace(Regex("\\s*\\n+\\s*"), "\n")
+            .replace(Regex("[ \\t]{2,}"), " ")
+            .trim()
+        val artist = ArtistDetail(
+            name = resolvedName,
+            biography = biography,
+            portraitUrl = portrait,
+            bannerUrl = banner,
+            subscriberCount = info.subscriberCount,
+            tracks = topTracks,
+            videos = videos,
+            albums = albums,
+            playlists = playlists,
+            relatedArtists = relatedArtists
+        )
         val page = CatalogPage(
-            tracks = merged.tracks.distinctBy { it.id },
-            collections = merged.collections.distinctBy { it.id },
+            tracks = (topTracks + videos).distinctBy { it.id },
+            collections = (albums + playlists + relatedArtists).distinctBy { it.id },
             cursor = null
         )
         return CollectionDetail(
             ref = ref.copy(
-                title = info.name.orEmpty().ifBlank { ref.title },
-                artworkUrl = ref.artworkUrl.ifBlank { info.avatarUrl.orEmpty() },
-                itemCount = page.tracks.size.toLong()
+                title = resolvedName,
+                artworkUrl = portrait,
+                itemCount = topTracks.size.toLong()
             ),
-            page = page
+            page = page,
+            artist = artist
         )
     }
 
-    private fun preferredTabs(tabs: List<ListLinkHandler>): List<ListLinkHandler> {
-        val order = listOf(ChannelTabs.TRACKS, ChannelTabs.VIDEOS, ChannelTabs.ALBUMS, ChannelTabs.PLAYLISTS)
-        return order.mapNotNull { name ->
-            tabs.firstOrNull { tab -> tab.contentFilters.orEmpty().any { it.name == name } }
-        }
+    private suspend fun fallbackArtistTracks(name: String): List<Track> {
+        val page = runCatching { search(name, SearchFilter.SONGS) }.getOrDefault(CatalogPage())
+        val matching = page.tracks.filter { artistLabelMatches(it.artist, name) }
+        return matching.ifEmpty { page.tracks }.take(MAX_ARTIST_TRACKS)
+    }
+
+    private suspend fun fallbackArtistAlbums(name: String): List<CollectionRef> {
+        val page = runCatching { search(name, SearchFilter.ALBUMS) }.getOrDefault(CatalogPage())
+        val matching = page.collections.filter { artistLabelMatches(it.subtitle, name) }
+        return matching.ifEmpty { page.collections }
+            .map { it.copy(kind = CollectionKind.ALBUM) }
+            .take(MAX_ARTIST_ALBUMS)
+    }
+
+    private data class ArtistTabPage(
+        val kind: DesktopArtistTabKind?,
+        val page: CatalogPage
+    )
+
+    private companion object {
+        const val MAX_ARTIST_TRACKS = 20
+        const val MAX_ARTIST_VIDEOS = 16
+        const val MAX_ARTIST_ALBUMS = 24
+        const val MAX_ARTIST_PLAYLISTS = 16
+        const val MAX_RELATED_ARTISTS = 16
+        const val ARTIST_PORTRAIT_SIZE = 720
     }
 }
+
+internal enum class DesktopArtistTabKind {
+    TRACKS,
+    VIDEOS,
+    ALBUMS,
+    PLAYLISTS
+}
+
+internal fun desktopArtistTabKind(handler: ListLinkHandler): DesktopArtistTabKind? {
+    val labels = handler.contentFilters.orEmpty().map { it.name }
+    return desktopArtistTabKind(labels)
+}
+
+internal fun desktopArtistTabKind(labels: List<String>): DesktopArtistTabKind? {
+    val tokens = labels.map { it.trim().lowercase(Locale.ROOT) }
+    fun matches(primary: String, aliases: List<String>): Boolean {
+        val expected = primary.lowercase(Locale.ROOT)
+        return tokens.any { token ->
+            token == expected || aliases.any { alias -> token.contains(alias) }
+        }
+    }
+    return when {
+        matches(ChannelTabs.TRACKS, listOf("track", "song", "brani", "canzoni")) -> DesktopArtistTabKind.TRACKS
+        matches(ChannelTabs.VIDEOS, listOf("video", "clip")) -> DesktopArtistTabKind.VIDEOS
+        matches(ChannelTabs.ALBUMS, listOf("album", "release", "discografia")) -> DesktopArtistTabKind.ALBUMS
+        matches(ChannelTabs.PLAYLISTS, listOf("playlist", "mix")) -> DesktopArtistTabKind.PLAYLISTS
+        else -> null
+    }
+}
+
+internal fun chooseDesktopArtistName(requestedName: String, resolvedName: String): String {
+    val requested = CatalogMapper.cleanArtist(requestedName).trim()
+    val resolved = CatalogMapper.cleanArtist(resolvedName).trim()
+    if (resolved.isBlank()) return requested
+    if (requested.isBlank()) return resolved
+    val requestedKey = desktopArtistIdentity(requested)
+    val resolvedKey = desktopArtistIdentity(resolved)
+    val looksLikeTrackTitle = !requested.contains(" - ") &&
+        resolved.startsWith("$requested - ", ignoreCase = true)
+    return when {
+        looksLikeTrackTitle -> requested
+        requestedKey == resolvedKey -> requested
+        resolvedKey.contains(requestedKey) && resolved.length > requested.length + 3 -> requested
+        else -> resolved
+    }
+}
+
+internal fun desktopArtistArtworkUrl(url: String, size: Int = 720): String {
+    val clean = url.trim()
+    if (clean.isBlank()) return ""
+    val youtubeImage = clean.contains("yt3.", ignoreCase = true) ||
+        clean.contains("googleusercontent.com", ignoreCase = true) ||
+        clean.contains("ggpht.com", ignoreCase = true)
+    if (!youtubeImage) return clean
+    val suffix = clean.substringAfterLast('=', "")
+    if (suffix.isBlank() || (!suffix.startsWith('s') && !suffix.startsWith('w'))) return clean
+    val base = clean.substringBeforeLast('=')
+    return "$base=s${size.coerceIn(256, 1280)}-c-k-c0x00ffffff-no-rj"
+}
+
+private fun artistLabelMatches(candidate: String, artistName: String): Boolean {
+    val candidateKey = desktopArtistIdentity(candidate)
+    val artistKey = desktopArtistIdentity(artistName)
+    if (candidateKey.isBlank() || artistKey.isBlank()) return false
+    return candidateKey == artistKey ||
+        candidateKey.contains(artistKey) ||
+        artistKey.contains(candidateKey)
+}
+
+private fun desktopArtistIdentity(value: String): String = CatalogMapper.cleanArtist(value)
+    .lowercase(Locale.ROOT)
+    .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+    .trim()
