@@ -26,14 +26,15 @@ object LevyraHomeDesign {
     val HeaderCorner: Dp = 20.dp
     val HeaderPadding: Dp = 14.dp
     val SettingsControlHeight: Dp = 48.dp
-    val MoodChipHeight: Dp = 38.dp
+    val MoodChipHeight: Dp = 48.dp
+    val MoodChipCorner: Dp = 14.dp
     val HeroCorner: Dp = 28.dp
     val HeroHeight: Dp = 252.dp
     val ShelfCorner: Dp = 18.dp
-    val AtmosphereHeight: Dp = 780.dp
 
     val HeaderShape = RoundedCornerShape(HeaderCorner)
     val SettingsShape = RoundedCornerShape(16.dp)
+    val MoodChipShape = RoundedCornerShape(MoodChipCorner)
     val HeroShape = RoundedCornerShape(HeroCorner)
     val ShelfShape = RoundedCornerShape(ShelfCorner)
 }
