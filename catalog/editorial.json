@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-02T09:24:54Z",
+  "generatedAt": "2026-08-02T10:50:41Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2072,7 +2072,7 @@
         },
         {
           "position": 38,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -2080,12 +2080,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 39,
@@ -3323,11 +3323,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 43,
@@ -12404,6 +12404,12 @@
           },
           "durationMs": 148453,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "yXbJrm-XzAo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm5s8ZhhrkBhOIikmS_QcRw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0294f8c9168a79ba591e7b0a3b"
         },
         {
@@ -15059,7 +15065,7 @@
         },
         {
           "position": 33,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -15067,8 +15073,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -15078,7 +15084,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 34,
@@ -18104,12 +18110,6 @@
           },
           "durationMs": 152184,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "fPYUIaI4lsg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC3b9OZ16ZaKEXbJ2xq7J4DQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a0cbc5f07d3a807b85fafe55"
         },
         {
@@ -24193,12 +24193,6 @@
           },
           "durationMs": 347040,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "XA_uBJjutgc",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCCTN01plFzn4npREHKT2_9Q"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028f2706d41aa1ec24c04135ba"
         }
       ]
@@ -27433,6 +27427,12 @@
           },
           "durationMs": 276315,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "pKZ1sraf-Eo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCTKJyum8atjrmRTi5OXxTyw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02ba88f47523d8dfe21480e45e"
         },
         {
@@ -28104,7 +28104,7 @@
           },
           "durationMs": 241373,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f33a9f529c12f79b116eb218"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02dde86e2f18dc87260491d0d1"
         },
         {
           "position": 22,
