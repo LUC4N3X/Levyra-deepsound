@@ -1,0 +1,98 @@
+name: Remove duplicate Home quick access
+
+on:
+  push:
+    branches:
+      - feature/refactor-home-screen-yt-music-style
+    paths:
+      - .github/workflows/remove-duplicate-home-quick-access.yml
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/refactor-home-screen-yt-music-style
+          fetch-depth: 0
+
+      - name: Remove obsolete top quick access
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt')
+          text = app_path.read_text()
+
+          for block in [
+          '''    val homeMixTracks = remember(quickPicks, visiblePersonalTracks, resonanceTracks) {
+              quickPicks?.tracks?.takeIf { it.isNotEmpty() }
+                  ?: visiblePersonalTracks.takeIf { it.isNotEmpty() }
+                  ?: resonanceTracks
+          }
+          ''',
+          '''    val homeReleaseTracks = remember(newReleases) { newReleases?.tracks.orEmpty() }
+          ''',
+          '''        item(key = "home-quick-access", contentType = "home-quick-access") {
+              HomeSectionInset {
+                  LevyraHomeQuickAccessGrid(
+                      state = LevyraHomeQuickAccessState(
+                          tracks = LevyraHomeQuickAccessTracks(
+                              current = state.currentTrack,
+                              mix = homeMixTracks.firstOrNull(),
+                              favorite = state.favorites.firstOrNull(),
+                              release = homeReleaseTracks.firstOrNull(),
+                              chart = state.charts.firstOrNull()
+                          ),
+                          availability = LevyraHomeQuickAccessAvailability(
+                              hasMix = homeMixTracks.isNotEmpty(),
+                              hasFavorites = state.favorites.isNotEmpty(),
+                              hasNewReleases = homeReleaseTracks.isNotEmpty(),
+                              hasCharts = state.charts.isNotEmpty()
+                          ),
+                          playback = LevyraHomeQuickAccessPlayback(
+                              isPlaying = state.isPlaying,
+                              isResolving = state.isResolving
+                          ),
+                          isLight = LevyraIsLight
+                      ),
+                      actions = LevyraHomeQuickAccessActions(
+                          onContinue = viewModel::togglePlay,
+                          onMix = { viewModel.playAll(homeMixTracks) },
+                          onFavorites = { viewModel.playAll(state.favorites) },
+                          onNewReleases = { viewModel.playAll(homeReleaseTracks) },
+                          onCharts = { viewModel.playAll(state.charts) },
+                          onSearch = { viewModel.searchNow() }
+                      )
+                  )
+              }
+          }
+          '''
+          ]:
+              if block not in text:
+                  raise SystemExit('Expected LevyraApp block not found')
+              text = text.replace(block, '', 1)
+
+          app_path.write_text(text)
+
+          experience_path = Path('app/src/main/java/com/luc4n3x/levyra/ui/HomeExperience.kt')
+          experience = experience_path.read_text()
+          start = experience.index('/**\n * Compatibility models kept only until the obsolete quick-access item is removed from LevyraApp.')
+          end = experience.index('/**\n * Artwork-led Home backdrop', start)
+          experience = experience[:start] + experience[end:]
+          experience = experience.replace('import com.luc4n3x.levyra.domain.Track\n', '')
+          experience_path.write_text(experience)
+          PY
+
+      - name: Commit cleanup
+        run: |
+          rm .github/workflows/remove-duplicate-home-quick-access.yml
+          git config user.name "LUC4N3X"
+          git config user.email "241364318+LUC4N3X@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt app/src/main/java/com/luc4n3x/levyra/ui/HomeExperience.kt .github/workflows/remove-duplicate-home-quick-access.yml
+          git diff --cached --check
+          git commit -m "fix(home): remove duplicate top quick access"
+          git push origin HEAD:feature/refactor-home-screen-yt-music-style
