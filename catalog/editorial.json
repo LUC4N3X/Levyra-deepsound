@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-03T17:25:01Z",
+  "generatedAt": "2026-08-03T17:31:24Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -3207,11 +3207,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 39,
@@ -10512,7 +10512,7 @@
         },
         {
           "position": 44,
-          "id": "levyra-62f091057573870630ff",
+          "id": "levyra-5d7a8244a6022b4ddba4",
           "title": "Dreams - 2004 Remaster",
           "artists": [
             {
@@ -10520,12 +10520,12 @@
             }
           ],
           "album": {
-            "name": "Rumours (Super Deluxe)",
+            "name": "Rumours",
             "releaseDate": "1977-02-04"
           },
           "durationMs": 257800,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e52a59a28efa4773dd2bfe1b"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0257df7ce0eac715cf70e519a7"
         },
         {
           "position": 45,
@@ -11727,6 +11727,12 @@
           },
           "durationMs": 132884,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "w-wZrcev0-o",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC2otvtrd4Va7EtBGFopWK-w"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02283f4a167412a32aedbee93b"
         },
         {
@@ -17007,7 +17013,7 @@
         },
         {
           "position": 24,
-          "id": "levyra-8c89ffdb1212622f2dcf",
+          "id": "levyra-a9b8576a2fa18a7f2377",
           "title": "Na ostří nože",
           "artists": [
             {
@@ -17015,12 +17021,12 @@
             }
           ],
           "album": {
-            "name": "Singles & Specials",
-            "releaseDate": "2020-12-04"
+            "name": "Best Of",
+            "releaseDate": "2016-11-18"
           },
-          "durationMs": 223000,
+          "durationMs": 223426,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e021760d72f6fb7ef19cb96bab0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02cbb0024450f19e6c8ef3daa4"
         },
         {
           "position": 25,
@@ -17304,20 +17310,20 @@
         },
         {
           "position": 37,
-          "id": "levyra-a5a017fba38add2b0e35",
-          "title": "Zakazane uvolneni",
+          "id": "levyra-9d3af210c1d9093eda1e",
+          "title": "Zakázané uvolnění",
           "artists": [
             {
               "name": "Michal Hruza"
             }
           ],
           "album": {
-            "name": "Den",
-            "releaseDate": "2014-05-12"
+            "name": "Hity & příběhy (Best Of 2001-2021)",
+            "releaseDate": "2021-11-26"
           },
-          "durationMs": 217426,
+          "durationMs": 217013,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9746344a77524a78facd986"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e023c36ad529e4fca655ee8bbee"
         },
         {
           "position": 38,
@@ -18919,14 +18925,6 @@
           },
           "durationMs": 180923,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "jwItOVMFP2s",
-            "audioConfidence": 100,
-            "videoId": "lDpXhLzJQsA",
-            "videoConfidence": 99,
-            "confidence": 100,
-            "artistBrowseId": "UCkQ6jNdLeiwqUdMIY7QiXUg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d55cc116abf2fe8ab2e0d227"
         },
         {
@@ -20206,12 +20204,6 @@
           },
           "durationMs": 301055,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "s-HPSmHiK2U",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCNrsYqYuF7LkqjoeN0JfDlg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b057b18fd01c8eee341bd127"
         },
         {
@@ -24097,7 +24089,7 @@
         },
         {
           "position": 50,
-          "id": "levyra-e58c98ea589fa449e1d7",
+          "id": "levyra-0212b4c8036ae7ca6989",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24114,12 +24106,12 @@
             }
           ],
           "album": {
-            "name": "Guru (Original Motion Picture Soundtrack)",
-            "releaseDate": "2006-09-11"
+            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
+            "releaseDate": "2009-02-19"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
         }
       ]
     },
@@ -27311,6 +27303,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
