@@ -1,0 +1,201 @@
+name: Apply player visual polish
+
+on:
+  push:
+    branches:
+      - design/player-colors-flat-controls
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: design/player-colors-flat-controls
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Flatten controls and mute artwork colors
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}")
+              p.write_text(text.replace(old, new))
+
+          controls = "app/src/main/java/com/luc4n3x/levyra/ui/components/PlayerControls.kt"
+          design = "app/src/main/java/com/luc4n3x/levyra/ui/theme/PlayerDesign.kt"
+          app = "app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt"
+
+          replace(
+              controls,
+              '''\): Modifier = this
+    .background(fill, shape)
+    .background(
+        Brush.verticalGradient(
+            listOf(
+                LevyraPlayerDesign.GlassSpecular,
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.06f)
+            )
+        ),
+        shape
+    )
+    .border(
+        BorderStroke(
+            LevyraPlayerDesign.Hairline,
+            Brush.verticalGradient(listOf(borderTop, borderBottom))
+        ),
+        shape
+    )'''.replace('\\)', ')'),
+              '''): Modifier = this
+    .background(fill, shape)
+    .border(
+        BorderStroke(
+            LevyraPlayerDesign.Hairline,
+            borderTop.playerMix(borderBottom, 0.5f)
+        ),
+        shape
+    )'''
+          )
+          replace(controls, 'pressedScale = 0.88f,', 'pressedScale = 0.94f,')
+          replace(controls, 'val fill = if (active) accent.copy(alpha = 0.30f) else Color.Transparent', 'val fill = if (active) accent.copy(alpha = 0.16f) else Color.Transparent')
+          replace(controls, 'listOf(accentTarget.copy(alpha = 0.30f).playerCompositeOver(PlayerDarkSurface))', 'listOf(accentTarget.copy(alpha = 0.16f).playerCompositeOver(PlayerDarkSurface))')
+          replace(controls, 'targetValue = if (active) size / 2f else size * 0.34f,', 'targetValue = size / 2f,')
+          replace(controls, 'targetValue = if (active) 0.55f else 0f,', 'targetValue = if (active) 0.24f else 0f,')
+
+          replace(
+              controls,
+              '''private fun Modifier.playerPrimarySurface(
+    shape: Shape,
+    start: Color,
+    end: Color
+): Modifier = this
+    .shadow(
+        elevation = 20.dp,
+        shape = shape,
+        clip = false,
+        ambientColor = start.copy(alpha = 0.50f),
+        spotColor = end.copy(alpha = 0.58f)
+    )
+    .background(Brush.linearGradient(listOf(start, end)), shape)
+    .background(
+        Brush.verticalGradient(
+            listOf(
+                Color.White.copy(alpha = 0.18f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.10f)
+            )
+        ),
+        shape
+    )
+    .border(
+        BorderStroke(
+            LevyraPlayerDesign.Hairline,
+            Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.34f),
+                    Color.White.copy(alpha = 0.08f)
+                )
+            )
+        ),
+        shape
+    )''',
+              '''private fun Modifier.playerPrimarySurface(
+    shape: Shape,
+    start: Color,
+    end: Color
+): Modifier = this
+    .shadow(
+        elevation = 6.dp,
+        shape = shape,
+        clip = false,
+        ambientColor = Color.Black.copy(alpha = 0.20f),
+        spotColor = Color.Black.copy(alpha = 0.24f)
+    )
+    .background(Brush.linearGradient(listOf(start, end)), shape)
+    .border(
+        BorderStroke(
+            LevyraPlayerDesign.Hairline,
+            Color.White.copy(alpha = 0.12f)
+        ),
+        shape
+    )'''
+          )
+
+          replace(
+              controls,
+              '''        playerContrastGradient(
+            start = accentTarget.playerMix(Color.White, 0.16f),
+            end = accentSecondaryTarget.playerMix(Color.White, 0.06f),
+            minimumContrast = PlayerMinimumContrast
+        )''',
+              '''        playerContrastGradient(
+            start = accentTarget.playerMix(PlayerDarkSurface, 0.52f),
+            end = accentSecondaryTarget.playerMix(PlayerDarkSurface, 0.58f),
+            minimumContrast = PlayerMinimumContrast
+        )'''
+          )
+
+          replace(design, 'val UtilityButton: Dp = 46.dp', 'val UtilityButton: Dp = 44.dp')
+          replace(design, 'val TransportButton: Dp = 54.dp', 'val TransportButton: Dp = 52.dp')
+          replace(design, 'val PrimaryWidth: Dp = 80.dp', 'val PrimaryWidth: Dp = 74.dp')
+          replace(design, 'val PrimaryWidthCompact: Dp = 74.dp', 'val PrimaryWidthCompact: Dp = 70.dp')
+          replace(design, 'val PrimaryHeight: Dp = 66.dp', 'val PrimaryHeight: Dp = 62.dp')
+          replace(design, 'val PrimaryHeightCompact: Dp = 62.dp', 'val PrimaryHeightCompact: Dp = 60.dp')
+          replace(design, 'val GlassFill: Color = Color.White.copy(alpha = 0.09f)', 'val GlassFill: Color = Color.White.copy(alpha = 0.065f)')
+          replace(design, 'val GlassFillStrong: Color = Color.White.copy(alpha = 0.14f)', 'val GlassFillStrong: Color = Color.White.copy(alpha = 0.10f)')
+          replace(design, 'val GlassBorderTop: Color = Color.White.copy(alpha = 0.24f)', 'val GlassBorderTop: Color = Color.White.copy(alpha = 0.14f)')
+          replace(design, 'val GlassBorderBottom: Color = Color.White.copy(alpha = 0.06f)', 'val GlassBorderBottom: Color = Color.White.copy(alpha = 0.08f)')
+          replace(design, 'val GlassSpecular: Color = Color.White.copy(alpha = 0.10f)', 'val GlassSpecular: Color = Color.White.copy(alpha = 0.03f)')
+
+          replace(
+              app,
+              '''                        primarySurface.playerMix(Color.Black, 0.18f),
+                        mixedSurface.playerMix(Color.Black, 0.32f),
+                        secondarySurface.playerMix(Color.Black, 0.46f),
+                        Color(0xFF050508),
+                        Color.Black''',
+              '''                        primarySurface.playerMix(Color.Black, 0.46f),
+                        mixedSurface.playerMix(Color.Black, 0.60f),
+                        secondarySurface.playerMix(Color.Black, 0.72f),
+                        Color(0xFF07070A),
+                        Color.Black'''
+          )
+          replace(
+              app,
+              '''                            primary.playerMix(Color.White, 0.10f).copy(alpha = 0.34f),
+                            secondary.copy(alpha = 0.18f),
+                            primary.playerMix(Color.Black, 0.68f).copy(alpha = 0.08f),''',
+              '''                            primary.playerMix(Color.White, 0.04f).copy(alpha = 0.16f),
+                            secondary.copy(alpha = 0.08f),
+                            primary.playerMix(Color.Black, 0.68f).copy(alpha = 0.04f),'''
+          )
+          replace(app, 'targetValue = if (selected) activeColor.copy(alpha = 0.42f) else Color.Transparent,', 'targetValue = if (selected) activeColor.copy(alpha = 0.18f) else Color.Transparent,')
+          PY
+
+      - name: Compile Android app
+        run: ./gradlew :app:compileDebugKotlin --no-daemon
+
+      - name: Commit visual polish
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+                  app/src/main/java/com/luc4n3x/levyra/ui/components/PlayerControls.kt \
+                  app/src/main/java/com/luc4n3x/levyra/ui/theme/PlayerDesign.kt
+          git commit -m "style: simplify player colors and controls"
+          git push origin HEAD:design/player-colors-flat-controls
