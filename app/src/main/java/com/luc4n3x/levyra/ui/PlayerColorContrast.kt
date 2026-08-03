@@ -7,6 +7,8 @@ internal val PlayerDarkSurface = Color(0xFF0B0B10)
 internal const val PlayerMinimumContrast = 4.5f
 internal const val PlayerStrongContrast = 7f
 
+private const val PlayerStrongSurfaceDarkening = 0.42f
+
 internal data class PlayerContrastAdjustment(
     val color: Color,
     val amount: Float,
@@ -97,7 +99,11 @@ internal fun Color.playerAdjustBackgroundFor(
     content: Color,
     minimumContrast: Float
 ): PlayerContrastAdjustment {
-    val source = copy(alpha = 1f)
+    val source = if (minimumContrast >= PlayerStrongContrast) {
+        playerMix(PlayerDarkSurface, PlayerStrongSurfaceDarkening).copy(alpha = 1f)
+    } else {
+        copy(alpha = 1f)
+    }
     if (playerContrastRatio(content, source) >= minimumContrast) {
         return PlayerContrastAdjustment(source, 0f, true)
     }
