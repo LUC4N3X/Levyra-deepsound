@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-03T19:39:46Z",
+  "generatedAt": "2026-08-03T20:01:13Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -1549,7 +1549,7 @@
         },
         {
           "position": 15,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -1557,8 +1557,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -1568,7 +1568,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 16,
@@ -2005,7 +2005,7 @@
         },
         {
           "position": 35,
-          "id": "levyra-9824cf7c6204b58ac7c7",
+          "id": "levyra-eade1c4be5015d681297",
           "title": "Iris",
           "artists": [
             {
@@ -2013,12 +2013,12 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
+            "name": "Stay with You",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
         },
         {
           "position": 36,
@@ -2959,6 +2959,12 @@
           },
           "durationMs": 178016,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "qz6hApXSHAM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCf5GUgSQC4CU8idz_OH8jqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0231990a335ce5d02dc159e5c4"
         },
         {
@@ -3207,11 +3213,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 39,
@@ -5346,12 +5352,6 @@
           },
           "durationMs": 183307,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "Zm9RJff5fjw",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCanUjmTDohFr8OMpfk5xWBQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e028ce0ef2ca4bcf46eba239a62"
         },
         {
@@ -10297,12 +10297,6 @@
           },
           "durationMs": 177205,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "sxY8NUE3aXg",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCecZSAxmncKitnOhYtRA0zg"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0200f9780e2e1d257e6a20282f"
         },
         {
@@ -10966,12 +10960,6 @@
           },
           "durationMs": 180266,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "tsJYtDPhXH4",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCj_sbfe6RTS1yk9P_GDeS7g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027791fc37c994011d4fae7fd6"
         },
         {
@@ -12420,6 +12408,12 @@
           },
           "durationMs": 148453,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "yXbJrm-XzAo",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCm5s8ZhhrkBhOIikmS_QcRw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0294f8c9168a79ba591e7b0a3b"
         },
         {
@@ -17300,12 +17294,6 @@
           },
           "durationMs": 136017,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "2VB5AujQ948",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCPJsD4DCbkE262qvWpaLSoA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d229cdcf59b456639c6c0eeb"
         },
         {
@@ -24091,7 +24079,7 @@
         },
         {
           "position": 50,
-          "id": "levyra-0212b4c8036ae7ca6989",
+          "id": "levyra-e58c98ea589fa449e1d7",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24108,12 +24096,12 @@
             }
           ],
           "album": {
-            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
-            "releaseDate": "2009-02-19"
+            "name": "Guru (Original Motion Picture Soundtrack)",
+            "releaseDate": "2006-09-11"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
         }
       ]
     },
@@ -27548,6 +27536,12 @@
           },
           "durationMs": 276000,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "FpJxPzveHzA",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCVZoM1H-jFwni_C4nogarjw"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0201cb2e736602194466522135"
         },
         {
