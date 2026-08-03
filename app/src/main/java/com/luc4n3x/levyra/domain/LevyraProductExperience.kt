@@ -20,18 +20,19 @@ internal fun Track.isSearchVideo(): Boolean {
         source.contains("video", ignoreCase = true)
 }
 
+/**
+ * Returns only filters currently represented by the stable SearchFilter enum.
+ * Video and playlist classification stay available through the dedicated helpers until their
+ * enum values and UI destinations land together in one atomic change.
+ */
 internal fun searchFiltersFor(
     hasArtists: Boolean,
-    hasAlbums: Boolean,
-    hasVideos: Boolean,
-    hasPlaylists: Boolean
+    hasAlbums: Boolean
 ): List<SearchFilter> = buildList {
     add(SearchFilter.All)
     add(SearchFilter.Songs)
-    if (hasVideos) add(SearchFilter.Videos)
     if (hasArtists) add(SearchFilter.Artists)
     if (hasAlbums) add(SearchFilter.Albums)
-    if (hasPlaylists) add(SearchFilter.Playlists)
 }
 
 internal fun filterPlaylistsForSearch(
