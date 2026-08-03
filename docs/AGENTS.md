@@ -13,12 +13,22 @@ These instructions extend the root `AGENTS.md` for documentation under `docs/`.
 - Update architecture documentation when a change alters ownership, data flow, module boundaries, persistence, playback, networking, or release architecture.
 - Update credits and license documentation when external code, assets, models, libraries, or design references are added.
 
-## AI documentation
+## Documentation layout
+
+- `docs/README.md` is the canonical documentation index.
+- `docs/ARCHITECTURE.md` describes current implementation ownership and data flow.
+- `docs/project/` contains durable requirements, the engineering roadmap, and the active task phase.
+- `docs/ai/` contains ChatGPT, Codex, Claude Code, and OpenClaw collaboration guidance.
+- `docs/assets/` contains documentation media, README badges, and previews.
+- Keep this `docs/AGENTS.md` file at the documentation root so its scoped instructions apply to every documentation subdirectory.
+
+## Planning and AI documentation
 
 - Root and nested `AGENTS.md` files define repository-wide and path-specific operating contracts.
-- `SPEC.md` defines durable owner-approved requirements and non-goals.
-- `ROADMAP.md` defines ordered outcomes, risks, and phase exit criteria; it does not authorize implementation or release.
-- `TASKS.md` records one active reviewable phase and direct validation evidence.
+- `docs/project/SPEC.md` defines durable owner-approved requirements and non-goals.
+- `docs/project/ROADMAP.md` defines ordered outcomes, risks, and phase exit criteria; it does not authorize implementation or release.
+- `docs/project/TASKS.md` records one active reviewable phase and direct validation evidence.
+- `docs/project/README.md` explains how specification, roadmap, and active tasks work together.
 - `.agents/skills/` contains native OpenAI/Codex/OpenClaw-compatible task skills.
 - `.claude/` contains Claude Code configuration and shared Levyra engineering playbooks.
 - `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` is the source text for the Levyra ChatGPT Project; repository files cannot apply those Project instructions automatically.
@@ -31,7 +41,7 @@ Keep these documents synchronized with current repository behavior, but do not d
 
 For documentation-only changes, verify referenced paths and commands, inspect Markdown headings and code fences, check links where possible, and inspect the final diff for accidental code, workflow, version, binary, or secret changes.
 
-After changing AI planning files, agent instructions, native skills, AI documentation, or their validation, run:
+After changing project planning files, agent instructions, native skills, AI documentation, or their validation, run:
 
 ```bash
 python3 scripts/validate_agent_config.py

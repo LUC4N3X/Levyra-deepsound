@@ -48,9 +48,9 @@ The agent workspace should contain:
 
 ```text
 AGENTS.md
-SPEC.md
-ROADMAP.md
-TASKS.md
+docs/project/SPEC.md
+docs/project/ROADMAP.md
+docs/project/TASKS.md
 .agents/skills/
 app/
 desktop/
@@ -66,11 +66,12 @@ implicit agent selection.
 Example intent:
 
 ```text
-Use the levyra agent in the Levyra repository. Read AGENTS.md, SPEC.md,
-ROADMAP.md, TASKS.md, and the matching native skills. Inspect the real code and
-tests. Implement only the approved phase, run focused checks, review the final
-diff, and return branch, commit, checks, blockers, and PR state. Do not merge,
-tag, publish, release, or change repository settings.
+Use the levyra agent in the Levyra repository. Read AGENTS.md,
+docs/project/SPEC.md, docs/project/ROADMAP.md, docs/project/TASKS.md, and the
+matching native skills. Inspect the real code and tests. Implement only the
+approved phase, run focused checks, review the final diff, and return branch,
+commit, checks, blockers, and PR state. Do not merge, tag, publish, release, or
+change repository settings.
 ```
 
 Configure the main agent with an explicit allowlist that includes `levyra`.
@@ -133,7 +134,7 @@ because they are available globally.
 
 1. `main` receives the owner's request.
 2. `main` delegates to `levyra` with the repository path and explicit outcome.
-3. `levyra` reads planning files and loads domain skills.
+3. `levyra` reads `docs/project/` planning files and loads domain skills.
 4. A coding runtime performs one focused implementation phase.
 5. Focused tests and applicable broader checks run.
 6. A fresh reviewer inspects the latest diff.
@@ -214,12 +215,14 @@ grant the minimum additional capability required.
 ## Verification checklist
 
 - `levyra` resolves to the intended repository workspace.
-- The root `AGENTS.md` and matching native skills are visible.
+- The root `AGENTS.md`, `docs/project/` planning files, and matching native skills
+  are visible.
 - `openclaw doctor` reports a valid configuration.
 - `agents_list` or equivalent discovery shows the intended target agents.
 - Delegated tasks use explicit `agentId`.
 - The coding runtime executes in the repository checkout.
 - Unrelated personal and administrative tools are absent.
 - Branch and PR actions require explicit owner authorization.
-- Merge, tag, release, and settings changes remain blocked.
+- Merge, tag, release, and settings changes remain blocked unless explicitly
+  authorized for the exact action.
 - The agent returns exact checks, blockers, branch, commit, and PR state.

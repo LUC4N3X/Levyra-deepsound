@@ -1,6 +1,6 @@
 ---
 name: levyra-openclaw-orchestrator
-description: Coordinate Levyra work through OpenClaw using a dedicated repository workspace, explicit agent delegation, domain skills, coding runtimes, independent review, evidence collection, and owner-controlled publication.
+description: Coordinate Levyra work through OpenClaw using a dedicated repository workspace, explicit agent delegation, project planning under docs/project/, domain skills, coding runtimes, independent review, evidence collection, and owner-controlled publication.
 ---
 
 # Levyra OpenClaw orchestration workflow
@@ -16,7 +16,8 @@ Delegate with an explicit target agent and repository working directory.
 ## Before delegation
 
 1. Read root and applicable nested `AGENTS.md`.
-2. Read `SPEC.md`, `ROADMAP.md`, and `TASKS.md`.
+2. Read `docs/project/SPEC.md`, `docs/project/ROADMAP.md`, and
+   `docs/project/TASKS.md`.
 3. Load `levyra-project-manager` and every matching domain skill.
 4. Inspect current branch, worktree, open pull request, review state, and
    validation evidence.

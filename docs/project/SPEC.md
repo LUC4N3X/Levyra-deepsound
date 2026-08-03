@@ -3,8 +3,8 @@
 ## Purpose
 
 This document defines Levyra's durable product behavior, engineering boundaries,
-and acceptance criteria. It complements `docs/ARCHITECTURE.md`: the
-specification states what must remain true, while the architecture document
+and acceptance criteria. It complements [`../ARCHITECTURE.md`](../ARCHITECTURE.md):
+the specification states what must remain true, while the architecture document
 describes how the current repository implements it.
 
 Current implementation, tests, build files, workflows, and the nearest
@@ -155,7 +155,8 @@ A change is ready for review only when:
 6. the complete diff contains no unrelated edits, generated artifacts, secrets,
    conflict markers, or accidental version changes;
 7. manual checks are listed and left unverified until actually performed;
-8. `SPEC.md`, `ROADMAP.md`, `TASKS.md`, architecture, and user documentation are
+8. `docs/project/SPEC.md`, `docs/project/ROADMAP.md`,
+   `docs/project/TASKS.md`, architecture, and user documentation are
    synchronized when the change affects them;
 9. review findings are fixed or explicitly explained against the latest commit;
 10. merge and release remain separate owner-controlled actions.
