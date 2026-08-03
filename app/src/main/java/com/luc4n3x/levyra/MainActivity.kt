@@ -38,6 +38,7 @@ import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.LevyraProductShell
+import com.luc4n3x.levyra.ui.productHomeTopPadding
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
@@ -79,6 +80,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: LevyraViewModel = viewModel()
             val uiState by viewModel.state.collectAsStateWithLifecycle()
+            val hasProductBlockingOverlay = uiState.showOnboarding || uiState.showSettings || uiState.showAlbum ||
+                uiState.showArtist || uiState.showQueue || uiState.showLyrics || uiState.showAudioQualityPanel ||
+                uiState.showUpdatePrompt || uiState.sharedMediaPreview != null || uiState.openPlaylist != null
+            val productHomeTopPadding = productHomeTopPadding(
+                isInPictureInPicture = pipMode.value,
+                selectedTab = uiState.selectedTab,
+                hasBlockingOverlay = hasProductBlockingOverlay
+            )
 
             LevyraTheme(fontPreset = uiState.interfaceSettings.fontPreset) {
                 var listenedPlaybackMs by rememberSaveable { mutableLongStateOf(0L) }
@@ -96,10 +105,16 @@ class MainActivity : ComponentActivity() {
 
                 Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.weight(1f)) {
-                        LevyraApp(
-                            viewModel = viewModel,
-                            isInPictureInPicture = pipMode.value
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = productHomeTopPadding.dp)
+                        ) {
+                            LevyraApp(
+                                viewModel = viewModel,
+                                isInPictureInPicture = pipMode.value
+                            )
+                        }
                         LevyraProductShell(
                             viewModel = viewModel,
                             isInPictureInPicture = pipMode.value
