@@ -1,58 +1,92 @@
 # AI Assistant Setup for Levyra
 
-This guide explains how to use Levyra with ChatGPT, Codex, and Claude Code without creating conflicting instruction trees.
+This guide explains how Levyra uses ChatGPT, Codex and Claude Code without conflicting instruction trees.
 
-## Repository contract
+## Architecture at a glance
 
-`AGENTS.md` is the shared repository-level engineering contract. It defines product invariants, architecture rules, validation expectations, repository safety, release boundaries, and delivery requirements.
+```text
+AGENTS.md                         shared repository contract
+app/AGENTS.md                     Android rules
+desktop/AGENTS.md                 Windows Desktop rules
+.github/AGENTS.md                 CI/workflow rules
+docs/AGENTS.md                    documentation rules
+.agents/skills/*/SKILL.md         native Codex/OpenAI skills
+docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md
+                                  ChatGPT Project instructions source
+.claude/                          Claude Code configuration and detailed playbooks
+```
 
-Specialized Levyra rules and procedures remain under `.claude/rules/` and `.claude/skills/`. They are written as repository documentation and may be read by any assistant. Claude-specific execution settings, permissions, hooks, plugins, and subagents remain isolated under `.claude/`.
+`AGENTS.md` belongs in the Git root because Codex discovers project instructions from the project root toward the current working directory. Files under `.agents/skills/` are task skills, not replacements for root project guidance.
 
 ## Codex setup
 
 1. Open or clone the repository.
-2. Start Codex from the repository root.
-3. Confirm that the root `AGENTS.md` is in scope.
-4. Use the repository skill at `.agents/skills/levyra-engineering/SKILL.md` for Levyra implementation, debugging, review, and release-preparation tasks.
-5. Let the skill route the task to the relevant procedure under `.claude/skills/`.
+2. Start Codex from the repository root or a directory inside it.
+3. Codex loads root `AGENTS.md` and any nearer path-specific `AGENTS.md`.
+4. Use the most specific native skill or skills for the task.
+5. Inspect current code, tests and detailed playbooks before editing.
+6. Make the smallest coherent change and report validation truthfully.
 
-Recommended first prompt:
+Native skills:
+
+- `levyra-player`
+- `levyra-extractor`
+- `levyra-database`
+- `levyra-compose`
+- `levyra-motion-artwork`
+- `levyra-desktop`
+- `levyra-security-review`
+- `levyra-ci-workflows`
+- `levyra-pr-review`
+- `levyra-release-check`
+- `levyra-engineering` for genuine cross-domain coordination
+
+Recommended orientation prompt:
 
 ```text
-Read AGENTS.md and use the levyra-engineering skill. Inspect the current repository before making assumptions. Do not modify or publish anything until you have described the root cause, intended files, risks, and validation plan.
+Read the applicable AGENTS.md files and use the most specific Levyra native skills. Inspect current code and tests before making assumptions. Describe the verified behavior, likely root cause, intended files, risks and validation plan before editing.
 ```
 
 ## ChatGPT setup
 
-ChatGPT can use a connected GitHub repository to search and analyze current code and documentation. Repository files are not a replacement for ChatGPT Project instructions, so configure the Project explicitly.
+Repository files do not automatically become persistent ChatGPT Project instructions.
 
 1. Create a ChatGPT Project named `Levyra`.
-2. Connect or select the `LUC4N3X/Levyra-deepsound` repository through the GitHub app available in your ChatGPT experience.
+2. Connect or select `LUC4N3X/Levyra-deepsound` through the available GitHub integration.
 3. Copy the full contents of `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` into the Project instructions.
-4. Keep Levyra planning, architecture discussions, bug analysis, PR review, and release preparation inside that Project so the instructions remain active.
-5. Use Codex when the task requires editing, testing, committing, pushing, or opening a pull request.
+4. Keep Levyra planning, investigation, architecture, PR review and release preparation inside that Project.
+5. Use Codex for implementation, tests and repository publication when authorized.
 
-The standard ChatGPT GitHub connection is primarily for repository search and analysis. Access and write capabilities can vary by product experience, so never assume that a change was published unless the resulting branch, commit, or pull request was verified on GitHub.
+The Project instructions direct ChatGPT to read the root and path-specific `AGENTS.md` files, select native skills, inspect current code/tests and distinguish verified repository state from assumptions.
 
 ## Claude Code setup
 
-Claude Code continues to use `.claude/README.md` and the complete `.claude/` configuration.
+Claude Code continues to use `.claude/README.md` and the complete `.claude/` configuration:
 
-Start Claude Code from the repository root and follow the usage notes in `.claude/README.md`.
+- `.claude/CLAUDE.md`
+- `.claude/rules/`
+- `.claude/skills/`
+- `.claude/agents/`
+- `.claude/hooks/`
+- `.claude/settings.json`
+
+The OpenAI configuration references detailed Levyra playbooks under `.claude/` instead of duplicating them.
 
 ## Responsibility split
 
 | Assistant | Primary role | Main configuration |
 | --- | --- | --- |
-| ChatGPT Project | Product decisions, planning, architecture discussion, repository analysis, PR interpretation | Project instructions copied from `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` plus connected GitHub repository |
-| Codex | Implementation, tests, local validation, commits, branches, pull requests when authorized | `AGENTS.md` and `.agents/skills/levyra-engineering/SKILL.md` |
-| Claude Code | Implementation and review using Claude-specific hooks, agents, permissions, and skills | `.claude/` |
+| ChatGPT Project | Product decisions, investigation, architecture, planning, PR interpretation, Codex task preparation | Project instructions copied from `CHATGPT_PROJECT_INSTRUCTIONS.md` plus connected repository |
+| Codex | Implementation, tests, validation, commits, branches and pull requests when authorized | root/path `AGENTS.md` plus `.agents/skills/` |
+| Claude Code | Implementation and review using Claude-specific hooks, agents, permissions and plugins | `.claude/` |
 
 ## Keeping instructions consistent
 
-- Update `AGENTS.md` for shared repository-wide rules.
-- Update `docs/ARCHITECTURE.md` for architecture.
-- Update the narrowest matching file under `.claude/rules/` or `.claude/skills/` for domain-specific procedures.
+- Update root `AGENTS.md` for shared repository-wide invariants.
+- Update the nearest nested `AGENTS.md` for platform/path constraints.
+- Update one native skill for a repeatable task workflow.
+- Update `docs/ARCHITECTURE.md` for architecture or ownership changes.
+- Update the narrowest detailed `.claude/rules/` or `.claude/skills/` playbook for recurring domain-specific failures.
 - Update `CHATGPT_PROJECT_INSTRUCTIONS.md` only when ChatGPT collaboration behavior changes.
-- Do not copy an entire rule or skill into several assistant-specific directories.
-- Prefer links and routing over duplicated prose.
+- Prefer routing and references over duplicated prose.
+- Verify paths, commands, task names, version locations, workflow names and artifact paths after structural changes.
