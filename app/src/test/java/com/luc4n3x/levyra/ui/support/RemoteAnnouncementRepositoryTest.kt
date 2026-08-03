@@ -1,6 +1,8 @@
 package com.luc4n3x.levyra.ui.support
 
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
@@ -224,6 +226,48 @@ class RemoteAnnouncementRepositoryTest {
 
         assertNotNull(copy)
         assertEquals("Service notice", copy?.settingsTitle)
+    }
+
+    @Test
+    fun boundedPayloadReaderAcceptsContentWithinLimit() {
+        val raw = """{"schemaVersion":2,"announcements":[]}"""
+        val bytes = raw.toByteArray()
+
+        val decoded = readBoundedAnnouncementPayload(
+            input = ByteArrayInputStream(bytes),
+            declaredLength = bytes.size.toLong(),
+            maxBytes = bytes.size
+        )
+
+        assertEquals(raw, decoded)
+    }
+
+    @Test
+    fun boundedPayloadReaderRejectsOversizedDeclaredContentWithoutReading() {
+        val unreadable = object : InputStream() {
+            override fun read(): Int = error("Oversized payload must be rejected before reading")
+        }
+
+        assertNull(
+            readBoundedAnnouncementPayload(
+                input = unreadable,
+                declaredLength = 65L,
+                maxBytes = 64
+            )
+        )
+    }
+
+    @Test
+    fun boundedPayloadReaderRejectsOversizedContentWithUnknownLength() {
+        val bytes = ByteArray(65) { 'x'.code.toByte() }
+
+        assertNull(
+            readBoundedAnnouncementPayload(
+                input = ByteArrayInputStream(bytes),
+                declaredLength = -1L,
+                maxBytes = 64
+            )
+        )
     }
 
     @Test
