@@ -1083,13 +1083,14 @@ class LyricsRepository(context: Context? = null) {
     }
 
     private fun selectionKey(query: QuerySpec): String {
-        val stableVideoId = query.videoId.trim()
-        val seed = if (stableVideoId.isNotBlank()) {
-            "video:$stableVideoId"
-        } else {
-            "track:${LyricsMatcher.normalize(query.requestedArtist)}|${LyricsMatcher.normalize(query.requestedTitle)}|${query.durationSec.coerceAtLeast(0L) / 5L}"
-        }
-        return sha256(seed)
+        return lyricsSelectionKey(
+            title = query.requestedTitle,
+            artist = query.requestedArtist,
+            durationSec = query.durationSec,
+            videoId = query.videoId,
+            languageCode = query.languageCode,
+            translate = query.translate
+        )
     }
 
     private fun sha256(seed: String): String = MessageDigest.getInstance("SHA-256")
@@ -1192,4 +1193,24 @@ class LyricsRepository(context: Context? = null) {
         private const val MIN_WORD_DURATION_MS = 45L
         private const val WORD_GAP_MS = 12L
     }
+}
+
+internal fun lyricsSelectionKey(
+    title: String,
+    artist: String,
+    durationSec: Long,
+    videoId: String,
+    languageCode: String,
+    translate: Boolean
+): String {
+    val stableVideoId = videoId.trim()
+    val trackSeed = if (stableVideoId.isNotBlank()) {
+        "video:$stableVideoId"
+    } else {
+        "track:${LyricsMatcher.normalize(artist)}|${LyricsMatcher.normalize(title)}|${durationSec.coerceAtLeast(0L) / 5L}"
+    }
+    val variantSeed = "${languageCode.trim().lowercase(Locale.ROOT)}|$translate"
+    return MessageDigest.getInstance("SHA-256")
+        .digest("$trackSeed|$variantSeed".toByteArray(StandardCharsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
 }

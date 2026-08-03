@@ -17,6 +17,7 @@ class StereoSpatialAudioProcessor : AudioProcessor {
     private var isActive = false
     private var inputAudioFormat = AudioFormat.NOT_SET
     private var outputAudioFormat = AudioFormat.NOT_SET
+    private var buffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var inputEnded = false
 
@@ -74,17 +75,18 @@ class StereoSpatialAudioProcessor : AudioProcessor {
         isActive = false
         inputAudioFormat = AudioFormat.NOT_SET
         outputAudioFormat = AudioFormat.NOT_SET
+        buffer = AudioProcessor.EMPTY_BUFFER
     }
 
     private fun replaceOutputBuffer(size: Int): ByteBuffer {
-        outputBuffer = if (outputBuffer.capacity() < size) {
-            ByteBuffer.allocateDirect(size)
+        if (buffer.capacity() < size) {
+            buffer = ByteBuffer.allocateDirect(size)
         } else {
-            outputBuffer.clear()
-            outputBuffer
+            buffer.clear()
         }
-        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        return outputBuffer
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        outputBuffer = buffer
+        return buffer
     }
 
     private fun processStereo(input: ByteBuffer, output: ByteBuffer) {
@@ -93,13 +95,14 @@ class StereoSpatialAudioProcessor : AudioProcessor {
         val amount = strength / 100f
         val midGain = 1f - amount * 0.08f
         val sideGain = 1f + amount * 0.75f
+        val outputGain = 1f / sideGain
         while (input.remaining() >= 4) {
             val left = input.short.toInt()
             val right = input.short.toInt()
             val mid = (left + right) * 0.5f * midGain
             val side = (left - right) * 0.5f * sideGain
-            output.putShort(clampSample(mid + side))
-            output.putShort(clampSample(mid - side))
+            output.putShort(clampSample((mid + side) * outputGain))
+            output.putShort(clampSample((mid - side) * outputGain))
         }
         while (input.hasRemaining()) output.put(input.get())
     }
@@ -110,13 +113,14 @@ class StereoSpatialAudioProcessor : AudioProcessor {
         val amount = strength / 100f
         val midGain = 1f - amount * 0.08f
         val sideGain = 1f + amount * 0.75f
+        val outputGain = 1f / sideGain
         while (input.remaining() >= 8) {
             val left = input.float
             val right = input.float
             val mid = (left + right) * 0.5f * midGain
             val side = (left - right) * 0.5f * sideGain
-            output.putFloat(mid + side)
-            output.putFloat(mid - side)
+            output.putFloat((mid + side) * outputGain)
+            output.putFloat((mid - side) * outputGain)
         }
         while (input.hasRemaining()) output.put(input.get())
     }

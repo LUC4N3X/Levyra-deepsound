@@ -12,10 +12,10 @@ import kotlin.math.roundToInt
  * compatible. In particular, SilenceSkippingAudioProcessor only accepts 16-bit PCM.
  */
 class Pcm16OutputAudioProcessor : AudioProcessor {
-    private var inputFormat = AudioFormat.NOT_SET
+    private var outputFormat = AudioFormat.NOT_SET
+    private var buffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var inputEnded = false
-    private var configured = false
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
@@ -23,29 +23,21 @@ class Pcm16OutputAudioProcessor : AudioProcessor {
         ) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
-        inputFormat = inputAudioFormat
-        configured = true
-        return AudioFormat(
-            inputAudioFormat.sampleRate,
-            inputAudioFormat.channelCount,
-            C.ENCODING_PCM_16BIT
-        )
+        outputFormat = if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) {
+            AudioFormat(inputAudioFormat.sampleRate, inputAudioFormat.channelCount, C.ENCODING_PCM_16BIT)
+        } else {
+            AudioFormat.NOT_SET
+        }
+        return outputFormat
     }
 
-    override fun isActive(): Boolean = configured && inputFormat.encoding == C.ENCODING_PCM_FLOAT
+    override fun isActive(): Boolean = outputFormat != AudioFormat.NOT_SET
 
     override fun queueInput(inputBuffer: ByteBuffer) {
         val limit = inputBuffer.limit()
         val inputSize = limit - inputBuffer.position()
         if (inputSize <= 0) {
             outputBuffer = AudioProcessor.EMPTY_BUFFER
-            return
-        }
-
-        if (inputFormat.encoding == C.ENCODING_PCM_16BIT) {
-            val output = replaceOutputBuffer(inputSize)
-            output.put(inputBuffer)
-            output.flip()
             return
         }
 
@@ -81,8 +73,8 @@ class Pcm16OutputAudioProcessor : AudioProcessor {
 
     override fun reset() {
         clearState()
-        inputFormat = AudioFormat.NOT_SET
-        configured = false
+        outputFormat = AudioFormat.NOT_SET
+        buffer = AudioProcessor.EMPTY_BUFFER
     }
 
     private fun clearState() {
@@ -91,12 +83,13 @@ class Pcm16OutputAudioProcessor : AudioProcessor {
     }
 
     private fun replaceOutputBuffer(size: Int): ByteBuffer {
-        if (outputBuffer.capacity() < size) {
-            outputBuffer = ByteBuffer.allocateDirect(size)
+        if (buffer.capacity() < size) {
+            buffer = ByteBuffer.allocateDirect(size)
         } else {
-            outputBuffer.clear()
+            buffer.clear()
         }
-        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        return outputBuffer
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        outputBuffer = buffer
+        return buffer
     }
 }

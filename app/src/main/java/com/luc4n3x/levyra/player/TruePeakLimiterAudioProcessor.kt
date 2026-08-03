@@ -5,18 +5,23 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.AudioProcessor.AudioFormat
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 class TruePeakLimiterAudioProcessor : AudioProcessor {
     @Volatile var enabled: Boolean = true
-    @Volatile var gainReductionDb: Float = 0f
+
+    @Volatile var currentGain: Float = 1f
         private set
 
     private var format = AudioFormat.NOT_SET
     private var configured = false
+    private var buffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var inputEnded = false
     private var lookaheadFrames = 0
@@ -24,15 +29,18 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
     private var ringFrameCapacity = 0
     private var inputFrameIndex = 0L
     private var outputFrameIndex = 0L
-    private var previousInput = FloatArray(0)
-    private var currentGain = 1f
+    private var oversamplingHistory = FloatArray(0)
+    private var oversamplingWriteIndex = 0
     private var dequeIndices = LongArray(0)
     private var dequePeaks = FloatArray(0)
     private var dequeHead = 0L
     private var dequeTail = 0L
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
+        if ((inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
+                inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) ||
+            inputAudioFormat.channelCount <= 0
+        ) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         format = inputAudioFormat
@@ -40,9 +48,9 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
         lookaheadFrames = (inputAudioFormat.sampleRate * LOOKAHEAD_MS / 1_000).coerceAtLeast(1)
         ringFrameCapacity = lookaheadFrames + 2
         ring = FloatArray(ringFrameCapacity * inputAudioFormat.channelCount)
-        previousInput = FloatArray(inputAudioFormat.channelCount)
-        dequeIndices = LongArray(ringFrameCapacity + 2)
-        dequePeaks = FloatArray(ringFrameCapacity + 2)
+        oversamplingHistory = FloatArray(inputAudioFormat.channelCount * TRUE_PEAK_TAPS)
+        dequeIndices = LongArray(ringFrameCapacity + TRUE_PEAK_TAPS + 2)
+        dequePeaks = FloatArray(ringFrameCapacity + TRUE_PEAK_TAPS + 2)
         clearState()
         return inputAudioFormat
     }
@@ -50,9 +58,12 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
     override fun isActive(): Boolean = configured
 
     override fun queueInput(inputBuffer: ByteBuffer) {
+        val inputLimit = inputBuffer.limit()
+        inputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         val frameSize = bytesPerSample() * format.channelCount
         val frames = inputBuffer.remaining() / frameSize
         if (frames <= 0) {
+            inputBuffer.position(inputLimit)
             outputBuffer = AudioProcessor.EMPTY_BUFFER
             return
         }
@@ -60,27 +71,54 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
         val output = replaceOutputBuffer(outputFrames * frameSize)
         repeat(frames) {
             val peak = readFrame(inputBuffer, inputFrameIndex)
-            pushPeak(inputFrameIndex, peak)
+            pushPeak((inputFrameIndex - TRUE_PEAK_GROUP_DELAY).coerceAtLeast(0L), peak)
             inputFrameIndex++
             if (inputFrameIndex - outputFrameIndex > lookaheadFrames) writeNextFrame(output)
         }
+        inputBuffer.position(inputLimit)
         output.flip()
     }
 
     private fun readFrame(input: ByteBuffer, frameIndex: Long): Float {
         val ringOffset = (frameIndex % ringFrameCapacity).toInt() * format.channelCount
-        var framePeak = 0f
         repeat(format.channelCount) { channel ->
             val sample = if (format.encoding == C.ENCODING_PCM_FLOAT) input.float else input.short / 32768f
             ring[ringOffset + channel] = sample
-            val previous = previousInput[channel]
-            repeat(OVERSAMPLE_FACTOR) { step ->
-                val fraction = (step + 1f) / OVERSAMPLE_FACTOR
-                framePeak = max(framePeak, abs(previous + (sample - previous) * fraction))
-            }
-            previousInput[channel] = sample
+            oversamplingHistory[channel * TRUE_PEAK_TAPS + oversamplingWriteIndex] = sample
         }
+        val framePeak = oversampledFramePeak()
+        oversamplingWriteIndex = (oversamplingWriteIndex + 1) % TRUE_PEAK_TAPS
         return framePeak
+    }
+
+    private fun pushZeroOversamplingFrame(detectorFrameIndex: Long) {
+        repeat(format.channelCount) { channel ->
+            oversamplingHistory[channel * TRUE_PEAK_TAPS + oversamplingWriteIndex] = 0f
+        }
+        val peak = oversampledFramePeak()
+        oversamplingWriteIndex = (oversamplingWriteIndex + 1) % TRUE_PEAK_TAPS
+        val lastInputFrame = inputFrameIndex - 1L
+        if (lastInputFrame >= 0L) {
+            val peakIndex = (detectorFrameIndex - TRUE_PEAK_GROUP_DELAY).coerceIn(0L, lastInputFrame)
+            pushPeak(peakIndex, peak)
+        }
+    }
+
+    private fun oversampledFramePeak(): Float {
+        var peak = 0f
+        repeat(format.channelCount) { channel ->
+            val historyOffset = channel * TRUE_PEAK_TAPS
+            repeat(OVERSAMPLE_FACTOR) { phase ->
+                var reconstructed = 0f
+                repeat(TRUE_PEAK_TAPS) { tap ->
+                    val historyIndex = (oversamplingWriteIndex - tap + TRUE_PEAK_TAPS) % TRUE_PEAK_TAPS
+                    reconstructed += oversamplingHistory[historyOffset + historyIndex] *
+                        TRUE_PEAK_COEFFICIENTS[phase][tap]
+                }
+                peak = max(peak, abs(reconstructed))
+            }
+        }
+        return peak
     }
 
     private fun pushPeak(index: Long, peak: Float) {
@@ -93,10 +131,16 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
 
     private fun writeNextFrame(output: ByteBuffer) {
         while (dequeTail > dequeHead && dequeIndices[(dequeHead % dequeIndices.size).toInt()] < outputFrameIndex) dequeHead++
-        val peak = if (dequeTail > dequeHead) dequePeaks[(dequeHead % dequePeaks.size).toInt()] else 0f
+        val peakSlot = (dequeHead % dequePeaks.size).toInt()
+        val peak = if (dequeTail > dequeHead) dequePeaks[peakSlot] else 0f
         val targetGain = if (enabled && peak > CEILING_LINEAR) CEILING_LINEAR / peak else 1f
-        currentGain = if (targetGain < currentGain) targetGain else currentGain + (targetGain - currentGain) * RELEASE_COEFFICIENT
-        gainReductionDb = if (currentGain >= 0.99999f) 0f else (-20.0 * kotlin.math.log10(currentGain.toDouble())).toFloat()
+        currentGain = if (targetGain < currentGain) {
+            val peakIndex = dequeIndices[peakSlot]
+            val attackFrames = (peakIndex - outputFrameIndex).coerceAtLeast(1L).toFloat()
+            currentGain + (targetGain - currentGain) / attackFrames
+        } else {
+            currentGain + (targetGain - currentGain) * RELEASE_COEFFICIENT
+        }
         val ringOffset = (outputFrameIndex % ringFrameCapacity).toInt() * format.channelCount
         repeat(format.channelCount) { channel ->
             val sample = ring[ringOffset + channel] * currentGain
@@ -110,6 +154,9 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
     }
 
     override fun queueEndOfStream() {
+        repeat(TRUE_PEAK_GROUP_DELAY) { step ->
+            pushZeroOversamplingFrame(inputFrameIndex + step)
+        }
         val remaining = (inputFrameIndex - outputFrameIndex).coerceAtLeast(0L).toInt()
         val output = replaceOutputBuffer(remaining * format.channelCount * bytesPerSample())
         repeat(remaining) { writeNextFrame(output) }
@@ -132,9 +179,10 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
         configured = false
         format = AudioFormat.NOT_SET
         ring = FloatArray(0)
-        previousInput = FloatArray(0)
+        oversamplingHistory = FloatArray(0)
         dequeIndices = LongArray(0)
         dequePeaks = FloatArray(0)
+        buffer = AudioProcessor.EMPTY_BUFFER
     }
 
     private fun clearState() {
@@ -143,30 +191,49 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
         inputFrameIndex = 0L
         outputFrameIndex = 0L
         currentGain = 1f
-        gainReductionDb = 0f
+        oversamplingWriteIndex = 0
         dequeHead = 0L
         dequeTail = 0L
         ring.fill(0f)
-        previousInput.fill(0f)
+        oversamplingHistory.fill(0f)
     }
 
     private fun bytesPerSample(): Int = if (format.encoding == C.ENCODING_PCM_FLOAT) 4 else 2
 
     private fun replaceOutputBuffer(size: Int): ByteBuffer {
-        if (outputBuffer.capacity() < size) {
-            outputBuffer = ByteBuffer.allocateDirect(size)
+        if (buffer.capacity() < size) {
+            buffer = ByteBuffer.allocateDirect(size)
         } else {
-            outputBuffer.clear()
+            buffer.clear()
         }
-        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        return outputBuffer
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        outputBuffer = buffer
+        return buffer
     }
 
     companion object {
         private const val LOOKAHEAD_MS = 5
         private const val OVERSAMPLE_FACTOR = 4
+        private const val TRUE_PEAK_TAPS = 13
+        private const val TRUE_PEAK_GROUP_DELAY = TRUE_PEAK_TAPS / 2
         private const val CEILING_DB = -1f
         private val CEILING_LINEAR = 10.0.pow(CEILING_DB / 20.0).toFloat()
         private const val RELEASE_COEFFICIENT = 0.0015f
+        private val TRUE_PEAK_COEFFICIENTS = Array(OVERSAMPLE_FACTOR) { phase ->
+            val fraction = phase.toDouble() / OVERSAMPLE_FACTOR
+            FloatArray(TRUE_PEAK_TAPS) { tap ->
+                val x = tap - TRUE_PEAK_GROUP_DELAY + fraction
+                val sinc = if (abs(x) < 1e-12) 1.0 else sin(PI * x) / (PI * x)
+                val window = 0.42 -
+                    0.5 * cos(2.0 * PI * tap / (TRUE_PEAK_TAPS - 1)) +
+                    0.08 * cos(4.0 * PI * tap / (TRUE_PEAK_TAPS - 1))
+                (sinc * window).toFloat()
+            }.also { coefficients ->
+                val sum = coefficients.sum()
+                if (sum != 0f) {
+                    coefficients.indices.forEach { index -> coefficients[index] /= sum }
+                }
+            }
+        }
     }
 }

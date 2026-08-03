@@ -94,6 +94,12 @@ class PlaybackService : MediaLibraryService() {
     private var lastPlaybackExpected: Boolean? = null
     private var lastPlaybackHeartbeatAtMs = 0L
     private var appliedPlayerWakeMode = C.WAKE_MODE_NETWORK
+    private val platformMediaAudioAttributes by lazy {
+        android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+    }
     private val audioDeviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) = refreshAudioOutputProfile()
         override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = refreshAudioOutputProfile()
@@ -742,7 +748,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun refreshAudioOutputProfile() {
         val manager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
-        val types = manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.toSet()
+        val types = routedOutputTypes(manager)
         equalizerProcessor.outputProfile = when {
             types.any { it == AudioDeviceInfo.TYPE_USB_DEVICE || it == AudioDeviceInfo.TYPE_USB_HEADSET || it == AudioDeviceInfo.TYPE_USB_ACCESSORY } -> LevyraEqualizerAudioProcessor.OutputProfile.USB
             types.any { it == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it == AudioDeviceInfo.TYPE_WIRED_HEADSET || it == AudioDeviceInfo.TYPE_LINE_ANALOG } -> LevyraEqualizerAudioProcessor.OutputProfile.WIRED
@@ -753,8 +759,24 @@ class PlaybackService : MediaLibraryService() {
 
     private fun isBluetoothOutputType(type: Int): Boolean =
         type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+            type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             (type == AudioDeviceInfo.TYPE_BLE_HEADSET || type == AudioDeviceInfo.TYPE_BLE_SPEAKER)
+
+    @Suppress("DEPRECATION")
+    private fun routedOutputTypes(manager: AudioManager): Set<Int> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return runCatching {
+                manager.getAudioDevicesForAttributes(platformMediaAudioAttributes).map { it.type }.toSet()
+            }.getOrDefault(emptySet())
+        }
+        return when {
+            manager.isBluetoothA2dpOn -> setOf(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP)
+            manager.isBluetoothScoOn -> setOf(AudioDeviceInfo.TYPE_BLUETOOTH_SCO)
+            manager.isWiredHeadsetOn -> setOf(AudioDeviceInfo.TYPE_WIRED_HEADPHONES)
+            else -> emptySet()
+        }
+    }
 
     private fun updatePlaybackProtection(player: Player) {
         (player as? ExoPlayer)?.let { updatePlayerWakeMode(it, it.currentMediaItem) }
@@ -1069,6 +1091,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun inspectPlaybackWatchdog(player: ExoPlayer) {
         val now = SystemClock.elapsedRealtime()
+        refreshAudioOutputProfile()
         if (!shouldPreservePlaybackExpectation(player)) markPlaybackExpected(isPlaybackExpected(player))
         if (resetWatchdogForExhaustedRecovery(now)) return
         if (resetWatchdogForInactivePlayer(player, now)) return

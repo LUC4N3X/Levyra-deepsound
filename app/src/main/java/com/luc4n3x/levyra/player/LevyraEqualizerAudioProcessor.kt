@@ -14,7 +14,7 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
     enum class OutputProfile { SPEAKER, WIRED, BLUETOOTH, USB }
 
     @Volatile var enabled: Boolean = false
-    @Volatile var preampDb: Float = -3f
+    @Volatile var preampDb: Float = 0f
     @Volatile var bassBoost: Int = 0
     @Volatile var outputProfile: OutputProfile = OutputProfile.SPEAKER
 
@@ -23,6 +23,7 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
 
     private var inputFormat = AudioFormat.NOT_SET
     private var outputFormat = AudioFormat.NOT_SET
+    private var buffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var inputEnded = false
     private var configured = false
@@ -30,18 +31,25 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
     private val filters = Array(BAND_COUNT) { Biquad() }
     private val currentDb = FloatArray(BAND_COUNT)
     private var currentMix = 0f
+    private var currentHeadroomDb = 0f
+    private var preampLinear = 1f
+    private var channelIndex = 0
 
     fun setBandLevels(levels: List<Int>) {
         requestedLevels = IntArray(BAND_COUNT) { index -> levels.getOrElse(index) { 0 }.coerceIn(-100, 100) }
     }
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
+        if ((inputAudioFormat.encoding != C.ENCODING_PCM_16BIT &&
+                inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) ||
+            inputAudioFormat.channelCount <= 0
+        ) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         inputFormat = inputAudioFormat
         outputFormat = AudioFormat(inputAudioFormat.sampleRate, inputAudioFormat.channelCount, C.ENCODING_PCM_FLOAT)
         configured = true
+        channelIndex = 0
         channelStates = Array(inputAudioFormat.channelCount) { Array(BAND_COUNT) { FilterState() } }
         rebuildFilters(force = true)
         return outputFormat
@@ -56,7 +64,10 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
             outputBuffer = AudioProcessor.EMPTY_BUFFER
             return
         }
-        val outputSize = if (inputFormat.encoding == C.ENCODING_PCM_16BIT) size / 2 * 4 else size
+        val outputSize = when (inputFormat.encoding) {
+            C.ENCODING_PCM_16BIT -> size / 2 * 4
+            else -> size / 4 * 4
+        }
         val output = replaceOutputBuffer(outputSize)
         rebuildFilters(force = false)
         when (inputFormat.encoding) {
@@ -70,32 +81,28 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
     private fun processPcm16(input: ByteBuffer, output: ByteBuffer) {
         input.order(ByteOrder.LITTLE_ENDIAN)
         output.order(ByteOrder.LITTLE_ENDIAN)
-        var channel = 0
         while (input.remaining() >= 2) {
             val dry = input.short / 32768f
-            val wet = processSample(dry, channel)
+            val wet = processSample(dry, channelIndex)
             output.putFloat(wet)
-            channel = (channel + 1) % inputFormat.channelCount
+            channelIndex = (channelIndex + 1) % inputFormat.channelCount
         }
-        while (input.hasRemaining()) output.put(input.get())
     }
 
     private fun processFloat(input: ByteBuffer, output: ByteBuffer) {
         input.order(ByteOrder.LITTLE_ENDIAN)
         output.order(ByteOrder.LITTLE_ENDIAN)
-        var channel = 0
         while (input.remaining() >= 4) {
-            output.putFloat(processSample(input.float, channel))
-            channel = (channel + 1) % inputFormat.channelCount
+            output.putFloat(processSample(input.float, channelIndex))
+            channelIndex = (channelIndex + 1) % inputFormat.channelCount
         }
-        while (input.hasRemaining()) output.put(input.get())
     }
 
     private fun processSample(dry: Float, channel: Int): Float {
         val targetMix = if (enabled) 1f else 0f
         currentMix += (targetMix - currentMix) * MIX_SMOOTHING
         if (currentMix < 0.0001f && !enabled) return dry
-        var wet = dry * dbToLinear(effectivePreampDb())
+        var wet = dry * preampLinear
         filters.forEachIndexed { index, filter ->
             val state = channelStates[channel][index]
             val output = filter.b0 * wet + state.z1
@@ -108,18 +115,22 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
 
     private fun rebuildFilters(force: Boolean) {
         val levels = requestedLevels
+        var highestProgramBoost = 0f
         repeat(BAND_COUNT) { index ->
             val userDb = levels[index] / 100f * MAX_BAND_DB
             val bassDb = bassBoost.coerceIn(0, 100) / 100f * BASS_MAX_DB * BASS_WEIGHTS[index]
-            val target = userDb + bassDb + routeCompensation(outputProfile, index)
+            val programDb = userDb + bassDb
+            highestProgramBoost = maxOf(highestProgramBoost, programDb)
+            val target = programDb + routeCompensation(outputProfile, index)
             currentDb[index] = if (force) target else currentDb[index] + (target - currentDb[index]) * COEFFICIENT_SMOOTHING
             updatePeakingFilter(filters[index], inputFormat.sampleRate, FREQUENCIES[index], Q, currentDb[index])
         }
-    }
-
-    private fun effectivePreampDb(): Float {
-        val highestBoost = currentDb.maxOrNull()?.coerceAtLeast(0f) ?: 0f
-        return preampDb.coerceIn(-12f, 3f) - highestBoost
+        currentHeadroomDb = if (force) {
+            highestProgramBoost
+        } else {
+            currentHeadroomDb + (highestProgramBoost - currentHeadroomDb) * COEFFICIENT_SMOOTHING
+        }
+        preampLinear = dbToLinear(preampDb.coerceIn(-12f, 3f) - currentHeadroomDb)
     }
 
     private fun updatePeakingFilter(filter: Biquad, sampleRate: Int, frequency: Float, q: Float, gainDb: Float) {
@@ -163,23 +174,26 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
         inputFormat = AudioFormat.NOT_SET
         outputFormat = AudioFormat.NOT_SET
         channelStates = emptyArray()
+        buffer = AudioProcessor.EMPTY_BUFFER
     }
 
     private fun clearState() {
         outputBuffer = AudioProcessor.EMPTY_BUFFER
         inputEnded = false
         currentMix = if (enabled) 1f else 0f
+        channelIndex = 0
         channelStates.forEach { channel -> channel.forEach(FilterState::clear) }
     }
 
     private fun replaceOutputBuffer(size: Int): ByteBuffer {
-        if (outputBuffer.capacity() < size) {
-            outputBuffer = ByteBuffer.allocateDirect(size)
+        if (buffer.capacity() < size) {
+            buffer = ByteBuffer.allocateDirect(size)
         } else {
-            outputBuffer.clear()
+            buffer.clear()
         }
-        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        return outputBuffer
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        outputBuffer = buffer
+        return buffer
     }
 
     private class Biquad(

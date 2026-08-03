@@ -279,6 +279,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private val followedArtistsStore = FollowedArtistsStore(application.applicationContext)
     private val playlistStore = com.luc4n3x.levyra.data.PlaylistStore(application.applicationContext)
     private val preferences = LevyraPreferences(application.applicationContext)
+    private val audioSettingsPersistence = AudioSettingsPersistenceCoordinator(preferences::setAudioSettings)
     private val homeSnapshotCache = LevyraHomeSnapshotCache(application.applicationContext)
     private val smartMusicProfileStore = LevyraSmartMusicProfileStore(application.applicationContext)
     private val listeningPulseStore = ListeningPulseStore(application.applicationContext)
@@ -1724,9 +1725,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private fun updateAudioSettings(next: LevyraAudioSettings, audioNormalization: Boolean = _state.value.audioNormalization) {
         val normalized = next.normalized()
         audioSettingsPersistJob?.cancel()
+        audioSettingsPersistence.schedule(normalized)
         audioSettingsPersistJob = viewModelScope.launch(Dispatchers.IO) {
             delay(120L)
-            preferences.setAudioSettings(normalized)
+            audioSettingsPersistence.persist(normalized)
         }
         player.setPremiumAudioSettings(normalized)
         player.setPlayback(normalized.playbackSpeed, normalized.pitch)
@@ -6173,6 +6175,8 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     override fun onCleared() {
         LevyraWidgetBridge.clear()
         _state.value.currentTrack?.let { preferences.saveLastPlayback(it, player.positionMs) }
+        audioSettingsPersistJob?.cancel()
+        audioSettingsPersistence.flush()
         flushListenSessionBlocking()
         playJob?.cancel()
         modeSwitchJob?.cancel()

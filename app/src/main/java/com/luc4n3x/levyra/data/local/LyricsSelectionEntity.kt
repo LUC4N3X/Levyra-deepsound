@@ -2,12 +2,16 @@ package com.luc4n3x.levyra.data.local
 
 import androidx.room.Dao
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 
-@Entity(tableName = "lyrics_selections")
+@Entity(
+    tableName = "lyrics_selections",
+    indices = [Index(value = ["updatedAt"])]
+)
 data class LyricsSelectionEntity(
     @PrimaryKey val trackKey: String,
     val candidateId: String,

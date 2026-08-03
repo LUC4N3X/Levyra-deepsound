@@ -14,7 +14,7 @@ data class LevyraAudioSettings(
     val bandLevels: List<Int> = LevyraAudioPresets.flatLevels,
     val bassBoost: Int = 0,
     val virtualizer: Int = 0,
-    val preampDb: Float = -3f,
+    val preampDb: Float = 0f,
     val limiterEnabled: Boolean = true,
     val crossfadeSeconds: Int = 0,
     val djSoftMode: Boolean = false,

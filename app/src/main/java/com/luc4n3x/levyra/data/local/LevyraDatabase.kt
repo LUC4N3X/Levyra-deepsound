@@ -23,8 +23,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaybackSourceMatchEntity::class,
         ArtistLoreEntity::class
     ],
-    version = 13,
-    exportSchema = false
+    version = 14,
+    exportSchema = true
 )
 abstract class LevyraDatabase : RoomDatabase() {
     abstract fun favoriteTracksDao(): FavoriteTracksDao
@@ -440,6 +440,19 @@ abstract class LevyraDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_lyrics_selections_updatedAt " +
+                        "ON lyrics_selections(updatedAt)"
+                )
+            }
+        }
+
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_lyrics_selections_updatedAt " +
+                        "ON lyrics_selections(updatedAt)"
+                )
             }
         }
 
@@ -463,7 +476,8 @@ abstract class LevyraDatabase : RoomDatabase() {
                         MIGRATION_9_10,
                         MIGRATION_10_11,
                         MIGRATION_11_12,
-                        MIGRATION_12_13
+                        MIGRATION_12_13,
+                        MIGRATION_13_14
                     )
                     .build()
                     .also { instance = it }

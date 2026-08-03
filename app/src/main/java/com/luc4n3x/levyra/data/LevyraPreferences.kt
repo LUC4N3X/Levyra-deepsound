@@ -580,7 +580,7 @@ class LevyraPreferences(context: Context) {
             bandLevels = levels,
             bassBoost = preferences[KEY_AUDIO_BASS_BOOST] ?: LevyraAudioPresets.preset(presetId).bassBoost,
             virtualizer = preferences[KEY_AUDIO_VIRTUALIZER] ?: LevyraAudioPresets.preset(presetId).virtualizer,
-            preampDb = preferences[KEY_AUDIO_PREAMP_DB] ?: -3f,
+            preampDb = preferences[KEY_AUDIO_PREAMP_DB] ?: 0f,
             limiterEnabled = preferences[KEY_AUDIO_LIMITER] ?: true,
             crossfadeSeconds = preferences[KEY_AUDIO_CROSSFADE] ?: 0,
             djSoftMode = preferences[KEY_AUDIO_DJ_SOFT] ?: false,

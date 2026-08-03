@@ -26,6 +26,7 @@ class NormalizationAudioProcessor : AudioProcessor {
     private var isActive = false
     private var inputAudioFormat = AudioFormat.NOT_SET
     private var outputAudioFormat = AudioFormat.NOT_SET
+    private var buffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var inputEnded = false
     private var currentGain = 1.0f
@@ -86,13 +87,14 @@ class NormalizationAudioProcessor : AudioProcessor {
     }
 
     private fun replaceOutputBuffer(size: Int): ByteBuffer {
-        if (outputBuffer.capacity() < size) {
-            outputBuffer = ByteBuffer.allocateDirect(size)
+        if (buffer.capacity() < size) {
+            buffer = ByteBuffer.allocateDirect(size)
         } else {
-            outputBuffer.clear()
+            buffer.clear()
         }
-        outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        return outputBuffer
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        outputBuffer = buffer
+        return buffer
     }
 
     private fun normalizePcm16(input: ByteBuffer, output: ByteBuffer, size: Int) {
@@ -105,23 +107,7 @@ class NormalizationAudioProcessor : AudioProcessor {
             return
         }
 
-        val fixedGain = metadataGain()
-        if (fixedGain != null) {
-            targetGain = fixedGain
-            currentGain += (targetGain - currentGain) * metadataSmoothing
-        } else {
-            val startPosition = input.position()
-            var sumSquares = 0.0
-            repeat(sampleCount) {
-                val sample = input.short.toFloat() / Short.MAX_VALUE.toFloat()
-                sumSquares += sample * sample
-            }
-            input.position(startPosition)
-            val rms = sqrt(sumSquares / sampleCount).toFloat()
-            targetGain = if (rms <= silenceRms) 1.0f else (targetRms / rms).coerceIn(minGain, maxBoost)
-            val smoothing = if (targetGain < currentGain) cutSmoothing else boostSmoothing
-            currentGain += (targetGain - currentGain) * smoothing
-        }
+        updateGain(input, sampleCount, floatInput = false)
 
         repeat(sampleCount) {
             val sample = input.short.toInt()
@@ -186,6 +172,7 @@ class NormalizationAudioProcessor : AudioProcessor {
         isActive = false
         inputAudioFormat = AudioFormat.NOT_SET
         outputAudioFormat = AudioFormat.NOT_SET
+        buffer = AudioProcessor.EMPTY_BUFFER
     }
 
     private fun clearBufferedState() {

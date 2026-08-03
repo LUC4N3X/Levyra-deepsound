@@ -214,6 +214,10 @@ kotlin {
     jvmToolchain(if (isFdroidBuild) 21 else 17)
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 configurations.configureEach {
     exclude(group = "com.google.protobuf", module = "protobuf-javalite")
 }
