@@ -1,6 +1,6 @@
 ---
 name: levyra-project-manager
-description: Turn Levyra requirements and roadmap outcomes into one reviewable active phase using SPEC.md, ROADMAP.md, TASKS.md, acceptance criteria, validation, owner checkpoints, and domain-skill routing.
+description: Turn Levyra requirements and roadmap outcomes into one reviewable active phase using docs/project/SPEC.md, docs/project/ROADMAP.md, docs/project/TASKS.md, acceptance criteria, validation, owner checkpoints, and domain-skill routing.
 ---
 
 # Levyra project management workflow
@@ -19,7 +19,8 @@ extractor, database, Compose, Desktop, security, CI, review, or release skill.
 ## Required context
 
 1. Read the root and every applicable nested `AGENTS.md`.
-2. Read `SPEC.md`, `ROADMAP.md`, and `TASKS.md`.
+2. Read `docs/project/SPEC.md`, `docs/project/ROADMAP.md`, and
+   `docs/project/TASKS.md`.
 3. Read `docs/ARCHITECTURE.md` and relevant platform documentation.
 4. Inspect the current branch, worktree, complete affected control/data flow,
    nearby tests, build files, workflows, and active review discussion.
@@ -60,8 +61,8 @@ look complete.
 4. Run focused checks during iteration.
 5. Inspect the complete diff before broader validation.
 6. Run applicable repository gates.
-7. Update `TASKS.md` only from direct command, CI, review, device, or owner
-   evidence.
+7. Update `docs/project/TASKS.md` only from direct command, CI, review, device,
+   or owner evidence.
 8. Hand the latest diff to `levyra-pr-review`.
 9. Use `levyra-release-check` only when merge or release readiness is actually in
    scope.
@@ -70,7 +71,7 @@ look complete.
 ## Safety rules
 
 - Never rewrite owner-approved requirements without surfacing the change.
-- Never activate several unrelated phases in `TASKS.md`.
+- Never activate several unrelated phases in `docs/project/TASKS.md`.
 - Never mark a check passed from an agent's narrative.
 - Never treat blocked validation as passed.
 - Never infer permission to push, open a PR, merge, tag, publish, release, or
@@ -92,6 +93,6 @@ Return:
 - checks with exact results;
 - blocked and skipped checks;
 - open risks and manual validation;
-- `TASKS.md` status changes and evidence;
+- `docs/project/TASKS.md` status changes and evidence;
 - branch, commit, and PR state;
 - explicit merge/release state.
