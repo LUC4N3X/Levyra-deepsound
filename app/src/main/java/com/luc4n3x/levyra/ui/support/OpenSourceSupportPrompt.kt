@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,11 +53,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -95,8 +94,6 @@ fun RemoteAnnouncementGate(
             announcement = null
             return@LaunchedEffect
         }
-        if (launchCount < RemoteAnnouncementPromptPolicy.MINIMUM_APP_LAUNCHES) return@LaunchedEffect
-        if (!hasPositiveListeningMoment) return@LaunchedEffect
         val onboarded = withContext(Dispatchers.IO) { LevyraPreferences(context).isOnboarded() }
         if (!onboarded) return@LaunchedEffect
         delay(PROMPT_DELAY_MS)
