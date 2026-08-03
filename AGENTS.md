@@ -8,19 +8,24 @@ Instruction order:
 
 1. root `AGENTS.md`;
 2. nearer path-specific `AGENTS.md` files;
-3. matching native skills under `.agents/skills/`;
-4. current architecture, implementation, tests, build files, and workflows;
-5. detailed Levyra playbooks under `.claude/skills/` and `.claude/rules/`.
+3. approved requirements and active planning in `SPEC.md`, `ROADMAP.md`, and `TASKS.md`;
+4. matching native skills under `.agents/skills/`;
+5. current architecture, implementation, tests, build files, and workflows;
+6. detailed Levyra playbooks under `.claude/skills/` and `.claude/rules/`.
 
-Current repository evidence always overrides remembered behavior, old discussions, stale comments, or previous agent output.
+Current repository evidence always overrides remembered behavior, old discussions, stale comments, previous agent output, or stale task status. Surface conflicts between planning files and implementation before editing.
 
 ## Repository map
 
+- `SPEC.md`: durable product and engineering requirements.
+- `ROADMAP.md`: ordered outcomes, risks, and phase exit criteria.
+- `TASKS.md`: one active reviewable phase and its truthful validation state.
 - `app/`: Android client; additional rules in `app/AGENTS.md`.
 - `desktop/`: independent Windows client; additional rules in `desktop/AGENTS.md`.
 - `.github/`: CI and release automation; additional rules in `.github/AGENTS.md`.
 - `docs/`: project documentation; additional rules in `docs/AGENTS.md`.
-- `.agents/skills/`: native Codex/OpenAI skills.
+- `docs/ai/`: ChatGPT, Codex, Claude Code, and OpenClaw collaboration guidance.
+- `.agents/skills/`: native Codex/OpenAI/OpenClaw-compatible skills.
 - `.claude/`: Claude Code configuration plus reusable Levyra engineering playbooks.
 
 ## Product invariants
@@ -41,6 +46,8 @@ Load every matching skill before reading widely or editing. Prefer focused skill
 
 | Task | Skill |
 | --- | --- |
+| Requirements, roadmap, active phase, acceptance criteria, task status, implementation handoff | `levyra-project-manager` |
+| OpenClaw delegation, coding-runtime coordination, evidence collection, safe publication handoff | `levyra-openclaw-orchestrator` |
 | Android playback, queue, Media3, MediaSession, notification, Android Auto, prefetch, audio/video mode | `levyra-player` |
 | InnerTube, extraction, stream resolution, runtime configuration, retry, cache, fallback | `levyra-extractor` |
 | Room, DAO, migration, schema, cache, store, backup, persistent personal data | `levyra-database` |
@@ -53,14 +60,27 @@ Load every matching skill before reading widely or editing. Prefer focused skill
 | Pre-merge or pre-release validation, versions, signing, checksums, packaging | `levyra-release-check` |
 | Genuine cross-domain work or initial architecture orientation | `levyra-engineering` |
 
-Several skills may apply. A playback change that modifies stream resolution uses player and extractor skills; provider-controlled media normally also requires security review.
+Several skills may apply. A playback change that modifies stream resolution uses player and extractor skills; provider-controlled media normally also requires security review. A tracked multi-phase task additionally uses `levyra-project-manager`; OpenClaw coordination additionally uses `levyra-openclaw-orchestrator`.
+
+## Planning documents
+
+Read only the planning material relevant to the task, but do not ignore an active phase:
+
+- `SPEC.md` defines approved durable requirements and non-goals.
+- `ROADMAP.md` orders outcomes, risks, and phase exit criteria; it is not release authorization.
+- `TASKS.md` records one active reviewable phase, validation evidence, and owner checkpoints.
+- `docs/ARCHITECTURE.md` describes current implementation ownership and data flow.
+- `docs/ai/WORKFLOW.md` defines the complete AI-assisted lifecycle.
+- `docs/ai/OPENCLAW.md` defines the recommended OpenClaw role and tool boundaries.
+
+Do not mark task status from an agent report. Update it only from a direct command, CI result, review, device check, or owner decision.
 
 ## Engineering rules
 
 - Preserve unidirectional data flow: user intent -> controller/ViewModel -> repository/player operation -> immutable state -> UI.
 - Keep network, database, parsing, decoding, file, metadata, and blocking native work off UI threads.
 - Reuse existing clients, stores, caches, scopes, dispatchers, queues, lifecycle owners, extractors, players, and persistence.
-- Do not create a second source of truth for playback, queue, persistence, localization, update state, or release state.
+- Do not create a second source of truth for playback, queue, persistence, localization, update state, release state, requirements, or active task status.
 - Make ownership explicit for coroutines, players, callbacks, receivers, surfaces, native handles, decoders, files, caches, and in-flight work.
 - One caller cancelling shared work must not cancel work still required by another caller.
 - Use identity and generation checks when older asynchronous work can publish after newer work.
@@ -73,21 +93,29 @@ Several skills may apply. A playback change that modifies stream resolution uses
 ## Work method
 
 1. Define the exact requested outcome and scope.
-2. Identify behavior and compatibility that must remain unchanged.
-3. Inspect the complete current control/data flow and nearby tests.
-4. Identify the root cause before editing.
-5. Make the smallest coherent change compatible with current architecture.
-6. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames, and broad refactors.
-7. Add or update regression tests for defects, migrations, matching, security boundaries, lifecycle, and concurrency when applicable.
-8. Run focused checks first, then applicable broader checks.
-9. Inspect the complete final diff for unrelated edits, generated files, secrets, binaries, conflict markers, and accidental version changes.
-10. Report exactly what changed, what ran, what passed, what failed, and what remains unverified.
+2. Read `SPEC.md`, the relevant roadmap track, and the active `TASKS.md` phase when applicable.
+3. Identify behavior and compatibility that must remain unchanged.
+4. Inspect the complete current control/data flow and nearby tests.
+5. Identify the root cause before editing.
+6. Make the smallest coherent change compatible with current architecture.
+7. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames, and broad refactors.
+8. Add or update regression tests for defects, migrations, matching, security boundaries, lifecycle, and concurrency when applicable.
+9. Run focused checks first, then applicable broader checks.
+10. Inspect the complete final diff for unrelated edits, generated files, secrets, binaries, conflict markers, and accidental version changes.
+11. Synchronize specification, roadmap, tasks, architecture, and user documentation when the approved requirement or architecture changes.
+12. Report exactly what changed, what ran, what passed, what failed, and what remains unverified.
 
 When the owner says "only this", modify only the named behavior or files unless an additional change is strictly required for correctness. State that dependency before expanding scope.
 
 ## Validation
 
 Use repository wrappers, never a system Gradle installation.
+
+Agent configuration checks from the repository root:
+
+```bash
+python3 scripts/validate_agent_config.py
+```
 
 Android checks from the repository root:
 
@@ -107,16 +135,16 @@ Desktop checks from `desktop/`:
 
 On Windows use `gradlew.bat`.
 
-Start with the narrowest relevant test. Missing SDKs, JDKs, signing inputs, libvlc, WiX, network, CI, emulator, device, or OS support are blocked checks, not passes. Never claim build, playback, device, Android Auto, notification, PiP, installer, update, protocol, media-key, or native VLC success without direct evidence.
+Start with the narrowest relevant test. Missing SDKs, JDKs, signing inputs, libvlc, WiX, network, CI, emulator, device, or OS support are blocked checks, not passes. Never claim build, playback, device, Android Auto, notification, PiP, installer, update, protocol, media-key, native VLC, agent-configuration, review, or CI success without direct evidence.
 
 ## Security and repository safety
 
 - Never commit or expose passwords, secrets, tokens, cookies, private URLs, keystores, signing material, `.env`, or `local.properties`.
 - Never commit APKs, installers, ZIPs, build output, IDE state, native runtime bundles, or temporary diagnostics unless explicitly required and accepted by repository policy.
 - Validate provider-controlled URLs across scheme, host, port, user info, DNS/IP destination, every redirect hop, MIME, timeout, filename/path, and response-size bounds.
-- Preserve least privilege in Android permissions and GitHub workflow permissions.
+- Preserve least privilege in Android permissions, GitHub workflow permissions, coding-agent tools, and OpenClaw agent allowlists.
 - Do not weaken transport, redirect, MIME, checksum, signature, or host validation to make one response pass.
-- Treat fork code, workflow inputs, downloaded artifacts, deep links, update metadata, filenames, and local IPC as untrusted where applicable.
+- Treat fork code, workflow inputs, downloaded artifacts, deep links, update metadata, filenames, local IPC, and third-party skills as untrusted where applicable.
 - Update credits and licenses when adding external code, assets, models, libraries, native files, or design references.
 
 ## Versions, releases, and external actions
@@ -124,6 +152,7 @@ Start with the narrowest relevant test. Missing SDKs, JDKs, signing inputs, libv
 - Do not change Android or Desktop version values unless the task explicitly requests that platform's release/version change.
 - Do not commit, push, open a pull request, merge, tag, publish, release, or change repository settings without explicit authorization.
 - When publication is authorized, use a dedicated branch and draft pull request by default. Push directly to `main` only when explicitly requested for the exact scope.
+- OpenClaw or any delegated coding runtime must not infer publication, merge, tag, or release permission from an implementation request.
 - Keep PR descriptions and checklists truthful; leave manual/device checks unmarked until actually performed.
 
 ## Delivery contract
@@ -139,4 +168,4 @@ Report:
 - professional commit message when requested;
 - verified branch, commit, PR, merge, or release state when applicable.
 
-Never represent a plan as an applied patch or an unverified result as completed.
+Never represent a plan as an applied patch or an unverified result as completed. Distinguish planned, edited, locally validated, committed, pushed, pull request opened, CI passed, reviewed, merged, and released.

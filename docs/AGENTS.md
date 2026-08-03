@@ -15,13 +15,26 @@ These instructions extend the root `AGENTS.md` for documentation under `docs/`.
 
 ## AI documentation
 
-- `AGENTS.md` files define repository and path-specific operating contracts.
-- `.agents/skills/` contains native OpenAI/Codex task skills.
+- Root and nested `AGENTS.md` files define repository-wide and path-specific operating contracts.
+- `SPEC.md` defines durable owner-approved requirements and non-goals.
+- `ROADMAP.md` defines ordered outcomes, risks, and phase exit criteria; it does not authorize implementation or release.
+- `TASKS.md` records one active reviewable phase and direct validation evidence.
+- `.agents/skills/` contains native OpenAI/Codex/OpenClaw-compatible task skills.
 - `.claude/` contains Claude Code configuration and shared Levyra engineering playbooks.
 - `docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md` is the source text for the Levyra ChatGPT Project; repository files cannot apply those Project instructions automatically.
+- `docs/ai/WORKFLOW.md` defines the complete AI-assisted engineering lifecycle and its independent review, CI, manual testing, merge, and release gates.
+- `docs/ai/OPENCLAW.md` defines the recommended OpenClaw workspace, delegation, tool, and publication boundaries.
+
+Keep these documents synchronized with current repository behavior, but do not duplicate entire domain playbooks across them. When planning documents conflict with current code or tests, surface and correct the stale documentation rather than silently documenting the conflict as intended behavior.
 
 ## Validation
 
 For documentation-only changes, verify referenced paths and commands, inspect Markdown headings and code fences, check links where possible, and inspect the final diff for accidental code, workflow, version, binary, or secret changes.
 
-Do not claim builds or tests ran merely because a documented command appears correct.
+After changing AI planning files, agent instructions, native skills, AI documentation, or their validation, run:
+
+```bash
+python3 scripts/validate_agent_config.py
+```
+
+Do not claim builds, tests, agent-configuration checks, CI, device checks, reviews, publication, merge, or release merely because a documented command appears correct.
