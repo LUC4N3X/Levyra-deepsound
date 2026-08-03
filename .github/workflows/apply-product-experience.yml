@@ -1,31 +1,57 @@
 name: Apply product experience overhaul
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
-    types: [opened, synchronize, reopened]
+      - feature/product-experience-navigation-search-player
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: >
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'feature/product-experience-navigation-search-player' &&
-      github.actor != 'github-actions[bot]'
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: Repair patch anchor for current imports
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/scripts/apply_product_experience.py')
+          text = path.read_text()
+          old = '''    '''"'"'''import com.luc4n3x.levyra.domain.SearchFilter
+          import com.luc4n3x.levyra.domain.SearchResults
+          '''"'"''',
+              '''"'"'''import com.luc4n3x.levyra.domain.SearchFilter
+          import com.luc4n3x.levyra.domain.SearchResults
+          import com.luc4n3x.levyra.domain.filterPlaylistsForSearch
+          import com.luc4n3x.levyra.domain.isSearchVideo
+          import com.luc4n3x.levyra.domain.searchFiltersFor
+          '''"'"'''
+          '''
+          new = '''    '''"'"'''import com.luc4n3x.levyra.domain.SearchFilter
+          '''"'"''',
+              '''"'"'''import com.luc4n3x.levyra.domain.SearchFilter
+          import com.luc4n3x.levyra.domain.filterPlaylistsForSearch
+          import com.luc4n3x.levyra.domain.isSearchVideo
+          import com.luc4n3x.levyra.domain.searchFiltersFor
+          '''"'"'''
+          '''
+          if old not in text:
+              raise SystemExit('patch-script import anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
 
       - name: Apply product experience changes
         run: python3 .github/scripts/apply_product_experience.py
@@ -48,4 +74,4 @@ jobs:
                   .github/scripts/apply_product_experience.py \
                   .github/workflows/apply-product-experience.yml
           git commit -m "feat: refine core music product experience"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git push origin HEAD:${{ github.ref_name }}
