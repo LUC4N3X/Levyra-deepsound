@@ -20,6 +20,7 @@ import com.luc4n3x.levyra.desktop.core.storage.WindowPlacementStore
 import com.luc4n3x.levyra.desktop.core.stream.YoutubeStreamResolver
 import com.luc4n3x.levyra.desktop.player.AudioPlayer
 import com.luc4n3x.levyra.desktop.player.VlcAudioPlayer
+import com.luc4n3x.levyra.desktop.player.VlcMp3Transcoder
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlinx.coroutines.CoroutineScope
@@ -66,7 +67,15 @@ class AppContainer {
         resolver = streamResolver,
         catalog = catalogRepository,
         settingsStore = settingsStore,
-        store = downloadStore
+        store = downloadStore,
+        transcodeToMp3 = { source, target ->
+            VlcMp3Transcoder.transcode(
+                source = source,
+                target = target,
+                preferredDirectory = settingsStore.current.vlcDirectory,
+                bundledDirectory = bundledVlcDirectory()
+            )
+        }
     )
 
     private val catalogController = CatalogController(

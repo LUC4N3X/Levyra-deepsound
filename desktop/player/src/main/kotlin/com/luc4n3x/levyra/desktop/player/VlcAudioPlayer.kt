@@ -5,6 +5,7 @@ import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -23,6 +24,9 @@ class VlcAudioPlayer private constructor(
         replay = 0,
         extraBufferCapacity = 128
     )
+
+    private var lastPublishedTimeMs: Long = Long.MIN_VALUE
+    private var lastTimePublishNanos: Long = 0L
 
     override val events: SharedFlow<PlayerEvent> = eventFlow.asSharedFlow()
 
@@ -57,7 +61,7 @@ class VlcAudioPlayer private constructor(
             }
 
             override fun timeChanged(mediaPlayer: MediaPlayer, newTime: Long) {
-                emit(PlayerEvent.TimeChanged(newTime.coerceAtLeast(0L)))
+                publishTimeChanged(newTime.coerceAtLeast(0L))
             }
 
             override fun lengthChanged(mediaPlayer: MediaPlayer, newLength: Long) {
@@ -68,6 +72,7 @@ class VlcAudioPlayer private constructor(
 
     override fun play(url: String, startAtMs: Long) {
         if (released.get()) return
+        resetTimeThrottle(startAtMs)
         val options = buildList {
             add(":http-user-agent=${ExtractorHttp.DESKTOP_USER_AGENT}")
             add(":http-referrer=https://www.youtube.com/")
@@ -97,6 +102,7 @@ class VlcAudioPlayer private constructor(
     override fun seekTo(positionMs: Long) {
         if (released.get()) return
         if (!mediaPlayer.status().isSeekable) return
+        resetTimeThrottle(positionMs)
         mediaPlayer.controls().setTime(positionMs.coerceAtLeast(0L))
     }
 
@@ -146,11 +152,37 @@ class VlcAudioPlayer private constructor(
         runCatching { factory.release() }
     }
 
+    private fun publishTimeChanged(positionMs: Long) {
+        val now = System.nanoTime()
+        val elapsedMs = if (lastTimePublishNanos == 0L) {
+            Long.MAX_VALUE
+        } else {
+            (now - lastTimePublishNanos) / NANOS_PER_MILLISECOND
+        }
+        val jumped = lastPublishedTimeMs == Long.MIN_VALUE ||
+            abs(positionMs - lastPublishedTimeMs) >= FORCE_TIME_EVENT_DELTA_MS
+
+        if (!jumped && elapsedMs < TIME_EVENT_INTERVAL_MS) return
+
+        lastPublishedTimeMs = positionMs
+        lastTimePublishNanos = now
+        emit(PlayerEvent.TimeChanged(positionMs))
+    }
+
+    private fun resetTimeThrottle(positionMs: Long) {
+        lastPublishedTimeMs = positionMs.coerceAtLeast(0L)
+        lastTimePublishNanos = 0L
+    }
+
     private fun emit(event: PlayerEvent) {
         eventFlow.tryEmit(event)
     }
 
     companion object {
+        private const val TIME_EVENT_INTERVAL_MS = 200L
+        private const val FORCE_TIME_EVENT_DELTA_MS = 1_000L
+        private const val NANOS_PER_MILLISECOND = 1_000_000L
+
         private val FACTORY_ARGUMENTS = arrayOf(
             "--intf=dummy",
             "--no-video",

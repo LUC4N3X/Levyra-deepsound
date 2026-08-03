@@ -1,7 +1,9 @@
 package com.luc4n3x.levyra.desktop.app.state
 
 import com.luc4n3x.levyra.desktop.core.catalog.CatalogRepository
+import com.luc4n3x.levyra.desktop.core.model.ArtistDetail
 import com.luc4n3x.levyra.desktop.core.model.CatalogPage
+import com.luc4n3x.levyra.desktop.core.model.CollectionDetail
 import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.storage.LibraryStore
@@ -31,6 +33,7 @@ data class SearchUiState(
 data class CollectionUiState(
     val ref: CollectionRef? = null,
     val page: CatalogPage = CatalogPage(),
+    val artist: ArtistDetail? = null,
     val loading: Boolean = false,
     val loadingMore: Boolean = false,
     val error: String = ""
@@ -45,6 +48,7 @@ class CatalogController(
 ) {
     private val searchState = MutableStateFlow(SearchUiState())
     private val collectionState = MutableStateFlow(CollectionUiState())
+    private val collectionHistory = ArrayDeque<CollectionUiState>()
 
     private var suggestionJob: Job? = null
     private var searchJob: Job? = null
@@ -138,10 +142,30 @@ class CatalogController(
         searchState.value = SearchUiState(filter = searchState.value.filter)
     }
 
+    fun pushCollectionHistory() {
+        if (collectionState.value.ref != null) {
+            collectionHistory.addLast(collectionState.value)
+        }
+    }
+
+    fun clearCollectionHistory() {
+        collectionHistory.clear()
+    }
+
+    fun back(): Boolean {
+        cancelCollectionJobs()
+        val previous = collectionHistory.removeLastOrNull()
+        if (previous != null) {
+            collectionState.value = previous
+            return true
+        }
+        return false
+    }
+
     fun openCollection(ref: CollectionRef) {
         cancelCollectionJobs()
         collectionState.value = CollectionUiState(ref = ref, loading = true)
-        collectionJob = scope.launch { loadCollection { catalog.collection(ref).let { it.ref to it.page } } }
+        collectionJob = scope.launch { loadCollection { catalog.collection(ref) } }
     }
 
     fun openCollectionFromUrl(url: String, onOpened: () -> Unit) {
@@ -151,7 +175,7 @@ class CatalogController(
         collectionState.value = CollectionUiState(loading = true)
         onOpened()
         collectionJob = scope.launch {
-            loadCollection { catalog.collectionFromUrl(trimmed).let { it.ref to it.page } }
+            loadCollection { catalog.collectionFromUrl(trimmed) }
         }
     }
 
@@ -183,10 +207,14 @@ class CatalogController(
         }
     }
 
-    private suspend fun loadCollection(load: suspend () -> Pair<CollectionRef, CatalogPage>) {
+    private suspend fun loadCollection(load: suspend () -> CollectionDetail) {
         try {
-            val (ref, page) = load()
-            collectionState.value = CollectionUiState(ref = ref, page = page)
+            val detail = load()
+            collectionState.value = CollectionUiState(
+                ref = detail.ref,
+                page = detail.page,
+                artist = detail.artist
+            )
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {

@@ -49,7 +49,29 @@ data class CatalogPage(
     }
 }
 
+data class ArtistDetail(
+    val name: String,
+    val biography: String = "",
+    val portraitUrl: String = "",
+    val bannerUrl: String = "",
+    val subscriberCount: Long = -1L,
+    val tracks: List<Track> = emptyList(),
+    val videos: List<Track> = emptyList(),
+    val albums: List<CollectionRef> = emptyList(),
+    val playlists: List<CollectionRef> = emptyList(),
+    val relatedArtists: List<CollectionRef> = emptyList()
+) {
+    val hasContent: Boolean
+        get() = tracks.isNotEmpty() ||
+            videos.isNotEmpty() ||
+            albums.isNotEmpty() ||
+            playlists.isNotEmpty() ||
+            relatedArtists.isNotEmpty() ||
+            biography.isNotBlank()
+}
+
 data class CollectionDetail(
     val ref: CollectionRef,
-    val page: CatalogPage
+    val page: CatalogPage,
+    val artist: ArtistDetail? = null
 )
