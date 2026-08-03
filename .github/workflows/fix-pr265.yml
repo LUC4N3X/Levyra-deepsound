@@ -42,3 +42,5 @@ jobs:
           git diff --cached --check
           git commit -m "fix desktop CI and CodeRabbit findings"
           git push origin HEAD:agent/fast-desktop-downloads-mp3
+
+# Triggered after the workflow file exists on the PR branch.
