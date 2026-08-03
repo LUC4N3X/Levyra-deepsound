@@ -1,5 +1,6 @@
 package com.luc4n3x.levyra.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -107,6 +108,10 @@ internal fun LevyraProductShell(
         selectedTab = state.selectedTab,
         hasBlockingOverlay = blockingOverlay || showSettingsHub
     )
+
+    BackHandler(enabled = showSettingsHub) {
+        showSettingsHub = false
+    }
 
     CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
         Box(modifier = modifier.fillMaxSize()) {
