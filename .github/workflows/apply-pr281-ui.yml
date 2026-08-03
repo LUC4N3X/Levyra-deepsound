@@ -16,6 +16,10 @@ jobs:
     timeout-minutes: 60
     env:
       YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+      LEVYRA_KEYSTORE_FILE: app/levyra-ci-release.jks
+      LEVYRA_KEYSTORE_PASSWORD: levyra_ci_password
+      LEVYRA_KEY_ALIAS: levyra_ci
+      LEVYRA_KEY_PASSWORD: levyra_ci_password
     steps:
       - uses: actions/checkout@v7
         with:
@@ -41,6 +45,22 @@ jobs:
         uses: gradle/actions/setup-gradle@v6.2.0
         with:
           cache-disabled: true
+
+      - name: Prepare CI release signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
+          keytool -genkeypair \
+            -keystore "${LEVYRA_KEYSTORE_FILE}" \
+            -storepass "${LEVYRA_KEYSTORE_PASSWORD}" \
+            -alias "${LEVYRA_KEY_ALIAS}" \
+            -keypass "${LEVYRA_KEY_PASSWORD}" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=LEVYRA CI,O=LUC4N3X,C=IT" \
+            >/dev/null
 
       - name: Apply complete UI implementation
         run: python3 .github/scripts/apply_pr281_ui.py
@@ -70,6 +90,7 @@ jobs:
         run: |
           rm .github/scripts/apply_pr281_ui.py
           rm .github/workflows/apply-pr281-ui.yml
+          rm -f "${LEVYRA_KEYSTORE_FILE}"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add app/src/main/java/com/luc4n3x/levyra/domain/Models.kt \
