@@ -1,0 +1,50 @@
+name: Apply PR 281 UI implementation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'feature/product-experience-navigation-search-player'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Apply complete UI implementation
+        run: python3 .github/scripts/apply_pr281_ui.py
+
+      - name: Run focused product tests
+        run: ./gradlew :app:testDebugUnitTest --tests com.luc4n3x.levyra.domain.LevyraProductExperienceTest --no-daemon
+
+      - name: Run Android validation
+        run: ./gradlew :app:lintDebug :app:testDebugUnitTest :app:compileReleaseKotlin --no-daemon
+
+      - name: Commit only validated app files
+        run: |
+          rm .github/scripts/apply_pr281_ui.py
+          rm .github/workflows/apply-pr281-ui.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/com/luc4n3x/levyra/domain/Models.kt \
+                  app/src/main/java/com/luc4n3x/levyra/domain/LevyraProductExperience.kt \
+                  app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraScreenViewModels.kt \
+                  app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+                  app/src/test/java/com/luc4n3x/levyra/domain/LevyraProductExperienceTest.kt \
+                  .github/scripts/apply_pr281_ui.py \
+                  .github/workflows/apply-pr281-ui.yml
+          git commit -m "feat: implement navigation, home, search, settings, and player overhaul"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
