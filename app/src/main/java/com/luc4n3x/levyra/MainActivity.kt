@@ -10,16 +10,22 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -39,6 +45,7 @@ import com.luc4n3x.levyra.ui.theme.LevyraThemeController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     private val pipMode = mutableStateOf(false)
@@ -72,27 +79,41 @@ class MainActivity : ComponentActivity() {
             LevyraTheme {
                 val viewModel: LevyraViewModel = viewModel()
                 val uiState by viewModel.state.collectAsStateWithLifecycle()
-                Box {
-                    LevyraApp(
-                        viewModel = viewModel,
-                        isInPictureInPicture = pipMode.value
-                    )
+                var listenedPlaybackMs by remember { mutableLongStateOf(0L) }
+
+                LaunchedEffect(uiState.isPlaying) {
+                    if (!uiState.isPlaying) return@LaunchedEffect
+                    var lastTickMs = SystemClock.elapsedRealtime()
+                    while (true) {
+                        delay(1_000L)
+                        val nowMs = SystemClock.elapsedRealtime()
+                        listenedPlaybackMs += (nowMs - lastTickMs).coerceAtLeast(0L)
+                        lastTickMs = nowMs
+                    }
+                }
+
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        LevyraApp(
+                            viewModel = viewModel,
+                            isInPictureInPicture = pipMode.value
+                        )
+                    }
                     if (uiState.showSettings && !pipMode.value) {
                         SupportLevyraSettingsCard(
                             languageCode = uiState.languageCode,
                             modifier = Modifier
-                                .align(Alignment.BottomCenter)
                                 .navigationBarsPadding()
                                 .padding(horizontal = 18.dp, vertical = 14.dp)
                         )
                     }
                 }
                 RemoteAnnouncementGate(
-                    enabled = !uiState.showOnboarding && !pipMode.value,
+                    enabled = !uiState.showOnboarding && !pipMode.value && !uiState.showSettings,
                     languageCode = uiState.languageCode,
                     hasPositiveListeningMoment = RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(
                         recentListenCount = uiState.recentListens.size,
-                        currentPositionMs = uiState.positionMs
+                        listenedPlaybackMs = listenedPlaybackMs
                     )
                 )
             }
