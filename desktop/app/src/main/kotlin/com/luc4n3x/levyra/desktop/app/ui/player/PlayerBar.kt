@@ -53,6 +53,7 @@ import com.luc4n3x.levyra.desktop.player.RepeatMode
 @Composable
 fun PlayerBar(
     state: PlaybackUiState,
+    playbackStateFlow: kotlinx.coroutines.flow.StateFlow<PlaybackUiState>,
     isFavorite: Boolean,
     queueVisible: Boolean,
     onPlayPause: () -> Unit,
@@ -84,11 +85,7 @@ fun PlayerBar(
             kotlinx.coroutines.flow.flowOf(null)
         }
     }.collectAsState(initial = null)
-    var dragPosition by remember(track?.id) { mutableStateOf<Float?>(null) }
-
     val duration = state.durationMs.coerceAtLeast(0L)
-    val position = dragPosition?.toLong()
-        ?: state.positionMs.coerceIn(0L, if (duration > 0L) duration else Long.MAX_VALUE)
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -246,39 +243,12 @@ fun PlayerBar(
                         )
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = Format.duration(position),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Slider(
-                            value = if (duration > 0L) position.toFloat() else 0f,
-                            onValueChange = { dragPosition = it },
-                            onValueChangeFinished = {
-                                dragPosition?.let { onSeek(it.toLong()) }
-                                dragPosition = null
-                            },
-                            valueRange = 0f..if (duration > 0L) duration.toFloat() else 1f,
-                            enabled = track != null && duration > 0L,
-                            colors = SliderDefaults.colors(
-                                thumbColor = accent,
-                                activeTrackColor = accent,
-                                inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = Format.duration(duration),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                    PlayerProgressBar(
+                        playbackStateFlow = playbackStateFlow,
+                        onSeek = onSeek,
+                        accent = accent,
+                        trackId = track?.id
+                    )
 
                 Row(
                     modifier = Modifier.width(285.dp),
@@ -372,6 +342,54 @@ private fun PlayerIconButton(
             contentDescription = description,
             tint = if (active) accent else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(17.dp)
+        )
+    }
+}
+
+@Composable
+private fun PlayerProgressBar(
+    playbackStateFlow: kotlinx.coroutines.flow.StateFlow<PlaybackUiState>,
+    onSeek: (Long) -> Unit,
+    accent: androidx.compose.ui.graphics.Color,
+    trackId: String?
+) {
+    val state by playbackStateFlow.collectAsState()
+    var dragPosition by remember(trackId) { mutableStateOf<Float?>(null) }
+    
+    val duration = state.durationMs.coerceAtLeast(0L)
+    val position = dragPosition?.toLong()
+        ?: state.positionMs.coerceIn(0L, if (duration > 0L) duration else Long.MAX_VALUE)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = Format.duration(position),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Slider(
+            value = if (duration > 0L) position.toFloat() else 0f,
+            onValueChange = { dragPosition = it },
+            onValueChangeFinished = {
+                dragPosition?.let { onSeek(it.toLong()) }
+                dragPosition = null
+            },
+            valueRange = 0f..if (duration > 0L) duration.toFloat() else 1f,
+            enabled = trackId != null && duration > 0L,
+            colors = SliderDefaults.colors(
+                thumbColor = accent,
+                activeTrackColor = accent,
+                inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+            ),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = Format.duration(duration),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

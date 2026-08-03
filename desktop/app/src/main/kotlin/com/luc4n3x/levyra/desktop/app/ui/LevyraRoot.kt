@@ -555,9 +555,15 @@ private fun PlayerBarHost(
     destination: Destination,
     modifier: Modifier = Modifier
 ) {
-    val playback by model.playbackController.state.collectAsState()
+    val playback by remember(model) {
+        model.playbackController.state
+            .map(com.luc4n3x.levyra.desktop.app.state.PlaybackUiState::withoutTransientUiTicks)
+            .distinctUntilChanged()
+    }.collectAsState(initial = model.playbackController.state.value.withoutTransientUiTicks())
+    
     PlayerBar(
         state = playback,
+        playbackStateFlow = model.playbackController.state,
         isFavorite = playback.current?.let { current ->
             library.favorites.any { it.id == current.id }
         } ?: false,
