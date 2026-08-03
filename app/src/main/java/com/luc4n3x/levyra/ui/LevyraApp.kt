@@ -10553,17 +10553,19 @@ private fun PlayerImmersiveBackdrop(
     val mixedSurface = remember(primary, secondary) {
         primary.playerMix(secondary, 0.5f).playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
     }
+    val backgroundAccent = remember(primarySurface) {
+        primarySurface.playerMix(PlayerDarkSurface, 0.28f)
+    }
 
     Box(
         modifier = modifier
             .background(
                 Brush.verticalGradient(
-                    listOf(
-                        primarySurface.playerMix(Color.Black, 0.18f),
-                        mixedSurface.playerMix(Color.Black, 0.32f),
-                        secondarySurface.playerMix(Color.Black, 0.46f),
-                        Color(0xFF050508),
-                        Color.Black
+                    colorStops = arrayOf(
+                        0.00f to backgroundAccent,
+                        0.34f to backgroundAccent.playerMix(Color.Black, 0.46f),
+                        0.66f to Color(0xFF0A090D),
+                        1.00f to Color.Black
                     )
                 )
             )
@@ -10671,9 +10673,9 @@ private fun PlayerArtworkCanvas(
                 .background(
                     Brush.radialGradient(
                         listOf(
-                            primary.playerMix(Color.White, 0.10f).copy(alpha = 0.34f),
-                            secondary.copy(alpha = 0.18f),
-                            primary.playerMix(Color.Black, 0.68f).copy(alpha = 0.08f),
+                            primary.playerMix(Color.Black, 0.60f).copy(alpha = 0.13f),
+                            secondary.playerMix(Color.Black, 0.68f).copy(alpha = 0.07f),
+                            primary.playerMix(Color.Black, 0.78f).copy(alpha = 0.04f),
                             Color.Transparent
                         )
                     ),
@@ -10793,7 +10795,7 @@ private fun PlayerModeSwitchTab(
         snap()
     }
     val background by animateColorAsState(
-        targetValue = if (selected) activeColor.copy(alpha = 0.42f) else Color.Transparent,
+        targetValue = if (selected) Color.White.copy(alpha = 0.14f) else Color.Transparent,
         animationSpec = tabSpec,
         label = "player-mode-tab-background"
     )
