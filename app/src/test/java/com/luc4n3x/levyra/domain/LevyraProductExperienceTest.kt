@@ -43,6 +43,18 @@ class LevyraProductExperienceTest {
     }
 
     @Test
+    fun homeAlbumsKeepSameTitleFromDifferentArtists() {
+        val result = deduplicateHomeAlbums(
+            listOf(
+                album("Greatest Hits", "Artist One", "MPRE-one", "https://example.com/one.jpg"),
+                album("Greatest Hits", "Artist Two", "MPRE-two", "https://example.com/two.jpg")
+            )
+        )
+
+        assertEquals(listOf("Artist One", "Artist Two"), result.map { it.artist })
+    }
+
+    @Test
     fun playlistSearchIsAccentInsensitiveAndRanksExactMatchesFirst() {
         val result = filterPlaylistsForSearch(
             query = "estate",
