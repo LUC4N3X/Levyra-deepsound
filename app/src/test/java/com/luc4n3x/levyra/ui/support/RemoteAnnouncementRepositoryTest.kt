@@ -62,7 +62,7 @@ class RemoteAnnouncementRepositoryTest {
     }
 
     @Test
-    fun selectorHonorsPriorityVersionTimeAndDismissal() {
+    fun selectorHonorsPriorityVersionTimeAndCompletion() {
         val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
         val lowerPriority = announcement(id = "notice-low", priority = 10)
         val higherPriority = announcement(id = "notice-high", priority = 90)
@@ -77,20 +77,20 @@ class RemoteAnnouncementRepositoryTest {
             catalog = catalog,
             languageCode = "it-IT",
             versionCode = 2_031_800,
-            dismissedIds = emptySet(),
+            completedIds = emptySet(),
             nowMs = now
         )
         assertEquals("notice-high", selected?.id)
         assertEquals("A useful announcement", selected?.copy?.title)
 
-        val afterDismissal = RemoteAnnouncementRules.select(
+        val afterCompletion = RemoteAnnouncementRules.select(
             catalog = catalog,
             languageCode = "en",
             versionCode = 2_031_800,
-            dismissedIds = setOf("notice-high"),
+            completedIds = setOf("notice-high"),
             nowMs = now
         )
-        assertEquals("notice-low", afterDismissal?.id)
+        assertEquals("notice-low", afterCompletion?.id)
     }
 
     @Test
@@ -113,7 +113,7 @@ class RemoteAnnouncementRepositoryTest {
                 catalog = catalog,
                 languageCode = "en",
                 versionCode = 2_031_800,
-                dismissedIds = emptySet(),
+                completedIds = emptySet(),
                 nowMs = now
             )
         )
@@ -158,10 +158,72 @@ class RemoteAnnouncementRepositoryTest {
     }
 
     @Test
-    fun positiveMomentCanComeFromHistoryOrCurrentListeningTime() {
+    fun positiveMomentCanComeFromHistoryOrElapsedPlayback() {
         assertFalse(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(2, 89_999L))
         assertTrue(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(3, 0L))
         assertTrue(RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(0, 90_000L))
+    }
+
+    @Test
+    fun selectorContinuesPastAnIneligibleHigherPriorityCampaign() {
+        val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
+        val support = announcement(
+            id = "support-snoozed",
+            priority = 100,
+            style = AnnouncementStyle.OPEN_SOURCE
+        )
+        val notice = announcement(
+            id = "notice-ready",
+            priority = 50,
+            style = AnnouncementStyle.INFO
+        )
+        val catalog = RemoteAnnouncementCatalog(2, listOf(support, notice))
+
+        val selected = RemoteAnnouncementRules.select(
+            catalog = catalog,
+            languageCode = "en",
+            versionCode = 2_031_800,
+            completedIds = emptySet(),
+            nowMs = now,
+            isAnnouncementEligible = { it.id != "support-snoozed" }
+        )
+
+        assertEquals("notice-ready", selected?.id)
+    }
+
+    @Test
+    fun parserUsesTitleForActionlessSettingsFallback() {
+        val raw = """
+            {
+              "schemaVersion": 2,
+              "announcements": [
+                {
+                  "id": "service-notice",
+                  "enabled": true,
+                  "priority": 10,
+                  "style": "info",
+                  "minimumVersionCode": 1,
+                  "translations": {
+                    "en": {
+                      "badge": "NOTICE",
+                      "title": "Service notice",
+                      "body": "This informational notice has enough text to satisfy validation.",
+                      "dismiss": "Later"
+                    }
+                  }
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val copy = RemoteAnnouncementParser.parse(raw)
+            ?.announcements
+            ?.single()
+            ?.translations
+            ?.get("en")
+
+        assertNotNull(copy)
+        assertEquals("Service notice", copy?.settingsTitle)
     }
 
     @Test
@@ -190,12 +252,13 @@ class RemoteAnnouncementRepositoryTest {
         priority: Int,
         minimumVersionCode: Int = 1,
         startAtMs: Long? = null,
-        endAtMs: Long? = null
+        endAtMs: Long? = null,
+        style: AnnouncementStyle = AnnouncementStyle.INFO
     ): RemoteAnnouncement = RemoteAnnouncement(
         id = id,
         enabled = true,
         priority = priority,
-        style = AnnouncementStyle.INFO,
+        style = style,
         minimumVersionCode = minimumVersionCode,
         maximumVersionCode = null,
         startAtMs = startAtMs,
