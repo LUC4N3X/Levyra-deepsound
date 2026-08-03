@@ -113,7 +113,7 @@ body:
     attributes:
       label: Levyra version
       description: Use the version shown in Settings or About. Include the build or commit when using a development build.
-      placeholder: Example: 2.3.11 or desktop-v1.1.0
+      placeholder: "Example: 2.3.11 or desktop-v1.1.0"
     validations:
       required: true
 
