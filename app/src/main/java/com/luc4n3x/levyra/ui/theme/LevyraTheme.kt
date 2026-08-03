@@ -7,6 +7,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
+import com.luc4n3x.levyra.domain.LevyraFontPreset
 
 data class LevyraPalette(
     val id: String,
@@ -176,6 +177,15 @@ object LevyraThemes {
 }
 
 private val activePaletteState = mutableStateOf(LevyraThemes.cosmic)
+private val activeFontPresetState = mutableStateOf(LevyraFontPreset.Outfit)
+
+object LevyraTypographyController {
+    fun apply(preset: LevyraFontPreset) {
+        if (activeFontPresetState.value != preset) {
+            activeFontPresetState.value = preset
+        }
+    }
+}
 
 object LevyraThemeController {
     fun apply(
@@ -314,7 +324,7 @@ private fun schemeFor(palette: LevyraPalette): ColorScheme {
 fun LevyraTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = schemeFor(activePaletteState.value),
-        typography = LevyraTypography,
+        typography = levyraTypographyFor(activeFontPresetState.value),
         content = content
     )
 }

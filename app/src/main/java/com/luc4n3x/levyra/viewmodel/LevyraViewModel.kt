@@ -101,6 +101,7 @@ import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaRequest
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaResolver
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
+import com.luc4n3x.levyra.ui.theme.LevyraTypographyController
 import com.luc4n3x.levyra.widget.LevyraWidgetBridge
 import com.luc4n3x.levyra.widget.LevyraWidgetCenter
 import com.luc4n3x.levyra.player.AdaptivePlaybackPolicy
@@ -2345,6 +2346,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     fun setInterfaceSettings(value: LevyraInterfaceSettings) {
         val normalized = value.normalized()
         preferences.setInterfaceSettings(normalized)
+        LevyraTypographyController.apply(normalized.fontPreset)
         _state.update { it.copy(interfaceSettings = normalized) }
     }
 
@@ -2443,6 +2445,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 playbackDiagnostics = resolver.playbackDiagnostics()
             )
         }
+        LevyraTypographyController.apply(snapshot.interfaceSettings.fontPreset)
         applyLanguageContent(snapshot.languageCode, refreshRemote = true)
         player.setSkipSilence(snapshot.skipSilence)
         player.setPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
