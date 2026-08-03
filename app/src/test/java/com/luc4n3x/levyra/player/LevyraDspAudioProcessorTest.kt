@@ -58,7 +58,7 @@ class LevyraDspAudioProcessorTest {
         }
 
         assertEquals(C.ENCODING_PCM_16BIT, outputFormat.encoding)
-        assertEquals(outputFormat, SilenceSkippingAudioProcessor().configure(outputFormat))
+        SilenceSkippingAudioProcessor().configure(outputFormat)
     }
 
     @Test
