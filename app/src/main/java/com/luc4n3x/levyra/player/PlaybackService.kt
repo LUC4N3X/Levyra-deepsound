@@ -165,7 +165,10 @@ class PlaybackService : MediaLibraryService() {
         val visualizerProcessor = VisualizerAudioProcessor()
         val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
 
-        fun applyPremiumAudioSettings(settings: LevyraAudioSettings) {
+        fun applyPremiumAudioSettings(
+            settings: LevyraAudioSettings,
+            audioNormalization: Boolean = normalizationProcessor.enabled
+        ) {
             val normalized = settings.normalized()
             equalizerProcessor.enabled = normalized.equalizerEnabled
             equalizerProcessor.setBandLevels(normalized.bandLevels)
@@ -173,7 +176,8 @@ class PlaybackService : MediaLibraryService() {
             equalizerProcessor.preampDb = normalized.preampDb
             spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
             limiterProcessor.enabled = normalized.limiterEnabled &&
-                (normalized.equalizerEnabled || normalized.virtualizer > 0 || normalized.replayGainEnabled)
+                (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
+                    normalized.replayGainEnabled || audioNormalization)
         }
     }
 
@@ -237,7 +241,7 @@ class PlaybackService : MediaLibraryService() {
                 enableAudioTrackPlaybackParams: Boolean
             ): AudioSink {
                 return DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableFloatOutput(false)
                     .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
                     .setAudioProcessors(
                         arrayOf(
@@ -272,7 +276,7 @@ class PlaybackService : MediaLibraryService() {
         val snapshot = prefs.snapshot()
         player.skipSilenceEnabled = snapshot.skipSilence
         normalizationProcessor.enabled = snapshot.audioNormalization || snapshot.audioSettings.replayGainEnabled
-        applyPremiumAudioSettings(snapshot.audioSettings)
+        applyPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
         (getSystemService(Context.AUDIO_SERVICE) as AudioManager).registerAudioDeviceCallback(audioDeviceCallback, null)
         refreshAudioOutputProfile()
 

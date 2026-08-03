@@ -1730,9 +1730,10 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             delay(120L)
             audioSettingsPersistence.persist(normalized)
         }
-        player.setPremiumAudioSettings(normalized)
+        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled =
+            audioNormalization || normalized.replayGainEnabled
+        player.setPremiumAudioSettings(normalized, audioNormalization)
         player.setPlayback(normalized.playbackSpeed, normalized.pitch)
-        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = audioNormalization || normalized.replayGainEnabled
         _state.update { it.copy(audioSettings = normalized, playbackSpeed = normalized.playbackSpeed, audioNormalization = audioNormalization) }
     }
 
