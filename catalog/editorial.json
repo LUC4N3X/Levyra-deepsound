@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-03T13:08:57Z",
+  "generatedAt": "2026-08-03T13:21:56Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -3173,11 +3173,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 37,
@@ -9293,12 +9293,6 @@
           },
           "durationMs": 211084,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "ZhM1BddhZ1c",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC8r_j-qnSCj1t4h6EVN5TrQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02842ff43668299304d6f021b2"
         },
         {
@@ -10856,14 +10850,11 @@
         },
         {
           "position": 5,
-          "id": "levyra-4c91592192d028c5418f",
+          "id": "levyra-007454478db440306e22",
           "title": "STRAIGHT OUTTA CRACKHOUSE",
           "artists": [
             {
               "name": "CrackHouse"
-            },
-            {
-              "name": "Bandura"
             },
             {
               "name": "Divix"
@@ -10873,6 +10864,9 @@
             },
             {
               "name": "Amar"
+            },
+            {
+              "name": "Bandura"
             },
             {
               "name": "Isiah Hilt"
@@ -16288,7 +16282,7 @@
         },
         {
           "position": 37,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -16296,8 +16290,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16307,7 +16301,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 38,
@@ -17685,8 +17679,7 @@
             }
           ],
           "album": {
-            "name": "Червоний мак",
-            "releaseDate": "2026-05-18"
+            "name": "Червоний мак"
           },
           "durationMs": 243216,
           "explicit": false,
@@ -17702,8 +17695,7 @@
             }
           ],
           "album": {
-            "name": "Маргарита",
-            "releaseDate": "2026-07-15"
+            "name": "Маргарита"
           },
           "durationMs": 211874,
           "explicit": false,
@@ -17719,8 +17711,7 @@
             }
           ],
           "album": {
-            "name": "целоваться",
-            "releaseDate": "2026-04-03"
+            "name": "целоваться"
           },
           "durationMs": 114580,
           "explicit": true,
@@ -17736,8 +17727,7 @@
             }
           ],
           "album": {
-            "name": "Фанат",
-            "releaseDate": "2026-04-01"
+            "name": "Фанат"
           },
           "durationMs": 198774,
           "explicit": false,
@@ -17753,8 +17743,7 @@
             }
           ],
           "album": {
-            "name": "Не Пʼяна - Закохана (за участі ансамблю «Кралиця»)",
-            "releaseDate": "2025-11-14"
+            "name": "Не Пʼяна - Закохана (за участі ансамблю «Кралиця»)"
           },
           "durationMs": 223255,
           "explicit": false,
@@ -17773,8 +17762,7 @@
             }
           ],
           "album": {
-            "name": "Красивое Зло",
-            "releaseDate": "2026-07-24"
+            "name": "Красивое Зло"
           },
           "durationMs": 150425,
           "explicit": true,
@@ -17790,8 +17778,7 @@
             }
           ],
           "album": {
-            "name": "КРИЛА ЛЕЛЕКИ",
-            "releaseDate": "2026-06-19"
+            "name": "КРИЛА ЛЕЛЕКИ"
           },
           "durationMs": 198000,
           "explicit": false,
@@ -17807,8 +17794,7 @@
             }
           ],
           "album": {
-            "name": "На нашій вулиці",
-            "releaseDate": "2026-07-15"
+            "name": "На нашій вулиці"
           },
           "durationMs": 171488,
           "explicit": false,
@@ -17824,8 +17810,7 @@
             }
           ],
           "album": {
-            "name": "Вівтар",
-            "releaseDate": "2026-04-23"
+            "name": "Вівтар"
           },
           "durationMs": 260181,
           "explicit": false,
@@ -17841,8 +17826,7 @@
             }
           ],
           "album": {
-            "name": "Енкарапіста",
-            "releaseDate": "2025-12-26"
+            "name": "Енкарапіста"
           },
           "durationMs": 178421,
           "explicit": false,
@@ -17858,8 +17842,7 @@
             }
           ],
           "album": {
-            "name": "Не складається",
-            "releaseDate": "2025-12-12"
+            "name": "Не складається"
           },
           "durationMs": 211500,
           "explicit": false,
@@ -17875,8 +17858,7 @@
             }
           ],
           "album": {
-            "name": "Смарагдове небо",
-            "releaseDate": "2025-05-23"
+            "name": "Смарагдове небо"
           },
           "durationMs": 186827,
           "explicit": false,
@@ -17892,8 +17874,7 @@
             }
           ],
           "album": {
-            "name": "Афини",
-            "releaseDate": "2025-07-31"
+            "name": "Афини"
           },
           "durationMs": 202333,
           "explicit": false,
@@ -17909,8 +17890,7 @@
             }
           ],
           "album": {
-            "name": "спокуслива",
-            "releaseDate": "2026-05-22"
+            "name": "спокуслива"
           },
           "durationMs": 142184,
           "explicit": false,
@@ -17926,8 +17906,7 @@
             }
           ],
           "album": {
-            "name": "саундклауд пак",
-            "releaseDate": "2025-06-06"
+            "name": "саундклауд пак"
           },
           "durationMs": 102258,
           "explicit": false,
@@ -17943,8 +17922,7 @@
             }
           ],
           "album": {
-            "name": "Вівтар",
-            "releaseDate": "2026-04-23"
+            "name": "Вівтар"
           },
           "durationMs": 183000,
           "explicit": false,
@@ -17960,8 +17938,7 @@
             }
           ],
           "album": {
-            "name": "Don't Forget About Me, Demos",
-            "releaseDate": "2018-10-16"
+            "name": "Don't Forget About Me, Demos"
           },
           "durationMs": 97960,
           "explicit": false,
@@ -17983,8 +17960,7 @@
             }
           ],
           "album": {
-            "name": "Кольє",
-            "releaseDate": "2026-06-19"
+            "name": "Кольє"
           },
           "durationMs": 201714,
           "explicit": false,
@@ -18000,8 +17976,7 @@
             }
           ],
           "album": {
-            "name": "Зійшла Зоря",
-            "releaseDate": "2026-06-24"
+            "name": "Зійшла Зоря"
           },
           "durationMs": 207333,
           "explicit": false,
@@ -18017,8 +17992,7 @@
             }
           ],
           "album": {
-            "name": "Нагадай",
-            "releaseDate": "2023-12-16"
+            "name": "Нагадай"
           },
           "durationMs": 152184,
           "explicit": false,
@@ -18040,8 +18014,7 @@
             }
           ],
           "album": {
-            "name": "Прикуті",
-            "releaseDate": "2026-04-23"
+            "name": "Прикуті"
           },
           "durationMs": 145000,
           "explicit": false,
@@ -18057,8 +18030,7 @@
             }
           ],
           "album": {
-            "name": "Thriller",
-            "releaseDate": "1982-11-30"
+            "name": "Thriller"
           },
           "durationMs": 293802,
           "explicit": false,
@@ -18074,8 +18046,7 @@
             }
           ],
           "album": {
-            "name": "Твоя мама",
-            "releaseDate": "2026-05-21"
+            "name": "Твоя мама"
           },
           "durationMs": 159374,
           "explicit": false,
@@ -18091,8 +18062,7 @@
             }
           ],
           "album": {
-            "name": "Тому що…",
-            "releaseDate": "2026-06-17"
+            "name": "Тому що…"
           },
           "durationMs": 177000,
           "explicit": false,
@@ -18108,8 +18078,7 @@
             }
           ],
           "album": {
-            "name": "ІКОНА",
-            "releaseDate": "2026-04-16"
+            "name": "ІКОНА"
           },
           "durationMs": 188475,
           "explicit": false,
@@ -18125,8 +18094,7 @@
             }
           ],
           "album": {
-            "name": "misery.",
-            "releaseDate": "2026-03-18"
+            "name": "misery."
           },
           "durationMs": 166401,
           "explicit": false,
@@ -18148,8 +18116,7 @@
             }
           ],
           "album": {
-            "name": "Врубай",
-            "releaseDate": "2024-11-28"
+            "name": "Врубай"
           },
           "durationMs": 150583,
           "explicit": false,
@@ -18165,8 +18132,7 @@
             }
           ],
           "album": {
-            "name": "новый альбом про любовь",
-            "releaseDate": "2024-03-01"
+            "name": "новый альбом про любовь"
           },
           "durationMs": 173272,
           "explicit": false,
@@ -18182,8 +18148,7 @@
             }
           ],
           "album": {
-            "name": "Боже, я вкохалася",
-            "releaseDate": "2026-05-19"
+            "name": "Боже, я вкохалася"
           },
           "durationMs": 177656,
           "explicit": false,
@@ -18199,8 +18164,7 @@
             }
           ],
           "album": {
-            "name": "type london",
-            "releaseDate": "2025-10-03"
+            "name": "type london"
           },
           "durationMs": 103529,
           "explicit": true,
@@ -18219,8 +18183,7 @@
             }
           ],
           "album": {
-            "name": "8 миля",
-            "releaseDate": "2026-02-20"
+            "name": "8 миля"
           },
           "durationMs": 115200,
           "explicit": true,
@@ -18239,8 +18202,7 @@
             }
           ],
           "album": {
-            "name": "ШОВКОВИЦЯ",
-            "releaseDate": "2025-05-28"
+            "name": "ШОВКОВИЦЯ"
           },
           "durationMs": 185061,
           "explicit": false,
@@ -18256,8 +18218,7 @@
             }
           ],
           "album": {
-            "name": "Контракт",
-            "releaseDate": "2021-03-12"
+            "name": "Контракт"
           },
           "durationMs": 204756,
           "explicit": false,
@@ -18294,8 +18255,7 @@
             }
           ],
           "album": {
-            "name": "Malo 2.0",
-            "releaseDate": "2026-07-03"
+            "name": "Malo 2.0"
           },
           "durationMs": 326076,
           "explicit": true,
@@ -18311,8 +18271,7 @@
             }
           ],
           "album": {
-            "name": "живу-відстукує",
-            "releaseDate": "2025-08-15"
+            "name": "живу-відстукує"
           },
           "durationMs": 191815,
           "explicit": false,
@@ -18328,8 +18287,7 @@
             }
           ],
           "album": {
-            "name": "RMB (Ring My Bell)",
-            "releaseDate": "2026-06-12"
+            "name": "RMB (Ring My Bell)"
           },
           "durationMs": 174222,
           "explicit": true,
@@ -18356,8 +18314,7 @@
             }
           ],
           "album": {
-            "name": "Не ходи",
-            "releaseDate": "2025-10-01"
+            "name": "Не ходи"
           },
           "durationMs": 160972,
           "explicit": false,
@@ -18373,8 +18330,7 @@
             }
           ],
           "album": {
-            "name": "Людина для мене",
-            "releaseDate": "2026-05-22"
+            "name": "Людина для мене"
           },
           "durationMs": 267580,
           "explicit": false,
@@ -18390,8 +18346,7 @@
             }
           ],
           "album": {
-            "name": "Миллениум Х",
-            "releaseDate": "2021-07-22"
+            "name": "Миллениум Х"
           },
           "durationMs": 195789,
           "explicit": false,
@@ -18407,8 +18362,7 @@
             }
           ],
           "album": {
-            "name": "Self Aware",
-            "releaseDate": "2026-02-15"
+            "name": "Self Aware"
           },
           "durationMs": 180740,
           "explicit": false,
@@ -18432,8 +18386,7 @@
             }
           ],
           "album": {
-            "name": "sexyswag",
-            "releaseDate": "2025-03-21"
+            "name": "sexyswag"
           },
           "durationMs": 108000,
           "explicit": true,
@@ -18449,8 +18402,7 @@
             }
           ],
           "album": {
-            "name": "Thriller",
-            "releaseDate": "1982-11-30"
+            "name": "Thriller"
           },
           "durationMs": 258296,
           "explicit": false,
@@ -18472,8 +18424,7 @@
             }
           ],
           "album": {
-            "name": "Перший тайм",
-            "releaseDate": "2024-10-11"
+            "name": "Перший тайм"
           },
           "durationMs": 169000,
           "explicit": false,
@@ -18489,8 +18440,7 @@
             }
           ],
           "album": {
-            "name": "Генгста",
-            "releaseDate": "2025-08-22"
+            "name": "Генгста"
           },
           "durationMs": 200000,
           "explicit": false,
@@ -18509,8 +18459,7 @@
             }
           ],
           "album": {
-            "name": "АРХЕТИПИ",
-            "releaseDate": "2025-05-02"
+            "name": "АРХЕТИПИ"
           },
           "durationMs": 196817,
           "explicit": false,
@@ -18526,8 +18475,7 @@
             }
           ],
           "album": {
-            "name": "VLONE",
-            "releaseDate": "2016-03-07"
+            "name": "VLONE"
           },
           "durationMs": 191921,
           "explicit": true,
@@ -18543,8 +18491,7 @@
             }
           ],
           "album": {
-            "name": "Как испортить вечеринку?",
-            "releaseDate": "2023-12-22"
+            "name": "Как испортить вечеринку?"
           },
           "durationMs": 128764,
           "explicit": true,
@@ -18560,8 +18507,7 @@
             }
           ],
           "album": {
-            "name": "Мужчина",
-            "releaseDate": "2025-03-27"
+            "name": "Мужчина"
           },
           "durationMs": 163000,
           "explicit": false,
@@ -18583,8 +18529,7 @@
             }
           ],
           "album": {
-            "name": "Twenty One",
-            "releaseDate": "2026-06-26"
+            "name": "Twenty One"
           },
           "durationMs": 142200,
           "explicit": false,
@@ -18606,8 +18551,7 @@
             }
           ],
           "album": {
-            "name": "Повільно",
-            "releaseDate": "2023-01-15"
+            "name": "Повільно"
           },
           "durationMs": 166500,
           "explicit": false,
@@ -18633,8 +18577,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 186475,
           "explicit": false,
@@ -18658,8 +18601,7 @@
             }
           ],
           "album": {
-            "name": "Toz Pembe",
-            "releaseDate": "2026-07-03"
+            "name": "Toz Pembe"
           },
           "durationMs": 160998,
           "explicit": false,
@@ -18689,8 +18631,7 @@
             }
           ],
           "album": {
-            "name": "pVg (Manifest Live Remix)",
-            "releaseDate": "2026-07-24"
+            "name": "pVg (Manifest Live Remix)"
           },
           "durationMs": 245669,
           "explicit": false,
@@ -18714,8 +18655,7 @@
             }
           ],
           "album": {
-            "name": "CRUSH!",
-            "releaseDate": "2026-07-31"
+            "name": "CRUSH!"
           },
           "durationMs": 148363,
           "explicit": false,
@@ -18734,8 +18674,7 @@
             }
           ],
           "album": {
-            "name": "Hileli",
-            "releaseDate": "2026-05-08"
+            "name": "Hileli"
           },
           "durationMs": 202431,
           "explicit": false,
@@ -18759,8 +18698,7 @@
             }
           ],
           "album": {
-            "name": "Bana Ne Bu Sevdalardan",
-            "releaseDate": "2026-07-10"
+            "name": "Bana Ne Bu Sevdalardan"
           },
           "durationMs": 137512,
           "explicit": false,
@@ -18785,8 +18723,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 240782,
           "explicit": false,
@@ -18810,8 +18747,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 160639,
           "explicit": false,
@@ -18833,8 +18769,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 153230,
           "explicit": false,
@@ -18856,8 +18791,7 @@
             }
           ],
           "album": {
-            "name": "H.",
-            "releaseDate": "2026-05-08"
+            "name": "H."
           },
           "durationMs": 144374,
           "explicit": false,
@@ -18879,8 +18813,7 @@
             }
           ],
           "album": {
-            "name": "TAMPONTAMPONA",
-            "releaseDate": "2026-07-24"
+            "name": "TAMPONTAMPONA"
           },
           "durationMs": 196800,
           "explicit": true,
@@ -18902,8 +18835,7 @@
             }
           ],
           "album": {
-            "name": "Daha İyi",
-            "releaseDate": "2026-04-03"
+            "name": "Daha İyi"
           },
           "durationMs": 198595,
           "explicit": false,
@@ -18927,8 +18859,7 @@
             }
           ],
           "album": {
-            "name": "Başımda Belalar",
-            "releaseDate": "2026-07-10"
+            "name": "Başımda Belalar"
           },
           "durationMs": 170641,
           "explicit": false,
@@ -18950,8 +18881,7 @@
             }
           ],
           "album": {
-            "name": "Yangın Yeri",
-            "releaseDate": "2026-05-08"
+            "name": "Yangın Yeri"
           },
           "durationMs": 151318,
           "explicit": false,
@@ -18975,8 +18905,7 @@
             }
           ],
           "album": {
-            "name": "Serotonin",
-            "releaseDate": "2026-06-26"
+            "name": "Serotonin"
           },
           "durationMs": 146470,
           "explicit": false,
@@ -18992,8 +18921,7 @@
             }
           ],
           "album": {
-            "name": "PASAJ",
-            "releaseDate": "2026-06-19"
+            "name": "PASAJ"
           },
           "durationMs": 180923,
           "explicit": false,
@@ -19017,8 +18945,7 @@
             }
           ],
           "album": {
-            "name": "Unutacağım",
-            "releaseDate": "2026-06-19"
+            "name": "Unutacağım"
           },
           "durationMs": 198910,
           "explicit": false,
@@ -19042,8 +18969,7 @@
             }
           ],
           "album": {
-            "name": "Gidişat",
-            "releaseDate": "2026-06-12"
+            "name": "Gidişat"
           },
           "durationMs": 225570,
           "explicit": false,
@@ -19068,8 +18994,7 @@
             }
           ],
           "album": {
-            "name": "İki Tas Çorba (Mustafa Sandal Saygı 1)",
-            "releaseDate": "2026-05-18"
+            "name": "İki Tas Çorba (Mustafa Sandal Saygı 1)"
           },
           "durationMs": 191079,
           "explicit": false,
@@ -19085,8 +19010,7 @@
             }
           ],
           "album": {
-            "name": "manifestival",
-            "releaseDate": "2025-06-13"
+            "name": "manifestival"
           },
           "durationMs": 149711,
           "explicit": false,
@@ -19110,8 +19034,7 @@
             }
           ],
           "album": {
-            "name": "pVg",
-            "releaseDate": "2024-01-19"
+            "name": "pVg"
           },
           "durationMs": 243779,
           "explicit": false,
@@ -19136,8 +19059,7 @@
             }
           ],
           "album": {
-            "name": "KIYAMAM",
-            "releaseDate": "2026-07-10"
+            "name": "KIYAMAM"
           },
           "durationMs": 146262,
           "explicit": false,
@@ -19164,8 +19086,7 @@
             }
           ],
           "album": {
-            "name": "VAKKO",
-            "releaseDate": "2026-06-12"
+            "name": "VAKKO"
           },
           "durationMs": 118736,
           "explicit": false,
@@ -19189,8 +19110,7 @@
             }
           ],
           "album": {
-            "name": "Başa Bela",
-            "releaseDate": "2026-06-12"
+            "name": "Başa Bela"
           },
           "durationMs": 154081,
           "explicit": false,
@@ -19212,8 +19132,7 @@
             }
           ],
           "album": {
-            "name": "Amatör",
-            "releaseDate": "2025-12-05"
+            "name": "Amatör"
           },
           "durationMs": 163809,
           "explicit": false,
@@ -19237,8 +19156,7 @@
             }
           ],
           "album": {
-            "name": "Akşamüstü",
-            "releaseDate": "2026-06-12"
+            "name": "Akşamüstü"
           },
           "durationMs": 172000,
           "explicit": false,
@@ -19260,8 +19178,7 @@
             }
           ],
           "album": {
-            "name": "Diva",
-            "releaseDate": "2026-07-03"
+            "name": "Diva"
           },
           "durationMs": 127000,
           "explicit": false,
@@ -19283,8 +19200,7 @@
             }
           ],
           "album": {
-            "name": "manifestival",
-            "releaseDate": "2025-06-13"
+            "name": "manifestival"
           },
           "durationMs": 166425,
           "explicit": false,
@@ -19308,8 +19224,7 @@
             }
           ],
           "album": {
-            "name": "Ömrüm",
-            "releaseDate": "2026-03-20"
+            "name": "Ömrüm"
           },
           "durationMs": 174545,
           "explicit": false,
@@ -19331,8 +19246,7 @@
             }
           ],
           "album": {
-            "name": "manifestival",
-            "releaseDate": "2025-06-13"
+            "name": "manifestival"
           },
           "durationMs": 146517,
           "explicit": false,
@@ -19356,8 +19270,7 @@
             }
           ],
           "album": {
-            "name": "PARDON MUTLULUKLAR",
-            "releaseDate": "2026-04-17"
+            "name": "PARDON MUTLULUKLAR"
           },
           "durationMs": 158779,
           "explicit": false,
@@ -19381,8 +19294,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 157800,
           "explicit": false,
@@ -19406,8 +19318,7 @@
             }
           ],
           "album": {
-            "name": "Maraton",
-            "releaseDate": "2025-12-26"
+            "name": "Maraton"
           },
           "durationMs": 213906,
           "explicit": false,
@@ -19431,8 +19342,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 106105,
           "explicit": false,
@@ -19451,8 +19361,7 @@
             }
           ],
           "album": {
-            "name": "GEL GEL GEL",
-            "releaseDate": "2026-05-21"
+            "name": "GEL GEL GEL"
           },
           "durationMs": 160087,
           "explicit": true,
@@ -19474,8 +19383,7 @@
             }
           ],
           "album": {
-            "name": "Neden",
-            "releaseDate": "2002-04-17"
+            "name": "Neden"
           },
           "durationMs": 231800,
           "explicit": false,
@@ -19497,8 +19405,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 155024,
           "explicit": false,
@@ -19514,8 +19421,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 185216,
           "explicit": false,
@@ -19537,8 +19443,7 @@
             }
           ],
           "album": {
-            "name": "CURCUNA",
-            "releaseDate": "2026-02-20"
+            "name": "CURCUNA"
           },
           "durationMs": 169411,
           "explicit": false,
@@ -19565,8 +19470,7 @@
             }
           ],
           "album": {
-            "name": "valiz",
-            "releaseDate": "2026-04-24"
+            "name": "valiz"
           },
           "durationMs": 125538,
           "explicit": false,
@@ -19582,8 +19486,7 @@
             }
           ],
           "album": {
-            "name": "manifestival",
-            "releaseDate": "2025-06-13"
+            "name": "manifestival"
           },
           "durationMs": 169822,
           "explicit": false,
@@ -19611,8 +19514,7 @@
             }
           ],
           "album": {
-            "name": "Kan II",
-            "releaseDate": "2026-07-10"
+            "name": "Kan II"
           },
           "durationMs": 195917,
           "explicit": false,
@@ -19634,8 +19536,7 @@
             }
           ],
           "album": {
-            "name": "manifestival",
-            "releaseDate": "2025-06-13"
+            "name": "manifestival"
           },
           "durationMs": 133090,
           "explicit": false,
@@ -19659,8 +19560,7 @@
             }
           ],
           "album": {
-            "name": "Maya",
-            "releaseDate": "2018-06-20"
+            "name": "Maya"
           },
           "durationMs": 263799,
           "explicit": false,
@@ -19688,8 +19588,7 @@
             }
           ],
           "album": {
-            "name": "manifestival (deluxe)",
-            "releaseDate": "2025-09-05"
+            "name": "manifestival (deluxe)"
           },
           "durationMs": 232215,
           "explicit": false,
@@ -19705,8 +19604,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 158774,
           "explicit": false,
@@ -19728,8 +19626,7 @@
             }
           ],
           "album": {
-            "name": "Ateşten Bi Rüzgar",
-            "releaseDate": "2012-04-06"
+            "name": "Ateşten Bi Rüzgar"
           },
           "durationMs": 205191,
           "explicit": false,
@@ -19748,8 +19645,7 @@
             }
           ],
           "album": {
-            "name": "Sakla (Erhan Boraer Remix)",
-            "releaseDate": "2025-03-31"
+            "name": "Sakla (Erhan Boraer Remix)"
           },
           "durationMs": 147692,
           "explicit": false,
@@ -19765,8 +19661,7 @@
             }
           ],
           "album": {
-            "name": "KAYIP PERSONA",
-            "releaseDate": "2026-06-05"
+            "name": "KAYIP PERSONA"
           },
           "durationMs": 158158,
           "explicit": false,
@@ -19790,8 +19685,7 @@
             }
           ],
           "album": {
-            "name": "Hermès 2.0",
-            "releaseDate": "2026-03-06"
+            "name": "Hermès 2.0"
           },
           "durationMs": 81290,
           "explicit": false,
@@ -19823,8 +19717,7 @@
             }
           ],
           "album": {
-            "name": "عفتني",
-            "releaseDate": "2011-06-12"
+            "name": "عفتني"
           },
           "durationMs": 404035,
           "explicit": false,
@@ -19840,8 +19733,7 @@
             }
           ],
           "album": {
-            "name": "misery.",
-            "releaseDate": "2026-03-18"
+            "name": "misery."
           },
           "durationMs": 166401,
           "explicit": false,
@@ -19863,8 +19755,7 @@
             }
           ],
           "album": {
-            "name": "Ghammadt Einy",
-            "releaseDate": "2008-11-03"
+            "name": "Ghammadt Einy"
           },
           "durationMs": 250320,
           "explicit": false,
@@ -19880,8 +19771,7 @@
             }
           ],
           "album": {
-            "name": "ارجع علينا",
-            "releaseDate": "2013-05-03"
+            "name": "ارجع علينا"
           },
           "durationMs": 287216,
           "explicit": false,
@@ -19897,8 +19787,7 @@
             }
           ],
           "album": {
-            "name": "petal",
-            "releaseDate": "2026-07-31"
+            "name": "petal"
           },
           "durationMs": 197949,
           "explicit": false,
@@ -19920,8 +19809,7 @@
             }
           ],
           "album": {
-            "name": "الحب عيبنا",
-            "releaseDate": "2025-03-07"
+            "name": "الحب عيبنا"
           },
           "durationMs": 236000,
           "explicit": false,
@@ -19937,8 +19825,7 @@
             }
           ],
           "album": {
-            "name": "العمر راح (النسخة الأصلية)",
-            "releaseDate": "2017-06-11"
+            "name": "العمر راح (النسخة الأصلية)"
           },
           "durationMs": 271441,
           "explicit": false,
@@ -19954,8 +19841,7 @@
             }
           ],
           "album": {
-            "name": "ميت اني",
-            "releaseDate": "2014-03-03"
+            "name": "ميت اني"
           },
           "durationMs": 246021,
           "explicit": false,
@@ -19971,8 +19857,7 @@
             }
           ],
           "album": {
-            "name": "Rouh W Nsani",
-            "releaseDate": "2020-03-04"
+            "name": "Rouh W Nsani"
           },
           "durationMs": 225959,
           "explicit": false,
@@ -19994,8 +19879,7 @@
             }
           ],
           "album": {
-            "name": "Tayeh Fel Amaken",
-            "releaseDate": "2025-12-03"
+            "name": "Tayeh Fel Amaken"
           },
           "durationMs": 229040,
           "explicit": false,
@@ -20020,8 +19904,7 @@
             }
           ],
           "album": {
-            "name": "SUPERMAN",
-            "releaseDate": "2014-11-04"
+            "name": "SUPERMAN"
           },
           "durationMs": 213146,
           "explicit": false,
@@ -20037,8 +19920,7 @@
             }
           ],
           "album": {
-            "name": "Almahzala",
-            "releaseDate": "2021-11-08"
+            "name": "Almahzala"
           },
           "durationMs": 262345,
           "explicit": false,
@@ -20060,8 +19942,7 @@
             }
           ],
           "album": {
-            "name": "ثمان الام",
-            "releaseDate": "2018-01-19"
+            "name": "ثمان الام"
           },
           "durationMs": 246832,
           "explicit": false,
@@ -20077,8 +19958,7 @@
             }
           ],
           "album": {
-            "name": "petal",
-            "releaseDate": "2026-07-31"
+            "name": "petal"
           },
           "durationMs": 184248,
           "explicit": true,
@@ -20100,8 +19980,7 @@
             }
           ],
           "album": {
-            "name": "Fallen",
-            "releaseDate": "2003-03-04"
+            "name": "Fallen"
           },
           "durationMs": 235893,
           "explicit": false,
@@ -20123,8 +20002,7 @@
             }
           ],
           "album": {
-            "name": "Bird's Eye",
-            "releaseDate": "2024-08-09"
+            "name": "Bird's Eye"
           },
           "durationMs": 213466,
           "explicit": false,
@@ -20148,8 +20026,7 @@
             }
           ],
           "album": {
-            "name": "ضاعت دروبي",
-            "releaseDate": "2026-01-31"
+            "name": "ضاعت دروبي"
           },
           "durationMs": 204149,
           "explicit": false,
@@ -20165,8 +20042,7 @@
             }
           ],
           "album": {
-            "name": "Teenage Dream",
-            "releaseDate": "2010-01-01"
+            "name": "Teenage Dream"
           },
           "durationMs": 227333,
           "explicit": false,
@@ -20185,8 +20061,7 @@
             }
           ],
           "album": {
-            "name": "Believe",
-            "releaseDate": "2012-01-01"
+            "name": "Believe"
           },
           "durationMs": 227986,
           "explicit": false,
@@ -20202,8 +20077,7 @@
             }
           ],
           "album": {
-            "name": "هذا دمعك",
-            "releaseDate": "2013-12-28"
+            "name": "هذا دمعك"
           },
           "durationMs": 291657,
           "explicit": false,
@@ -20228,8 +20102,7 @@
             }
           ],
           "album": {
-            "name": "Hbnah Antaha",
-            "releaseDate": "2015-05-29"
+            "name": "Hbnah Antaha"
           },
           "durationMs": 400320,
           "explicit": false,
@@ -20245,8 +20118,7 @@
             }
           ],
           "album": {
-            "name": "شلون بية",
-            "releaseDate": "2022-01-25"
+            "name": "شلون بية"
           },
           "durationMs": 360055,
           "explicit": false,
@@ -20262,8 +20134,7 @@
             }
           ],
           "album": {
-            "name": "Sweet Boy",
-            "releaseDate": "2024-04-05"
+            "name": "Sweet Boy"
           },
           "durationMs": 151500,
           "explicit": false,
@@ -20285,8 +20156,7 @@
             }
           ],
           "album": {
-            "name": "Animal",
-            "releaseDate": "2026-07-24"
+            "name": "Animal"
           },
           "durationMs": 158494,
           "explicit": false,
@@ -20308,8 +20178,7 @@
             }
           ],
           "album": {
-            "name": "I Barely Know Her",
-            "releaseDate": "2025-08-22"
+            "name": "I Barely Know Her"
           },
           "durationMs": 199032,
           "explicit": false,
@@ -20333,8 +20202,7 @@
             }
           ],
           "album": {
-            "name": "Don't Forget About Me, Demos",
-            "releaseDate": "2018-10-16"
+            "name": "Don't Forget About Me, Demos"
           },
           "durationMs": 97960,
           "explicit": false,
@@ -20359,8 +20227,7 @@
             }
           ],
           "album": {
-            "name": "Garee2a Awy - A COLORS SHOW",
-            "releaseDate": "2026-07-06"
+            "name": "Garee2a Awy - A COLORS SHOW"
           },
           "durationMs": 158502,
           "explicit": false,
@@ -20379,8 +20246,7 @@
             }
           ],
           "album": {
-            "name": "جريدة بلا خبر",
-            "releaseDate": "2026-02-11"
+            "name": "جريدة بلا خبر"
           },
           "durationMs": 217082,
           "explicit": false,
@@ -20396,8 +20262,7 @@
             }
           ],
           "album": {
-            "name": "No Need To Argue (2025 Remastered)",
-            "releaseDate": "1994"
+            "name": "No Need To Argue (2025 Remastered)"
           },
           "durationMs": 305626,
           "explicit": false,
@@ -20413,8 +20278,7 @@
             }
           ],
           "album": {
-            "name": "At The Beach, In Every Life",
-            "releaseDate": "2025-04-25"
+            "name": "At The Beach, In Every Life"
           },
           "durationMs": 211978,
           "explicit": false,
@@ -20438,8 +20302,7 @@
             }
           ],
           "album": {
-            "name": "اريدك",
-            "releaseDate": "2017-07-05"
+            "name": "اريدك"
           },
           "durationMs": 251768,
           "explicit": false,
@@ -20461,8 +20324,7 @@
             }
           ],
           "album": {
-            "name": "HIT ME HARD AND SOFT",
-            "releaseDate": "2024-05-17"
+            "name": "HIT ME HARD AND SOFT"
           },
           "durationMs": 261466,
           "explicit": false,
@@ -20487,8 +20349,7 @@
             }
           ],
           "album": {
-            "name": "أتركني أحبك",
-            "releaseDate": "2015-08-10"
+            "name": "أتركني أحبك"
           },
           "durationMs": 301055,
           "explicit": false,
@@ -20507,8 +20368,7 @@
             }
           ],
           "album": {
-            "name": "TQBL Kol",
-            "releaseDate": "2018-06-12"
+            "name": "TQBL Kol"
           },
           "durationMs": 277707,
           "explicit": false,
@@ -20524,8 +20384,7 @@
             }
           ],
           "album": {
-            "name": "Ya Helou",
-            "releaseDate": "2025-07-11"
+            "name": "Ya Helou"
           },
           "durationMs": 185495,
           "explicit": false,
@@ -20549,8 +20408,7 @@
             }
           ],
           "album": {
-            "name": "Self Aware",
-            "releaseDate": "2026-02-15"
+            "name": "Self Aware"
           },
           "durationMs": 180740,
           "explicit": false,
@@ -20574,8 +20432,7 @@
             }
           ],
           "album": {
-            "name": "Narein",
-            "releaseDate": "2025-07-31"
+            "name": "Narein"
           },
           "durationMs": 213838,
           "explicit": false,
@@ -20597,8 +20454,7 @@
             }
           ],
           "album": {
-            "name": "Al Mafrood",
-            "releaseDate": "2019-02-24"
+            "name": "Al Mafrood"
           },
           "durationMs": 242845,
           "explicit": false,
@@ -20614,8 +20470,7 @@
             }
           ],
           "album": {
-            "name": "petal",
-            "releaseDate": "2026-07-31"
+            "name": "petal"
           },
           "durationMs": 219584,
           "explicit": false,
@@ -20637,8 +20492,7 @@
             }
           ],
           "album": {
-            "name": "Submarine",
-            "releaseDate": "2024-05-31"
+            "name": "Submarine"
           },
           "durationMs": 236906,
           "explicit": false,
@@ -20660,8 +20514,7 @@
             }
           ],
           "album": {
-            "name": "Cigarettes After Sex",
-            "releaseDate": "2017-06-09"
+            "name": "Cigarettes After Sex"
           },
           "durationMs": 290146,
           "explicit": false,
@@ -20683,8 +20536,7 @@
             }
           ],
           "album": {
-            "name": "وين صرتي",
-            "releaseDate": "2016-06-23"
+            "name": "وين صرتي"
           },
           "durationMs": 348003,
           "explicit": false,
@@ -20700,8 +20552,7 @@
             }
           ],
           "album": {
-            "name": "All My Demons Greeting Me As A Friend (Deluxe)",
-            "releaseDate": "2016-03-11"
+            "name": "All My Demons Greeting Me As A Friend (Deluxe)"
           },
           "durationMs": 248826,
           "explicit": false,
@@ -20717,8 +20568,7 @@
             }
           ],
           "album": {
-            "name": "Thriller",
-            "releaseDate": "1982-11-30"
+            "name": "Thriller"
           },
           "durationMs": 293802,
           "explicit": false,
@@ -20734,8 +20584,7 @@
             }
           ],
           "album": {
-            "name": "باعني وراح",
-            "releaseDate": "2025-11-16"
+            "name": "باعني وراح"
           },
           "durationMs": 321689,
           "explicit": false,
@@ -20754,8 +20603,7 @@
             }
           ],
           "album": {
-            "name": "Dai Dai",
-            "releaseDate": "2026-05-14"
+            "name": "Dai Dai"
           },
           "durationMs": 223448,
           "explicit": false,
@@ -20779,8 +20627,7 @@
             }
           ],
           "album": {
-            "name": "I Love You.",
-            "releaseDate": "2013-04-22"
+            "name": "I Love You."
           },
           "durationMs": 240400,
           "explicit": false,
@@ -20796,8 +20643,7 @@
             }
           ],
           "album": {
-            "name": "Ana Al Basma",
-            "releaseDate": "2017-03-05"
+            "name": "Ana Al Basma"
           },
           "durationMs": 226853,
           "explicit": false
@@ -20815,8 +20661,7 @@
             }
           ],
           "album": {
-            "name": "FREAKED OUT",
-            "releaseDate": "2026-06-04"
+            "name": "FREAKED OUT"
           },
           "durationMs": 158117,
           "explicit": true,
@@ -20843,8 +20688,7 @@
             }
           ],
           "album": {
-            "name": "The Boy Who Played the Harp",
-            "releaseDate": "2025-10-23"
+            "name": "The Boy Who Played the Harp"
           },
           "durationMs": 219743,
           "explicit": false,
@@ -20870,8 +20714,7 @@
             }
           ],
           "album": {
-            "name": "Brand New",
-            "releaseDate": "2026-07-12"
+            "name": "Brand New"
           },
           "durationMs": 211666,
           "explicit": false,
@@ -20893,8 +20736,7 @@
             }
           ],
           "album": {
-            "name": "ラブストーリー",
-            "releaseDate": "2014-03-26"
+            "name": "ラブストーリー"
           },
           "durationMs": 294813,
           "explicit": false,
@@ -20910,8 +20752,7 @@
             }
           ],
           "album": {
-            "name": "Sukisugite METSU!",
-            "releaseDate": "2025-10-27"
+            "name": "Sukisugite METSU!"
           },
           "durationMs": 212400,
           "explicit": false,
@@ -20933,8 +20774,7 @@
             }
           ],
           "album": {
-            "name": "Attitude",
-            "releaseDate": "2019-10-01"
+            "name": "Attitude"
           },
           "durationMs": 270026,
           "explicit": false,
@@ -20950,8 +20790,7 @@
             }
           ],
           "album": {
-            "name": "sakanaction",
-            "releaseDate": "2013-03-13"
+            "name": "sakanaction"
           },
           "durationMs": 302920,
           "explicit": false,
@@ -20967,8 +20806,7 @@
             }
           ],
           "album": {
-            "name": "スーパースター",
-            "releaseDate": "2011-10-26"
+            "name": "スーパースター"
           },
           "durationMs": 286053,
           "explicit": false,
@@ -20984,8 +20822,7 @@
             }
           ],
           "album": {
-            "name": "MAMIHLAPINATAPAI",
-            "releaseDate": "2026-04-30"
+            "name": "MAMIHLAPINATAPAI"
           },
           "durationMs": 138284,
           "explicit": false,
@@ -21007,8 +20844,7 @@
             }
           ],
           "album": {
-            "name": "ブルーアンバー",
-            "releaseDate": "2025-04-28"
+            "name": "ブルーアンバー"
           },
           "durationMs": 207845,
           "explicit": false,
@@ -21024,8 +20860,7 @@
             }
           ],
           "album": {
-            "name": "10",
-            "releaseDate": "2025-07-06"
+            "name": "10"
           },
           "durationMs": 289506,
           "explicit": false,
@@ -21041,8 +20876,7 @@
             }
           ],
           "album": {
-            "name": "Bakuretsu Aishiteru",
-            "releaseDate": "2026-02-09"
+            "name": "Bakuretsu Aishiteru"
           },
           "durationMs": 205333,
           "explicit": false,
@@ -21067,8 +20901,7 @@
             }
           ],
           "album": {
-            "name": "青と夏",
-            "releaseDate": "2018-07-31"
+            "name": "青と夏"
           },
           "durationMs": 307066,
           "explicit": false,
@@ -21084,8 +20917,7 @@
             }
           ],
           "album": {
-            "name": "GO GHOST",
-            "releaseDate": "2026-07-29"
+            "name": "GO GHOST"
           },
           "durationMs": 170100,
           "explicit": false,
@@ -21101,8 +20933,7 @@
             }
           ],
           "album": {
-            "name": "IRIS OUT",
-            "releaseDate": "2025-09-15"
+            "name": "IRIS OUT"
           },
           "durationMs": 151573,
           "explicit": false,
@@ -21124,8 +20955,7 @@
             }
           ],
           "album": {
-            "name": "烏 - Raven",
-            "releaseDate": "2026-06-15"
+            "name": "烏 - Raven"
           },
           "durationMs": 248494,
           "explicit": false,
@@ -21141,8 +20971,7 @@
             }
           ],
           "album": {
-            "name": "Momentary Sixth Sense",
-            "releaseDate": "2019-02-13"
+            "name": "Momentary Sixth Sense"
           },
           "durationMs": 306626,
           "explicit": false,
@@ -21158,8 +20987,7 @@
             }
           ],
           "album": {
-            "name": "HANA",
-            "releaseDate": "2026-02-23"
+            "name": "HANA"
           },
           "durationMs": 207200,
           "explicit": false,
@@ -21181,8 +21009,7 @@
             }
           ],
           "album": {
-            "name": "ハッピーエンド",
-            "releaseDate": "2016-11-16"
+            "name": "ハッピーエンド"
           },
           "durationMs": 314280,
           "explicit": false,
@@ -21198,8 +21025,7 @@
             }
           ],
           "album": {
-            "name": "ユーモア",
-            "releaseDate": "2023-01-17"
+            "name": "ユーモア"
           },
           "durationMs": 288013,
           "explicit": false,
@@ -21215,8 +21041,7 @@
             }
           ],
           "album": {
-            "name": "Echo",
-            "releaseDate": "2025-05-16"
+            "name": "Echo"
           },
           "durationMs": 180716,
           "explicit": false,
@@ -21238,8 +21063,7 @@
             }
           ],
           "album": {
-            "name": "夢中",
-            "releaseDate": "2025-04-25"
+            "name": "夢中"
           },
           "durationMs": 189640,
           "explicit": false,
@@ -21255,8 +21079,7 @@
             }
           ],
           "album": {
-            "name": "ANTENNA",
-            "releaseDate": "2023-07-04"
+            "name": "ANTENNA"
           },
           "durationMs": 343253,
           "explicit": false,
@@ -21278,8 +21101,7 @@
             }
           ],
           "album": {
-            "name": "BUGS LIFE",
-            "releaseDate": "2026-07-13"
+            "name": "BUGS LIFE"
           },
           "durationMs": 179361,
           "explicit": false,
@@ -21303,8 +21125,7 @@
             }
           ],
           "album": {
-            "name": "You!Joy!Parade!",
-            "releaseDate": "2026-07-17"
+            "name": "You!Joy!Parade!"
           },
           "durationMs": 181693,
           "explicit": false,
@@ -21328,8 +21149,7 @@
             }
           ],
           "album": {
-            "name": "3XL",
-            "releaseDate": "2026-01-26"
+            "name": "3XL"
           },
           "durationMs": 165454,
           "explicit": false,
@@ -21351,8 +21171,7 @@
             }
           ],
           "album": {
-            "name": "青春のエキサイトメント",
-            "releaseDate": "2017-09-12"
+            "name": "青春のエキサイトメント"
           },
           "durationMs": 235240,
           "explicit": false,
@@ -21368,8 +21187,7 @@
             }
           ],
           "album": {
-            "name": "青春のエキサイトメント",
-            "releaseDate": "2017-09-12"
+            "name": "青春のエキサイトメント"
           },
           "durationMs": 246306,
           "explicit": false,
@@ -21385,8 +21203,7 @@
             }
           ],
           "album": {
-            "name": "lulu.",
-            "releaseDate": "2026-01-11"
+            "name": "lulu."
           },
           "durationMs": 270626,
           "explicit": false,
@@ -21408,8 +21225,7 @@
             }
           ],
           "album": {
-            "name": "Missing",
-            "releaseDate": "2026-07-01"
+            "name": "Missing"
           },
           "durationMs": 172466,
           "explicit": false,
@@ -21425,8 +21241,7 @@
             }
           ],
           "album": {
-            "name": "夜鷹 - Yodaka",
-            "releaseDate": "2026-07-13"
+            "name": "夜鷹 - Yodaka"
           },
           "durationMs": 198050,
           "explicit": false,
@@ -21448,8 +21263,7 @@
             }
           ],
           "album": {
-            "name": "ANTENNA",
-            "releaseDate": "2023-07-04"
+            "name": "ANTENNA"
           },
           "durationMs": 272226,
           "explicit": false,
@@ -21465,8 +21279,7 @@
             }
           ],
           "album": {
-            "name": "負け犬にアンコールはいらない",
-            "releaseDate": "2018-05-09"
+            "name": "負け犬にアンコールはいらない"
           },
           "durationMs": 198971,
           "explicit": false,
@@ -21482,8 +21295,7 @@
             }
           ],
           "album": {
-            "name": "strobo",
-            "releaseDate": "2020-05-27"
+            "name": "strobo"
           },
           "durationMs": 224804,
           "explicit": false,
@@ -21505,8 +21317,7 @@
             }
           ],
           "album": {
-            "name": "Kaiju",
-            "releaseDate": "2025-02-20"
+            "name": "Kaiju"
           },
           "durationMs": 252722,
           "explicit": false,
@@ -21528,8 +21339,7 @@
             }
           ],
           "album": {
-            "name": "blues",
-            "releaseDate": "2012-11-21"
+            "name": "blues"
           },
           "durationMs": 253306,
           "explicit": false,
@@ -21545,8 +21355,7 @@
             }
           ],
           "album": {
-            "name": "Superfly",
-            "releaseDate": "2007-04-04"
+            "name": "Superfly"
           },
           "durationMs": 295600,
           "explicit": false,
@@ -21562,8 +21371,7 @@
             }
           ],
           "album": {
-            "name": "10",
-            "releaseDate": "2025-07-06"
+            "name": "10"
           },
           "durationMs": 278506,
           "explicit": false,
@@ -21579,8 +21387,7 @@
             }
           ],
           "album": {
-            "name": "ハッピーエンド",
-            "releaseDate": "2016-11-16"
+            "name": "ハッピーエンド"
           },
           "durationMs": 244066,
           "explicit": false,
@@ -21596,8 +21403,7 @@
             }
           ],
           "album": {
-            "name": "MAGIC",
-            "releaseDate": "2019-03-27"
+            "name": "MAGIC"
           },
           "durationMs": 258333,
           "explicit": false,
@@ -21613,8 +21419,7 @@
             }
           ],
           "album": {
-            "name": "IDOLPOWER",
-            "releaseDate": "2026-04-27"
+            "name": "IDOLPOWER"
           },
           "durationMs": 230453,
           "explicit": false,
@@ -21636,8 +21441,7 @@
             }
           ],
           "album": {
-            "name": "革命道中 - On The Way",
-            "releaseDate": "2025-07-02"
+            "name": "革命道中 - On The Way"
           },
           "durationMs": 197668,
           "explicit": false,
@@ -21659,8 +21463,7 @@
             }
           ],
           "album": {
-            "name": "Attitude",
-            "releaseDate": "2019-10-01"
+            "name": "Attitude"
           },
           "durationMs": 321306,
           "explicit": false,
@@ -21703,8 +21506,7 @@
             }
           ],
           "album": {
-            "name": "Yes! 東京",
-            "releaseDate": "2026-07-02"
+            "name": "Yes! 東京"
           },
           "durationMs": 220466,
           "explicit": false,
@@ -21720,8 +21522,7 @@
             }
           ],
           "album": {
-            "name": "スーパースター",
-            "releaseDate": "2011-10-26"
+            "name": "スーパースター"
           },
           "durationMs": 397280,
           "explicit": false,
@@ -21737,8 +21538,7 @@
             }
           ],
           "album": {
-            "name": "HANA",
-            "releaseDate": "2026-02-23"
+            "name": "HANA"
           },
           "durationMs": 165520,
           "explicit": false,
@@ -21760,8 +21560,7 @@
             }
           ],
           "album": {
-            "name": "hope",
-            "releaseDate": "2020-04-01"
+            "name": "hope"
           },
           "durationMs": 200219,
           "explicit": false,
@@ -21777,8 +21576,7 @@
             }
           ],
           "album": {
-            "name": "夏雲ノイズ",
-            "releaseDate": "2004-06-23"
+            "name": "夏雲ノイズ"
           },
           "durationMs": 328626,
           "explicit": false,
@@ -21794,8 +21592,7 @@
             }
           ],
           "album": {
-            "name": "AIZO",
-            "releaseDate": "2026-01-09"
+            "name": "AIZO"
           },
           "durationMs": 215858,
           "explicit": false,
@@ -21817,8 +21614,7 @@
             }
           ],
           "album": {
-            "name": "シャンデリア",
-            "releaseDate": "2015-12-09"
+            "name": "シャンデリア"
           },
           "durationMs": 269786,
           "explicit": false,
@@ -21834,8 +21630,7 @@
             }
           ],
           "album": {
-            "name": "Five",
-            "releaseDate": "2026-03-04"
+            "name": "Five"
           },
           "durationMs": 267600,
           "explicit": false,
@@ -21857,8 +21652,7 @@
             }
           ],
           "album": {
-            "name": "とくべチュ、して",
-            "releaseDate": "2025-02-10"
+            "name": "とくべチュ、して"
           },
           "durationMs": 239013,
           "explicit": false,
@@ -21884,8 +21678,7 @@
             }
           ],
           "album": {
-            "name": "REDRED",
-            "releaseDate": "2026-04-20"
+            "name": "REDRED"
           },
           "durationMs": 163001,
           "explicit": false,
@@ -21901,8 +21694,7 @@
             }
           ],
           "album": {
-            "name": "SCENEDROME",
-            "releaseDate": "2024-08-27"
+            "name": "SCENEDROME"
           },
           "durationMs": 181560,
           "explicit": false,
@@ -21924,8 +21716,7 @@
             }
           ],
           "album": {
-            "name": "Less than a Lover",
-            "releaseDate": "2026-07-24"
+            "name": "Less than a Lover"
           },
           "durationMs": 145680,
           "explicit": false,
@@ -21941,8 +21732,7 @@
             }
           ],
           "album": {
-            "name": "Pretty Girl - Special Single",
-            "releaseDate": "2026-07-08"
+            "name": "Pretty Girl - Special Single"
           },
           "durationMs": 210000,
           "explicit": false,
@@ -21964,8 +21754,7 @@
             }
           ],
           "album": {
-            "name": "LEMONADE - The 2nd Album (NINGNING Special Version)",
-            "releaseDate": "2026-05-28"
+            "name": "LEMONADE - The 2nd Album (NINGNING Special Version)"
           },
           "durationMs": 187000,
           "explicit": false,
@@ -21981,8 +21770,7 @@
             }
           ],
           "album": {
-            "name": "MAMIHLAPINATAPAI",
-            "releaseDate": "2026-04-30"
+            "name": "MAMIHLAPINATAPAI"
           },
           "durationMs": 138284,
           "explicit": false,
@@ -22004,8 +21792,7 @@
             }
           ],
           "album": {
-            "name": "MUSE",
-            "releaseDate": "2024-07-19"
+            "name": "MUSE"
           },
           "durationMs": 170887,
           "explicit": false,
@@ -22027,8 +21814,7 @@
             }
           ],
           "album": {
-            "name": "Lemon Tang - The 2nd Mini Album",
-            "releaseDate": "2026-06-22"
+            "name": "Lemon Tang - The 2nd Mini Album"
           },
           "durationMs": 163000,
           "explicit": false,
@@ -22050,8 +21836,7 @@
             }
           ],
           "album": {
-            "name": "GOLDEN HOUR : Part.5",
-            "releaseDate": "2026-06-26"
+            "name": "GOLDEN HOUR : Part.5"
           },
           "durationMs": 156034,
           "explicit": false,
@@ -22073,8 +21858,7 @@
             }
           ],
           "album": {
-            "name": "JAMONG SALGU CLUB",
-            "releaseDate": "2025-08-04"
+            "name": "JAMONG SALGU CLUB"
           },
           "durationMs": 192000,
           "explicit": false,
@@ -22096,8 +21880,7 @@
             }
           ],
           "album": {
-            "name": "RUDE!",
-            "releaseDate": "2026-02-20"
+            "name": "RUDE!"
           },
           "durationMs": 200000,
           "explicit": false,
@@ -22113,8 +21896,7 @@
             }
           ],
           "album": {
-            "name": "I.O.I 3rd MINI ALBUM [I.O.I : LOOP]",
-            "releaseDate": "2026-05-19"
+            "name": "I.O.I 3rd MINI ALBUM [I.O.I : LOOP]"
           },
           "durationMs": 195000,
           "explicit": false,
@@ -22138,8 +21920,7 @@
             }
           ],
           "album": {
-            "name": "Dearest",
-            "releaseDate": "2025-07-02"
+            "name": "Dearest"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -22161,8 +21942,7 @@
             }
           ],
           "album": {
-            "name": "Take-off",
-            "releaseDate": "2023-08-29"
+            "name": "Take-off"
           },
           "durationMs": 165000,
           "explicit": false,
@@ -22187,8 +21967,7 @@
             }
           ],
           "album": {
-            "name": "Hollywood's Bleeding",
-            "releaseDate": "2019-09-06"
+            "name": "Hollywood's Bleeding"
           },
           "durationMs": 157560,
           "explicit": false,
@@ -22204,8 +21983,7 @@
             }
           ],
           "album": {
-            "name": "Glow ME",
-            "releaseDate": "2026-07-21"
+            "name": "Glow ME"
           },
           "durationMs": 190000,
           "explicit": false,
@@ -22227,8 +22005,7 @@
             }
           ],
           "album": {
-            "name": "OO-LI",
-            "releaseDate": "2023-04-26"
+            "name": "OO-LI"
           },
           "durationMs": 244986,
           "explicit": false,
@@ -22244,8 +22021,7 @@
             }
           ],
           "album": {
-            "name": "Let Me Love My Youth",
-            "releaseDate": "2022-03-14"
+            "name": "Let Me Love My Youth"
           },
           "durationMs": 248407,
           "explicit": false,
@@ -22267,8 +22043,7 @@
             }
           ],
           "album": {
-            "name": "Delulu Pack",
-            "releaseDate": "2026-01-26"
+            "name": "Delulu Pack"
           },
           "durationMs": 179586,
           "explicit": false,
@@ -22290,8 +22065,7 @@
             }
           ],
           "album": {
-            "name": "LOVE CATCHER",
-            "releaseDate": "2026-03-11"
+            "name": "LOVE CATCHER"
           },
           "durationMs": 180000,
           "explicit": false,
@@ -22316,8 +22090,7 @@
             }
           ],
           "album": {
-            "name": "GOLDEN",
-            "releaseDate": "2023-11-03"
+            "name": "GOLDEN"
           },
           "durationMs": 183550,
           "explicit": true,
@@ -22333,8 +22106,7 @@
             }
           ],
           "album": {
-            "name": "petal",
-            "releaseDate": "2026-07-31"
+            "name": "petal"
           },
           "durationMs": 197949,
           "explicit": false,
@@ -22356,8 +22128,7 @@
             }
           ],
           "album": {
-            "name": "If I have you only (My love X Nerd Connection)",
-            "releaseDate": "2023-08-15"
+            "name": "If I have you only (My love X Nerd Connection)"
           },
           "durationMs": 250573,
           "explicit": false,
@@ -22373,8 +22144,7 @@
             }
           ],
           "album": {
-            "name": "Echo",
-            "releaseDate": "2025-05-16"
+            "name": "Echo"
           },
           "durationMs": 180716,
           "explicit": false,
@@ -22396,8 +22166,7 @@
             }
           ],
           "album": {
-            "name": "ARIRANG",
-            "releaseDate": "2026-03-20"
+            "name": "ARIRANG"
           },
           "durationMs": 159007,
           "explicit": false,
@@ -22419,8 +22188,7 @@
             }
           ],
           "album": {
-            "name": "Forever Has Always Been",
-            "releaseDate": "2021-01-09"
+            "name": "Forever Has Always Been"
           },
           "durationMs": 237160,
           "explicit": false,
@@ -22436,8 +22204,7 @@
             }
           ],
           "album": {
-            "name": "Traveler",
-            "releaseDate": "2019-08-31"
+            "name": "Traveler"
           },
           "durationMs": 326842,
           "explicit": false,
@@ -22459,8 +22226,7 @@
             }
           ],
           "album": {
-            "name": "Heavy Serenade",
-            "releaseDate": "2026-05-11"
+            "name": "Heavy Serenade"
           },
           "durationMs": 180000,
           "explicit": false,
@@ -22476,8 +22242,7 @@
             }
           ],
           "album": {
-            "name": "J-POP REMAKE Vol.1",
-            "releaseDate": "2026-06-29"
+            "name": "J-POP REMAKE Vol.1"
           },
           "durationMs": 219000,
           "explicit": false,
@@ -22499,8 +22264,7 @@
             }
           ],
           "album": {
-            "name": "FLOWERING",
-            "releaseDate": "2026-04-07"
+            "name": "FLOWERING"
           },
           "durationMs": 218480,
           "explicit": false,
@@ -22522,8 +22286,7 @@
             }
           ],
           "album": {
-            "name": "Remapping the Human Soul",
-            "releaseDate": "2007-01-24"
+            "name": "Remapping the Human Soul"
           },
           "durationMs": 231093,
           "explicit": false,
@@ -22539,8 +22302,7 @@
             }
           ],
           "album": {
-            "name": "Runaway",
-            "releaseDate": "2026-04-08"
+            "name": "Runaway"
           },
           "durationMs": 182000,
           "explicit": false,
@@ -22556,17 +22318,10 @@
             }
           ],
           "album": {
-            "name": "LEGEND",
-            "releaseDate": "2019-03-13"
+            "name": "LEGEND"
           },
           "durationMs": 265000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "t8P-zdkoeJA",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC8-EI2rTBYgkZl5kB_b-2Pw"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f694adfa02990eaca79fec1b"
         },
         {
@@ -22579,8 +22334,7 @@
             }
           ],
           "album": {
-            "name": "STYLE",
-            "releaseDate": "2025-06-18"
+            "name": "STYLE"
           },
           "durationMs": 209671,
           "explicit": false,
@@ -22602,8 +22356,7 @@
             }
           ],
           "album": {
-            "name": "15",
-            "releaseDate": "2025-01-08"
+            "name": "15"
           },
           "durationMs": 217760,
           "explicit": false,
@@ -22625,8 +22378,7 @@
             }
           ],
           "album": {
-            "name": "‎Good Night Good Dream",
-            "releaseDate": "2020-03-23"
+            "name": "‎Good Night Good Dream"
           },
           "durationMs": 265983,
           "explicit": false,
@@ -22648,8 +22400,7 @@
             }
           ],
           "album": {
-            "name": "yours",
-            "releaseDate": "2019-04-10"
+            "name": "yours"
           },
           "durationMs": 165229,
           "explicit": false,
@@ -22671,8 +22422,7 @@
             }
           ],
           "album": {
-            "name": "We Are",
-            "releaseDate": "2017-09-04"
+            "name": "We Are"
           },
           "durationMs": 196020,
           "explicit": false,
@@ -22688,8 +22438,7 @@
             }
           ],
           "album": {
-            "name": "FOCUS - The 1st Mini Album",
-            "releaseDate": "2025-10-20"
+            "name": "FOCUS - The 1st Mini Album"
           },
           "durationMs": 177052,
           "explicit": false,
@@ -22711,8 +22460,7 @@
             }
           ],
           "album": {
-            "name": "COLOR OUTSIDE THE LINES",
-            "releaseDate": "2025-09-08"
+            "name": "COLOR OUTSIDE THE LINES"
           },
           "durationMs": 170880,
           "explicit": false,
@@ -22734,8 +22482,7 @@
             }
           ],
           "album": {
-            "name": "GREENGREEN",
-            "releaseDate": "2026-05-04"
+            "name": "GREENGREEN"
           },
           "durationMs": 173947,
           "explicit": false,
@@ -22757,8 +22504,7 @@
             }
           ],
           "album": {
-            "name": "SUPER REAL ME",
-            "releaseDate": "2024-03-25"
+            "name": "SUPER REAL ME"
           },
           "durationMs": 160688,
           "explicit": false,
@@ -22780,8 +22526,7 @@
             }
           ],
           "album": {
-            "name": "IM HERO 2",
-            "releaseDate": "2025-08-29"
+            "name": "IM HERO 2"
           },
           "durationMs": 208000,
           "explicit": false,
@@ -22803,8 +22548,7 @@
             }
           ],
           "album": {
-            "name": "EROS",
-            "releaseDate": "2025-07-14"
+            "name": "EROS"
           },
           "durationMs": 220202,
           "explicit": false,
@@ -22829,8 +22573,7 @@
             }
           ],
           "album": {
-            "name": "Believe",
-            "releaseDate": "2012-01-01"
+            "name": "Believe"
           },
           "durationMs": 227986,
           "explicit": false,
@@ -22846,8 +22589,7 @@
             }
           ],
           "album": {
-            "name": "FLYING HIGH WITH U",
-            "releaseDate": "2021-03-09"
+            "name": "FLYING HIGH WITH U"
           },
           "durationMs": 207186,
           "explicit": false,
@@ -22869,8 +22611,7 @@
             }
           ],
           "album": {
-            "name": "Animal",
-            "releaseDate": "2026-07-24"
+            "name": "Animal"
           },
           "durationMs": 158494,
           "explicit": false,
@@ -22898,8 +22639,7 @@
             }
           ],
           "album": {
-            "name": "Show Me The Money 12 Episode 2",
-            "releaseDate": "2026-03-20"
+            "name": "Show Me The Money 12 Episode 2"
           },
           "durationMs": 218796,
           "explicit": false,
@@ -22915,8 +22655,7 @@
             }
           ],
           "album": {
-            "name": "Please Summer!",
-            "releaseDate": "2026-07-22"
+            "name": "Please Summer!"
           },
           "durationMs": 229000,
           "explicit": false,
@@ -22938,8 +22677,7 @@
             }
           ],
           "album": {
-            "name": "시정잡배의 18번 (The Riffraff’s Signature)",
-            "releaseDate": "2026-02-02"
+            "name": "시정잡배의 18번 (The Riffraff’s Signature)"
           },
           "durationMs": 135955,
           "explicit": false,
@@ -22965,8 +22703,7 @@
             }
           ],
           "album": {
-            "name": "Arz Kiya Hai | Coke Studio Bharat",
-            "releaseDate": "2025-08-20"
+            "name": "Arz Kiya Hai | Coke Studio Bharat"
           },
           "durationMs": 294500,
           "explicit": false,
@@ -22988,8 +22725,7 @@
             }
           ],
           "album": {
-            "name": "Bairan",
-            "releaseDate": "2026-01-23"
+            "name": "Bairan"
           },
           "durationMs": 150857,
           "explicit": false,
@@ -23011,8 +22747,7 @@
             }
           ],
           "album": {
-            "name": "Khat",
-            "releaseDate": "2025-12-03"
+            "name": "Khat"
           },
           "durationMs": 296222,
           "explicit": false,
@@ -23043,8 +22778,7 @@
             }
           ],
           "album": {
-            "name": "KALYANI (with Shreya Ghoshal) [Remix]",
-            "releaseDate": "2026-07-01"
+            "name": "KALYANI (with Shreya Ghoshal) [Remix]"
           },
           "durationMs": 269387,
           "explicit": false,
@@ -23069,8 +22803,7 @@
             }
           ],
           "album": {
-            "name": "Dhurandhar",
-            "releaseDate": "2025-12-05"
+            "name": "Dhurandhar"
           },
           "durationMs": 362400,
           "explicit": false,
@@ -23086,8 +22819,7 @@
             }
           ],
           "album": {
-            "name": "Table No. 21 (Original Motion Picture Soundtrack)",
-            "releaseDate": "2013-04-01"
+            "name": "Table No. 21 (Original Motion Picture Soundtrack)"
           },
           "durationMs": 200120,
           "explicit": false,
@@ -23115,8 +22847,7 @@
             }
           ],
           "album": {
-            "name": "Tum Ho Toh (From \"Saiyaara\")",
-            "releaseDate": "2025-06-17"
+            "name": "Tum Ho Toh (From \"Saiyaara\")"
           },
           "durationMs": 318217,
           "explicit": false,
@@ -23135,8 +22866,7 @@
             }
           ],
           "album": {
-            "name": "Barsaat",
-            "releaseDate": "2026-07-09"
+            "name": "Barsaat"
           },
           "durationMs": 185294,
           "explicit": false,
@@ -23167,8 +22897,7 @@
             }
           ],
           "album": {
-            "name": "Samjhawan",
-            "releaseDate": "2014-06-19"
+            "name": "Samjhawan"
           },
           "durationMs": 269184,
           "explicit": false,
@@ -23184,8 +22913,7 @@
             }
           ],
           "album": {
-            "name": "Sahiba",
-            "releaseDate": "2023-12-19"
+            "name": "Sahiba"
           },
           "durationMs": 190098,
           "explicit": false,
@@ -23213,8 +22941,7 @@
             }
           ],
           "album": {
-            "name": "Finding Her",
-            "releaseDate": "2025-01-29"
+            "name": "Finding Her"
           },
           "durationMs": 207000,
           "explicit": false,
@@ -23245,8 +22972,7 @@
             }
           ],
           "album": {
-            "name": "Best of Romance: Atif Aslam",
-            "releaseDate": "2023-04-20"
+            "name": "Best of Romance: Atif Aslam"
           },
           "durationMs": 279826,
           "explicit": false,
@@ -23277,8 +23003,7 @@
             }
           ],
           "album": {
-            "name": "Shivaay",
-            "releaseDate": "2016-10-07"
+            "name": "Shivaay"
           },
           "durationMs": 374205,
           "explicit": false,
@@ -23300,8 +23025,7 @@
             }
           ],
           "album": {
-            "name": "Udi Udi",
-            "releaseDate": "2026-02-26"
+            "name": "Udi Udi"
           },
           "durationMs": 161250,
           "explicit": false,
@@ -23323,8 +23047,7 @@
             }
           ],
           "album": {
-            "name": "Bollywood Love Lounge Vol 1",
-            "releaseDate": "2026-07-30"
+            "name": "Bollywood Love Lounge Vol 1"
           },
           "durationMs": 177893,
           "explicit": false,
@@ -23343,8 +23066,7 @@
             }
           ],
           "album": {
-            "name": "Sheesha (Aakhya Mai Aakh Ghali Jo Bairan)",
-            "releaseDate": "2024-09-10"
+            "name": "Sheesha (Aakhya Mai Aakh Ghali Jo Bairan)"
           },
           "durationMs": 196253,
           "explicit": false,
@@ -23366,8 +23088,7 @@
             }
           ],
           "album": {
-            "name": "Jo Tum Mere Ho",
-            "releaseDate": "2024-08-02"
+            "name": "Jo Tum Mere Ho"
           },
           "durationMs": 251813,
           "explicit": false,
@@ -23397,8 +23118,7 @@
             }
           ],
           "album": {
-            "name": "Lost;Found",
-            "releaseDate": "2024-05-25"
+            "name": "Lost;Found"
           },
           "durationMs": 224842,
           "explicit": false,
@@ -23417,8 +23137,7 @@
             }
           ],
           "album": {
-            "name": "Barbaad (From \"Saiyaara\")",
-            "releaseDate": "2025-06-10"
+            "name": "Barbaad (From \"Saiyaara\")"
           },
           "durationMs": 357127,
           "explicit": false,
@@ -23440,8 +23159,7 @@
             }
           ],
           "album": {
-            "name": "Pavazha Malli (From \"Think Indie\")",
-            "releaseDate": "2026-03-05"
+            "name": "Pavazha Malli (From \"Think Indie\")"
           },
           "durationMs": 252569,
           "explicit": false,
@@ -23472,8 +23190,7 @@
             }
           ],
           "album": {
-            "name": "Saiyaara",
-            "releaseDate": "2025-07-04"
+            "name": "Saiyaara"
           },
           "durationMs": 370875,
           "explicit": false,
@@ -23492,8 +23209,7 @@
             }
           ],
           "album": {
-            "name": "Boom Shaka",
-            "releaseDate": "2026-04-28"
+            "name": "Boom Shaka"
           },
           "durationMs": 218769,
           "explicit": true,
@@ -23521,8 +23237,7 @@
             }
           ],
           "album": {
-            "name": "Dhurandhar The Revenge",
-            "releaseDate": "2026-03-24"
+            "name": "Dhurandhar The Revenge"
           },
           "durationMs": 180004,
           "explicit": false,
@@ -23544,8 +23259,7 @@
             }
           ],
           "album": {
-            "name": "Sitaare (From \"Ikkis\")",
-            "releaseDate": "2025-12-03"
+            "name": "Sitaare (From \"Ikkis\")"
           },
           "durationMs": 242916,
           "explicit": false,
@@ -23567,8 +23281,7 @@
             }
           ],
           "album": {
-            "name": "Aarzu",
-            "releaseDate": "2025-12-31"
+            "name": "Aarzu"
           },
           "durationMs": 187567,
           "explicit": false,
@@ -23598,8 +23311,7 @@
             }
           ],
           "album": {
-            "name": "Dooron Dooron",
-            "releaseDate": "2022-01-18"
+            "name": "Dooron Dooron"
           },
           "durationMs": 215946,
           "explicit": false,
@@ -23627,8 +23339,7 @@
             }
           ],
           "album": {
-            "name": "Tu Thodi Der Aur Thehar Ja (From \"Half Girlfriend\")",
-            "releaseDate": "2026-07-01"
+            "name": "Tu Thodi Der Aur Thehar Ja (From \"Half Girlfriend\")"
           },
           "durationMs": 296377,
           "explicit": false,
@@ -23650,8 +23361,7 @@
             }
           ],
           "album": {
-            "name": "Inaam (Ft. Badshah)",
-            "releaseDate": "2026-04-06"
+            "name": "Inaam (Ft. Badshah)"
           },
           "durationMs": 178124,
           "explicit": false,
@@ -23673,8 +23383,7 @@
             }
           ],
           "album": {
-            "name": "Bhediya (Original Motion Picture Soundtrack)",
-            "releaseDate": "2022-12-06"
+            "name": "Bhediya (Original Motion Picture Soundtrack)"
           },
           "durationMs": 261702,
           "explicit": false,
@@ -23693,8 +23402,7 @@
             }
           ],
           "album": {
-            "name": "The Arijit Singh Collection",
-            "releaseDate": "2023-05-26"
+            "name": "The Arijit Singh Collection"
           },
           "durationMs": 299333,
           "explicit": false,
@@ -23710,8 +23418,7 @@
             }
           ],
           "album": {
-            "name": "O Sanam",
-            "releaseDate": "2023-01-17"
+            "name": "O Sanam"
           },
           "durationMs": 265449,
           "explicit": false,
@@ -23736,8 +23443,7 @@
             }
           ],
           "album": {
-            "name": "Love Wali Feeling: Valentine Special",
-            "releaseDate": "2017-02-10"
+            "name": "Love Wali Feeling: Valentine Special"
           },
           "durationMs": 341054,
           "explicit": false,
@@ -23756,8 +23462,7 @@
             }
           ],
           "album": {
-            "name": "Murder 2",
-            "releaseDate": "2011-05-30"
+            "name": "Murder 2"
           },
           "durationMs": 346627,
           "explicit": false,
@@ -23785,8 +23490,7 @@
             }
           ],
           "album": {
-            "name": "Dhurandhar",
-            "releaseDate": "2025-12-05"
+            "name": "Dhurandhar"
           },
           "durationMs": 224083,
           "explicit": false,
@@ -23805,8 +23509,7 @@
             }
           ],
           "album": {
-            "name": "Love Dose Arijit Singh",
-            "releaseDate": "2016-02-11"
+            "name": "Love Dose Arijit Singh"
           },
           "durationMs": 280161,
           "explicit": false,
@@ -23834,8 +23537,7 @@
             }
           ],
           "album": {
-            "name": "Hasee Toh Phasee (Original Motion Picture Soundtrack)",
-            "releaseDate": "2014-01-05"
+            "name": "Hasee Toh Phasee (Original Motion Picture Soundtrack)"
           },
           "durationMs": 303640,
           "explicit": false,
@@ -23857,8 +23559,7 @@
             }
           ],
           "album": {
-            "name": "Blood Money (Original Motion Picture Soundtrack)",
-            "releaseDate": "2012-02-14"
+            "name": "Blood Money (Original Motion Picture Soundtrack)"
           },
           "durationMs": 306173,
           "explicit": false,
@@ -23889,8 +23590,7 @@
             }
           ],
           "album": {
-            "name": "Ehsaas",
-            "releaseDate": "2025-04-09"
+            "name": "Ehsaas"
           },
           "durationMs": 233000,
           "explicit": false,
@@ -23918,8 +23618,7 @@
             }
           ],
           "album": {
-            "name": "Once Upon Ay Time In Mumbai Dobaara !",
-            "releaseDate": "2013-07-22"
+            "name": "Once Upon Ay Time In Mumbai Dobaara !"
           },
           "durationMs": 314239,
           "explicit": false,
@@ -23938,8 +23637,7 @@
             }
           ],
           "album": {
-            "name": "LAAVAN",
-            "releaseDate": "2024-12-11"
+            "name": "LAAVAN"
           },
           "durationMs": 185046,
           "explicit": false,
@@ -23967,8 +23665,7 @@
             }
           ],
           "album": {
-            "name": "Raanjhan (From \"Do Patti\")",
-            "releaseDate": "2024-10-04"
+            "name": "Raanjhan (From \"Do Patti\")"
           },
           "durationMs": 240066,
           "explicit": false,
@@ -23993,8 +23690,7 @@
             }
           ],
           "album": {
-            "name": "Aarzu (with Asim Azhar)",
-            "releaseDate": "2026-05-28"
+            "name": "Aarzu (with Asim Azhar)"
           },
           "durationMs": 185142,
           "explicit": false,
@@ -24019,8 +23715,7 @@
             }
           ],
           "album": {
-            "name": "Majboor",
-            "releaseDate": "2025-09-11"
+            "name": "Majboor"
           },
           "durationMs": 145333,
           "explicit": false,
@@ -24045,8 +23740,7 @@
             }
           ],
           "album": {
-            "name": "Best Of Palak Muchhal",
-            "releaseDate": "2020-06-09"
+            "name": "Best Of Palak Muchhal"
           },
           "durationMs": 304899,
           "explicit": false,
@@ -24065,8 +23759,7 @@
             }
           ],
           "album": {
-            "name": "Best Of Akhil Sachdeva",
-            "releaseDate": "2019-09-03"
+            "name": "Best Of Akhil Sachdeva"
           },
           "durationMs": 268463,
           "explicit": false,
@@ -24074,7 +23767,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-0212b4c8036ae7ca6989",
+          "id": "levyra-e58c98ea589fa449e1d7",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24091,12 +23784,11 @@
             }
           ],
           "album": {
-            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
-            "releaseDate": "2009-02-19"
+            "name": "Guru (Original Motion Picture Soundtrack)"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
         },
         {
           "position": 47,
@@ -24111,8 +23803,7 @@
             }
           ],
           "album": {
-            "name": "P-POP CULTURE",
-            "releaseDate": "2025-08-22"
+            "name": "P-POP CULTURE"
           },
           "durationMs": 160796,
           "explicit": false,
@@ -24143,8 +23834,7 @@
             }
           ],
           "album": {
-            "name": "Amsham - അംശം",
-            "releaseDate": "2026-04-02"
+            "name": "Amsham - അംശം"
           },
           "durationMs": 281800,
           "explicit": false,
@@ -24169,8 +23859,7 @@
             }
           ],
           "album": {
-            "name": "P-POP CULTURE",
-            "releaseDate": "2025-08-22"
+            "name": "P-POP CULTURE"
           },
           "durationMs": 180000,
           "explicit": false,
@@ -24204,8 +23893,7 @@
             }
           ],
           "album": {
-            "name": "Cocktail 2 (Original Motion Picture Soundtrack)",
-            "releaseDate": "2026-06-25"
+            "name": "Cocktail 2 (Original Motion Picture Soundtrack)"
           },
           "durationMs": 230070,
           "explicit": false,
@@ -24240,8 +23928,7 @@
             }
           ],
           "album": {
-            "name": "Sesi Potret",
-            "releaseDate": "2026-01-29"
+            "name": "Sesi Potret"
           },
           "durationMs": 243000,
           "explicit": false,
@@ -24257,8 +23944,7 @@
             }
           ],
           "album": {
-            "name": "Teh Hijau",
-            "releaseDate": "2026-06-30"
+            "name": "Teh Hijau"
           },
           "durationMs": 212879,
           "explicit": false,
@@ -24282,8 +23968,7 @@
             }
           ],
           "album": {
-            "name": "iqro'",
-            "releaseDate": "2026-04-24"
+            "name": "iqro'"
           },
           "durationMs": 234229,
           "explicit": false,
@@ -24307,8 +23992,7 @@
             }
           ],
           "album": {
-            "name": "iqro'",
-            "releaseDate": "2026-04-24"
+            "name": "iqro'"
           },
           "durationMs": 202100,
           "explicit": false,
@@ -24330,8 +24014,7 @@
             }
           ],
           "album": {
-            "name": "iqro'",
-            "releaseDate": "2026-04-24"
+            "name": "iqro'"
           },
           "durationMs": 194293,
           "explicit": false,
@@ -24353,8 +24036,7 @@
             }
           ],
           "album": {
-            "name": "Memorandum",
-            "releaseDate": "2022-03-10"
+            "name": "Memorandum"
           },
           "durationMs": 232000,
           "explicit": false,
@@ -24376,8 +24058,7 @@
             }
           ],
           "album": {
-            "name": "Resonance",
-            "releaseDate": "2026-01-09"
+            "name": "Resonance"
           },
           "durationMs": 245226,
           "explicit": false,
@@ -24399,8 +24080,7 @@
             }
           ],
           "album": {
-            "name": "Nadhif (laman berikutnya)",
-            "releaseDate": "2025-06-20"
+            "name": "Nadhif (laman berikutnya)"
           },
           "durationMs": 279649,
           "explicit": false,
@@ -24424,8 +24104,7 @@
             }
           ],
           "album": {
-            "name": "Doves, '25 on Blank Canvas",
-            "releaseDate": "2025-02-24"
+            "name": "Doves, '25 on Blank Canvas"
           },
           "durationMs": 236489,
           "explicit": false,
@@ -24447,8 +24126,7 @@
             }
           ],
           "album": {
-            "name": "MARKERS AND SUCH PENS FLASHDISKS",
-            "releaseDate": "2024-04-30"
+            "name": "MARKERS AND SUCH PENS FLASHDISKS"
           },
           "durationMs": 305357,
           "explicit": false,
@@ -24470,8 +24148,7 @@
             }
           ],
           "album": {
-            "name": "Walk the Talk",
-            "releaseDate": "2018-07-20"
+            "name": "Walk the Talk"
           },
           "durationMs": 207216,
           "explicit": false,
@@ -24487,8 +24164,7 @@
             }
           ],
           "album": {
-            "name": "Manusia",
-            "releaseDate": "2022-03-03"
+            "name": "Manusia"
           },
           "durationMs": 235000,
           "explicit": false,
@@ -24512,8 +24188,7 @@
             }
           ],
           "album": {
-            "name": "Nadhif (laman berikutnya)",
-            "releaseDate": "2025-06-20"
+            "name": "Nadhif (laman berikutnya)"
           },
           "durationMs": 198567,
           "explicit": false,
@@ -24535,8 +24210,7 @@
             }
           ],
           "album": {
-            "name": "Bahagia Lagi",
-            "releaseDate": "2025-10-23"
+            "name": "Bahagia Lagi"
           },
           "durationMs": 227415,
           "explicit": false,
@@ -24558,8 +24232,7 @@
             }
           ],
           "album": {
-            "name": "MMG (My Mine Gueh)",
-            "releaseDate": "2026-06-19"
+            "name": "MMG (My Mine Gueh)"
           },
           "durationMs": 193090,
           "explicit": false,
@@ -24581,8 +24254,7 @@
             }
           ],
           "album": {
-            "name": "iqro'",
-            "releaseDate": "2026-04-24"
+            "name": "iqro'"
           },
           "durationMs": 225153,
           "explicit": false,
@@ -24604,8 +24276,7 @@
             }
           ],
           "album": {
-            "name": "Berapa Kali Kita Akan Saling Memaafkan",
-            "releaseDate": "2026-04-08"
+            "name": "Berapa Kali Kita Akan Saling Memaafkan"
           },
           "durationMs": 284463,
           "explicit": false,
@@ -24630,8 +24301,7 @@
             }
           ],
           "album": {
-            "name": "Astaga Bercanda",
-            "releaseDate": "2026-05-08"
+            "name": "Astaga Bercanda"
           },
           "durationMs": 166850,
           "explicit": false,
@@ -24653,8 +24323,7 @@
             }
           ],
           "album": {
-            "name": "Monokrom",
-            "releaseDate": "2016-08-03"
+            "name": "Monokrom"
           },
           "durationMs": 214567,
           "explicit": false,
@@ -24678,8 +24347,7 @@
             }
           ],
           "album": {
-            "name": "Teenage Dream",
-            "releaseDate": "2010-01-01"
+            "name": "Teenage Dream"
           },
           "durationMs": 227333,
           "explicit": false,
@@ -24695,8 +24363,7 @@
             }
           ],
           "album": {
-            "name": "Memorandum",
-            "releaseDate": "2022-03-10"
+            "name": "Memorandum"
           },
           "durationMs": 434759,
           "explicit": false,
@@ -24723,8 +24390,7 @@
             }
           ],
           "album": {
-            "name": "Titik Nadir",
-            "releaseDate": "2025-06-24"
+            "name": "Titik Nadir"
           },
           "durationMs": 245462,
           "explicit": false,
@@ -24746,8 +24412,7 @@
             }
           ],
           "album": {
-            "name": "Membangun & Menghancurkan",
-            "releaseDate": "2024-08-30"
+            "name": "Membangun & Menghancurkan"
           },
           "durationMs": 277944,
           "explicit": false,
@@ -24769,8 +24434,7 @@
             }
           ],
           "album": {
-            "name": "Perayaan Patah Hati - Babak 1",
-            "releaseDate": "2022-09-06"
+            "name": "Perayaan Patah Hati - Babak 1"
           },
           "durationMs": 250000,
           "explicit": false,
@@ -24786,8 +24450,7 @@
             }
           ],
           "album": {
-            "name": "Membangun & Menghancurkan",
-            "releaseDate": "2024-08-30"
+            "name": "Membangun & Menghancurkan"
           },
           "durationMs": 288981,
           "explicit": false,
@@ -24809,8 +24472,7 @@
             }
           ],
           "album": {
-            "name": "Perayaan Patah Hati - Babak 2",
-            "releaseDate": "2025-12-11"
+            "name": "Perayaan Patah Hati - Babak 2"
           },
           "durationMs": 240607,
           "explicit": false,
@@ -24834,8 +24496,7 @@
             }
           ],
           "album": {
-            "name": "Manusia",
-            "releaseDate": "2022-03-03"
+            "name": "Manusia"
           },
           "durationMs": 242000,
           "explicit": false,
@@ -24859,8 +24520,7 @@
             }
           ],
           "album": {
-            "name": "Terpukau",
-            "releaseDate": "2013-10-23"
+            "name": "Terpukau"
           },
           "durationMs": 252093,
           "explicit": false,
@@ -24882,8 +24542,7 @@
             }
           ],
           "album": {
-            "name": "Selamat Ulang Tahun",
-            "releaseDate": "2020-05-28"
+            "name": "Selamat Ulang Tahun"
           },
           "durationMs": 315960,
           "explicit": false,
@@ -24899,8 +24558,7 @@
             }
           ],
           "album": {
-            "name": "Lagipula Hidup Akan Berakhir",
-            "releaseDate": "2023-07-07"
+            "name": "Lagipula Hidup Akan Berakhir"
           },
           "durationMs": 266330,
           "explicit": false,
@@ -24924,8 +24582,7 @@
             }
           ],
           "album": {
-            "name": "Nadhif",
-            "releaseDate": "2024-06-21"
+            "name": "Nadhif"
           },
           "durationMs": 260346,
           "explicit": false,
@@ -24949,8 +24606,7 @@
             }
           ],
           "album": {
-            "name": "Menari Dengan Bayangan",
-            "releaseDate": "2019-11-29"
+            "name": "Menari Dengan Bayangan"
           },
           "durationMs": 277457,
           "explicit": false,
@@ -24975,8 +24631,7 @@
             }
           ],
           "album": {
-            "name": "Nalar",
-            "releaseDate": "2023-04-18"
+            "name": "Nalar"
           },
           "durationMs": 261048,
           "explicit": false,
@@ -24992,8 +24647,7 @@
             }
           ],
           "album": {
-            "name": "MARKERS AND SUCH PENS FLASHDISKS",
-            "releaseDate": "2024-04-30"
+            "name": "MARKERS AND SUCH PENS FLASHDISKS"
           },
           "durationMs": 211244,
           "explicit": false,
@@ -25018,8 +24672,7 @@
             }
           ],
           "album": {
-            "name": "Selamat (Selamat Tinggal)",
-            "releaseDate": "2019-06-17"
+            "name": "Selamat (Selamat Tinggal)"
           },
           "durationMs": 313670,
           "explicit": false,
@@ -25035,8 +24688,7 @@
             }
           ],
           "album": {
-            "name": "MARKERS AND SUCH PENS FLASHDISKS",
-            "releaseDate": "2024-04-30"
+            "name": "MARKERS AND SUCH PENS FLASHDISKS"
           },
           "durationMs": 271477,
           "explicit": false,
@@ -25058,8 +24710,7 @@
             }
           ],
           "album": {
-            "name": "EUNOIA",
-            "releaseDate": "2025-11-26"
+            "name": "EUNOIA"
           },
           "durationMs": 275935,
           "explicit": false,
@@ -25075,8 +24726,7 @@
             }
           ],
           "album": {
-            "name": "Black & Blue",
-            "releaseDate": "2000-11-21"
+            "name": "Black & Blue"
           },
           "durationMs": 230093,
           "explicit": false,
@@ -25098,8 +24748,7 @@
             }
           ],
           "album": {
-            "name": "Sheila On 7",
-            "releaseDate": "1999-07-14"
+            "name": "Sheila On 7"
           },
           "durationMs": 288706,
           "explicit": false,
@@ -25121,8 +24770,7 @@
             }
           ],
           "album": {
-            "name": "Nanti Kita Seperti Ini",
-            "releaseDate": "2022-09-27"
+            "name": "Nanti Kita Seperti Ini"
           },
           "durationMs": 209647,
           "explicit": false,
@@ -25146,8 +24794,7 @@
             }
           ],
           "album": {
-            "name": "Berusaha di Bawah Hujan",
-            "releaseDate": "2026-05-15"
+            "name": "Berusaha di Bawah Hujan"
           },
           "durationMs": 230130,
           "explicit": false,
@@ -25169,8 +24816,7 @@
             }
           ],
           "album": {
-            "name": "iqro'",
-            "releaseDate": "2026-04-24"
+            "name": "iqro'"
           },
           "durationMs": 222706,
           "explicit": false,
@@ -25192,8 +24838,7 @@
             }
           ],
           "album": {
-            "name": "RASI BINTANG",
-            "releaseDate": "2026-06-05"
+            "name": "RASI BINTANG"
           },
           "durationMs": 252249,
           "explicit": false,
@@ -25215,8 +24860,7 @@
             }
           ],
           "album": {
-            "name": "Jalaran Sadrah",
-            "releaseDate": "2024-06-21"
+            "name": "Jalaran Sadrah"
           },
           "durationMs": 281173,
           "explicit": false,
@@ -25240,8 +24884,7 @@
             }
           ],
           "album": {
-            "name": "Lihat Kebunku (Taman Bunga)",
-            "releaseDate": "2025-09-19"
+            "name": "Lihat Kebunku (Taman Bunga)"
           },
           "durationMs": 189897,
           "explicit": false,
@@ -25263,8 +24906,7 @@
             }
           ],
           "album": {
-            "name": "Illuminate",
-            "releaseDate": "2017-04-20"
+            "name": "Illuminate"
           },
           "durationMs": 187973,
           "explicit": false,
@@ -25289,8 +24931,7 @@
             }
           ],
           "album": {
-            "name": "Believe",
-            "releaseDate": "2012-01-01"
+            "name": "Believe"
           },
           "durationMs": 227986,
           "explicit": false,
@@ -25306,17 +24947,10 @@
             }
           ],
           "album": {
-            "name": "Sentimental",
-            "releaseDate": "2020-11-06"
+            "name": "Sentimental"
           },
           "durationMs": 234204,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "M4YpWWj_IWs",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UCYBtTmBP2QgHgalgsv2v5LA"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02b1d3ef29ee15a18842973471"
         },
         {
@@ -25329,8 +24963,7 @@
             }
           ],
           "album": {
-            "name": "Format Masa Depan",
-            "releaseDate": "1994-06-16"
+            "name": "Format Masa Depan"
           },
           "durationMs": 332733,
           "explicit": false,
@@ -25352,8 +24985,7 @@
             }
           ],
           "album": {
-            "name": "Being Funny In A Foreign Language",
-            "releaseDate": "2022-10-14"
+            "name": "Being Funny In A Foreign Language"
           },
           "durationMs": 326490,
           "explicit": false,
@@ -25388,8 +25020,7 @@
             }
           ],
           "album": {
-            "name": "GOLDEN",
-            "releaseDate": "2023-11-03"
+            "name": "GOLDEN"
           },
           "durationMs": 183550,
           "explicit": true,
@@ -25408,8 +25039,7 @@
             }
           ],
           "album": {
-            "name": "Tìm Em (feat. Bảo Anh)",
-            "releaseDate": "2026-06-18"
+            "name": "Tìm Em (feat. Bảo Anh)"
           },
           "durationMs": 274589,
           "explicit": false,
@@ -25434,8 +25064,7 @@
             }
           ],
           "album": {
-            "name": "trái tim băng bó",
-            "releaseDate": "2026-06-17"
+            "name": "trái tim băng bó"
           },
           "durationMs": 245040,
           "explicit": false,
@@ -25460,8 +25089,7 @@
             }
           ],
           "album": {
-            "name": "Không Buông",
-            "releaseDate": "2025-08-25"
+            "name": "Không Buông"
           },
           "durationMs": 174866,
           "explicit": false,
@@ -25483,8 +25111,7 @@
             }
           ],
           "album": {
-            "name": "dự báo thời tiết hôm nay mưa – Maxi Single",
-            "releaseDate": "2022-11-22"
+            "name": "dự báo thời tiết hôm nay mưa – Maxi Single"
           },
           "durationMs": 281493,
           "explicit": false,
@@ -25506,8 +25133,7 @@
             }
           ],
           "album": {
-            "name": "vết thương",
-            "releaseDate": "2023-06-29"
+            "name": "vết thương"
           },
           "durationMs": 261617,
           "explicit": false,
@@ -25531,8 +25157,7 @@
             }
           ],
           "album": {
-            "name": "ARIRANG",
-            "releaseDate": "2026-03-20"
+            "name": "ARIRANG"
           },
           "durationMs": 159007,
           "explicit": false,
@@ -25557,8 +25182,7 @@
             }
           ],
           "album": {
-            "name": "Ai Cũng Phải Bắt Đầu Từ Đâu Đó",
-            "releaseDate": "2023-10-16"
+            "name": "Ai Cũng Phải Bắt Đầu Từ Đâu Đó"
           },
           "durationMs": 201589,
           "explicit": false,
@@ -25583,8 +25207,7 @@
             }
           ],
           "album": {
-            "name": "Ngày Rời Chuyến Bay",
-            "releaseDate": "2026-03-14"
+            "name": "Ngày Rời Chuyến Bay"
           },
           "durationMs": 229385,
           "explicit": false,
@@ -25609,8 +25232,7 @@
             }
           ],
           "album": {
-            "name": "Gặp Lại",
-            "releaseDate": "2026-05-24"
+            "name": "Gặp Lại"
           },
           "durationMs": 296983,
           "explicit": false,
@@ -25635,8 +25257,7 @@
             }
           ],
           "album": {
-            "name": "Và Thế Giới Đã Mất Đi Một Người Cô Đơn",
-            "releaseDate": "2024-05-18"
+            "name": "Và Thế Giới Đã Mất Đi Một Người Cô Đơn"
           },
           "durationMs": 201176,
           "explicit": false,
@@ -25667,8 +25288,7 @@
             }
           ],
           "album": {
-            "name": "TINH HÀ \"SAY HI\", TẬP 4",
-            "releaseDate": "2026-07-25"
+            "name": "TINH HÀ \"SAY HI\", TẬP 4"
           },
           "durationMs": 257595,
           "explicit": false,
@@ -25687,8 +25307,7 @@
             }
           ],
           "album": {
-            "name": "L2K",
-            "releaseDate": "2025-10-21"
+            "name": "L2K"
           },
           "durationMs": 200923,
           "explicit": false,
@@ -25710,8 +25329,7 @@
             }
           ],
           "album": {
-            "name": "Mắt Nhắm Mắt Mở",
-            "releaseDate": "2026-04-22"
+            "name": "Mắt Nhắm Mắt Mở"
           },
           "durationMs": 256000,
           "explicit": false,
@@ -25748,8 +25366,7 @@
             }
           ],
           "album": {
-            "name": "TINH HÀ \"SAY HI\", TẬP 4",
-            "releaseDate": "2026-07-25"
+            "name": "TINH HÀ \"SAY HI\", TẬP 4"
           },
           "durationMs": 221800,
           "explicit": false,
@@ -25768,8 +25385,7 @@
             }
           ],
           "album": {
-            "name": "Cho Bảo",
-            "releaseDate": "2025-07-08"
+            "name": "Cho Bảo"
           },
           "durationMs": 265954,
           "explicit": false,
@@ -25791,8 +25407,7 @@
             }
           ],
           "album": {
-            "name": "Nếu Ngày Ấy",
-            "releaseDate": "2019-07-22"
+            "name": "Nếu Ngày Ấy"
           },
           "durationMs": 292757,
           "explicit": false,
@@ -25814,8 +25429,7 @@
             }
           ],
           "album": {
-            "name": "She Neva Knows",
-            "releaseDate": "2012-01-21"
+            "name": "She Neva Knows"
           },
           "durationMs": 293000,
           "explicit": false,
@@ -25837,8 +25451,7 @@
             }
           ],
           "album": {
-            "name": "Mơ",
-            "releaseDate": "2016-01-01"
+            "name": "Mơ"
           },
           "durationMs": 262191,
           "explicit": false,
@@ -25866,8 +25479,7 @@
             }
           ],
           "album": {
-            "name": "Dear Min",
-            "releaseDate": "2025-10-22"
+            "name": "Dear Min"
           },
           "durationMs": 283333,
           "explicit": false,
@@ -25892,8 +25504,7 @@
             }
           ],
           "album": {
-            "name": "Bảo Tàng Của Nuối Tiếc",
-            "releaseDate": "2024-09-27"
+            "name": "Bảo Tàng Của Nuối Tiếc"
           },
           "durationMs": 195974,
           "explicit": false,
@@ -25927,8 +25538,7 @@
             }
           ],
           "album": {
-            "name": "TINH HÀ \"SAY HI\", TẬP 2",
-            "releaseDate": "2026-07-11"
+            "name": "TINH HÀ \"SAY HI\", TẬP 2"
           },
           "durationMs": 240000,
           "explicit": false,
@@ -25950,8 +25560,7 @@
             }
           ],
           "album": {
-            "name": "Chuyện Đôi Ta (feat. Muộii)",
-            "releaseDate": "2021-12-01"
+            "name": "Chuyện Đôi Ta (feat. Muộii)"
           },
           "durationMs": 208048,
           "explicit": false,
@@ -25967,8 +25576,7 @@
             }
           ],
           "album": {
-            "name": "Giải Mã",
-            "releaseDate": "2014-01-01"
+            "name": "Giải Mã"
           },
           "durationMs": 210067,
           "explicit": false,
@@ -25993,8 +25601,7 @@
             }
           ],
           "album": {
-            "name": "421",
-            "releaseDate": "2024-07-11"
+            "name": "421"
           },
           "durationMs": 306477,
           "explicit": false,
@@ -26016,8 +25623,7 @@
             }
           ],
           "album": {
-            "name": "Đã Lỡ Yêu Em Nhiều",
-            "releaseDate": "2022-07-11"
+            "name": "Đã Lỡ Yêu Em Nhiều"
           },
           "durationMs": 261105,
           "explicit": false,
@@ -26048,8 +25654,7 @@
             }
           ],
           "album": {
-            "name": "SSD",
-            "releaseDate": "2026-07-31"
+            "name": "SSD"
           },
           "durationMs": 420000,
           "explicit": false,
@@ -26065,8 +25670,7 @@
             }
           ],
           "album": {
-            "name": "ARIRANG",
-            "releaseDate": "2026-03-20"
+            "name": "ARIRANG"
           },
           "durationMs": 181649,
           "explicit": true,
@@ -26088,8 +25692,7 @@
             }
           ],
           "album": {
-            "name": "Sinh Ra Đã Là Thứ Đối Lập Nhau (feat. Badbies)",
-            "releaseDate": "2020-12-29"
+            "name": "Sinh Ra Đã Là Thứ Đối Lập Nhau (feat. Badbies)"
           },
           "durationMs": 234168,
           "explicit": false,
@@ -26111,8 +25714,7 @@
             }
           ],
           "album": {
-            "name": "id 072019",
-            "releaseDate": "2023-07-31"
+            "name": "id 072019"
           },
           "durationMs": 271704,
           "explicit": false,
@@ -26134,8 +25736,7 @@
             }
           ],
           "album": {
-            "name": "petal",
-            "releaseDate": "2026-07-31"
+            "name": "petal"
           },
           "durationMs": 197949,
           "explicit": false,
@@ -26157,8 +25758,7 @@
             }
           ],
           "album": {
-            "name": "m-tp M-TP",
-            "releaseDate": "2017-04-01"
+            "name": "m-tp M-TP"
           },
           "durationMs": 293112,
           "explicit": false,
@@ -26180,8 +25780,7 @@
             }
           ],
           "album": {
-            "name": "Less than a Lover",
-            "releaseDate": "2026-07-24"
+            "name": "Less than a Lover"
           },
           "durationMs": 145680,
           "explicit": false,
@@ -26200,8 +25799,7 @@
             }
           ],
           "album": {
-            "name": "MOTION (feat. Juicy J)",
-            "releaseDate": "2026-07-31"
+            "name": "MOTION (feat. Juicy J)"
           },
           "durationMs": 157306,
           "explicit": false,
@@ -26217,8 +25815,7 @@
             }
           ],
           "album": {
-            "name": "Dạo Này",
-            "releaseDate": "2025-12-24"
+            "name": "Dạo Này"
           },
           "durationMs": 284288,
           "explicit": false,
@@ -26242,8 +25839,7 @@
             }
           ],
           "album": {
-            "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2026-01-21"
+            "name": "Tình Mình Lạ Kì"
           },
           "durationMs": 300750,
           "explicit": false,
@@ -26265,8 +25861,7 @@
             }
           ],
           "album": {
-            "name": "SỐ KHÔNG",
-            "releaseDate": "2023-03-03"
+            "name": "SỐ KHÔNG"
           },
           "durationMs": 328240,
           "explicit": false,
@@ -26288,8 +25883,7 @@
             }
           ],
           "album": {
-            "name": "Luv",
-            "releaseDate": "2023-10-21"
+            "name": "Luv"
           },
           "durationMs": 254304,
           "explicit": false,
@@ -26311,8 +25905,7 @@
             }
           ],
           "album": {
-            "name": "Sweet Boy",
-            "releaseDate": "2024-04-05"
+            "name": "Sweet Boy"
           },
           "durationMs": 151500,
           "explicit": false,
@@ -26334,8 +25927,7 @@
             }
           ],
           "album": {
-            "name": "REDRED",
-            "releaseDate": "2026-04-20"
+            "name": "REDRED"
           },
           "durationMs": 163001,
           "explicit": false,
@@ -26351,8 +25943,7 @@
             }
           ],
           "album": {
-            "name": "Buông",
-            "releaseDate": "2026-02-12"
+            "name": "Buông"
           },
           "durationMs": 205171,
           "explicit": false,
@@ -26379,8 +25970,7 @@
             }
           ],
           "album": {
-            "name": "2AM",
-            "releaseDate": "2022-05-10"
+            "name": "2AM"
           },
           "durationMs": 258281,
           "explicit": false,
@@ -26405,8 +25995,7 @@
             }
           ],
           "album": {
-            "name": "Wrong Times",
-            "releaseDate": "2023"
+            "name": "Wrong Times"
           },
           "durationMs": 211200,
           "explicit": false,
@@ -26431,8 +26020,7 @@
             }
           ],
           "album": {
-            "name": "Có em",
-            "releaseDate": "2022-04-22"
+            "name": "Có em"
           },
           "durationMs": 218512,
           "explicit": false,
@@ -26454,8 +26042,7 @@
             }
           ],
           "album": {
-            "name": "Ai Cũng Phải Bắt Đầu Từ Đâu Đó",
-            "releaseDate": "2023-10-16"
+            "name": "Ai Cũng Phải Bắt Đầu Từ Đâu Đó"
           },
           "durationMs": 228413,
           "explicit": false,
@@ -26480,8 +26067,7 @@
             }
           ],
           "album": {
-            "name": "Từng Là Của Nhau",
-            "releaseDate": "2022-08-30"
+            "name": "Từng Là Của Nhau"
           },
           "durationMs": 269473,
           "explicit": false,
@@ -26497,8 +26083,7 @@
             }
           ],
           "album": {
-            "name": "24h",
-            "releaseDate": "2020-10-28"
+            "name": "24h"
           },
           "durationMs": 257000,
           "explicit": false,
@@ -26523,8 +26108,7 @@
             }
           ],
           "album": {
-            "name": "Anh Muốn Nhìn Thấy Em",
-            "releaseDate": "2023-07-27"
+            "name": "Anh Muốn Nhìn Thấy Em"
           },
           "durationMs": 212000,
           "explicit": false,
@@ -26543,8 +26127,7 @@
             }
           ],
           "album": {
-            "name": "Thằng Điên",
-            "releaseDate": "2022-07-11"
+            "name": "Thằng Điên"
           },
           "durationMs": 234000,
           "explicit": false,
@@ -26563,8 +26146,7 @@
             }
           ],
           "album": {
-            "name": "vaicaunoicokhiennguoithaydoi",
-            "releaseDate": "2022-06-20"
+            "name": "vaicaunoicokhiennguoithaydoi"
           },
           "durationMs": 225862,
           "explicit": false,
@@ -26590,8 +26172,7 @@
             }
           ],
           "album": {
-            "name": "ARIRANG",
-            "releaseDate": "2026-03-20"
+            "name": "ARIRANG"
           },
           "durationMs": 159007,
           "explicit": false,
@@ -26613,8 +26194,7 @@
             }
           ],
           "album": {
-            "name": "If You Don’t Mean It (ถ้าไม่คิด อย่าทำให้คิด)",
-            "releaseDate": "2026-07-27"
+            "name": "If You Don’t Mean It (ถ้าไม่คิด อย่าทำให้คิด)"
           },
           "durationMs": 232534,
           "explicit": false,
@@ -26636,8 +26216,7 @@
             }
           ],
           "album": {
-            "name": "เมื่อไหร่จะมี (มีใจให้กัน)",
-            "releaseDate": "2026-05-06"
+            "name": "เมื่อไหร่จะมี (มีใจให้กัน)"
           },
           "durationMs": 214883,
           "explicit": false,
@@ -26661,8 +26240,7 @@
             }
           ],
           "album": {
-            "name": "นาฬิกาทราย (sign)",
-            "releaseDate": "2026-07-06"
+            "name": "นาฬิกาทราย (sign)"
           },
           "durationMs": 255466,
           "explicit": false,
@@ -26684,8 +26262,7 @@
             }
           ],
           "album": {
-            "name": "กลัวว่าฉันจะไม่เสียใจ (Fear)",
-            "releaseDate": "2025-04-09"
+            "name": "กลัวว่าฉันจะไม่เสียใจ (Fear)"
           },
           "durationMs": 287000,
           "explicit": false,
@@ -26707,8 +26284,7 @@
             }
           ],
           "album": {
-            "name": "ขี้แง (Boys Don't Cry)",
-            "releaseDate": "2026-06-18"
+            "name": "ขี้แง (Boys Don't Cry)"
           },
           "durationMs": 255000,
           "explicit": true,
@@ -26730,8 +26306,7 @@
             }
           ],
           "album": {
-            "name": "Living Death",
-            "releaseDate": "2025-04-24"
+            "name": "Living Death"
           },
           "durationMs": 258823,
           "explicit": false,
@@ -26756,8 +26331,7 @@
             }
           ],
           "album": {
-            "name": "ขึ้นใจ (3am call)",
-            "releaseDate": "2026-07-23"
+            "name": "ขึ้นใจ (3am call)"
           },
           "durationMs": 261785,
           "explicit": false,
@@ -26773,8 +26347,7 @@
             }
           ],
           "album": {
-            "name": "Rock & Roll",
-            "releaseDate": "1999-10-07"
+            "name": "Rock & Roll"
           },
           "durationMs": 235946,
           "explicit": false,
@@ -26793,8 +26366,7 @@
             }
           ],
           "album": {
-            "name": "ดาวตก (Wish) [feat. Z9]",
-            "releaseDate": "2025-10-01"
+            "name": "ดาวตก (Wish) [feat. Z9]"
           },
           "durationMs": 241250,
           "explicit": false,
@@ -26819,8 +26391,7 @@
             }
           ],
           "album": {
-            "name": "ROOM101",
-            "releaseDate": "2026-03-12"
+            "name": "ROOM101"
           },
           "durationMs": 227785,
           "explicit": false,
@@ -26839,8 +26410,7 @@
             }
           ],
           "album": {
-            "name": "Winter Ahead (with PARK HYO SHIN)",
-            "releaseDate": "2024-11-29"
+            "name": "Winter Ahead (with PARK HYO SHIN)"
           },
           "durationMs": 234895,
           "explicit": false,
@@ -26856,8 +26426,7 @@
             }
           ],
           "album": {
-            "name": "รักให้เธอได้รู้ (Proof.)",
-            "releaseDate": "2026-04-23"
+            "name": "รักให้เธอได้รู้ (Proof.)"
           },
           "durationMs": 202105,
           "explicit": false,
@@ -26879,8 +26448,7 @@
             }
           ],
           "album": {
-            "name": "คราม",
-            "releaseDate": "2010-08-12"
+            "name": "คราม"
           },
           "durationMs": 291557,
           "explicit": false,
@@ -26896,8 +26464,7 @@
             }
           ],
           "album": {
-            "name": "petal",
-            "releaseDate": "2026-07-31"
+            "name": "petal"
           },
           "durationMs": 197949,
           "explicit": false,
@@ -26919,8 +26486,7 @@
             }
           ],
           "album": {
-            "name": "FRI(END)S",
-            "releaseDate": "2024-03-15"
+            "name": "FRI(END)S"
           },
           "durationMs": 148082,
           "explicit": false,
@@ -26942,8 +26508,7 @@
             }
           ],
           "album": {
-            "name": "Album",
-            "releaseDate": "2021-09-10"
+            "name": "Album"
           },
           "durationMs": 200170,
           "explicit": false,
@@ -26962,8 +26527,7 @@
             }
           ],
           "album": {
-            "name": "กลัวความเสียใจ",
-            "releaseDate": "2025-12-12"
+            "name": "กลัวความเสียใจ"
           },
           "durationMs": 291000,
           "explicit": false,
@@ -26979,8 +26543,7 @@
             }
           ],
           "album": {
-            "name": "The Storyteller",
-            "releaseDate": "2012-05-17"
+            "name": "The Storyteller"
           },
           "durationMs": 266813,
           "explicit": false,
@@ -26996,8 +26559,7 @@
             }
           ],
           "album": {
-            "name": "อยากจะกอดเธอนาน ๆ (HAVE A GOOD TIME)",
-            "releaseDate": "2025-05-16"
+            "name": "อยากจะกอดเธอนาน ๆ (HAVE A GOOD TIME)"
           },
           "durationMs": 219428,
           "explicit": false,
@@ -27019,8 +26581,7 @@
             }
           ],
           "album": {
-            "name": "รักมักยาก (Lover Loser)",
-            "releaseDate": "2026-07-08"
+            "name": "รักมักยาก (Lover Loser)"
           },
           "durationMs": 253764,
           "explicit": false,
@@ -27042,8 +26603,7 @@
             }
           ],
           "album": {
-            "name": "Like You Never Left",
-            "releaseDate": "2025-07-01"
+            "name": "Like You Never Left"
           },
           "durationMs": 206416,
           "explicit": false,
@@ -27065,8 +26625,7 @@
             }
           ],
           "album": {
-            "name": "MUSE",
-            "releaseDate": "2024-07-19"
+            "name": "MUSE"
           },
           "durationMs": 170887,
           "explicit": false,
@@ -27088,8 +26647,7 @@
             }
           ],
           "album": {
-            "name": "Sweet Boy",
-            "releaseDate": "2024-04-05"
+            "name": "Sweet Boy"
           },
           "durationMs": 151500,
           "explicit": false,
@@ -27114,8 +26672,7 @@
             }
           ],
           "album": {
-            "name": "ที่คั่นหนังสือ (Sometimes)",
-            "releaseDate": "2025-04-25"
+            "name": "ที่คั่นหนังสือ (Sometimes)"
           },
           "durationMs": 292500,
           "explicit": false,
@@ -27131,8 +26688,7 @@
             }
           ],
           "album": {
-            "name": "2014 Extended Play",
-            "releaseDate": "2014-01-01"
+            "name": "2014 Extended Play"
           },
           "durationMs": 286191,
           "explicit": false,
@@ -27148,8 +26704,7 @@
             }
           ],
           "album": {
-            "name": "While I'm away",
-            "releaseDate": "2026-06-11"
+            "name": "While I'm away"
           },
           "durationMs": 219047,
           "explicit": false,
@@ -27171,8 +26726,7 @@
             }
           ],
           "album": {
-            "name": "9 นาฬิกา",
-            "releaseDate": "2015-05-11"
+            "name": "9 นาฬิกา"
           },
           "durationMs": 242181,
           "explicit": false,
@@ -27191,8 +26745,7 @@
             }
           ],
           "album": {
-            "name": "Rain Zone",
-            "releaseDate": "2026-02-05"
+            "name": "Rain Zone"
           },
           "durationMs": 185210,
           "explicit": false,
@@ -27208,8 +26761,7 @@
             }
           ],
           "album": {
-            "name": "III",
-            "releaseDate": "2025-06-24"
+            "name": "III"
           },
           "durationMs": 250232,
           "explicit": false,
@@ -27225,8 +26777,7 @@
             }
           ],
           "album": {
-            "name": "Less than a Lover",
-            "releaseDate": "2026-07-24"
+            "name": "Less than a Lover"
           },
           "durationMs": 145680,
           "explicit": false,
@@ -27245,8 +26796,7 @@
             }
           ],
           "album": {
-            "name": "รู้ตัวอีกที",
-            "releaseDate": "2025-12-28"
+            "name": "รู้ตัวอีกที"
           },
           "durationMs": 190476,
           "explicit": false,
@@ -27265,8 +26815,7 @@
             }
           ],
           "album": {
-            "name": "สายไป",
-            "releaseDate": "2025-05-24"
+            "name": "สายไป"
           },
           "durationMs": 198461,
           "explicit": false,
@@ -27290,8 +26839,7 @@
             }
           ],
           "album": {
-            "name": "ไฟกลางคืน",
-            "releaseDate": "2025-10-25"
+            "name": "ไฟกลางคืน"
           },
           "durationMs": 264000,
           "explicit": false,
@@ -27307,8 +26855,7 @@
             }
           ],
           "album": {
-            "name": "ใจบาง",
-            "releaseDate": "2025-08-26"
+            "name": "ใจบาง"
           },
           "durationMs": 221049,
           "explicit": false,
@@ -27330,8 +26877,7 @@
             }
           ],
           "album": {
-            "name": "ฝากให้เขารัก",
-            "releaseDate": "2025-07-09"
+            "name": "ฝากให้เขารัก"
           },
           "durationMs": 256946,
           "explicit": false,
@@ -27347,8 +26893,7 @@
             }
           ],
           "album": {
-            "name": "PUN",
-            "releaseDate": "2024-09-19"
+            "name": "PUN"
           },
           "durationMs": 236062,
           "explicit": false,
@@ -27370,8 +26915,7 @@
             }
           ],
           "album": {
-            "name": "LEMONADE - The 2nd Album (NINGNING Special Version)",
-            "releaseDate": "2026-05-28"
+            "name": "LEMONADE - The 2nd Album (NINGNING Special Version)"
           },
           "durationMs": 187000,
           "explicit": false,
@@ -27387,8 +26931,7 @@
             }
           ],
           "album": {
-            "name": "เอ็นเตอร์เทนเม้นท์",
-            "releaseDate": "1998-03-26"
+            "name": "เอ็นเตอร์เทนเม้นท์"
           },
           "durationMs": 307840,
           "explicit": false,
@@ -27404,8 +26947,7 @@
             }
           ],
           "album": {
-            "name": "XL",
-            "releaseDate": "2015"
+            "name": "XL"
           },
           "durationMs": 257133,
           "explicit": false,
@@ -27424,8 +26966,7 @@
             }
           ],
           "album": {
-            "name": "ลบไม่ได้ช่วยให้ลืม (LIVE SESSION)",
-            "releaseDate": "2021-03-05"
+            "name": "ลบไม่ได้ช่วยให้ลืม (LIVE SESSION)"
           },
           "durationMs": 276315,
           "explicit": false,
@@ -27447,8 +26988,7 @@
             }
           ],
           "album": {
-            "name": "ไฟกลางคืน",
-            "releaseDate": "2025-10-25"
+            "name": "ไฟกลางคืน"
           },
           "durationMs": 261948,
           "explicit": false,
@@ -27464,14 +27004,15 @@
             }
           ],
           "album": {
-            "name": "บทสรุปสุดท้าย",
-            "releaseDate": "2025-03-22"
+            "name": "บทสรุปสุดท้าย"
           },
           "durationMs": 264960,
           "explicit": false,
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
@@ -27487,8 +27028,7 @@
             }
           ],
           "album": {
-            "name": "CYANTIST",
-            "releaseDate": "2017-12-07"
+            "name": "CYANTIST"
           },
           "durationMs": 284583,
           "explicit": false,
@@ -27504,8 +27044,7 @@
             }
           ],
           "album": {
-            "name": "LOST FREQUENCIES",
-            "releaseDate": "2023-10-27"
+            "name": "LOST FREQUENCIES"
           },
           "durationMs": 356500,
           "explicit": false,
@@ -27524,8 +27063,7 @@
             }
           ],
           "album": {
-            "name": "DEEPMIND",
-            "releaseDate": "2025-09-02"
+            "name": "DEEPMIND"
           },
           "durationMs": 218400,
           "explicit": false,
@@ -27544,8 +27082,7 @@
             }
           ],
           "album": {
-            "name": "One Of My Life",
-            "releaseDate": "2024-12-16"
+            "name": "One Of My Life"
           },
           "durationMs": 216000,
           "explicit": false,
@@ -27561,8 +27098,7 @@
             }
           ],
           "album": {
-            "name": "Rock & Roll",
-            "releaseDate": "1999-10-07"
+            "name": "Rock & Roll"
           },
           "durationMs": 209320,
           "explicit": false,
@@ -27578,8 +27114,7 @@
             }
           ],
           "album": {
-            "name": "PUN",
-            "releaseDate": "2024-09-19"
+            "name": "PUN"
           },
           "durationMs": 271500,
           "explicit": false,
@@ -27604,8 +27139,7 @@
             }
           ],
           "album": {
-            "name": "สลักจิต (feat. ดา เอ็นโดรฟิน)",
-            "releaseDate": "2022-07-15"
+            "name": "สลักจิต (feat. ดา เอ็นโดรฟิน)"
           },
           "durationMs": 264444,
           "explicit": false,
@@ -27631,8 +27165,7 @@
             }
           ],
           "album": {
-            "name": "Kalapastangan",
-            "releaseDate": "2023-11-24"
+            "name": "Kalapastangan"
           },
           "durationMs": 276000,
           "explicit": false,
@@ -27648,8 +27181,7 @@
             }
           ],
           "album": {
-            "name": "Panaginip",
-            "releaseDate": "2025-05-10"
+            "name": "Panaginip"
           },
           "durationMs": 317077,
           "explicit": false,
@@ -27671,8 +27203,7 @@
             }
           ],
           "album": {
-            "name": "Libu-Libong Buwan (Uuwian)",
-            "releaseDate": "2025-08-22"
+            "name": "Libu-Libong Buwan (Uuwian)"
           },
           "durationMs": 178488,
           "explicit": false,
@@ -27694,8 +27225,7 @@
             }
           ],
           "album": {
-            "name": "Pag-Ibig ay Kanibalismo II",
-            "releaseDate": "2025-02-14"
+            "name": "Pag-Ibig ay Kanibalismo II"
           },
           "durationMs": 207314,
           "explicit": true,
@@ -27720,8 +27250,7 @@
             }
           ],
           "album": {
-            "name": "Since Day One",
-            "releaseDate": "2026-02-01"
+            "name": "Since Day One"
           },
           "durationMs": 191375,
           "explicit": false,
@@ -27737,8 +27266,7 @@
             }
           ],
           "album": {
-            "name": "petal",
-            "releaseDate": "2026-07-31"
+            "name": "petal"
           },
           "durationMs": 197949,
           "explicit": false,
@@ -27760,8 +27288,7 @@
             }
           ],
           "album": {
-            "name": "Andalucia",
-            "releaseDate": "2025-11-05"
+            "name": "Andalucia"
           },
           "durationMs": 207920,
           "explicit": false,
@@ -27789,8 +27316,7 @@
             }
           ],
           "album": {
-            "name": "Halik Sobrang Diin Pt. 2",
-            "releaseDate": "2025-10-01"
+            "name": "Halik Sobrang Diin Pt. 2"
           },
           "durationMs": 213529,
           "explicit": true,
@@ -27812,8 +27338,7 @@
             }
           ],
           "album": {
-            "name": "Silakbo",
-            "releaseDate": "2025-01-17"
+            "name": "Silakbo"
           },
           "durationMs": 237692,
           "explicit": false,
@@ -27835,8 +27360,7 @@
             }
           ],
           "album": {
-            "name": "Lifetime (Reimagined)",
-            "releaseDate": "2026-03-31"
+            "name": "Lifetime (Reimagined)"
           },
           "durationMs": 277894,
           "explicit": false,
@@ -27858,8 +27382,7 @@
             }
           ],
           "album": {
-            "name": "Tahanan",
-            "releaseDate": "2025-11-14"
+            "name": "Tahanan"
           },
           "durationMs": 195428,
           "explicit": false,
@@ -27881,8 +27404,7 @@
             }
           ],
           "album": {
-            "name": "Isa lang",
-            "releaseDate": "2021-12-17"
+            "name": "Isa lang"
           },
           "durationMs": 269256,
           "explicit": false,
@@ -27906,8 +27428,7 @@
             }
           ],
           "album": {
-            "name": "For Princesses, By Thieves (O Mga Awit ng Hiraya Para sa Guni-guning Sinta)",
-            "releaseDate": "2019-08-02"
+            "name": "For Princesses, By Thieves (O Mga Awit ng Hiraya Para sa Guni-guning Sinta)"
           },
           "durationMs": 297508,
           "explicit": false,
@@ -27929,8 +27450,7 @@
             }
           ],
           "album": {
-            "name": "Summer Crush",
-            "releaseDate": "2026-05-23"
+            "name": "Summer Crush"
           },
           "durationMs": 194887,
           "explicit": false,
@@ -27955,8 +27475,7 @@
             }
           ],
           "album": {
-            "name": "Rosas",
-            "releaseDate": "2025-12-17"
+            "name": "Rosas"
           },
           "durationMs": 250058,
           "explicit": false,
@@ -27975,8 +27494,7 @@
             }
           ],
           "album": {
-            "name": "Dominga",
-            "releaseDate": "2025-06-27"
+            "name": "Dominga"
           },
           "durationMs": 227619,
           "explicit": false,
@@ -27998,8 +27516,7 @@
             }
           ],
           "album": {
-            "name": "The Romantic",
-            "releaseDate": "2026-02-27"
+            "name": "The Romantic"
           },
           "durationMs": 204068,
           "explicit": false,
@@ -28015,8 +27532,7 @@
             }
           ],
           "album": {
-            "name": "Mundo",
-            "releaseDate": "2018-02-14"
+            "name": "Mundo"
           },
           "durationMs": 349750,
           "explicit": false,
@@ -28032,8 +27548,7 @@
             }
           ],
           "album": {
-            "name": "The Script",
-            "releaseDate": "2008-07-14"
+            "name": "The Script"
           },
           "durationMs": 241373,
           "explicit": false,
@@ -28049,8 +27564,7 @@
             }
           ],
           "album": {
-            "name": "Teenage Dream",
-            "releaseDate": "2010-01-01"
+            "name": "Teenage Dream"
           },
           "durationMs": 227333,
           "explicit": false,
@@ -28066,8 +27580,7 @@
             }
           ],
           "album": {
-            "name": "Sweet Boy",
-            "releaseDate": "2024-04-05"
+            "name": "Sweet Boy"
           },
           "durationMs": 151500,
           "explicit": false,
@@ -28089,8 +27602,7 @@
             }
           ],
           "album": {
-            "name": "Animal",
-            "releaseDate": "2026-07-24"
+            "name": "Animal"
           },
           "durationMs": 158494,
           "explicit": false,
@@ -28112,8 +27624,7 @@
             }
           ],
           "album": {
-            "name": "Being Funny In A Foreign Language",
-            "releaseDate": "2022-10-14"
+            "name": "Being Funny In A Foreign Language"
           },
           "durationMs": 326490,
           "explicit": false,
@@ -28135,8 +27646,7 @@
             }
           ],
           "album": {
-            "name": "Janice",
-            "releaseDate": "2021-07-01"
+            "name": "Janice"
           },
           "durationMs": 235161,
           "explicit": false,
@@ -28161,8 +27671,7 @@
             }
           ],
           "album": {
-            "name": "Palayo Sa Mundo",
-            "releaseDate": "2025-10-10"
+            "name": "Palayo Sa Mundo"
           },
           "durationMs": 268571,
           "explicit": false,
@@ -28186,8 +27695,7 @@
             }
           ],
           "album": {
-            "name": "Capacities",
-            "releaseDate": "2012-12-07"
+            "name": "Capacities"
           },
           "durationMs": 222446,
           "explicit": false,
@@ -28209,8 +27717,7 @@
             }
           ],
           "album": {
-            "name": "I Barely Know Her",
-            "releaseDate": "2025-08-22"
+            "name": "I Barely Know Her"
           },
           "durationMs": 199032,
           "explicit": false,
@@ -28234,8 +27741,7 @@
             }
           ],
           "album": {
-            "name": "Silakbo",
-            "releaseDate": "2025-01-17"
+            "name": "Silakbo"
           },
           "durationMs": 249375,
           "explicit": false,
@@ -28251,8 +27757,7 @@
             }
           ],
           "album": {
-            "name": "Nicole",
-            "releaseDate": "2022-08-12"
+            "name": "Nicole"
           },
           "durationMs": 236533,
           "explicit": true,
@@ -28276,8 +27781,7 @@
             }
           ],
           "album": {
-            "name": "you seem pretty sad for a girl so in love",
-            "releaseDate": "2026-06-11"
+            "name": "you seem pretty sad for a girl so in love"
           },
           "durationMs": 224998,
           "explicit": false,
@@ -28301,8 +27805,7 @@
             }
           ],
           "album": {
-            "name": "Ayoko Maging Kaibigan",
-            "releaseDate": "2026-05-22"
+            "name": "Ayoko Maging Kaibigan"
           },
           "durationMs": 166129,
           "explicit": false,
@@ -28326,8 +27829,7 @@
             }
           ],
           "album": {
-            "name": "you seem pretty sad for a girl so in love",
-            "releaseDate": "2026-06-12"
+            "name": "you seem pretty sad for a girl so in love"
           },
           "durationMs": 297090,
           "explicit": true,
@@ -28351,8 +27853,7 @@
             }
           ],
           "album": {
-            "name": "Dizzy up the Girl",
-            "releaseDate": "1998"
+            "name": "Dizzy up the Girl"
           },
           "durationMs": 289533,
           "explicit": false,
@@ -28368,8 +27869,7 @@
             }
           ],
           "album": {
-            "name": "petal",
-            "releaseDate": "2026-07-31"
+            "name": "petal"
           },
           "durationMs": 184248,
           "explicit": true,
@@ -28391,8 +27891,7 @@
             }
           ],
           "album": {
-            "name": "Kyle Echarri",
-            "releaseDate": "2018-10-13"
+            "name": "Kyle Echarri"
           },
           "durationMs": 247960,
           "explicit": false,
@@ -28414,8 +27913,7 @@
             }
           ],
           "album": {
-            "name": "Vibrate",
-            "releaseDate": "2025-09-03"
+            "name": "Vibrate"
           },
           "durationMs": 166400,
           "explicit": false,
@@ -28437,8 +27935,7 @@
             }
           ],
           "album": {
-            "name": "One Of The Boys",
-            "releaseDate": "2008-06-17"
+            "name": "One Of The Boys"
           },
           "durationMs": 246410,
           "explicit": false,
@@ -28460,8 +27957,7 @@
             }
           ],
           "album": {
-            "name": "Grandma",
-            "releaseDate": "2018-08-06"
+            "name": "Grandma"
           },
           "durationMs": 280426,
           "explicit": false,
@@ -28483,8 +27979,7 @@
             }
           ],
           "album": {
-            "name": "Son Of Spergy",
-            "releaseDate": "2025-10-24"
+            "name": "Son Of Spergy"
           },
           "durationMs": 226283,
           "explicit": false,
@@ -28506,8 +28001,7 @@
             }
           ],
           "album": {
-            "name": "TAKE ALL THE LOVE",
-            "releaseDate": "2021-04-23"
+            "name": "TAKE ALL THE LOVE"
           },
           "durationMs": 206181,
           "explicit": false,
@@ -28529,8 +28023,7 @@
             }
           ],
           "album": {
-            "name": "Unti-Unti",
-            "releaseDate": "2017-02-14"
+            "name": "Unti-Unti"
           },
           "durationMs": 283825,
           "explicit": false,
@@ -28552,8 +28045,7 @@
             }
           ],
           "album": {
-            "name": "Sa Wakas",
-            "releaseDate": "2003-01-27"
+            "name": "Sa Wakas"
           },
           "durationMs": 209480,
           "explicit": false,
@@ -28575,8 +28067,7 @@
             }
           ],
           "album": {
-            "name": "For Princesses, By Thieves (O Mga Awit ng Hiraya Para sa Guni-guning Sinta)",
-            "releaseDate": "2019-08-02"
+            "name": "For Princesses, By Thieves (O Mga Awit ng Hiraya Para sa Guni-guning Sinta)"
           },
           "durationMs": 337580,
           "explicit": false,
@@ -28592,8 +28083,7 @@
             }
           ],
           "album": {
-            "name": "Saksi Ang Langit",
-            "releaseDate": "2022-11-25"
+            "name": "Saksi Ang Langit"
           },
           "durationMs": 259058,
           "explicit": false,
@@ -28617,8 +28107,7 @@
             }
           ],
           "album": {
-            "name": "folklore",
-            "releaseDate": "2020-07-24"
+            "name": "folklore"
           },
           "durationMs": 261922,
           "explicit": false,
@@ -28640,8 +28129,7 @@
             }
           ],
           "album": {
-            "name": "Soapdish Reloaded",
-            "releaseDate": "2005"
+            "name": "Soapdish Reloaded"
           },
           "durationMs": 196693,
           "explicit": false,
@@ -28663,8 +28151,7 @@
             }
           ],
           "album": {
-            "name": "Para Sa Streets",
-            "releaseDate": "2022-09-02"
+            "name": "Para Sa Streets"
           },
           "durationMs": 194020,
           "explicit": true,
@@ -28686,8 +28173,7 @@
             }
           ],
           "album": {
-            "name": "Doo-Wops & Hooligans",
-            "releaseDate": "2010-05-11"
+            "name": "Doo-Wops & Hooligans"
           },
           "durationMs": 220734,
           "explicit": false,
@@ -28714,8 +28200,7 @@
             }
           ],
           "album": {
-            "name": "Believe",
-            "releaseDate": "2012-01-01"
+            "name": "Believe"
           },
           "durationMs": 227986,
           "explicit": false,
@@ -28731,8 +28216,7 @@
             }
           ],
           "album": {
-            "name": "Nang Iwan",
-            "releaseDate": "2019-07-26"
+            "name": "Nang Iwan"
           },
           "durationMs": 367889,
           "explicit": false,
