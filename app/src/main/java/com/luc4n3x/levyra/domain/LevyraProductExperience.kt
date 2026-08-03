@@ -11,14 +11,13 @@ internal val LevyraPrimaryTabs: List<LevyraTab> = listOf(
 )
 
 /**
- * Keeps video results separate from ordinary audio results without relying on only one provider
- * field. YouTube Music responses are inconsistent: some expose a counterpart ID, some expose a
- * video type, and older cached results may only retain the video URL.
+ * Keeps video results separate from ordinary audio results using provider fields that actually
+ * describe media type. `videoUrl` cannot be used here because every YouTube track has a watch URL.
  */
 internal fun Track.isSearchVideo(): Boolean {
     return counterpartVideoId.isNotBlank() ||
         videoType.contains("video", ignoreCase = true) ||
-        videoUrl.isNotBlank()
+        source.contains("video", ignoreCase = true)
 }
 
 internal fun searchFiltersFor(
