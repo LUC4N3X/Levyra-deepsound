@@ -19,7 +19,9 @@ No executable code, HTML, JavaScript or APK fragments are downloaded.
 4. Set `enabled` to `true` when the message is ready.
 5. Merge the configuration change. Installed clients normally refresh within 12 hours and keep a validated local cache.
 
-The open-source support campaign is intentionally delayed until the user has opened Levyra at least three times and has reached a positive listening moment. Closing the dialog or pressing Back snoozes it for three days. The explicit “later” action snoozes it for ten days. Opening the GitHub action completes the campaign for that installation. A permanent support entry remains available in Settings.
+The open-source support campaign is intentionally delayed until the user has opened Levyra at least three times and has reached a positive listening moment through recent listens or 90 seconds of actual elapsed playback. Seeking forward or restoring a saved media position does not qualify. Closing the dialog or pressing Back snoozes it for three days. The explicit “later” action snoozes it for ten days. Opening the GitHub action completes the campaign for that installation. A permanent support entry remains available in Settings.
+
+Other `info` and `update` announcements are not blocked by the support campaign's engagement threshold. Snoozing one campaign also does not suppress another eligible lower-priority announcement.
 
 To show a substantially revised campaign to people who completed an older one, publish it with a new `id`. To stop a campaign, set `enabled` to `false` or add an `endAt` value.
 
@@ -57,7 +59,7 @@ Changes made after an APK is published are delivered remotely. The packaged copy
 }
 ```
 
-`maximumVersionCode`, `startAt`, `endAt` and `actionUrl` are optional. The available styles are `open_source`, `info` and `update`. `settingsTitle` and `settingsSubtitle` are used by the permanent Settings entry; older catalogs without them fall back to the action and body copy.
+`maximumVersionCode`, `startAt`, `endAt` and `actionUrl` are optional. The available styles are `open_source`, `info` and `update`. `settingsTitle` and `settingsSubtitle` are used by the permanent Settings entry; older catalogs without them fall back to the action (or the announcement title when no action exists) and body copy.
 
 ## Safety rules
 
