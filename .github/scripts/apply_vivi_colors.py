@@ -25,11 +25,17 @@ replace_once(
         primary.playerMix(secondary, 0.5f).playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
     }
 ''',
-    '''    val backgroundAccent = remember(primary) {
-        primary
-            .playerAdjustBackgroundFor(Color.White, PlayerStrongContrast)
-            .color
-            .playerMix(PlayerDarkSurface, 0.28f)
+    '''    val primarySurface = remember(primary) {
+        primary.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
+    }
+    val secondarySurface = remember(secondary) {
+        secondary.playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
+    }
+    val mixedSurface = remember(primary, secondary) {
+        primary.playerMix(secondary, 0.5f).playerAdjustBackgroundFor(Color.White, PlayerStrongContrast).color
+    }
+    val backgroundAccent = remember(primarySurface) {
+        primarySurface.playerMix(PlayerDarkSurface, 0.28f)
     }
 '''
 )
