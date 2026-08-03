@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -115,7 +115,6 @@ internal fun LevyraProductShell(
                     state = state,
                     strings = strings,
                     onSearch = { viewModel.selectTab(LevyraTab.Search) },
-                    onExplore = { viewModel.selectTab(LevyraTab.Explore) },
                     onLibrary = { viewModel.selectTab(LevyraTab.Library) },
                     onSettings = { showSettingsHub = true }
                 )
@@ -185,7 +184,6 @@ private fun ProductHomeHeader(
     state: LevyraUiState,
     strings: LevyraStrings,
     onSearch: () -> Unit,
-    onExplore: () -> Unit,
     onLibrary: () -> Unit,
     onSettings: () -> Unit
 ) {
@@ -215,7 +213,6 @@ private fun ProductHomeHeader(
                     )
                 }
                 ProductHeaderAction(Icons.Rounded.Search, strings.search, onSearch)
-                ProductHeaderAction(Icons.Rounded.Explore, strings.explore, onExplore)
                 ProductHeaderAction(Icons.Rounded.LibraryMusic, strings.library, onLibrary)
                 ProductHeaderAction(Icons.Rounded.Settings, strings.settings, onSettings)
             }
@@ -405,7 +402,10 @@ private fun ProductSearchResults(
         }
         if (songs.isNotEmpty()) {
             item { ProductSectionTitle(strings.songs) }
-            items(songs, key = { it.id.ifBlank { "${it.artist}|${it.title}" } }) { track ->
+            itemsIndexed(
+                items = songs,
+                key = { index, track -> "song:${track.id.ifBlank { "${track.artist}|${track.title}" }}:$index" }
+            ) { _, track ->
                 ProductTrackRow(track = track, strings = strings, onClick = { onPlay(track) })
             }
         }
@@ -418,7 +418,10 @@ private fun ProductSearchResults(
             item { ProductSectionTitle(strings.artists) }
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(artists, key = { it.browseId.ifBlank { it.name } }) { artist ->
+                    itemsIndexed(
+                        items = artists,
+                        key = { index, artist -> "artist:${artist.browseId.ifBlank { artist.name }}:$index" }
+                    ) { _, artist ->
                         ProductArtistCard(artist = artist, onClick = { onArtist(artist) })
                     }
                 }
@@ -433,7 +436,10 @@ private fun ProductSearchResults(
             item { ProductSectionTitle(strings.albumsPlain) }
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(albums, key = { it.browseId.ifBlank { "${it.artist}|${it.title}" } }) { album ->
+                    itemsIndexed(
+                        items = albums,
+                        key = { index, album -> "album:${album.browseId.ifBlank { "${album.artist}|${album.title}" }}:$index" }
+                    ) { _, album ->
                         ProductAlbumCard(album = album, onClick = { onAlbum(album) })
                     }
                 }
@@ -451,7 +457,10 @@ private fun ProductSearchResults(
             }
         } else if (state.query.length < 2 && state.recentSearches.isNotEmpty()) {
             item { ProductSectionTitle(strings.recentSearches) }
-            items(state.recentSearches, key = { it.id.ifBlank { "${it.artist}|${it.title}" } }) { track ->
+            itemsIndexed(
+                items = state.recentSearches,
+                key = { index, track -> "recent:${track.id.ifBlank { "${track.artist}|${track.title}" }}:$index" }
+            ) { _, track ->
                 ProductTrackRow(track = track, strings = strings, onClick = { onPlay(track) })
             }
         }
@@ -799,17 +808,23 @@ private fun ProductBottomNavigation(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ProductNavItem(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
-            ProductNavItem(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
-            ProductNavItem(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
-            ProductNavItem(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
-            ProductNavItem(Icons.Rounded.Settings, strings.settings, false, onSettings)
+            ProductNavItem(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home, Modifier.weight(1f)) { onSelect(LevyraTab.Home) }
+            ProductNavItem(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search, Modifier.weight(1f)) { onSelect(LevyraTab.Search) }
+            ProductNavItem(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore, Modifier.weight(1f)) { onSelect(LevyraTab.Explore) }
+            ProductNavItem(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library, Modifier.weight(1f)) { onSelect(LevyraTab.Library) }
+            ProductNavItem(Icons.Rounded.Settings, strings.settings, false, Modifier.weight(1f), onSettings)
         }
     }
 }
 
 @Composable
-private fun ProductNavItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+private fun ProductNavItem(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     val background by animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
         animationSpec = tween(180),
@@ -821,8 +836,8 @@ private fun ProductNavItem(icon: ImageVector, label: String, selected: Boolean, 
         label = "productNavForeground"
     )
     Column(
-        modifier = Modifier
-            .width(68.dp)
+        modifier = modifier
+            .widthIn(min = 56.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(background)
             .clickable(onClick = onClick)
