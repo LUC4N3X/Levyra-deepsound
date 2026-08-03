@@ -35,6 +35,7 @@ import androidx.core.view.doOnAttach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
+import com.luc4n3x.levyra.data.LevyraPreferences
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
@@ -42,6 +43,7 @@ import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
 import com.luc4n3x.levyra.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.ui.theme.LevyraThemeController
+import com.luc4n3x.levyra.ui.theme.LevyraTypographyController
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
 import com.luc4n3x.levyra.viewmodel.LevyraViewModel
 import kotlin.math.roundToInt
@@ -58,6 +60,7 @@ class MainActivity : ComponentActivity() {
         requestLegacyStoragePermission()
         val startPalette = LevyraThemes.byId(LevyraThemes.APPLE_MUSIC)
         LevyraThemeController.apply(startPalette.id)
+        LevyraTypographyController.apply(LevyraPreferences(this).interfaceSettings().fontPreset)
         WindowCompat.enableEdgeToEdge(window)
         window.setBackgroundDrawable(ColorDrawable(if (startPalette.isLight) Color.WHITE else Color.BLACK))
         WindowCompat.getInsetsController(window, window.decorView).apply {
