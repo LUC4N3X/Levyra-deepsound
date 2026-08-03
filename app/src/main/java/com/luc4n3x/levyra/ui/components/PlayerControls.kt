@@ -6,7 +6,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
@@ -84,20 +83,10 @@ fun Modifier.playerGlass(
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom
 ): Modifier = this
     .background(fill, shape)
-    .background(
-        Brush.verticalGradient(
-            listOf(
-                LevyraPlayerDesign.GlassSpecular,
-                Color.Transparent,
-                Color.Black.copy(alpha = 0.06f)
-            )
-        ),
-        shape
-    )
     .border(
         BorderStroke(
             LevyraPlayerDesign.Hairline,
-            Brush.verticalGradient(listOf(borderTop, borderBottom))
+            borderTop.playerMix(borderBottom, 0.5f)
         ),
         shape
     )
@@ -124,7 +113,7 @@ fun PlayerGlassIconButton(
             minHeight = LevyraPlayerDesign.MinimumTouchTarget
         ),
         enabled = enabled,
-        pressedScale = 0.88f,
+        pressedScale = 0.94f,
         contentDescription = contentDescription
     ) {
         Box(
@@ -234,20 +223,15 @@ private fun PlayerModeToggleButton(
     animated: Boolean,
     onClick: () -> Unit
 ) {
-    val fill = if (active) accent.copy(alpha = 0.30f) else Color.Transparent
+    val fill = if (active) accent.copy(alpha = 0.16f) else Color.Transparent
     val activeTint = remember(accentTarget) {
         accentTarget.playerContentColor(
-            listOf(accentTarget.copy(alpha = 0.30f).playerCompositeOver(PlayerDarkSurface))
+            listOf(accentTarget.copy(alpha = 0.16f).playerCompositeOver(PlayerDarkSurface))
         )
     }
     val tint = if (active) activeTint else LevyraPlayerDesign.IconIdle
-    val corner by animateDpAsState(
-        targetValue = if (active) size / 2f else size * 0.34f,
-        animationSpec = if (animated) LevyraPlayerDesign.expressiveSpring() else snap(),
-        label = "player-toggle-corner"
-    )
     val borderAlpha by animateFloatAsState(
-        targetValue = if (active) 0.55f else 0f,
+        targetValue = if (active) 0.24f else 0f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-border"
     )
@@ -260,16 +244,16 @@ private fun PlayerModeToggleButton(
                 minHeight = LevyraPlayerDesign.MinimumTouchTarget
             )
             .semantics { toggleableState = ToggleableState(active) },
-        pressedScale = 0.86f,
+        pressedScale = 0.92f,
         contentDescription = contentDescription
     ) {
         Box(
             modifier = Modifier
                 .size(size)
-                .background(fill, RoundedCornerShape(corner))
+                .background(fill, CircleShape)
                 .border(
                     BorderStroke(LevyraPlayerDesign.Hairline, accent.copy(alpha = borderAlpha)),
-                    RoundedCornerShape(corner)
+                    CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -285,9 +269,9 @@ private fun PlayerModeToggleButton(
 
 private fun playerPrimaryIconTransition(): ContentTransform =
     (fadeIn(LevyraPlayerDesign.standardTween(140)) +
-        scaleIn(initialScale = 0.72f, animationSpec = LevyraPlayerDesign.standardTween(140))) togetherWith
+        scaleIn(initialScale = 0.82f, animationSpec = LevyraPlayerDesign.standardTween(140))) togetherWith
         (fadeOut(LevyraPlayerDesign.standardTween(100)) +
-            scaleOut(targetScale = 0.72f, animationSpec = LevyraPlayerDesign.standardTween(100)))
+            scaleOut(targetScale = 0.82f, animationSpec = LevyraPlayerDesign.standardTween(100)))
 
 private fun Modifier.playerPrimarySurface(
     shape: Shape,
@@ -295,32 +279,17 @@ private fun Modifier.playerPrimarySurface(
     end: Color
 ): Modifier = this
     .shadow(
-        elevation = 20.dp,
+        elevation = 5.dp,
         shape = shape,
         clip = false,
-        ambientColor = start.copy(alpha = 0.50f),
-        spotColor = end.copy(alpha = 0.58f)
+        ambientColor = Color.Black.copy(alpha = 0.18f),
+        spotColor = Color.Black.copy(alpha = 0.24f)
     )
     .background(Brush.linearGradient(listOf(start, end)), shape)
-    .background(
-        Brush.verticalGradient(
-            listOf(
-                Color.White.copy(alpha = 0.18f),
-                Color.Transparent,
-                Color.Black.copy(alpha = 0.10f)
-            )
-        ),
-        shape
-    )
     .border(
         BorderStroke(
             LevyraPlayerDesign.Hairline,
-            Brush.verticalGradient(
-                listOf(
-                    Color.White.copy(alpha = 0.34f),
-                    Color.White.copy(alpha = 0.08f)
-                )
-            )
+            Color.White.copy(alpha = 0.12f)
         ),
         shape
     )
@@ -364,13 +333,13 @@ private fun PlayerPrimaryButton(
 ) {
     val gradient = remember(accentTarget, accentSecondaryTarget) {
         playerContrastGradient(
-            start = accentTarget.playerMix(Color.White, 0.16f),
-            end = accentSecondaryTarget.playerMix(Color.White, 0.06f),
+            start = accentTarget.playerMix(PlayerDarkSurface, 0.52f),
+            end = accentSecondaryTarget.playerMix(PlayerDarkSurface, 0.58f),
             minimumContrast = PlayerMinimumContrast
         )
     }
     val colorSpec: AnimationSpec<Color> =
-        if (animated) LevyraPlayerDesign.emphasizedTween(700) else snap()
+        if (animated) LevyraPlayerDesign.emphasizedTween(520) else snap()
     val gradientStart by animateColorAsState(
         targetValue = gradient.start,
         animationSpec = colorSpec,
@@ -390,7 +359,7 @@ private fun PlayerPrimaryButton(
 
     SpringIconButton(
         onClick = onClick,
-        pressedScale = 0.92f,
+        pressedScale = 0.96f,
         contentDescription = if (isPlaying) pauseLabel else playLabel
     ) {
         Box(
@@ -405,14 +374,14 @@ private fun PlayerPrimaryButton(
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(height * 0.44f),
-                    strokeWidth = 3.dp,
+                    modifier = Modifier.size(height * 0.42f),
+                    strokeWidth = 2.5.dp,
                     color = gradientContent
                 )
             } else {
                 PlayerPrimaryIcon(
                     isPlaying = isPlaying,
-                    iconSize = height * 0.53f,
+                    iconSize = height * 0.50f,
                     tint = gradientContent,
                     animated = animated
                 )
