@@ -86,7 +86,7 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
             ring[ringOffset + channel] = sample
             oversamplingHistory[channel * TRUE_PEAK_TAPS + oversamplingWriteIndex] = sample
         }
-        val framePeak = oversampledFramePeak()
+        val framePeak = if (enabled) oversampledFramePeak() else 0f
         oversamplingWriteIndex = (oversamplingWriteIndex + 1) % TRUE_PEAK_TAPS
         return framePeak
     }
