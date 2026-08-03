@@ -37,6 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LevyraApp
+import com.luc4n3x.levyra.ui.LevyraProductShell
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementGate
 import com.luc4n3x.levyra.ui.support.RemoteAnnouncementPromptPolicy
 import com.luc4n3x.levyra.ui.support.SupportLevyraSettingsCard
@@ -96,6 +97,10 @@ class MainActivity : ComponentActivity() {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.weight(1f)) {
                         LevyraApp(
+                            viewModel = viewModel,
+                            isInPictureInPicture = pipMode.value
+                        )
+                        LevyraProductShell(
                             viewModel = viewModel,
                             isInPictureInPicture = pipMode.value
                         )
