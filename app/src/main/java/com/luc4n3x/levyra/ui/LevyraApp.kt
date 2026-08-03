@@ -14569,7 +14569,6 @@ private fun OccasionallyRotatingSettingsButton(
     onClick: () -> Unit
 ) {
     val rotation = remember { Animatable(0f) }
-    val currentBusy by rememberUpdatedState(busy)
 
     suspend fun playAttentionSpin() {
         rotation.snapTo(0f)
@@ -14592,14 +14591,13 @@ private fun OccasionallyRotatingSettingsButton(
         rotation.snapTo(0f)
     }
 
-    LaunchedEffect(animationsEnabled) {
-        if (!animationsEnabled) {
+    LaunchedEffect(animationsEnabled, busy) {
+        if (!animationsEnabled || busy) {
             rotation.snapTo(0f)
             return@LaunchedEffect
         }
         delay(1_400L)
         while (true) {
-            while (currentBusy) delay(400L)
             playAttentionSpin()
             delay(22_000L)
         }
