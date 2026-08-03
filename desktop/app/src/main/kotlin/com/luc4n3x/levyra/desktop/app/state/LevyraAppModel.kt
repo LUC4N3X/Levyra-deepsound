@@ -69,11 +69,19 @@ class LevyraAppModel(
 
     fun navigate(destination: Destination) {
         if (destinationState.value == destination) return
+        if (destinationState.value == Destination.COLLECTION) {
+            catalogController.clearCollectionHistory()
+        }
         previousDestination.value = destinationState.value
         destinationState.value = destination
     }
 
     fun back() {
+        if (destinationState.value == Destination.COLLECTION) {
+            if (catalogController.back()) {
+                return
+            }
+        }
         destinationState.value = previousDestination.value
     }
 
@@ -86,11 +94,21 @@ class LevyraAppModel(
     }
 
     fun openCollection(ref: CollectionRef) {
+        if (destinationState.value == Destination.COLLECTION) {
+            catalogController.pushCollectionHistory()
+        } else {
+            catalogController.clearCollectionHistory()
+        }
         catalogController.openCollection(ref)
         navigate(Destination.COLLECTION)
     }
 
     fun openCollectionFromUrl(url: String) {
+        if (destinationState.value == Destination.COLLECTION) {
+            catalogController.pushCollectionHistory()
+        } else {
+            catalogController.clearCollectionHistory()
+        }
         catalogController.openCollectionFromUrl(url) { navigate(Destination.COLLECTION) }
     }
 

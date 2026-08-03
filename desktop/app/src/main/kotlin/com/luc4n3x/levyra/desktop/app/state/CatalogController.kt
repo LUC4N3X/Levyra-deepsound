@@ -48,6 +48,7 @@ class CatalogController(
 ) {
     private val searchState = MutableStateFlow(SearchUiState())
     private val collectionState = MutableStateFlow(CollectionUiState())
+    private val collectionHistory = ArrayDeque<CollectionUiState>()
 
     private var suggestionJob: Job? = null
     private var searchJob: Job? = null
@@ -139,6 +140,26 @@ class CatalogController(
         suggestionJob?.cancel()
         cancelSearchJobs()
         searchState.value = SearchUiState(filter = searchState.value.filter)
+    }
+
+    fun pushCollectionHistory() {
+        if (collectionState.value.ref != null) {
+            collectionHistory.addLast(collectionState.value)
+        }
+    }
+
+    fun clearCollectionHistory() {
+        collectionHistory.clear()
+    }
+
+    fun back(): Boolean {
+        cancelCollectionJobs()
+        val previous = collectionHistory.removeLastOrNull()
+        if (previous != null) {
+            collectionState.value = previous
+            return true
+        }
+        return false
     }
 
     fun openCollection(ref: CollectionRef) {

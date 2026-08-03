@@ -59,6 +59,9 @@ object VlcMp3Transcoder {
                 if (!Files.isRegularFile(target) || Files.size(target) <= 0L) {
                     throw IOException("VLC non ha prodotto un MP3 valido")
                 }
+                if (!validateMp3Stream(target)) {
+                    throw IOException("Il file prodotto non è un MP3 valido")
+                }
                 succeeded.set(true)
             } finally {
                 runCatching { player.controls().stop() }
@@ -92,7 +95,7 @@ internal fun vlcMp3TranscodeOptions(
     val destination = escapeVlcSoutPath(target.toAbsolutePath().normalize().toString())
     return arrayOf(
         ":no-video",
-        ":sout=#transcode{vcodec=none,acodec=mpga,ab=$safeBitrate,channels=2,samplerate=44100}:std{access=file,mux=raw,dst='$destination'}",
+        ":sout=#transcode{vcodec=none,acodec=mp3,ab=$safeBitrate,channels=2,samplerate=44100}:std{access=file,mux=raw,dst='$destination'}",
         ":sout-keep"
     )
 }
@@ -100,3 +103,23 @@ internal fun vlcMp3TranscodeOptions(
 internal fun escapeVlcSoutPath(path: String): String = path
     .replace('\\', '/')
     .replace("'", "\\'")
+
+internal fun validateMp3Stream(path: Path): Boolean {
+    runCatching {
+        Files.newInputStream(path).use { stream ->
+            val header = ByteArray(3)
+            val read = stream.read(header)
+            if (read < 2) return false
+            
+            if (header[0] == 'I'.code.toByte() && header[1] == 'D'.code.toByte() && header[2] == '3'.code.toByte()) {
+                return true
+            }
+            val b0 = header[0].toInt() and 0xFF
+            val b1 = header[1].toInt() and 0xFF
+            if (b0 == 0xFF && (b1 and 0xFE) == 0xFA) {
+                return true
+            }
+        }
+    }.onFailure { return false }
+    return false
+}

@@ -24,6 +24,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +46,8 @@ import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerMode
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerState
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.luc4n3x.levyra.desktop.player.RepeatMode
 
 @Composable
@@ -74,7 +77,13 @@ fun PlayerBar(
     val accent = LocalAccentColor.current
     val track = state.current
     val downloadActions = LocalDownloadActions.current
-    val downloadRecord = track?.let { downloadActions?.recordFor?.invoke(it) }
+    val downloadRecord by remember(downloadActions, track?.id) {
+        if (track != null) {
+            downloadActions?.stateFlow?.map { it[track.id] }?.distinctUntilChanged() ?: kotlinx.coroutines.flow.flowOf(null)
+        } else {
+            kotlinx.coroutines.flow.flowOf(null)
+        }
+    }.collectAsState(initial = null)
     var dragPosition by remember(track?.id) { mutableStateOf<Float?>(null) }
 
     val duration = state.durationMs.coerceAtLeast(0L)

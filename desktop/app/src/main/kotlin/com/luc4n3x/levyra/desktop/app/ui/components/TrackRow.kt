@@ -23,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +42,8 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 data class TrackRowAction(val label: String, val onClick: () -> Unit)
 
@@ -61,7 +64,9 @@ fun TrackRow(
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
     val downloadActions = LocalDownloadActions.current
-    val downloadRecord = downloadActions?.recordFor?.invoke(track)
+    val downloadRecord by remember(downloadActions, track.id) {
+        downloadActions?.stateFlow?.map { it[track.id] }?.distinctUntilChanged() ?: kotlinx.coroutines.flow.flowOf(null)
+    }.collectAsState(initial = null)
     val interactionSource = remember(track.id) { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     var menuExpanded by remember(track.id) { mutableStateOf(false) }

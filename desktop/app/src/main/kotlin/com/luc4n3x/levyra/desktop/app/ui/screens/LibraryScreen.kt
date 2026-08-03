@@ -273,7 +273,7 @@ private fun LibraryHero(
         shape = RoundedCornerShape(26.dp),
         color = Color.Transparent,
         border = BorderStroke(1.dp, accent.copy(alpha = 0.24f)),
-        shadowElevation = 0.dp
+        shadowElevation = 14.dp
     ) {
         Row(
             modifier = Modifier

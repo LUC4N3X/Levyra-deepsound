@@ -222,7 +222,7 @@ private fun ArtistHero(
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, accent.copy(alpha = 0.25f)),
-        shadowElevation = 0.dp
+        shadowElevation = 14.dp
     ) {
         Box(
             modifier = Modifier
@@ -325,7 +325,7 @@ private fun ArtistPortrait(url: String) {
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
         border = BorderStroke(4.dp, MaterialTheme.colorScheme.surface),
-        shadowElevation = 0.dp
+        shadowElevation = 16.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (url.isBlank()) {

@@ -91,16 +91,7 @@ fun OnboardingScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            LevyraBrand.cyan.copy(alpha = 0.12f),
-                            LevyraBrand.violet.copy(alpha = 0.08f),
-                            MaterialTheme.colorScheme.background
-                        ),
-                        radius = 1350f
-                    )
-                )
+                .background(MaterialTheme.colorScheme.background)
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -112,7 +103,7 @@ fun OnboardingScreen(
                 shape = RoundedCornerShape(30.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                shadowElevation = 0.dp
+                shadowElevation = 30.dp
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     OnboardingRail(
@@ -257,15 +248,7 @@ private fun OnboardingRail(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        LevyraBrand.deepBlue.copy(alpha = 0.9f),
-                        LevyraBrand.violet.copy(alpha = 0.2f),
-                        MaterialTheme.colorScheme.surfaceContainer
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(28.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
@@ -653,28 +636,14 @@ private fun SelectableCard(
             if (selected) MaterialTheme.colorScheme.primary
             else MaterialTheme.colorScheme.outlineVariant
         ),
-        shadowElevation = 0.dp
+        shadowElevation = if (selected) 8.dp else 0.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    if (selected) {
-                        Brush.linearGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                                LevyraBrand.violet.copy(alpha = 0.08f),
-                                MaterialTheme.colorScheme.surfaceContainer
-                            )
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.surfaceContainer,
-                                MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f)
-                            )
-                        )
-                    }
+                    if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                    else MaterialTheme.colorScheme.surfaceContainer
                 )
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,

@@ -10,7 +10,7 @@ class VlcMp3TranscoderTest {
         val options = vlcMp3TranscodeOptions(Path.of("music", "Artist - Track.mp3"))
         val sout = options.first { it.startsWith(":sout=") }
 
-        assertTrue(sout.contains("acodec=mpga"))
+        assertTrue(sout.contains("acodec=mp3"))
         assertTrue(sout.contains("ab=256"))
         assertTrue(sout.contains("channels=2"))
         assertTrue(sout.contains("mux=raw"))

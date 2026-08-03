@@ -418,7 +418,7 @@ private fun FeaturedPanel(
             modifier = Modifier.size(172.dp),
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shadowElevation = 0.dp
+            shadowElevation = 18.dp
         ) {
             if (track != null) {
                 Artwork(
