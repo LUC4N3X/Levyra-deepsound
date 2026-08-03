@@ -234,10 +234,13 @@ class LevyraPlayer(context: Context) {
         controller?.let { applyPlaybackParameters(it) }
     }
 
-    fun setPremiumAudioSettings(settings: LevyraAudioSettings) {
+    fun setPremiumAudioSettings(
+        settings: LevyraAudioSettings,
+        audioNormalization: Boolean
+    ) {
         audioSettings = settings.normalized()
         controller?.let { applyPlaybackParameters(it) }
-        PlaybackService.applyPremiumAudioSettings(audioSettings)
+        PlaybackService.applyPremiumAudioSettings(audioSettings, audioNormalization)
     }
 
     fun setVolume(volume: Float) {

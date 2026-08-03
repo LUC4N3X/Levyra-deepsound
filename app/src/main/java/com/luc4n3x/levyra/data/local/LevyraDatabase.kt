@@ -18,12 +18,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaybackQueueStateEntity::class,
         OfflineDownloadTaskEntity::class,
         LyricsCacheEntity::class,
+        LyricsSelectionEntity::class,
         MotionArtworkEntity::class,
         PlaybackSourceMatchEntity::class,
         ArtistLoreEntity::class
     ],
-    version = 12,
-    exportSchema = false
+    version = 14,
+    exportSchema = true
 )
 abstract class LevyraDatabase : RoomDatabase() {
     abstract fun favoriteTracksDao(): FavoriteTracksDao
@@ -33,6 +34,7 @@ abstract class LevyraDatabase : RoomDatabase() {
     abstract fun playbackQueueDao(): PlaybackQueueDao
     abstract fun offlineDownloadTasksDao(): OfflineDownloadTasksDao
     abstract fun lyricsCacheDao(): LyricsCacheDao
+    abstract fun lyricsSelectionDao(): LyricsSelectionDao
     abstract fun motionArtworkDao(): MotionArtworkDao
     abstract fun playbackSourceMatchDao(): PlaybackSourceMatchDao
     abstract fun artistLoreDao(): ArtistLoreDao
@@ -422,6 +424,38 @@ abstract class LevyraDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS lyrics_selections (
+                        trackKey TEXT NOT NULL PRIMARY KEY,
+                        candidateId TEXT NOT NULL,
+                        provider TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        artist TEXT NOT NULL,
+                        durationSec INTEGER NOT NULL,
+                        payload TEXT NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_lyrics_selections_updatedAt " +
+                        "ON lyrics_selections(updatedAt)"
+                )
+            }
+        }
+
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_lyrics_selections_updatedAt " +
+                        "ON lyrics_selections(updatedAt)"
+                )
+            }
+        }
+
         fun get(context: Context): LevyraDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -441,7 +475,9 @@ abstract class LevyraDatabase : RoomDatabase() {
                         MIGRATION_8_9,
                         MIGRATION_9_10,
                         MIGRATION_10_11,
-                        MIGRATION_11_12
+                        MIGRATION_11_12,
+                        MIGRATION_12_13,
+                        MIGRATION_13_14
                     )
                     .build()
                     .also { instance = it }

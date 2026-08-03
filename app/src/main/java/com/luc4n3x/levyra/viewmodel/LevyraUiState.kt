@@ -29,6 +29,7 @@ import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Taste
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.domain.YoutubeEngagementState
+import com.luc4n3x.levyra.data.LyricsRepository
 import com.luc4n3x.levyra.feature.motion.MotionArtwork
 import com.luc4n3x.levyra.feature.sharedmedia.SharedMediaPreview
 import com.luc4n3x.levyra.ui.theme.LevyraThemes
@@ -97,6 +98,9 @@ data class LevyraUiState(
     val lyricsProvider: String = "",
     val lyricsConfidence: Int = 0,
     val lyricsCached: Boolean = false,
+    val lyricsVersions: List<LyricsRepository.LyricsVersion> = emptyList(),
+    val lyricsVersionsLoading: Boolean = false,
+    val lyricsManualSelection: Boolean = false,
     val lyricsTranslationEnabled: Boolean = false,
     val smartProfile: SmartMusicProfile = SmartMusicProfile(),
     val cacheReport: CacheReport = CacheReport(0, 0, 0, 0),
