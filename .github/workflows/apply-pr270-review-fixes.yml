@@ -1,0 +1,489 @@
+name: Apply PR 270 review fixes
+
+on:
+  push:
+    branches:
+      - feature/smarter-github-star-prompt
+    paths:
+      - .github/workflows/apply-pr270-review-fixes.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-pr270-review-fixes
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/smarter-github-star-prompt
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+
+      - name: Apply compile, Codex and CodeRabbit fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          # Fix the invalid explicit RowScope weight import and let the repository decide
+          # whether engagement gates a selected campaign.
+          prompt_path = Path("app/src/main/java/com/luc4n3x/levyra/ui/support/OpenSourceSupportPrompt.kt")
+          prompt = prompt_path.read_text(encoding="utf-8")
+          prompt = replace_once(
+              prompt,
+              "import androidx.compose.foundation.layout.weight\n",
+              "",
+              "remove invalid weight import",
+          )
+          prompt = replace_once(
+              prompt,
+              """        if (launchCount < RemoteAnnouncementPromptPolicy.MINIMUM_APP_LAUNCHES) return@LaunchedEffect
+        if (!hasPositiveListeningMoment) return@LaunchedEffect
+""",
+              "",
+              "remove global engagement pre-gate",
+          )
+          prompt_path.write_text(prompt, encoding="utf-8")
+
+          # Count real elapsed playback, keep the prompt away from Settings, and reserve
+          # actual layout space for the permanent support card instead of overlaying controls.
+          main_path = Path("app/src/main/java/com/luc4n3x/levyra/MainActivity.kt")
+          main = main_path.read_text(encoding="utf-8")
+          main = replace_once(main, "import android.os.Bundle\n", "import android.os.Bundle\nimport android.os.SystemClock\n", "SystemClock import")
+          main = replace_once(
+              main,
+              """import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+""",
+              """import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+""",
+              "Compose imports",
+          )
+          main = replace_once(main, "import kotlin.math.roundToInt\n", "import kotlin.math.roundToInt\nimport kotlinx.coroutines.delay\n", "delay import")
+          old_content = """                val viewModel: LevyraViewModel = viewModel()
+                val uiState by viewModel.state.collectAsStateWithLifecycle()
+                Box {
+                    LevyraApp(
+                        viewModel = viewModel,
+                        isInPictureInPicture = pipMode.value
+                    )
+                    if (uiState.showSettings && !pipMode.value) {
+                        SupportLevyraSettingsCard(
+                            languageCode = uiState.languageCode,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                                .padding(horizontal = 18.dp, vertical = 14.dp)
+                        )
+                    }
+                }
+                RemoteAnnouncementGate(
+                    enabled = !uiState.showOnboarding && !pipMode.value,
+                    languageCode = uiState.languageCode,
+                    hasPositiveListeningMoment = RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(
+                        recentListenCount = uiState.recentListens.size,
+                        currentPositionMs = uiState.positionMs
+                    )
+                )
+"""
+          new_content = """                val viewModel: LevyraViewModel = viewModel()
+                val uiState by viewModel.state.collectAsStateWithLifecycle()
+                var listenedPlaybackMs by remember { mutableLongStateOf(0L) }
+
+                LaunchedEffect(uiState.isPlaying) {
+                    if (!uiState.isPlaying) return@LaunchedEffect
+                    var lastTickMs = SystemClock.elapsedRealtime()
+                    while (true) {
+                        delay(1_000L)
+                        val nowMs = SystemClock.elapsedRealtime()
+                        listenedPlaybackMs += (nowMs - lastTickMs).coerceAtLeast(0L)
+                        lastTickMs = nowMs
+                    }
+                }
+
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        LevyraApp(
+                            viewModel = viewModel,
+                            isInPictureInPicture = pipMode.value
+                        )
+                    }
+                    if (uiState.showSettings && !pipMode.value) {
+                        SupportLevyraSettingsCard(
+                            languageCode = uiState.languageCode,
+                            modifier = Modifier
+                                .navigationBarsPadding()
+                                .padding(horizontal = 18.dp, vertical = 14.dp)
+                        )
+                    }
+                }
+                RemoteAnnouncementGate(
+                    enabled = !uiState.showOnboarding && !pipMode.value && !uiState.showSettings,
+                    languageCode = uiState.languageCode,
+                    hasPositiveListeningMoment = RemoteAnnouncementPromptPolicy.hasPositiveListeningMoment(
+                        recentListenCount = uiState.recentListens.size,
+                        listenedPlaybackMs = listenedPlaybackMs
+                    )
+                )
+"""
+          main = replace_once(main, old_content, new_content, "MainActivity announcement layout")
+          main_path.write_text(main, encoding="utf-8")
+
+          repository_path = Path("app/src/main/java/com/luc4n3x/levyra/ui/support/RemoteAnnouncementRepository.kt")
+          repository = repository_path.read_text(encoding="utf-8")
+          repository = repository.replace("KEY_DISMISSED_IDS", "KEY_COMPLETED_IDS")
+          repository = repository.replace("MAX_DISMISSED_IDS", "MAX_COMPLETED_IDS")
+          repository = repository.replace("dismissedIds", "completedIds")
+          repository = replace_once(
+              repository,
+              """    fun hasPositiveListeningMoment(recentListenCount: Int, currentPositionMs: Long): Boolean {
+        return recentListenCount >= MINIMUM_RECENT_LISTENS ||
+            currentPositionMs >= MINIMUM_CURRENT_LISTEN_MS
+    }
+""",
+              """    fun hasPositiveListeningMoment(recentListenCount: Int, listenedPlaybackMs: Long): Boolean {
+        return recentListenCount >= MINIMUM_RECENT_LISTENS ||
+            listenedPlaybackMs >= MINIMUM_CURRENT_LISTEN_MS
+    }
+""",
+              "elapsed listening policy",
+          )
+          repository = replace_once(
+              repository,
+              """        completedIds: Set<String>,
+        nowMs: Long
+    ): RemoteAnnouncementPresentation? {
+""",
+              """        completedIds: Set<String>,
+        nowMs: Long,
+        isAnnouncementEligible: (RemoteAnnouncement) -> Boolean = { true }
+    ): RemoteAnnouncementPresentation? {
+""",
+              "selector predicate parameter",
+          )
+          repository = replace_once(
+              repository,
+              """            .filter { it.id !in completedIds }
+            .filter { versionCode >= it.minimumVersionCode }
+""",
+              """            .filter { it.id !in completedIds }
+            .filter(isAnnouncementEligible)
+            .filter { versionCode >= it.minimumVersionCode }
+""",
+              "selector predicate use",
+          )
+          repository = replace_once(
+              repository,
+              "val settingsTitle = item.optString(\"settingsTitle\").trim().ifBlank { action }",
+              "val settingsTitle = item.optString(\"settingsTitle\").trim().ifBlank { action.ifBlank { title } }",
+              "action-less settings title fallback",
+          )
+          old_resolve_prompt = """    suspend fun resolveForPrompt(
+        languageCode: String,
+        launchCount: Int,
+        hasPositiveListeningMoment: Boolean,
+        versionCode: Int = BuildConfig.VERSION_CODE,
+        nowMs: Long = System.currentTimeMillis()
+    ): RemoteAnnouncementPresentation? = withContext(Dispatchers.IO) {
+        if (
+            !RemoteAnnouncementPromptPolicy.isEligible(
+                launchCount = launchCount,
+                hasPositiveListeningMoment = hasPositiveListeningMoment,
+                snoozedUntilMs = 0L,
+                nowMs = nowMs
+            )
+        ) {
+            return@withContext null
+        }
+        val selected = resolveAvailable(languageCode, versionCode, nowMs) ?: return@withContext null
+        selected.takeIf {
+            RemoteAnnouncementPromptPolicy.isEligible(
+                launchCount = launchCount,
+                hasPositiveListeningMoment = hasPositiveListeningMoment,
+                snoozedUntilMs = store.snoozedUntil(it.id),
+                nowMs = nowMs
+            )
+        }
+    }
+"""
+          new_resolve_prompt = """    suspend fun resolveForPrompt(
+        languageCode: String,
+        launchCount: Int,
+        hasPositiveListeningMoment: Boolean,
+        versionCode: Int = BuildConfig.VERSION_CODE,
+        nowMs: Long = System.currentTimeMillis()
+    ): RemoteAnnouncementPresentation? = withContext(Dispatchers.IO) {
+        resolveAvailable(
+            languageCode = languageCode,
+            versionCode = versionCode,
+            nowMs = nowMs
+        ) { announcement ->
+            val snoozeExpired = store.snoozedUntil(announcement.id) <= nowMs
+            val engagementEligible = announcement.style != AnnouncementStyle.OPEN_SOURCE ||
+                RemoteAnnouncementPromptPolicy.isEligible(
+                    launchCount = launchCount,
+                    hasPositiveListeningMoment = hasPositiveListeningMoment,
+                    snoozedUntilMs = 0L,
+                    nowMs = nowMs
+                )
+            snoozeExpired && engagementEligible
+        }
+    }
+"""
+          repository = replace_once(repository, old_resolve_prompt, new_resolve_prompt, "style-aware prompt resolution")
+          old_resolve_available = """    private fun resolveAvailable(
+        languageCode: String,
+        versionCode: Int,
+        nowMs: Long
+    ): RemoteAnnouncementPresentation? {
+        val cached = store.cachedCatalog()
+        val remoteState = if (cached != null && !store.shouldRefresh(nowMs)) {
+            CatalogState(cached, available = true)
+        } else {
+            refresh(cached, nowMs)
+        }
+        val completedIds = store.completedIds()
+        val selected = remoteState.catalog?.let {
+            RemoteAnnouncementRules.select(it, languageCode, versionCode, completedIds, nowMs)
+        }
+        return selected ?: if (remoteState.available) {
+            null
+        } else {
+            bundledCatalog?.let {
+                RemoteAnnouncementRules.select(it, languageCode, versionCode, completedIds, nowMs)
+            }
+        }
+    }
+"""
+          new_resolve_available = """    private fun resolveAvailable(
+        languageCode: String,
+        versionCode: Int,
+        nowMs: Long,
+        isAnnouncementEligible: (RemoteAnnouncement) -> Boolean
+    ): RemoteAnnouncementPresentation? {
+        val cached = store.cachedCatalog()
+        val remoteState = if (cached != null && !store.shouldRefresh(nowMs)) {
+            CatalogState(cached, available = true)
+        } else {
+            refresh(cached, nowMs)
+        }
+        val completedIds = store.completedIds()
+        fun selectFrom(catalog: RemoteAnnouncementCatalog): RemoteAnnouncementPresentation? {
+            return RemoteAnnouncementRules.select(
+                catalog = catalog,
+                languageCode = languageCode,
+                versionCode = versionCode,
+                completedIds = completedIds,
+                nowMs = nowMs,
+                isAnnouncementEligible = isAnnouncementEligible
+            )
+        }
+        val selected = remoteState.catalog?.let(::selectFrom)
+        return selected ?: if (remoteState.available) {
+            null
+        } else {
+            bundledCatalog?.let(::selectFrom)
+        }
+    }
+"""
+          repository = replace_once(repository, old_resolve_available, new_resolve_available, "selection continues after snoozed campaign")
+          old_mark_completed = """    fun markCompleted(id: String) {
+        if (!RemoteAnnouncementRules.isValidId(id)) return
+        val updated = completedIds().toMutableSet()
+        if (updated.size >= MAX_COMPLETED_IDS && id !in updated) {
+            updated.firstOrNull()?.let(updated::remove)
+        }
+        updated += id
+        preferences.edit()
+            .putStringSet(KEY_COMPLETED_IDS, updated)
+            .remove(snoozeKey(id))
+            .apply()
+    }
+"""
+          new_mark_completed = """    fun markCompleted(id: String) {
+        if (!RemoteAnnouncementRules.isValidId(id)) return
+        synchronized(this) {
+            val updated = completedIds().toMutableSet()
+            if (updated.size >= MAX_COMPLETED_IDS && id !in updated) {
+                updated.firstOrNull()?.let(updated::remove)
+            }
+            updated += id
+            preferences.edit()
+                .putStringSet(KEY_COMPLETED_IDS, updated)
+                .remove(snoozeKey(id))
+                .apply()
+        }
+    }
+"""
+          repository = replace_once(repository, old_mark_completed, new_mark_completed, "synchronized completion update")
+          repository_path.write_text(repository, encoding="utf-8")
+
+          test_path = Path("app/src/test/java/com/luc4n3x/levyra/ui/support/RemoteAnnouncementRepositoryTest.kt")
+          tests = test_path.read_text(encoding="utf-8").replace("dismissedIds =", "completedIds =")
+          insert_anchor = """    @Test
+    fun actionLinksAreRestrictedToOfficialGithubPaths() {
+"""
+          extra_tests = '''    @Test
+    fun selectorContinuesPastAnIneligibleHigherPriorityCampaign() {
+        val now = Instant.parse("2026-08-03T12:00:00Z").toEpochMilli()
+        val support = announcement(
+            id = "support-snoozed",
+            priority = 100,
+            style = AnnouncementStyle.OPEN_SOURCE
+        )
+        val notice = announcement(
+            id = "notice-ready",
+            priority = 50,
+            style = AnnouncementStyle.INFO
+        )
+        val catalog = RemoteAnnouncementCatalog(2, listOf(support, notice))
+
+        val selected = RemoteAnnouncementRules.select(
+            catalog = catalog,
+            languageCode = "en",
+            versionCode = 2_031_800,
+            completedIds = emptySet(),
+            nowMs = now,
+            isAnnouncementEligible = { it.id != "support-snoozed" }
+        )
+
+        assertEquals("notice-ready", selected?.id)
+    }
+
+    @Test
+    fun parserUsesTitleForActionlessSettingsFallback() {
+        val raw = """
+            {
+              "schemaVersion": 2,
+              "announcements": [
+                {
+                  "id": "service-notice",
+                  "enabled": true,
+                  "priority": 10,
+                  "style": "info",
+                  "minimumVersionCode": 1,
+                  "translations": {
+                    "en": {
+                      "badge": "NOTICE",
+                      "title": "Service notice",
+                      "body": "This informational notice has enough text to satisfy validation.",
+                      "dismiss": "Later"
+                    }
+                  }
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val copy = RemoteAnnouncementParser.parse(raw)
+            ?.announcements
+            ?.single()
+            ?.translations
+            ?.get("en")
+
+        assertNotNull(copy)
+        assertEquals("Service notice", copy?.settingsTitle)
+    }
+
+'''
+          tests = replace_once(tests, insert_anchor, extra_tests + insert_anchor, "additional selection/parser tests")
+          tests = replace_once(
+              tests,
+              """        endAtMs: Long? = null
+    ): RemoteAnnouncement = RemoteAnnouncement(
+""",
+              """        endAtMs: Long? = null,
+        style: AnnouncementStyle = AnnouncementStyle.INFO
+    ): RemoteAnnouncement = RemoteAnnouncement(
+""",
+              "announcement test helper style parameter",
+          )
+          tests = replace_once(
+              tests,
+              """        style = AnnouncementStyle.INFO,
+        minimumVersionCode = minimumVersionCode,
+""",
+              """        style = style,
+        minimumVersionCode = minimumVersionCode,
+""",
+              "announcement test helper style use",
+          )
+          test_path.write_text(tests, encoding="utf-8")
+
+          docs_path = Path("docs/REMOTE_ANNOUNCEMENTS.md")
+          docs = docs_path.read_text(encoding="utf-8")
+          docs = replace_once(
+              docs,
+              "The open-source support campaign is intentionally delayed until the user has opened Levyra at least three times and has reached a positive listening moment.",
+              "The open-source support campaign is intentionally delayed until the user has opened Levyra at least three times and has reached a positive listening moment through recent listens or 90 seconds of actual elapsed playback; seeking or restoring a saved media position does not qualify.",
+              "elapsed playback documentation",
+          )
+          docs = replace_once(
+              docs,
+              "`settingsTitle` and `settingsSubtitle` are used by the permanent Settings entry; older catalogs without them fall back to the action and body copy.",
+              "`settingsTitle` and `settingsSubtitle` are used by the permanent Settings entry; older catalogs without them fall back to the action (or announcement title when no action exists) and body copy.",
+              "settings fallback documentation",
+          )
+          docs_path.write_text(docs, encoding="utf-8")
+          PY
+
+          git diff --check
+
+      - name: Run focused tests and compile
+        shell: bash
+        run: |
+          ./gradlew --no-daemon \
+            :app:testDebugUnitTest \
+            --tests 'com.luc4n3x.levyra.ui.support.RemoteAnnouncementRepositoryTest' \
+            :app:compileDebugKotlin
+
+      - name: Commit clean fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/apply-pr270-review-fixes.yml
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: address announcement review and CI failures"
+          git push origin HEAD:feature/smarter-github-star-prompt
