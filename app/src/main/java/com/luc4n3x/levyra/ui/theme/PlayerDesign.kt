@@ -88,12 +88,12 @@ object LevyraPlayerDesign {
     const val WavePeriodDp: Float = 26f
     const val WaveCycleMillis: Int = 1_600
 
-    val GlassFill: Color = Color.White.copy(alpha = 0.065f)
-    val GlassFillStrong: Color = Color.White.copy(alpha = 0.10f)
+    val GlassFill: Color = Color.White.copy(alpha = 0.06f)
+    val GlassFillStrong: Color = Color.White.copy(alpha = 0.09f)
     val GlassFillSunken: Color = Color.Black.copy(alpha = 0.22f)
-    val GlassBorderTop: Color = Color.White.copy(alpha = 0.14f)
-    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.08f)
-    val GlassSpecular: Color = Color.White.copy(alpha = 0.03f)
+    val GlassBorderTop: Color = Color.White.copy(alpha = 0.12f)
+    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.07f)
+    val GlassSpecular: Color = Color.White.copy(alpha = 0.02f)
 
     val TextPrimary: Color = Color.White
     val TextSecondary: Color = Color.White.copy(alpha = 0.72f)
