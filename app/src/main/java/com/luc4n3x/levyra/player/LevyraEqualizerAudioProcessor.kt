@@ -173,7 +173,11 @@ class LevyraEqualizerAudioProcessor : AudioProcessor {
     }
 
     private fun replaceOutputBuffer(size: Int): ByteBuffer {
-        outputBuffer = if (outputBuffer.capacity() < size) ByteBuffer.allocateDirect(size) else outputBuffer.clear()
+        if (outputBuffer.capacity() < size) {
+            outputBuffer = ByteBuffer.allocateDirect(size)
+        } else {
+            outputBuffer.clear()
+        }
         outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         return outputBuffer
     }

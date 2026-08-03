@@ -153,7 +153,11 @@ class TruePeakLimiterAudioProcessor : AudioProcessor {
     private fun bytesPerSample(): Int = if (format.encoding == C.ENCODING_PCM_FLOAT) 4 else 2
 
     private fun replaceOutputBuffer(size: Int): ByteBuffer {
-        outputBuffer = if (outputBuffer.capacity() < size) ByteBuffer.allocateDirect(size) else outputBuffer.clear()
+        if (outputBuffer.capacity() < size) {
+            outputBuffer = ByteBuffer.allocateDirect(size)
+        } else {
+            outputBuffer.clear()
+        }
         outputBuffer.order(ByteOrder.LITTLE_ENDIAN)
         return outputBuffer
     }
