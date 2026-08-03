@@ -8,7 +8,7 @@ Instruction order:
 
 1. root `AGENTS.md`;
 2. nearer path-specific `AGENTS.md` files;
-3. approved requirements and active planning in `SPEC.md`, `ROADMAP.md`, and `TASKS.md`;
+3. approved requirements and active planning in `docs/project/SPEC.md`, `docs/project/ROADMAP.md`, and `docs/project/TASKS.md`;
 4. matching native skills under `.agents/skills/`;
 5. current architecture, implementation, tests, build files, and workflows;
 6. detailed Levyra playbooks under `.claude/skills/` and `.claude/rules/`.
@@ -17,13 +17,15 @@ Current repository evidence always overrides remembered behavior, old discussion
 
 ## Repository map
 
-- `SPEC.md`: durable product and engineering requirements.
-- `ROADMAP.md`: ordered outcomes, risks, and phase exit criteria.
-- `TASKS.md`: one active reviewable phase and its truthful validation state.
+- `docs/README.md`: canonical documentation index.
+- `docs/project/SPEC.md`: durable product and engineering requirements.
+- `docs/project/ROADMAP.md`: ordered outcomes, risks, and phase exit criteria.
+- `docs/project/TASKS.md`: one active reviewable phase and its truthful validation state.
 - `app/`: Android client; additional rules in `app/AGENTS.md`.
 - `desktop/`: independent Windows client; additional rules in `desktop/AGENTS.md`.
 - `.github/`: CI and release automation; additional rules in `.github/AGENTS.md`.
 - `docs/`: project documentation; additional rules in `docs/AGENTS.md`.
+- `docs/project/`: product specification, engineering roadmap, and active task phase.
 - `docs/ai/`: ChatGPT, Codex, Claude Code, and OpenClaw collaboration guidance.
 - `.agents/skills/`: native Codex/OpenAI/OpenClaw-compatible skills.
 - `.claude/`: Claude Code configuration plus reusable Levyra engineering playbooks.
@@ -66,9 +68,9 @@ Several skills may apply. A playback change that modifies stream resolution uses
 
 Read only the planning material relevant to the task, but do not ignore an active phase:
 
-- `SPEC.md` defines approved durable requirements and non-goals.
-- `ROADMAP.md` orders outcomes, risks, and phase exit criteria; it is not release authorization.
-- `TASKS.md` records one active reviewable phase, validation evidence, and owner checkpoints.
+- `docs/project/SPEC.md` defines approved durable requirements and non-goals.
+- `docs/project/ROADMAP.md` orders outcomes, risks, and phase exit criteria; it is not release authorization.
+- `docs/project/TASKS.md` records one active reviewable phase, validation evidence, and owner checkpoints.
 - `docs/ARCHITECTURE.md` describes current implementation ownership and data flow.
 - `docs/ai/WORKFLOW.md` defines the complete AI-assisted lifecycle.
 - `docs/ai/OPENCLAW.md` defines the recommended OpenClaw role and tool boundaries.
@@ -93,7 +95,7 @@ Do not mark task status from an agent report. Update it only from a direct comma
 ## Work method
 
 1. Define the exact requested outcome and scope.
-2. Read `SPEC.md`, the relevant roadmap track, and the active `TASKS.md` phase when applicable.
+2. Read `docs/project/SPEC.md`, the relevant roadmap track, and the active `docs/project/TASKS.md` phase when applicable.
 3. Identify behavior and compatibility that must remain unchanged.
 4. Inspect the complete current control/data flow and nearby tests.
 5. Identify the root cause before editing.
@@ -102,7 +104,7 @@ Do not mark task status from an agent report. Update it only from a direct comma
 8. Add or update regression tests for defects, migrations, matching, security boundaries, lifecycle, and concurrency when applicable.
 9. Run focused checks first, then applicable broader checks.
 10. Inspect the complete final diff for unrelated edits, generated files, secrets, binaries, conflict markers, and accidental version changes.
-11. Synchronize specification, roadmap, tasks, architecture, and user documentation when the approved requirement or architecture changes.
+11. Synchronize `docs/project/SPEC.md`, `docs/project/ROADMAP.md`, `docs/project/TASKS.md`, architecture, and user documentation when the approved requirement or architecture changes.
 12. Report exactly what changed, what ran, what passed, what failed, and what remains unverified.
 
 When the owner says "only this", modify only the named behavior or files unless an additional change is strictly required for correctness. State that dependency before expanding scope.
