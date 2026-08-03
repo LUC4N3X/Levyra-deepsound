@@ -75,7 +75,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
@@ -93,10 +92,10 @@ private val ProductCardShape = RoundedCornerShape(18.dp)
 @Composable
 internal fun LevyraProductShell(
     viewModel: LevyraViewModel,
+    state: LevyraUiState,
     isInPictureInPicture: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
     val strings = LevyraStrings.forCode(state.languageCode)
     val layoutDirection = if (LevyraLanguageCatalog.isRtl(strings.code)) LayoutDirection.Rtl else LayoutDirection.Ltr
     var showSettingsHub by rememberSaveable { mutableStateOf(false) }
