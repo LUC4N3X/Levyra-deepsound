@@ -18,11 +18,15 @@ class LevyraProductExperienceTest {
     }
 
     @Test
-    fun videoDetectionAcceptsAllSupportedProviderSignals() {
+    fun videoDetectionAcceptsOnlyMediaTypeSignals() {
         assertTrue(track(counterpartVideoId = "video-id").isSearchVideo())
         assertTrue(track(videoType = "MUSIC_VIDEO_TYPE_OMV").isSearchVideo())
-        assertTrue(track(videoUrl = "https://music.youtube.com/watch?v=id").isSearchVideo())
-        assertFalse(track().isSearchVideo())
+        assertTrue(track(source = "YouTube Music Video").isSearchVideo())
+        assertFalse(
+            track(
+                videoUrl = "https://music.youtube.com/watch?v=ordinary-song"
+            ).isSearchVideo()
+        )
     }
 
     @Test
@@ -71,7 +75,8 @@ class LevyraProductExperienceTest {
     private fun track(
         counterpartVideoId: String = "",
         videoType: String = "",
-        videoUrl: String = ""
+        videoUrl: String = "",
+        source: String = "YouTube Music"
     ) = Track(
         id = "id",
         title = "Title",
@@ -82,7 +87,7 @@ class LevyraProductExperienceTest {
         videoUrl = videoUrl,
         thumbnailUrl = "https://example.com/thumb.jpg",
         largeThumbnailUrl = "https://example.com/large.jpg",
-        source = "YouTube Music",
+        source = source,
         moodTags = emptySet(),
         energy = 0,
         vocal = 0,
