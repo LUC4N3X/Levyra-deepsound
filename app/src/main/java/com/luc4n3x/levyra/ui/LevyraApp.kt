@@ -14551,7 +14551,8 @@ private fun GreetingBar(
             onClick = onSearch
         )
         OccasionallyRotatingSettingsButton(
-            enabled = animationsEnabled && !isResolving,
+            animationsEnabled = animationsEnabled,
+            busy = isResolving,
             contentDescription = strings.settings,
             loading = isResolving,
             onClick = onSettings
@@ -14561,22 +14562,28 @@ private fun GreetingBar(
 
 @Composable
 private fun OccasionallyRotatingSettingsButton(
-    enabled: Boolean,
+    animationsEnabled: Boolean,
+    busy: Boolean,
     contentDescription: String,
     loading: Boolean,
     onClick: () -> Unit
 ) {
     val rotation = remember { Animatable(0f) }
-    LaunchedEffect(enabled) {
-        rotation.snapTo(0f)
-        if (!enabled) return@LaunchedEffect
+    val currentBusy by rememberUpdatedState(busy)
+    LaunchedEffect(animationsEnabled) {
+        if (!animationsEnabled) {
+            rotation.snapTo(0f)
+            return@LaunchedEffect
+        }
         delay(6_000L)
         while (true) {
-            rotation.animateTo(
-                targetValue = 360f,
-                animationSpec = tween(durationMillis = 780, easing = FastOutSlowInEasing)
-            )
-            rotation.snapTo(0f)
+            if (!currentBusy) {
+                rotation.animateTo(
+                    targetValue = 360f,
+                    animationSpec = tween(durationMillis = 780, easing = FastOutSlowInEasing)
+                )
+                rotation.snapTo(0f)
+            }
             delay(28_000L)
         }
     }
