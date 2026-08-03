@@ -321,10 +321,13 @@ private fun schemeFor(palette: LevyraPalette): ColorScheme {
 }
 
 @Composable
-fun LevyraTheme(content: @Composable () -> Unit) {
+fun LevyraTheme(
+    fontPreset: LevyraFontPreset? = null,
+    content: @Composable () -> Unit
+) {
     MaterialTheme(
         colorScheme = schemeFor(activePaletteState.value),
-        typography = levyraTypographyFor(activeFontPresetState.value),
+        typography = levyraTypographyFor(fontPreset ?: activeFontPresetState.value),
         content = content
     )
 }
