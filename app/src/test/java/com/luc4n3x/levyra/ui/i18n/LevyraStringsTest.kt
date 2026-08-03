@@ -14,6 +14,15 @@ class LevyraStringsTest {
         val catalogCodes = LevyraLanguageCatalog.languages.map { it.code }.toSet()
         assertEquals(catalogCodes, LevyraStrings.supportedCodes())
         assertEquals(catalogCodes, LevyraStrings.all().map { it.code }.toSet())
+        assertEquals(catalogCodes, lyricsActionLocalizationCodes())
+        LevyraStrings.all().forEach { strings ->
+            assertTrue(strings.changeLyrics.isNotBlank())
+            assertTrue(strings.automaticLyrics.isNotBlank())
+            assertTrue(strings.selectVerses.isNotBlank())
+            assertTrue(strings.copyVerses.isNotBlank())
+            assertTrue(strings.shareVerses.isNotBlank())
+            assertTrue(strings.lyricsVersions.isNotBlank())
+        }
     }
 
     @Test

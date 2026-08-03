@@ -92,11 +92,15 @@ jobs:
       - name: Android Lint
         run: ./gradlew --no-daemon :app:lintRelease
 
-      - name: Motion, Canvas, and Artwork Continuity Unit Tests
+      - name: Motion, Canvas, Artwork, Lyrics, and DSP Unit Tests
         run: |
           ./gradlew --no-daemon :app:testDebugUnitTest \
             --tests 'com.luc4n3x.levyra.feature.motion.*' \
-            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest'
+            --tests 'com.luc4n3x.levyra.data.EditorialArtworkContinuityTest' \
+            --tests 'com.luc4n3x.levyra.data.LyricsParsingTest' \
+            --tests 'com.luc4n3x.levyra.ui.i18n.LevyraStringsTest' \
+            --tests 'com.luc4n3x.levyra.viewmodel.AudioSettingsPersistenceCoordinatorTest' \
+            --tests 'com.luc4n3x.levyra.player.LevyraDspAudioProcessorTest'
 
       - name: Release Compile
         run: ./gradlew --no-daemon --no-configuration-cache assembleRelease

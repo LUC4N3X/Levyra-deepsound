@@ -10,6 +10,15 @@ import org.junit.Test
 
 class LyricsParsingTest {
     @Test
+    fun manualSelectionKeyIncludesLanguageAndTranslationVariant() {
+        val base = lyricsSelectionKey("Song", "Artist", 180L, "video-id", "en", false)
+
+        assertTrue(base != lyricsSelectionKey("Song", "Artist", 180L, "video-id", "it", false))
+        assertTrue(base != lyricsSelectionKey("Song", "Artist", 180L, "video-id", "en", true))
+        assertEquals(base, lyricsSelectionKey("Song", "Artist", 180L, " video-id ", " EN ", false))
+    }
+
+    @Test
     fun lrcParserExpandsMultipleTimestampsAndComputesEndTimes() {
         val lines = LrcLyricsParser.parse(
             """

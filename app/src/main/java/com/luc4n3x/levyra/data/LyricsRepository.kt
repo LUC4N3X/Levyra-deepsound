@@ -4,6 +4,8 @@ import android.content.Context
 import com.luc4n3x.levyra.data.local.LevyraDatabase
 import com.luc4n3x.levyra.data.local.LyricsCacheDao
 import com.luc4n3x.levyra.data.local.LyricsCacheEntity
+import com.luc4n3x.levyra.data.local.LyricsSelectionDao
+import com.luc4n3x.levyra.data.local.LyricsSelectionEntity
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LyricLine
 import com.luc4n3x.levyra.domain.LyricSection
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import okhttp3.Call
@@ -43,6 +46,7 @@ import timber.log.Timber
 class LyricsRepository(context: Context? = null) {
     private val appContext = context?.applicationContext
     private val lyricsCacheDao: LyricsCacheDao? = appContext?.let { LevyraDatabase.get(it).lyricsCacheDao() }
+    private val lyricsSelectionDao: LyricsSelectionDao? = appContext?.let { LevyraDatabase.get(it).lyricsSelectionDao() }
     private val legacyCacheDir = appContext?.cacheDir?.let { File(it, "lyrics_pro") }
     private val youtubeTranscript = appContext?.let(::YoutubeTranscriptLyricsProvider)
     private val youtubeMusic = YoutubeMusicWatchRepository(appContext)
@@ -72,7 +76,18 @@ class LyricsRepository(context: Context? = null) {
         val provider: String,
         val confidence: Int,
         val cached: Boolean,
-        val sections: List<LyricSection> = emptyList()
+        val sections: List<LyricSection> = emptyList(),
+        val manualSelection: Boolean = false
+    )
+
+    data class LyricsVersion(
+        val id: String,
+        val title: String,
+        val artist: String,
+        val album: String,
+        val durationSec: Long,
+        val result: LyricsResult,
+        val selected: Boolean = false
     )
 
     private data class QuerySpec(
@@ -109,7 +124,8 @@ class LyricsRepository(context: Context? = null) {
     private data class NetworkOutcome(
         val best: LyricsResult?,
         val attempted: Boolean,
-        val hadTransientFailure: Boolean
+        val hadTransientFailure: Boolean,
+        val candidates: List<LyricsCandidate> = emptyList()
     )
 
     private sealed interface HttpGetResult {
@@ -128,6 +144,10 @@ class LyricsRepository(context: Context? = null) {
         translate: Boolean = false
     ): Flow<LyricsResult> = channelFlow {
         val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return@channelFlow
+        readSelection(query)?.let { selected ->
+            send(selected.result.copy(cached = true))
+            return@channelFlow
+        }
         var current: LyricsResult? = null
         val cached = readCached(query)
         cached.result?.let { result ->
@@ -174,6 +194,89 @@ class LyricsRepository(context: Context? = null) {
         languageCode: String = "",
         translate: Boolean = false
     ): LyricsResult? = observe(title, artist, durationSec, album, videoId, languageCode, translate).lastOrNull()
+
+    suspend fun versions(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String = "",
+        videoId: String = "",
+        languageCode: String = "",
+        translate: Boolean = false
+    ): List<LyricsVersion> = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext emptyList()
+        val selected = readSelection(query)
+        val candidates = ArrayList<LyricsCandidate>()
+        selected?.let { choice ->
+            candidates += LyricsCandidate(choice.result, choice.title, choice.artist, choice.durationSec)
+        }
+        readCached(query).result?.let { cached ->
+            candidates += LyricsCandidate(cached, query.requestedTitle, query.requestedArtist, query.durationSec)
+        }
+        val network = fetchNetworkProgressive(query) { }
+        candidates += network.candidates
+        val selectedId = selected?.id
+        candidates
+            .map { candidate -> candidate.toVersion(query, selectedId) }
+            .distinctBy { it.id }
+            .sortedWith(
+                compareByDescending<LyricsVersion> { it.selected }
+                    .thenByDescending { it.result.synced }
+                    .thenByDescending { it.result.lines.any { line -> line.words.isNotEmpty() } }
+                    .thenByDescending { it.result.confidence }
+            )
+    }
+
+    suspend fun selectVersion(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean,
+        version: LyricsVersion
+    ): LyricsResult? = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext null
+        val dao = lyricsSelectionDao ?: return@withContext version.result
+        val now = System.currentTimeMillis()
+        val stable = version.result.copy(cached = false, manualSelection = true)
+        dao.upsert(
+            LyricsSelectionEntity(
+                trackKey = selectionKey(query),
+                candidateId = version.id,
+                provider = stable.provider,
+                title = version.title,
+                artist = version.artist,
+                durationSec = version.durationSec,
+                payload = serializeResult(stable),
+                updatedAt = now
+            )
+        )
+        val count = dao.count()
+        if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldest(count - MAX_LYRICS_SELECTIONS)
+        memoryPut(query.key, stable, now)
+        persistPositive(query, stable)
+        stable
+    }
+
+    suspend fun useAutomatic(
+        title: String,
+        artist: String,
+        durationSec: Long,
+        album: String,
+        videoId: String,
+        languageCode: String,
+        translate: Boolean
+    ): Unit = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext
+        lyricsSelectionDao?.delete(selectionKey(query))
+        memoryRemove(query.key)
+        lyricsCacheDao?.delete(query.key)
+    }
 
     suspend fun prefetch(
         title: String,
@@ -250,7 +353,63 @@ class LyricsRepository(context: Context? = null) {
         }
 
         val best = LyricsResultRanker.best(candidates, request)
-        NetworkOutcome(best, attempted, hadTransientFailure)
+        NetworkOutcome(best, attempted, hadTransientFailure, candidates.toList())
+    }
+
+    private data class SelectedVersion(
+        val id: String,
+        val title: String,
+        val artist: String,
+        val durationSec: Long,
+        val result: LyricsResult
+    )
+
+    private suspend fun readSelection(query: QuerySpec): SelectedVersion? {
+        val dao = lyricsSelectionDao ?: return null
+        val entity = runCatching { dao.get(selectionKey(query)) }
+            .onFailure { error ->
+                if (error is CancellationException) throw error
+                Timber.w(error, "Lyrics selection restore failed")
+            }
+            .getOrNull() ?: return null
+        val result = deserializeResult(entity.payload)?.copy(
+            provider = entity.provider,
+            cached = true,
+            manualSelection = true
+        )
+        if (result == null || result.lines.isEmpty()) {
+            runCatching { dao.delete(entity.trackKey) }
+            return null
+        }
+        return SelectedVersion(
+            id = entity.candidateId,
+            title = entity.title,
+            artist = entity.artist,
+            durationSec = entity.durationSec,
+            result = result
+        )
+    }
+
+    private fun LyricsCandidate.toVersion(query: QuerySpec, selectedId: String?): LyricsVersion {
+        val resolvedTitle = title.ifBlank { query.requestedTitle }
+        val resolvedArtist = artist.ifBlank { query.requestedArtist }
+        val resolvedDurationSec = durationSec.takeIf { it > 0L } ?: query.durationSec
+        val id = candidateId(result, resolvedTitle, resolvedArtist, resolvedDurationSec)
+        return LyricsVersion(
+            id = id,
+            title = resolvedTitle,
+            artist = resolvedArtist,
+            album = query.album,
+            durationSec = resolvedDurationSec,
+            result = result,
+            selected = id == selectedId
+        )
+    }
+
+    private fun candidateId(result: LyricsResult, title: String, artist: String, durationSec: Long): String {
+        val lines = result.lines.joinToString("\n") { line -> "${line.startMs}:${line.text.trim().lowercase(Locale.ROOT)}" }
+        val seed = "${LyricsMatcher.normalize(title)}|${LyricsMatcher.normalize(artist)}|$durationSec|${result.synced}|$lines"
+        return sha256(seed)
     }
 
 
@@ -927,10 +1086,23 @@ class LyricsRepository(context: Context? = null) {
         translate: Boolean
     ): String {
         val seed = "${LyricsMatcher.normalize(title)}|${LyricsMatcher.normalize(artist)}|${durationSec.coerceAtLeast(0L) / 5L}|${videoId.trim()}|${languageCode.lowercase(Locale.ROOT)}|$translate|$CACHE_VERSION"
-        return MessageDigest.getInstance("SHA-256")
+        return sha256(seed)
+    }
+
+    private fun selectionKey(query: QuerySpec): String {
+        return lyricsSelectionKey(
+            title = query.requestedTitle,
+            artist = query.requestedArtist,
+            durationSec = query.durationSec,
+            videoId = query.videoId,
+            languageCode = query.languageCode,
+            translate = query.translate
+        )
+    }
+
+    private fun sha256(seed: String): String = MessageDigest.getInstance("SHA-256")
             .digest(seed.toByteArray(StandardCharsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
-    }
 
     private fun normalizeTiming(result: LyricsResult, durationSec: Long): LyricsResult {
         val durationMs = durationSec.coerceAtLeast(0L) * 1_000L
@@ -1015,6 +1187,7 @@ class LyricsRepository(context: Context? = null) {
         private const val MEMORY_CACHE_SIZE = 64
         private const val NEGATIVE_CACHE_SIZE = 96
         private const val MAX_ROOM_CACHE_ENTRIES = 420
+        private const val MAX_LYRICS_SELECTIONS = 256
         internal const val MAX_CACHE_LINES = 700
         private const val MAX_CACHE_WORDS_PER_LINE = 120
         private const val INSTANT_MIN_CONFIDENCE = 48
@@ -1027,4 +1200,24 @@ class LyricsRepository(context: Context? = null) {
         private const val MIN_WORD_DURATION_MS = 45L
         private const val WORD_GAP_MS = 12L
     }
+}
+
+internal fun lyricsSelectionKey(
+    title: String,
+    artist: String,
+    durationSec: Long,
+    videoId: String,
+    languageCode: String,
+    translate: Boolean
+): String {
+    val stableVideoId = videoId.trim()
+    val trackSeed = if (stableVideoId.isNotBlank()) {
+        "video:$stableVideoId"
+    } else {
+        "track:${LyricsMatcher.normalize(artist)}|${LyricsMatcher.normalize(title)}|${durationSec.coerceAtLeast(0L) / 5L}"
+    }
+    val variantSeed = "${languageCode.trim().lowercase(Locale.ROOT)}|$translate"
+    return MessageDigest.getInstance("SHA-256")
+        .digest("$trackSeed|$variantSeed".toByteArray(StandardCharsets.UTF_8))
+        .joinToString("") { "%02x".format(it) }
 }
