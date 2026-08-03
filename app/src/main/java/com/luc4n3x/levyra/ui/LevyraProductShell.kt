@@ -289,6 +289,7 @@ private fun ProductSearchScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(bottom = productOverlayBottomPadding(state.currentTrack != null).dp)
         ) {
             Row(
@@ -600,7 +601,10 @@ private fun ProductSettingsHub(
 ) {
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -657,7 +661,10 @@ private fun ProductSettingsHub(
             }
 
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     OutlinedButton(onClick = onCheckUpdates, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Rounded.Bolt, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -753,7 +760,7 @@ private fun ProductMiniPlayer(
         0f
     }
     Surface(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 10.dp,
