@@ -67,6 +67,9 @@ jobs:
           test -f gradle/wrapper/gradle-wrapper.jar
           test -f gradle/wrapper/gradle-wrapper.properties
 
+      - name: Validate Agent Configuration
+        run: python3 scripts/validate_agent_config.py
+
       - name: Prepare CI Release Signing
         shell: bash
         run: |
