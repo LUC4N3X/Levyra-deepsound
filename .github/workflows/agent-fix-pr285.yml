@@ -1,0 +1,357 @@
+name: Apply PR 285 review fixes
+
+on:
+  push:
+    branches:
+      - agent/refine-product-experience
+
+permissions:
+  contents: write
+
+jobs:
+  apply-review-fixes:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/refine-product-experience
+          fetch-depth: 0
+
+      - name: Apply verified review fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected one match in {path}, found {count}: {old[:120]!r}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          policy = Path("app/src/main/java/com/luc4n3x/levyra/ui/ProductShellPolicy.kt")
+          policy.write_text('''package com.luc4n3x.levyra.ui
+
+import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.viewmodel.LevyraUiState
+
+internal const val PRODUCT_NAVIGATION_HEIGHT_DP = 76
+internal const val PRODUCT_MINI_PLAYER_CLEARANCE_DP = 154
+
+internal fun productPrimaryTabs(): List<LevyraTab> = listOf(
+    LevyraTab.Home,
+    LevyraTab.Search,
+    LevyraTab.Explore,
+    LevyraTab.Library
+)
+
+internal fun hasProductBlockingOverlay(state: LevyraUiState): Boolean =
+    state.showOnboarding || state.showSettings || state.showAlbum || state.showArtist ||
+        state.showQueue || state.showLyrics || state.showAudioQualityPanel ||
+        state.showUpdatePrompt || state.sharedMediaPreview != null || state.openPlaylist != null
+
+internal fun productOverlayBottomPadding(hasCurrentTrack: Boolean): Int =
+    if (hasCurrentTrack) PRODUCT_MINI_PLAYER_CLEARANCE_DP else PRODUCT_NAVIGATION_HEIGHT_DP
+
+internal fun shouldShowProductNavigation(
+    isInPictureInPicture: Boolean,
+    selectedTab: LevyraTab,
+    hasBlockingOverlay: Boolean
+): Boolean = !isInPictureInPicture && !hasBlockingOverlay && selectedTab in productPrimaryTabs()
+''', encoding="utf-8")
+
+          test = Path("app/src/test/java/com/luc4n3x/levyra/ui/ProductShellPolicyTest.kt")
+          test.write_text('''package com.luc4n3x.levyra.ui
+
+import com.luc4n3x.levyra.domain.LevyraTab
+import com.luc4n3x.levyra.viewmodel.LevyraUiState
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ProductShellPolicyTest {
+    @Test
+    fun primaryNavigationKeepsPlayerContextual() {
+        assertEquals(
+            listOf(LevyraTab.Home, LevyraTab.Search, LevyraTab.Explore, LevyraTab.Library),
+            productPrimaryTabs()
+        )
+        assertFalse(LevyraTab.Player in productPrimaryTabs())
+    }
+
+    @Test
+    fun navigationIsHiddenForPipPlayerAndBlockingOverlays() {
+        assertFalse(shouldShowProductNavigation(true, LevyraTab.Home, false))
+        assertFalse(shouldShowProductNavigation(false, LevyraTab.Player, false))
+        assertFalse(shouldShowProductNavigation(false, LevyraTab.Home, true))
+        assertTrue(shouldShowProductNavigation(false, LevyraTab.Search, false))
+    }
+
+    @Test
+    fun contentClearanceAccountsForMiniPlayer() {
+        assertEquals(PRODUCT_NAVIGATION_HEIGHT_DP, productOverlayBottomPadding(false))
+        assertEquals(PRODUCT_MINI_PLAYER_CLEARANCE_DP, productOverlayBottomPadding(true))
+    }
+
+    @Test
+    fun blockingOverlayPolicyUsesEveryOwnedSurface() {
+        val empty = LevyraUiState()
+        assertFalse(hasProductBlockingOverlay(empty))
+        assertTrue(hasProductBlockingOverlay(empty.copy(showOnboarding = true)))
+        assertTrue(hasProductBlockingOverlay(empty.copy(showSettings = true)))
+        assertTrue(hasProductBlockingOverlay(empty.copy(showAlbum = true)))
+        assertTrue(hasProductBlockingOverlay(empty.copy(showArtist = true)))
+        assertTrue(hasProductBlockingOverlay(empty.copy(showQueue = true)))
+        assertTrue(hasProductBlockingOverlay(empty.copy(showLyrics = true)))
+        assertTrue(hasProductBlockingOverlay(empty.copy(showAudioQualityPanel = true)))
+        assertTrue(hasProductBlockingOverlay(empty.copy(showUpdatePrompt = true)))
+    }
+}
+''', encoding="utf-8")
+
+          main = Path("app/src/main/java/com/luc4n3x/levyra/MainActivity.kt")
+          replace_once(
+              main,
+              "import androidx.compose.runtime.mutableLongStateOf\nimport androidx.compose.runtime.mutableStateOf\nimport androidx.compose.runtime.saveable.rememberSaveable",
+              "import androidx.compose.runtime.mutableIntStateOf\nimport androidx.compose.runtime.mutableLongStateOf\nimport androidx.compose.runtime.mutableStateOf\nimport androidx.compose.runtime.remember\nimport androidx.compose.runtime.saveable.rememberSaveable"
+          )
+          replace_once(
+              main,
+              "import androidx.compose.ui.Modifier\nimport androidx.compose.ui.unit.dp",
+              "import androidx.compose.ui.Modifier\nimport androidx.compose.ui.platform.LocalDensity\nimport androidx.compose.ui.unit.dp"
+          )
+          replace_once(
+              main,
+              "import com.luc4n3x.levyra.data.LevyraArtworkCache\nimport com.luc4n3x.levyra.player.LevyraPipBridge",
+              "import com.luc4n3x.levyra.data.LevyraArtworkCache\nimport com.luc4n3x.levyra.domain.LevyraTab\nimport com.luc4n3x.levyra.player.LevyraPipBridge"
+          )
+          replace_once(
+              main,
+              "import com.luc4n3x.levyra.ui.LevyraProductShell\nimport com.luc4n3x.levyra.ui.productHomeTopPadding",
+              "import com.luc4n3x.levyra.ui.LevyraProductShell\nimport com.luc4n3x.levyra.ui.hasProductBlockingOverlay"
+          )
+          replace_once(
+              main,
+              '''            val hasProductBlockingOverlay = uiState.showOnboarding || uiState.showSettings || uiState.showAlbum ||
+                uiState.showArtist || uiState.showQueue || uiState.showLyrics || uiState.showAudioQualityPanel ||
+                uiState.showUpdatePrompt || uiState.sharedMediaPreview != null || uiState.openPlaylist != null
+            val homeTopPaddingDp = productHomeTopPadding(
+                isInPictureInPicture = pipMode.value,
+                selectedTab = uiState.selectedTab,
+                hasBlockingOverlay = hasProductBlockingOverlay
+            )
+''',
+              '''            var productHomeHeaderHeightPx by remember { mutableIntStateOf(0) }
+            val density = LocalDensity.current
+            val homeTopPadding = if (
+                !pipMode.value &&
+                uiState.selectedTab == LevyraTab.Home &&
+                !hasProductBlockingOverlay(uiState)
+            ) {
+                with(density) { productHomeHeaderHeightPx.toDp() }
+            } else {
+                0.dp
+            }
+'''
+          )
+          replace_once(main, ".padding(top = homeTopPaddingDp.dp)", ".padding(top = homeTopPadding)")
+          replace_once(
+              main,
+              '''                            LevyraApp(
+                                viewModel = viewModel,
+                                isInPictureInPicture = pipMode.value
+                            )''',
+              '''                            LevyraApp(
+                                viewModel = viewModel,
+                                isInPictureInPicture = pipMode.value,
+                                useProductShell = true
+                            )'''
+          )
+          replace_once(
+              main,
+              '''                        LevyraProductShell(
+                            viewModel = viewModel,
+                            state = uiState,
+                            isInPictureInPicture = pipMode.value
+                        )''',
+              '''                        LevyraProductShell(
+                            viewModel = viewModel,
+                            state = uiState,
+                            isInPictureInPicture = pipMode.value,
+                            onHomeHeaderHeightChanged = { productHomeHeaderHeightPx = it }
+                        )'''
+          )
+
+          app = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt")
+          replace_once(
+              app,
+              "fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false) {",
+              '''fun LevyraApp(
+    viewModel: LevyraViewModel,
+    isInPictureInPicture: Boolean = false,
+    useProductShell: Boolean = false
+) {'''
+          )
+          replace_once(
+              app,
+              '''                        LevyraTab.Search -> {
+                            val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
+                            val screenState by searchViewModel.state.collectAsStateWithLifecycle()
+                            SearchScreen(searchViewModel, screenState)
+                        }''',
+              '''                        LevyraTab.Search -> {
+                            if (!useProductShell) {
+                                val searchViewModel: SearchViewModel = composeViewModel(key = "levyra-search", factory = screenViewModelFactory)
+                                val screenState by searchViewModel.state.collectAsStateWithLifecycle()
+                                SearchScreen(searchViewModel, screenState)
+                            }
+                        }'''
+          )
+          replace_once(
+              app,
+              '''            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),''',
+              '''            if (!useProductShell) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(),'''
+          )
+          replace_once(
+              app,
+              '''                }
+            }
+
+            AnimatedVisibility(
+                visible = state.downloadingTrackIds.isNotEmpty(),''',
+              '''                }
+            }
+            }
+
+            AnimatedVisibility(
+                visible = state.downloadingTrackIds.isNotEmpty(),'''
+          )
+
+          shell = Path("app/src/main/java/com/luc4n3x/levyra/ui/LevyraProductShell.kt")
+          replace_once(shell, "import androidx.compose.foundation.layout.height\n", "import androidx.compose.foundation.layout.height\nimport androidx.compose.foundation.layout.heightIn\n")
+          replace_once(shell, "import androidx.compose.ui.layout.ContentScale\n", "import androidx.compose.ui.layout.ContentScale\nimport androidx.compose.ui.layout.onSizeChanged\n")
+          replace_once(shell, "import com.luc4n3x.levyra.viewmodel.LevyraViewModel\n", "import com.luc4n3x.levyra.viewmodel.LevyraViewModel\nimport java.util.Locale\n")
+          replace_once(
+              shell,
+              '''    state: LevyraUiState,
+    isInPictureInPicture: Boolean,
+    modifier: Modifier = Modifier''',
+              '''    state: LevyraUiState,
+    isInPictureInPicture: Boolean,
+    onHomeHeaderHeightChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier'''
+          )
+          replace_once(
+              shell,
+              '''    val blockingOverlay = state.showOnboarding || state.showSettings || state.showAlbum || state.showArtist ||
+        state.showQueue || state.showLyrics || state.showAudioQualityPanel || state.showUpdatePrompt ||
+        state.sharedMediaPreview != null || state.openPlaylist != null''',
+              "    val blockingOverlay = hasProductBlockingOverlay(state)"
+          )
+          replace_once(
+              shell,
+              '''                    onSearch = { viewModel.selectTab(LevyraTab.Search) },
+                    onLibrary = { viewModel.selectTab(LevyraTab.Library) },
+                    onSettings = { showSettingsHub = true }''',
+              '''                    onSearch = { viewModel.selectTab(LevyraTab.Search) },
+                    onLibrary = { viewModel.selectTab(LevyraTab.Library) },
+                    onSettings = { showSettingsHub = true },
+                    onHeightChanged = onHomeHeaderHeightChanged'''
+          )
+          replace_once(
+              shell,
+              '''    onSearch: () -> Unit,
+    onLibrary: () -> Unit,
+    onSettings: () -> Unit
+) {''',
+              '''    onSearch: () -> Unit,
+    onLibrary: () -> Unit,
+    onSettings: () -> Unit,
+    onHeightChanged: (Int) -> Unit
+) {'''
+          )
+          replace_once(
+              shell,
+              '''            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 8.dp),''',
+              '''            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .onSizeChanged { onHeightChanged(it.height) },'''
+          )
+          replace_once(
+              shell,
+              '''            state.updateMessage?.let { message ->
+                item {
+                    Surface(shape = ProductCardShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                        Text(message, modifier = Modifier.padding(14.dp))
+                    }
+                }
+            }
+
+''',
+              ""
+          )
+          replace_once(
+              shell,
+              "Icon(Icons.Rounded.SkipPrevious, contentDescription = strings.back)",
+              "Icon(Icons.Rounded.SkipPrevious, contentDescription = strings.previous)"
+          )
+          replace_once(
+              shell,
+              ".navigationBarsPadding().height(PRODUCT_NAVIGATION_HEIGHT_DP.dp)",
+              ".navigationBarsPadding().heightIn(min = PRODUCT_NAVIGATION_HEIGHT_DP.dp)"
+          )
+          replace_once(
+              shell,
+              '''        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 6.dp),''',
+              '''        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp),'''
+          )
+          replace_once(
+              shell,
+              '''private fun formatProductBytes(bytes: Long): String {
+    if (bytes <= 0L) return "0 MB"
+    val megabytes = bytes.toDouble() / (1024.0 * 1024.0)
+    return if (megabytes < 1024.0) {
+        "${megabytes.toInt()} MB"
+    } else {
+        val gigabytes = megabytes / 1024.0
+        "${(gigabytes * 10.0).toInt() / 10.0} GB"
+    }
+}''',
+              '''private fun formatProductBytes(bytes: Long): String {
+    if (bytes <= 0L) return "0 MB"
+    val megabytes = bytes.toDouble() / (1024.0 * 1024.0)
+    return if (megabytes < 1024.0) {
+        String.format(Locale.getDefault(), "%d MB", megabytes.toLong())
+    } else {
+        String.format(Locale.getDefault(), "%.1f GB", megabytes / 1024.0)
+    }
+}'''
+          )
+
+          Path(".github/workflows/agent-fix-pr285.yml").unlink()
+          PY
+
+      - name: Commit review fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Fix CodeRabbit product shell findings"
+          git push origin HEAD:agent/refine-product-experience
