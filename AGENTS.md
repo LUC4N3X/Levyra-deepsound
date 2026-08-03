@@ -1,69 +1,95 @@
 # Levyra Engineering Instructions
 
-## Purpose and scope
+## Purpose and hierarchy
 
-This file is the repository-level operating contract for coding agents working on Levyra. It applies to the entire repository unless a more specific `AGENTS.md` is added closer to the files being changed.
+This file is the repository-wide operating contract for coding agents. Codex should read it from the Git root, then apply any nearer `AGENTS.md` for the files in scope.
 
-Use these instructions for analysis, implementation, review, testing, documentation, and release preparation. Repository code, tests, build files, and current documentation always take precedence over assumptions or remembered behavior.
+Instruction order:
 
-## Sources of truth
+1. root `AGENTS.md`;
+2. nearer path-specific `AGENTS.md` files;
+3. matching native skills under `.agents/skills/`;
+4. current architecture, implementation, tests, build files, and workflows;
+5. detailed Levyra playbooks under `.claude/skills/` and `.claude/rules/`.
 
-Read the following in this order before making a non-trivial change:
+Current repository evidence always overrides remembered behavior, old discussions, stale comments, or previous agent output.
 
-1. This `AGENTS.md`.
-2. `docs/ARCHITECTURE.md`.
-3. The relevant implementation and nearby tests.
-4. The matching rule files under `.claude/rules/`.
-5. The matching workflow under `.claude/skills/` or `.agents/skills/levyra-engineering/SKILL.md`.
-6. Existing CI and release workflows when the task touches build, signing, packaging, extraction configuration, or publication.
+## Repository map
 
-Do not treat README copy, old discussions, previous agent output, or stale review comments as more authoritative than the current repository.
+- `app/`: Android client; additional rules in `app/AGENTS.md`.
+- `desktop/`: independent Windows client; additional rules in `desktop/AGENTS.md`.
+- `.github/`: CI and release automation; additional rules in `.github/AGENTS.md`.
+- `docs/`: project documentation; additional rules in `docs/AGENTS.md`.
+- `.agents/skills/`: native Codex/OpenAI skills.
+- `.claude/`: Claude Code configuration plus reusable Levyra engineering playbooks.
 
-## Product mission
+## Product invariants
 
-Levyra is a native Android music application built with Kotlin, Jetpack Compose, AndroidX Media3, Room, WorkManager, OkHttp, and Coil. Protect playback reliability, responsiveness, privacy, and the user's existing choices before adding visual polish or speculative optimization.
+- Protect playback reliability, responsiveness, privacy, user data, and existing user choices before visual polish.
+- Android users explicitly choose song/audio mode or native-video mode. Never remove, merge, hide, or silently override that choice.
+- Motion artwork is decorative, muted, and limited to song/audio mode. It must never replace native video, produce audible output, or delay playback.
+- Static artwork is the immediate and permanent fallback.
+- Android audible playback, MediaSession, notification, Android Auto, queue, and background service must remain synchronized.
+- Direct playback is the critical path. Artwork, lyrics, refresh, diagnostics, prefetch, and enrichment must yield to it.
+- Preserve downloads, favorites, playlists, queues, lyrics, history, settings, localization, onboarding, sessions, and backups unless explicitly changed.
+- Do not add account login, cookies, private tokens, scraping, telemetry, or tracking unless explicitly requested.
+- Android and Desktop versions, packages, tags, artifacts, and releases remain independent.
 
-## Non-negotiable product behavior
+## Native skill routing
 
-- The user controls whether playback uses song/audio mode or native video mode. Never remove, hide, merge, or silently override that choice.
-- Motion artwork is decorative and belongs to song/audio mode only. It must never replace native video mode, produce audible output, or delay playback.
-- Static artwork is the immediate and permanent fallback. Artwork failures must never leave a blank player or interrupt audio.
-- The audible player, MediaSession, notification, Android Auto, queue, and background service must remain synchronized.
-- Direct playback requests are the critical path. Home refresh, artwork, lyrics, diagnostics, prefetch, and enrichment must yield to playback.
-- Existing downloads, favorites, playlists, queue state, lyrics, history, settings, localization, and backup behavior must be preserved unless the task explicitly changes them.
-- Do not add Spotify endpoints, account login, cookies, GraphQL, tokens, scraping, telemetry, or tracking unless the repository owner explicitly requests that integration.
+Load every matching skill before reading widely or editing. Prefer focused skills over the general coordinator.
 
-## Architecture and concurrency rules
+| Task | Skill |
+| --- | --- |
+| Android playback, queue, Media3, MediaSession, notification, Android Auto, prefetch, audio/video mode | `levyra-player` |
+| InnerTube, extraction, stream resolution, runtime configuration, retry, cache, fallback | `levyra-extractor` |
+| Room, DAO, migration, schema, cache, store, backup, persistent personal data | `levyra-database` |
+| Android Compose UI, state, navigation, animation, lifecycle, accessibility, RTL, localization | `levyra-compose` |
+| Decorative motion artwork | `levyra-motion-artwork` |
+| Windows Desktop, Compose Multiplatform, libvlc, downloads, mini player, deep links, updates, packaging | `levyra-desktop` |
+| Secrets, URLs, redirects, SSRF, MIME, permissions, privacy, update integrity | `levyra-security-review` |
+| GitHub Actions, CI, F-Droid, configuration sync, artifacts, build/release automation | `levyra-ci-workflows` |
+| Branch, commit, patch, or pull request review | `levyra-pr-review` |
+| Pre-merge or pre-release validation, versions, signing, checksums, packaging | `levyra-release-check` |
+| Genuine cross-domain work or initial architecture orientation | `levyra-engineering` |
 
-- Preserve unidirectional data flow: user intent -> ViewModel or controller -> repository or player operation -> immutable state -> Compose.
-- Keep network, database, decoding, file, metadata, and parsing work off the main thread.
-- Reuse the existing OkHttp, Coil, Media3, Room, queue, cache, coroutine, and lifecycle infrastructure instead of creating parallel stacks.
-- Make ownership explicit for coroutines, players, callbacks, receivers, surfaces, decoders, cache entries, and in-flight work.
-- Shared asynchronous work must not depend on the lifecycle of its first caller. Cancellation by one waiter must not cancel work still required by another waiter.
-- Protect asynchronous publication with identity and generation checks whenever an older job can finish after a newer one.
-- Treat cancellation separately from failure. Re-throw `CancellationException`; never cache or report it as a normal miss.
-- Distinguish conclusive no-match results from transient transport, timeout, server, parsing, or verification failures.
+Several skills may apply. A playback change that modifies stream resolution uses player and extractor skills; provider-controlled media normally also requires security review.
+
+## Engineering rules
+
+- Preserve unidirectional data flow: user intent -> controller/ViewModel -> repository/player operation -> immutable state -> UI.
+- Keep network, database, parsing, decoding, file, metadata, and blocking native work off UI threads.
+- Reuse existing clients, stores, caches, scopes, dispatchers, queues, lifecycle owners, extractors, players, and persistence.
+- Do not create a second source of truth for playback, queue, persistence, localization, update state, or release state.
+- Make ownership explicit for coroutines, players, callbacks, receivers, surfaces, native handles, decoders, files, caches, and in-flight work.
+- One caller cancelling shared work must not cancel work still required by another caller.
+- Use identity and generation checks when older asynchronous work can publish after newer work.
+- Re-throw `CancellationException`; never cache or report cancellation as a normal miss.
+- Distinguish conclusive no-match from timeout, transport, server, parsing, verification, and stale-configuration failures.
 - Do not negative-cache inconclusive failures.
-- Bound retries, timeouts, concurrency, response sizes, storage growth, and prefetch work.
+- Bound retries, timeouts, concurrency, response sizes, cache/storage growth, downloads, and prefetch.
 - Keep durable identity independent from mutable display text.
 
 ## Work method
 
-1. Restate the requested scope internally and identify behavior that must remain unchanged.
-2. Inspect the complete current path through the relevant UI, state, repository, player, database, service, workflow, and tests.
-3. Identify the root cause before editing. Do not hide a defect with retries, delays, broad exception handling, or duplicated state.
-4. Make the smallest coherent change that fixes the cause and fits the existing architecture.
-5. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames, and refactors.
-6. Add or update regression tests for bugs, matching logic, security boundaries, migrations, and concurrency behavior when applicable.
-7. Run the narrowest useful checks first, then the applicable project checks.
-8. Inspect the final diff for unrelated changes, generated files, secrets, credentials, binary artifacts, conflict markers, and accidental version changes.
-9. Report exactly what changed, what ran, what passed, what failed, and what remains unverified.
+1. Define the exact requested outcome and scope.
+2. Identify behavior and compatibility that must remain unchanged.
+3. Inspect the complete current control/data flow and nearby tests.
+4. Identify the root cause before editing.
+5. Make the smallest coherent change compatible with current architecture.
+6. Avoid unrelated cleanup, formatting churn, dependency upgrades, renames, and broad refactors.
+7. Add or update regression tests for defects, migrations, matching, security boundaries, lifecycle, and concurrency when applicable.
+8. Run focused checks first, then applicable broader checks.
+9. Inspect the complete final diff for unrelated edits, generated files, secrets, binaries, conflict markers, and accidental version changes.
+10. Report exactly what changed, what ran, what passed, what failed, and what remains unverified.
 
-When the owner says "only this", modify only the named behavior or files unless an additional change is strictly required for correctness. State that requirement before expanding scope.
+When the owner says "only this", modify only the named behavior or files unless an additional change is strictly required for correctness. State that dependency before expanding scope.
 
-## Build and validation
+## Validation
 
-Use the repository Gradle wrapper, never a system Gradle installation.
+Use repository wrappers, never a system Gradle installation.
+
+Android checks from the repository root:
 
 ```bash
 ./gradlew --no-daemon :app:testDebugUnitTest
@@ -72,72 +98,45 @@ Use the repository Gradle wrapper, never a system Gradle installation.
 git diff --check
 ```
 
-Guidance:
+Desktop checks from `desktop/`:
 
-- Start with focused tests for the affected module or class.
-- Android release tasks require the inputs documented in `app/build.gradle.kts` and mirrored by `.github/workflows/pr-check.yml`.
-- Do not add real credentials, a keystore, `local.properties`, or private configuration to make a local build pass.
-- A missing Android SDK, unavailable signing input, absent device, or blocked network is a blocked check, not a pass.
-- Never claim a build, emulator, device, Android Auto, notification, PiP, or playback check succeeded without evidence.
-- Documentation-only changes do not require an Android build unless they alter executable examples, workflow behavior, or build instructions. Validate paths, commands, Markdown, and the final diff instead.
+```bash
+./gradlew check
+./gradlew assemble check
+```
 
-## Task routing
+On Windows use `gradlew.bat`.
 
-Before reading widely or editing, load the matching procedure. Several procedures may apply to one task.
-
-| Task touches | Read and follow |
-| --- | --- |
-| Playback, queue, Media3, MediaSession, notification, Android Auto, prefetch, audio/video mode | `.claude/skills/levyra-player/SKILL.md` |
-| InnerTube, extractor, stream resolution, player-config sync, tokens, retries, network fallback | `.claude/skills/levyra-extractor/SKILL.md` |
-| Room entities, DAOs, migrations, schema, caches, stores, backup | `.claude/skills/levyra-database/SKILL.md` |
-| Compose screens, state projections, animation, lifecycle, accessibility, localization | `.claude/skills/levyra-compose/SKILL.md` |
-| Decorative motion artwork | `.claude/skills/levyra-motion-artwork/SKILL.md` |
-| Secrets, remote URLs, redirects, SSRF, MIME handling, permissions, privacy, workflow exposure | `.claude/skills/levyra-security-review/SKILL.md` |
-| Reviewing a branch, commit, patch, or pull request | `.claude/skills/levyra-pr-review/SKILL.md` |
-| Pre-merge or pre-release validation, version values, signing, APK output, release workflows | `.claude/skills/levyra-release-check/SKILL.md` |
-
-The `.claude/skills/` procedures are shared engineering playbooks despite their location. Codex and ChatGPT should read them as repository documentation; they do not require Claude-specific tooling to be useful.
+Start with the narrowest relevant test. Missing SDKs, JDKs, signing inputs, libvlc, WiX, network, CI, emulator, device, or OS support are blocked checks, not passes. Never claim build, playback, device, Android Auto, notification, PiP, installer, update, protocol, media-key, or native VLC success without direct evidence.
 
 ## Security and repository safety
 
-- Never commit or expose secrets, passwords, tokens, cookies, private URLs, keystores, signing material, `.env` files, or `local.properties`.
-- Never commit APKs, ZIPs, generated build output, IDE state, or temporary diagnostics unless explicitly required and already accepted by repository policy.
-- Validate every provider-controlled media URL across scheme, host, port, user info, DNS/IP destination, redirect hops, MIME type, timeout, and response-size bounds.
+- Never commit or expose passwords, secrets, tokens, cookies, private URLs, keystores, signing material, `.env`, or `local.properties`.
+- Never commit APKs, installers, ZIPs, build output, IDE state, native runtime bundles, or temporary diagnostics unless explicitly required and accepted by repository policy.
+- Validate provider-controlled URLs across scheme, host, port, user info, DNS/IP destination, every redirect hop, MIME, timeout, filename/path, and response-size bounds.
 - Preserve least privilege in Android permissions and GitHub workflow permissions.
-- Do not weaken transport, redirect, MIME, signature, or host validation to make one provider response pass.
-- Update credits and licenses when adding external code, assets, models, components, or dependencies.
+- Do not weaken transport, redirect, MIME, checksum, signature, or host validation to make one response pass.
+- Treat fork code, workflow inputs, downloaded artifacts, deep links, update metadata, filenames, and local IPC as untrusted where applicable.
+- Update credits and licenses when adding external code, assets, models, libraries, native files, or design references.
 
-## Versioning, releases, and external actions
+## Versions, releases, and external actions
 
-- Do not change `levyraVersionName` or `levyraVersionCode` unless the task is explicitly a release or version task.
-- Do not tag, publish, release, merge, enable auto-merge, modify repository settings, or update store metadata without explicit approval.
-- Do not commit, push, or open a pull request unless the user explicitly asks for that external action.
-- When publication is requested, use a dedicated branch and a draft pull request by default. Never push directly to `main` unless the owner explicitly requests it after reviewing the exact scope.
-- Keep pull request descriptions and checklists truthful. Leave manual and device-only checks unmarked until they are actually completed.
-
-## Review standard
-
-For reviews, prioritize findings over summaries. Each finding must include:
-
-- severity and confidence;
-- exact file and line or symbol;
-- triggering scenario;
-- user or system consequence;
-- smallest compatible fix;
-- missing regression coverage.
-
-Do not report speculative issues without a concrete failure path. Ignore comments that no longer apply to the current code.
+- Do not change Android or Desktop version values unless the task explicitly requests that platform's release/version change.
+- Do not commit, push, open a pull request, merge, tag, publish, release, or change repository settings without explicit authorization.
+- When publication is authorized, use a dedicated branch and draft pull request by default. Push directly to `main` only when explicitly requested for the exact scope.
+- Keep PR descriptions and checklists truthful; leave manual/device checks unmarked until actually performed.
 
 ## Delivery contract
 
-Every completed implementation should include:
+Report:
 
-- concise summary of the root cause and solution;
-- files changed;
+- root cause or rationale;
+- exact files changed;
 - behavior preserved;
 - tests and checks run with results;
-- skipped or blocked checks;
-- remaining risks or manual validation;
-- a professional commit message when requested.
+- skipped or blocked checks and why;
+- remaining risks and manual validation;
+- professional commit message when requested;
+- verified branch, commit, PR, merge, or release state when applicable.
 
-Never claim that a file, test, build, push, pull request, merge, or release exists unless it was actually created or verified.
+Never represent a plan as an applied patch or an unverified result as completed.
