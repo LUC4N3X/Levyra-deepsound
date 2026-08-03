@@ -3,6 +3,7 @@ package com.luc4n3x.levyra.desktop.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,8 +40,9 @@ fun CollectionCard(
     val circular = ref.kind == CollectionKind.ARTIST
     val accent = LocalAccentColor.current
     val (interactionSource, hovered) = rememberHoverState(ref.id)
+    val focused by interactionSource.collectIsFocusedAsState()
     val shape = RoundedCornerShape(12.dp)
-    val targetBackground = if (hovered) {
+    val targetBackground = if (hovered || focused) {
         MaterialTheme.colorScheme.surfaceContainerHigh
     } else {
         MaterialTheme.colorScheme.surfaceContainer
@@ -68,7 +70,7 @@ fun CollectionCard(
                 cornerRadius = if (circular) 999.dp else 10.dp,
                 iconSize = 32.dp
             )
-            if (hovered) {
+            if (hovered || focused) {
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)

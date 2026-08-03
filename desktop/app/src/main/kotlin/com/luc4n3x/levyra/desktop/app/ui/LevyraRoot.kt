@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -713,15 +714,16 @@ private fun SidebarItem(
     val accent = LocalAccentColor.current
     val interactionSource = remember(label) { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
+    val focused by interactionSource.collectIsFocusedAsState()
     val targetBackground = when {
         selected -> accent.copy(alpha = LevyraMotion.SELECTED_ALPHA)
-        hovered -> Color.White.copy(alpha = LevyraMotion.HOVER_ALPHA)
+        hovered || focused -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
         else -> Color.Transparent
     }
     val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
     val targetContentColor = when {
         selected -> accent
-        hovered -> MaterialTheme.colorScheme.onSurface
+        hovered || focused -> MaterialTheme.colorScheme.onSurface
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val contentColor by androidx.compose.animation.animateColorAsState(targetValue = targetContentColor)

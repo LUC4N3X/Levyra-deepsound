@@ -10,7 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
@@ -39,6 +39,7 @@ object VlcMp3Transcoder {
             val player = factory.mediaPlayers().newMediaPlayer()
             val completion = CompletableDeferred<Unit>()
             val succeeded = AtomicBoolean(false)
+            val released = AtomicBoolean(false)
             player.events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
                 override fun finished(mediaPlayer: MediaPlayer) {
                     completion.complete(Unit)
@@ -49,13 +50,26 @@ object VlcMp3Transcoder {
                 }
             })
 
+            fun releaseResources() {
+                if (released.compareAndSet(false, true)) {
+                    runCatching { player.controls().stop() }
+                    runCatching { player.release() }
+                    runCatching { factory.release() }
+                }
+            }
+
             try {
                 val options = vlcMp3TranscodeOptions(target, bitrateKbps)
                 val started = player.media().play(source.toUri().toString(), *options)
                 if (!started) throw IOException("VLC non ha avviato la conversione MP3")
-                withTimeout(TimeUnit.MINUTES.toMillis(TRANSCODE_TIMEOUT_MINUTES)) {
+                val finished = withTimeoutOrNull(TimeUnit.MINUTES.toMillis(TRANSCODE_TIMEOUT_MINUTES)) {
                     completion.await()
+                    true
+                } ?: false
+                if (!finished) {
+                    throw IOException("Conversione MP3 scaduta dopo $TRANSCODE_TIMEOUT_MINUTES minuti")
                 }
+                releaseResources()
                 if (!Files.isRegularFile(target) || Files.size(target) <= 0L) {
                     throw IOException("VLC non ha prodotto un MP3 valido")
                 }
@@ -64,9 +78,7 @@ object VlcMp3Transcoder {
                 }
                 succeeded.set(true)
             } finally {
-                runCatching { player.controls().stop() }
-                runCatching { player.release() }
-                runCatching { factory.release() }
+                releaseResources()
                 if (!succeeded.get()) {
                     runCatching { Files.deleteIfExists(target) }
                 }
@@ -95,8 +107,7 @@ internal fun vlcMp3TranscodeOptions(
     val destination = escapeVlcSoutPath(target.toAbsolutePath().normalize().toString())
     return arrayOf(
         ":no-video",
-        ":sout=#transcode{vcodec=none,acodec=mp3,ab=$safeBitrate,channels=2,samplerate=44100}:std{access=file,mux=raw,dst='$destination'}",
-        ":sout-keep"
+        ":sout=#transcode{vcodec=none,acodec=mp3,ab=$safeBitrate,channels=2,samplerate=44100}:std{access=file,mux=raw,dst='$destination'}"
     )
 }
 

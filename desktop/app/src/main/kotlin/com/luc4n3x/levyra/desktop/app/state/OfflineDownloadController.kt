@@ -54,8 +54,10 @@ class OfflineDownloadController(
     baseClient: OkHttpClient = ExtractorHttp.client
 ) {
     private val client = baseClient.newBuilder()
+        .dns(PublicAddressDns(baseClient.dns))
+        .addNetworkInterceptor(PublicDownloadUrlInterceptor)
         .callTimeout(0L, TimeUnit.MILLISECONDS)
-        .readTimeout(0L, TimeUnit.MILLISECONDS)
+        .readTimeout(60L, TimeUnit.SECONDS)
         .build()
     private val parallelDownloader = DesktopParallelDownloader(baseClient)
     private val jobs = ConcurrentHashMap<String, Job>()
@@ -314,8 +316,9 @@ class OfflineDownloadController(
         resumedBytes: Long
     ) {
         var resumeOffset = resumedBytes
+        val safeUrl = requirePublicDownloadUrl(stripDesktopAudioRangeParameter(url))
         val requestBuilder = Request.Builder()
-            .url(stripDesktopAudioRangeParameter(url))
+            .url(safeUrl)
             .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
             .header("Accept", "audio/*,*/*;q=0.8")
             .header("Accept-Encoding", "identity")

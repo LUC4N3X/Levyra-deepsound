@@ -46,8 +46,9 @@ import com.luc4n3x.levyra.desktop.core.model.DesktopSettings
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerMode
 import com.luc4n3x.levyra.desktop.core.model.SleepTimerState
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import com.luc4n3x.levyra.desktop.player.RepeatMode
 
 @Composable
@@ -78,13 +79,17 @@ fun PlayerBar(
     val accent = LocalAccentColor.current
     val track = state.current
     val downloadActions = LocalDownloadActions.current
-    val downloadRecord by remember(downloadActions, track?.id) {
-        if (track != null) {
-            downloadActions?.stateFlow?.map { it[track.id] }?.distinctUntilChanged() ?: kotlinx.coroutines.flow.flowOf(null)
+    val recordFlow = remember(downloadActions, track?.id) {
+        if (track != null && downloadActions != null) {
+            downloadActions.stateFlow.map { data -> data.records.firstOrNull { it.id == track.id } }.distinctUntilChanged()
         } else {
-            kotlinx.coroutines.flow.flowOf(null)
+            flowOf(null)
         }
-    }.collectAsState(initial = null)
+    }
+    val initialRecord = track?.let { currentTrack ->
+        downloadActions?.stateFlow?.value?.records?.firstOrNull { it.id == currentTrack.id }
+    }
+    val downloadRecord by recordFlow.collectAsState(initial = initialRecord)
     val duration = state.durationMs.coerceAtLeast(0L)
 
     Surface(
@@ -144,23 +149,25 @@ fun PlayerBar(
                     if (track != null && downloadActions != null) {
                         IconButton(
                             onClick = {
-                                when (downloadRecord?.status) {
+                                val record = downloadRecord
+                                when (record?.status) {
                                     DownloadStatus.QUEUED,
                                     DownloadStatus.RESOLVING,
-                                    DownloadStatus.DOWNLOADING -> downloadActions.onCancel(downloadRecord.id)
+                                    DownloadStatus.DOWNLOADING -> downloadActions.onCancel(record.id)
                                     DownloadStatus.FAILED,
-                                    DownloadStatus.CANCELLED -> downloadActions.onRetry(downloadRecord.id)
+                                    DownloadStatus.CANCELLED -> downloadActions.onRetry(record.id)
                                     DownloadStatus.COMPLETED -> Unit
                                     null -> downloadActions.onDownload(track)
                                 }
                             },
                             enabled = downloadRecord?.status != DownloadStatus.COMPLETED
                         ) {
-                            when (downloadRecord?.status) {
+                            val record = downloadRecord
+                            when (record?.status) {
                                 DownloadStatus.QUEUED,
                                 DownloadStatus.RESOLVING,
                                 DownloadStatus.DOWNLOADING -> CircularProgressIndicator(
-                                    progress = { downloadRecord.progress },
+                                    progress = { record.progress },
                                     modifier = Modifier.size(17.dp),
                                     strokeWidth = 2.dp
                                 )
@@ -249,6 +256,7 @@ fun PlayerBar(
                         accent = accent,
                         trackId = track?.id
                     )
+                }
 
                 Row(
                     modifier = Modifier.width(285.dp),
@@ -398,8 +406,10 @@ private fun PlayerProgressBar(
 private fun playerStatusLabel(state: PlaybackUiState): String {
     val strings = LocalStrings.current
     return when {
-        state.sleepTimer.mode == SleepTimerMode.DURATION -> Format.duration(state.sleepRemainingMs)
-        state.sleepTimer.mode == SleepTimerMode.END_OF_TRACK -> strings.sleepTimerEndOfTrack
+        state.sleepTimer.active && state.sleepTimer.mode == SleepTimerMode.DURATION ->
+            Format.duration(state.sleepRemainingMs)
+        state.sleepTimer.active && state.sleepTimer.mode == SleepTimerMode.END_OF_TRACK ->
+            strings.sleepTimerEndOfTrack
         state.speed != DesktopSettings.DEFAULT_SPEED -> Format.speed(state.speed)
         state.streamLabel.isNotBlank() -> state.streamLabel
         else -> ""
@@ -476,13 +486,13 @@ private fun SleepTimerMenuSection(timer: SleepTimerState, onSelect: (SleepChoice
     SleepTimerState.PRESET_MINUTES.forEach { minutes ->
         MenuChoiceItem(
             label = "$minutes min",
-            selected = timer.mode == SleepTimerMode.DURATION && timer.requestedMinutes == minutes,
+            selected = timer.active && timer.mode == SleepTimerMode.DURATION && timer.requestedMinutes == minutes,
             onClick = { onSelect(SleepChoice.Minutes(minutes)) }
         )
     }
     MenuChoiceItem(
         label = strings.sleepTimerEndOfTrack,
-        selected = timer.mode == SleepTimerMode.END_OF_TRACK,
+        selected = timer.active && timer.mode == SleepTimerMode.END_OF_TRACK,
         onClick = { onSelect(SleepChoice.EndOfTrack) }
     )
 }

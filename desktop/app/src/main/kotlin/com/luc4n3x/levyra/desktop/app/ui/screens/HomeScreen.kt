@@ -624,7 +624,7 @@ private fun QuickAccessCard(
 
     Column(
         modifier = modifier
-            .hoverScale()
+            .then(if (enabled) Modifier.hoverScale() else Modifier)
             .height(118.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(tint.copy(alpha = bgAlpha))

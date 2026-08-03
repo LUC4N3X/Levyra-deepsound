@@ -268,7 +268,7 @@ private fun ArtistHero(
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = LevyraIcons.ChevronLeft,
-                        contentDescription = null,
+                        contentDescription = strings.onboardingBack,
                         modifier = Modifier.size(21.dp)
                     )
                 }
@@ -296,7 +296,7 @@ private fun ArtistHero(
                     )
                     if (artist.subscriberCount >= 0L) {
                         Text(
-                            text = formatArtistCount(artist.subscriberCount),
+                            text = "${formatArtistCount(artist.subscriberCount)} ${strings.artistSubscribers}",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -465,6 +465,7 @@ private fun ArtistSectionTitle(title: String) {
 
 @Composable
 private fun ArtistBackRow(title: String, onBack: () -> Unit) {
+    val strings = LocalStrings.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -472,7 +473,7 @@ private fun ArtistBackRow(title: String, onBack: () -> Unit) {
         IconButton(onClick = onBack) {
             Icon(
                 imageVector = LevyraIcons.ChevronLeft,
-                contentDescription = null,
+                contentDescription = strings.onboardingBack,
                 modifier = Modifier.size(20.dp)
             )
         }

@@ -28,6 +28,8 @@ import okhttp3.Request
 
 internal class DesktopParallelDownloader(baseClient: OkHttpClient) {
     private val client = baseClient.newBuilder()
+        .dns(PublicAddressDns(baseClient.dns))
+        .addNetworkInterceptor(PublicDownloadUrlInterceptor)
         .dispatcher(Dispatcher().apply {
             maxRequests = MAX_REQUESTS
             maxRequestsPerHost = MAX_REQUESTS_PER_HOST
@@ -45,7 +47,7 @@ internal class DesktopParallelDownloader(baseClient: OkHttpClient) {
         totalBytes: Long,
         ranges: List<DesktopDownloadRange>,
         onProgress: (Long) -> Unit
-    ) = coroutineScope {
+    ) {
         require(totalBytes > 0L) { "La dimensione del download parallelo deve essere nota" }
         require(ranges.isNotEmpty()) { "Serve almeno un segmento per il download parallelo" }
         Files.deleteIfExists(output)
@@ -54,22 +56,21 @@ internal class DesktopParallelDownloader(baseClient: OkHttpClient) {
         val concurrency = minOf(desktopDownloadConcurrency(totalBytes), ranges.size).coerceAtLeast(1)
         val limiter = Semaphore(concurrency)
         try {
-            ranges.map { range ->
-                async(Dispatchers.IO) {
-                    limiter.withPermit {
-                        downloadRangeWithRetry(url, range, output)
-                        onProgress(downloadedBytes.addAndGet(range.length).coerceAtMost(totalBytes))
+            coroutineScope {
+                ranges.map { range ->
+                    async(Dispatchers.IO) {
+                        limiter.withPermit {
+                            downloadRangeWithRetry(url, range, output)
+                            onProgress(downloadedBytes.addAndGet(range.length).coerceAtMost(totalBytes))
+                        }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
+            }
             if (downloadedBytes.get() != totalBytes || Files.size(output) != totalBytes) {
                 throw IOException("Download parallelo incompleto: ${downloadedBytes.get()}/$totalBytes byte")
             }
-        } catch (cancellation: CancellationException) {
-            Files.deleteIfExists(output)
-            throw cancellation
         } catch (error: Throwable) {
-            Files.deleteIfExists(output)
+            runCatching { Files.deleteIfExists(output) }
             throw error
         }
     }
@@ -104,8 +105,9 @@ internal class DesktopParallelDownloader(baseClient: OkHttpClient) {
         val normalizedUrl = stripDesktopAudioRangeParameter(url)
         val rangeUrl = desktopRangeUrl(normalizedUrl, range)
         val rangeParamApplied = rangeUrl != normalizedUrl
+        val safeRangeUrl = requirePublicDownloadUrl(rangeUrl)
         val request = Request.Builder()
-            .url(rangeUrl)
+            .url(safeRangeUrl)
             .header("User-Agent", ExtractorHttp.DESKTOP_USER_AGENT)
             .header("Accept", "audio/*,*/*;q=0.8")
             .header("Accept-Encoding", "identity")

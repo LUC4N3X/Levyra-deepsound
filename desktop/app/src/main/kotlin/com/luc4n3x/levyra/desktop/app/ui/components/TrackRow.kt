@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,8 +43,9 @@ import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.app.util.Format
 import com.luc4n3x.levyra.desktop.core.model.Track
 import com.luc4n3x.levyra.desktop.core.storage.DownloadStatus
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 data class TrackRowAction(val label: String, val onClick: () -> Unit)
 
@@ -64,16 +66,21 @@ fun TrackRow(
     val strings = LocalStrings.current
     val accent = LocalAccentColor.current
     val downloadActions = LocalDownloadActions.current
-    val downloadRecord by remember(downloadActions, track.id) {
-        downloadActions?.stateFlow?.map { it[track.id] }?.distinctUntilChanged() ?: kotlinx.coroutines.flow.flowOf(null)
-    }.collectAsState(initial = null)
+    val recordFlow = remember(downloadActions, track.id) {
+        downloadActions?.stateFlow?.map { data -> data.records.firstOrNull { it.id == track.id } }
+            ?.distinctUntilChanged() ?: flowOf(null)
+    }
+    val downloadRecord by recordFlow.collectAsState(
+        initial = downloadActions?.stateFlow?.value?.records?.firstOrNull { it.id == track.id }
+    )
     val interactionSource = remember(track.id) { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
+    val focused by interactionSource.collectIsFocusedAsState()
     var menuExpanded by remember(track.id) { mutableStateOf(false) }
 
     val targetBackground = when {
         isCurrent -> accent.copy(alpha = LevyraMotion.SELECTED_ALPHA)
-        hovered -> MaterialTheme.colorScheme.surfaceContainerHigh
+        hovered || focused -> MaterialTheme.colorScheme.surfaceContainerHigh
         else -> Color.Transparent
     }
     val shape = RoundedCornerShape(9.dp)
@@ -131,23 +138,25 @@ fun TrackRow(
             }
         }
 
-        when (downloadRecord?.status) {
-            DownloadStatus.QUEUED,
-            DownloadStatus.RESOLVING,
-            DownloadStatus.DOWNLOADING -> CircularProgressIndicator(
-                progress = { downloadRecord.progress },
-                modifier = Modifier.size(18.dp),
-                strokeWidth = 2.dp
-            )
+        downloadRecord?.let { record ->
+            when (record.status) {
+                DownloadStatus.QUEUED,
+                DownloadStatus.RESOLVING,
+                DownloadStatus.DOWNLOADING -> CircularProgressIndicator(
+                    progress = { record.progress },
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
 
-            DownloadStatus.COMPLETED -> Icon(
-                imageVector = OfflineIcons.Check,
-                contentDescription = strings.downloadOfflineBadge,
-                tint = accent,
-                modifier = Modifier.size(18.dp)
-            )
+                DownloadStatus.COMPLETED -> Icon(
+                    imageVector = OfflineIcons.Check,
+                    contentDescription = strings.downloadOfflineBadge,
+                    tint = accent,
+                    modifier = Modifier.size(18.dp)
+                )
 
-            else -> Unit
+                else -> Unit
+            }
         }
 
         Text(
@@ -197,7 +206,8 @@ fun TrackRow(
                     }
                 )
                 if (downloadActions != null) {
-                    when (downloadRecord?.status) {
+                    val record = downloadRecord
+                    when (record?.status) {
                         DownloadStatus.QUEUED,
                         DownloadStatus.RESOLVING,
                         DownloadStatus.DOWNLOADING -> DropdownMenuItem(
@@ -211,7 +221,7 @@ fun TrackRow(
                             },
                             onClick = {
                                 menuExpanded = false
-                                downloadActions.onCancel(downloadRecord.id)
+                                downloadActions.onCancel(record.id)
                             }
                         )
 
@@ -226,7 +236,7 @@ fun TrackRow(
                             },
                             onClick = {
                                 menuExpanded = false
-                                downloadActions.onDelete(downloadRecord.id)
+                                downloadActions.onDelete(record.id)
                             }
                         )
 
@@ -242,7 +252,7 @@ fun TrackRow(
                             },
                             onClick = {
                                 menuExpanded = false
-                                downloadActions.onRetry(downloadRecord.id)
+                                downloadActions.onRetry(record.id)
                             }
                         )
 

@@ -10,6 +10,7 @@ import com.luc4n3x.levyra.desktop.core.model.PageCursor
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
 import com.luc4n3x.levyra.desktop.core.model.Track
 import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -241,17 +242,25 @@ class CatalogRepository(
     }
 
     private suspend fun fallbackArtistTracks(name: String): List<Track> {
-        val page = runCatching { search(name, SearchFilter.SONGS) }.getOrDefault(CatalogPage())
+        val page = searchOrEmpty(name, SearchFilter.SONGS)
         val matching = page.tracks.filter { artistLabelMatches(it.artist, name) }
         return matching.ifEmpty { page.tracks }.take(MAX_ARTIST_TRACKS)
     }
 
     private suspend fun fallbackArtistAlbums(name: String): List<CollectionRef> {
-        val page = runCatching { search(name, SearchFilter.ALBUMS) }.getOrDefault(CatalogPage())
+        val page = searchOrEmpty(name, SearchFilter.ALBUMS)
         val matching = page.collections.filter { artistLabelMatches(it.subtitle, name) }
         return matching.ifEmpty { page.collections }
             .map { it.copy(kind = CollectionKind.ALBUM) }
             .take(MAX_ARTIST_ALBUMS)
+    }
+
+    private suspend fun searchOrEmpty(name: String, filter: SearchFilter): CatalogPage = try {
+        search(name, filter)
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        CatalogPage()
     }
 
     private data class ArtistTabPage(
