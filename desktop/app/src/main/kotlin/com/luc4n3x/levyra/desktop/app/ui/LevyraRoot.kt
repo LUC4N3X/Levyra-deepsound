@@ -236,8 +236,10 @@ fun LevyraRoot(model: LevyraAppModel) {
                                     .fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                NavigationSidebar(
+                                com.luc4n3x.levyra.desktop.app.ui.components.navigation.LevyraSidebar(
                                     destination = destination,
+                                    hasActiveTrack = playback.current != null,
+                                    isPlaying = playback.isPlaying,
                                     onNavigate = model::navigate
                                 )
 
