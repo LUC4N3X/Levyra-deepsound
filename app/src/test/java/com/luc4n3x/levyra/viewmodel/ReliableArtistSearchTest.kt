@@ -24,6 +24,17 @@ class ReliableArtistSearchTest {
     }
 
     @Test
+    fun exactArtistMatchingIgnoresCaseAndOuterWhitespace() {
+        val result = mergeReliableArtistSearchResults(
+            query = "  hugel  ",
+            exactArtist = artist("HUGEL", "UC-hugel"),
+            verifiedArtists = emptyList()
+        )
+
+        assertEquals("UC-hugel", result.single().browseId)
+    }
+
+    @Test
     fun exactArtistIsDeduplicatedByBrowseId() {
         val exact = artist("HUGEL", "UC-hugel")
         val duplicate = exact.copy(subscribers = "2M")
