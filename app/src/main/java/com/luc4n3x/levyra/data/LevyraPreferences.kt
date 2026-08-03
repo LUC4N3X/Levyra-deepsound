@@ -22,6 +22,7 @@ import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -110,6 +111,7 @@ class LevyraPreferences(context: Context) {
             mutable[KEY_UI_ALBUMS] = normalizedInterface.showAlbumsForYou
             mutable[KEY_UI_ARTISTS] = normalizedInterface.showTrendingArtists
             mutable[KEY_UI_CHARTS] = normalizedInterface.showCharts
+            mutable[KEY_UI_FONT_PRESET] = normalizedInterface.fontPreset.name
             mutable[KEY_UI_PLAYER_GESTURES] = normalizedInterface.playerGesturesEnabled
             mutable[KEY_UI_DOUBLE_TAP_SECONDS] = normalizedInterface.doubleTapSeekSeconds
             mutable[KEY_UI_LONG_PRESS_SPEED] = normalizedInterface.longPressSpeed
@@ -219,6 +221,7 @@ class LevyraPreferences(context: Context) {
             it[KEY_UI_ALBUMS] = normalized.showAlbumsForYou
             it[KEY_UI_ARTISTS] = normalized.showTrendingArtists
             it[KEY_UI_CHARTS] = normalized.showCharts
+            it[KEY_UI_FONT_PRESET] = normalized.fontPreset.name
             it[KEY_UI_PLAYER_GESTURES] = normalized.playerGesturesEnabled
             it[KEY_UI_DOUBLE_TAP_SECONDS] = normalized.doubleTapSeekSeconds
             it[KEY_UI_LONG_PRESS_SPEED] = normalized.longPressSpeed
@@ -476,6 +479,7 @@ class LevyraPreferences(context: Context) {
         showAlbumsForYou = preferences[KEY_UI_ALBUMS] ?: true,
         showTrendingArtists = preferences[KEY_UI_ARTISTS] ?: true,
         showCharts = preferences[KEY_UI_CHARTS] ?: true,
+        fontPreset = LevyraFontPreset.from(preferences[KEY_UI_FONT_PRESET].orEmpty()),
         playerGesturesEnabled = preferences[KEY_UI_PLAYER_GESTURES] ?: true,
         doubleTapSeekSeconds = preferences[KEY_UI_DOUBLE_TAP_SECONDS] ?: 10,
         longPressSpeed = preferences[KEY_UI_LONG_PRESS_SPEED] ?: 2f
@@ -657,6 +661,7 @@ class LevyraPreferences(context: Context) {
         val KEY_UI_ALBUMS = booleanPreferencesKey("ui_show_albums")
         val KEY_UI_ARTISTS = booleanPreferencesKey("ui_show_artists")
         val KEY_UI_CHARTS = booleanPreferencesKey("ui_show_charts")
+        val KEY_UI_FONT_PRESET = stringPreferencesKey("ui_font_preset")
         val KEY_UI_PLAYER_GESTURES = booleanPreferencesKey("ui_player_gestures")
         val KEY_UI_DOUBLE_TAP_SECONDS = intPreferencesKey("ui_double_tap_seconds")
         val KEY_UI_LONG_PRESS_SPEED = floatPreferencesKey("ui_long_press_speed")
