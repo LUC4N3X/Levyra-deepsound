@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
             val hasProductBlockingOverlay = uiState.showOnboarding || uiState.showSettings || uiState.showAlbum ||
                 uiState.showArtist || uiState.showQueue || uiState.showLyrics || uiState.showAudioQualityPanel ||
                 uiState.showUpdatePrompt || uiState.sharedMediaPreview != null || uiState.openPlaylist != null
-            val productHomeTopPadding = productHomeTopPadding(
+            val homeTopPaddingDp = productHomeTopPadding(
                 isInPictureInPicture = pipMode.value,
                 selectedTab = uiState.selectedTab,
                 hasBlockingOverlay = hasProductBlockingOverlay
@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(top = productHomeTopPadding.dp)
+                                .padding(top = homeTopPaddingDp.dp)
                         ) {
                             LevyraApp(
                                 viewModel = viewModel,
@@ -117,6 +117,7 @@ class MainActivity : ComponentActivity() {
                         }
                         LevyraProductShell(
                             viewModel = viewModel,
+                            state = uiState,
                             isInPictureInPicture = pipMode.value
                         )
                     }
