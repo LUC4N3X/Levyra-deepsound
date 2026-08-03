@@ -53,4 +53,40 @@ class ProductShellPolicyTest {
         assertEquals(PRODUCT_NAVIGATION_HEIGHT_DP, productOverlayBottomPadding(hasCurrentTrack = false))
         assertEquals(PRODUCT_MINI_PLAYER_CLEARANCE_DP, productOverlayBottomPadding(hasCurrentTrack = true))
     }
+
+    @Test
+    fun homeHeaderClearanceOnlyAppliesWhenHeaderIsVisible() {
+        assertEquals(
+            PRODUCT_HOME_HEADER_CLEARANCE_DP,
+            productHomeTopPadding(
+                isInPictureInPicture = false,
+                selectedTab = LevyraTab.Home,
+                hasBlockingOverlay = false
+            )
+        )
+        assertEquals(
+            0,
+            productHomeTopPadding(
+                isInPictureInPicture = true,
+                selectedTab = LevyraTab.Home,
+                hasBlockingOverlay = false
+            )
+        )
+        assertEquals(
+            0,
+            productHomeTopPadding(
+                isInPictureInPicture = false,
+                selectedTab = LevyraTab.Search,
+                hasBlockingOverlay = false
+            )
+        )
+        assertEquals(
+            0,
+            productHomeTopPadding(
+                isInPictureInPicture = false,
+                selectedTab = LevyraTab.Home,
+                hasBlockingOverlay = true
+            )
+        )
+    }
 }
