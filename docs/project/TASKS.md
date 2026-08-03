@@ -2,75 +2,75 @@
 
 ## Active phase
 
-**Name:** Documentation information architecture  
-**Roadmap track:** Track 7 - Agent-assisted engineering  
-**Status:** Implementation complete; immediate squash merge explicitly authorized  
-**Scope:** Move the project planning documents into `docs/project/`, add clear
-navigation for the existing documentation areas, update every repository
-reference, and remove the former root copies. No Android or Desktop runtime,
-dependency, version, signing, packaging, or release behavior is changed.
+**Name:** Android product experience shell  
+**Roadmap track:** Android interface and discovery  
+**Status:** Implementation complete on branch; pull-request validation pending  
+**Scope:** Improve Android navigation, Home entry points, search presentation,
+settings discovery, and the persistent mini player without changing playback,
+network, persistence, download, version, signing, or release behavior.
 
 ## Acceptance criteria
 
-- Durable requirements live in `docs/project/SPEC.md`.
-- Ordered engineering outcomes live in `docs/project/ROADMAP.md`.
-- The active reviewable phase and validation evidence live in
-  `docs/project/TASKS.md`.
-- `docs/README.md` provides a concise map of architecture, project, AI, and asset
-  documentation.
-- `docs/project/README.md` explains the distinct responsibility of each project
-  document.
-- Root and nested agent instructions, AI workflow documents, native skills, and
-  the configuration validator reference the canonical new paths.
-- The former root `SPEC.md`, `ROADMAP.md`, and `TASKS.md` files are removed after
-  their canonical replacements exist.
-- Existing product code, versions, dependencies, signing, packaging, and release
-  behavior remain unchanged.
+- Primary navigation keeps Home, Search, Explore, and Library immediately visible.
+- The full player remains contextual and opens from the persistent mini player.
+- Home exposes clear shortcuts and useful library/listening counts without
+  replacing the existing editorial feed.
+- Search presents filters and grouped songs, artists, albums, recent searches,
+  loading, empty, and error states through the existing ViewModel state.
+- Settings exposes a structured overview with safe direct toggles and a route to
+  the complete existing settings screen.
+- The product shell is hidden for PiP, the full player, onboarding, details,
+  queue, lyrics, update prompts, shared media, playlists, and other blocking
+  overlays.
+- Existing player, queue, MediaSession, notification, Android Auto, downloads,
+  Room, preferences, backups, localization, and release versions remain intact.
 
 ## Work items
 
-- [x] Define a stable documentation layout.
-- [x] Add the top-level documentation index.
-- [x] Add the project-documentation guide.
-- [x] Move the specification into `docs/project/`.
-- [x] Move the roadmap into `docs/project/`.
-- [x] Replace the active task phase with this documentation reorganization.
-- [x] Update repository instructions, AI documentation, skills, and validation
-      paths.
-- [x] Remove the former root planning files.
-- [x] Inspect the final branch diff for product-code, version, dependency,
-      workflow, binary, or generated-file changes.
-- [x] Record the owner's explicit authorization to open and immediately
-      squash-merge the documentation-only pull request without waiting for CI.
+- [x] Add pure product-shell navigation and clearance policy.
+- [x] Add a dedicated Compose product shell over the existing architecture.
+- [x] Add a cleaner primary navigation surface.
+- [x] Add a persistent product-style mini player.
+- [x] Add Home quick actions and listening/library counters.
+- [x] Add a grouped, filterable search presentation.
+- [x] Add a structured settings overview with safe direct controls.
+- [x] Hide the shell when an existing blocking screen owns the interaction.
+- [x] Add focused unit coverage for navigation visibility and layout clearance.
+- [ ] Run Android unit tests in CI.
+- [ ] Run Android lint and release compilation in CI.
+- [ ] Review automated findings and resolve actionable issues.
+- [ ] Perform manual device checks for narrow screens, RTL, large fonts,
+      navigation, search, settings, mini-player controls, and PiP transitions.
 
 ## Validation matrix
 
 | Check | Required | Current state |
 | --- | --- | --- |
-| Canonical project files exist under `docs/project/` | Yes | Verified on the branch |
-| Former root planning files are absent | Yes | Verified on the branch |
-| Repository references use `docs/project/*` | Yes | Directly inspected in every indexed reference |
-| Documentation navigation and relative links | Yes | Manually reviewed |
-| `python3 scripts/validate_agent_config.py` | Normally yes | Not executed locally; connector environment has no repository checkout |
-| Android unit tests, lint, and release compile | No for this phase | Not run; no product or build code changed |
-| Desktop build | No for this phase | Not run; no Desktop code changed |
-| Device, playback, Android Auto, notification, PiP | No for this phase | Not applicable |
-| Windows installer, update, protocol, media keys | No for this phase | Not applicable |
-| CI completion before merge | Owner decision | Explicitly waived for this documentation-only change |
-| Squash merge | Owner action | Explicitly authorized in the initiating request |
+| Product shell policy unit tests | Yes | Added; execution pending CI |
+| Android unit tests | Yes | Pending pull-request CI |
+| Android lint | Yes | Pending pull-request CI |
+| Android release compile | Yes | Pending pull-request CI |
+| Agent configuration validation | No | No agent configuration changed |
+| Desktop build | No | Desktop files unchanged |
+| Manual narrow-screen and large-font review | Yes | Pending device validation |
+| Manual RTL review | Yes | Pending device validation |
+| Playback, notification, Android Auto, PiP | Yes | Existing ownership preserved; manual regression check pending |
+| Code review automation | Yes | Pending pull-request review |
 
 ## Behavior preserved
 
-- Android and Desktop implementation files are untouched.
-- Playback, queue, MediaSession, notification, Android Auto, downloads, Room,
-  preferences, backups, localization, and UI behavior are unchanged.
-- Android and Desktop versions, tags, packages, signing, artifacts, and release
-  workflows remain independent.
-- Existing Claude and OpenAI domain skills retain their behavior; only planning
-  document paths change.
+- Playback continues through the existing ViewModel, player, service, MediaSession,
+  queue, notification, and Android Auto architecture.
+- Search continues through the existing repository, jobs, immutable state, and
+  result models.
+- Settings changes continue through the existing persistence methods.
+- Downloads, favorites, playlists, history, followed artists, queue, lyrics,
+  onboarding, backups, and user preferences are not migrated or reset.
+- Android and Desktop versions, dependencies, signing, packaging, tags, and
+  releases are unchanged.
 
 ## Update rule
 
-Replace this active phase when new work begins instead of accumulating unrelated
-tasks indefinitely. Record validation from direct commands, CI runs, reviews,
-manual checks, or explicit owner decisions—not from an agent narrative.
+Update this phase only from direct code changes, CI results, review findings,
+manual checks, or owner decisions. Do not mark blocked or unexecuted validation as
+passed.
