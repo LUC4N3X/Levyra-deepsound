@@ -4,6 +4,8 @@ import android.content.Context
 import com.luc4n3x.levyra.BuildConfig
 import com.luc4n3x.levyra.data.network.LevyraHttpClientFactory
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.URI
 import java.time.Instant
 import java.util.concurrent.TimeUnit
@@ -29,6 +31,7 @@ private const val KEY_APP_LAUNCH_COUNT = "app_launch_count"
 private const val KEY_LAST_APP_LAUNCH_AT = "last_app_launch_at"
 private const val KEY_SNOOZED_UNTIL_PREFIX = "snoozed_until_"
 private const val MAX_ANNOUNCEMENTS = 20
+internal const val MAX_REMOTE_ANNOUNCEMENT_PAYLOAD_BYTES = 2 * 1_024 * 1_024
 private const val MAX_COMPLETED_IDS = 200
 private const val MAX_RECORDED_LAUNCHES = 10_000
 private const val APP_LAUNCH_SESSION_GAP_MS = 30L * 60L * 1_000L
@@ -271,6 +274,29 @@ internal object RemoteAnnouncementParser {
     }
 }
 
+internal fun readBoundedAnnouncementPayload(
+    input: InputStream,
+    declaredLength: Long,
+    maxBytes: Int = MAX_REMOTE_ANNOUNCEMENT_PAYLOAD_BYTES
+): String? {
+    require(maxBytes > 0)
+    if (declaredLength > maxBytes) return null
+    val initialCapacity = declaredLength
+        .takeIf { it in 1..maxBytes.toLong() }
+        ?.toInt()
+        ?: minOf(8 * 1_024, maxBytes)
+    val output = ByteArrayOutputStream(initialCapacity)
+    val buffer = ByteArray(minOf(8 * 1_024, maxBytes))
+    while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        if (read == 0) continue
+        if (output.size() > maxBytes - read) return null
+        output.write(buffer, 0, read)
+    }
+    return output.toByteArray().toString(Charsets.UTF_8)
+}
+
 internal class RemoteAnnouncementRepository(context: Context) {
     private val appContext = context.applicationContext
     private val store = RemoteAnnouncementStore(appContext)
@@ -371,7 +397,10 @@ internal class RemoteAnnouncementRepository(context: Context) {
                         CatalogState(cached, available = true)
                     }
                     response.isSuccessful -> {
-                        val raw = response.body.string()
+                        val body = response.body
+                        val raw = body.byteStream().use { input ->
+                            readBoundedAnnouncementPayload(input, body.contentLength())
+                        } ?: return@use CatalogState(cached, available = cached != null)
                         val parsed = RemoteAnnouncementParser.parse(raw)
                             ?: return@use CatalogState(cached, available = cached != null)
                         store.saveCatalog(raw, response.header("ETag"), nowMs)
