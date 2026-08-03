@@ -43,8 +43,8 @@ fun releaseTypeFromProviderLabel(value: String): ReleaseType {
 }
 
 private val ALBUM_LABELS = normalizedLabelSet(
-    "album", "albumo", "alben", "albom", "albumes", "albumi", "专辑", "專輯", "アルバム", "앨범",
-    "अल्बम", "อัลบั้ม", "אלבום", "ألبوم"
+    "album", "albumo", "alben", "albom", "albumes", "albumi", "άλμπουμ", "альбом",
+    "专辑", "專輯", "アルバム", "앨범", "अल्बम", "एल्बम", "อัลบั้ม", "אלבום", "ألبوم"
 )
 
 private val SINGLE_LABELS = normalizedLabelSet(

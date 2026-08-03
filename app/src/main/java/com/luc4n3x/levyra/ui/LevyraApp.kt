@@ -305,7 +305,7 @@ import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraArtworkCache
 import com.luc4n3x.levyra.data.LevyraArtworkStartupMetrics
 import com.luc4n3x.levyra.data.PlaybackSourceIdentity
-import com.luc4n3x.levyra.data.albumRecommendationDeduplicationKey
+import com.luc4n3x.levyra.domain.deduplicateHomeAlbums
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.player.PlaybackService
 import com.luc4n3x.levyra.domain.AppUpdateInfo
@@ -318,6 +318,9 @@ import com.luc4n3x.levyra.domain.ArtistRelease
 import com.luc4n3x.levyra.domain.DownloadedTrack
 import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.SearchFilter
+import com.luc4n3x.levyra.domain.filterPlaylistsForSearch
+import com.luc4n3x.levyra.domain.isSearchVideo
+import com.luc4n3x.levyra.domain.searchFiltersFor
 import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.LevyraContentLocales
 import com.luc4n3x.levyra.domain.LevyraLanguageCatalog
@@ -5444,9 +5447,7 @@ private fun HomeScreen(
     val quickPicks = homeDerivedState.quickPicks
     val newReleases = homeDerivedState.newReleases
     val homeAlbums = remember(state.homeAlbums) {
-        state.homeAlbums
-            .filter { album -> album.title.isNotBlank() && album.artist.isNotBlank() }
-            .distinctBy(::albumRecommendationDeduplicationKey)
+        deduplicateHomeAlbums(state.homeAlbums)
     }
     val rawOtherSections = homeDerivedState.otherSections
     val homeVideoTracks = remember(state.exploreVideos, rawOtherSections, state.charts, strings.exploreNewVideos) {
@@ -5601,6 +5602,19 @@ private fun HomeScreen(
                         selectedId = state.selectedMood?.id,
                         onSelect = viewModel::selectMood
                     )
+                    HomeSectionInset {
+                        HomeProductShortcutRow(
+                            canShuffle = visiblePersonalTracks.isNotEmpty(),
+                            onShuffle = {
+                                if (visiblePersonalTracks.isNotEmpty()) {
+                                    viewModel.playAll(visiblePersonalTracks.shuffled())
+                                }
+                            },
+                            onFavorites = viewModel::openLibrary,
+                            onNewReleases = { viewModel.searchNow(strings.newReleases) },
+                            onGenres = viewModel::openExplore
+                        )
+                    }
                 }
             }
 
@@ -8413,6 +8427,35 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var addTarget by remember { mutableStateOf<Track?>(null) }
+    val queryClean = state.query.trim()
+    val searchData = state.searchData
+    val videoTracks = remember(searchData.songs) {
+        searchData.songs.filter { track -> track.isSearchVideo() }
+    }
+    val audioTracks = remember(searchData.songs) {
+        searchData.songs.filterNot { track -> track.isSearchVideo() }
+    }
+    val matchingPlaylists = remember(queryClean, state.playlists) {
+        filterPlaylistsForSearch(queryClean, state.playlists)
+    }
+    val availableFilters = remember(
+        searchData.artists,
+        searchData.albums,
+        videoTracks,
+        matchingPlaylists
+    ) {
+        searchFiltersFor(
+            hasArtists = searchData.artists.isNotEmpty(),
+            hasAlbums = searchData.albums.isNotEmpty(),
+            hasVideos = videoTracks.isNotEmpty(),
+            hasPlaylists = matchingPlaylists.isNotEmpty()
+        )
+    }
+    LaunchedEffect(state.isSearching, state.searchFilter, availableFilters) {
+        if (!state.isSearching && state.searchFilter !in availableFilters) {
+            viewModel.setSearchFilter(SearchFilter.All)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -8432,7 +8475,10 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             },
             onClear = {
                 viewModel.setQuery("")
-            }
+            },
+            availableFilters = availableFilters,
+            selectedFilter = state.searchFilter,
+            onFilter = viewModel::setSearchFilter
         )
 
         LazyColumn(
@@ -8440,9 +8486,18 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
             contentPadding = PaddingValues(bottom = if (state.currentTrack != null) 188.dp else 100.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val queryClean = state.query.trim()
-
             if (queryClean.isEmpty()) {
+                item {
+                    QuickChips(
+                        languageCode = state.languageCode,
+                        onClick = { query ->
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                            viewModel.setQuery(query)
+                            viewModel.searchNow(query)
+                        }
+                    )
+                }
                 if (state.recentSearches.isNotEmpty()) {
                     item {
                         RecentSearchesRow(
@@ -8511,7 +8566,7 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                         SearchLoadingSkeleton()
                     }
                     state.searchError != null -> item { GlassMessage(state.searchError, LevyraOrange) }
-                    !state.searchData.isEmpty -> {
+                    !state.searchData.isEmpty || matchingPlaylists.isNotEmpty() -> {
                         val data = state.searchData
                         val filter = state.searchFilter
                         item {
@@ -8519,6 +8574,8 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 selected = filter,
                                 hasArtists = data.artists.isNotEmpty(),
                                 hasAlbums = data.albums.isNotEmpty(),
+                                hasVideos = videoTracks.isNotEmpty(),
+                                hasPlaylists = matchingPlaylists.isNotEmpty(),
                                 onSelect = viewModel::setSearchFilter
                             )
                         }
@@ -8567,8 +8624,53 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
                                 )
                             }
                         }
+                        if ((filter == SearchFilter.All || filter == SearchFilter.Videos) && videoTracks.isNotEmpty()) {
+                            val videos = if (filter == SearchFilter.All) {
+                                videoTracks.filterNot { track -> track.id == data.topTrack?.id }
+                            } else {
+                                videoTracks
+                            }
+                            if (videos.isNotEmpty()) {
+                                item { SectionTitle(strings.video) }
+                                items(videos, key = { "search-video-${it.id}" }) { track ->
+                                    SearchTrackCard(
+                                        track = track,
+                                        isCurrent = track.id == state.currentTrack?.id,
+                                        isPlaying = state.isPlaying && track.id == state.currentTrack?.id,
+                                        isResolving = state.isResolving && track.id == state.currentTrack?.id,
+                                        isFavorite = track.id in state.favoriteIds,
+                                        isDownloading = track.id in state.downloadingTrackIds,
+                                        isDownloaded = track.id in state.downloadedTrackIds,
+                                        downloadProgress = state.downloadProgressByTrackId[track.id],
+                                        onClick = {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                            viewModel.playFrom(data.songs, track)
+                                        },
+                                        onFavorite = { viewModel.toggleFavorite(track) },
+                                        onAddToPlaylist = { addTarget = track },
+                                        onDownload = { viewModel.exportTrack(track) },
+                                        onArtist = { viewModel.openArtist(track) }
+                                    )
+                                }
+                            }
+                        }
+                        if ((filter == SearchFilter.All || filter == SearchFilter.Playlists) && matchingPlaylists.isNotEmpty()) {
+                            item { SectionTitle(strings.playlists) }
+                            items(matchingPlaylists, key = { "search-playlist-${it.id}" }) { playlist ->
+                                SearchPlaylistResultRow(
+                                    playlist = playlist,
+                                    onOpen = { viewModel.openPlaylist(playlist.id) },
+                                    onPlay = { viewModel.playPlaylist(playlist.id) }
+                                )
+                            }
+                        }
                         if (filter == SearchFilter.All || filter == SearchFilter.Songs) {
-                            val songs = if (filter == SearchFilter.All) data.songs.drop(if (data.topTrack != null) 1 else 0) else data.songs
+                            val songs = if (filter == SearchFilter.All) {
+                                audioTracks.filterNot { track -> track.id == data.topTrack?.id }
+                            } else {
+                                audioTracks
+                            }
                             if (songs.isNotEmpty()) {
                                 item { SectionTitle(strings.songs) }
                                 items(songs, key = { "search-song-${it.id}" }) { track ->
@@ -8617,18 +8719,31 @@ private fun SearchScreen(viewModel: SearchViewModel, state: LevyraUiState) {
     }
 }
 
+private fun searchFilterLabel(filter: SearchFilter, strings: LevyraStrings): String = when (filter) {
+    SearchFilter.All -> strings.all
+    SearchFilter.Songs -> strings.songsPlain
+    SearchFilter.Videos -> strings.video
+    SearchFilter.Artists -> strings.artistsLabelPlural
+    SearchFilter.Albums -> strings.albumsPlain
+    SearchFilter.Playlists -> strings.playlists
+}
+
 @Composable
 private fun SearchHeader(
     query: String,
     isSearching: Boolean,
     onQuery: (String) -> Unit,
     onSearch: (String) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    availableFilters: List<SearchFilter>,
+    selectedFilter: SearchFilter,
+    onFilter: (SearchFilter) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
     val strings = LocalLevyraStrings.current
+    var filterExpanded by rememberSaveable { mutableStateOf(false) }
 
     val speechRecognizerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -8789,18 +8904,43 @@ private fun SearchHeader(
             )
         }
 
-        IconButton(
-            onClick = { Toast.makeText(context, strings.musicFiltersComingSoon, Toast.LENGTH_SHORT).show() },
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color.White.copy(alpha = 0.05f), CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Equalizer,
-                contentDescription = strings.audioEngine,
-                tint = LevyraText,
-                modifier = Modifier.size(20.dp)
-            )
+        Box {
+            IconButton(
+                onClick = { filterExpanded = true },
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        if (selectedFilter == SearchFilter.All) Color.White.copy(alpha = 0.05f)
+                        else LevyraCyan.copy(alpha = 0.16f),
+                        CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Equalizer,
+                    contentDescription = searchFilterLabel(selectedFilter, strings),
+                    tint = if (selectedFilter == SearchFilter.All) LevyraText else LevyraCyan,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = filterExpanded,
+                onDismissRequest = { filterExpanded = false }
+            ) {
+                availableFilters.forEach { filter ->
+                    DropdownMenuItem(
+                        text = { Text(searchFilterLabel(filter, strings)) },
+                        leadingIcon = {
+                            if (filter == selectedFilter) {
+                                Icon(Icons.Rounded.Check, contentDescription = null, tint = LevyraCyan)
+                            }
+                        },
+                        onClick = {
+                            filterExpanded = false
+                            onFilter(filter)
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -11256,18 +11396,6 @@ private fun PlayerAdvancedControlsPanel(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp)
         ) {
-            PlayerUtilityDock(
-                activeColor = primaryContent,
-                secondaryColor = secondaryContent,
-                lyricsAvailable = state.lyrics.isNotEmpty(),
-                isExporting = state.isOfflineExporting,
-                isDownloaded = track.id in state.downloadedTrackIds,
-                compact = compact,
-                onQueue = viewModel::openQueue,
-                onLyrics = viewModel::openLyrics,
-                onAddToPlaylist = onAddToPlaylist,
-                onDownload = viewModel::exportCurrentTrack
-            )
             PlayerOptionsRow(
                 speed = state.playbackSpeed,
                 sleepMinutes = state.sleepTimerMinutes,
@@ -12050,6 +12178,20 @@ private fun PlayerScreen(
                         onNext = viewModel::next,
                         onRepeat = viewModel::toggleRepeat,
                         modifier = Modifier.padding(vertical = LevyraPlayerDesign.SpaceXs)
+                    )
+                }
+                item {
+                    PlayerUtilityDock(
+                        activeColor = primaryContent,
+                        secondaryColor = secondaryContent,
+                        lyricsAvailable = state.lyrics.isNotEmpty(),
+                        isExporting = state.isOfflineExporting,
+                        isDownloaded = track.id in state.downloadedTrackIds,
+                        compact = compactPlayer,
+                        onQueue = viewModel::openQueue,
+                        onLyrics = viewModel::openLyrics,
+                        onAddToPlaylist = { playlistTarget = track },
+                        onDownload = viewModel::exportCurrentTrack
                     )
                 }
                 item {
@@ -13391,6 +13533,7 @@ private fun SettingsOverlay(
     val strings = LocalLevyraStrings.current
     var languageExpanded by remember { mutableStateOf(false) }
     var activeCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    var settingsQuery by rememberSaveable { mutableStateOf("") }
     val batteryContext = LocalContext.current
     val batteryLifecycleOwner = LocalLifecycleOwner.current
     var batteryCheckToken by remember { mutableStateOf(0) }
@@ -13420,6 +13563,16 @@ private fun SettingsOverlay(
         SettingsCategoryMeta("system", categoryTitle(strings.preferences), "${strings.batteryUnrestricted} · ${strings.language}", Icons.Rounded.Settings, LevyraViolet),
         SettingsCategoryMeta("app", categoryTitle(strings.app), "${strings.updates} · ${BuildConfig.VERSION_NAME}", Icons.Rounded.Info, LevyraPink)
     )
+    val normalizedSettingsQuery = settingsQuery.trim().lowercase(categoryLocale)
+    val visibleCategories = if (normalizedSettingsQuery.isBlank()) {
+        categories
+    } else {
+        categories.filter { category ->
+            category.id.contains(normalizedSettingsQuery, ignoreCase = true) ||
+                category.title.lowercase(categoryLocale).contains(normalizedSettingsQuery) ||
+                category.summary.lowercase(categoryLocale).contains(normalizedSettingsQuery)
+        }
+    }
     Box(
         modifier = Modifier
         .fillMaxSize()
@@ -13468,11 +13621,22 @@ private fun SettingsOverlay(
                         }
                         Spacer(modifier = Modifier.height(14.dp))
                     }
-                    itemsIndexed(categories, key = { _, item -> item.id }) { index, category ->
+                    item {
+                        SettingsSearchField(
+                            query = settingsQuery,
+                            onQuery = { settingsQuery = it },
+                            onClear = { settingsQuery = "" }
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                    itemsIndexed(visibleCategories, key = { _, item -> item.id }) { index, category ->
                         SettingsCategoryCard(
                             meta = category,
-                            showDivider = index < categories.lastIndex
-                        ) { activeCategory = category.id }
+                            showDivider = index < visibleCategories.lastIndex
+                        ) {
+                            activeCategory = category.id
+                            settingsQuery = ""
+                        }
                     }
                     item { SettingsHubFooter() }
                 } else {
@@ -13871,6 +14035,67 @@ private fun SettingsOverlay(
                             item { SettingsHubFooter() }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSearchField(
+    query: String,
+    onQuery: (String) -> Unit,
+    onClear: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    Surface(
+        color = LevyraAdaptiveCardDeep,
+        border = BorderStroke(1.dp, LevyraAdaptiveHairline),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                Icons.Rounded.Search,
+                contentDescription = null,
+                tint = if (query.isBlank()) LevyraMuted else LevyraCyan,
+                modifier = Modifier.size(20.dp)
+            )
+            BasicTextField(
+                value = query,
+                onValueChange = onQuery,
+                singleLine = true,
+                textStyle = TextStyle(color = LevyraText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                cursorBrush = SolidColor(LevyraCyan),
+                modifier = Modifier.weight(1f),
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (query.isBlank()) {
+                            Text(
+                                text = strings.searchPlaceholder,
+                                color = LevyraMuted,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+            if (query.isNotBlank()) {
+                IconButton(onClick = onClear, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = strings.clear,
+                        tint = LevyraMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
@@ -15068,6 +15293,91 @@ private fun SectionHeaderAction(title: String, onPlayAll: () -> Unit) {
 }
 
 @Composable
+private fun HomeProductShortcutRow(
+    canShuffle: Boolean,
+    onShuffle: () -> Unit,
+    onFavorites: () -> Unit,
+    onNewReleases: () -> Unit,
+    onGenres: () -> Unit
+) {
+    val strings = LocalLevyraStrings.current
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(end = HomeHorizontalShelfEndPadding)
+    ) {
+        item {
+            HomeProductShortcut(
+                icon = Icons.Rounded.Shuffle,
+                label = strings.shuffle,
+                accent = LevyraCyan,
+                enabled = canShuffle,
+                onClick = onShuffle
+            )
+        }
+        item {
+            HomeProductShortcut(
+                icon = Icons.Rounded.Favorite,
+                label = strings.favorites,
+                accent = LevyraPink,
+                onClick = onFavorites
+            )
+        }
+        item {
+            HomeProductShortcut(
+                icon = Icons.Rounded.Album,
+                label = strings.newReleases,
+                accent = LevyraViolet,
+                onClick = onNewReleases
+            )
+        }
+        item {
+            HomeProductShortcut(
+                icon = Icons.Rounded.Explore,
+                label = strings.explore,
+                accent = LevyraCyan,
+                onClick = onGenres
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeProductShortcut(
+    icon: ImageVector,
+    label: String,
+    accent: Color,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .widthIn(min = 126.dp, max = 178.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = if (enabled) 0.065f else 0.035f))
+            .border(1.dp, Color.White.copy(alpha = if (enabled) 0.09f else 0.045f), RoundedCornerShape(18.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(9.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (enabled) accent else LevyraMuted.copy(alpha = 0.55f),
+            modifier = Modifier.size(20.dp)
+        )
+        Text(
+            text = label,
+            color = if (enabled) LevyraText else LevyraMuted.copy(alpha = 0.6f),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
 private fun HomeAlbumLoadingRow() {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -15224,7 +15534,8 @@ private fun HomeAlbumHitRow(albums: List<AlbumHit>, animationsEnabled: Boolean, 
                         fontSize = 12.sp,
                         lineHeight = 15.sp,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 1,
+                        minLines = 2,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -15853,15 +16164,17 @@ private fun SearchFilterChips(
     selected: SearchFilter,
     hasArtists: Boolean,
     hasAlbums: Boolean,
+    hasVideos: Boolean,
+    hasPlaylists: Boolean,
     onSelect: (SearchFilter) -> Unit
 ) {
     val strings = LocalLevyraStrings.current
-    val chips = buildList {
-        add(SearchFilter.All to strings.all)
-        add(SearchFilter.Songs to strings.songsPlain)
-        if (hasArtists) add(SearchFilter.Artists to strings.artistsLabelPlural)
-        if (hasAlbums) add(SearchFilter.Albums to strings.albumsPlain)
-    }
+    val chips = searchFiltersFor(
+        hasArtists = hasArtists,
+        hasAlbums = hasAlbums,
+        hasVideos = hasVideos,
+        hasPlaylists = hasPlaylists
+    ).map { filter -> filter to searchFilterLabel(filter, strings) }
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -15967,6 +16280,72 @@ private fun TopResultCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SearchPlaylistResultRow(
+    playlist: com.luc4n3x.levyra.domain.Playlist,
+    onOpen: () -> Unit,
+    onPlay: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .pressable(onClick = onOpen)
+            .padding(horizontal = 8.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(13.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = 0.06f)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (playlist.coverUrl.isNotBlank()) {
+                AsyncImage(
+                    model = playlist.coverUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    Icons.AutoMirrored.Rounded.QueueMusic,
+                    contentDescription = null,
+                    tint = LevyraViolet,
+                    modifier = Modifier.size(27.dp)
+                )
+            }
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = playlist.name,
+                color = LevyraText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = LocalLevyraStrings.current.formatTrackCount(playlist.size),
+                color = LevyraMuted,
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        IconButton(onClick = onPlay, modifier = Modifier.size(44.dp)) {
+            Icon(
+                Icons.Rounded.PlayArrow,
+                contentDescription = LocalLevyraStrings.current.play,
+                tint = LevyraCyan,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
@@ -16991,9 +17370,7 @@ private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraT
             ) {
                 TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
                 TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
-                TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
                 TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
-                TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
             }
             Spacer(modifier = Modifier.navigationBarsPadding())
         }

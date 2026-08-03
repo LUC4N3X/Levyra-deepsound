@@ -432,8 +432,10 @@ data class SearchResults(
 enum class SearchFilter {
     All,
     Songs,
+    Videos,
     Artists,
-    Albums
+    Albums,
+    Playlists
 }
 
 data class Playlist(

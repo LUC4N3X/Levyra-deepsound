@@ -9,10 +9,7 @@ class LevyraProductExperienceTest {
 
     @Test
     fun primaryNavigationContainsOnlyCoreDestinations() {
-        assertEquals(
-            listOf(LevyraTab.Home, LevyraTab.Search, LevyraTab.Library),
-            LevyraPrimaryTabs
-        )
+        assertEquals(listOf(LevyraTab.Home, LevyraTab.Search, LevyraTab.Library), LevyraPrimaryTabs)
         assertFalse(LevyraTab.Explore in LevyraPrimaryTabs)
         assertFalse(LevyraTab.Player in LevyraPrimaryTabs)
     }
@@ -26,38 +23,22 @@ class LevyraProductExperienceTest {
     }
 
     @Test
-    fun filtersExposeOnlyAvailableCategories() {
+    fun filtersExposeOnlyAvailableRichCategories() {
         assertEquals(
-            listOf(SearchFilter.All, SearchFilter.Songs, SearchFilter.Artists),
-            searchFiltersFor(hasArtists = true, hasAlbums = false)
+            listOf(SearchFilter.All, SearchFilter.Songs, SearchFilter.Videos, SearchFilter.Artists, SearchFilter.Playlists),
+            searchFiltersFor(hasArtists = true, hasAlbums = false, hasVideos = true, hasPlaylists = true)
         )
     }
 
     @Test
-    fun homeAlbumsRemoveBrowseIdAndArtistChannelDuplicates() {
-        val albums = listOf(
-            album(
-                title = "Amatore",
-                artist = "Samurai Jay - Topic",
-                browseId = "MPRE-first",
-                thumbnailUrl = "https://lh3.googleusercontent.com/cover=w544"
-            ),
-            album(
-                title = "Amatore (Deluxe Edition)",
-                artist = "Samurai Jay",
-                browseId = "MPRE-second",
-                thumbnailUrl = "https://lh3.googleusercontent.com/cover=w1200"
-            ),
-            album(
-                title = "Un altro album",
-                artist = "Samurai Jay",
-                browseId = "MPRE-third",
-                thumbnailUrl = "https://lh3.googleusercontent.com/other=w544"
+    fun homeAlbumsRemoveBrowseIdEditionAndArtistChannelDuplicates() {
+        val result = deduplicateHomeAlbums(
+            listOf(
+                album("Amatore", "Samurai Jay - Topic", "MPRE-first", "https://lh3.googleusercontent.com/cover=w544"),
+                album("Amatore (Deluxe Edition)", "Samurai Jay", "MPRE-second", "https://lh3.googleusercontent.com/cover=w1200"),
+                album("Un altro album", "Samurai Jay", "MPRE-third", "https://lh3.googleusercontent.com/other=w544")
             )
         )
-
-        val result = deduplicateHomeAlbums(albums)
-
         assertEquals(listOf("Amatore", "Un altro album"), result.map { it.title })
     }
 
@@ -66,22 +47,16 @@ class LevyraProductExperienceTest {
         val result = filterPlaylistsForSearch(
             query = "estate",
             playlists = listOf(
-                playlist("Mix estate", updatedAt = 30L),
-                playlist("Èstate", updatedAt = 10L),
-                playlist("Estate 2026", updatedAt = 20L),
-                playlist("Allenamento", updatedAt = 40L)
+                playlist("Mix estate", 30L),
+                playlist("Èstate", 10L),
+                playlist("Estate 2026", 20L),
+                playlist("Allenamento", 40L)
             )
         )
-
         assertEquals(listOf("Èstate", "Estate 2026", "Mix estate"), result.map { it.name })
     }
 
-    private fun album(
-        title: String,
-        artist: String,
-        browseId: String,
-        thumbnailUrl: String
-    ) = AlbumHit(
+    private fun album(title: String, artist: String, browseId: String, thumbnailUrl: String) = AlbumHit(
         title = title,
         artist = artist,
         year = "2026",

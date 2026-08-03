@@ -22,12 +22,16 @@ internal fun Track.isSearchVideo(): Boolean {
 
 internal fun searchFiltersFor(
     hasArtists: Boolean,
-    hasAlbums: Boolean
+    hasAlbums: Boolean,
+    hasVideos: Boolean,
+    hasPlaylists: Boolean
 ): List<SearchFilter> = buildList {
     add(SearchFilter.All)
     add(SearchFilter.Songs)
+    if (hasVideos) add(SearchFilter.Videos)
     if (hasArtists) add(SearchFilter.Artists)
     if (hasAlbums) add(SearchFilter.Albums)
+    if (hasPlaylists) add(SearchFilter.Playlists)
 }
 
 /**
