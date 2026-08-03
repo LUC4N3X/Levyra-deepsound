@@ -3766,12 +3766,31 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         moveToTab(LevyraTab.Search, rememberCurrent = true)
         _state.update { it.copy(isSearching = true, searchError = null, searchSuggestions = emptyList(), searchFilter = SearchFilter.All) }
         val result = runCatching {
-            val raw = providerRouter.searchEverything(clean, _state.value.languageCode)
-            val officialArtists = artistRepository.officialArtistHits(raw.artists)
-            raw.copy(
-                artists = officialArtists,
-                albums = searchAlbumsForArtistQuery(clean, raw, officialArtists)
-            )
+            coroutineScope {
+                val rawSearch = async {
+                    providerRouter.searchEverything(clean, _state.value.languageCode)
+                }
+                val exactArtistSearch = async {
+                    runCatching { artistRepository.artistHitFor(clean) }.getOrNull()
+                }
+                val raw = rawSearch.await()
+                val exactArtist = exactArtistSearch.await()
+                val generalCandidates = raw.artists.filterNot { candidate ->
+                    exactArtist != null &&
+                        candidate.browseId.isNotBlank() &&
+                        candidate.browseId.equals(exactArtist.browseId, ignoreCase = true)
+                }
+                val verifiedGeneralArtists = artistRepository.officialArtistHits(generalCandidates)
+                val officialArtists = mergeReliableArtistSearchResults(
+                    query = clean,
+                    exactArtist = exactArtist,
+                    verifiedArtists = verifiedGeneralArtists
+                )
+                raw.copy(
+                    artists = officialArtists,
+                    albums = searchAlbumsForArtistQuery(clean, raw, officialArtists)
+                )
+            }
         }
         result.onSuccess { data ->
             val tracks = data.songs
