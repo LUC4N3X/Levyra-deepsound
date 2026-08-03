@@ -1,0 +1,46 @@
+name: Apply visible settings rotation
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: >
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feature/selectable-fonts-settings-motion' &&
+      github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Apply visible rotation patch
+        run: python3 .github/scripts/apply_visible_settings_rotation.py
+
+      - name: Compile Android app
+        run: ./gradlew :app:compileDebugKotlin --no-daemon
+
+      - name: Commit patch and remove temporary files
+        run: |
+          rm .github/scripts/apply_visible_settings_rotation.py
+          rm .github/workflows/apply-visible-settings-rotation.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/src/main/java/com/luc4n3x/levyra/ui/LevyraApp.kt \
+                  .github/scripts/apply_visible_settings_rotation.py \
+                  .github/workflows/apply-visible-settings-rotation.yml
+          git commit -m "fix(ui): make settings rotation clearly visible"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
