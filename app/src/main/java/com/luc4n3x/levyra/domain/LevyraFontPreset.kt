@@ -11,7 +11,7 @@ enum class LevyraFontPreset(
     Montserrat("Montserrat", "Montserrat"),
     Nunito("Nunito", "Nunito"),
     Roboto("Roboto", "Roboto"),
-    System("Sistema", null);
+    System("System", null);
 
     companion object {
         fun from(value: String): LevyraFontPreset {
