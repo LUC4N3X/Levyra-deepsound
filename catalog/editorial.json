@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-03T08:34:23Z",
+  "generatedAt": "2026-08-03T09:37:07Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2023,7 +2023,7 @@
         },
         {
           "position": 36,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2031,12 +2031,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 37,
@@ -3154,6 +3154,12 @@
           },
           "durationMs": 178016,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "qz6hApXSHAM",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UCf5GUgSQC4CU8idz_OH8jqQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0231990a335ce5d02dc159e5c4"
         },
         {
@@ -5775,7 +5781,7 @@
           "durationMs": 192432,
           "explicit": true,
           "youtubeMusic": {
-            "audioVideoId": "jVPTGvUQc8s",
+            "audioVideoId": "LPDvKF_h8_o",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCm6FmMolN-n38Oj8-ZHVuHg"
@@ -6833,6 +6839,14 @@
           },
           "durationMs": 284866,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "WivOyYEdjEE",
+            "audioConfidence": 100,
+            "videoId": "t4H_Zoh7G5A",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCXDcGa1H1axtr1wkxOR3hZQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7b2aa3834b82b1cbe899a48"
         },
         {
@@ -9279,12 +9293,6 @@
           },
           "durationMs": 211084,
           "explicit": true,
-          "youtubeMusic": {
-            "audioVideoId": "ZhM1BddhZ1c",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC8r_j-qnSCj1t4h6EVN5TrQ"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02842ff43668299304d6f021b2"
         },
         {
@@ -10382,7 +10390,7 @@
         },
         {
           "position": 35,
-          "id": "levyra-ef444afbdd8812785bd5",
+          "id": "levyra-35844a86b63c91c223c1",
           "title": "Man I Need",
           "artists": [
             {
@@ -10390,8 +10398,8 @@
             }
           ],
           "album": {
-            "name": "Man I Need",
-            "releaseDate": "2025-08-15"
+            "name": "The Art of Loving",
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -10401,7 +10409,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
         },
         {
           "position": 36,
@@ -10451,11 +10459,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 39,
@@ -15324,7 +15332,7 @@
         },
         {
           "position": 43,
-          "id": "levyra-8e00e58819f76bb1bccd",
+          "id": "levyra-e09beec9b76bb06bdf72",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15332,12 +15340,12 @@
             }
           ],
           "album": {
-            "name": "Det kommer aldrig va över för mig",
-            "releaseDate": "2013-04-17"
+            "name": "Nyårsfest",
+            "releaseDate": "2020-12-18"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
         },
         {
           "position": 44,
@@ -17304,6 +17312,14 @@
           },
           "durationMs": 284866,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "WivOyYEdjEE",
+            "audioConfidence": 100,
+            "videoId": "t4H_Zoh7G5A",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCXDcGa1H1axtr1wkxOR3hZQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d7b2aa3834b82b1cbe899a48"
         },
         {
@@ -17994,6 +18010,12 @@
           },
           "durationMs": 152184,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "fPYUIaI4lsg",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC3b9OZ16ZaKEXbJ2xq7J4DQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02a0cbc5f07d3a807b85fafe55"
         },
         {
@@ -18963,6 +18985,14 @@
           },
           "durationMs": 180923,
           "explicit": false,
+          "youtubeMusic": {
+            "audioVideoId": "jwItOVMFP2s",
+            "audioConfidence": 100,
+            "videoId": "lDpXhLzJQsA",
+            "videoConfidence": 99,
+            "confidence": 100,
+            "artistBrowseId": "UCkQ6jNdLeiwqUdMIY7QiXUg"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02d55cc116abf2fe8ab2e0d227"
         },
         {
@@ -24032,7 +24062,7 @@
         },
         {
           "position": 46,
-          "id": "levyra-0212b4c8036ae7ca6989",
+          "id": "levyra-e58c98ea589fa449e1d7",
           "title": "Tere Bina",
           "artists": [
             {
@@ -24049,12 +24079,12 @@
             }
           ],
           "album": {
-            "name": "The Best of A.R. Rahman - Music and Magic from the Composer of Slumdog Millionaire",
-            "releaseDate": "2009-02-19"
+            "name": "Guru (Original Motion Picture Soundtrack)",
+            "releaseDate": "2006-09-11"
           },
           "durationMs": 309640,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0280c96c6704190fa75a8b9860"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020504fdf58bae8cd52dd13047"
         },
         {
           "position": 47,
@@ -24545,7 +24575,7 @@
           "durationMs": 225153,
           "explicit": false,
           "youtubeMusic": {
-            "audioVideoId": "q2CQyOjI6K8",
+            "audioVideoId": "G_EgkHCayU0",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UC2ArcMzVC3E4X_hTXpQNzlg"
@@ -26195,11 +26225,11 @@
           ],
           "album": {
             "name": "Tình Mình Lạ Kì",
-            "releaseDate": "2026-01-21"
+            "releaseDate": "2021-07-11"
           },
           "durationMs": 300750,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02c5336e2fba1a96d84161ce99"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02921051f4f50a3d20946afb16"
         },
         {
           "position": 37,
@@ -26441,26 +26471,29 @@
         },
         {
           "position": 47,
-          "id": "levyra-50adcb205c108ed5f4ed",
-          "title": "24h",
+          "id": "levyra-a72a886ba586ee413e49",
+          "title": "24H",
           "artists": [
             {
               "name": "Lyly"
+            },
+            {
+              "name": "Magazine"
             }
           ],
           "album": {
-            "name": "24h",
-            "releaseDate": "2020-10-28"
+            "name": "24H",
+            "releaseDate": "2020-04-25"
           },
-          "durationMs": 257000,
-          "explicit": false,
+          "durationMs": 256905,
+          "explicit": true,
           "youtubeMusic": {
             "audioVideoId": "w8DEtCin4uI",
             "audioConfidence": 100,
             "confidence": 100,
             "artistBrowseId": "UCtc2b3gvR1OjvaOScz3QM0Q"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02f9a33a39e11f920fabf6a5b0"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02fa10ce68802568a9f53ecb8a"
         },
         {
           "position": 48,
@@ -27424,8 +27457,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
