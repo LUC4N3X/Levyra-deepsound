@@ -752,7 +752,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         player.setSkipSilence(settings.skipSilence)
-        player.setPremiumAudioSettings(settings.audioSettings)
+        player.setPremiumAudioSettings(settings.audioSettings, settings.audioNormalization)
         player.setPlayback(settings.audioSettings.playbackSpeed, settings.audioSettings.pitch)
         player.onCompletion = { onTrackCompleted() }
         player.onRecoverableStreamError = { track, positionMs, videoMode, playWhenReady, errorMessage ->
@@ -2445,7 +2445,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         }
         applyLanguageContent(snapshot.languageCode, refreshRemote = true)
         player.setSkipSilence(snapshot.skipSilence)
-        player.setPremiumAudioSettings(snapshot.audioSettings)
+        player.setPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)
         player.setPlayback(snapshot.audioSettings.playbackSpeed, snapshot.audioSettings.pitch)
         com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = snapshot.audioNormalization || snapshot.audioSettings.replayGainEnabled
         resolver.setAudioQuality(snapshot.audioQuality)

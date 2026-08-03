@@ -167,7 +167,7 @@ class PlaybackService : MediaLibraryService() {
 
         fun applyPremiumAudioSettings(
             settings: LevyraAudioSettings,
-            audioNormalization: Boolean = normalizationProcessor.enabled
+            audioNormalization: Boolean
         ) {
             val normalized = settings.normalized()
             equalizerProcessor.enabled = normalized.equalizerEnabled

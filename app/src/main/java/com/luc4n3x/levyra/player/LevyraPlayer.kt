@@ -236,7 +236,7 @@ class LevyraPlayer(context: Context) {
 
     fun setPremiumAudioSettings(
         settings: LevyraAudioSettings,
-        audioNormalization: Boolean = PlaybackService.normalizationProcessor.enabled
+        audioNormalization: Boolean
     ) {
         audioSettings = settings.normalized()
         controller?.let { applyPlaybackParameters(it) }
