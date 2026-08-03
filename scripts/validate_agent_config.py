@@ -14,11 +14,13 @@ REQUIRED_FILES = (
     "app/AGENTS.md",
     "desktop/AGENTS.md",
     ".github/AGENTS.md",
+    "docs/README.md",
     "docs/AGENTS.md",
-    "SPEC.md",
-    "ROADMAP.md",
-    "TASKS.md",
     "docs/ARCHITECTURE.md",
+    "docs/project/README.md",
+    "docs/project/SPEC.md",
+    "docs/project/ROADMAP.md",
+    "docs/project/TASKS.md",
     ".agents/README.md",
     "docs/ai/README.md",
     "docs/ai/WORKFLOW.md",
@@ -26,10 +28,19 @@ REQUIRED_FILES = (
     "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
 )
 
+FORBIDDEN_DUPLICATE_FILES = (
+    "SPEC.md",
+    "ROADMAP.md",
+    "TASKS.md",
+)
+
 REFERENCE_FILES = (
     "AGENTS.md",
     ".agents/README.md",
+    "docs/AGENTS.md",
     "docs/ai/README.md",
+    "docs/ai/WORKFLOW.md",
+    "docs/ai/OPENCLAW.md",
     "docs/ai/CHATGPT_PROJECT_INSTRUCTIONS.md",
 )
 
@@ -77,6 +88,13 @@ def main() -> int:
         path = ROOT / relative_path
         if not path.is_file():
             errors.append(f"missing required file: {relative_path}")
+
+    for relative_path in FORBIDDEN_DUPLICATE_FILES:
+        path = ROOT / relative_path
+        if path.exists():
+            errors.append(
+                f"obsolete root planning file must be removed: {relative_path}"
+            )
 
     skills_root = ROOT / ".agents" / "skills"
     skill_paths = sorted(skills_root.glob("*/SKILL.md"))
@@ -149,7 +167,8 @@ def main() -> int:
         "Agent configuration validation passed: "
         f"{len(REQUIRED_FILES)} required files, "
         f"{len(actual_skills)} native skills, "
-        f"{len(referenced_skills)} documented skill references."
+        f"{len(referenced_skills)} documented skill references, "
+        "no duplicate root planning files."
     )
     return 0
 

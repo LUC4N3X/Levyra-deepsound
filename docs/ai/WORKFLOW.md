@@ -10,9 +10,9 @@ The repository keeps four responsibilities separate:
 | File | Responsibility |
 | --- | --- |
 | `AGENTS.md` and nested variants | Durable operating rules loaded by coding agents |
-| `SPEC.md` | Approved product and engineering requirements |
-| `ROADMAP.md` | Ordered outcomes, risks, and phase exit criteria |
-| `TASKS.md` | One active reviewable phase and its truthful validation state |
+| `docs/project/SPEC.md` | Approved product and engineering requirements |
+| `docs/project/ROADMAP.md` | Ordered outcomes, risks, and phase exit criteria |
+| `docs/project/TASKS.md` | One active reviewable phase and its truthful validation state |
 
 Native skills under `.agents/skills/` define repeatable workflows. Detailed
 domain playbooks remain under `.claude/skills/` and `.claude/rules/` where
@@ -24,7 +24,8 @@ existing OpenAI skills reference them.
    - Inspect the real repository, branch, worktree, current diff, architecture,
      tests, build files, and workflows.
    - Read root and nearest `AGENTS.md` files.
-   - Read `SPEC.md`, `ROADMAP.md`, and the active phase in `TASKS.md`.
+   - Read `docs/project/SPEC.md`, `docs/project/ROADMAP.md`, and the active phase
+     in `docs/project/TASKS.md`.
    - Load every matching native skill.
 
 2. **Define the phase**
@@ -32,8 +33,8 @@ existing OpenAI skills reference them.
    - Identify behavior that must remain unchanged.
    - Map the work to specification requirements and roadmap outcomes.
    - Record acceptance criteria, automated checks, manual checks, rollback, and
-     owner checkpoints in `TASKS.md` when the task is large enough to require a
-     tracked phase.
+     owner checkpoints in `docs/project/TASKS.md` when the task is large enough
+     to require a tracked phase.
 
 3. **Plan**
    - Trace the current control and data flow.
@@ -73,8 +74,9 @@ existing OpenAI skills reference them.
    - Check for unrelated edits, generated files, binaries, secrets, conflict
      markers, accidental version changes, duplicated sources of truth, and
      misleading documentation.
-   - Verify that `SPEC.md`, `ROADMAP.md`, `TASKS.md`, architecture, and user
-     documentation remain synchronized where affected.
+   - Verify that `docs/project/SPEC.md`, `docs/project/ROADMAP.md`,
+     `docs/project/TASKS.md`, architecture, and user documentation remain
+     synchronized where affected.
 
 8. **Independent review**
    - Use `levyra-pr-review` on the latest commit.
@@ -99,7 +101,9 @@ existing OpenAI skills reference them.
 
 11. **Owner-controlled completion**
     - Merge only after the final diff, CI, applicable security checks,
-      independent review, review threads, and required manual checks are clean.
+      independent review, review threads, and required manual checks are clean,
+      unless the owner explicitly authorizes a narrower documentation-only
+      exception for the exact change.
     - Tagging, publishing, releases, store metadata, and repository settings are
       separate explicit owner actions.
 

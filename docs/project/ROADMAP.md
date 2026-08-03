@@ -4,7 +4,8 @@
 
 This roadmap orders durable engineering outcomes. It is not a release calendar
 and does not authorize implementation by itself. The active reviewable phase,
-owner decisions, and validation state are recorded in `TASKS.md`.
+owner decisions, and validation state are recorded in
+[`TASKS.md`](TASKS.md).
 
 A task may span several roadmap tracks, but direct playback reliability, user
 data safety, privacy, and explicit user choices always take precedence over
@@ -157,8 +158,9 @@ results, accidental publication, and misleading release evidence.
 ### Outcomes
 
 - `AGENTS.md` defines durable repository and path contracts.
-- `SPEC.md`, `ROADMAP.md`, and `TASKS.md` keep requirements, sequencing, and
-  current work separate.
+- `docs/project/SPEC.md`, `docs/project/ROADMAP.md`, and
+  `docs/project/TASKS.md` keep requirements, sequencing, and current work
+  separate.
 - Native skills encode repeatable Levyra workflows instead of generic advice.
 - ChatGPT, Codex, Claude Code, and OpenClaw use the same repository facts while
   retaining separate permission and publication boundaries.
@@ -192,5 +194,5 @@ When priorities conflict, use this order:
 6. release and repository integrity;
 7. optional enrichment and visual polish.
 
-Update `TASKS.md` when activating a phase. Update this roadmap only when the
-ordered outcomes, risks, or exit criteria themselves change.
+Update [`TASKS.md`](TASKS.md) when activating a phase. Update this roadmap only
+when the ordered outcomes, risks, or exit criteria themselves change.

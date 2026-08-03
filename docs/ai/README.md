@@ -7,9 +7,10 @@ without conflicting instruction trees or publication permissions.
 
 ```text
 AGENTS.md                         shared repository contract
-SPEC.md                           approved requirements and non-goals
-ROADMAP.md                        ordered outcomes, risks and exit criteria
-TASKS.md                          active reviewable phase and validation state
+docs/README.md                    documentation index
+docs/project/SPEC.md              approved requirements and non-goals
+docs/project/ROADMAP.md           ordered outcomes, risks and exit criteria
+docs/project/TASKS.md             active reviewable phase and validation state
 app/AGENTS.md                     Android rules
 desktop/AGENTS.md                 Windows Desktop rules
 .github/AGENTS.md                 CI/workflow rules
@@ -28,17 +29,22 @@ from the project root toward the current working directory. Files under
 
 The planning files have distinct responsibilities:
 
-- `SPEC.md` states durable approved behavior.
-- `ROADMAP.md` orders outcomes and risks but does not authorize implementation
-  or release.
-- `TASKS.md` tracks one active reviewable phase and direct validation evidence.
+- `docs/project/SPEC.md` states durable approved behavior.
+- `docs/project/ROADMAP.md` orders outcomes and risks but does not authorize
+  implementation or release.
+- `docs/project/TASKS.md` tracks one active reviewable phase and direct
+  validation evidence.
+
+See [`../README.md`](../README.md) for the complete documentation map and
+[`../project/README.md`](../project/README.md) for the planning-document model.
 
 ## Codex setup
 
 1. Open or clone the repository.
 2. Start Codex from the repository root or a directory inside it.
 3. Codex loads root `AGENTS.md` and any nearer path-specific `AGENTS.md`.
-4. Read `SPEC.md`, the relevant roadmap track, and active task phase.
+4. Read `docs/project/SPEC.md`, the relevant roadmap track, and active task
+   phase.
 5. Use the most specific native skill or skills for the task.
 6. Inspect current code, tests and detailed playbooks before editing.
 7. Make the smallest coherent change and report validation truthfully.
@@ -63,10 +69,11 @@ Native skills:
 Recommended orientation prompt:
 
 ```text
-Read the applicable AGENTS.md files, SPEC.md, ROADMAP.md and TASKS.md. Use the
-most specific Levyra native skills. Inspect current code and tests before making
-assumptions. Describe the verified behavior, root cause or rationale, intended
-files, preserved behavior, risks and validation plan before editing.
+Read the applicable AGENTS.md files, docs/project/SPEC.md,
+docs/project/ROADMAP.md and docs/project/TASKS.md. Use the most specific Levyra
+native skills. Inspect current code and tests before making assumptions.
+Describe the verified behavior, root cause or rationale, intended files,
+preserved behavior, risks and validation plan before editing.
 ```
 
 ## ChatGPT setup
@@ -123,7 +130,7 @@ See `docs/ai/OPENCLAW.md`.
 | Assistant | Primary role | Main configuration |
 | --- | --- | --- |
 | ChatGPT Project | Requirements, investigation, architecture, planning, PR interpretation and coding-task preparation | Project instructions plus connected repository |
-| Codex | Focused implementation, tests, validation, commits, branches and pull requests when authorized | root/path `AGENTS.md`, planning files and `.agents/skills/` |
+| Codex | Focused implementation, tests, validation, commits, branches and pull requests when authorized | root/path `AGENTS.md`, `docs/project/` and `.agents/skills/` |
 | Claude Code | Implementation and independent review using Claude-specific hooks, agents, permissions and plugins | `.claude/` plus repository planning files |
 | OpenClaw | Explicit delegation, status collection, recurring read-only checks and handoff between configured agents | dedicated Levyra workspace, project skills and narrow tool policy |
 | Owner | Scope, publication authorization, merge, release and repository settings | Direct human decision |
@@ -164,9 +171,10 @@ The existing PR workflow runs the same command before the Android gate.
 
 - Update root `AGENTS.md` for shared repository-wide invariants.
 - Update the nearest nested `AGENTS.md` for platform/path constraints.
-- Update `SPEC.md` when approved durable requirements change.
-- Update `ROADMAP.md` when ordered outcomes, risks, or exit criteria change.
-- Replace the active phase in `TASKS.md` when new work begins.
+- Update `docs/project/SPEC.md` when approved durable requirements change.
+- Update `docs/project/ROADMAP.md` when ordered outcomes, risks, or exit criteria
+  change.
+- Replace the active phase in `docs/project/TASKS.md` when new work begins.
 - Update one native skill for a repeatable task workflow.
 - Update `docs/ARCHITECTURE.md` for architecture or ownership changes.
 - Update the narrowest detailed `.claude/rules/` or `.claude/skills/` playbook
