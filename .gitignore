@@ -19,5 +19,8 @@ __pycache__/
 .claude/
 skills-lock.json
 
+# Local build diagnostics
+/[Bb]uild log.txt
+
 # Claude Code personal overrides (shared config lives in .claude/settings.json)
 .claude/settings.local.json
