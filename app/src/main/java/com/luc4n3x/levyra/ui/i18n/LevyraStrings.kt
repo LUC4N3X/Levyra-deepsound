@@ -118,6 +118,14 @@ class LevyraStrings private constructor(
     val preset: String get() = value("preset")
     val bassBoost: String get() = value("bassBoost")
     val virtualizer: String get() = value("virtualizer")
+    val preamp: String get() = if (code == "it") "Preamp" else "Preamp"
+    val truePeakLimiter: String get() = when (code) {
+        "it" -> "Limiter true-peak"
+        "es" -> "Limitador true-peak"
+        "fr" -> "Limiteur true-peak"
+        "de" -> "True-Peak-Limiter"
+        else -> "True-peak limiter"
+    }
     val crossfade: String get() = value("crossfade")
     val djSoft: String get() = value("djSoft")
     val replayGain: String get() = value("replayGain")
@@ -198,6 +206,12 @@ class LevyraStrings private constructor(
     val lyricsPage: String get() = value("lyricsPage")
     val lyricsRomanization: String get() = value("lyricsRomanization")
     val lyricsCompact: String get() = value("lyricsCompact")
+    val changeLyrics: String get() = lyricsActionText("change")
+    val automaticLyrics: String get() = lyricsActionText("automatic")
+    val selectVerses: String get() = lyricsActionText("select")
+    val copyVerses: String get() = lyricsActionText("copy")
+    val shareVerses: String get() = lyricsActionText("share")
+    val lyricsVersions: String get() = lyricsActionText("versions")
     val lyricsSections: String get() = value("lyricsSections")
     val lyricsSectionIntro: String get() = value("lyricsSectionIntro")
     val lyricsSectionVerse: String get() = value("lyricsSectionVerse")
@@ -367,6 +381,20 @@ class LevyraStrings private constructor(
     val statPlays: String get() = value("statPlays")
     val statArtists: String get() = value("statArtists")
     val statTracks: String get() = value("statTracks")
+
+    private fun lyricsActionText(key: String): String {
+        val localized = when (code) {
+            "it" -> mapOf("change" to "Cambia testo", "automatic" to "Automatico", "select" to "Seleziona versi", "copy" to "Copia", "share" to "Condividi", "versions" to "Versioni del testo")
+            "es" -> mapOf("change" to "Cambiar letra", "automatic" to "Automático", "select" to "Seleccionar versos", "copy" to "Copiar", "share" to "Compartir", "versions" to "Versiones de la letra")
+            "fr" -> mapOf("change" to "Changer les paroles", "automatic" to "Automatique", "select" to "Sélectionner des lignes", "copy" to "Copier", "share" to "Partager", "versions" to "Versions des paroles")
+            "de" -> mapOf("change" to "Liedtext ändern", "automatic" to "Automatisch", "select" to "Zeilen auswählen", "copy" to "Kopieren", "share" to "Teilen", "versions" to "Liedtextversionen")
+            "pt" -> mapOf("change" to "Alterar letra", "automatic" to "Automático", "select" to "Selecionar versos", "copy" to "Copiar", "share" to "Compartilhar", "versions" to "Versões da letra")
+            "ar" -> mapOf("change" to "تغيير الكلمات", "automatic" to "تلقائي", "select" to "تحديد المقاطع", "copy" to "نسخ", "share" to "مشاركة", "versions" to "إصدارات الكلمات")
+            "zh" -> mapOf("change" to "更换歌词", "automatic" to "自动", "select" to "选择歌词行", "copy" to "复制", "share" to "分享", "versions" to "歌词版本")
+            else -> mapOf("change" to "Change lyrics", "automatic" to "Automatic", "select" to "Select verses", "copy" to "Copy", "share" to "Share", "versions" to "Lyrics versions")
+        }
+        return localized.getValue(key)
+    }
     val levyraSelection: String get() = value("levyraSelection")
     val releasedToday: String get() = value("releasedToday")
     val justReleased: String get() = value("justReleased")

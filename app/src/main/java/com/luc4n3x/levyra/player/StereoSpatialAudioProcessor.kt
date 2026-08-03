@@ -21,7 +21,7 @@ class StereoSpatialAudioProcessor : AudioProcessor {
     private var inputEnded = false
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         this.inputAudioFormat = inputAudioFormat
@@ -41,7 +41,11 @@ class StereoSpatialAudioProcessor : AudioProcessor {
         }
         val output = replaceOutputBuffer(size)
         if (strength > 0 && inputAudioFormat.channelCount == 2) {
-            processStereo(inputBuffer.asReadOnlyBuffer(), output)
+            if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) {
+                processStereoFloat(inputBuffer.asReadOnlyBuffer(), output)
+            } else {
+                processStereo(inputBuffer.asReadOnlyBuffer(), output)
+            }
         } else {
             output.put(inputBuffer)
         }
@@ -96,6 +100,23 @@ class StereoSpatialAudioProcessor : AudioProcessor {
             val side = (left - right) * 0.5f * sideGain
             output.putShort(clampSample(mid + side))
             output.putShort(clampSample(mid - side))
+        }
+        while (input.hasRemaining()) output.put(input.get())
+    }
+
+    private fun processStereoFloat(input: ByteBuffer, output: ByteBuffer) {
+        input.order(ByteOrder.LITTLE_ENDIAN)
+        output.order(ByteOrder.LITTLE_ENDIAN)
+        val amount = strength / 100f
+        val midGain = 1f - amount * 0.08f
+        val sideGain = 1f + amount * 0.75f
+        while (input.remaining() >= 8) {
+            val left = input.float
+            val right = input.float
+            val mid = (left + right) * 0.5f * midGain
+            val side = (left - right) * 0.5f * sideGain
+            output.putFloat(mid + side)
+            output.putFloat(mid - side)
         }
         while (input.hasRemaining()) output.put(input.get())
     }

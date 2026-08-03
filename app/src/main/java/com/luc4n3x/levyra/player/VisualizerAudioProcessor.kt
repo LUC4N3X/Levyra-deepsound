@@ -25,7 +25,7 @@ class VisualizerAudioProcessor : AudioProcessor {
     private var inputEnded = false
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         this.inputAudioFormat = inputAudioFormat
@@ -68,7 +68,8 @@ class VisualizerAudioProcessor : AudioProcessor {
     private fun extractWaveform(buffer: ByteBuffer) {
         buffer.order(ByteOrder.LITTLE_ENDIAN)
 
-        val sampleCount = buffer.remaining() / 2
+        val bytesPerSample = if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) 4 else 2
+        val sampleCount = buffer.remaining() / bytesPerSample
         if (sampleCount <= 0) return
 
         val decimationFactor = maxOf(1, sampleCount / BARS_COUNT)
@@ -82,8 +83,12 @@ class VisualizerAudioProcessor : AudioProcessor {
             var count = 0
 
             repeat(decimationFactor) {
-                if (buffer.remaining() >= 2) {
-                    val sample = buffer.short.toFloat() / Short.MAX_VALUE.toFloat()
+                if (buffer.remaining() >= bytesPerSample) {
+                    val sample = if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) {
+                        buffer.float
+                    } else {
+                        buffer.short.toFloat() / Short.MAX_VALUE.toFloat()
+                    }
                     sum += abs(sample)
                     count++
                 }

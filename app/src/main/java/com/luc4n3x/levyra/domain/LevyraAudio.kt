@@ -14,6 +14,8 @@ data class LevyraAudioSettings(
     val bandLevels: List<Int> = LevyraAudioPresets.flatLevels,
     val bassBoost: Int = 0,
     val virtualizer: Int = 0,
+    val preampDb: Float = -3f,
+    val limiterEnabled: Boolean = true,
     val crossfadeSeconds: Int = 0,
     val djSoftMode: Boolean = false,
     val replayGainEnabled: Boolean = false,
@@ -29,6 +31,7 @@ data class LevyraAudioSettings(
             bandLevels = levels.map { it.coerceIn(-100, 100) },
             bassBoost = bassBoost.coerceIn(0, 100),
             virtualizer = virtualizer.coerceIn(0, 100),
+            preampDb = preampDb.coerceIn(-12f, 3f),
             crossfadeSeconds = crossfadeSeconds.coerceIn(0, 12),
             playbackSpeed = playbackSpeed.coerceIn(0.5f, 2.0f),
             pitch = pitch.coerceIn(0.5f, 2.0f)

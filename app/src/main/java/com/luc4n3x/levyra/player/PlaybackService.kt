@@ -6,9 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.media.AudioManager
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.media3.common.AudioAttributes
@@ -91,6 +94,10 @@ class PlaybackService : MediaLibraryService() {
     private var lastPlaybackExpected: Boolean? = null
     private var lastPlaybackHeartbeatAtMs = 0L
     private var appliedPlayerWakeMode = C.WAKE_MODE_NETWORK
+    private val audioDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) = refreshAudioOutputProfile()
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) = refreshAudioOutputProfile()
+    }
 
     companion object {
         private const val RUNNING_LOW_LEVEL = 10
@@ -146,14 +153,20 @@ class PlaybackService : MediaLibraryService() {
         fun consumePreparedQueueNext(trackId: String) = Unit
 
         val normalizationProcessor = NormalizationAudioProcessor()
+        val equalizerProcessor = LevyraEqualizerAudioProcessor()
         val spatialAudioProcessor = StereoSpatialAudioProcessor()
+        val limiterProcessor = TruePeakLimiterAudioProcessor()
         val visualizerProcessor = VisualizerAudioProcessor()
-        val premiumAudioEffects = PremiumAudioEffects()
 
         fun applyPremiumAudioSettings(settings: LevyraAudioSettings) {
             val normalized = settings.normalized()
+            equalizerProcessor.enabled = normalized.equalizerEnabled
+            equalizerProcessor.setBandLevels(normalized.bandLevels)
+            equalizerProcessor.bassBoost = normalized.bassBoost
+            equalizerProcessor.preampDb = normalized.preampDb
             spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
-            premiumAudioEffects.apply(normalized)
+            limiterProcessor.enabled = normalized.limiterEnabled &&
+                (normalized.equalizerEnabled || normalized.virtualizer > 0 || normalized.replayGainEnabled)
         }
     }
 
@@ -219,7 +232,7 @@ class PlaybackService : MediaLibraryService() {
                 return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(enableFloatOutput)
                     .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-                    .setAudioProcessors(arrayOf(normalizationProcessor, spatialAudioProcessor, visualizerProcessor))
+                    .setAudioProcessors(arrayOf(normalizationProcessor, equalizerProcessor, spatialAudioProcessor, limiterProcessor, visualizerProcessor))
                     .build()
             }
         }
@@ -239,27 +252,13 @@ class PlaybackService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
-        val audioSessionId = runCatching {
-            val manager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            manager.generateAudioSessionId().takeIf { it > 0 } ?: 0
-        }.getOrDefault(0)
-        val attachedAudioSessionId = if (audioSessionId > 0) {
-            runCatching {
-                player.javaClass.getMethod("setAudioSessionId", Int::class.javaPrimitiveType).invoke(player, audioSessionId)
-                audioSessionId
-            }.getOrDefault(0)
-        } else {
-            0
-        }
         val prefs = LevyraPreferences(this)
         val snapshot = prefs.snapshot()
         player.skipSilenceEnabled = snapshot.skipSilence
         normalizationProcessor.enabled = snapshot.audioNormalization || snapshot.audioSettings.replayGainEnabled
-        val resolvedAudioSessionId = attachedAudioSessionId.takeIf { it > 0 } ?: runCatching {
-            player.javaClass.getMethod("getAudioSessionId").invoke(player) as? Int ?: 0
-        }.getOrDefault(0)
-        premiumAudioEffects.bind(resolvedAudioSessionId)
         applyPremiumAudioSettings(snapshot.audioSettings)
+        (getSystemService(Context.AUDIO_SERVICE) as AudioManager).registerAudioDeviceCallback(audioDeviceCallback, null)
+        refreshAudioOutputProfile()
 
         activePlayer = player
         player.addListener(object : Player.Listener {
@@ -725,9 +724,27 @@ class PlaybackService : MediaLibraryService() {
         }
         activePlayer = null
         mediaSession = null
-        premiumAudioEffects.release()
+        runCatching {
+            (getSystemService(Context.AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(audioDeviceCallback)
+        }
         super.onDestroy()
     }
+
+    private fun refreshAudioOutputProfile() {
+        val manager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val types = manager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.toSet()
+        equalizerProcessor.outputProfile = when {
+            types.any { it == AudioDeviceInfo.TYPE_USB_DEVICE || it == AudioDeviceInfo.TYPE_USB_HEADSET || it == AudioDeviceInfo.TYPE_USB_ACCESSORY } -> LevyraEqualizerAudioProcessor.OutputProfile.USB
+            types.any { it == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || it == AudioDeviceInfo.TYPE_WIRED_HEADSET || it == AudioDeviceInfo.TYPE_LINE_ANALOG } -> LevyraEqualizerAudioProcessor.OutputProfile.WIRED
+            types.any(::isBluetoothOutputType) -> LevyraEqualizerAudioProcessor.OutputProfile.BLUETOOTH
+            else -> LevyraEqualizerAudioProcessor.OutputProfile.SPEAKER
+        }
+    }
+
+    private fun isBluetoothOutputType(type: Int): Boolean =
+        type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            (type == AudioDeviceInfo.TYPE_BLE_HEADSET || type == AudioDeviceInfo.TYPE_BLE_SPEAKER)
 
     private fun updatePlaybackProtection(player: Player) {
         (player as? ExoPlayer)?.let { updatePlayerWakeMode(it, it.currentMediaItem) }

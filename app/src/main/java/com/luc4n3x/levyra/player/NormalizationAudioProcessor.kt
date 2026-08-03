@@ -52,7 +52,7 @@ class NormalizationAudioProcessor : AudioProcessor {
     }
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
-        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT && inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
         this.inputAudioFormat = inputAudioFormat
@@ -73,7 +73,11 @@ class NormalizationAudioProcessor : AudioProcessor {
         }
         val output = replaceOutputBuffer(size)
         if (enabled) {
-            normalizePcm16(inputBuffer.asReadOnlyBuffer(), output, size)
+            if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT) {
+                normalizePcmFloat(inputBuffer.asReadOnlyBuffer(), output, size)
+            } else {
+                normalizePcm16(inputBuffer.asReadOnlyBuffer(), output, size)
+            }
         } else {
             output.put(inputBuffer)
         }
@@ -125,6 +129,40 @@ class NormalizationAudioProcessor : AudioProcessor {
             output.putShort(processed.toShort())
         }
         if (input.hasRemaining()) output.put(input.get())
+    }
+
+    private fun normalizePcmFloat(input: ByteBuffer, output: ByteBuffer, size: Int) {
+        input.order(ByteOrder.LITTLE_ENDIAN)
+        output.order(ByteOrder.LITTLE_ENDIAN)
+        val alignedSize = size - size % 4
+        val sampleCount = alignedSize / 4
+        if (sampleCount <= 0) {
+            while (input.hasRemaining()) output.put(input.get())
+            return
+        }
+        updateGain(input, sampleCount, floatInput = true)
+        repeat(sampleCount) { output.putFloat(input.float * currentGain) }
+        while (input.hasRemaining()) output.put(input.get())
+    }
+
+    private fun updateGain(input: ByteBuffer, sampleCount: Int, floatInput: Boolean) {
+        val fixedGain = metadataGain()
+        if (fixedGain != null) {
+            targetGain = fixedGain
+            currentGain += (targetGain - currentGain) * metadataSmoothing
+            return
+        }
+        val startPosition = input.position()
+        var sumSquares = 0.0
+        repeat(sampleCount) {
+            val sample = if (floatInput) input.float else input.short.toFloat() / Short.MAX_VALUE.toFloat()
+            sumSquares += sample * sample
+        }
+        input.position(startPosition)
+        val rms = sqrt(sumSquares / sampleCount).toFloat()
+        targetGain = if (rms <= silenceRms) 1.0f else (targetRms / rms).coerceIn(minGain, maxBoost)
+        val smoothing = if (targetGain < currentGain) cutSmoothing else boostSmoothing
+        currentGain += (targetGain - currentGain) * smoothing
     }
 
     override fun queueEndOfStream() {

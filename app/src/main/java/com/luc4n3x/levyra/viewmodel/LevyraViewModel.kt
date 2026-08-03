@@ -325,11 +325,14 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     private var motionArtworkPrefetchJob: Job? = null
     private var sleepJob: Job? = null
     private var crossfadeJob: Job? = null
+    private var audioSettingsPersistJob: Job? = null
     private var crossfadeInProgress = false
     private var lyricsJob: Job? = null
+    private var lyricsVersionsJob: Job? = null
     private var lyricsPrefetchJob: Job? = null
     private var lyricsTrackId: String = ""
     private var lyricsRequestGeneration = 0L
+    private var lyricsVersionsGeneration = 0L
     private var sponsorJob: Job? = null
     private var listPrefetchJob: Job? = null
     private var updateJob: Job? = null
@@ -1660,6 +1663,28 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
         updateAudioSettings(_state.value.audioSettings.copy(equalizerEnabled = true, bassBoost = value))
     }
 
+    fun setEqualizerBand(index: Int, value: Int) {
+        if (index !in 0 until LevyraAudioPresets.bandCount) return
+        val levels = _state.value.audioSettings.bandLevels.toMutableList()
+        if (levels.size != LevyraAudioPresets.bandCount) return
+        levels[index] = value.coerceIn(-100, 100)
+        updateAudioSettings(
+            _state.value.audioSettings.copy(
+                equalizerEnabled = true,
+                presetId = LevyraAudioPresets.FLAT,
+                bandLevels = levels
+            )
+        )
+    }
+
+    fun setPreampDb(value: Float) {
+        updateAudioSettings(_state.value.audioSettings.copy(preampDb = value))
+    }
+
+    fun setLimiterEnabled(value: Boolean) {
+        updateAudioSettings(_state.value.audioSettings.copy(limiterEnabled = value))
+    }
+
     fun setVirtualizer(value: Int) {
         updateAudioSettings(_state.value.audioSettings.copy(equalizerEnabled = true, virtualizer = value))
     }
@@ -1698,7 +1723,11 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun updateAudioSettings(next: LevyraAudioSettings, audioNormalization: Boolean = _state.value.audioNormalization) {
         val normalized = next.normalized()
-        preferences.setAudioSettings(normalized)
+        audioSettingsPersistJob?.cancel()
+        audioSettingsPersistJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(120L)
+            preferences.setAudioSettings(normalized)
+        }
         player.setPremiumAudioSettings(normalized)
         player.setPlayback(normalized.playbackSpeed, normalized.pitch)
         com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = audioNormalization || normalized.replayGainEnabled
@@ -4979,7 +5008,105 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun closeLyrics() {
+        lyricsVersionsJob?.cancel()
+        lyricsVersionsGeneration++
         _state.update { it.copy(showLyrics = false) }
+    }
+
+    fun loadLyricsVersions() {
+        val track = _state.value.currentTrack ?: return
+        lyricsVersionsJob?.cancel()
+        val generation = ++lyricsVersionsGeneration
+        val trackIdentity = playbackIdentity(track)
+        _state.update { it.copy(lyricsVersionsLoading = true) }
+        lyricsVersionsJob = viewModelScope.launch {
+            try {
+                val versions = lyricsRepository.versions(
+                    title = track.title,
+                    artist = track.artist,
+                    durationSec = track.durationMs / 1_000L,
+                    album = track.album,
+                    videoId = youtubePlayableTrack(track)?.id.orEmpty(),
+                    languageCode = _state.value.languageCode,
+                    translate = _state.value.lyricsTranslationEnabled
+                )
+                val currentIdentity = _state.value.currentTrack?.let(::playbackIdentity)
+                if (generation != lyricsVersionsGeneration || currentIdentity != trackIdentity) return@launch
+                _state.update {
+                    it.copy(
+                        lyricsVersions = versions,
+                        lyricsVersionsLoading = false,
+                        lyricsManualSelection = versions.any { version -> version.selected }
+                    )
+                }
+            } finally {
+                val currentIdentity = _state.value.currentTrack?.let(::playbackIdentity)
+                if (generation == lyricsVersionsGeneration && currentIdentity == trackIdentity) {
+                    _state.update { it.copy(lyricsVersionsLoading = false) }
+                }
+            }
+        }
+    }
+
+    fun selectLyricsVersion(version: LyricsRepository.LyricsVersion) {
+        val track = _state.value.currentTrack ?: return
+        lyricsVersionsJob?.cancel()
+        val generation = ++lyricsVersionsGeneration
+        val trackIdentity = playbackIdentity(track)
+        lyricsVersionsJob = viewModelScope.launch {
+            val result = lyricsRepository.selectVersion(
+                title = track.title,
+                artist = track.artist,
+                durationSec = track.durationMs / 1_000L,
+                album = track.album,
+                videoId = youtubePlayableTrack(track)?.id.orEmpty(),
+                languageCode = _state.value.languageCode,
+                translate = _state.value.lyricsTranslationEnabled,
+                version = version
+            ) ?: return@launch
+            val currentIdentity = _state.value.currentTrack?.let(::playbackIdentity)
+            if (generation != lyricsVersionsGeneration || currentIdentity != trackIdentity) return@launch
+            lyricsTrackId = trackIdentity
+            _state.update {
+                it.copy(
+                    lyrics = result.lines,
+                    lyricsSections = result.sections,
+                    lyricsSynced = result.synced,
+                    lyricsProvider = result.provider,
+                    lyricsConfidence = result.confidence,
+                    lyricsCached = result.cached,
+                    lyricsManualSelection = true,
+                    lyricsVersions = it.lyricsVersions.map { candidate ->
+                        candidate.copy(selected = candidate.id == version.id)
+                    }
+                )
+            }
+            val intelligence = withContext(Dispatchers.Default) { localIntelligence.analyze(track, result.lines) }
+            if (generation == lyricsVersionsGeneration && _state.value.currentTrack?.let(::playbackIdentity) == trackIdentity) {
+                _state.update { it.copy(intelligenceSummary = intelligence) }
+            }
+        }
+    }
+
+    fun useAutomaticLyrics() {
+        val track = _state.value.currentTrack ?: return
+        lyricsVersionsJob?.cancel()
+        val generation = ++lyricsVersionsGeneration
+        val trackIdentity = playbackIdentity(track)
+        lyricsVersionsJob = viewModelScope.launch {
+            lyricsRepository.useAutomatic(
+                title = track.title,
+                artist = track.artist,
+                durationSec = track.durationMs / 1_000L,
+                album = track.album,
+                videoId = youtubePlayableTrack(track)?.id.orEmpty(),
+                languageCode = _state.value.languageCode,
+                translate = _state.value.lyricsTranslationEnabled
+            )
+            if (generation != lyricsVersionsGeneration || _state.value.currentTrack?.let(::playbackIdentity) != trackIdentity) return@launch
+            _state.update { it.copy(lyricsManualSelection = false, lyricsVersions = emptyList()) }
+            fetchLyrics(track)
+        }
     }
 
     private fun fetchLyrics(track: Track) {
@@ -4995,6 +5122,9 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                 lyricsProvider = if (preserveVisibleLyrics) it.lyricsProvider else "",
                 lyricsConfidence = if (preserveVisibleLyrics) it.lyricsConfidence else 0,
                 lyricsCached = if (preserveVisibleLyrics) it.lyricsCached else false,
+                lyricsVersions = emptyList(),
+                lyricsVersionsLoading = false,
+                lyricsManualSelection = if (preserveVisibleLyrics) it.lyricsManualSelection else false,
                 lyricsLoading = true,
                 intelligenceSummary = if (preserveVisibleLyrics) it.intelligenceSummary else com.luc4n3x.levyra.domain.LevyraIntelligenceSummary()
             )
@@ -5024,6 +5154,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
                             lyricsProvider = result.provider,
                             lyricsConfidence = result.confidence,
                             lyricsCached = result.cached,
+                            lyricsManualSelection = result.manualSelection,
                             lyricsLoading = false
                         )
                     }
