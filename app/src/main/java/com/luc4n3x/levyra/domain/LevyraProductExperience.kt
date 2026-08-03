@@ -20,11 +20,6 @@ internal fun Track.isSearchVideo(): Boolean {
         source.contains("video", ignoreCase = true)
 }
 
-/**
- * Returns only filters currently represented by the stable SearchFilter enum.
- * Video and playlist classification stay available through the dedicated helpers until their
- * enum values and UI destinations land together in one atomic change.
- */
 internal fun searchFiltersFor(
     hasArtists: Boolean,
     hasAlbums: Boolean
@@ -33,6 +28,44 @@ internal fun searchFiltersFor(
     add(SearchFilter.Songs)
     if (hasArtists) add(SearchFilter.Artists)
     if (hasAlbums) add(SearchFilter.Albums)
+}
+
+/**
+ * Removes visually duplicated recommendations even when YouTube returns different browse IDs,
+ * channel suffixes, featured-artist variants, or edition labels for the same release.
+ */
+internal fun deduplicateHomeAlbums(
+    albums: List<AlbumHit>,
+    limit: Int = 24
+): List<AlbumHit> {
+    val seenIdentity = HashSet<String>()
+    val seenArtwork = HashSet<String>()
+    val result = ArrayList<AlbumHit>(minOf(albums.size, limit.coerceIn(1, 48)))
+
+    for (album in albums) {
+        if (album.title.isBlank() || album.artist.isBlank()) continue
+
+        val titleKey = album.title.homeAlbumTitleKey()
+        val artistKey = album.artist.homeAlbumArtistKey()
+        if (titleKey.isBlank() || artistKey.isBlank()) continue
+
+        val identityKey = "$titleKey|$artistKey"
+        val artworkUrl = album.thumbnailUrl
+            .trim()
+            .lowercase(Locale.ROOT)
+            .substringBefore('?')
+            .substringBefore('=')
+        val artworkKey = artworkUrl.takeIf(String::isNotBlank)?.let { "$titleKey|$it" }
+
+        if (identityKey in seenIdentity || artworkKey != null && artworkKey in seenArtwork) continue
+
+        seenIdentity += identityKey
+        if (artworkKey != null) seenArtwork += artworkKey
+        result += album
+        if (result.size >= limit.coerceIn(1, 48)) break
+    }
+
+    return result
 }
 
 internal fun filterPlaylistsForSearch(
@@ -65,9 +98,46 @@ internal fun filterPlaylistsForSearch(
         .toList()
 }
 
+private fun String.homeAlbumTitleKey(): String {
+    return normalizedSearchText()
+        .replace(HOME_ALBUM_BRACKETED_SUFFIX, " ")
+        .replace(HOME_ALBUM_EDITION_SUFFIX, " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
+private fun String.homeAlbumArtistKey(): String {
+    return normalizedSearchText()
+        .replace(HOME_ALBUM_CHANNEL_SUFFIX, " ")
+        .split(HOME_ALBUM_ARTIST_SEPARATOR, limit = 2)
+        .firstOrNull()
+        .orEmpty()
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
 private fun String.normalizedSearchText(): String {
     return Normalizer.normalize(trim(), Normalizer.Form.NFD)
         .replace(Regex("\\p{M}+"), "")
         .lowercase(Locale.ROOT)
+        .replace('&', ' ')
+        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
         .replace(Regex("\\s+"), " ")
+        .trim()
 }
+
+private val HOME_ALBUM_BRACKETED_SUFFIX = Regex(
+    "(?i)\\s*[\\[(](?:deluxe|expanded|anniversary|remaster(?:ed)?|bonus|special|collector|legacy|tour|digital|international|explicit|clean|standard|edition|version).*?[\\])].*$"
+)
+
+private val HOME_ALBUM_EDITION_SUFFIX = Regex(
+    "(?i)\\s+(?:deluxe|expanded|anniversary|remaster(?:ed)?|bonus|special|collector|legacy|tour|digital|international|explicit|clean|standard)(?:\\s+(?:edition|version|album))?.*$"
+)
+
+private val HOME_ALBUM_CHANNEL_SUFFIX = Regex(
+    "(?i)\\s+(?:topic|vevo|official|music)$"
+)
+
+private val HOME_ALBUM_ARTIST_SEPARATOR = Regex(
+    "(?i)\\s*(?:,|;|\\bfeat(?:uring)?\\b|\\bft\\b|\\bwith\\b|\\s+[x×]\\s+)\\s*"
+)
