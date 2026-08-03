@@ -76,9 +76,10 @@ class MainActivity : ComponentActivity() {
             update = ::updatePictureInPictureParams
         )
         setContent {
-            LevyraTheme {
-                val viewModel: LevyraViewModel = viewModel()
-                val uiState by viewModel.state.collectAsStateWithLifecycle()
+            val viewModel: LevyraViewModel = viewModel()
+            val uiState by viewModel.state.collectAsStateWithLifecycle()
+
+            LevyraTheme(fontPreset = uiState.interfaceSettings.fontPreset) {
                 var listenedPlaybackMs by rememberSaveable { mutableLongStateOf(0L) }
 
                 LaunchedEffect(uiState.isPlaying) {

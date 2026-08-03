@@ -16,6 +16,7 @@ import com.luc4n3x.levyra.domain.FollowedArtist
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraFontPreset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -288,6 +289,7 @@ class LevyraBackupManager(private val context: Context) {
         .put("showAlbumsForYou", value.showAlbumsForYou)
         .put("showTrendingArtists", value.showTrendingArtists)
         .put("showCharts", value.showCharts)
+        .put("fontPreset", value.fontPreset.name)
         .put("playerGesturesEnabled", value.playerGesturesEnabled)
         .put("doubleTapSeekSeconds", value.doubleTapSeekSeconds)
         .put("longPressSpeed", value.longPressSpeed.toDouble())
@@ -302,6 +304,7 @@ class LevyraBackupManager(private val context: Context) {
             showAlbumsForYou = json.optBoolean("showAlbumsForYou", true),
             showTrendingArtists = json.optBoolean("showTrendingArtists", true),
             showCharts = json.optBoolean("showCharts", true),
+            fontPreset = LevyraFontPreset.from(json.optString("fontPreset")),
             playerGesturesEnabled = json.optBoolean("playerGesturesEnabled", true),
             doubleTapSeekSeconds = json.optInt("doubleTapSeekSeconds", 10),
             longPressSpeed = json.optDouble("longPressSpeed", 2.0).toFloat()

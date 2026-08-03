@@ -8,6 +8,7 @@ data class LevyraInterfaceSettings(
     val showAlbumsForYou: Boolean = true,
     val showTrendingArtists: Boolean = true,
     val showCharts: Boolean = true,
+    val fontPreset: LevyraFontPreset = LevyraFontPreset.Outfit,
     val playerGesturesEnabled: Boolean = true,
     val doubleTapSeekSeconds: Int = 10,
     val longPressSpeed: Float = 2f
