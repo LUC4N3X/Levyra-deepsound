@@ -3811,6 +3811,7 @@ class LevyraViewModel(application: Application) : AndroidViewModel(application) 
             LevyraArtworkCache.preloadHome(getApplication<Application>().applicationContext, tracks, if (startupPlan.lowRam) 8 else 18)
             prefetchTop(tracks, if (startupPlan.lowRam) 3 else 8)
         }.onFailure { error ->
+            if (error is CancellationException) throw error
             _state.update {
                 it.copy(
                     isSearching = false,
