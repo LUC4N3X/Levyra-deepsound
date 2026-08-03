@@ -12,22 +12,51 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
 
-internal const val BUILT_IN_SUPPORT_ANNOUNCEMENT_ID = "github-star-2026-07"
+internal const val BUILT_IN_SUPPORT_ANNOUNCEMENT_ID = "github-star-2026-08"
 internal const val LEVYRA_REPOSITORY_URL = "https://github.com/LUC4N3X/Levyra-deepsound"
 internal const val BUNDLED_ANNOUNCEMENTS_ASSET = "config/announcements.json"
 internal const val REMOTE_ANNOUNCEMENTS_URL =
     "https://raw.githubusercontent.com/LUC4N3X/Levyra-deepsound/main/app/src/main/assets/config/announcements.json"
 
-private const val REMOTE_SCHEMA_VERSION = 1
+private const val REMOTE_SCHEMA_VERSION = 2
 private const val CHECK_INTERVAL_MS = 12L * 60L * 60L * 1_000L
 private const val STORE_NAME = "levyra_remote_announcements"
 private const val KEY_CACHED_JSON = "cached_json"
 private const val KEY_ETAG = "etag"
 private const val KEY_LAST_SUCCESSFUL_CHECK = "last_successful_check"
-private const val KEY_DISMISSED_IDS = "dismissed_ids"
+private const val KEY_COMPLETED_IDS = "dismissed_ids"
+private const val KEY_APP_LAUNCH_COUNT = "app_launch_count"
+private const val KEY_LAST_APP_LAUNCH_AT = "last_app_launch_at"
+private const val KEY_SNOOZED_UNTIL_PREFIX = "snoozed_until_"
 private const val MAX_ANNOUNCEMENTS = 20
-private const val MAX_DISMISSED_IDS = 200
+private const val MAX_COMPLETED_IDS = 200
+private const val MAX_RECORDED_LAUNCHES = 10_000
+private const val APP_LAUNCH_SESSION_GAP_MS = 30L * 60L * 1_000L
 private val supportedLanguageCodes = LevyraLanguageCatalog.languages.mapTo(mutableSetOf()) { it.code }
+
+internal object RemoteAnnouncementPromptPolicy {
+    const val MINIMUM_APP_LAUNCHES = 3
+    const val MINIMUM_RECENT_LISTENS = 3
+    const val MINIMUM_CURRENT_LISTEN_MS = 90_000L
+    const val PASSIVE_SNOOZE_MS = 3L * 24L * 60L * 60L * 1_000L
+    const val LATER_SNOOZE_MS = 10L * 24L * 60L * 60L * 1_000L
+
+    fun hasPositiveListeningMoment(recentListenCount: Int, listenedPlaybackMs: Long): Boolean {
+        return recentListenCount >= MINIMUM_RECENT_LISTENS ||
+            listenedPlaybackMs >= MINIMUM_CURRENT_LISTEN_MS
+    }
+
+    fun isEligible(
+        launchCount: Int,
+        hasPositiveListeningMoment: Boolean,
+        snoozedUntilMs: Long,
+        nowMs: Long
+    ): Boolean {
+        return launchCount >= MINIMUM_APP_LAUNCHES &&
+            hasPositiveListeningMoment &&
+            snoozedUntilMs <= nowMs
+    }
+}
 
 internal enum class AnnouncementStyle {
     OPEN_SOURCE,
@@ -48,7 +77,9 @@ internal data class OpenSourceSupportCopy(
     val title: String,
     val body: String,
     val starAction: String,
-    val continueAction: String
+    val laterAction: String,
+    val settingsTitle: String,
+    val settingsSubtitle: String
 )
 
 internal data class RemoteAnnouncement(
@@ -98,14 +129,16 @@ internal object RemoteAnnouncementRules {
         catalog: RemoteAnnouncementCatalog,
         languageCode: String,
         versionCode: Int,
-        dismissedIds: Set<String>,
-        nowMs: Long
+        completedIds: Set<String>,
+        nowMs: Long,
+        isAnnouncementEligible: (RemoteAnnouncement) -> Boolean = { true }
     ): RemoteAnnouncementPresentation? {
         val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
         return catalog.announcements
             .asSequence()
             .filter { it.enabled }
-            .filter { it.id !in dismissedIds }
+            .filter { it.id !in completedIds }
+            .filter(isAnnouncementEligible)
             .filter { versionCode >= it.minimumVersionCode }
             .filter { it.maximumVersionCode == null || versionCode <= it.maximumVersionCode }
             .filter { it.startAtMs == null || nowMs >= it.startAtMs }
@@ -119,11 +152,12 @@ internal object RemoteAnnouncementRules {
             .firstOrNull()
     }
 
-    private fun presentationFor(
+    fun presentationFor(
         announcement: RemoteAnnouncement,
         languageCode: String
     ): RemoteAnnouncementPresentation? {
-        val copy = announcement.translations[languageCode]
+        val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
+        val copy = announcement.translations[normalizedLanguage]
             ?: announcement.translations["en"]
             ?: return null
         return RemoteAnnouncementPresentation(
@@ -203,19 +237,25 @@ internal object RemoteAnnouncementParser {
         val title = item.optString("title").trim()
         val body = item.optString("body").trim()
         val action = item.optString("action").trim()
-        val dismiss = item.optString("dismiss").trim()
+        val later = item.optString("dismiss").trim()
+        val settingsTitle = item.optString("settingsTitle").trim().ifBlank { action.ifBlank { title } }
+        val settingsSubtitle = item.optString("settingsSubtitle").trim().ifBlank { body }
         if (badge.isBlank() || badge.length > 60) return null
         if (title.isBlank() || title.length > 140) return null
         if (body.length !in 20..1_200) return null
         if (actionRequired && action.isBlank()) return null
         if (action.length > 100) return null
-        if (dismiss.isBlank() || dismiss.length > 80) return null
+        if (later.isBlank() || later.length > 80) return null
+        if (settingsTitle.isBlank() || settingsTitle.length > 120) return null
+        if (settingsSubtitle.isBlank() || settingsSubtitle.length > 1_200) return null
         return OpenSourceSupportCopy(
             badge = badge,
             title = title,
             body = body,
             starAction = action,
-            continueAction = dismiss
+            laterAction = later,
+            settingsTitle = settingsTitle,
+            settingsSubtitle = settingsSubtitle
         )
     }
 
@@ -239,36 +279,81 @@ internal class RemoteAnnouncementRepository(context: Context) {
         .readTimeout(4, TimeUnit.SECONDS)
         .callTimeout(5, TimeUnit.SECONDS)
         .build()
-    private val bundledCatalog: RemoteAnnouncementCatalog? by lazy(LazyThreadSafetyMode.NONE) {
+    private val bundledCatalog: RemoteAnnouncementCatalog? by lazy(LazyThreadSafetyMode.PUBLICATION) {
         readBundledCatalog()
     }
 
-    suspend fun resolve(
+    fun recordAppLaunch(nowMs: Long = System.currentTimeMillis()): Int = store.recordAppLaunch(nowMs)
+
+    suspend fun resolveForPrompt(
         languageCode: String,
+        launchCount: Int,
+        hasPositiveListeningMoment: Boolean,
         versionCode: Int = BuildConfig.VERSION_CODE,
         nowMs: Long = System.currentTimeMillis()
     ): RemoteAnnouncementPresentation? = withContext(Dispatchers.IO) {
+        resolveAvailable(
+            languageCode = languageCode,
+            versionCode = versionCode,
+            nowMs = nowMs
+        ) { announcement ->
+            val snoozeExpired = store.snoozedUntil(announcement.id) <= nowMs
+            val engagementEligible = announcement.style != AnnouncementStyle.OPEN_SOURCE ||
+                RemoteAnnouncementPromptPolicy.isEligible(
+                    launchCount = launchCount,
+                    hasPositiveListeningMoment = hasPositiveListeningMoment,
+                    snoozedUntilMs = 0L,
+                    nowMs = nowMs
+                )
+            snoozeExpired && engagementEligible
+        }
+    }
+
+    fun bundledSupportPresentation(languageCode: String): RemoteAnnouncementPresentation? {
+        val announcement = bundledCatalog
+            ?.announcements
+            ?.firstOrNull { it.id == BUILT_IN_SUPPORT_ANNOUNCEMENT_ID }
+            ?: return null
+        return RemoteAnnouncementRules.presentationFor(announcement, languageCode)
+    }
+
+    fun snooze(id: String, durationMs: Long, nowMs: Long = System.currentTimeMillis()) {
+        store.snooze(id, nowMs + durationMs.coerceAtLeast(0L))
+    }
+
+    fun markCompleted(id: String) {
+        store.markCompleted(id)
+    }
+
+    private fun resolveAvailable(
+        languageCode: String,
+        versionCode: Int,
+        nowMs: Long,
+        isAnnouncementEligible: (RemoteAnnouncement) -> Boolean
+    ): RemoteAnnouncementPresentation? {
         val cached = store.cachedCatalog()
         val remoteState = if (cached != null && !store.shouldRefresh(nowMs)) {
             CatalogState(cached, available = true)
         } else {
             refresh(cached, nowMs)
         }
-        val dismissedIds = store.dismissedIds()
-        val selected = remoteState.catalog?.let {
-            RemoteAnnouncementRules.select(it, languageCode, versionCode, dismissedIds, nowMs)
+        val completedIds = store.completedIds()
+        fun selectFrom(catalog: RemoteAnnouncementCatalog): RemoteAnnouncementPresentation? {
+            return RemoteAnnouncementRules.select(
+                catalog = catalog,
+                languageCode = languageCode,
+                versionCode = versionCode,
+                completedIds = completedIds,
+                nowMs = nowMs,
+                isAnnouncementEligible = isAnnouncementEligible
+            )
         }
-        selected ?: if (remoteState.available) {
+        val selected = remoteState.catalog?.let(::selectFrom)
+        return selected ?: if (remoteState.available) {
             null
         } else {
-            bundledCatalog?.let {
-                RemoteAnnouncementRules.select(it, languageCode, versionCode, dismissedIds, nowMs)
-            }
+            bundledCatalog?.let(::selectFrom)
         }
-    }
-
-    fun markDismissed(id: String) {
-        store.markDismissed(id)
     }
 
     private fun refresh(cached: RemoteAnnouncementCatalog?, nowMs: Long): CatalogState {
@@ -312,6 +397,7 @@ internal class RemoteAnnouncementRepository(context: Context) {
 
 private class RemoteAnnouncementStore(context: Context) {
     private val preferences = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
+    private val stateLock = Any()
 
     fun cachedCatalog(): RemoteAnnouncementCatalog? {
         val raw = preferences.getString(KEY_CACHED_JSON, null).orEmpty()
@@ -337,16 +423,55 @@ private class RemoteAnnouncementStore(context: Context) {
         preferences.edit().putLong(KEY_LAST_SUCCESSFUL_CHECK, nowMs).apply()
     }
 
-    fun dismissedIds(): Set<String> =
-        preferences.getStringSet(KEY_DISMISSED_IDS, emptySet()).orEmpty().toSet()
-
-    fun markDismissed(id: String) {
-        if (!RemoteAnnouncementRules.isValidId(id)) return
-        val updated = dismissedIds().toMutableSet()
-        if (updated.size >= MAX_DISMISSED_IDS && id !in updated) {
-            updated.firstOrNull()?.let(updated::remove)
+    fun recordAppLaunch(nowMs: Long): Int = synchronized(stateLock) {
+        val current = preferences.getInt(KEY_APP_LAUNCH_COUNT, 0)
+        val lastRecordedAt = preferences.getLong(KEY_LAST_APP_LAUNCH_AT, 0L)
+        val elapsed = nowMs - lastRecordedAt
+        if (lastRecordedAt > 0L && elapsed in 0L until APP_LAUNCH_SESSION_GAP_MS) {
+            return@synchronized current
         }
-        updated += id
-        preferences.edit().putStringSet(KEY_DISMISSED_IDS, updated).apply()
+        val next = (current + 1).coerceAtMost(MAX_RECORDED_LAUNCHES)
+        preferences.edit()
+            .putInt(KEY_APP_LAUNCH_COUNT, next)
+            .putLong(KEY_LAST_APP_LAUNCH_AT, nowMs)
+            .apply()
+        next
     }
+
+    fun completedIds(): Set<String> = synchronized(stateLock) {
+        preferences.getStringSet(KEY_COMPLETED_IDS, emptySet()).orEmpty().toSet()
+    }
+
+    fun snoozedUntil(id: String): Long {
+        if (!RemoteAnnouncementRules.isValidId(id)) return Long.MAX_VALUE
+        return synchronized(stateLock) {
+            preferences.getLong(snoozeKey(id), 0L)
+        }
+    }
+
+    fun snooze(id: String, untilMs: Long) {
+        if (!RemoteAnnouncementRules.isValidId(id)) return
+        synchronized(stateLock) {
+            preferences.edit().putLong(snoozeKey(id), untilMs.coerceAtLeast(0L)).apply()
+        }
+    }
+
+    fun markCompleted(id: String) {
+        if (!RemoteAnnouncementRules.isValidId(id)) return
+        synchronized(stateLock) {
+            val updated = preferences.getStringSet(KEY_COMPLETED_IDS, emptySet())
+                .orEmpty()
+                .toMutableSet()
+            if (updated.size >= MAX_COMPLETED_IDS && id !in updated) {
+                updated.firstOrNull()?.let(updated::remove)
+            }
+            updated += id
+            preferences.edit()
+                .putStringSet(KEY_COMPLETED_IDS, updated)
+                .remove(snoozeKey(id))
+                .apply()
+        }
+    }
+
+    private fun snoozeKey(id: String): String = KEY_SNOOZED_UNTIL_PREFIX + id
 }
