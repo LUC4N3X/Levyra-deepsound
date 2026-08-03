@@ -1,0 +1,66 @@
+name: Apply explicit normalization state
+
+on:
+  push:
+    branches:
+      - "agent/advanced-lyrics-dsp-motion"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/advanced-lyrics-dsp-motion
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Require explicit normalization state
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected one match in {path}, found {count}: {old!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt",
+              "            audioNormalization: Boolean = normalizationProcessor.enabled\n",
+              "            audioNormalization: Boolean\n",
+          )
+          replace_once(
+              "app/src/main/java/com/luc4n3x/levyra/player/LevyraPlayer.kt",
+              "        audioNormalization: Boolean = PlaybackService.normalizationProcessor.enabled\n",
+              "        audioNormalization: Boolean\n",
+          )
+          replace_once(
+              "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt",
+              "        player.setPremiumAudioSettings(settings.audioSettings)\n",
+              "        player.setPremiumAudioSettings(settings.audioSettings, settings.audioNormalization)\n",
+          )
+          replace_once(
+              "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt",
+              "        player.setPremiumAudioSettings(snapshot.audioSettings)\n",
+              "        player.setPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)\n",
+          )
+          PY
+
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt \
+                  app/src/main/java/com/luc4n3x/levyra/player/LevyraPlayer.kt \
+                  app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt
+          git commit -m "fix(audio): require explicit normalization state"
+          git push origin HEAD:agent/advanced-lyrics-dsp-motion
