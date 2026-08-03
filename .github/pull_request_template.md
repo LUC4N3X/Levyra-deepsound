@@ -1,68 +1,35 @@
 <!--
 Thank you for contributing to Levyra.
-Keep this description focused and evidence-based. Remove guidance comments,
-mark non-applicable checks honestly, and do not leave empty sections.
+Keep the description concise, remove guidance comments, and use "N/A" where a section does not apply.
 -->
 
-## Overview
+## Summary
 
-<!-- What problem does this PR solve, what approach was taken, and what changes for users? -->
+<!-- Explain what changed, why it was needed, and the user-facing result in a few clear sentences. -->
 
-**Problem**
 
--
+## What changed
 
-**Solution**
+<!-- List the most important implementation changes. Keep this focused on the actual diff. -->
 
--
+- 
 
-**User impact**
-
--
-
-## Change type
-
-<!-- Select every item that applies. -->
+## Type of change
 
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Performance improvement
-- [ ] Refactor / technical debt
-- [ ] UI / UX change
-- [ ] Localization / accessibility
-- [ ] Build / CI / release tooling
-- [ ] Documentation / maintenance
+- [ ] Refactor or maintenance
+- [ ] UI or UX change
+- [ ] Localization or accessibility
+- [ ] Build, CI, packaging, or release change
+- [ ] Documentation
 - [ ] Breaking change
 
-## Platforms and affected areas
+## Scope
 
-**Platforms**
-
-- [ ] Android
-- [ ] Windows Desktop
-- [ ] Shared extractor / infrastructure
-
-**Areas**
-
-- [ ] Playback / queue / audio DSP
-- [ ] Stream extraction / catalog / networking
-- [ ] Downloads / offline storage
-- [ ] Library / database / preferences
-- [ ] UI / Compose / navigation
-- [ ] Lyrics / metadata
-- [ ] Media session / Android Auto / system integration
-- [ ] Localization / RTL / accessibility
-- [ ] Build / packaging / release workflows
-- [ ] Documentation
-
-## Implementation notes
-
-<!--
-Explain the important technical decisions, trade-offs, migrations, lifecycle or
-concurrency considerations, and anything reviewers should inspect carefully.
--->
-
--
+- **Platform:** Android / Windows Desktop / Shared infrastructure
+- **Area:** Player / Streaming / Downloads / Library / UI / Lyrics / Localization / System integration / Build and release / Documentation
 
 ## Validation
 
@@ -70,64 +37,49 @@ concurrency considerations, and anything reviewers should inspect carefully.
 
 - [ ] Android: `./gradlew --no-daemon :app:lintRelease :app:testReleaseUnitTest :app:assembleRelease`
 - [ ] Desktop: `cd desktop && ./gradlew check assemble`
-- [ ] Additional targeted tests were added or updated
-- [ ] Not applicable — explained below
+- [ ] Targeted tests were added or updated
+- [ ] Not applicable, with the reason explained below
 
-### Manual verification
+### Manual testing
 
-<!-- Add one row per relevant environment or scenario. -->
+| Environment | Scenario | Result |
+|---|---|---|
+|  |  |  |
 
-| Platform / device | OS / version | Scenario tested | Result |
-|---|---|---|---|
-|  |  |  |  |
+<!-- Add screenshots, recordings, logs, or benchmark results when they make the change easier to verify. -->
 
-**Evidence**
+## Risk and compatibility
 
-<!-- Attach screenshots, recordings, logs, benchmark results, or before/after data where useful. -->
+- **Risk level:** Low / Medium / High
+- **Compatibility or migration notes:** None
+- **Known limitations:** None
+- **Rollback plan:** Revert this PR
 
--
+<!-- Consider databases, preferences, downloads, cached data, protocols, background work, cancellation, lifecycle, RTL, and accessibility where relevant. -->
 
-## Regression and compatibility review
+## Reviewer notes
 
-- [ ] The affected user flow works from a clean launch
-- [ ] Backgrounding, cancellation, retry, and error states were considered where relevant
-- [ ] Playback, queue continuity, downloads, and offline behavior were checked where relevant
-- [ ] Existing databases, preferences, cached data, and downloaded files remain compatible
-- [ ] New or changed UI text is localized and contains no unintended hard-coded strings
-- [ ] RTL layout and accessibility semantics were checked where relevant
+<!-- Highlight files, decisions, trade-offs, or edge cases that deserve closer review. -->
 
-**Known limitations or follow-up work**
+- 
 
--
+## Release note
 
-## Risk and release impact
+<!-- Write one short user-facing sentence, or "None" for internal-only changes. -->
 
-**Risk level:** Low / Medium / High
-
-**Main risks**
-
--
-
-**Rollback plan**
-
--
-
-- [ ] No Android or Desktop version bump is required
-- [ ] Required version changes are included and correct
-- [ ] Database, preference, protocol, or file-format migrations are documented
-- [ ] Release and packaging changes preserve the separate Android and Desktop release channels
-
-## Final checklist
-
-- [ ] The PR is focused and contains no unrelated changes
-- [ ] The code follows the existing architecture and naming conventions
-- [ ] Threading, resource cleanup, lifecycle, and cancellation were reviewed where relevant
-- [ ] No secrets, keystores, generated APKs, installers, archives, or local-only files were committed
-- [ ] Credits, notices, and licenses were updated for new external code or assets
-- [ ] Documentation was updated when behavior, setup, architecture, or release steps changed
-- [ ] CI is green, or every remaining failure is explained below
+None
 
 ## Related issues
 
 - Closes #
 - Related to #
+
+## Checklist
+
+- [ ] The PR is focused and contains no unrelated changes
+- [ ] The implementation follows the existing architecture and naming conventions
+- [ ] Threading, lifecycle, cancellation, and resource cleanup were reviewed where relevant
+- [ ] Tests, documentation, localization, and screenshots were updated where required
+- [ ] No secrets, keystores, generated packages, archives, or local-only files were committed
+- [ ] Android and Desktop versioning and release channels remain independent
+- [ ] CI is green, or every remaining failure is explained in this PR
