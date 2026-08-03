@@ -187,6 +187,7 @@ import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.automirrored.rounded.Subject
 import androidx.compose.material.icons.rounded.ViewCompact
+import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -324,6 +325,7 @@ import com.luc4n3x.levyra.domain.LevyraDownloadFolderMode
 import com.luc4n3x.levyra.domain.LevyraDownloadPreset
 import com.luc4n3x.levyra.domain.LevyraDownloadSettings
 import com.luc4n3x.levyra.domain.LevyraInterfaceSettings
+import com.luc4n3x.levyra.domain.LevyraFontPreset
 import com.luc4n3x.levyra.domain.OfflineDownloadTask
 import com.luc4n3x.levyra.domain.LevyraAudioPresets
 import com.luc4n3x.levyra.domain.LevyraAudioSettings
@@ -5589,6 +5591,7 @@ private fun HomeScreen(
                         GreetingBar(
                             userName = state.userName,
                             isResolving = state.isResolving,
+                            animationsEnabled = state.animationsEnabled,
                             onSearch = viewModel::openSearch,
                             onSettings = viewModel::openSettings
                         )
@@ -13496,6 +13499,20 @@ private fun SettingsOverlay(
                                 }
                             }
                             item {
+                                SettingsChoiceRow(
+                                    icon = Icons.Rounded.TextFields,
+                                    title = strings.appFont,
+                                    subtitle = strings.appFontSubtitle,
+                                    options = LevyraFontPreset.entries.map { preset -> preset.name to preset.displayName },
+                                    selected = interfaceSettings.fontPreset.name,
+                                    onSelect = { value ->
+                                        onInterfaceSettings(
+                                            interfaceSettings.copy(fontPreset = LevyraFontPreset.from(value))
+                                        )
+                                    }
+                                )
+                            }
+                            item {
                                 SettingsToggle(
                                     icon = Icons.Rounded.Bolt,
                                     title = strings.animations,
@@ -14483,6 +14500,7 @@ private fun LevyraWordmark(fontSize: TextUnit = 30.sp, dotSize: Dp = 5.dp) {
 private fun GreetingBar(
     userName: String,
     isResolving: Boolean,
+    animationsEnabled: Boolean,
     onSearch: () -> Unit,
     onSettings: () -> Unit
 ) {
@@ -14532,11 +14550,42 @@ private fun GreetingBar(
             contentDescription = strings.search,
             onClick = onSearch
         )
-        HomeHeaderIconButton(
-            icon = Icons.Rounded.Settings,
+        OccasionallyRotatingSettingsButton(
+            enabled = animationsEnabled && !isResolving,
             contentDescription = strings.settings,
             loading = isResolving,
             onClick = onSettings
+        )
+    }
+}
+
+@Composable
+private fun OccasionallyRotatingSettingsButton(
+    enabled: Boolean,
+    contentDescription: String,
+    loading: Boolean,
+    onClick: () -> Unit
+) {
+    val rotation = remember { Animatable(0f) }
+    LaunchedEffect(enabled) {
+        rotation.snapTo(0f)
+        if (!enabled) return@LaunchedEffect
+        delay(6_000L)
+        while (true) {
+            rotation.animateTo(
+                targetValue = 360f,
+                animationSpec = tween(durationMillis = 780, easing = FastOutSlowInEasing)
+            )
+            rotation.snapTo(0f)
+            delay(28_000L)
+        }
+    }
+    Box(modifier = Modifier.graphicsLayer { rotationZ = rotation.value }) {
+        HomeHeaderIconButton(
+            icon = Icons.Rounded.Settings,
+            contentDescription = contentDescription,
+            loading = loading,
+            onClick = onClick
         )
     }
 }
