@@ -1,0 +1,67 @@
+name: Apply PR 270 state lock fix
+
+on:
+  push:
+    branches:
+      - feature/smarter-github-star-prompt
+    paths:
+      - .github/scripts/apply_pr270_lock_fix.py
+      - .github/workflows/apply-pr270-lock-fix.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-pr270-lock-fix
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      YOUTUBE_INNERTUBE_API_KEY: levyra_ci_dummy_key
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/smarter-github-star-prompt
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-disabled: true
+
+      - name: Apply shared state lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/apply_pr270_lock_fix.py
+          git diff --check
+
+      - name: Validate announcement code
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:compileDebugKotlin
+
+      - name: Commit validated fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/scripts/apply_pr270_lock_fix.py
+          rm -f .github/workflows/apply-pr270-lock-fix.yml
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            .github/scripts/apply_pr270_lock_fix.py \
+            .github/workflows/apply-pr270-lock-fix.yml \
+            app/src/main/java/com/luc4n3x/levyra/ui/support/RemoteAnnouncementRepository.kt
+          git commit -m "fix: serialize announcement state mutations"
+          git pull --rebase origin feature/smarter-github-star-prompt
+          git push origin HEAD:feature/smarter-github-star-prompt
