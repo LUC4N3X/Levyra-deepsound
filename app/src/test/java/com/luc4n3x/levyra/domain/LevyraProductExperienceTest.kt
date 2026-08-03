@@ -30,20 +30,16 @@ class LevyraProductExperienceTest {
     }
 
     @Test
-    fun filtersExposeOnlyAvailableRichCategories() {
+    fun filtersExposeOnlyStableAvailableCategories() {
         assertEquals(
             listOf(
                 SearchFilter.All,
                 SearchFilter.Songs,
-                SearchFilter.Videos,
-                SearchFilter.Artists,
-                SearchFilter.Playlists
+                SearchFilter.Artists
             ),
             searchFiltersFor(
                 hasArtists = true,
-                hasAlbums = false,
-                hasVideos = true,
-                hasPlaylists = true
+                hasAlbums = false
             )
         )
     }
