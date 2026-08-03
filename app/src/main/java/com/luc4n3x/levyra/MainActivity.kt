@@ -24,7 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
             LevyraTheme {
                 val viewModel: LevyraViewModel = viewModel()
                 val uiState by viewModel.state.collectAsStateWithLifecycle()
-                var listenedPlaybackMs by remember { mutableLongStateOf(0L) }
+                var listenedPlaybackMs by rememberSaveable { mutableLongStateOf(0L) }
 
                 LaunchedEffect(uiState.isPlaying) {
                     if (!uiState.isPlaying) return@LaunchedEffect
