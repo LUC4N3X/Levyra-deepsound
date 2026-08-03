@@ -40,8 +40,11 @@ import com.luc4n3x.levyra.desktop.app.ui.i18n.LevyraStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
 import com.luc4n3x.levyra.desktop.app.ui.player.MiniPlayerWindow
 import com.luc4n3x.levyra.desktop.core.model.ThemeMode
+import com.luc4n3x.levyra.desktop.core.storage.LibraryData
 import com.luc4n3x.levyra.desktop.core.storage.WindowPlacement as StoredPlacement
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okio.Path.Companion.toOkioPath
 
@@ -71,7 +74,14 @@ fun main(args: Array<String>) {
         var restorePulse by remember { mutableIntStateOf(0) }
         val settings by container.settingsStore.settings.collectAsState()
         val library by container.libraryStore.library.collectAsState()
-        val playback by container.playbackController.state.collectAsState()
+        val chromePlaybackFlow = remember(container) {
+            container.playbackController.state
+                .map(PlaybackUiState::withoutTransientUiTicks)
+                .distinctUntilChanged()
+        }
+        val playback by chromePlaybackFlow.collectAsState(
+            initial = container.playbackController.state.value.withoutTransientUiTicks()
+        )
         val strings = stringsFor(settings.language)
 
         setSingletonImageLoaderFactory { context ->
@@ -82,7 +92,7 @@ fun main(args: Array<String>) {
                         .maxSizeBytes(ARTWORK_CACHE_BYTES)
                         .build()
                 }
-                .crossfade(true)
+                .crossfade(false)
                 .build()
         }
 
@@ -180,9 +190,9 @@ fun main(args: Array<String>) {
                     applyShortcut(
                         action = action,
                         container = container,
-                        playback = playback,
+                        playback = container.playbackController.state.value,
                         onToggleMiniPlayer = {
-                            if (playback.current != null) {
+                            if (container.playbackController.state.value.current != null) {
                                 miniPlayerVisible = !miniPlayerVisible
                             }
                         }
@@ -222,25 +232,41 @@ fun main(args: Array<String>) {
         }
 
         if (miniPlayerVisible && playback.current != null) {
-            val current = playback.current
-            MiniPlayerWindow(
-                state = playback,
+            MiniPlayerHost(
+                container = container,
+                library = library,
                 strings = strings,
                 themeMode = settings.themeMode,
-                isFavorite = current?.let { track ->
-                    library.favorites.any { it.id == track.id }
-                } ?: false,
-                onPlayPause = container.playbackController::togglePlayPause,
-                onPrevious = container.playbackController::previous,
-                onNext = { container.playbackController.next(automatic = false) },
-                onToggleFavorite = {
-                    current?.let(container.appModel::toggleFavorite)
-                },
                 onOpenMain = ::showMainWindow,
                 onClose = { miniPlayerVisible = false }
             )
         }
     }
+}
+
+@Composable
+private fun MiniPlayerHost(
+    container: AppContainer,
+    library: LibraryData,
+    strings: LevyraStrings,
+    themeMode: ThemeMode,
+    onOpenMain: () -> Unit,
+    onClose: () -> Unit
+) {
+    val playback by container.playbackController.state.collectAsState()
+    val current = playback.current ?: return
+    MiniPlayerWindow(
+        state = playback,
+        strings = strings,
+        themeMode = themeMode,
+        isFavorite = library.favorites.any { it.id == current.id },
+        onPlayPause = container.playbackController::togglePlayPause,
+        onPrevious = container.playbackController::previous,
+        onNext = { container.playbackController.next(automatic = false) },
+        onToggleFavorite = { container.appModel.toggleFavorite(current) },
+        onOpenMain = onOpenMain,
+        onClose = onClose
+    )
 }
 
 @Composable
@@ -266,9 +292,7 @@ private fun ApplicationScope.LevyraTray(
             )
             Item(
                 strings.trayNext,
-                onClick = {
-                    playbackController.next(automatic = false)
-                }
+                onClick = { playbackController.next(automatic = false) }
             )
             if (playerAvailable) {
                 Item(
@@ -293,31 +317,17 @@ private fun persistPlacement(
     runCatching {
         val current = container.windowPlacementStore.read()
         if (windowState.placement == WindowPlacement.Maximized) {
-            container.windowPlacementStore.write(
-                current.copy(maximized = true)
-            )
+            container.windowPlacementStore.write(current.copy(maximized = true))
             return@runCatching
         }
         val position = windowState.position
         val hasPosition = position.x.isSpecified && position.y.isSpecified
         container.windowPlacementStore.write(
             StoredPlacement(
-                width = windowState.size.width.value
-                    .toInt()
-                    .coerceAtLeast(MIN_WINDOW_WIDTH),
-                height = windowState.size.height.value
-                    .toInt()
-                    .coerceAtLeast(MIN_WINDOW_HEIGHT),
-                x = if (hasPosition) {
-                    position.x.value.toInt()
-                } else {
-                    current.x
-                },
-                y = if (hasPosition) {
-                    position.y.value.toInt()
-                } else {
-                    current.y
-                },
+                width = windowState.size.width.value.toInt().coerceAtLeast(MIN_WINDOW_WIDTH),
+                height = windowState.size.height.value.toInt().coerceAtLeast(MIN_WINDOW_HEIGHT),
+                x = if (hasPosition) position.x.value.toInt() else current.x,
+                y = if (hasPosition) position.y.value.toInt() else current.y,
                 maximized = false
             )
         )
@@ -360,6 +370,11 @@ private fun seekTarget(playback: PlaybackUiState, deltaMs: Long): Long {
     val duration = playback.durationMs
     return if (duration > 0L) target.coerceIn(0L, duration) else target.coerceAtLeast(0L)
 }
+
+private fun PlaybackUiState.withoutTransientUiTicks(): PlaybackUiState = copy(
+    positionMs = 0L,
+    sleepRemainingMs = 0L
+)
 
 private const val APP_ICON = "icons/levyra.png"
 private const val ARTWORK_CACHE_BYTES = 512L * 1024L * 1024L

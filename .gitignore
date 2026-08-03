@@ -15,6 +15,9 @@ __pycache__/
 .ruff_cache/
 *.pyc
 *.egg-info/
+.agents/
+.claude/
+skills-lock.json
 
 # Claude Code personal overrides (shared config lives in .claude/settings.json)
 .claude/settings.local.json
