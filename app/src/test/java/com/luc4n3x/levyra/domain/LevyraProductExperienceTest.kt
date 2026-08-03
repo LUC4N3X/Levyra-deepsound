@@ -22,26 +22,43 @@ class LevyraProductExperienceTest {
         assertTrue(track(counterpartVideoId = "video-id").isSearchVideo())
         assertTrue(track(videoType = "MUSIC_VIDEO_TYPE_OMV").isSearchVideo())
         assertTrue(track(source = "YouTube Music Video").isSearchVideo())
-        assertFalse(
-            track(
-                videoUrl = "https://music.youtube.com/watch?v=ordinary-song"
-            ).isSearchVideo()
+        assertFalse(track(videoUrl = "https://music.youtube.com/watch?v=ordinary-song").isSearchVideo())
+    }
+
+    @Test
+    fun filtersExposeOnlyAvailableCategories() {
+        assertEquals(
+            listOf(SearchFilter.All, SearchFilter.Songs, SearchFilter.Artists),
+            searchFiltersFor(hasArtists = true, hasAlbums = false)
         )
     }
 
     @Test
-    fun filtersExposeOnlyStableAvailableCategories() {
-        assertEquals(
-            listOf(
-                SearchFilter.All,
-                SearchFilter.Songs,
-                SearchFilter.Artists
+    fun homeAlbumsRemoveBrowseIdAndArtistChannelDuplicates() {
+        val albums = listOf(
+            album(
+                title = "Amatore",
+                artist = "Samurai Jay - Topic",
+                browseId = "MPRE-first",
+                thumbnailUrl = "https://lh3.googleusercontent.com/cover=w544"
             ),
-            searchFiltersFor(
-                hasArtists = true,
-                hasAlbums = false
+            album(
+                title = "Amatore (Deluxe Edition)",
+                artist = "Samurai Jay",
+                browseId = "MPRE-second",
+                thumbnailUrl = "https://lh3.googleusercontent.com/cover=w1200"
+            ),
+            album(
+                title = "Un altro album",
+                artist = "Samurai Jay",
+                browseId = "MPRE-third",
+                thumbnailUrl = "https://lh3.googleusercontent.com/other=w544"
             )
         )
+
+        val result = deduplicateHomeAlbums(albums)
+
+        assertEquals(listOf("Amatore", "Un altro album"), result.map { it.title })
     }
 
     @Test
@@ -58,6 +75,20 @@ class LevyraProductExperienceTest {
 
         assertEquals(listOf("Èstate", "Estate 2026", "Mix estate"), result.map { it.name })
     }
+
+    private fun album(
+        title: String,
+        artist: String,
+        browseId: String,
+        thumbnailUrl: String
+    ) = AlbumHit(
+        title = title,
+        artist = artist,
+        year = "2026",
+        thumbnailUrl = thumbnailUrl,
+        query = "$title $artist",
+        browseId = browseId
+    )
 
     private fun playlist(name: String, updatedAt: Long) = Playlist(
         id = name,
