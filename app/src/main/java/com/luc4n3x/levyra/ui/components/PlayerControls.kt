@@ -51,10 +51,7 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.luc4n3x.levyra.ui.PlayerDarkSurface
 import com.luc4n3x.levyra.ui.PlayerMinimumContrast
-import com.luc4n3x.levyra.ui.playerCompositeOver
-import com.luc4n3x.levyra.ui.playerContentColor
 import com.luc4n3x.levyra.ui.playerContrastGradient
 import com.luc4n3x.levyra.ui.playerMix
 import com.luc4n3x.levyra.ui.theme.LevyraPlayerDesign
@@ -223,15 +220,17 @@ private fun PlayerModeToggleButton(
     animated: Boolean,
     onClick: () -> Unit
 ) {
-    val fill = if (active) accent.copy(alpha = 0.16f) else Color.Transparent
+    val fill = if (active) {
+        Color.White.playerMix(accent, 0.06f).copy(alpha = 0.12f)
+    } else {
+        Color.Transparent
+    }
     val activeTint = remember(accentTarget) {
-        accentTarget.playerContentColor(
-            listOf(accentTarget.copy(alpha = 0.16f).playerCompositeOver(PlayerDarkSurface))
-        )
+        Color.White.playerMix(accentTarget, 0.04f)
     }
     val tint = if (active) activeTint else LevyraPlayerDesign.IconIdle
     val borderAlpha by animateFloatAsState(
-        targetValue = if (active) 0.24f else 0f,
+        targetValue = if (active) 0.18f else 0f,
         animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
         label = "player-toggle-border"
     )
@@ -252,7 +251,7 @@ private fun PlayerModeToggleButton(
                 .size(size)
                 .background(fill, CircleShape)
                 .border(
-                    BorderStroke(LevyraPlayerDesign.Hairline, accent.copy(alpha = borderAlpha)),
+                    BorderStroke(LevyraPlayerDesign.Hairline, Color.White.playerMix(accent, 0.08f).copy(alpha = borderAlpha)),
                     CircleShape
                 ),
             contentAlignment = Alignment.Center
@@ -279,7 +278,7 @@ private fun Modifier.playerPrimarySurface(
     end: Color
 ): Modifier = this
     .shadow(
-        elevation = 5.dp,
+        elevation = 3.dp,
         shape = shape,
         clip = false,
         ambientColor = Color.Black.copy(alpha = 0.18f),
@@ -333,8 +332,8 @@ private fun PlayerPrimaryButton(
 ) {
     val gradient = remember(accentTarget, accentSecondaryTarget) {
         playerContrastGradient(
-            start = accentTarget.playerMix(PlayerDarkSurface, 0.52f),
-            end = accentSecondaryTarget.playerMix(PlayerDarkSurface, 0.58f),
+            start = Color(0xFFF2F2F4).playerMix(accentTarget, 0.04f),
+            end = Color(0xFFDDDEE2).playerMix(accentSecondaryTarget, 0.03f),
             minimumContrast = PlayerMinimumContrast
         )
     }
