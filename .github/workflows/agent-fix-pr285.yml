@@ -1,16 +1,16 @@
 name: Apply PR 285 review fixes
 
 on:
-  push:
-    branches:
-      - agent/refine-product-experience
+  pull_request:
+    types: [synchronize]
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   apply-review-fixes:
-    if: github.actor != 'github-actions[bot]'
+    if: github.head_ref == 'agent/refine-product-experience' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -344,6 +344,7 @@ class ProductShellPolicyTest {
           )
 
           Path(".github/workflows/agent-fix-pr285.yml").unlink()
+          Path("scripts/pr285_trigger.txt").unlink(missing_ok=True)
           PY
 
       - name: Commit review fixes
