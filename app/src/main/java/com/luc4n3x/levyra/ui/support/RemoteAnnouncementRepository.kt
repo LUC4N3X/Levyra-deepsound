@@ -397,6 +397,7 @@ internal class RemoteAnnouncementRepository(context: Context) {
 
 private class RemoteAnnouncementStore(context: Context) {
     private val preferences = context.getSharedPreferences(STORE_NAME, Context.MODE_PRIVATE)
+    private val stateLock = Any()
 
     fun cachedCatalog(): RemoteAnnouncementCatalog? {
         val raw = preferences.getString(KEY_CACHED_JSON, null).orEmpty()
@@ -422,7 +423,7 @@ private class RemoteAnnouncementStore(context: Context) {
         preferences.edit().putLong(KEY_LAST_SUCCESSFUL_CHECK, nowMs).apply()
     }
 
-    fun recordAppLaunch(nowMs: Long): Int = synchronized(this) {
+    fun recordAppLaunch(nowMs: Long): Int = synchronized(stateLock) {
         val current = preferences.getInt(KEY_APP_LAUNCH_COUNT, 0)
         val lastRecordedAt = preferences.getLong(KEY_LAST_APP_LAUNCH_AT, 0L)
         val elapsed = nowMs - lastRecordedAt
@@ -437,23 +438,30 @@ private class RemoteAnnouncementStore(context: Context) {
         next
     }
 
-    fun completedIds(): Set<String> =
+    fun completedIds(): Set<String> = synchronized(stateLock) {
         preferences.getStringSet(KEY_COMPLETED_IDS, emptySet()).orEmpty().toSet()
+    }
 
     fun snoozedUntil(id: String): Long {
         if (!RemoteAnnouncementRules.isValidId(id)) return Long.MAX_VALUE
-        return preferences.getLong(snoozeKey(id), 0L)
+        return synchronized(stateLock) {
+            preferences.getLong(snoozeKey(id), 0L)
+        }
     }
 
     fun snooze(id: String, untilMs: Long) {
         if (!RemoteAnnouncementRules.isValidId(id)) return
-        preferences.edit().putLong(snoozeKey(id), untilMs.coerceAtLeast(0L)).apply()
+        synchronized(stateLock) {
+            preferences.edit().putLong(snoozeKey(id), untilMs.coerceAtLeast(0L)).apply()
+        }
     }
 
     fun markCompleted(id: String) {
         if (!RemoteAnnouncementRules.isValidId(id)) return
-        synchronized(this) {
-            val updated = completedIds().toMutableSet()
+        synchronized(stateLock) {
+            val updated = preferences.getStringSet(KEY_COMPLETED_IDS, emptySet())
+                .orEmpty()
+                .toMutableSet()
             if (updated.size >= MAX_COMPLETED_IDS && id !in updated) {
                 updated.firstOrNull()?.let(updated::remove)
             }
