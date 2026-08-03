@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-03T14:30:23Z",
+  "generatedAt": "2026-08-03T14:35:52Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -3173,11 +3173,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-26"
+            "releaseDate": "2025-09-25"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
         },
         {
           "position": 37,
@@ -8289,12 +8289,6 @@
           },
           "durationMs": 218107,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "wjXyMM3-4j0",
-            "audioConfidence": 100,
-            "confidence": 100,
-            "artistBrowseId": "UC1a6QMzU-em9TFB4OBsT52g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0279df431b1bbf5bb6c2283963"
         },
         {
@@ -15348,7 +15342,7 @@
         },
         {
           "position": 43,
-          "id": "levyra-8e00e58819f76bb1bccd",
+          "id": "levyra-e09beec9b76bb06bdf72",
           "title": "Det kommer aldrig va över för mig",
           "artists": [
             {
@@ -15356,12 +15350,12 @@
             }
           ],
           "album": {
-            "name": "Det kommer aldrig va över för mig",
-            "releaseDate": "2013-04-17"
+            "name": "Nyårsfest",
+            "releaseDate": "2020-12-18"
           },
           "durationMs": 267106,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0295646685141ef8371ffacc8c"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e020261e1c555b81b753cc289d2"
         },
         {
           "position": 44,
@@ -27473,8 +27467,6 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
-            "videoId": "DXvtelMvUy8",
-            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
