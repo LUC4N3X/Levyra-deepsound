@@ -157,6 +157,7 @@ class PlaybackService : MediaLibraryService() {
         val spatialAudioProcessor = StereoSpatialAudioProcessor()
         val limiterProcessor = TruePeakLimiterAudioProcessor()
         val visualizerProcessor = VisualizerAudioProcessor()
+        val pcm16OutputProcessor = Pcm16OutputAudioProcessor()
 
         fun applyPremiumAudioSettings(settings: LevyraAudioSettings) {
             val normalized = settings.normalized()
@@ -232,7 +233,16 @@ class PlaybackService : MediaLibraryService() {
                 return DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(enableFloatOutput)
                     .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-                    .setAudioProcessors(arrayOf(normalizationProcessor, equalizerProcessor, spatialAudioProcessor, limiterProcessor, visualizerProcessor))
+                    .setAudioProcessors(
+                        arrayOf(
+                            normalizationProcessor,
+                            equalizerProcessor,
+                            spatialAudioProcessor,
+                            limiterProcessor,
+                            visualizerProcessor,
+                            pcm16OutputProcessor
+                        )
+                    )
                     .build()
             }
         }
