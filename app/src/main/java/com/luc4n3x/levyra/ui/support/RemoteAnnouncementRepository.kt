@@ -24,12 +24,12 @@ private const val STORE_NAME = "levyra_remote_announcements"
 private const val KEY_CACHED_JSON = "cached_json"
 private const val KEY_ETAG = "etag"
 private const val KEY_LAST_SUCCESSFUL_CHECK = "last_successful_check"
-private const val KEY_DISMISSED_IDS = "dismissed_ids"
+private const val KEY_COMPLETED_IDS = "dismissed_ids"
 private const val KEY_APP_LAUNCH_COUNT = "app_launch_count"
 private const val KEY_LAST_APP_LAUNCH_AT = "last_app_launch_at"
 private const val KEY_SNOOZED_UNTIL_PREFIX = "snoozed_until_"
 private const val MAX_ANNOUNCEMENTS = 20
-private const val MAX_DISMISSED_IDS = 200
+private const val MAX_COMPLETED_IDS = 200
 private const val MAX_RECORDED_LAUNCHES = 10_000
 private const val APP_LAUNCH_SESSION_GAP_MS = 30L * 60L * 1_000L
 private val supportedLanguageCodes = LevyraLanguageCatalog.languages.mapTo(mutableSetOf()) { it.code }
@@ -41,9 +41,9 @@ internal object RemoteAnnouncementPromptPolicy {
     const val PASSIVE_SNOOZE_MS = 3L * 24L * 60L * 60L * 1_000L
     const val LATER_SNOOZE_MS = 10L * 24L * 60L * 60L * 1_000L
 
-    fun hasPositiveListeningMoment(recentListenCount: Int, currentPositionMs: Long): Boolean {
+    fun hasPositiveListeningMoment(recentListenCount: Int, listenedPlaybackMs: Long): Boolean {
         return recentListenCount >= MINIMUM_RECENT_LISTENS ||
-            currentPositionMs >= MINIMUM_CURRENT_LISTEN_MS
+            listenedPlaybackMs >= MINIMUM_CURRENT_LISTEN_MS
     }
 
     fun isEligible(
@@ -129,14 +129,16 @@ internal object RemoteAnnouncementRules {
         catalog: RemoteAnnouncementCatalog,
         languageCode: String,
         versionCode: Int,
-        dismissedIds: Set<String>,
-        nowMs: Long
+        completedIds: Set<String>,
+        nowMs: Long,
+        isAnnouncementEligible: (RemoteAnnouncement) -> Boolean = { true }
     ): RemoteAnnouncementPresentation? {
         val normalizedLanguage = LevyraLanguageCatalog.normalize(languageCode)
         return catalog.announcements
             .asSequence()
             .filter { it.enabled }
-            .filter { it.id !in dismissedIds }
+            .filter { it.id !in completedIds }
+            .filter(isAnnouncementEligible)
             .filter { versionCode >= it.minimumVersionCode }
             .filter { it.maximumVersionCode == null || versionCode <= it.maximumVersionCode }
             .filter { it.startAtMs == null || nowMs >= it.startAtMs }
@@ -236,7 +238,7 @@ internal object RemoteAnnouncementParser {
         val body = item.optString("body").trim()
         val action = item.optString("action").trim()
         val later = item.optString("dismiss").trim()
-        val settingsTitle = item.optString("settingsTitle").trim().ifBlank { action }
+        val settingsTitle = item.optString("settingsTitle").trim().ifBlank { action.ifBlank { title } }
         val settingsSubtitle = item.optString("settingsSubtitle").trim().ifBlank { body }
         if (badge.isBlank() || badge.length > 60) return null
         if (title.isBlank() || title.length > 140) return null
@@ -290,24 +292,20 @@ internal class RemoteAnnouncementRepository(context: Context) {
         versionCode: Int = BuildConfig.VERSION_CODE,
         nowMs: Long = System.currentTimeMillis()
     ): RemoteAnnouncementPresentation? = withContext(Dispatchers.IO) {
-        if (
-            !RemoteAnnouncementPromptPolicy.isEligible(
-                launchCount = launchCount,
-                hasPositiveListeningMoment = hasPositiveListeningMoment,
-                snoozedUntilMs = 0L,
-                nowMs = nowMs
-            )
-        ) {
-            return@withContext null
-        }
-        val selected = resolveAvailable(languageCode, versionCode, nowMs) ?: return@withContext null
-        selected.takeIf {
-            RemoteAnnouncementPromptPolicy.isEligible(
-                launchCount = launchCount,
-                hasPositiveListeningMoment = hasPositiveListeningMoment,
-                snoozedUntilMs = store.snoozedUntil(it.id),
-                nowMs = nowMs
-            )
+        resolveAvailable(
+            languageCode = languageCode,
+            versionCode = versionCode,
+            nowMs = nowMs
+        ) { announcement ->
+            val snoozeExpired = store.snoozedUntil(announcement.id) <= nowMs
+            val engagementEligible = announcement.style != AnnouncementStyle.OPEN_SOURCE ||
+                RemoteAnnouncementPromptPolicy.isEligible(
+                    launchCount = launchCount,
+                    hasPositiveListeningMoment = hasPositiveListeningMoment,
+                    snoozedUntilMs = 0L,
+                    nowMs = nowMs
+                )
+            snoozeExpired && engagementEligible
         }
     }
 
@@ -330,7 +328,8 @@ internal class RemoteAnnouncementRepository(context: Context) {
     private fun resolveAvailable(
         languageCode: String,
         versionCode: Int,
-        nowMs: Long
+        nowMs: Long,
+        isAnnouncementEligible: (RemoteAnnouncement) -> Boolean
     ): RemoteAnnouncementPresentation? {
         val cached = store.cachedCatalog()
         val remoteState = if (cached != null && !store.shouldRefresh(nowMs)) {
@@ -338,16 +337,22 @@ internal class RemoteAnnouncementRepository(context: Context) {
         } else {
             refresh(cached, nowMs)
         }
-        val dismissedIds = store.dismissedIds()
-        val selected = remoteState.catalog?.let {
-            RemoteAnnouncementRules.select(it, languageCode, versionCode, dismissedIds, nowMs)
+        val completedIds = store.completedIds()
+        fun selectFrom(catalog: RemoteAnnouncementCatalog): RemoteAnnouncementPresentation? {
+            return RemoteAnnouncementRules.select(
+                catalog = catalog,
+                languageCode = languageCode,
+                versionCode = versionCode,
+                completedIds = completedIds,
+                nowMs = nowMs,
+                isAnnouncementEligible = isAnnouncementEligible
+            )
         }
+        val selected = remoteState.catalog?.let(::selectFrom)
         return selected ?: if (remoteState.available) {
             null
         } else {
-            bundledCatalog?.let {
-                RemoteAnnouncementRules.select(it, languageCode, versionCode, dismissedIds, nowMs)
-            }
+            bundledCatalog?.let(::selectFrom)
         }
     }
 
@@ -432,8 +437,8 @@ private class RemoteAnnouncementStore(context: Context) {
         next
     }
 
-    fun dismissedIds(): Set<String> =
-        preferences.getStringSet(KEY_DISMISSED_IDS, emptySet()).orEmpty().toSet()
+    fun completedIds(): Set<String> =
+        preferences.getStringSet(KEY_COMPLETED_IDS, emptySet()).orEmpty().toSet()
 
     fun snoozedUntil(id: String): Long {
         if (!RemoteAnnouncementRules.isValidId(id)) return Long.MAX_VALUE
@@ -447,15 +452,17 @@ private class RemoteAnnouncementStore(context: Context) {
 
     fun markCompleted(id: String) {
         if (!RemoteAnnouncementRules.isValidId(id)) return
-        val updated = dismissedIds().toMutableSet()
-        if (updated.size >= MAX_DISMISSED_IDS && id !in updated) {
-            updated.firstOrNull()?.let(updated::remove)
+        synchronized(this) {
+            val updated = completedIds().toMutableSet()
+            if (updated.size >= MAX_COMPLETED_IDS && id !in updated) {
+                updated.firstOrNull()?.let(updated::remove)
+            }
+            updated += id
+            preferences.edit()
+                .putStringSet(KEY_COMPLETED_IDS, updated)
+                .remove(snoozeKey(id))
+                .apply()
         }
-        updated += id
-        preferences.edit()
-            .putStringSet(KEY_DISMISSED_IDS, updated)
-            .remove(snoozeKey(id))
-            .apply()
     }
 
     private fun snoozeKey(id: String): String = KEY_SNOOZED_UNTIL_PREFIX + id
