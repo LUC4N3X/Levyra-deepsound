@@ -217,7 +217,7 @@ private fun LyricsPanel(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                itemsIndexed(lyrics.lines, key = { index, line -> "$index-${line.startTimeMs}" }) { index, line ->
+                itemsIndexed(lyrics.lines, key = { index, line -> "$index-${line.timeMs}" }) { index, line ->
                     val isActive = index == activeIndex
                     val color by animateColorAsState(
                         targetValue = when {
