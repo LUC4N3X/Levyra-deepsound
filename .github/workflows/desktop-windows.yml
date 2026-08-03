@@ -6,6 +6,7 @@ on:
       - "desktop/**"
       - "third_party/LevyraExtractor/**"
       - ".github/scripts/fix_pr265.py"
+      - ".github/scripts/fix_pr265_round2.py"
       - ".github/workflows/fix-pr265.yml"
       - ".github/workflows/desktop-windows.yml"
   workflow_dispatch:
@@ -38,7 +39,9 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Apply targeted fixes
-        run: python .github/scripts/fix_pr265.py
+        run: |
+          python .github/scripts/fix_pr265.py
+          python .github/scripts/fix_pr265_round2.py
       - name: Compile modules and run tests
         shell: bash
         working-directory: desktop
@@ -58,7 +61,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add desktop
-          git rm -f .github/scripts/fix_pr265.py .github/workflows/fix-pr265.yml
+          git rm -f .github/scripts/fix_pr265.py .github/scripts/fix_pr265_round2.py .github/workflows/fix-pr265.yml
           git diff --cached --check
           git commit -m "fix desktop CI and CodeRabbit findings"
           git push origin HEAD:${{ github.head_ref }}
