@@ -17,7 +17,8 @@ class LevyraFontPresetTest {
     }
 
     @Test
-    fun systemPresetDoesNotRequireGoogleFonts() {
+    fun systemPresetIsLanguageNeutralAndNeedsNoGoogleFont() {
+        assertEquals("System", LevyraFontPreset.System.displayName)
         assertEquals(null, LevyraFontPreset.System.googleFontName)
     }
 }
