@@ -19,8 +19,8 @@ preparing work for Codex, Claude Code, or OpenClaw:
 2. Read every nearer `AGENTS.md` covering the affected paths, including
    `app/AGENTS.md`, `desktop/AGENTS.md`, `.github/AGENTS.md`, or
    `docs/AGENTS.md` when applicable.
-3. Read `SPEC.md`, the relevant `ROADMAP.md` track, and the active phase in
-   `TASKS.md`.
+3. Read `docs/project/SPEC.md`, the relevant `docs/project/ROADMAP.md` track,
+   and the active phase in `docs/project/TASKS.md`.
 4. Select and read every matching native skill under `.agents/skills/`.
 5. Read `docs/ARCHITECTURE.md` and the relevant platform documentation.
 6. Inspect the current implementation and nearby tests.
@@ -39,12 +39,12 @@ tasks, architecture, and code before recommending implementation.
 
 The repository separates planning concerns:
 
-- `SPEC.md` contains durable owner-approved product and engineering requirements
-  and non-goals.
-- `ROADMAP.md` orders outcomes, risks, and phase exit criteria. It is not release
-  authorization.
-- `TASKS.md` contains one active reviewable phase and direct validation
-  evidence.
+- `docs/project/SPEC.md` contains durable owner-approved product and engineering
+  requirements and non-goals.
+- `docs/project/ROADMAP.md` orders outcomes, risks, and phase exit criteria. It
+  is not release authorization.
+- `docs/project/TASKS.md` contains one active reviewable phase and direct
+  validation evidence.
 
 Use `levyra-project-manager` when creating or reconciling a tracked phase.
 Update task status only from a direct command, CI result, review, device check,
@@ -176,8 +176,8 @@ speculative issues without a concrete failure path.
 When work is large enough to require planning:
 
 - use `levyra-project-manager`;
-- map the phase to `SPEC.md` and `ROADMAP.md`;
-- keep only one active reviewable phase in `TASKS.md`;
+- map the phase to `docs/project/SPEC.md` and `docs/project/ROADMAP.md`;
+- keep only one active reviewable phase in `docs/project/TASKS.md`;
 - define scope, non-goals, preserved behavior, acceptance criteria, expected
   files, focused checks, broader checks, manual checks, rollback, and owner
   checkpoints;
