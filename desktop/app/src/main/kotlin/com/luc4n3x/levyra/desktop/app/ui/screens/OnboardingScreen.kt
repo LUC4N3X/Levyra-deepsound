@@ -91,16 +91,7 @@ fun OnboardingScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            LevyraBrand.cyan.copy(alpha = 0.12f),
-                            LevyraBrand.violet.copy(alpha = 0.08f),
-                            MaterialTheme.colorScheme.background
-                        ),
-                        radius = 1350f
-                    )
-                )
+                .background(MaterialTheme.colorScheme.background)
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -257,15 +248,7 @@ private fun OnboardingRail(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        LevyraBrand.deepBlue.copy(alpha = 0.9f),
-                        LevyraBrand.violet.copy(alpha = 0.2f),
-                        MaterialTheme.colorScheme.surfaceContainer
-                    )
-                )
-            )
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(28.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
@@ -659,22 +642,8 @@ private fun SelectableCard(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    if (selected) {
-                        Brush.linearGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                                LevyraBrand.violet.copy(alpha = 0.08f),
-                                MaterialTheme.colorScheme.surfaceContainer
-                            )
-                        )
-                    } else {
-                        Brush.linearGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.surfaceContainer,
-                                MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f)
-                            )
-                        )
-                    }
+                    if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                    else MaterialTheme.colorScheme.surfaceContainer
                 )
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,

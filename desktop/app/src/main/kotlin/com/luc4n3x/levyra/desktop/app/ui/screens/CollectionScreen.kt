@@ -35,6 +35,7 @@ import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
+import com.luc4n3x.levyra.desktop.core.model.CollectionKind
 import com.luc4n3x.levyra.desktop.core.model.CollectionRef
 
 @Composable
@@ -49,6 +50,20 @@ fun CollectionScreen(
     onOpenCollection: (CollectionRef) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (state.ref?.kind == CollectionKind.ARTIST) {
+        ArtistScreen(
+            state = state,
+            actions = actions,
+            onBack = onBack,
+            onPlayAll = onPlayAll,
+            onShuffleAll = onShuffleAll,
+            onEnqueueAll = onEnqueueAll,
+            onOpenCollection = onOpenCollection,
+            modifier = modifier
+        )
+        return
+    }
+
     val strings = LocalStrings.current
     val tracks = state.page.tracks
 

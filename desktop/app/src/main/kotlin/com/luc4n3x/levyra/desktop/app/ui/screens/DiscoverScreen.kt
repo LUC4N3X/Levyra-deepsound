@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.desktop.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,9 +36,10 @@ import com.luc4n3x.levyra.desktop.app.ui.components.LoadingRow
 import com.luc4n3x.levyra.desktop.app.ui.components.ScrollableColumn
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackRow
-import com.luc4n3x.levyra.desktop.app.ui.components.hoverScale
+import com.luc4n3x.levyra.desktop.app.ui.components.rememberHoverState
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
+import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.Track
 
@@ -65,11 +67,11 @@ fun DiscoverScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(
                         Brush.linearGradient(
                             listOf(
-                                accent.copy(alpha = 0.32f),
+                                accent.copy(alpha = 0.27f),
                                 MaterialTheme.colorScheme.surfaceContainerHigh,
                                 MaterialTheme.colorScheme.surfaceContainer
                             )
@@ -170,34 +172,45 @@ private fun PodiumCard(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val (interactionSource, hovered) = rememberHoverState(track.id)
+    val hoverLayer = if (hovered) {
+        MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+
     Column(
         modifier = modifier
-            .hoverScale()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        accent.copy(alpha = 0.22f),
-                        MaterialTheme.colorScheme.surfaceContainer
+                        accent.copy(alpha = if (hovered) 0.27f else 0.18f),
+                        hoverLayer
                     )
                 )
             )
-            .clickable(onClick = onPlay)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .hoverable(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onPlay
+            )
+            .padding(15.dp),
+        verticalArrangement = Arrangement.spacedBy(11.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Artwork(
                 url = track.artworkUrl,
                 modifier = Modifier.fillMaxWidth().height(190.dp),
-                cornerRadius = 16.dp,
+                cornerRadius = 14.dp,
                 iconSize = 36.dp
             )
             Box(
                 modifier = Modifier
                     .padding(10.dp)
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(11.dp))
                     .background(accent),
                 contentAlignment = Alignment.Center
             ) {
@@ -205,7 +218,7 @@ private fun PodiumCard(
                     text = rank.toString(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }

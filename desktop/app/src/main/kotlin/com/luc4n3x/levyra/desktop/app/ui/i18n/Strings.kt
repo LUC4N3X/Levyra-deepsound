@@ -198,6 +198,7 @@ data class LevyraStrings(
     val shortcutSeek: String,
     val shortcutVolume: String,
     val miniPlayer: String,
+    val artistSubscribers: String,
     val cancel: String,
     val save: String,
     val close: String
@@ -403,10 +404,27 @@ fun stringsFor(
         shortcutSeek = extras.seek,
         shortcutVolume = shared.volume,
         miniPlayer = extras.miniPlayer,
+        artistSubscribers = localizedSubscriberLabel(language.tag),
         cancel = shared.cancel,
         save = shared.save,
         close = shared.close
     )
+}
+
+private fun localizedSubscriberLabel(tag: String): String = when (tag.substringBefore('-').lowercase()) {
+    "it" -> "iscritti"
+    "es" -> "suscriptores"
+    "fr" -> "abonnés"
+    "de" -> "Abonnenten"
+    "pt" -> "inscritos"
+    "ru" -> "подписчиков"
+    "tr" -> "abone"
+    "ar" -> "مشترك"
+    "hi" -> "सब्सक्राइबर"
+    "ja" -> "登録者"
+    "ko" -> "구독자"
+    "zh" -> "订阅者"
+    else -> "subscribers"
 }
 
 val LocalStrings = staticCompositionLocalOf { stringsFor(AppLanguage.ENGLISH) }

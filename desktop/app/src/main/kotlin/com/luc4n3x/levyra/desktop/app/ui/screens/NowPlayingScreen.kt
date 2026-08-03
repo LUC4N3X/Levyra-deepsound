@@ -159,7 +159,7 @@ fun NowPlayingScreen(
                                 contentPadding = PaddingValues(bottom = 12.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                itemsIndexed(state.queue.upcoming) { offset, upcoming ->
+                                itemsIndexed(state.queue.upcoming, key = { index, upcoming -> "$index-${upcoming.id}" }) { offset, upcoming ->
                                     val queuePosition = state.queue.index + 1 + offset
                                     TrackRow(
                                         track = upcoming,
@@ -217,7 +217,7 @@ private fun LyricsPanel(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                itemsIndexed(lyrics.lines) { index, line ->
+                itemsIndexed(lyrics.lines, key = { index, line -> "$index-${line.timeMs}" }) { index, line ->
                     val isActive = index == activeIndex
                     val color by animateColorAsState(
                         targetValue = when {
