@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 import okhttp3.Call
@@ -202,8 +203,9 @@ class LyricsRepository(context: Context? = null) {
         videoId: String = "",
         languageCode: String = "",
         translate: Boolean = false
-    ): List<LyricsVersion> {
-        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return emptyList()
+    ): List<LyricsVersion> = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext emptyList()
         val selected = readSelection(query)
         val candidates = ArrayList<LyricsCandidate>()
         selected?.let { choice ->
@@ -215,7 +217,7 @@ class LyricsRepository(context: Context? = null) {
         val network = fetchNetworkProgressive(query) { }
         candidates += network.candidates
         val selectedId = selected?.id
-        return candidates
+        candidates
             .map { candidate -> candidate.toVersion(query, selectedId) }
             .distinctBy { it.id }
             .sortedWith(
@@ -235,9 +237,10 @@ class LyricsRepository(context: Context? = null) {
         languageCode: String,
         translate: Boolean,
         version: LyricsVersion
-    ): LyricsResult? {
-        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return null
-        val dao = lyricsSelectionDao ?: return version.result
+    ): LyricsResult? = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext null
+        val dao = lyricsSelectionDao ?: return@withContext version.result
         val now = System.currentTimeMillis()
         val stable = version.result.copy(cached = false, manualSelection = true)
         dao.upsert(
@@ -256,7 +259,7 @@ class LyricsRepository(context: Context? = null) {
         if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldest(count - MAX_LYRICS_SELECTIONS)
         memoryPut(query.key, stable, now)
         persistPositive(query, stable)
-        return stable
+        stable
     }
 
     suspend fun useAutomatic(
@@ -267,8 +270,9 @@ class LyricsRepository(context: Context? = null) {
         videoId: String,
         languageCode: String,
         translate: Boolean
-    ) {
-        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return
+    ): Unit = withContext(Dispatchers.IO) {
+        val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
+            ?: return@withContext
         lyricsSelectionDao?.delete(selectionKey(query))
         memoryRemove(query.key)
         lyricsCacheDao?.delete(query.key)
@@ -387,13 +391,16 @@ class LyricsRepository(context: Context? = null) {
     }
 
     private fun LyricsCandidate.toVersion(query: QuerySpec, selectedId: String?): LyricsVersion {
-        val id = candidateId(result, title, artist, durationSec)
+        val resolvedTitle = title.ifBlank { query.requestedTitle }
+        val resolvedArtist = artist.ifBlank { query.requestedArtist }
+        val resolvedDurationSec = durationSec.takeIf { it > 0L } ?: query.durationSec
+        val id = candidateId(result, resolvedTitle, resolvedArtist, resolvedDurationSec)
         return LyricsVersion(
             id = id,
-            title = title.ifBlank { query.requestedTitle },
-            artist = artist.ifBlank { query.requestedArtist },
+            title = resolvedTitle,
+            artist = resolvedArtist,
             album = query.album,
-            durationSec = durationSec.takeIf { it > 0L } ?: query.durationSec,
+            durationSec = resolvedDurationSec,
             result = result,
             selected = id == selectedId
         )
