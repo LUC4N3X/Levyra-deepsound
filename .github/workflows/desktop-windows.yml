@@ -61,6 +61,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add desktop
+          git reset -- desktop/gradle-build.log
           git rm -f .github/scripts/fix_pr265.py .github/scripts/fix_pr265_round2.py .github/workflows/fix-pr265.yml
           git diff --cached --check
           git commit -m "fix desktop CI and CodeRabbit findings"
