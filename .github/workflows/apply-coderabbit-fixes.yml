@@ -29,257 +29,34 @@ jobs:
           def replace_once(path: str, old: str, new: str) -> None:
               file = Path(path)
               text = file.read_text()
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old[:100]!r}")
+              if text.count(old) != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}: {old!r}")
               file.write_text(text.replace(old, new, 1))
 
-          lyrics = "app/src/main/java/com/luc4n3x/levyra/data/LyricsRepository.kt"
+          playback = "app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt"
           replace_once(
-              lyrics,
-              "import kotlinx.coroutines.withTimeoutOrNull\n",
-              "import kotlinx.coroutines.withContext\nimport kotlinx.coroutines.withTimeoutOrNull\n",
+              playback,
+              "        fun applyPremiumAudioSettings(settings: LevyraAudioSettings) {\n",
+              "        fun applyPremiumAudioSettings(\n"
+              "            settings: LevyraAudioSettings,\n"
+              "            audioNormalization: Boolean = normalizationProcessor.enabled\n"
+              "        ) {\n",
           )
           replace_once(
-              lyrics,
-              '''    suspend fun versions(
-                  title: String,
-                  artist: String,
-                  durationSec: Long,
-                  album: String = "",
-                  videoId: String = "",
-                  languageCode: String = "",
-                  translate: Boolean = false
-              ): List<LyricsVersion> {
-                  val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return emptyList()
-                  val selected = readSelection(query)
-                  val candidates = ArrayList<LyricsCandidate>()
-                  selected?.let { choice ->
-                      candidates += LyricsCandidate(choice.result, choice.title, choice.artist, choice.durationSec)
-                  }
-                  readCached(query).result?.let { cached ->
-                      candidates += LyricsCandidate(cached, query.requestedTitle, query.requestedArtist, query.durationSec)
-                  }
-                  val network = fetchNetworkProgressive(query) { }
-                  candidates += network.candidates
-                  val selectedId = selected?.id
-                  return candidates
-                      .map { candidate -> candidate.toVersion(query, selectedId) }
-                      .distinctBy { it.id }
-                      .sortedWith(
-                          compareByDescending<LyricsVersion> { it.selected }
-                              .thenByDescending { it.result.synced }
-                              .thenByDescending { it.result.lines.any { line -> line.words.isNotEmpty() } }
-                              .thenByDescending { it.result.confidence }
-                      )
-              }
-          ''',
-              '''    suspend fun versions(
-                  title: String,
-                  artist: String,
-                  durationSec: Long,
-                  album: String = "",
-                  videoId: String = "",
-                  languageCode: String = "",
-                  translate: Boolean = false
-              ): List<LyricsVersion> = withContext(Dispatchers.IO) {
-                  val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
-                      ?: return@withContext emptyList()
-                  val selected = readSelection(query)
-                  val candidates = ArrayList<LyricsCandidate>()
-                  selected?.let { choice ->
-                      candidates += LyricsCandidate(choice.result, choice.title, choice.artist, choice.durationSec)
-                  }
-                  readCached(query).result?.let { cached ->
-                      candidates += LyricsCandidate(cached, query.requestedTitle, query.requestedArtist, query.durationSec)
-                  }
-                  val network = fetchNetworkProgressive(query) { }
-                  candidates += network.candidates
-                  val selectedId = selected?.id
-                  candidates
-                      .map { candidate -> candidate.toVersion(query, selectedId) }
-                      .distinctBy { it.id }
-                      .sortedWith(
-                          compareByDescending<LyricsVersion> { it.selected }
-                              .thenByDescending { it.result.synced }
-                              .thenByDescending { it.result.lines.any { line -> line.words.isNotEmpty() } }
-                              .thenByDescending { it.result.confidence }
-                      )
-              }
-          ''',
+              playback,
+              "            limiterProcessor.enabled = normalized.limiterEnabled &&\n"
+              "                (normalized.equalizerEnabled || normalized.virtualizer > 0 || normalized.replayGainEnabled)\n",
+              "            limiterProcessor.enabled = normalized.limiterEnabled &&\n"
+              "                (normalized.equalizerEnabled || normalized.virtualizer > 0 ||\n"
+              "                    normalized.replayGainEnabled || audioNormalization)\n",
           )
           replace_once(
-              lyrics,
-              '''    suspend fun selectVersion(
-                  title: String,
-                  artist: String,
-                  durationSec: Long,
-                  album: String,
-                  videoId: String,
-                  languageCode: String,
-                  translate: Boolean,
-                  version: LyricsVersion
-              ): LyricsResult? {
-                  val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return null
-                  val dao = lyricsSelectionDao ?: return version.result
-                  val now = System.currentTimeMillis()
-                  val stable = version.result.copy(cached = false, manualSelection = true)
-                  dao.upsert(
-                      LyricsSelectionEntity(
-                          trackKey = selectionKey(query),
-                          candidateId = version.id,
-                          provider = stable.provider,
-                          title = version.title,
-                          artist = version.artist,
-                          durationSec = version.durationSec,
-                          payload = serializeResult(stable),
-                          updatedAt = now
-                      )
-                  )
-                  val count = dao.count()
-                  if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldest(count - MAX_LYRICS_SELECTIONS)
-                  memoryPut(query.key, stable, now)
-                  persistPositive(query, stable)
-                  return stable
-              }
-          ''',
-              '''    suspend fun selectVersion(
-                  title: String,
-                  artist: String,
-                  durationSec: Long,
-                  album: String,
-                  videoId: String,
-                  languageCode: String,
-                  translate: Boolean,
-                  version: LyricsVersion
-              ): LyricsResult? = withContext(Dispatchers.IO) {
-                  val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
-                      ?: return@withContext null
-                  val dao = lyricsSelectionDao ?: return@withContext version.result
-                  val now = System.currentTimeMillis()
-                  val stable = version.result.copy(cached = false, manualSelection = true)
-                  dao.upsert(
-                      LyricsSelectionEntity(
-                          trackKey = selectionKey(query),
-                          candidateId = version.id,
-                          provider = stable.provider,
-                          title = version.title,
-                          artist = version.artist,
-                          durationSec = version.durationSec,
-                          payload = serializeResult(stable),
-                          updatedAt = now
-                      )
-                  )
-                  val count = dao.count()
-                  if (count > MAX_LYRICS_SELECTIONS) dao.deleteOldest(count - MAX_LYRICS_SELECTIONS)
-                  memoryPut(query.key, stable, now)
-                  persistPositive(query, stable)
-                  stable
-              }
-          ''',
+              playback,
+              "                    .setEnableFloatOutput(enableFloatOutput)\n",
+              "                    .setEnableFloatOutput(false)\n",
           )
           replace_once(
-              lyrics,
-              '''    suspend fun useAutomatic(
-                  title: String,
-                  artist: String,
-                  durationSec: Long,
-                  album: String,
-                  videoId: String,
-                  languageCode: String,
-                  translate: Boolean
-              ) {
-                  val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate) ?: return
-                  lyricsSelectionDao?.delete(selectionKey(query))
-                  memoryRemove(query.key)
-                  lyricsCacheDao?.delete(query.key)
-              }
-          ''',
-              '''    suspend fun useAutomatic(
-                  title: String,
-                  artist: String,
-                  durationSec: Long,
-                  album: String,
-                  videoId: String,
-                  languageCode: String,
-                  translate: Boolean
-              ): Unit = withContext(Dispatchers.IO) {
-                  val query = querySpec(title, artist, durationSec, album, videoId, languageCode, translate)
-                      ?: return@withContext
-                  lyricsSelectionDao?.delete(selectionKey(query))
-                  memoryRemove(query.key)
-                  lyricsCacheDao?.delete(query.key)
-              }
-          ''',
-          )
-          replace_once(
-              lyrics,
-              '''    private fun LyricsCandidate.toVersion(query: QuerySpec, selectedId: String?): LyricsVersion {
-                  val id = candidateId(result, title, artist, durationSec)
-                  return LyricsVersion(
-                      id = id,
-                      title = title.ifBlank { query.requestedTitle },
-                      artist = artist.ifBlank { query.requestedArtist },
-                      album = query.album,
-                      durationSec = durationSec.takeIf { it > 0L } ?: query.durationSec,
-                      result = result,
-                      selected = id == selectedId
-                  )
-              }
-          ''',
-              '''    private fun LyricsCandidate.toVersion(query: QuerySpec, selectedId: String?): LyricsVersion {
-                  val resolvedTitle = title.ifBlank { query.requestedTitle }
-                  val resolvedArtist = artist.ifBlank { query.requestedArtist }
-                  val resolvedDurationSec = durationSec.takeIf { it > 0L } ?: query.durationSec
-                  val id = candidateId(result, resolvedTitle, resolvedArtist, resolvedDurationSec)
-                  return LyricsVersion(
-                      id = id,
-                      title = resolvedTitle,
-                      artist = resolvedArtist,
-                      album = query.album,
-                      durationSec = resolvedDurationSec,
-                      result = result,
-                      selected = id == selectedId
-                  )
-              }
-          ''',
-          )
-
-          playback_service = "app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt"
-          replace_once(
-              playback_service,
-              '''        fun applyPremiumAudioSettings(settings: LevyraAudioSettings) {
-                  val normalized = settings.normalized()
-                  equalizerProcessor.enabled = normalized.equalizerEnabled
-                  equalizerProcessor.setBandLevels(normalized.bandLevels)
-                  equalizerProcessor.bassBoost = normalized.bassBoost
-                  equalizerProcessor.preampDb = normalized.preampDb
-                  spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
-                  limiterProcessor.enabled = normalized.limiterEnabled &&
-                      (normalized.equalizerEnabled || normalized.virtualizer > 0 || normalized.replayGainEnabled)
-              ''',
-              '''        fun applyPremiumAudioSettings(
-                  settings: LevyraAudioSettings,
-                  audioNormalization: Boolean = normalizationProcessor.enabled
-              ) {
-                  val normalized = settings.normalized()
-                  equalizerProcessor.enabled = normalized.equalizerEnabled
-                  equalizerProcessor.setBandLevels(normalized.bandLevels)
-                  equalizerProcessor.bassBoost = normalized.bassBoost
-                  equalizerProcessor.preampDb = normalized.preampDb
-                  spatialAudioProcessor.strength = if (normalized.equalizerEnabled) normalized.virtualizer else 0
-                  limiterProcessor.enabled = normalized.limiterEnabled &&
-                      (normalized.equalizerEnabled || normalized.virtualizer > 0 ||
-                          normalized.replayGainEnabled || audioNormalization)
-              ''',
-          )
-          replace_once(
-              playback_service,
-              ".setEnableFloatOutput(enableFloatOutput)\n",
-              ".setEnableFloatOutput(false)\n",
-          )
-          replace_once(
-              playback_service,
+              playback,
               "        applyPremiumAudioSettings(snapshot.audioSettings)\n",
               "        applyPremiumAudioSettings(snapshot.audioSettings, snapshot.audioNormalization)\n",
           )
@@ -287,35 +64,28 @@ jobs:
           player = "app/src/main/java/com/luc4n3x/levyra/player/LevyraPlayer.kt"
           replace_once(
               player,
-              '''    fun setPremiumAudioSettings(settings: LevyraAudioSettings) {
-                  audioSettings = settings.normalized()
-                  controller?.let { applyPlaybackParameters(it) }
-                  PlaybackService.applyPremiumAudioSettings(audioSettings)
-              }
-          ''',
-              '''    fun setPremiumAudioSettings(
-                  settings: LevyraAudioSettings,
-                  audioNormalization: Boolean = PlaybackService.normalizationProcessor.enabled
-              ) {
-                  audioSettings = settings.normalized()
-                  controller?.let { applyPlaybackParameters(it) }
-                  PlaybackService.applyPremiumAudioSettings(audioSettings, audioNormalization)
-              }
-          ''',
+              "    fun setPremiumAudioSettings(settings: LevyraAudioSettings) {\n",
+              "    fun setPremiumAudioSettings(\n"
+              "        settings: LevyraAudioSettings,\n"
+              "        audioNormalization: Boolean = PlaybackService.normalizationProcessor.enabled\n"
+              "    ) {\n",
+          )
+          replace_once(
+              player,
+              "        PlaybackService.applyPremiumAudioSettings(audioSettings)\n",
+              "        PlaybackService.applyPremiumAudioSettings(audioSettings, audioNormalization)\n",
           )
 
           view_model = "app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt"
           replace_once(
               view_model,
-              '''        player.setPremiumAudioSettings(normalized)
-                  player.setPlayback(normalized.playbackSpeed, normalized.pitch)
-                  com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = audioNormalization || normalized.replayGainEnabled
-          ''',
-              '''        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled =
-                      audioNormalization || normalized.replayGainEnabled
-                  player.setPremiumAudioSettings(normalized, audioNormalization)
-                  player.setPlayback(normalized.playbackSpeed, normalized.pitch)
-          ''',
+              "        player.setPremiumAudioSettings(normalized)\n"
+              "        player.setPlayback(normalized.playbackSpeed, normalized.pitch)\n"
+              "        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled = audioNormalization || normalized.replayGainEnabled\n",
+              "        com.luc4n3x.levyra.player.PlaybackService.normalizationProcessor.enabled =\n"
+              "            audioNormalization || normalized.replayGainEnabled\n"
+              "        player.setPremiumAudioSettings(normalized, audioNormalization)\n"
+              "        player.setPlayback(normalized.playbackSpeed, normalized.pitch)\n",
           )
 
           Path(".github/workflows/apply-coderabbit-fixes.yml").unlink()
@@ -324,10 +94,9 @@ jobs:
           git diff --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/java/com/luc4n3x/levyra/data/LyricsRepository.kt \
-                  app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt \
+          git add app/src/main/java/com/luc4n3x/levyra/player/PlaybackService.kt \
                   app/src/main/java/com/luc4n3x/levyra/player/LevyraPlayer.kt \
                   app/src/main/java/com/luc4n3x/levyra/viewmodel/LevyraViewModel.kt \
                   .github/workflows/apply-coderabbit-fixes.yml
-          git commit -m "fix: address CodeRabbit review findings"
+          git commit -m "fix(audio): keep limiter aligned with normalization"
           git push origin HEAD:agent/advanced-lyrics-dsp-motion
