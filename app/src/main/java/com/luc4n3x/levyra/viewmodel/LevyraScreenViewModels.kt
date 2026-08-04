@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.luc4n3x.levyra.data.HomeContentAvailability
 import com.luc4n3x.levyra.data.HomeEditorialEngine
 import com.luc4n3x.levyra.data.LevyraStartupCatalog
+import com.luc4n3x.levyra.data.deduplicateHomeAlbums
 import com.luc4n3x.levyra.domain.AlbumHit
 import com.luc4n3x.levyra.domain.ArtistHit
 import com.luc4n3x.levyra.domain.ChartRegion
@@ -359,9 +360,10 @@ private data class HomeDerivedInput(
 )
 
 internal fun buildHomeRenderSnapshot(state: LevyraUiState): HomeRenderSnapshot {
+    val renderState = state.withDeduplicatedHomeAlbums()
     return HomeRenderSnapshot(
-        state = state,
-        derived = buildHomeDerivedState(state.toHomeDerivedInput())
+        state = renderState,
+        derived = buildHomeDerivedState(renderState.toHomeDerivedInput())
     )
 }
 
@@ -369,12 +371,18 @@ internal fun buildHomeRenderSnapshot(
     state: LevyraUiState,
     previous: HomeRenderSnapshot
 ): HomeRenderSnapshot {
-    val derived = if (sameHomeDerivedInputs(previous.state, state)) {
+    val renderState = state.withDeduplicatedHomeAlbums()
+    val derived = if (sameHomeDerivedInputs(previous.state, renderState)) {
         previous.derived
     } else {
-        buildHomeDerivedState(state.toHomeDerivedInput())
+        buildHomeDerivedState(renderState.toHomeDerivedInput())
     }
-    return HomeRenderSnapshot(state = state, derived = derived)
+    return HomeRenderSnapshot(state = renderState, derived = derived)
+}
+
+private fun LevyraUiState.withDeduplicatedHomeAlbums(): LevyraUiState {
+    val distinctAlbums = deduplicateHomeAlbums(homeAlbums)
+    return if (distinctAlbums.size == homeAlbums.size) this else copy(homeAlbums = distinctAlbums)
 }
 
 private fun sameHomeDerivedInputs(previous: LevyraUiState, current: LevyraUiState): Boolean {
