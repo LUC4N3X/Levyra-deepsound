@@ -19,6 +19,11 @@ class HomeRefreshStabilityTest {
     }
 
     @Test
+    fun sectionIdentityPreservesExistingLatinAccentFolding() {
+        assertEquals("cafe-del-mar", HomeRefreshStability.sectionIdentity("Café del Mar"))
+    }
+
+    @Test
     fun sanitizeSectionsKeepsDistinctNonLatinShelves() {
         val sections = listOf(
             section("موسيقى جديدة", "ar"),
