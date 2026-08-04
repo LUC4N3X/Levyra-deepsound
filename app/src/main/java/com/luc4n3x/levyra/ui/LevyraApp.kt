@@ -48,6 +48,8 @@ import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.animation.EnterTransition
@@ -124,6 +126,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Album
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.Explicit
 import androidx.compose.material.icons.rounded.Explore
@@ -243,7 +250,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
@@ -423,8 +429,12 @@ private val LevyraTabBarHeight = 76.dp
 /** Mini player height: content row, progress line and its trailing spacer. */
 private val LevyraMiniPlayerHeight = 77.dp
 private val LevyraBottomContentGap = 16.dp
+private val LevyraTabIndicatorTop = 11.dp
+private val LevyraTabIndicatorHeight = 36.dp
+private val LevyraTabIndicatorShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 15.dp, bottomEnd = 15.dp)
+private val LevyraTabBarTopCorner = 26.dp
+private val LevyraTabScrimHeight = 22.dp
 private val LevyraNavigationBlue = Color(0xFF0A84FF)
-private val LevyraNavigationBlueDeep = Color(0xFF0066E6)
 private val LevyraHomeGlowViolet = Color(0xFF6E5CF0)
 
 private val LevyraIsLight: Boolean get() = LevyraActivePalette.isLight
@@ -494,122 +504,133 @@ private fun cinematicTextBrush(): Brush {
     }
 }
 
+private data class LevyraTabEntry(
+    val tab: LevyraTab,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector,
+    val label: String
+)
+
 @Composable
-private fun RowScope.TabButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+private fun rememberLevyraTabEntries(): List<LevyraTabEntry> {
+    val strings = LocalLevyraStrings.current
+    return remember(strings) {
+        listOf(
+            LevyraTabEntry(LevyraTab.Home, Icons.Rounded.Home, Icons.Outlined.Home, strings.home),
+            LevyraTabEntry(LevyraTab.Search, Icons.Rounded.Search, Icons.Outlined.Search, strings.search),
+            LevyraTabEntry(LevyraTab.Explore, Icons.Rounded.Explore, Icons.Outlined.Explore, strings.explore),
+            LevyraTabEntry(LevyraTab.Library, Icons.Rounded.LibraryMusic, Icons.Outlined.LibraryMusic, strings.library),
+            LevyraTabEntry(LevyraTab.Player, Icons.Rounded.Album, Icons.Outlined.Album, strings.player)
+        )
+    }
+}
+
+@Composable
+private fun RowScope.TabButton(
+    entry: LevyraTabEntry,
+    isSelected: Boolean,
+    accent: Color,
+    showEqualizer: Boolean,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val strings = LocalLevyraStrings.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
+    val idleTint = LevyraMuted
+    val selectedTint = if (LevyraIsLight) LevyraBlue else accent
     val selectedProgress by animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isSelected) 1f else 0f,
+        animationSpec = if (animationsEnabled) {
+            spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)
+        } else {
+            snap()
+        },
         label = "tab-selected-progress"
     )
-    val pillWidth by animateDpAsState(
-        targetValue = if (selected) 56.dp else 34.dp,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow),
-        label = "tab-pill-width"
-    )
     val iconScale by animateFloatAsState(
-        targetValue = if (pressed) 0.86f else if (selected) 1.04f else 1f,
-        animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium),
+        targetValue = if (pressed) 0.88f else if (isSelected) 1.06f else 1f,
+        animationSpec = if (animationsEnabled) {
+            spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMedium)
+        } else {
+            snap()
+        },
         label = "tab-icon-scale"
     )
     val iconTint by animateColorAsState(
-        targetValue = if (selected) Color.White else if (LevyraIsLight) LevyraMuted else Color(0xFF85858D),
-        animationSpec = tween(220),
+        targetValue = if (isSelected) selectedTint else idleTint,
+        animationSpec = if (animationsEnabled) tween(220) else snap(),
         label = "tab-icon-tint"
     )
     val labelTint by animateColorAsState(
-        targetValue = when {
-            selected && LevyraIsLight -> LevyraNavigationBlueDeep
-            selected -> LevyraNavigationBlue
-            LevyraIsLight -> LevyraMuted
-            else -> Color(0xFF8B8B94)
-        },
-        animationSpec = tween(220),
+        targetValue = if (isSelected) selectedTint else idleTint,
+        animationSpec = if (animationsEnabled) tween(220) else snap(),
         label = "tab-label-tint"
     )
-    val pillShape = RoundedCornerShape(18.dp)
 
     Box(
         modifier = Modifier
             .weight(1f)
-            .fillMaxSize()
+            .fillMaxHeight()
+            .semantics(mergeDescendants = true) {
+                role = Role.Tab
+                selected = isSelected
+            }
             .pressable(
                 interactionSource = interactionSource,
-                pressedScale = 0.96f,
+                pressedScale = 0.93f,
                 onClick = onClick
             ),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.TopCenter
     ) {
         Column(
+            modifier = Modifier.padding(top = LevyraTabIndicatorTop),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             Box(
-                modifier = Modifier
-                    .width(pillWidth)
-                    .height(34.dp)
-                    .clip(pillShape)
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                LevyraNavigationBlue.copy(alpha = 0.92f * selectedProgress),
-                                LevyraNavigationBlueDeep.copy(alpha = 0.78f * selectedProgress)
-                            )
-                        ),
-                        shape = pillShape
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFF79BDFF).copy(alpha = 0.48f * selectedProgress),
-                        shape = pillShape
-                    ),
+                modifier = Modifier.height(LevyraTabIndicatorHeight),
                 contentAlignment = Alignment.Center
             ) {
-                if (selectedProgress > 0.01f) {
-                    Box(
+                if (showEqualizer) {
+                    ActiveTrackEqualizer(
+                        modifier = if (isPlaying) {
+                            Modifier.semantics { contentDescription = strings.playing }
+                        } else {
+                            Modifier
+                        },
+                        color = if (isSelected) selectedTint else accent,
+                        isPlaying = isPlaying,
+                        width = 19.dp,
+                        height = 15.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isSelected) entry.selectedIcon else entry.unselectedIcon,
+                        contentDescription = null,
+                        tint = iconTint,
                         modifier = Modifier
-                            .matchParentSize()
-                            .graphicsLayer { alpha = selectedProgress }
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(
-                                        Color.White.copy(alpha = 0.20f),
-                                        Color.Transparent
-                                    )
-                                ),
-                                pillShape
-                            )
+                            .size(22.dp)
+                            .graphicsLayer {
+                                scaleX = iconScale
+                                scaleY = iconScale
+                                translationY = -1.5.dp.toPx() * selectedProgress
+                            }
                     )
                 }
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = iconTint,
-                    modifier = Modifier
-                        .size(23.dp)
-                        .graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                        }
-                )
             }
             Text(
-                text = label,
+                text = entry.label,
                 color = labelTint,
-                fontSize = 11.sp,
+                fontSize = 10.5.sp,
                 lineHeight = 12.sp,
-                letterSpacing = 0.05.sp,
-                fontWeight = if (selected) FontWeight.Black else FontWeight.Medium,
+                letterSpacing = 0.1.sp,
+                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Box(
-                modifier = Modifier
-                    .width(18.dp * selectedProgress)
-                    .height(2.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(LevyraNavigationBlue.copy(alpha = selectedProgress))
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 3.dp)
             )
         }
     }
@@ -1228,6 +1249,13 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 AnimatedVisibility(
+                    visible = state.selectedTab != LevyraTab.Player,
+                    enter = miniEnter,
+                    exit = miniExit
+                ) {
+                    BottomTabsScrim()
+                }
+                AnimatedVisibility(
                     visible = state.selectedTab != LevyraTab.Player && state.currentTrack != null,
                     enter = miniEnter,
                     exit = miniExit
@@ -1255,7 +1283,8 @@ fun LevyraApp(viewModel: LevyraViewModel, isInPictureInPicture: Boolean = false)
                 ) {
                     BottomTabs(
                         selected = state.selectedTab,
-                        flatTop = state.currentTrack != null,
+                        hasActiveTrack = state.currentTrack != null,
+                        isPlaying = state.isPlaying,
                         onSelect = viewModel::selectTab
                     )
                 }
@@ -16961,39 +16990,146 @@ private fun VideoGlassCard(
 }
 
 @Composable
-private fun BottomTabs(selected: LevyraTab, flatTop: Boolean, onSelect: (LevyraTab) -> Unit) {
-    val strings = LocalLevyraStrings.current
-    val surfaceColor = if (LevyraIsLight) Color.White.copy(alpha = 0.96f) else Color(0xF708080B)
-    val linePrimary = if (LevyraIsLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.07f)
-    Surface(
-        color = surfaceColor,
-        shape = RoundedCornerShape(0.dp),
-        shadowElevation = if (LevyraIsLight) 6.dp else 10.dp,
+private fun BottomTabsScrim() {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .drawBehind {
-                drawLine(
-                    color = linePrimary,
-                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
-                    end = androidx.compose.ui.geometry.Offset(size.width, 0f),
-                    strokeWidth = 1.dp.toPx()
+            .height(LevyraTabScrimHeight)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        Color.Transparent,
+                        LevyraBlack.copy(alpha = 0.34f),
+                        LevyraBlack.copy(alpha = 0.72f)
+                    )
                 )
-            }
+            )
+    )
+}
+
+@Composable
+private fun BottomTabs(
+    selected: LevyraTab,
+    hasActiveTrack: Boolean,
+    isPlaying: Boolean,
+    onSelect: (LevyraTab) -> Unit
+) {
+    val entries = rememberLevyraTabEntries()
+    val animationsEnabled = LocalAnimationsEnabled.current
+    val haptics = LocalHapticFeedback.current
+    val isLight = LevyraIsLight
+    val accentStart = LevyraCyan
+    val selectedIndex = entries.indexOfFirst { it.tab == selected }.coerceAtLeast(0)
+    val indicatorPosition by animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec = if (animationsEnabled) {
+            spring(dampingRatio = 0.76f, stiffness = Spring.StiffnessMediumLow)
+        } else {
+            snap()
+        },
+        label = "tab-indicator-position"
+    )
+    val topCorner by animateDpAsState(
+        targetValue = if (hasActiveTrack) 0.dp else LevyraTabBarTopCorner,
+        animationSpec = if (animationsEnabled) tween(280, easing = FastOutSlowInEasing) else snap(),
+        label = "tab-bar-corner"
+    )
+    val barShape = RoundedCornerShape(topStart = topCorner, topEnd = topCorner)
+    val barBase = LevyraBlack
+    val barInk = LevyraInk
+    val barPanel = LevyraPanel
+    val barBrush = remember(isLight, barBase, barInk, barPanel) {
+        if (isLight) {
+            Brush.verticalGradient(listOf(Color.White, barInk, barPanel))
+        } else {
+            Brush.verticalGradient(listOf(barInk, barBase, barBase))
+        }
+    }
+    val indicatorBrush = remember(isLight, accentStart) {
+        Brush.verticalGradient(
+            listOf(
+                accentStart.copy(alpha = if (isLight) 0.16f else 0.20f),
+                accentStart.copy(alpha = if (isLight) 0.08f else 0.10f)
+            )
+        )
+    }
+    val indicatorBorderColor = accentStart.copy(alpha = if (isLight) 0.24f else 0.20f)
+    val hairline = if (isLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.085f)
+
+    Surface(
+        color = barBase,
+        shape = barShape,
+        shadowElevation = if (isLight) 10.dp else 16.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(barBrush)
+                .drawBehind {
+                    val strokeWidth = 1.dp.toPx()
+                    val y = strokeWidth / 2f
+                    drawLine(
+                        color = hairline,
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = strokeWidth
+                    )
+                }
+        ) {
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(76.dp)
-                    .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 7.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .height(LevyraTabBarHeight)
             ) {
-                TabButton(Icons.Rounded.Home, strings.home, selected == LevyraTab.Home) { onSelect(LevyraTab.Home) }
-                TabButton(Icons.Rounded.Search, strings.search, selected == LevyraTab.Search) { onSelect(LevyraTab.Search) }
-                TabButton(Icons.Rounded.Explore, strings.explore, selected == LevyraTab.Explore) { onSelect(LevyraTab.Explore) }
-                TabButton(Icons.Rounded.LibraryMusic, strings.library, selected == LevyraTab.Library) { onSelect(LevyraTab.Library) }
-                TabButton(Icons.Rounded.Album, strings.player, selected == LevyraTab.Player) { onSelect(LevyraTab.Player) }
+                val slotWidth = maxWidth / entries.size
+                val indicatorWidth = (slotWidth - 34.dp).coerceIn(40.dp, 52.dp)
+                val density = LocalDensity.current
+                val slotPx = with(density) { slotWidth.toPx() }
+                val indicatorPx = with(density) { indicatorWidth.toPx() }
+                val indicatorTopPx = with(density) { LevyraTabIndicatorTop.roundToPx() }
+
+                Box(
+                    modifier = Modifier
+                        .offset {
+                            IntOffset(
+                                (slotPx * indicatorPosition + (slotPx - indicatorPx) / 2f).roundToInt(),
+                                indicatorTopPx
+                            )
+                        }
+                        .size(width = indicatorWidth, height = LevyraTabIndicatorHeight)
+                        .clip(LevyraTabIndicatorShape)
+                        .background(indicatorBrush)
+                        .border(
+                            width = 1.dp,
+                            color = indicatorBorderColor,
+                            shape = LevyraTabIndicatorShape
+                        )
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .selectableGroup(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    entries.forEach { entry ->
+                        val isSelected = entry.tab == selected
+                        TabButton(
+                            entry = entry,
+                            isSelected = isSelected,
+                            accent = accentStart,
+                            showEqualizer = entry.tab == LevyraTab.Player && hasActiveTrack,
+                            isPlaying = isPlaying,
+                            onClick = {
+                                if (!isSelected) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                                onSelect(entry.tab)
+                            }
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.navigationBarsPadding())
         }
