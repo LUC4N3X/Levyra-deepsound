@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-04T06:48:14Z",
+  "generatedAt": "2026-08-04T06:53:35Z",
   "collections": [
     {
       "id": "top-50-it",
@@ -2837,7 +2837,7 @@
         },
         {
           "position": 22,
-          "id": "levyra-eade1c4be5015d681297",
+          "id": "levyra-9824cf7c6204b58ac7c7",
           "title": "Iris",
           "artists": [
             {
@@ -2845,12 +2845,12 @@
             }
           ],
           "album": {
-            "name": "Stay with You",
+            "name": "Dizzy up the Girl",
             "releaseDate": "1998"
           },
           "durationMs": 289533,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029858a6eb4467d1916fe1d569"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02eda9478c39a21e1cdc6609ca"
         },
         {
           "position": 23,
@@ -3213,11 +3213,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 39,
@@ -9326,6 +9326,12 @@
           },
           "durationMs": 211084,
           "explicit": true,
+          "youtubeMusic": {
+            "audioVideoId": "ZhM1BddhZ1c",
+            "audioConfidence": 100,
+            "confidence": 100,
+            "artistBrowseId": "UC8r_j-qnSCj1t4h6EVN5TrQ"
+          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02842ff43668299304d6f021b2"
         },
         {
@@ -10431,11 +10437,11 @@
           ],
           "album": {
             "name": "Midnight Sun",
-            "releaseDate": "2025-09-25"
+            "releaseDate": "2025-09-26"
           },
           "durationMs": 189898,
           "explicit": false,
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e027657f9028ea8bb2c18dca99f"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0293872dded9b6fe861ac52752"
         },
         {
           "position": 40,
@@ -16185,7 +16191,7 @@
         },
         {
           "position": 36,
-          "id": "levyra-35844a86b63c91c223c1",
+          "id": "levyra-ef444afbdd8812785bd5",
           "title": "Man I Need",
           "artists": [
             {
@@ -16193,8 +16199,8 @@
             }
           ],
           "album": {
-            "name": "The Art of Loving",
-            "releaseDate": "2025-09-26"
+            "name": "Man I Need",
+            "releaseDate": "2025-08-15"
           },
           "durationMs": 184000,
           "explicit": false,
@@ -16204,7 +16210,7 @@
             "confidence": 100,
             "artistBrowseId": "UC6GBKGYX6b3guHlqHLx6IzQ"
           },
-          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e029a336bfb6d40bbd90a507417"
+          "artworkUrl": "https://i.scdn.co/image/ab67616d00001e02e3d69e17dde129037a1f09e2"
         },
         {
           "position": 37,
@@ -27206,14 +27212,6 @@
           },
           "durationMs": 264000,
           "explicit": false,
-          "youtubeMusic": {
-            "audioVideoId": "9L9ynqxHZ2k",
-            "audioConfidence": 100,
-            "videoId": "puFt8Otb3Ao",
-            "videoConfidence": 97,
-            "confidence": 100,
-            "artistBrowseId": "UCgfon7MlYjVKFT1xv5tyU8g"
-          },
           "artworkUrl": "https://i.scdn.co/image/ab67616d00001e0289010986807175896f24855e"
         },
         {
@@ -27317,6 +27315,8 @@
           "youtubeMusic": {
             "audioVideoId": "JrW1p-UJ9Ag",
             "audioConfidence": 100,
+            "videoId": "DXvtelMvUy8",
+            "videoConfidence": 98,
             "confidence": 100,
             "artistBrowseId": "UCWBOZt9HgUzjvkrNPdT0aJg"
           },
