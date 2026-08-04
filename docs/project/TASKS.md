@@ -2,75 +2,68 @@
 
 ## Active phase
 
-**Name:** Documentation information architecture  
-**Roadmap track:** Track 7 - Agent-assisted engineering  
-**Status:** Implementation complete; immediate squash merge explicitly authorized  
-**Scope:** Move the project planning documents into `docs/project/`, add clear
-navigation for the existing documentation areas, update every repository
-reference, and remove the former root copies. No Android or Desktop runtime,
-dependency, version, signing, packaging, or release behavior is changed.
+**Name:** Android Home identity audit and dead-code cleanup  
+**Roadmap track:** Track 3 - Responsive, accessible interface; Track 6 - Distribution and repository integrity  
+**Status:** Implementation complete; automated validation is blocked in the connector environment  
+**Scope:** Correct Home section identity for non-Latin scripts, add focused regression coverage, and remove the unused demo catalog stub. No playback, persistence schema, version, dependency, signing, packaging, Desktop, or release behavior is changed.
+
+## Verified current behavior and root cause
+
+`HomeRefreshStability.sectionIdentity()` reduced section titles to ASCII letters and digits. Distinct Arabic, Chinese, Japanese, Korean, Hebrew, Indic, Greek, and Cyrillic titles could therefore collapse to the same fallback identity (`section`). Because Home sanitization permits at most two occurrences of one identity, later valid localized shelves could be discarded as duplicates.
+
+`DemoCatalogRepository` had no callers and every method returned only empty or zero-valued placeholder data.
 
 ## Acceptance criteria
 
-- Durable requirements live in `docs/project/SPEC.md`.
-- Ordered engineering outcomes live in `docs/project/ROADMAP.md`.
-- The active reviewable phase and validation evidence live in
-  `docs/project/TASKS.md`.
-- `docs/README.md` provides a concise map of architecture, project, AI, and asset
-  documentation.
-- `docs/project/README.md` explains the distinct responsibility of each project
-  document.
-- Root and nested agent instructions, AI workflow documents, native skills, and
-  the configuration validator reference the canonical new paths.
-- The former root `SPEC.md`, `ROADMAP.md`, and `TASKS.md` files are removed after
-  their canonical replacements exist.
-- Existing product code, versions, dependencies, signing, packaging, and release
-  behavior remain unchanged.
+- Home section identity preserves Unicode letters and numbers.
+- Compatibility-equivalent Unicode forms normalize deterministically.
+- Distinct non-Latin Home shelves are not discarded as duplicate fallback sections.
+- Whitespace and punctuation still normalize to stable separators.
+- Focused unit tests cover the original localized failure path.
+- The unused demo catalog stub is removed without replacing it with another source of truth.
+- Playback, queue, downloads, Room schemas, preferences, localization strings, Android and Desktop versions, workflows, signing, packaging, and releases remain unchanged.
 
 ## Work items
 
-- [x] Define a stable documentation layout.
-- [x] Add the top-level documentation index.
-- [x] Add the project-documentation guide.
-- [x] Move the specification into `docs/project/`.
-- [x] Move the roadmap into `docs/project/`.
-- [x] Replace the active task phase with this documentation reorganization.
-- [x] Update repository instructions, AI documentation, skills, and validation
-      paths.
-- [x] Remove the former root planning files.
-- [x] Inspect the final branch diff for product-code, version, dependency,
-      workflow, binary, or generated-file changes.
-- [x] Record the owner's explicit authorization to open and immediately
-      squash-merge the documentation-only pull request without waiting for CI.
+- [x] Inspect the current Home section sanitization and merge flow.
+- [x] Confirm the failure path against supported non-Latin locales.
+- [x] Replace ASCII-only identity filtering with Unicode-aware normalization.
+- [x] Add focused regression coverage for Arabic, Chinese, Japanese, and Korean shelf titles.
+- [x] Verify `DemoCatalogRepository` has no production or test callers.
+- [x] Remove the unused demo catalog stub.
+- [x] Inspect the branch diff for unrelated version, dependency, workflow, binary, generated-file, or secret changes.
+- [ ] Run the focused Android unit test in a repository checkout.
+- [ ] Run the broader Android unit-test suite and lint in a supported environment.
+- [ ] Verify localized Home rendering on a device or emulator.
 
 ## Validation matrix
 
 | Check | Required | Current state |
 | --- | --- | --- |
-| Canonical project files exist under `docs/project/` | Yes | Verified on the branch |
-| Former root planning files are absent | Yes | Verified on the branch |
-| Repository references use `docs/project/*` | Yes | Directly inspected in every indexed reference |
-| Documentation navigation and relative links | Yes | Manually reviewed |
-| `python3 scripts/validate_agent_config.py` | Normally yes | Not executed locally; connector environment has no repository checkout |
-| Android unit tests, lint, and release compile | No for this phase | Not run; no product or build code changed |
-| Desktop build | No for this phase | Not run; no Desktop code changed |
-| Device, playback, Android Auto, notification, PiP | No for this phase | Not applicable |
-| Windows installer, update, protocol, media keys | No for this phase | Not applicable |
-| CI completion before merge | Owner decision | Explicitly waived for this documentation-only change |
-| Squash merge | Owner action | Explicitly authorized in the initiating request |
+| Root cause reproduced by code inspection | Yes | Verified against the ASCII-only identity filter and duplicate cap |
+| Focused regression test added | Yes | Added; execution blocked because the connector environment has no repository checkout or Gradle runtime |
+| `DemoCatalogRepository` reference search | Yes | Verified: no callers outside the deleted file |
+| Complete branch diff inspection | Yes | Pending final comparison before pull-request creation |
+| `./gradlew --no-daemon :app:testDebugUnitTest` | Yes | Blocked in the connector environment |
+| `./gradlew --no-daemon :app:lintRelease` | Yes | Blocked in the connector environment |
+| `./gradlew --no-daemon --no-configuration-cache assembleRelease` | Applicable before merge | Blocked in the connector environment |
+| `python3 scripts/validate_agent_config.py` | Yes after task-file change | Blocked in the connector environment |
+| Localized device/emulator Home check | Manual | Not performed |
+| Playback, Android Auto, notification, PiP | No | Not affected by this phase |
+| Desktop build and Windows checks | No | Desktop files are unchanged |
+| Merge or release | Owner action | Not authorized by this phase |
 
 ## Behavior preserved
 
-- Android and Desktop implementation files are untouched.
-- Playback, queue, MediaSession, notification, Android Auto, downloads, Room,
-  preferences, backups, localization, and UI behavior are unchanged.
-- Android and Desktop versions, tags, packages, signing, artifacts, and release
-  workflows remain independent.
-- Existing Claude and OpenAI domain skills retain their behavior; only planning
-  document paths change.
+- The existing Home sanitization limits, merge ordering, track identity, cached-content retention, and structural-defer behavior remain unchanged.
+- No user-visible strings or locale catalogs are modified.
+- Playback, MediaSession, notification, Android Auto, queue, downloads, favorites, playlists, history, settings, backups, and Room schemas are untouched.
+- Android and Desktop versions, artifacts, tags, signing, packaging, and release workflows remain independent and unchanged.
+
+## Rollback boundary
+
+Revert the Unicode identity change, its focused test, the demo-stub deletion, and this active-task update as one reviewable pull request. No migration or durable-data rollback is required.
 
 ## Update rule
 
-Replace this active phase when new work begins instead of accumulating unrelated
-tasks indefinitely. Record validation from direct commands, CI runs, reviews,
-manual checks, or explicit owner decisions—not from an agent narrative.
+Record test, CI, review, device, merge, and release status only from direct evidence. Replace this phase when a new reviewable task begins instead of accumulating unrelated work.
