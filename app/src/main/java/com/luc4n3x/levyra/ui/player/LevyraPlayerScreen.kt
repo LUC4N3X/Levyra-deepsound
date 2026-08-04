@@ -52,14 +52,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.luc4n3x.levyra.domain.Models.Track
+import com.luc4n3x.levyra.domain.Track
+import com.luc4n3x.levyra.ui.i18n.LocalLevyraStrings
+import com.luc4n3x.levyra.ui.components.PlayerAccentColors
+import com.luc4n3x.levyra.ui.components.PlayerControlLabels
+import com.luc4n3x.levyra.ui.components.playerGlass
+import kotlinx.coroutines.coroutineScope
 import com.luc4n3x.levyra.domain.RepeatMode
 import com.luc4n3x.levyra.viewmodel.LevyraUiState
 import com.luc4n3x.levyra.viewmodel.PlayerViewModel
 import com.luc4n3x.levyra.ui.components.PlayerTransportControls
 import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.player.LevyraPipBridge
-import com.luc4n3x.levyra.ui.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.*
 import com.luc4n3x.levyra.ui.*
 import kotlinx.coroutines.delay
@@ -733,5 +737,7 @@ fun LevyraPlayerScreen(
         }
     }
 }
+
+
 
 
