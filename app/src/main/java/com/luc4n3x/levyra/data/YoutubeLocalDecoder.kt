@@ -225,6 +225,7 @@ private class YoutubeLocalDecoderEngine(
                 try {
                     decodeAttempt(playerId, missingSignatures, missingNs, forceRefresh = true)
                 } catch (secondError: Throwable) {
+                    if (secondError is YoutubeRendererBackoffException) throw secondError
                     secondError.addSuppressed(firstError)
                     throw ParsingException("Local decode failed for player $playerId", secondError)
                 }
@@ -264,7 +265,7 @@ private class YoutubeLocalDecoderEngine(
         }
         val resolvedConfig = config ?: player.analyzedConfig ?: return
         runtimeMutex.withLock {
-            ensureRuntime(player, resolvedConfig, recordRendererFailures = false)
+            ensureRuntime(player, resolvedConfig)
         }
     }
 
@@ -327,23 +328,36 @@ private class YoutubeLocalDecoderEngine(
 
         return try {
             runtimeMutex.withLock {
-                val active = ensureRuntime(player, resolvedConfig)
-                val signatureResults = LinkedHashMap<String, String>()
-                val nResults = LinkedHashMap<String, String>()
-                signatures.forEach { input ->
-                    val output = active.decodeSignature(input)
-                    if (output.isBlank()) throw ParsingException("Empty local signature result")
-                    signatureResults[input] = output
+                val recoveryIdentity = "${player.hash}:${configStore.epoch}"
+                try {
+                    val active = ensureRuntime(player, resolvedConfig)
+                    val signatureResults = LinkedHashMap<String, String>()
+                    val nResults = LinkedHashMap<String, String>()
+                    signatures.forEach { input ->
+                        val output = active.decodeSignature(input)
+                        if (output.isBlank()) {
+                            throw YoutubeAnalyzedConfigFailureException("Empty local signature result")
+                        }
+                        signatureResults[input] = output
+                    }
+                    nValues.forEach { input ->
+                        val output = active.transformN(input)
+                        if (output.isBlank()) {
+                            throw YoutubeAnalyzedConfigFailureException("Empty local n-transform result")
+                        }
+                        nResults[input] = output
+                    }
+                    lastSuccessfulDecodePlayerHash = player.hash
+                    lastSuccessfulDecodeOrigin = resolvedConfig.origin
+                    lastSuccessfulDecodeAtMs.set(System.currentTimeMillis())
+                    rendererRecovery.onSuccess()
+                    YoutubeDecodedBatch(signatureResults, nResults, runtimeConfigEpoch)
+                } catch (error: Throwable) {
+                    if (YoutubeRendererFailureClassifier.countsAsRendererFailure(error)) {
+                        rendererRecovery.onFailure(recoveryIdentity, SystemClock.elapsedRealtime())
+                    }
+                    throw error
                 }
-                nValues.forEach { input ->
-                    val output = active.transformN(input)
-                    if (output.isBlank()) throw ParsingException("Empty local n-transform result")
-                    nResults[input] = output
-                }
-                lastSuccessfulDecodePlayerHash = player.hash
-                lastSuccessfulDecodeOrigin = resolvedConfig.origin
-                lastSuccessfulDecodeAtMs.set(System.currentTimeMillis())
-                YoutubeDecodedBatch(signatureResults, nResults, runtimeConfigEpoch)
             }
         } catch (error: Throwable) {
             if (
@@ -368,8 +382,7 @@ private class YoutubeLocalDecoderEngine(
 
     private suspend fun ensureRuntime(
         player: YoutubePlayerScript,
-        config: YoutubePlayerCipherConfig,
-        recordRendererFailures: Boolean = true
+        config: YoutubePlayerCipherConfig
     ): YoutubeCipherWebRuntime {
         val current = runtime
         if (
@@ -391,15 +404,7 @@ private class YoutubeLocalDecoderEngine(
         if (!rendererRecovery.shouldAttempt(recoveryIdentity, SystemClock.elapsedRealtime())) {
             throw YoutubeRendererBackoffException()
         }
-        val created = try {
-            YoutubeCipherWebRuntime.create(context, player, config)
-        } catch (error: Throwable) {
-            if (recordRendererFailures && YoutubeRendererFailureClassifier.countsAsRendererFailure(error)) {
-                rendererRecovery.onFailure(recoveryIdentity, SystemClock.elapsedRealtime())
-            }
-            throw error
-        }
-        rendererRecovery.onSuccess()
+        val created = YoutubeCipherWebRuntime.create(context, player, config)
         runtime = created
         runtimeHash = player.hash
         runtimeConfigKey = player.configKey
@@ -1229,11 +1234,13 @@ internal class YoutubeRendererBackoffException : ParsingException("Local decoder
 
 internal class YoutubeRendererFailureException(message: String) : ParsingException(message)
 
+internal class YoutubeAnalyzedConfigFailureException(message: String) : ParsingException(message)
+
 internal object YoutubeRendererFailureClassifier {
     fun countsAsRendererFailure(error: Throwable): Boolean = error is YoutubeRendererFailureException
 
     fun provesAnalyzedConfigWrong(error: Throwable): Boolean =
-        error !is YoutubeRendererBackoffException && error !is YoutubeRendererFailureException
+        error is YoutubeAnalyzedConfigFailureException
 }
 
 internal class YoutubeRendererRecoveryPolicy(
@@ -1289,7 +1296,6 @@ internal object YoutubePlayerJsSupport {
             ?.takeIf { YoutubePlayerConfigParser.isValidHash(it) }
     }
 
-
     fun playerFingerprint(javascript: String): String {
         val bytes = javascript.toByteArray(StandardCharsets.UTF_8)
         val length = minOf(bytes.size, 10_000)
@@ -1309,7 +1315,9 @@ internal object YoutubePlayerJsSupport {
         val exports = ";window.__levyraSig=function(sig){return $signature;};window.__levyraN=function(n){return $nExpression;};"
         val marker = "})(_yt_player);"
         val index = javascript.lastIndexOf(marker)
-        if (index < 0) throw ParsingException("YouTube player export marker not found")
+        if (index < 0) {
+            throw YoutubeAnalyzedConfigFailureException("YouTube player export marker not found")
+        }
         return javascript.substring(0, index) + exports + javascript.substring(index)
     }
 }
@@ -1349,7 +1357,9 @@ private class YoutubeCipherWebRuntime private constructor(
     }
 
     private suspend fun evaluate(kind: String, value: String): String {
-        if (isDead || closed.get()) throw ParsingException("Local decoder runtime unavailable")
+        if (isDead || closed.get()) {
+            throw YoutubeRendererFailureException("Local decoder runtime unavailable")
+        }
         var requestId: String? = null
         try {
             withTimeout(READY_TIMEOUT_MS) { ready.await() }
@@ -1358,17 +1368,23 @@ private class YoutubeCipherWebRuntime private constructor(
             val deferred = CompletableDeferred<String>()
             waiters[id] = deferred
             withContext(Dispatchers.Main.immediate) {
-                if (isDead || closed.get()) throw ParsingException("Local decoder renderer unavailable")
+                if (isDead || closed.get()) {
+                    throw YoutubeRendererFailureException("Local decoder renderer unavailable")
+                }
                 val script = "window.__levyraDecode(${JSONObject.quote(kind)},${JSONObject.quote(value)},${JSONObject.quote(id)});"
                 webView.evaluateJavascript(script, null)
             }
             val output = withTimeout(EVALUATION_TIMEOUT_MS) { deferred.await() }
             if (kind == "n" && !YoutubePlayerJsSupport.isValidNTransform(value, output)) {
                 isDead = true
-                throw ParsingException("Invalid local n-transform result")
+                throw YoutubeAnalyzedConfigFailureException("Invalid local n-transform result")
             }
             return output
         } catch (error: Throwable) {
+            if (error is TimeoutCancellationException && currentCoroutineContext().isActive) {
+                isDead = true
+                throw YoutubeRendererFailureException("Local decoder renderer evaluation timeout")
+            }
             if (YoutubeCipherRuntimeFailurePolicy.marksRuntimeDead(error)) isDead = true
             throw error
         } finally {
@@ -1381,7 +1397,7 @@ private class YoutubeCipherWebRuntime private constructor(
     }
 
     private fun fail(requestId: String, message: String) {
-        waiters[requestId]?.completeExceptionally(ParsingException(message))
+        waiters[requestId]?.completeExceptionally(YoutubeAnalyzedConfigFailureException(message))
     }
 
     private fun rendererGone(message: String) {
@@ -1402,7 +1418,7 @@ private class YoutubeCipherWebRuntime private constructor(
         ) {
             if (!signatureAvailable || !nAvailable || !nValidated || (runtime.strictSelfTest && !signatureValidated)) {
                 runtime.ready.completeExceptionally(
-                    ParsingException(
+                    YoutubeAnalyzedConfigFailureException(
                         "Local decoder exports unavailable sig=$signatureAvailable sigValid=$signatureValidated n=$nAvailable nValid=$nValidated"
                     )
                 )
