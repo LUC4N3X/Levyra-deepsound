@@ -44,7 +44,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.ToggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.text.font.FontWeight
@@ -54,8 +54,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.luc4n3x.levyra.domain.Models.Track
 import com.luc4n3x.levyra.domain.RepeatMode
-import com.luc4n3x.levyra.feature.player.domain.LevyraUiState
-import com.luc4n3x.levyra.feature.player.presentation.PlayerViewModel
+import com.luc4n3x.levyra.viewmodel.LevyraUiState
+import com.luc4n3x.levyra.viewmodel.PlayerViewModel
+import com.luc4n3x.levyra.ui.components.PlayerTransportControls
+import com.luc4n3x.levyra.ui.components.PlayerGlassIconButton
 import com.luc4n3x.levyra.player.LevyraPipBridge
 import com.luc4n3x.levyra.ui.LocalLevyraStrings
 import com.luc4n3x.levyra.ui.theme.*
@@ -731,3 +733,5 @@ fun LevyraPlayerScreen(
         }
     }
 }
+
+

@@ -10407,7 +10407,7 @@ private fun PlaylistCreateDialog(onDismiss: () -> Unit, onConfirm: (String) -> U
 }
 
 @Composable
-private fun AddToPlaylistDialog(
+internal fun AddToPlaylistDialog(
     track: Track,
     playlists: List<com.luc4n3x.levyra.domain.Playlist>,
     onDismiss: () -> Unit,
@@ -10556,7 +10556,7 @@ private fun PlaylistDetailOverlay(viewModel: LevyraViewModel, state: LevyraUiSta
 }
 
 @Composable
-private fun PlayerImmersiveBackdrop(
+internal fun PlayerImmersiveBackdrop(
     primaryTarget: Color,
     secondaryTarget: Color,
     isPlaying: Boolean,
@@ -10665,7 +10665,7 @@ private fun PlayerImmersiveBackdrop(
 }
 
 @Composable
-private fun PlayerArtworkCanvas(
+internal fun PlayerArtworkCanvas(
     track: Track,
     artworkUrl: String,
     motionArtwork: com.luc4n3x.levyra.feature.motion.MotionArtwork?,
@@ -10772,7 +10772,7 @@ private fun PlayerArtworkCanvas(
 }
 
 @Composable
-private fun PlayerModeSwitch(
+internal fun PlayerModeSwitch(
     isVideoMode: Boolean,
     activeColor: Color,
     activeColorTarget: Color,
@@ -10814,7 +10814,7 @@ private fun PlayerModeSwitch(
 }
 
 @Composable
-private fun PlayerModeSwitchTab(
+internal fun PlayerModeSwitchTab(
     label: String,
     selected: Boolean,
     activeColor: Color,
@@ -10859,7 +10859,7 @@ private fun PlayerModeSwitchTab(
 }
 
 @Composable
-private fun LevyraControlPulseHandle(
+internal fun LevyraControlPulseHandle(
     expanded: Boolean,
     compact: Boolean,
     activeColor: Color,
@@ -11096,7 +11096,7 @@ private fun compactYoutubeCount(value: Long): String {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PlayerYoutubeEngagementRow(
+internal fun PlayerYoutubeEngagementRow(
     track: Track,
     engagement: YoutubeEngagementState,
     primary: Color,
@@ -11258,7 +11258,7 @@ private fun youtubeCommentCountBadge(value: String): String {
 }
 
 @Composable
-private fun PlayerAdvancedControlsPanel(
+internal fun PlayerAdvancedControlsPanel(
     expanded: Boolean,
     track: Track,
     state: LevyraUiState,
@@ -12143,7 +12143,7 @@ private fun PlayerInlineLyricsSection(
 }
 
 @Composable
-private fun PlayerYoutubeCommentsSheet(
+internal fun PlayerYoutubeCommentsSheet(
     comments: YoutubeCommentsState,
     primary: Color,
     secondary: Color,
@@ -12428,7 +12428,7 @@ private fun PlayerYoutubeCommentsSheet(
 }
 
 @Composable
-private fun YoutubeCommentsEmptyState(
+internal fun YoutubeCommentsEmptyState(
     icon: ImageVector,
     label: String,
     primary: Color,
@@ -12751,7 +12751,7 @@ private fun YoutubeCommentAvatar(
 }
 
 @Composable
-private fun PlayerTimeline(
+internal fun PlayerTimeline(
     positionMs: Long,
     bufferedPositionMs: Long,
     durationMs: Long,
@@ -17198,7 +17198,7 @@ private fun StatusBlock(state: LevyraUiState) {
 }
 
 @Composable
-private fun PlayerError(error: String?) {
+internal fun PlayerError(error: String?) {
     if (error != null) GlassMessage(error, LevyraOrange)
 }
 
@@ -17252,7 +17252,7 @@ private fun LevyraPictureInPictureSurface(state: LevyraUiState) {
 }
 
 @Composable
-private fun LevyraVideoSurface(
+internal fun LevyraVideoSurface(
     state: LevyraUiState,
     modifier: Modifier,
     pictureInPicture: Boolean = false
@@ -17726,3 +17726,6 @@ private fun formatDuration(ms: Long): String {
     val seconds = totalSeconds % 60L
     return "$minutes:${seconds.toString().padStart(2, '0')}"
 }
+
+
+
