@@ -23,6 +23,7 @@ public final class YoutubeSabrInfo implements Serializable {
     private final String serverAbrStreamingUrl;
     @Nullable
     private final String videoPlaybackUstreamerConfig;
+    private final boolean playerPoTokenAttached;
     @Nonnull
     private final List<YoutubeSabrFormat> formats;
 
@@ -34,6 +35,19 @@ public final class YoutubeSabrInfo implements Serializable {
                     @Nullable final String serverAbrStreamingUrl,
                     @Nullable final String videoPlaybackUstreamerConfig,
                     @Nonnull final List<YoutubeSabrFormat> formats) {
+        this(profile, videoId, cpn, clientVersion, visitorData, serverAbrStreamingUrl,
+                videoPlaybackUstreamerConfig, formats, false);
+    }
+
+    YoutubeSabrInfo(@Nonnull final YoutubeSabrClientProfile profile,
+                    @Nonnull final String videoId,
+                    @Nonnull final String cpn,
+                    @Nonnull final String clientVersion,
+                    @Nullable final String visitorData,
+                    @Nullable final String serverAbrStreamingUrl,
+                    @Nullable final String videoPlaybackUstreamerConfig,
+                    @Nonnull final List<YoutubeSabrFormat> formats,
+                    final boolean playerPoTokenAttached) {
         this.profile = profile;
         this.videoId = videoId;
         this.cpn = cpn;
@@ -42,6 +56,7 @@ public final class YoutubeSabrInfo implements Serializable {
         this.serverAbrStreamingUrl = serverAbrStreamingUrl;
         this.videoPlaybackUstreamerConfig = videoPlaybackUstreamerConfig;
         this.formats = formats;
+        this.playerPoTokenAttached = playerPoTokenAttached;
     }
 
     @Nonnull
@@ -79,6 +94,10 @@ public final class YoutubeSabrInfo implements Serializable {
         return videoPlaybackUstreamerConfig;
     }
 
+    public boolean isPlayerPoTokenAttached() {
+        return playerPoTokenAttached;
+    }
+
     @Nonnull
     public List<YoutubeSabrFormat> getFormats() {
         return Collections.unmodifiableList(formats);
@@ -108,14 +127,14 @@ public final class YoutubeSabrInfo implements Serializable {
     }
 
     @Nullable
-    public YoutubeSabrFormat findBestVideoFormat() {
-        YoutubeSabrFormat best = null;
+    public YoutubeSabrFormat findLowestVideoFormat() {
+        YoutubeSabrFormat lowest = null;
         for (final YoutubeSabrFormat format : formats) {
-            if (format.isVideo() && (best == null || format.getHeight() > best.getHeight())) {
-                best = format;
+            if (format.isVideo() && (lowest == null || format.getHeight() < lowest.getHeight())) {
+                lowest = format;
             }
         }
-        return best;
+        return lowest;
     }
 
     @Nullable

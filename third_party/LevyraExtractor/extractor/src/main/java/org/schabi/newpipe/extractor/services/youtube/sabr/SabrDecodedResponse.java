@@ -443,12 +443,12 @@ public final class SabrDecodedResponse {
         return isNoMediaResponse() && nextRequestPolicy != null;
     }
 
-    public boolean isProtectedNoMediaResponse() {
-        return isNoMediaResponse() && streamProtectionStatus >= 3;
+    public boolean isAttestationRequired() {
+        return streamProtectionStatus == SabrStreamProtectionStatus.ATTESTATION_REQUIRED;
     }
 
-    public boolean isProtectionBoundaryNoMediaResponse() {
-        return isNoMediaResponse() && streamProtectionStatus >= 2;
+    public boolean isAttestationPending() {
+        return streamProtectionStatus == SabrStreamProtectionStatus.ATTESTATION_PENDING;
     }
 
     @Nonnull

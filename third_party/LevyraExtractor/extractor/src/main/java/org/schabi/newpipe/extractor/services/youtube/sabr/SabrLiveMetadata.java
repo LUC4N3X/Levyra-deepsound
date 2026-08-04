@@ -43,6 +43,28 @@ public final class SabrLiveMetadata {
     }
 
     @Nonnull
+    public static SabrLiveMetadata normalized(@Nullable final String broadcastId,
+                                               final long headSequenceNumber,
+                                               final long headTimeMs,
+                                               final long wallTimeMs,
+                                               @Nullable final String videoId,
+                                               final boolean postLiveDvr,
+                                               final long headm,
+                                               final long minSeekableTimeTicks,
+                                               final int minSeekableTimescale,
+                                               final long maxSeekableTimeTicks,
+                                               final int maxSeekableTimescale) {
+        if (headSequenceNumber < -1 || headTimeMs < -1 || wallTimeMs < -1
+                || minSeekableTimeTicks < -1 || minSeekableTimescale < -1
+                || maxSeekableTimeTicks < -1 || maxSeekableTimescale < -1) {
+            throw new IllegalArgumentException("Invalid normalized SABR live metadata");
+        }
+        return new SabrLiveMetadata(broadcastId, headSequenceNumber, headTimeMs, wallTimeMs,
+                videoId, postLiveDvr, headm, minSeekableTimeTicks, minSeekableTimescale,
+                maxSeekableTimeTicks, maxSeekableTimescale);
+    }
+
+    @Nonnull
     static SabrLiveMetadata decode(@Nonnull final byte[] data) throws SabrProtocolException {
         String broadcastId = null;
         long headSequenceNumber = -1;

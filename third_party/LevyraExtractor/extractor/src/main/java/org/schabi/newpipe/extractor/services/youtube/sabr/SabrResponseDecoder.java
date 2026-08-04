@@ -63,12 +63,20 @@ public final class SabrResponseDecoder {
     @Nonnull
     public static SabrDecodedResponse decodeParts(@Nonnull final List<UmpPart> parts)
             throws SabrProtocolException {
+        return decodeParts(parts, SabrMediaProtocol.builtin());
+    }
+
+    @Nonnull
+    static SabrDecodedResponse decodeParts(@Nonnull final List<UmpPart> parts,
+                                           @Nonnull final SabrMediaProtocol mediaProtocol)
+            throws SabrProtocolException {
         final SabrDecodedResponse decoded = new SabrDecodedResponse();
         SabrOnesieHeader currentOnesieHeader = null;
         for (final UmpPart part : parts) {
             final byte[] partData = part.getRawData();
             decoded.addPart(part);
-            if (part.getType() != MEDIA && part.getType() != MEDIA_END) {
+            if (part.getType() != mediaProtocol.getMediaPartType()
+                    && part.getType() != mediaProtocol.getEndPartType()) {
                 try {
                     decoded.addWireFieldSummary(part.getType(),
                             SabrProto.summarizeFields(partData));
@@ -78,6 +86,20 @@ public final class SabrResponseDecoder {
                 }
             }
             try {
+                if (part.getType() == mediaProtocol.getHeaderPartType()) {
+                    decoded.addMediaHeader(mediaProtocol.decodeHeader(partData));
+                    continue;
+                }
+                if (part.getType() == mediaProtocol.getMediaPartType()) {
+                    if (partData.length > 0) {
+                        decoded.addMediaBytes(partData[0] & 0xff, partData.length - 1L);
+                    }
+                    continue;
+                }
+                if (part.getType() == mediaProtocol.getEndPartType()) {
+                    if (partData.length > 0) decoded.addMediaEndHeaderId(partData[0] & 0xff);
+                    continue;
+                }
                 switch (part.getType()) {
                 case ONESIE_HEADER:
                     final SabrOnesieHeader onesieHeader =

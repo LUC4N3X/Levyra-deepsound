@@ -24,18 +24,11 @@ import org.schabi.newpipe.extractor.downloader.Downloader;
 import org.schabi.newpipe.extractor.exceptions.ExtractionException;
 import org.schabi.newpipe.extractor.localization.ContentCountry;
 import org.schabi.newpipe.extractor.localization.Localization;
+import org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoTokenProvider;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.X509TrustManager;
 
-import java.security.SecureRandom;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.List;
 
 /**
@@ -46,6 +39,8 @@ public final class NewPipe {
     private static Localization preferredLocalization;
     private static ContentCountry preferredContentCountry;
     private static String youtubePlayerClient = "android_vr";
+    @Nullable
+    private static YoutubeSessionPoTokenProvider youtubeSessionPoTokenProvider;
     @Nullable
     private static WebViewAvailabilityChecker webViewAvailabilityChecker;
 
@@ -66,7 +61,6 @@ public final class NewPipe {
         downloader = d;
         preferredLocalization = l;
         preferredContentCountry = c;
-        trustEveryone();
     }
 
     public static Downloader getDownloader() {
@@ -179,6 +173,16 @@ public final class NewPipe {
         }
     }
 
+    public static void setYoutubeSessionPoTokenProvider(
+  @Nullable final YoutubeSessionPoTokenProvider provider) {
+        youtubeSessionPoTokenProvider = provider;
+    }
+
+    @Nullable
+    public static YoutubeSessionPoTokenProvider getYoutubeSessionPoTokenProvider() {
+        return youtubeSessionPoTokenProvider;
+    }
+
     public static void setWebViewAvailabilityChecker(
             @Nullable final WebViewAvailabilityChecker checker) {
         webViewAvailabilityChecker = checker;
@@ -191,25 +195,5 @@ public final class NewPipe {
         }
     }
 
-    public static void trustEveryone() {
-        try {
-            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier(){
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }});
-            SSLContext context = SSLContext.getInstance("TLS");
-            context.init(null, new X509TrustManager[]{new X509TrustManager(){
-                public void checkClientTrusted(X509Certificate[] chain,
-                                               String authType) throws CertificateException {}
-                public void checkServerTrusted(X509Certificate[] chain,
-                                               String authType) throws CertificateException {}
-                public X509Certificate[] getAcceptedIssuers() {
-                    return new X509Certificate[0];
-                }}}, new SecureRandom());
-            HttpsURLConnection.setDefaultSSLSocketFactory(
-                    context.getSocketFactory());
-        } catch (Exception e) { // should never happen
-            e.printStackTrace();
-        }
-    }
+
 }

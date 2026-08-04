@@ -50,10 +50,13 @@ final class YoutubeSabrRequestBuilder {
         final List<SabrBufferedRange> bufferedRanges = streamState == null
                 ? java.util.Collections.emptyList()
                 : streamState.getBufferedRanges();
-        final boolean includeInitialPlaybackState = playerTimeMs > 0 || !bufferedRanges.isEmpty();
+        final boolean forcedInitialPlaybackState = streamState != null
+                && streamState.shouldWriteFirstRequestPlaybackState();
+        final boolean includeInitialPlaybackState = forcedInitialPlaybackState
+                || playerTimeMs > 0 || !bufferedRanges.isEmpty();
         final SabrProto.Writer request = new SabrProto.Writer();
         request.writeMessage(1, buildClientAbrState(audioFormat, videoFormat, playerTimeMs,
-                includeInitialPlaybackState,
+                includeInitialPlaybackState && !forcedInitialPlaybackState,
                 streamState == null
                         ? ENABLED_TRACK_TYPES_VIDEO_AND_AUDIO
                         : streamState.getEnabledTrackTypesBitfield(),
@@ -270,21 +273,21 @@ final class YoutubeSabrRequestBuilder {
                 return;
             }
             for (final YoutubeSabrFormat format : info.getFormats()) {
-                if (format.isAudio() && streamState.shouldSelectAudioFormat()) {
+                if (format.isAudio() && streamState.shouldPreferAudioFormat()) {
                     request.writeMessage(16, SabrProto.formatId(format));
                 }
             }
             for (final YoutubeSabrFormat format : info.getFormats()) {
-                if (format.isVideo() && streamState.shouldSelectVideoFormat()) {
+                if (format.isVideo() && streamState.shouldPreferVideoFormat()) {
                     request.writeMessage(17, SabrProto.formatId(format));
                 }
             }
             return;
         }
-        if (streamState == null || streamState.shouldSelectAudioFormat()) {
+        if (streamState == null || streamState.shouldPreferAudioFormat()) {
             request.writeMessage(16, SabrProto.formatId(audioFormat));
         }
-        if (streamState == null || streamState.shouldSelectVideoFormat()) {
+        if (streamState == null || streamState.shouldPreferVideoFormat()) {
             request.writeMessage(17, SabrProto.formatId(videoFormat));
         }
     }

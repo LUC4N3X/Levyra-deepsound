@@ -1,16 +1,37 @@
 package org.schabi.newpipe.extractor.services.youtube.sabr;
 
 import org.schabi.newpipe.extractor.exceptions.ExtractionException;
+import org.schabi.newpipe.extractor.localization.ContentCountry;
+import org.schabi.newpipe.extractor.localization.Localization;
+import org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoToken;
+import org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoTokenProvider;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 
 /**
- * Supplies raw WEB PO token bytes for experimental SABR requests.
+ * Supplies visitor-bound player and video PO tokens for experimental SABR requests.
  */
 @FunctionalInterface
-public interface SabrPoTokenProvider {
+public interface SabrPoTokenProvider extends YoutubeSessionPoTokenProvider {
+    /**
+     * Returns the visitor-bound token pair for a strict SABR player reload. Implementations which
+     * support attestation identity rotation must source this pair from the same provider instance
+     * whose identity is invalidated by {@link #invalidatePoTokenIdentity(YoutubeSabrInfo)}.
+     */
+    @Nullable
+    @Override
+    default YoutubeSessionPoToken getSessionPoToken(
+            @Nonnull final String clientName,
+            @Nonnull final String clientVersion,
+            @Nullable final String userAgent,
+            @Nonnull final Localization localization,
+            @Nonnull final ContentCountry contentCountry,
+            final boolean loggedIn) throws IOException, ExtractionException {
+        return null;
+    }
+
     /**
      * Returns raw PO token bytes for the current SABR session, or {@code null} if unavailable.
      */
@@ -20,14 +41,13 @@ public interface SabrPoTokenProvider {
             throws IOException, ExtractionException;
 
     /**
-     * Like {@link #getPoToken}, but {@code forceRefresh} drops the cached token and mints a fresh
-     * one. For when the server rejects a token that died mid-playback. Default impl ignores the flag.
+     * Invalidates the visitor identity, generator, and tokens belonging to a rejected
+     * attestation epoch. Implementations return {@code true} only when the next player request
+     * will use a fresh visitor identity.
      */
-    @Nullable
-    default byte[] getPoToken(@Nonnull final YoutubeSabrInfo info,
-                              @Nonnull final YoutubeSabrStreamState streamState,
-                              final boolean forceRefresh)
+    default boolean invalidatePoTokenIdentity(@Nonnull final YoutubeSabrInfo info)
             throws IOException, ExtractionException {
-        return getPoToken(info, streamState);
+        return false;
     }
+
 }

@@ -61,6 +61,25 @@ public final class SabrMediaHeader {
     }
 
     @Nonnull
+    public static SabrMediaHeader normalized(final int headerId,
+                                             @Nullable final String videoId,
+                                             final int itag, final long lastModified,
+                                             @Nullable final String xtags,
+                                             final long startRange, final int compressionAlgorithm,
+                                             final boolean initSegment, final int sequenceNumber,
+                                             final long bitrateBps, final long startMs,
+                                             final long durationMs, final long contentLength,
+                                             final long timeRangeStartTicks,
+                                             final long timeRangeDurationTicks,
+                                             final int timeRangeTimescale,
+                                             final long sequenceLastModified) {
+        return new SabrMediaHeader(headerId, videoId, itag, lastModified, xtags, startRange,
+                compressionAlgorithm, initSegment, sequenceNumber, bitrateBps, startMs, durationMs,
+                contentLength, timeRangeStartTicks, timeRangeDurationTicks, timeRangeTimescale,
+                sequenceLastModified);
+    }
+
+    @Nonnull
     static SabrMediaHeader decode(@Nonnull final byte[] data) throws SabrProtocolException {
         int headerId = -1;
         String videoId = null;
