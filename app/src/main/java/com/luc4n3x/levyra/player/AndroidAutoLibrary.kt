@@ -22,7 +22,9 @@ import com.luc4n3x.levyra.domain.SmartMusicProfile
 import com.luc4n3x.levyra.domain.Track
 import com.luc4n3x.levyra.player.queue.PersistentQueueEngine
 import com.luc4n3x.levyra.player.queue.playbackQueueIdentity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -108,18 +110,23 @@ class AndroidAutoLibrary(context: Context) {
         if (clean.isBlank()) return
         val now = System.currentTimeMillis()
         if (searchCache[clean]?.let { now - it.createdAt < SEARCH_TTL_MS } == true) return
-        if (searchInFlight.containsKey(clean)) return
 
-        val job = searchScope.launch {
+        val job = searchScope.launch(start = CoroutineStart.LAZY) {
             try {
                 searchTracks(clean)
-            } catch (error: Throwable) {
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
                 Timber.d(error, "Android Auto search preload failed")
             } finally {
                 searchInFlight.remove(clean)
             }
         }
-        searchInFlight.putIfAbsent(clean, job)?.let { job.cancel() }
+        if (searchInFlight.putIfAbsent(clean, job) == null) {
+            job.start()
+        } else {
+            job.cancel()
+        }
     }
 
     suspend fun search(query: String): List<MediaItem> = withContext(Dispatchers.IO) {
