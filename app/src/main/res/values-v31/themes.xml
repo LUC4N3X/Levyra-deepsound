@@ -2,6 +2,6 @@
 <resources>
     <style name="Theme.Levyra" parent="Theme.Levyra.Base">
         <item name="android:windowSplashScreenBackground">@color/levyra_black</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_splash</item>
     </style>
 </resources>
