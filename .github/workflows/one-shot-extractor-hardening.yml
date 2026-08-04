@@ -13,6 +13,8 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      REPORT_FILE: /tmp/levyra-extractor-hardening-report.txt
     steps:
       - name: Check out implementation branch
         uses: actions/checkout@v4
@@ -20,7 +22,7 @@ jobs:
           ref: agent/extractor-security-aa-potoken-sabr
           fetch-depth: 0
 
-      - name: Apply selected upstream changes
+      - name: Apply focused extractor changes
         id: apply
         continue-on-error: true
         shell: bash
@@ -42,74 +44,148 @@ jobs:
           upstream = Path(sys.argv[1])
           base = "64f864135d2133a6a13a9944608de5a2c3e7e851"
           tip = "7673caed56001d78aad65b48daf9198359b466aa"
-          vendored_root = Path("third_party/LevyraExtractor")
+          root = Path("third_party/LevyraExtractor")
 
-          def git_text(*args: str) -> str:
-              return subprocess.check_output(["git", "-C", str(upstream), *args], text=True)
+          def upstream_text(ref: str, path: str) -> str:
+              return subprocess.check_output(
+                  ["git", "-C", str(upstream), "show", f"{ref}:{path}"],
+                  text=True,
+              )
 
-          changed = git_text("diff", "--name-only", base, tip).splitlines()
-          exact = {
-              "extractor/src/main/java/org/schabi/newpipe/extractor/NewPipe.java",
-              "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java",
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          def replace_range(text: str, start: str, end: str, replacement: str, label: str) -> str:
+              start_index = text.find(start)
+              end_index = text.find(end, start_index + len(start))
+              if start_index < 0 or end_index < 0:
+                  raise SystemExit(f"{label}: range markers not found")
+              return text[:start_index] + replacement + text[end_index:]
+
+          def remove_java_method(text: str, signature: str) -> str:
+              start = text.find(signature)
+              if start < 0:
+                  return text
+              brace = text.find("{", start)
+              if brace < 0:
+                  raise SystemExit(f"Method opening brace not found: {signature}")
+              depth = 0
+              for index in range(brace, len(text)):
+                  if text[index] == "{":
+                      depth += 1
+                  elif text[index] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          return text[:start] + text[index + 1:]
+              raise SystemExit(f"Method closing brace not found: {signature}")
+
+          # New API value types are copied verbatim from the reviewed upstream tip.
+          new_files = (
               "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubePlayerRequest.java",
               "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeSessionPoToken.java",
               "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeSessionPoTokenProvider.java",
-              "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeStreamExtractor.java",
-          }
-          sabr_prefix = "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/sabr/"
-          selected = {
-              path for path in changed
-              if path in exact or (path.startswith(sabr_prefix) and path.endswith(".java"))
-          }
-          selected.update(exact)
-
-          conflicts: list[str] = []
-          work = Path(".git") / "levyra-merge-work"
-          work.mkdir(parents=True, exist_ok=True)
-          for relative in sorted(selected):
-              target = vendored_root / relative
+          )
+          for relative in new_files:
+              target = root / relative
               target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(upstream_text(tip, relative), encoding="utf-8")
+              print(f"COPIED {relative}")
+
+          # SABR is kept as a true three-way merge, preserving Levyra changes and refusing conflicts.
+          changed = subprocess.check_output(
+              ["git", "-C", str(upstream), "diff", "--name-only", base, tip],
+              text=True,
+          ).splitlines()
+          prefixes = (
+              "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/sabr/",
+              "extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/",
+          )
+          sabr_files = sorted({
+              path for path in changed
+              if path.endswith(".java") and path.startswith(prefixes)
+          })
+          conflicts: list[str] = []
+          merge_dir = Path(".git/levyra-sabr-merge")
+          merge_dir.mkdir(parents=True, exist_ok=True)
+          for relative in sabr_files:
+              target = root / relative
               try:
-                  theirs = git_text("show", f"{tip}:{relative}")
+                  theirs = upstream_text(tip, relative)
               except subprocess.CalledProcessError:
-                  print(f"SKIP removed upstream file: {relative}")
                   continue
               try:
-                  base_text = git_text("show", f"{base}:{relative}")
+                  ancestor = upstream_text(base, relative)
               except subprocess.CalledProcessError:
-                  base_text = ""
-
+                  ancestor = ""
               if not target.exists():
+                  target.parent.mkdir(parents=True, exist_ok=True)
                   target.write_text(theirs, encoding="utf-8")
-                  print(f"ADD {relative}")
+                  print(f"ADDED {relative}")
                   continue
-
-              ours_path = work / "ours"
-              base_path = work / "base"
-              theirs_path = work / "theirs"
-              ours_path.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
-              base_path.write_text(base_text, encoding="utf-8")
-              theirs_path.write_text(theirs, encoding="utf-8")
-              result = subprocess.run(
-                  ["git", "merge-file", "-p", str(ours_path), str(base_path), str(theirs_path)],
-                  text=True,
+              ours_file = merge_dir / "ours.java"
+              base_file = merge_dir / "base.java"
+              theirs_file = merge_dir / "theirs.java"
+              ours_file.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+              base_file.write_text(ancestor, encoding="utf-8")
+              theirs_file.write_text(theirs, encoding="utf-8")
+              merged = subprocess.run(
+                  ["git", "merge-file", "-p", str(ours_file), str(base_file), str(theirs_file)],
                   capture_output=True,
+                  text=True,
               )
-              if result.returncode > 1:
-                  raise SystemExit(f"git merge-file failed for {relative}: {result.stderr}")
-              if result.returncode == 1 or "<<<<<<<" in result.stdout:
+              if merged.returncode != 0 or "<<<<<<<" in merged.stdout:
                   conflicts.append(relative)
-                  print(f"CONFLICT {relative}")
+                  print(f"CONFLICT {relative} return={merged.returncode}")
                   continue
-              target.write_text(result.stdout, encoding="utf-8")
+              target.write_text(merged.stdout, encoding="utf-8")
               print(f"MERGED {relative}")
-
           if conflicts:
-              raise SystemExit("Manual selective port required for: " + ", ".join(conflicts))
+              raise SystemExit("SABR conflicts: " + ", ".join(conflicts))
 
-          new_pipe = vendored_root / "extractor/src/main/java/org/schabi/newpipe/extractor/NewPipe.java"
-          text = new_pipe.read_text(encoding="utf-8")
-          for item in (
+          # NewPipe: retain Levyra client support, add the provider, and remove global TLS bypass.
+          new_pipe_path = root / "extractor/src/main/java/org/schabi/newpipe/extractor/NewPipe.java"
+          new_pipe = new_pipe_path.read_text(encoding="utf-8")
+          provider_import = "import org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoTokenProvider;\n"
+          if provider_import not in new_pipe:
+              new_pipe = replace_once(
+                  new_pipe,
+                  "import org.schabi.newpipe.extractor.localization.Localization;\n",
+                  "import org.schabi.newpipe.extractor.localization.Localization;\n" + provider_import,
+                  "NewPipe provider import",
+              )
+          if "youtubeSessionPoTokenProvider" not in new_pipe:
+              new_pipe = replace_once(
+                  new_pipe,
+                  "    private static String youtubePlayerClient = \"android_vr\";\n    @Nullable\n    private static WebViewAvailabilityChecker webViewAvailabilityChecker;",
+                  "    private static String youtubePlayerClient = \"android_vr\";\n"
+                  "    @Nullable\n"
+                  "    private static YoutubeSessionPoTokenProvider youtubeSessionPoTokenProvider;\n"
+                  "    @Nullable\n"
+                  "    private static WebViewAvailabilityChecker webViewAvailabilityChecker;",
+                  "NewPipe provider field",
+              )
+          if "setYoutubeSessionPoTokenProvider" not in new_pipe:
+              provider_methods = '''    public static void setYoutubeSessionPoTokenProvider(
+            @Nullable final YoutubeSessionPoTokenProvider provider) {
+        youtubeSessionPoTokenProvider = provider;
+    }
+
+    @Nullable
+    public static YoutubeSessionPoTokenProvider getYoutubeSessionPoTokenProvider() {
+        return youtubeSessionPoTokenProvider;
+    }
+
+'''
+              new_pipe = replace_once(
+                  new_pipe,
+                  "    public static void setWebViewAvailabilityChecker(\n",
+                  provider_methods + "    public static void setWebViewAvailabilityChecker(\n",
+                  "NewPipe provider accessors",
+              )
+          for forbidden in (
               "import javax.net.ssl.HostnameVerifier;\n",
               "import javax.net.ssl.HttpsURLConnection;\n",
               "import javax.net.ssl.SSLContext;\n",
@@ -119,74 +195,146 @@ jobs:
               "import java.security.cert.CertificateException;\n",
               "import java.security.cert.X509Certificate;\n",
           ):
-              text = text.replace(item, "")
-          text = text.replace("        trustEveryone();\n", "")
-          marker = "    public static void trustEveryone() {\n"
-          if marker in text:
-              start = text.index(marker)
-              depth = 0
-              end = None
-              for index in range(start, len(text)):
-                  if text[index] == "{":
-                      depth += 1
-                  elif text[index] == "}":
-                      depth -= 1
-                      if depth == 0:
-                          end = index + 1
-                          break
-              if end is None:
-                  raise SystemExit("Could not locate end of trustEveryone()")
-              text = text[:start] + text[end:]
-          if "trustEveryone" in text or "X509TrustManager" in text:
-              raise SystemExit("Insecure TLS override survived")
-          new_pipe.write_text(text.rstrip() + "\n", encoding="utf-8")
+              new_pipe = new_pipe.replace(forbidden, "")
+          new_pipe = new_pipe.replace("        trustEveryone();\n", "")
+          new_pipe = remove_java_method(new_pipe, "    public static void trustEveryone()")
+          if "trustEveryone" in new_pipe or "X509TrustManager" in new_pipe:
+              raise SystemExit("TLS trust-all code survived NewPipe patch")
+          new_pipe_path.write_text(new_pipe.rstrip() + "\n", encoding="utf-8")
+
+          # YoutubeParsingHelper: splice only upstream PoToken request plumbing.
+          helper_relative = "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java"
+          helper_path = root / helper_relative
+          helper = helper_path.read_text(encoding="utf-8")
+          upstream_helper = upstream_text(tip, helper_relative)
+          if "import org.schabi.newpipe.extractor.NewPipe;" not in helper:
+              helper = replace_once(
+                  helper,
+                  "import org.schabi.newpipe.extractor.MetaInfo;\n",
+                  "import org.schabi.newpipe.extractor.MetaInfo;\nimport org.schabi.newpipe.extractor.NewPipe;\n",
+                  "YoutubeParsingHelper NewPipe import",
+              )
+          if "getPlayerRequestLocalization()" not in helper:
+              localization_method = '''    /** Returns the localization used by YouTube player requests. */
+    @Nonnull
+    public static Localization getPlayerRequestLocalization() {
+        return new Localization("en");
+    }
+
+'''
+              helper = replace_once(
+                  helper,
+                  "    /**\n     * Get the client version used by YouTube website on InnerTube requests.\n     */\n",
+                  localization_method + "    /**\n     * Get the client version used by YouTube website on InnerTube requests.\n     */\n",
+                  "player request localization",
+              )
+          helper = helper.replace(
+              "    public static void resetClientVersion() {\n",
+              "    public static synchronized void resetClientVersion() {\n",
+              1,
+          )
+
+          upstream_token_start = upstream_helper.index(
+              "    /**\n     * Add a visitor-bound proof-of-origin token to a player request body"
+          )
+          upstream_token_end = upstream_helper.index(
+              "    public static Response getWebPlayerResponseSync", upstream_token_start
+          )
+          token_block = upstream_helper[upstream_token_start:upstream_token_end]
+          helper = replace_range(
+              helper,
+              "    public static CancellableCall getJsonPlayerResponseAsync(final String endpoint,\n",
+              "    public static Response getWebPlayerResponseSync",
+              token_block,
+              "PoToken request block",
+          )
+
+          helper = replace_once(
+              helper,
+              "        return getDownloader().post(url, headers, body, localization);\n",
+              "        return getDownloader().post(url, headers,\n"
+              "                addSessionPoTokenToPlayerBody(body, localization, ContentCountry.DEFAULT),\n"
+              "                localization);\n",
+              "synchronous WEB player PoToken",
+          )
+          helper = replace_once(
+              helper,
+              "        return getDownloader().postAsync(\n                url, headers, body, localization, new Downloader.AsyncCallback() {\n",
+              "        final byte[] requestBody = addSessionPoTokenToPlayerBody(body, localization,\n"
+              "                contentCountry);\n"
+              "        return getDownloader().postAsync(\n"
+              "                url, headers, requestBody, localization, new Downloader.AsyncCallback() {\n",
+              "asynchronous WEB player PoToken",
+          )
+          helper = replace_once(
+              helper,
+              "                body,\n                localization,\n                callback);\n    }\n\n    public static CancellableCall getJsonPlayerResponseAsync",
+              "                addSessionPoTokenToPlayerBody(body, localization,\n"
+              "                        NewPipe.getPreferredContentCountry()),\n"
+              "                localization,\n"
+              "                callback);\n"
+              "    }\n\n"
+              "    public static CancellableCall getJsonPlayerResponseAsync",
+              "Safari player PoToken",
+          )
+          helper_path.write_text(helper, encoding="utf-8")
+
+          for path in root.rglob("*.java"):
+              text = path.read_text(encoding="utf-8")
+              if "<<<<<<<" in text or ">>>>>>>" in text:
+                  raise SystemExit(f"Conflict marker remained in {path}")
           PY
 
-            rm -rf .git/levyra-merge-work
+            rm -rf .git/levyra-sabr-merge
             git diff --check
-          } 2>&1 | tee .github/extractor-hardening-report.txt
+            ! grep -R --line-number -E 'trustEveryone|X509TrustManager|setDefaultHostnameVerifier' \
+              third_party/LevyraExtractor/extractor/src/main/java
+          } 2>&1 | tee "$REPORT_FILE"
 
       - name: Test vendored extractor
         id: extractor_tests
         if: steps.apply.outcome == 'success'
         continue-on-error: true
-        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test 2>&1 | tee -a .github/extractor-hardening-report.txt
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test 2>&1 | tee -a "$REPORT_FILE"
 
       - name: Compile Android release sources
         id: app_compile
         if: steps.apply.outcome == 'success' && steps.extractor_tests.outcome == 'success'
         continue-on-error: true
-        run: ./gradlew --no-daemon :app:compileReleaseKotlin 2>&1 | tee -a .github/extractor-hardening-report.txt
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon :app:compileReleaseKotlin 2>&1 | tee -a "$REPORT_FILE"
 
-      - name: Publish result to branch
+      - name: Publish verified result or diagnostics
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           if [[ "${{ steps.apply.outcome }}" == "success" && \
                 "${{ steps.extractor_tests.outcome }}" == "success" && \
                 "${{ steps.app_compile.outcome }}" == "success" ]]; then
             rm -f .github/workflows/one-shot-extractor-hardening.yml \
                   .github/extractor-hardening-trigger \
-                  .github/extractor-hardening-report.txt
-            git add third_party/LevyraExtractor \
-                    .github/workflows/one-shot-extractor-hardening.yml \
-                    .github/extractor-hardening-trigger \
-                    .github/extractor-hardening-report.txt
+                  .github/extractor-hardening-report.txt \
+                  .github/extractor-hardening-status.txt
+            git add third_party/LevyraExtractor .github
             git diff --cached --check
             git commit -m "Harden vendored extractor PoToken and SABR recovery"
           else
             git reset --hard HEAD
-            printf 'apply=%s\nextractor_tests=%s\napp_compile=%s\n\n' \
+            cp "$REPORT_FILE" .github/extractor-hardening-report.txt
+            printf 'apply=%s\nextractor_tests=%s\napp_compile=%s\n' \
               "${{ steps.apply.outcome }}" \
               "${{ steps.extractor_tests.outcome }}" \
               "${{ steps.app_compile.outcome }}" \
               > .github/extractor-hardening-status.txt
-            test -f .github/extractor-hardening-report.txt || echo "No diagnostic output captured" > .github/extractor-hardening-report.txt
-            git add .github/extractor-hardening-status.txt .github/extractor-hardening-report.txt
-            git commit -m "chore: record extractor hardening diagnostics"
+            git add .github/extractor-hardening-report.txt .github/extractor-hardening-status.txt
+            git commit -m "chore: update extractor hardening diagnostics"
           fi
           git push origin HEAD:agent/extractor-security-aa-potoken-sabr
