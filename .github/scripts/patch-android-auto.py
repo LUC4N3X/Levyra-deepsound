@@ -116,12 +116,15 @@ helpers = """    private fun String.voiceSearchQuery(): String {
         var value = cleanQuery()
         VOICE_COMMAND_PREFIXES.firstOrNull { value.startsWith(it, ignoreCase = true) }
             ?.let { prefix -> value = value.drop(prefix.length).trim() }
-        value = value.replace(Regex("\\s+(?:su|in)\\s+levyra$", RegexOption.IGNORE_CASE), "")
+        val lowered = value.lowercase(Locale.ROOT)
+        VOICE_APP_SUFFIXES.firstOrNull(lowered::endsWith)
+            ?.let { suffix -> value = value.dropLast(suffix.length).trim() }
         return value.cleanQuery()
     }
 
-    private fun String.searchTokens(): List<String> = lowercase(Locale.ROOT)
-        .split(Regex("\\s+"))
+    private fun String.searchTokens(): List<String> = cleanQuery()
+        .lowercase(Locale.ROOT)
+        .split(' ')
         .map(String::trim)
         .filter { it.length >= 2 && it !in SEARCH_STOP_WORDS }
         .distinct()
@@ -134,6 +137,7 @@ replace_once(
     "        private val VOICE_COMMAND_PREFIXES = listOf(\n"
     "            \"riproduci \", \"suona \", \"metti \", \"ascolta \", \"cerca \", \"play \"\n"
     "        )\n"
+    "        private val VOICE_APP_SUFFIXES = listOf(\" su levyra\", \" in levyra\")\n"
     "        private val SEARCH_STOP_WORDS = setOf(\n"
     "            \"di\", \"del\", \"della\", \"dei\", \"degli\", \"delle\", \"da\", \"by\", \"the\",\n"
     "            \"un\", \"una\", \"uno\", \"il\", \"lo\", \"la\", \"i\", \"gli\", \"le\"\n"
