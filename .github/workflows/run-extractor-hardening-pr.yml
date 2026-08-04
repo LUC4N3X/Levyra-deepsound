@@ -132,4 +132,6 @@ jobs:
           git add app/src/main/java/com/luc4n3x/levyra/player/AndroidAutoLibrary.kt
           git diff --cached --check
           git commit -m "fix(android-auto): make search prewarm single-flight"
+          git fetch origin agent/extractor-security-aa-potoken-sabr
+          git rebase origin/agent/extractor-security-aa-potoken-sabr
           git push origin HEAD:agent/extractor-security-aa-potoken-sabr
