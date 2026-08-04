@@ -1,4 +1,0 @@
-apply=failure
-extractor_tests=skipped
-app_compile=skipped
-
