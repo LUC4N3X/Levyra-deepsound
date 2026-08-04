@@ -1,61 +1,31 @@
-name: Verify PR 299 review fixes
+name: Publish verified PR 299 fixes
 
 on:
   pull_request:
     branches:
       - main
     types:
-      - opened
       - synchronize
-      - reopened
 
 permissions:
   contents: write
 
 jobs:
-  apply-test-push:
+  publish:
     if: github.head_ref == 'automation/pr299-review-fixes-runner'
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 10
 
     steps:
-      - name: Check out isolated fix branch
+      - name: Check out verified fixes
         uses: actions/checkout@v4
         with:
           ref: agent/pr299-review-fixes
           fetch-depth: 0
 
-      - name: Apply cumulative review fixes
+      - name: Fast-forward PR 299 branch
         run: |
           set -euo pipefail
-          python .github/scripts/pr299_repair_staged_patch.py
-          python .github/scripts/pr299_repair_app_patch.py
-          python .github/scripts/pr299_fix_extractor.py
-          python .github/scripts/pr299_fix_app.py
-          python .github/scripts/pr299_repair_tests.py
-          rm .github/scripts/pr299_repair_staged_patch.py
-          rm .github/scripts/pr299_repair_app_patch.py
-          rm .github/scripts/pr299_repair_tests.py
-          rm .github/scripts/pr299_fix_extractor.py
-          rm .github/scripts/pr299_fix_app.py
-          git diff --check
-
-      - name: Run vendored extractor tests
-        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
-
-      - name: Compile Android debug sources
-        env:
-          YOUTUBE_INNERTUBE_API_KEY: ci-placeholder-key
-        run: ./gradlew --no-daemon :app:compileDebugKotlin
-
-      - name: Commit and push verified fixes
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git commit -m "fix: resolve PR 299 security and reliability review findings"
-          git fetch origin agent/pr299-review-fixes
-          git rebase origin/agent/pr299-review-fixes
-          git push origin HEAD:agent/pr299-review-fixes
+          test "$(git rev-parse HEAD)" = "9584c37d0efeebc04e8370e173cb0fb38fc5bbf6"
+          git merge-base --is-ancestor 2c9d933b115138b0993935a84db55a8b82d36c85 HEAD
+          git push origin HEAD:agent/extractor-security-aa-potoken-sabr
