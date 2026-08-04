@@ -1,0 +1,333 @@
+name: Apply extractor hardening
+
+on:
+  push:
+    branches:
+      - automation/extractor-hardening-runner
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out target branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/extractor-security-aa-potoken-sabr
+          fetch-depth: 0
+
+      - name: Apply reviewed upstream extractor changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          upstream_dir="$(mktemp -d)"
+          git clone --filter=blob:none --no-checkout https://github.com/InfinityLoop1308/PipePipeExtractor.git "$upstream_dir"
+          git -C "$upstream_dir" fetch --no-tags origin \
+            64f864135d2133a6a13a9944608de5a2c3e7e851 \
+            7673caed56001d78aad65b48daf9198359b466aa
+
+          python3 - "$upstream_dir" <<'PY'
+          from pathlib import Path
+          import re
+          import shutil
+          import subprocess
+          import sys
+
+          upstream = Path(sys.argv[1])
+          base = "64f864135d2133a6a13a9944608de5a2c3e7e851"
+          tip = "7673caed56001d78aad65b48daf9198359b466aa"
+          root = Path("third_party/LevyraExtractor")
+
+          def upstream_text(ref: str, path: str) -> str:
+              return subprocess.check_output(
+                  ["git", "-C", str(upstream), "show", f"{ref}:{path}"],
+                  text=True,
+              )
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          def replace_range(text: str, start: str, end: str, replacement: str, label: str) -> str:
+              start_index = text.find(start)
+              end_index = text.find(end, start_index + len(start))
+              if start_index < 0 or end_index < 0:
+                  raise SystemExit(f"{label}: range markers not found")
+              return text[:start_index] + replacement + text[end_index:]
+
+          def remove_java_method(text: str, signature: str) -> str:
+              start = text.find(signature)
+              if start < 0:
+                  return text
+              brace = text.find("{", start)
+              if brace < 0:
+                  raise SystemExit(f"Method opening brace not found: {signature}")
+              depth = 0
+              for index in range(brace, len(text)):
+                  if text[index] == "{":
+                      depth += 1
+                  elif text[index] == "}":
+                      depth -= 1
+                      if depth == 0:
+                          return text[:start] + text[index + 1:]
+              raise SystemExit(f"Method closing brace not found: {signature}")
+
+          # Keep the SABR implementation and its tests as one coherent upstream unit.
+          for prefix in (
+              "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/sabr/",
+              "extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/sabr/",
+          ):
+              destination = root / prefix
+              if destination.exists():
+                  shutil.rmtree(destination)
+              paths = subprocess.check_output(
+                  ["git", "-C", str(upstream), "ls-tree", "-r", "--name-only", tip, "--", prefix],
+                  text=True,
+              ).splitlines()
+              if not paths:
+                  raise SystemExit(f"No upstream files found under {prefix}")
+              for relative in paths:
+                  target = root / relative
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_text(upstream_text(tip, relative), encoding="utf-8")
+
+          for relative in (
+              "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubePlayerRequest.java",
+              "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeSessionPoToken.java",
+              "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeSessionPoTokenProvider.java",
+              "extractor/src/test/java/org/schabi/newpipe/extractor/services/youtube/YoutubeSessionPoTokenTest.java",
+          ):
+              target = root / relative
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(upstream_text(tip, relative), encoding="utf-8")
+
+          # Merge the upstream player-request changes into Levyra's multi-client extractor.
+          stream_relative = (
+              "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/"
+              "extractors/YoutubeStreamExtractor.java"
+          )
+          stream_target = root / stream_relative
+          merge_dir = Path(".git/levyra-extractor-merge")
+          merge_dir.mkdir(parents=True, exist_ok=True)
+          ours = merge_dir / "ours.java"
+          ancestor = merge_dir / "base.java"
+          theirs = merge_dir / "theirs.java"
+          ours.write_text(stream_target.read_text(encoding="utf-8"), encoding="utf-8")
+          ancestor.write_text(upstream_text(base, stream_relative), encoding="utf-8")
+          theirs.write_text(upstream_text(tip, stream_relative), encoding="utf-8")
+          merged = subprocess.run(
+              ["git", "merge-file", "-p", str(ours), str(ancestor), str(theirs)],
+              capture_output=True,
+              text=True,
+          )
+          if merged.returncode != 0 or "<<<<<<<" in merged.stdout:
+              raise SystemExit("YoutubeStreamExtractor merge produced conflicts")
+          stream_target.write_text(merged.stdout, encoding="utf-8")
+
+          # Remove the global TLS bypass and expose the session PoToken provider.
+          new_pipe_path = root / "extractor/src/main/java/org/schabi/newpipe/extractor/NewPipe.java"
+          new_pipe = new_pipe_path.read_text(encoding="utf-8")
+          provider_import = "import org.schabi.newpipe.extractor.services.youtube.YoutubeSessionPoTokenProvider;\n"
+          if provider_import not in new_pipe:
+              new_pipe = replace_once(
+                  new_pipe,
+                  "import org.schabi.newpipe.extractor.localization.Localization;\n",
+                  "import org.schabi.newpipe.extractor.localization.Localization;\n" + provider_import,
+                  "NewPipe provider import",
+              )
+          if "youtubeSessionPoTokenProvider" not in new_pipe:
+              new_pipe = replace_once(
+                  new_pipe,
+                  "    private static String youtubePlayerClient = \"android_vr\";\n    @Nullable\n    private static WebViewAvailabilityChecker webViewAvailabilityChecker;",
+                  "    private static String youtubePlayerClient = \"android_vr\";\n"
+                  "    @Nullable\n"
+                  "    private static YoutubeSessionPoTokenProvider youtubeSessionPoTokenProvider;\n"
+                  "    @Nullable\n"
+                  "    private static WebViewAvailabilityChecker webViewAvailabilityChecker;",
+                  "NewPipe provider field",
+              )
+          if "setYoutubeSessionPoTokenProvider" not in new_pipe:
+              provider_methods = '''    public static void setYoutubeSessionPoTokenProvider(
+            @Nullable final YoutubeSessionPoTokenProvider provider) {
+        youtubeSessionPoTokenProvider = provider;
+    }
+
+    @Nullable
+    public static YoutubeSessionPoTokenProvider getYoutubeSessionPoTokenProvider() {
+        return youtubeSessionPoTokenProvider;
+    }
+
+'''
+              new_pipe = replace_once(
+                  new_pipe,
+                  "    public static void setWebViewAvailabilityChecker(\n",
+                  provider_methods + "    public static void setWebViewAvailabilityChecker(\n",
+                  "NewPipe provider accessors",
+              )
+          for forbidden in (
+              "import javax.net.ssl.HostnameVerifier;\n",
+              "import javax.net.ssl.HttpsURLConnection;\n",
+              "import javax.net.ssl.SSLContext;\n",
+              "import javax.net.ssl.SSLSession;\n",
+              "import javax.net.ssl.X509TrustManager;\n",
+              "import java.security.SecureRandom;\n",
+              "import java.security.cert.CertificateException;\n",
+              "import java.security.cert.X509Certificate;\n",
+          ):
+              new_pipe = new_pipe.replace(forbidden, "")
+          new_pipe = new_pipe.replace("        trustEveryone();\n", "")
+          new_pipe = remove_java_method(new_pipe, "    public static void trustEveryone()")
+          if "trustEveryone" in new_pipe or "X509TrustManager" in new_pipe:
+              raise SystemExit("TLS trust-all code survived NewPipe patch")
+          new_pipe_path.write_text(new_pipe.rstrip() + "\n", encoding="utf-8")
+
+          # Splice only the reviewed PoToken plumbing into Levyra's parsing helper.
+          helper_relative = "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java"
+          helper_path = root / helper_relative
+          helper = helper_path.read_text(encoding="utf-8")
+          upstream_helper = upstream_text(tip, helper_relative)
+          if "import org.schabi.newpipe.extractor.NewPipe;" not in helper:
+              helper = replace_once(
+                  helper,
+                  "import org.schabi.newpipe.extractor.MetaInfo;\n",
+                  "import org.schabi.newpipe.extractor.MetaInfo;\nimport org.schabi.newpipe.extractor.NewPipe;\n",
+                  "YoutubeParsingHelper NewPipe import",
+              )
+          if "getPlayerRequestLocalization()" not in helper:
+              method = '''    /** Returns the localization used by YouTube player requests. */
+    @Nonnull
+    public static Localization getPlayerRequestLocalization() {
+        return new Localization("en");
+    }
+
+'''
+              helper = replace_once(
+                  helper,
+                  "    /**\n     * Get the client version used by YouTube website on InnerTube requests.\n     */\n",
+                  method + "    /**\n     * Get the client version used by YouTube website on InnerTube requests.\n     */\n",
+                  "player request localization",
+              )
+          helper = helper.replace(
+              "    public static void resetClientVersion() {\n",
+              "    public static synchronized void resetClientVersion() {\n",
+              1,
+          )
+          helper = helper.replace(
+              "    public static String getClientVersion() throws IOException, ExtractionException {\n",
+              "    public static synchronized String getClientVersion()\n"
+              "            throws IOException, ExtractionException {\n",
+              1,
+          )
+
+          token_start = upstream_helper.index(
+              "    /**\n     * Add a visitor-bound proof-of-origin token to a player request body"
+          )
+          token_end = upstream_helper.index(
+              "    public static Response getWebPlayerResponseSync", token_start
+          )
+          token_block = upstream_helper[token_start:token_end]
+          helper = replace_range(
+              helper,
+              "    public static CancellableCall getJsonPlayerResponseAsync(final String endpoint,\n",
+              "    public static Response getWebPlayerResponseSync",
+              token_block,
+              "PoToken request block",
+          )
+
+          sync_start = helper.index("    public static Response getWebPlayerResponseSync")
+          sync_end = helper.index("    public static CancellableCall getWebPlayerResponse(", sync_start)
+          sync_method = helper[sync_start:sync_end]
+          sync_method = replace_once(
+              sync_method,
+              "        return getDownloader().post(url, headers, body, localization);\n",
+              "        return getDownloader().post(url, headers,\n"
+              "                addSessionPoTokenToPlayerBody(body, localization, ContentCountry.DEFAULT),\n"
+              "                localization);\n",
+              "synchronous WEB player PoToken",
+          )
+          helper = helper[:sync_start] + sync_method + helper[sync_end:]
+
+          async_start = helper.index("    public static CancellableCall getWebPlayerResponse(")
+          async_end = helper.index("    @Nonnull\n    public static byte[] createTvHtml5EmbedPlayerBody", async_start)
+          async_method = helper[async_start:async_end]
+          async_method = replace_once(
+              async_method,
+              "        return getDownloader().postAsync(\n                url, headers, body, localization, new Downloader.AsyncCallback() {\n",
+              "        final byte[] requestBody = addSessionPoTokenToPlayerBody(body, localization,\n"
+              "                contentCountry);\n"
+              "        return getDownloader().postAsync(\n"
+              "                url, headers, requestBody, localization, new Downloader.AsyncCallback() {\n",
+              "asynchronous WEB player PoToken",
+          )
+          helper = helper[:async_start] + async_method + helper[async_end:]
+
+          safari_start = helper.index("    public static CancellableCall getSafariPostResponseAsync(")
+          safari_end = helper.index("    /**\n     * Add a visitor-bound proof-of-origin token", safari_start)
+          safari_method = helper[safari_start:safari_end]
+          safari_method = replace_once(
+              safari_method,
+              "        addLoggedInHeaders(headers);\n        return getDownloader().postAsync(\n",
+              "        addLoggedInHeaders(headers);\n"
+              "        final byte[] requestBody = \"player\".equals(endpoint)\n"
+              "                ? addSessionPoTokenToPlayerBody(body, localization,\n"
+              "                        NewPipe.getPreferredContentCountry())\n"
+              "                : body;\n"
+              "        return getDownloader().postAsync(\n",
+              "Safari request preparation",
+          )
+          safari_method = replace_once(
+              safari_method,
+              "                headers,\n                body,\n                localization,\n",
+              "                headers,\n                requestBody,\n                localization,\n",
+              "Safari request body",
+          )
+          helper = helper[:safari_start] + safari_method + helper[safari_end:]
+          helper_path.write_text(helper, encoding="utf-8")
+
+          # Add the upstream compatibility overload used by bounded SABR prewarm requests.
+          downloader_relative = "extractor/src/main/java/org/schabi/newpipe/extractor/downloader/Downloader.java"
+          downloader_path = root / downloader_relative
+          downloader = downloader_path.read_text(encoding="utf-8")
+          if "final long timeoutMs" not in downloader:
+              upstream_downloader = upstream_text(tip, downloader_relative)
+              overload_start = upstream_downloader.index(
+                  "    /**\n     * Streaming GET with a caller-supplied deadline."
+              )
+              overload_end = upstream_downloader.index("    /**\n     * Do a HEAD request.", overload_start)
+              overload = upstream_downloader[overload_start:overload_end]
+              insert_at = downloader.index("    /**\n     * Do a HEAD request.")
+              downloader = downloader[:insert_at] + overload + downloader[insert_at:]
+              downloader_path.write_text(downloader, encoding="utf-8")
+
+          for path in root.rglob("*.java"):
+              text = path.read_text(encoding="utf-8")
+              if "<<<<<<<" in text or ">>>>>>>" in text:
+                  raise SystemExit(f"Conflict marker remained in {path}")
+          PY
+
+          rm -rf .git/levyra-extractor-merge
+          git diff --check
+          ! grep -R --line-number -E 'trustEveryone|X509TrustManager|setDefaultHostnameVerifier' \
+            third_party/LevyraExtractor/extractor/src/main/java
+
+      - name: Test vendored extractor
+        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+
+      - name: Compile Android release
+        run: ./gradlew --no-daemon :app:compileReleaseKotlin
+
+      - name: Commit verified extractor changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add third_party/LevyraExtractor
+          git diff --cached --check
+          git commit -m "feat(extractor): harden TLS, PoToken and SABR recovery"
+          git push origin HEAD:agent/extractor-security-aa-potoken-sabr
