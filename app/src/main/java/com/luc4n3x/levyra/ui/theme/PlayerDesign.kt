@@ -12,13 +12,20 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+/**
+ * Shared visual language for the Android player.
+ *
+ * The values intentionally keep Levyra's dark, artwork-led identity while using a
+ * calmer hierarchy: one dominant transport action, tonal secondary controls and
+ * fewer competing surface treatments.
+ */
 object LevyraPlayerDesign {
 
     val CornerXs: Dp = 12.dp
     val CornerSm: Dp = 16.dp
     val CornerMd: Dp = 22.dp
-    val CornerLg: Dp = 28.dp
-    val CornerXl: Dp = 34.dp
+    val CornerLg: Dp = 30.dp
+    val CornerXl: Dp = 38.dp
 
     val ShapeXs: Shape = RoundedCornerShape(CornerXs)
     val ShapeSm: Shape = RoundedCornerShape(CornerSm)
@@ -30,41 +37,47 @@ object LevyraPlayerDesign {
     val SpaceXxs: Dp = 2.dp
     val SpaceXs: Dp = 4.dp
     val SpaceSm: Dp = 8.dp
-    val SpaceMd: Dp = 12.dp
-    val SpaceLg: Dp = 18.dp
-    val SpaceXl: Dp = 24.dp
+    val SpaceMd: Dp = 13.dp
+    val SpaceLg: Dp = 20.dp
+    val SpaceXl: Dp = 28.dp
 
     val GutterCompact: Dp = 18.dp
-    val Gutter: Dp = 22.dp
+    val Gutter: Dp = 24.dp
 
-    val HeaderButton: Dp = 42.dp
-    val HeaderButtonCompact: Dp = 40.dp
-    val UtilityButton: Dp = 44.dp
-    val UtilityButtonCompact: Dp = 42.dp
-    val TransportButton: Dp = 52.dp
-    val TransportButtonCompact: Dp = 48.dp
-    val PrimaryWidth: Dp = 74.dp
-    val PrimaryWidthCompact: Dp = 70.dp
-    val PrimaryHeight: Dp = 62.dp
-    val PrimaryHeightCompact: Dp = 60.dp
-    val PrimaryCorner: Dp = 28.dp
+    val HeaderButton: Dp = 44.dp
+    val HeaderButtonCompact: Dp = 42.dp
+    val UtilityButton: Dp = 46.dp
+    val UtilityButtonCompact: Dp = 44.dp
+    val TransportButton: Dp = 58.dp
+    val TransportButtonCompact: Dp = 54.dp
+    val PrimaryWidth: Dp = 78.dp
+    val PrimaryWidthCompact: Dp = 72.dp
+    val PrimaryHeight: Dp = 78.dp
+    val PrimaryHeightCompact: Dp = 72.dp
+    val PrimaryCorner: Dp = 40.dp
+    val ModeButtonWidth: Dp = 64.dp
+    val ModeButtonWidthCompact: Dp = 60.dp
+    val ModeButtonHeight: Dp = 42.dp
+    val ModeButtonHeightCompact: Dp = 40.dp
+    val MainControlGap: Dp = 22.dp
+    val MainControlGapCompact: Dp = 17.dp
     val MinimumTouchTarget: Dp = 48.dp
 
     val Hairline: Dp = 1.dp
-    val TrackHeight: Dp = 5.dp
-    val TrackHeightActive: Dp = 8.dp
-    val WaveAmplitude: Dp = 3.dp
-    val HandleWidth: Dp = 4.dp
-    val HandleWidthActive: Dp = 6.dp
-    val HandleHeight: Dp = 22.dp
-    val HandleHeightActive: Dp = 32.dp
+    val TrackHeight: Dp = 4.dp
+    val TrackHeightActive: Dp = 6.dp
+    val WaveAmplitude: Dp = 2.5.dp
+    val HandleWidth: Dp = 12.dp
+    val HandleWidthActive: Dp = 18.dp
+    val HandleHeight: Dp = 12.dp
+    val HandleHeightActive: Dp = 18.dp
 
     val Emphasized: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
     val Standard: Easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
     val Decelerate: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 
-    const val ExpressiveDamping: Float = 0.62f
-    const val ExpressiveStiffness: Float = 340f
+    const val ExpressiveDamping: Float = 0.68f
+    const val ExpressiveStiffness: Float = 360f
     const val SmoothDamping: Float = 0.9f
     const val SmoothStiffness: Float = 520f
     const val SnappyDamping: Float = 0.82f
@@ -85,18 +98,24 @@ object LevyraPlayerDesign {
     fun <T> standardTween(durationMillis: Int = 220): TweenSpec<T> =
         tween(durationMillis = durationMillis, easing = Standard)
 
-    const val WavePeriodDp: Float = 26f
-    const val WaveCycleMillis: Int = 1_600
+    const val WavePeriodDp: Float = 30f
+    const val WaveCycleMillis: Int = 2_000
 
-    val GlassFill: Color = Color.White.copy(alpha = 0.06f)
-    val GlassFillStrong: Color = Color.White.copy(alpha = 0.09f)
-    val GlassFillSunken: Color = Color.Black.copy(alpha = 0.22f)
-    val GlassBorderTop: Color = Color.White.copy(alpha = 0.12f)
-    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.07f)
-    val GlassSpecular: Color = Color.White.copy(alpha = 0.02f)
+    val GlassFill: Color = Color.White.copy(alpha = 0.055f)
+    val GlassFillStrong: Color = Color.White.copy(alpha = 0.085f)
+    val GlassFillRaised: Color = Color.White.copy(alpha = 0.10f)
+    val GlassFillSunken: Color = Color.Black.copy(alpha = 0.24f)
+    val GlassBorderTop: Color = Color.White.copy(alpha = 0.15f)
+    val GlassBorderBottom: Color = Color.White.copy(alpha = 0.065f)
+    val GlassSpecular: Color = Color.White.copy(alpha = 0.025f)
+
+    val TransportFill: Color = Color.White.copy(alpha = 0.105f)
+    val TransportBorder: Color = Color.White.copy(alpha = 0.13f)
+    val ModeFill: Color = Color.Black.copy(alpha = 0.18f)
+    val ModeDivider: Color = Color.White.copy(alpha = 0.13f)
 
     val TextPrimary: Color = Color.White
-    val TextSecondary: Color = Color.White.copy(alpha = 0.72f)
-    val TextTertiary: Color = Color.White.copy(alpha = 0.52f)
-    val IconIdle: Color = Color.White.copy(alpha = 0.62f)
+    val TextSecondary: Color = Color.White.copy(alpha = 0.74f)
+    val TextTertiary: Color = Color.White.copy(alpha = 0.50f)
+    val IconIdle: Color = Color.White.copy(alpha = 0.68f)
 }
