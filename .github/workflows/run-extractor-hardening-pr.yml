@@ -93,10 +93,10 @@ jobs:
       - name: Compile vendored extractor production sources
         run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:compileJava
 
-      - name: Compile Android release
+      - name: Compile Android sources
         env:
           YOUTUBE_INNERTUBE_API_KEY: ci-placeholder-key
-        run: ./gradlew --no-daemon :app:compileReleaseKotlin
+        run: ./gradlew --no-daemon :app:compileDebugKotlin
 
       - name: Commit verified changes
         shell: bash
