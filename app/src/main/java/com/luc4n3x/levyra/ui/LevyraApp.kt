@@ -250,7 +250,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeCap
@@ -531,7 +530,6 @@ private fun RowScope.TabButton(
     entry: LevyraTabEntry,
     isSelected: Boolean,
     accent: Color,
-    onIndicator: Color,
     showEqualizer: Boolean,
     isPlaying: Boolean,
     onClick: () -> Unit
@@ -541,6 +539,7 @@ private fun RowScope.TabButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val idleTint = LevyraMuted
+    val selectedTint = if (LevyraIsLight) LevyraBlue else accent
     val selectedProgress by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0f,
         animationSpec = if (animationsEnabled) {
@@ -560,16 +559,12 @@ private fun RowScope.TabButton(
         label = "tab-icon-scale"
     )
     val iconTint by animateColorAsState(
-        targetValue = if (isSelected) onIndicator else idleTint,
+        targetValue = if (isSelected) selectedTint else idleTint,
         animationSpec = if (animationsEnabled) tween(220) else snap(),
         label = "tab-icon-tint"
     )
     val labelTint by animateColorAsState(
-        targetValue = when {
-            !isSelected -> idleTint
-            LevyraIsLight -> LevyraBlue
-            else -> accent
-        },
+        targetValue = if (isSelected) selectedTint else idleTint,
         animationSpec = if (animationsEnabled) tween(220) else snap(),
         label = "tab-label-tint"
     )
@@ -605,7 +600,7 @@ private fun RowScope.TabButton(
                         } else {
                             Modifier
                         },
-                        color = if (isSelected) onIndicator else accent,
+                        color = if (isSelected) selectedTint else accent,
                         isPlaying = isPlaying,
                         width = 19.dp,
                         height = 15.dp
@@ -17022,15 +17017,8 @@ private fun BottomTabs(
     val entries = rememberLevyraTabEntries()
     val animationsEnabled = LocalAnimationsEnabled.current
     val haptics = LocalHapticFeedback.current
-    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val isLight = LevyraIsLight
     val accentStart = LevyraCyan
-    val accentEnd = LevyraViolet
-    val onIndicator = if ((accentStart.luminance() + accentEnd.luminance()) / 2f > 0.5f) {
-        Color(0xFF06060A)
-    } else {
-        Color.White
-    }
     val selectedIndex = entries.indexOfFirst { it.tab == selected }.coerceAtLeast(0)
     val indicatorPosition by animateFloatAsState(
         targetValue = selectedIndex.toFloat(),
@@ -17054,23 +17042,18 @@ private fun BottomTabs(
         if (isLight) {
             Brush.verticalGradient(listOf(Color.White, barInk, barPanel))
         } else {
-            Brush.verticalGradient(listOf(barPanel, barInk, barBase))
+            Brush.verticalGradient(listOf(barInk, barBase, barBase))
         }
     }
-    val indicatorBrush = remember(accentStart, accentEnd) {
-        Brush.linearGradient(listOf(accentStart, accentEnd))
-    }
-    val indicatorBorderBrush = remember {
-        Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.38f), Color.White.copy(alpha = 0.05f)))
-    }
-    val indicatorSheenBrush = remember {
+    val indicatorBrush = remember(isLight, accentStart) {
         Brush.verticalGradient(
-            listOf(Color.White.copy(alpha = 0.24f), Color.Transparent, Color.Black.copy(alpha = 0.10f))
+            listOf(
+                accentStart.copy(alpha = if (isLight) 0.16f else 0.20f),
+                accentStart.copy(alpha = if (isLight) 0.08f else 0.10f)
+            )
         )
     }
-    val accentWashBrush = remember(accentStart) {
-        Brush.verticalGradient(listOf(accentStart.copy(alpha = 0.10f), Color.Transparent))
-    }
+    val indicatorBorderColor = accentStart.copy(alpha = if (isLight) 0.24f else 0.20f)
     val hairline = if (isLight) Color(0x1A11131F) else Color.White.copy(alpha = 0.085f)
 
     Surface(
@@ -17092,22 +17075,6 @@ private fun BottomTabs(
                         end = Offset(size.width, y),
                         strokeWidth = strokeWidth
                     )
-                    val slot = size.width / entries.size
-                    val rawCenter = slot * (indicatorPosition + 0.5f) / size.width
-                    val center = (if (isRtl) 1f - rawCenter else rawCenter).coerceIn(0f, 1f)
-                    val spread = 0.09f
-                    drawLine(
-                        brush = Brush.horizontalGradient(
-                            0f to Color.Transparent,
-                            (center - spread).coerceIn(0f, 1f) to Color.Transparent,
-                            center to accentStart.copy(alpha = 0.55f),
-                            (center + spread).coerceIn(0f, 1f) to Color.Transparent,
-                            1f to Color.Transparent
-                        ),
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = strokeWidth * 1.6f
-                    )
                 }
         ) {
             BoxWithConstraints(
@@ -17115,13 +17082,6 @@ private fun BottomTabs(
                     .fillMaxWidth()
                     .height(LevyraTabBarHeight)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(LevyraTabIndicatorHeight)
-                        .background(accentWashBrush)
-                )
-
                 val slotWidth = maxWidth / entries.size
                 val indicatorWidth = (slotWidth - 34.dp).coerceIn(40.dp, 52.dp)
                 val density = LocalDensity.current
@@ -17138,27 +17098,14 @@ private fun BottomTabs(
                             )
                         }
                         .size(width = indicatorWidth, height = LevyraTabIndicatorHeight)
-                        .shadow(
-                            elevation = 14.dp,
-                            shape = LevyraTabIndicatorShape,
-                            clip = false,
-                            ambientColor = accentStart.copy(alpha = 0.55f),
-                            spotColor = accentEnd.copy(alpha = 0.65f)
-                        )
                         .clip(LevyraTabIndicatorShape)
                         .background(indicatorBrush)
                         .border(
                             width = 1.dp,
-                            brush = indicatorBorderBrush,
+                            color = indicatorBorderColor,
                             shape = LevyraTabIndicatorShape
                         )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(indicatorSheenBrush)
-                    )
-                }
+                )
 
                 Row(
                     modifier = Modifier
@@ -17172,7 +17119,6 @@ private fun BottomTabs(
                             entry = entry,
                             isSelected = isSelected,
                             accent = accentStart,
-                            onIndicator = onIndicator,
                             showEqualizer = entry.tab == LevyraTab.Player && hasActiveTrack,
                             isPlaying = isPlaying,
                             onClick = {
