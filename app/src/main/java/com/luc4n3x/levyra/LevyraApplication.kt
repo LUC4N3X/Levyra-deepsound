@@ -51,7 +51,7 @@ class LevyraApplication : Application() {
 
     private fun warmPlaybackPipeline() {
         startupScope.launch {
-            runCatching { NewPipeRuntime.ensure() }
+            runCatching { NewPipeRuntime.ensure(this@LevyraApplication) }
                 .onFailure { Timber.w(it, "Extractor warmup failed") }
         }
         startupScope.launch {
