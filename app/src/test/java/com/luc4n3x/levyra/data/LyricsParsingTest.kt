@@ -416,6 +416,157 @@ class LyricsParsingTest {
         assertTrue((best?.confidence ?: 0) >= 85)
     }
 
+    @Test
+    fun ttmlParserRecoversLineTimingFromFirstChildSpan() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt xmlns="http://www.w3.org/ns/ttml">
+              <body>
+                <div>
+                  <p>
+                    <span begin="00:10.500" end="00:11.000">Hold </span>
+                    <span begin="00:12.400" end="00:12.900">on</span>
+                  </p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        assertEquals(1, lines.size)
+        assertEquals(10_500L, lines[0].startMs)
+        assertEquals("Hold on", lines[0].text)
+        assertEquals(2, lines[0].words.size)
+    }
+
+    @Test
+    fun ttmlParserAppliesGlobalLyricOffset() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt xmlns="http://www.w3.org/ns/ttml">
+              <head>
+                <metadata>
+                  <audio lyricOffset="1.5"/>
+                </metadata>
+              </head>
+              <body>
+                <div>
+                  <p begin="00:10.000" end="00:12.000">
+                    <span begin="00:10.000" end="00:11.000">Some</span>
+                    <span begin="00:11.000" end="00:12.000">thing</span>
+                  </p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        assertEquals(1, lines.size)
+        assertEquals(11_500L, lines[0].startMs)
+        assertEquals(13_500L, lines[0].endMs)
+        assertEquals(11_500L, lines[0].words.first().startMs)
+        assertEquals(13_500L, lines[0].words.last().endMs)
+    }
+
+    @Test
+    fun ttmlParserClampsNegativeLyricOffsetWithoutCollapsingLineDuration() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt xmlns="http://www.w3.org/ns/ttml">
+              <head>
+                <metadata>
+                  <audio lyricOffset="-2.0"/>
+                </metadata>
+              </head>
+              <body>
+                <div>
+                  <p begin="00:01.000" end="00:03.000">
+                    <span begin="00:01.000" end="00:02.000">Early</span>
+                    <span begin="00:02.000" end="00:03.000">line</span>
+                  </p>
+                  <p begin="00:10.000" end="00:12.000">Later line</p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        assertEquals(2, lines.size)
+        assertEquals(0L, lines[0].startMs)
+        assertTrue(lines[0].endMs > lines[0].startMs)
+        assertEquals(2_000L, lines[0].endMs)
+        assertTrue(lines[0].words.all { it.endMs > it.startMs })
+        assertEquals(8_000L, lines[1].startMs)
+        assertEquals(10_000L, lines[1].endMs)
+    }
+
+    @Test
+    fun ttmlParserIgnoresOutOfRangeLyricOffset() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt xmlns="http://www.w3.org/ns/ttml">
+              <head>
+                <metadata>
+                  <audio lyricOffset="1e18"/>
+                </metadata>
+              </head>
+              <body>
+                <div>
+                  <p begin="00:05.000" end="00:07.000">Bounded</p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        assertEquals(1, lines.size)
+        assertEquals(605_000L, lines[0].startMs)
+        assertEquals(607_000L, lines[0].endMs)
+    }
+
+    @Test
+    fun ttmlParserReadsRoleAndAgentUnderNonStandardPrefixes() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt xmlns="http://www.w3.org/ns/ttml" xmlns:meta="http://www.w3.org/ns/ttml#metadata">
+              <body>
+                <div>
+                  <p begin="00:01.000" end="00:03.000" meta:agent="v2">
+                    <span begin="00:01.000" end="00:02.000">Lead</span>
+                    <span meta:role="x-bg" begin="00:02.000" end="00:03.000">echo</span>
+                  </p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        val main = lines.first { it.role != LyricVocalRole.BACKGROUND }
+        assertEquals(LyricVocalRole.DUET_RIGHT, main.role)
+        assertEquals("Lead", main.text)
+        assertTrue(lines.any { it.role == LyricVocalRole.BACKGROUND && it.text == "echo" })
+    }
+
+    @Test
+    fun ttmlParserKeepsLinesWithoutOffsetMetadataUnshifted() {
+        val lines = TtmlLyricsParser.parse(
+            """
+            <tt xmlns="http://www.w3.org/ns/ttml">
+              <head><metadata/></head>
+              <body>
+                <div>
+                  <p begin="00:05.000" end="00:07.000">Steady</p>
+                </div>
+              </body>
+            </tt>
+            """.trimIndent()
+        )
+
+        assertEquals(1, lines.size)
+        assertEquals(5_000L, lines[0].startMs)
+        assertEquals(7_000L, lines[0].endMs)
+    }
+
     private fun candidate(provider: String, synced: Boolean): LyricsCandidate {
         return LyricsCandidate(
             result = LyricsRepository.LyricsResult(
