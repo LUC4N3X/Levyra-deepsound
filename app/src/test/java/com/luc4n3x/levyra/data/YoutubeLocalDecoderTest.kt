@@ -335,9 +335,93 @@ class YoutubeLocalDecoderTest {
         assertFalse(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Web", now, now - 11L * 60L * 1000L))
     }
 
+    @Test
+    fun rendererRecoveryAllowsAttemptsBelowFailureThreshold() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 3, backoffMs = 60_000L)
+
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 0L))
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 1L))
+        policy.onFailure(RECOVERY_IDENTITY, 1L)
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 2L))
+    }
+
+    @Test
+    fun rendererRecoveryOpensBackoffWindowAfterConsecutiveFailures() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 3, backoffMs = 60_000L)
+
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 1_000L)
+
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 1_000L))
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 60_999L))
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 61_000L))
+    }
+
+    @Test
+    fun rendererRecoveryReArmsBackoffWhenRetryFailsAgain() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 2, backoffMs = 10_000L)
+
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 9_999L))
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 10_000L))
+
+        policy.onFailure(RECOVERY_IDENTITY, 10_000L)
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 10_000L))
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 20_000L))
+    }
+
+    @Test
+    fun rendererRecoverySuccessResetsPolicy() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 2, backoffMs = 10_000L)
+
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 5_000L))
+
+        policy.onSuccess()
+
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 5_000L))
+        policy.onFailure(RECOVERY_IDENTITY, 5_000L)
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 5_000L))
+    }
+
+    @Test
+    fun rendererRecoveryClearsBackoffWhenPlayerOrConfigIdentityChanges() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 2, backoffMs = 60_000L)
+
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 5_000L))
+
+        assertTrue(policy.shouldAttempt("2182a2cc:8", 5_000L))
+        assertTrue(policy.shouldAttempt("90ed594f:7", 5_000L))
+
+        policy.onFailure("2182a2cc:8", 5_000L)
+        assertTrue(policy.shouldAttempt("2182a2cc:8", 5_000L))
+    }
+
+    @Test
+    fun rendererRecoveryCountsInternalReadyTimeoutButNotCallerCancellation() {
+        val timeout = runCatching {
+            runBlocking { withTimeout(1L) { delay(50L) } }
+        }.exceptionOrNull()
+
+        assertNotNull(timeout)
+        assertTrue(timeout is CancellationException)
+        assertTrue(YoutubeCipherRuntimeFailurePolicy.marksRuntimeDead(timeout!!))
+        assertFalse(YoutubeCipherRuntimeFailurePolicy.marksRuntimeDead(CancellationException("caller went away")))
+    }
+
     private fun parityResource(name: String): String {
         val resource = requireNotNull(javaClass.classLoader?.getResource("config-parity/$name"))
         return resource.readText()
+    }
+
+    private companion object {
+        const val RECOVERY_IDENTITY = "2182a2cc:7"
     }
 
 }

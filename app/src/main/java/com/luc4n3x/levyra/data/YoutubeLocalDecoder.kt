@@ -2,6 +2,7 @@ package com.luc4n3x.levyra.data
 
 import android.content.Context
 import android.os.Looper
+import android.os.SystemClock
 import android.webkit.JavascriptInterface
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
@@ -156,6 +157,7 @@ private class YoutubeLocalDecoderEngine(
     private var runtimeConfigEpoch = -1L
     private var runtimeConfigOrigin = YoutubePlayerConfigOrigin.VALIDATED
     private val lastSuccessfulDecodeAtMs = AtomicLong(0L)
+    private val rendererRecovery = YoutubeRendererRecoveryPolicy()
 
     @Volatile
     private var lastSuccessfulDecodePlayerHash = ""
@@ -213,6 +215,7 @@ private class YoutubeLocalDecoderEngine(
             val decoded = try {
                 decodeAttempt(playerId, missingSignatures, missingNs, forceRefresh = false)
             } catch (firstError: Throwable) {
+                if (firstError is YoutubeRendererBackoffException) throw firstError
                 Timber.w(firstError, "Local decoder first attempt failed for player %s", playerId)
                 invalidateRuntime()
                 configStore.refresh(force = true, reason = "decode-failure")
@@ -259,7 +262,7 @@ private class YoutubeLocalDecoderEngine(
         }
         val resolvedConfig = config ?: player.analyzedConfig ?: return
         runtimeMutex.withLock {
-            ensureRuntime(player, resolvedConfig)
+            ensureRuntime(player, resolvedConfig, recordRendererFailures = false)
         }
     }
 
@@ -360,7 +363,8 @@ private class YoutubeLocalDecoderEngine(
 
     private suspend fun ensureRuntime(
         player: YoutubePlayerScript,
-        config: YoutubePlayerCipherConfig
+        config: YoutubePlayerCipherConfig,
+        recordRendererFailures: Boolean = true
     ): YoutubeCipherWebRuntime {
         val current = runtime
         if (
@@ -378,7 +382,19 @@ private class YoutubeLocalDecoderEngine(
             return current
         }
         invalidateRuntimeLocked()
-        val created = YoutubeCipherWebRuntime.create(context, player, config)
+        val recoveryIdentity = "${player.hash}:${configStore.epoch}"
+        if (!rendererRecovery.shouldAttempt(recoveryIdentity, SystemClock.elapsedRealtime())) {
+            throw YoutubeRendererBackoffException()
+        }
+        val created = try {
+            YoutubeCipherWebRuntime.create(context, player, config)
+        } catch (error: Throwable) {
+            if (recordRendererFailures && YoutubeCipherRuntimeFailurePolicy.marksRuntimeDead(error)) {
+                rendererRecovery.onFailure(recoveryIdentity, SystemClock.elapsedRealtime())
+            }
+            throw error
+        }
+        rendererRecovery.onSuccess()
         runtime = created
         runtimeHash = player.hash
         runtimeConfigKey = player.configKey
@@ -1201,6 +1217,48 @@ internal object YoutubeCipherRuntimeFailurePolicy {
         return error is TimeoutCancellationException ||
             (error !is CancellationException &&
                 error.message?.contains("timeout", ignoreCase = true) == true)
+    }
+}
+
+internal class YoutubeRendererBackoffException : ParsingException("Local decoder renderer in recovery backoff")
+
+internal class YoutubeRendererRecoveryPolicy(
+    private val maxConsecutiveFailures: Int = DEFAULT_MAX_CONSECUTIVE_FAILURES,
+    private val backoffMs: Long = DEFAULT_BACKOFF_MS
+) {
+    private var consecutiveFailures = 0
+    private var backoffUntilMs = 0L
+    private var failureIdentity = ""
+
+    @Synchronized
+    fun shouldAttempt(identity: String, nowMs: Long): Boolean {
+        if (identity != failureIdentity) return true
+        return consecutiveFailures < maxConsecutiveFailures || nowMs >= backoffUntilMs
+    }
+
+    @Synchronized
+    fun onFailure(identity: String, nowMs: Long) {
+        if (identity != failureIdentity) {
+            failureIdentity = identity
+            consecutiveFailures = 0
+            backoffUntilMs = 0L
+        }
+        consecutiveFailures++
+        if (consecutiveFailures >= maxConsecutiveFailures) {
+            backoffUntilMs = nowMs + backoffMs
+        }
+    }
+
+    @Synchronized
+    fun onSuccess() {
+        consecutiveFailures = 0
+        backoffUntilMs = 0L
+        failureIdentity = ""
+    }
+
+    companion object {
+        const val DEFAULT_MAX_CONSECUTIVE_FAILURES = 3
+        const val DEFAULT_BACKOFF_MS = 60_000L
     }
 }
 
