@@ -4,7 +4,7 @@
 
 **Name:** Android Home identity audit and dead-code cleanup  
 **Roadmap track:** Track 3 - Responsive, accessible interface; Track 6 - Distribution and repository integrity  
-**Status:** Implementation complete; Gradle validation is blocked in the connector environment  
+**Status:** Implementation complete; repository Gradle validation is pending in CI  
 **Scope:** Correct Home section identity for non-Latin scripts, add focused regression coverage, and remove the unused demo catalog stub. No playback, persistence schema, version, dependency, signing, packaging, Desktop, or release behavior is changed.
 
 ## Verified current behavior and root cause
@@ -35,8 +35,8 @@
 - [x] Verify `DemoCatalogRepository` has no production or test callers.
 - [x] Remove the unused demo catalog stub.
 - [x] Inspect the branch diff for unrelated version, dependency, workflow, binary, generated-file, or secret changes.
-- [ ] Run the focused Android unit test in a repository checkout.
-- [ ] Run the broader Android unit-test suite and lint in a supported environment.
+- [ ] Run the focused Android unit test through the repository Gradle wrapper.
+- [ ] Run the broader Android unit-test suite and lint in CI or a supported checkout.
 - [ ] Verify localized Home rendering on a device or emulator.
 
 ## Validation matrix
@@ -44,14 +44,16 @@
 | Check | Required | Current state |
 | --- | --- | --- |
 | Root cause reproduced by code inspection | Yes | Verified against the ASCII-only identity filter and duplicate cap |
-| Focused regression test added | Yes | Added; execution blocked because the connector environment has no repository checkout or Gradle runtime |
-| JDK Unicode normalization/regex smoke check | Supporting | Passed for accented Latin, Arabic, Chinese, Japanese, Hindi, and Thai samples |
+| Focused regression test added | Yes | Added; repository execution pending in CI |
+| Standalone Kotlin compile/smoke check | Supporting | Passed with the exact normalization function for accented Latin, Arabic, Chinese, Japanese, Hindi, and Thai samples |
 | `DemoCatalogRepository` reference search | Yes | Verified: no callers outside the deleted file |
 | Complete branch diff inspection | Yes | Verified: only the focused implementation, regression test, dead stub deletion, and active-task record changed |
-| `./gradlew --no-daemon :app:testDebugUnitTest` | Yes | Blocked in the connector environment |
-| `./gradlew --no-daemon :app:lintRelease` | Yes | Blocked in the connector environment |
-| `./gradlew --no-daemon --no-configuration-cache assembleRelease` | Applicable before merge | Blocked in the connector environment |
-| `python3 scripts/validate_agent_config.py` | Yes after task-file change | Blocked in the connector environment |
+| `./gradlew --no-daemon :app:testDebugUnitTest` | Yes | Pending in CI; local repository checkout unavailable |
+| `./gradlew --no-daemon :app:lintRelease` | Yes | Pending in CI; local repository checkout unavailable |
+| `./gradlew --no-daemon --no-configuration-cache assembleRelease` | Applicable before merge | CI build in progress; local repository checkout unavailable |
+| `python3 scripts/validate_agent_config.py` | Yes after task-file change | Pending in CI; local repository checkout unavailable |
+| Workflow Duplicates Guard | Yes | Passed on the pull-request head |
+| SonarQube Cloud quality gate | Supporting | Passed with zero new issues and zero security hotspots |
 | Localized device/emulator Home check | Manual | Not performed |
 | Playback, Android Auto, notification, PiP | No | Not affected by this phase |
 | Desktop build and Windows checks | No | Desktop files are unchanged |
