@@ -2,9 +2,9 @@ package com.luc4n3x.levyra.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -18,13 +18,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -64,6 +68,7 @@ data class PlayerAccentColors(
     val secondaryTarget: Color
 )
 
+@Immutable
 data class PlayerControlLabels(
     val shuffle: String,
     val previous: String,
@@ -79,7 +84,16 @@ fun Modifier.playerGlass(
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom
 ): Modifier = this
-    .background(fill, shape)
+    .background(
+        brush = Brush.verticalGradient(
+            listOf(
+                fill.playerMix(Color.White, 0.08f),
+                fill,
+                fill.playerMix(Color.Black, 0.08f)
+            )
+        ),
+        shape = shape
+    )
     .border(
         BorderStroke(
             LevyraPlayerDesign.Hairline,
@@ -97,10 +111,10 @@ fun PlayerGlassIconButton(
     size: Dp = LevyraPlayerDesign.HeaderButton,
     iconSize: Dp = 21.dp,
     tint: Color = LevyraPlayerDesign.TextPrimary,
-    fill: Color = LevyraPlayerDesign.GlassFill,
+    fill: Color = LevyraPlayerDesign.GlassFillRaised,
     borderTop: Color = LevyraPlayerDesign.GlassBorderTop,
     borderBottom: Color = LevyraPlayerDesign.GlassBorderBottom,
-    shape: Shape = CircleShape,
+    shape: Shape = LevyraPlayerDesign.ShapeMd,
     enabled: Boolean = true
 ) {
     SpringIconButton(
@@ -110,13 +124,18 @@ fun PlayerGlassIconButton(
             minHeight = LevyraPlayerDesign.MinimumTouchTarget
         ),
         enabled = enabled,
-        pressedScale = 0.94f,
+        pressedScale = 0.93f,
         contentDescription = contentDescription
     ) {
         Box(
             modifier = Modifier
                 .size(size)
-                .playerGlass(shape = shape, fill = fill, borderTop = borderTop, borderBottom = borderBottom),
+                .playerGlass(
+                    shape = shape,
+                    fill = fill,
+                    borderTop = borderTop,
+                    borderBottom = borderBottom
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -129,6 +148,13 @@ fun PlayerGlassIconButton(
     }
 }
 
+/**
+ * Ordered two-level transport hierarchy.
+ *
+ * The primary playback actions stay visually dominant while shuffle and repeat
+ * live in a quieter mode rail below. This keeps every existing action available
+ * without making all five controls compete for attention.
+ */
 @Composable
 fun PlayerTransportControls(
     isPlaying: Boolean,
@@ -147,65 +173,141 @@ fun PlayerTransportControls(
     onRepeat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val utilitySize = if (compact) LevyraPlayerDesign.UtilityButtonCompact else LevyraPlayerDesign.UtilityButton
-    val transportSize = if (compact) LevyraPlayerDesign.TransportButtonCompact else LevyraPlayerDesign.TransportButton
-    val primaryWidth = if (compact) LevyraPlayerDesign.PrimaryWidthCompact else LevyraPlayerDesign.PrimaryWidth
-    val primaryHeight = if (compact) LevyraPlayerDesign.PrimaryHeightCompact else LevyraPlayerDesign.PrimaryHeight
-
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        PlayerModeToggleButton(
-            icon = Icons.Rounded.Shuffle,
-            contentDescription = labels.shuffle,
-            active = shuffleOn,
-            accent = accents.primary,
-            accentTarget = accents.primaryTarget,
-            size = utilitySize,
-            iconSize = if (compact) 20.dp else 21.dp,
-            animated = animated,
-            onClick = onShuffle
-        )
-        PlayerGlassIconButton(
-            icon = Icons.Rounded.SkipPrevious,
-            contentDescription = labels.previous,
-            size = transportSize,
-            iconSize = if (compact) 27.dp else 29.dp,
-            onClick = onPrevious
-        )
-        PlayerPrimaryButton(
-            isPlaying = isPlaying,
-            isResolving = isResolving,
-            accentTarget = accents.primaryTarget,
-            accentSecondaryTarget = accents.secondaryTarget,
-            width = primaryWidth,
-            height = primaryHeight,
-            animated = animated,
-            playLabel = labels.play,
-            pauseLabel = labels.pause,
-            onClick = onToggle
-        )
-        PlayerGlassIconButton(
-            icon = Icons.Rounded.SkipNext,
-            contentDescription = labels.next,
-            size = transportSize,
-            iconSize = if (compact) 27.dp else 29.dp,
-            onClick = onNext
-        )
-        PlayerModeToggleButton(
-            icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
-            contentDescription = labels.repeat,
-            active = repeatOn,
-            accent = accents.secondary,
-            accentTarget = accents.secondaryTarget,
-            size = utilitySize,
-            iconSize = if (compact) 20.dp else 21.dp,
-            animated = animated,
-            onClick = onRepeat
-        )
+    val transportSize = if (compact) {
+        LevyraPlayerDesign.TransportButtonCompact
+    } else {
+        LevyraPlayerDesign.TransportButton
     }
+    val primaryWidth = if (compact) {
+        LevyraPlayerDesign.PrimaryWidthCompact
+    } else {
+        LevyraPlayerDesign.PrimaryWidth
+    }
+    val primaryHeight = if (compact) {
+        LevyraPlayerDesign.PrimaryHeightCompact
+    } else {
+        LevyraPlayerDesign.PrimaryHeight
+    }
+    val controlGap = if (compact) {
+        LevyraPlayerDesign.MainControlGapCompact
+    } else {
+        LevyraPlayerDesign.MainControlGap
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            PlayerGlassIconButton(
+                icon = Icons.Rounded.SkipPrevious,
+                contentDescription = labels.previous,
+                size = transportSize,
+                iconSize = if (compact) 28.dp else 30.dp,
+                tint = LevyraPlayerDesign.TextPrimary,
+                fill = LevyraPlayerDesign.TransportFill,
+                borderTop = LevyraPlayerDesign.TransportBorder,
+                borderBottom = LevyraPlayerDesign.GlassBorderBottom,
+                shape = CircleShape,
+                onClick = onPrevious
+            )
+            Spacer(modifier = Modifier.width(controlGap))
+            PlayerPrimaryButton(
+                isPlaying = isPlaying,
+                isResolving = isResolving,
+                accentTarget = accents.primaryTarget,
+                accentSecondaryTarget = accents.secondaryTarget,
+                width = primaryWidth,
+                height = primaryHeight,
+                animated = animated,
+                playLabel = labels.play,
+                pauseLabel = labels.pause,
+                onClick = onToggle
+            )
+            Spacer(modifier = Modifier.width(controlGap))
+            PlayerGlassIconButton(
+                icon = Icons.Rounded.SkipNext,
+                contentDescription = labels.next,
+                size = transportSize,
+                iconSize = if (compact) 28.dp else 30.dp,
+                tint = LevyraPlayerDesign.TextPrimary,
+                fill = LevyraPlayerDesign.TransportFill,
+                borderTop = LevyraPlayerDesign.TransportBorder,
+                borderBottom = LevyraPlayerDesign.GlassBorderBottom,
+                shape = CircleShape,
+                onClick = onNext
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (compact) 8.dp else 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PlayerModeToggleButton(
+                icon = Icons.Rounded.Shuffle,
+                contentDescription = labels.shuffle,
+                active = shuffleOn,
+                accent = accents.primary,
+                accentTarget = accents.primaryTarget,
+                compact = compact,
+                animated = animated,
+                onClick = onShuffle
+            )
+            PlayerModeRail(
+                primary = accents.primary,
+                secondary = accents.secondary,
+                active = shuffleOn || repeatOn,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = if (compact) 13.dp else 17.dp)
+            )
+            PlayerModeToggleButton(
+                icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                contentDescription = labels.repeat,
+                active = repeatOn,
+                accent = accents.secondary,
+                accentTarget = accents.secondaryTarget,
+                compact = compact,
+                animated = animated,
+                onClick = onRepeat
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerModeRail(
+    primary: Color,
+    secondary: Color,
+    active: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val alpha by animateFloatAsState(
+        targetValue = if (active) 0.62f else 0.28f,
+        animationSpec = LevyraPlayerDesign.standardTween(220),
+        label = "player-mode-rail-alpha"
+    )
+    Box(
+        modifier = modifier
+            .height(1.dp)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        Color.Transparent,
+                        primary.copy(alpha = alpha),
+                        secondary.copy(alpha = alpha),
+                        Color.Transparent
+                    )
+                )
+            )
+    )
 }
 
 @Composable
@@ -215,24 +317,37 @@ private fun PlayerModeToggleButton(
     active: Boolean,
     accent: Color,
     accentTarget: Color,
-    size: Dp,
-    iconSize: Dp,
+    compact: Boolean,
     animated: Boolean,
     onClick: () -> Unit
 ) {
-    val fill = if (active) {
-        Color.White.playerMix(accent, 0.06f).copy(alpha = 0.12f)
-    } else {
-        Color.Transparent
-    }
+    val width = if (compact) LevyraPlayerDesign.ModeButtonWidthCompact else LevyraPlayerDesign.ModeButtonWidth
+    val height = if (compact) LevyraPlayerDesign.ModeButtonHeightCompact else LevyraPlayerDesign.ModeButtonHeight
     val activeTint = remember(accentTarget) {
         Color.White.playerMix(accentTarget, 0.04f)
     }
-    val tint = if (active) activeTint else LevyraPlayerDesign.IconIdle
-    val borderAlpha by animateFloatAsState(
-        targetValue = if (active) 0.18f else 0f,
-        animationSpec = if (animated) LevyraPlayerDesign.standardTween() else snap(),
-        label = "player-toggle-border"
+    val fill by animateColorAsState(
+        targetValue = if (active) {
+            accent.copy(alpha = 0.34f)
+        } else {
+            LevyraPlayerDesign.ModeFill
+        },
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        label = "player-mode-fill"
+    )
+    val tint by animateColorAsState(
+        targetValue = if (active) activeTint else LevyraPlayerDesign.IconIdle,
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        label = "player-mode-tint"
+    )
+    val border by animateColorAsState(
+        targetValue = if (active) {
+            accent.playerMix(Color.White, 0.28f).copy(alpha = 0.48f)
+        } else {
+            LevyraPlayerDesign.ModeDivider
+        },
+        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        label = "player-mode-border"
     )
 
     SpringIconButton(
@@ -248,11 +363,11 @@ private fun PlayerModeToggleButton(
     ) {
         Box(
             modifier = Modifier
-                .size(size)
-                .background(fill, CircleShape)
+                .size(width = width, height = height)
+                .background(fill, LevyraPlayerDesign.ShapePill)
                 .border(
-                    BorderStroke(LevyraPlayerDesign.Hairline, Color.White.playerMix(accent, 0.08f).copy(alpha = borderAlpha)),
-                    CircleShape
+                    BorderStroke(LevyraPlayerDesign.Hairline, border),
+                    LevyraPlayerDesign.ShapePill
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -260,17 +375,26 @@ private fun PlayerModeToggleButton(
                 imageVector = icon,
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.size(iconSize)
+                modifier = Modifier.size(if (compact) 20.dp else 21.dp)
             )
+            if (active) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-8).dp, y = 7.dp)
+                        .size(4.dp)
+                        .background(tint, CircleShape)
+                )
+            }
         }
     }
 }
 
 private fun playerPrimaryIconTransition(): ContentTransform =
-    (fadeIn(LevyraPlayerDesign.standardTween(140)) +
-        scaleIn(initialScale = 0.82f, animationSpec = LevyraPlayerDesign.standardTween(140))) togetherWith
+    (fadeIn(LevyraPlayerDesign.standardTween(150)) +
+        scaleIn(initialScale = 0.78f, animationSpec = LevyraPlayerDesign.standardTween(150))) togetherWith
         (fadeOut(LevyraPlayerDesign.standardTween(100)) +
-            scaleOut(targetScale = 0.82f, animationSpec = LevyraPlayerDesign.standardTween(100)))
+            scaleOut(targetScale = 0.78f, animationSpec = LevyraPlayerDesign.standardTween(100)))
 
 private fun Modifier.playerPrimarySurface(
     shape: Shape,
@@ -278,23 +402,28 @@ private fun Modifier.playerPrimarySurface(
     end: Color
 ): Modifier = this
     .shadow(
-        elevation = 3.dp,
+        elevation = 10.dp,
         shape = shape,
         clip = false,
-        ambientColor = Color.Black.copy(alpha = 0.18f),
-        spotColor = Color.Black.copy(alpha = 0.24f)
+        ambientColor = start.copy(alpha = 0.28f),
+        spotColor = end.copy(alpha = 0.34f)
     )
     .background(Brush.linearGradient(listOf(start, end)), shape)
     .border(
         BorderStroke(
             LevyraPlayerDesign.Hairline,
-            Color.White.copy(alpha = 0.12f)
+            Color.White.copy(alpha = 0.24f)
         ),
         shape
     )
 
 @Composable
-private fun PlayerPrimaryIcon(isPlaying: Boolean, iconSize: Dp, tint: Color, animated: Boolean) {
+private fun PlayerPrimaryIcon(
+    isPlaying: Boolean,
+    iconSize: Dp,
+    tint: Color,
+    animated: Boolean
+) {
     AnimatedContent(
         targetState = isPlaying,
         transitionSpec = {
@@ -332,8 +461,8 @@ private fun PlayerPrimaryButton(
 ) {
     val gradient = remember(accentTarget, accentSecondaryTarget) {
         playerContrastGradient(
-            start = Color(0xFFF2F2F4).playerMix(accentTarget, 0.04f),
-            end = Color(0xFFDDDEE2).playerMix(accentSecondaryTarget, 0.03f),
+            start = accentTarget.playerMix(Color.White, 0.24f),
+            end = accentSecondaryTarget.playerMix(Color.White, 0.16f),
             minimumContrast = PlayerMinimumContrast
         )
     }
@@ -354,18 +483,17 @@ private fun PlayerPrimaryButton(
         animationSpec = colorSpec,
         label = "player-primary-content"
     )
-    val shape = RoundedCornerShape(LevyraPlayerDesign.PrimaryCorner)
 
     SpringIconButton(
         onClick = onClick,
-        pressedScale = 0.96f,
+        pressedScale = 0.94f,
         contentDescription = if (isPlaying) pauseLabel else playLabel
     ) {
         Box(
             modifier = Modifier
                 .size(width = width, height = height)
                 .playerPrimarySurface(
-                    shape = shape,
+                    shape = CircleShape,
                     start = gradientStart,
                     end = gradientEnd
                 ),
@@ -373,14 +501,14 @@ private fun PlayerPrimaryButton(
         ) {
             if (isResolving) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(height * 0.42f),
-                    strokeWidth = 2.5.dp,
+                    modifier = Modifier.size(height * 0.38f),
+                    strokeWidth = 2.7.dp,
                     color = gradientContent
                 )
             } else {
                 PlayerPrimaryIcon(
                     isPlaying = isPlaying,
-                    iconSize = height * 0.50f,
+                    iconSize = height * 0.48f,
                     tint = gradientContent,
                     animated = animated
                 )
