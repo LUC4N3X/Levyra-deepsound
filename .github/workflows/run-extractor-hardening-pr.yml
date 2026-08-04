@@ -28,6 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git log -1 --oneline
           git diff --check origin/main...HEAD
           ! grep -R --line-number -E 'trustEveryone|X509TrustManager|setDefaultHostnameVerifier' \
             third_party/LevyraExtractor/extractor/src/main/java
