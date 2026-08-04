@@ -17095,12 +17095,12 @@ private fun BottomTabs(
                     val slot = size.width / entries.size
                     val rawCenter = slot * (indicatorPosition + 0.5f) / size.width
                     val center = (if (isRtl) 1f - rawCenter else rawCenter).coerceIn(0f, 1f)
-                    val spread = 0.18f
+                    val spread = 0.09f
                     drawLine(
                         brush = Brush.horizontalGradient(
                             0f to Color.Transparent,
                             (center - spread).coerceIn(0f, 1f) to Color.Transparent,
-                            center to accentStart.copy(alpha = 0.75f),
+                            center to accentStart.copy(alpha = 0.55f),
                             (center + spread).coerceIn(0f, 1f) to Color.Transparent,
                             1f to Color.Transparent
                         ),
@@ -17123,7 +17123,7 @@ private fun BottomTabs(
                 )
 
                 val slotWidth = maxWidth / entries.size
-                val indicatorWidth = (slotWidth - 16.dp).coerceIn(42.dp, 68.dp)
+                val indicatorWidth = (slotWidth - 34.dp).coerceIn(40.dp, 52.dp)
                 val density = LocalDensity.current
                 val slotPx = with(density) { slotWidth.toPx() }
                 val indicatorPx = with(density) { indicatorWidth.toPx() }
