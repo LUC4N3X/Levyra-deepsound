@@ -4,23 +4,36 @@ import com.luc4n3x.levyra.domain.HomeSection
 import com.luc4n3x.levyra.domain.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeRefreshStabilityTest {
     @Test
-    fun sectionIdentityPreservesNonLatinScripts() {
-        assertNotEquals("section", HomeRefreshStability.sectionIdentity("السعودية"))
+    fun sectionTitleIdentityPreservesNonLatinScripts() {
+        assertNotEquals("section", HomeRefreshStability.sectionTitleIdentity("السعودية"))
         assertNotEquals(
-            HomeRefreshStability.sectionIdentity("中国"),
-            HomeRefreshStability.sectionIdentity("日本")
+            HomeRefreshStability.sectionTitleIdentity("中国"),
+            HomeRefreshStability.sectionTitleIdentity("日本")
         )
-        assertEquals("भारत", HomeRefreshStability.sectionIdentity("भारत"))
-        assertEquals("ประเทศไทย", HomeRefreshStability.sectionIdentity("ประเทศไทย"))
+        assertEquals("भारत", HomeRefreshStability.sectionTitleIdentity("भारत"))
+        assertEquals("ประเทศไทย", HomeRefreshStability.sectionTitleIdentity("ประเทศไทย"))
     }
 
     @Test
-    fun sectionIdentityPreservesExistingLatinAccentFolding() {
-        assertEquals("cafe-del-mar", HomeRefreshStability.sectionIdentity("Café del Mar"))
+    fun sectionTitleIdentityPreservesExistingLatinAccentFolding() {
+        assertEquals("cafe-del-mar", HomeRefreshStability.sectionTitleIdentity("Café del Mar"))
+    }
+
+    @Test
+    fun sectionIdentityIgnoresLocalizedDisplayTitle() {
+        val english = section("Made for you", "stable")
+        val italian = english.copy(title = "Creato per te")
+
+        assertEquals(
+            HomeRefreshStability.sectionIdentity(english),
+            HomeRefreshStability.sectionIdentity(italian)
+        )
     }
 
     @Test
@@ -40,11 +53,63 @@ class HomeRefreshStabilityTest {
     }
 
     @Test
-    fun sectionIdentityStillNormalizesWhitespaceAndPunctuation() {
+    fun sectionTitleIdentityStillNormalizesWhitespaceAndPunctuation() {
         assertEquals(
             "موسيقى-جديدة",
-            HomeRefreshStability.sectionIdentity("  موسيقى جديدة!  ")
+            HomeRefreshStability.sectionTitleIdentity("  موسيقى جديدة!  ")
         )
+    }
+
+    @Test
+    fun localizedTitleChangeDoesNotBecomeStructuralWhileFrozen() {
+        val previous = section("Made for you", "stable")
+        val incoming = previous.copy(title = "Creato per te")
+
+        val result = HomeRefreshStability.mergeSections(
+            previous = listOf(previous),
+            incoming = listOf(incoming),
+            allowStructuralChanges = false
+        )
+
+        assertEquals("Creato per te", result.visible.single().title)
+        assertNull(result.deferredStructural)
+        assertTrue(result.changed)
+    }
+
+    @Test
+    fun partialTrackRefreshKeepsTheExistingSectionKey() {
+        val previous = HomeSection(
+            title = "Made for you",
+            tracks = listOf(track("shared-1"), track("shared-2"), track("old-3"))
+        )
+        val incoming = HomeSection(
+            title = "Creato per te",
+            tracks = listOf(track("shared-1"), track("shared-2"), track("new-3"))
+        )
+
+        val result = HomeRefreshStability.mergeSections(
+            previous = listOf(previous),
+            incoming = listOf(incoming),
+            allowStructuralChanges = false
+        )
+
+        assertEquals(listOf("shared-1", "shared-2", "new-3"), result.visible.single().tracks.map { it.id })
+        assertNull(result.deferredStructural)
+    }
+
+    @Test
+    fun unrelatedSectionReplacementRemainsStructural() {
+        val previous = section("Made for you", "old")
+        val incoming = section("New shelf", "new")
+
+        val result = HomeRefreshStability.mergeSections(
+            previous = listOf(previous),
+            incoming = listOf(incoming),
+            allowStructuralChanges = false
+        )
+
+        assertEquals(previous, result.visible.single())
+        assertEquals(listOf(incoming), result.deferredStructural)
     }
 
     private fun section(title: String, prefix: String): HomeSection = HomeSection(
