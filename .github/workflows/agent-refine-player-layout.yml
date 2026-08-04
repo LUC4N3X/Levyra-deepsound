@@ -1,9 +1,11 @@
 name: Agent Refine Player Layout
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/pixel-inspired-player
+      - main
+    types:
+      - synchronize
 
 permissions:
   contents: write
