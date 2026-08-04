@@ -103,6 +103,7 @@ public class LevyraYoutubeResolverTest {
         firstThread.start();
         assertTrue(entered.await(2, TimeUnit.SECONDS));
         secondThread.start();
+        assertTrue(waitUntilBlocked(secondThread, 2, TimeUnit.SECONDS));
         release.countDown();
 
         assertTrue(first.get(2, TimeUnit.SECONDS).isResolved());
@@ -126,6 +127,22 @@ public class LevyraYoutubeResolverTest {
         assertEquals(22, result.getVideoItag());
         assertEquals(720, result.getVideoHeight());
         assertEquals(LevyraResolvedStream.Source.SABR_PREFLIGHT, result.getSource());
+    }
+
+    private static boolean waitUntilBlocked(final Thread thread,
+                                            final long timeout,
+                                            final TimeUnit unit) throws InterruptedException {
+        final long deadline = System.nanoTime() + unit.toNanos(timeout);
+        while (System.nanoTime() < deadline) {
+            final Thread.State state = thread.getState();
+            if (state == Thread.State.BLOCKED
+                    || state == Thread.State.WAITING
+                    || state == Thread.State.TIMED_WAITING) {
+                return true;
+            }
+            Thread.sleep(5L);
+        }
+        return false;
     }
 
     private static LevyraYoutubeResolver resolverWithFetcher(
