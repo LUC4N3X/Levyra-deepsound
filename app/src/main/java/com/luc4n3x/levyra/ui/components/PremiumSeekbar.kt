@@ -97,7 +97,7 @@ fun PremiumSeekbar(
         if (animated) LevyraPlayerDesign.expressiveSpring() else snap()
     LaunchedEffect(isDragging, animated) {
         trackScale.animateTo(
-            targetValue = if (isDragging) 1.55f else 1f,
+            targetValue = if (isDragging) 1.35f else 1f,
             animationSpec = scrubSpec
         )
     }
@@ -146,14 +146,14 @@ fun PremiumSeekbar(
             val offsetX = seekbarTooltipOffsetX(effectiveProgress, widthPx, tooltipWidthPx)
             Box(
                 modifier = Modifier
-                    .offset { IntOffset(offsetX.roundToInt(), with(density) { (-34).dp.roundToPx() }) }
-                    .background(Color(0xFF101014).copy(alpha = 0.94f), LevyraPlayerDesign.ShapeXs)
+                    .offset { IntOffset(offsetX.roundToInt(), with(density) { (-35).dp.roundToPx() }) }
+                    .background(Color(0xFF111116).copy(alpha = 0.96f), LevyraPlayerDesign.ShapePill)
                     .border(
                         width = LevyraPlayerDesign.Hairline,
-                        color = activeColor.copy(alpha = 0.55f),
-                        shape = LevyraPlayerDesign.ShapeXs
+                        color = activeColor.copy(alpha = 0.52f),
+                        shape = LevyraPlayerDesign.ShapePill
                     )
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = 13.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -226,41 +226,38 @@ fun PremiumSeekbar(
                 (LevyraPlayerDesign.HandleWidthActive - LevyraPlayerDesign.HandleWidth).toPx() * handleScale.value
             val handleHeight = LevyraPlayerDesign.HandleHeight.toPx() +
                 (LevyraPlayerDesign.HandleHeightActive - LevyraPlayerDesign.HandleHeight).toPx() * handleScale.value
-            val gap = trackHeight * 1.1f
-            val capInset = trackHeight / 2f
+            val handleDiameter = minOf(handleWidth, handleHeight)
+            val capInset = handleDiameter / 2f
             val trackStart = capInset
             val trackEnd = (totalWidth - capInset).coerceAtLeast(trackStart)
             val trackSpan = trackEnd - trackStart
-
-            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, handleWidth)
-            val activeEnd = (handleX - handleWidth / 2f - gap).coerceIn(trackStart, trackEnd)
-            val inactiveStart = (handleX + handleWidth / 2f + gap).coerceIn(trackStart, trackEnd)
-
-            if (inactiveStart < trackEnd) {
-                drawRoundRect(
-                    color = inactiveColor,
-                    topLeft = Offset(inactiveStart, centerY - trackHeight / 2f),
-                    size = Size(trackEnd - inactiveStart, trackHeight),
-                    cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
-                )
-            }
-
+            val handleX = trackStart + seekbarHandleCenterX(effectiveProgress, trackSpan, handleDiameter)
             val bufferedEnd = (trackStart + bufferedProgress * trackSpan).coerceIn(trackStart, trackEnd)
-            if (bufferedEnd > inactiveStart) {
+            val activeEnd = handleX.coerceIn(trackStart, trackEnd)
+            val trackRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+
+            drawRoundRect(
+                color = inactiveColor,
+                topLeft = Offset(trackStart, centerY - trackHeight / 2f),
+                size = Size(trackSpan, trackHeight),
+                cornerRadius = trackRadius
+            )
+
+            if (bufferedEnd > trackStart) {
                 drawRoundRect(
-                    color = thumbColor.copy(alpha = 0.22f),
-                    topLeft = Offset(inactiveStart, centerY - trackHeight / 2f),
-                    size = Size(bufferedEnd - inactiveStart, trackHeight),
-                    cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+                    color = thumbColor.copy(alpha = 0.20f),
+                    topLeft = Offset(trackStart, centerY - trackHeight / 2f),
+                    size = Size(bufferedEnd - trackStart, trackHeight),
+                    cornerRadius = trackRadius
                 )
             }
 
             val activeSpan = activeEnd - trackStart
             if (activeSpan > 0f) {
                 val amplitudePx = LevyraPlayerDesign.WaveAmplitude.toPx() * waveAmplitude.value
-                if (amplitudePx > 0.4f) {
+                if (amplitudePx > 0.35f) {
                     val wavelength = LevyraPlayerDesign.WavePeriodDp.dp.toPx()
-                    val taper = wavelength * 0.75f
+                    val taper = wavelength * 0.8f
                     val samples = seekbarWaveSampleCount(activeSpan)
                     val step = activeSpan / samples
                     wavePath.rewind()
@@ -268,12 +265,26 @@ fun PremiumSeekbar(
                     var index = 0
                     while (index <= samples) {
                         val local = seekbarWaveTaper(offsetX, activeSpan, taper)
-                        val y = centerY + seekbarWaveOffset(offsetX, amplitudePx * local, wavelength, wavePhase.value)
+                        val y = centerY + seekbarWaveOffset(
+                            x = offsetX,
+                            amplitudePx = amplitudePx * local,
+                            wavelengthPx = wavelength,
+                            phase = wavePhase.value
+                        )
                         val pointX = trackStart + offsetX
                         if (index == 0) wavePath.moveTo(pointX, y) else wavePath.lineTo(pointX, y)
                         offsetX += step
                         index += 1
                     }
+                    drawPath(
+                        path = wavePath,
+                        color = trailingColor.copy(alpha = 0.20f),
+                        style = Stroke(
+                            width = trackHeight + 5.dp.toPx(),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
                     drawPath(
                         path = wavePath,
                         color = activeColor,
@@ -288,25 +299,26 @@ fun PremiumSeekbar(
                         color = activeColor,
                         topLeft = Offset(trackStart, centerY - trackHeight / 2f),
                         size = Size(activeSpan, trackHeight),
-                        cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+                        cornerRadius = trackRadius
                     )
                 }
             }
 
-            if (handleScale.value > 0.01f) {
-                drawRoundRect(
-                    color = trailingColor.copy(alpha = 0.30f * handleScale.value),
-                    topLeft = Offset(handleX - handleWidth * 1.6f, centerY - handleHeight * 0.65f),
-                    size = Size(handleWidth * 3.2f, handleHeight * 1.30f),
-                    cornerRadius = CornerRadius(handleWidth * 1.6f, handleWidth * 1.6f)
-                )
-            }
-
-            drawRoundRect(
+            drawCircle(
+                color = Color.Black.copy(alpha = 0.28f),
+                radius = handleDiameter / 2f + 2.dp.toPx(),
+                center = Offset(handleX, centerY)
+            )
+            drawCircle(
                 color = thumbColor,
-                topLeft = Offset(handleX - handleWidth / 2f, centerY - handleHeight / 2f),
-                size = Size(handleWidth, handleHeight),
-                cornerRadius = CornerRadius(handleWidth / 2f, handleWidth / 2f)
+                radius = handleDiameter / 2f,
+                center = Offset(handleX, centerY)
+            )
+            drawCircle(
+                color = activeColor.copy(alpha = 0.58f),
+                radius = handleDiameter / 2f,
+                center = Offset(handleX, centerY),
+                style = Stroke(width = LevyraPlayerDesign.Hairline.toPx())
             )
         }
     }
