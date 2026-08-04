@@ -50,17 +50,29 @@ object LevyraPlayerDesign {
     val UtilityButtonCompact: Dp = 44.dp
     val TransportButton: Dp = 58.dp
     val TransportButtonCompact: Dp = 54.dp
+    val TransportIcon: Dp = 30.dp
+    val TransportIconCompact: Dp = 28.dp
     val PrimaryWidth: Dp = 78.dp
     val PrimaryWidthCompact: Dp = 72.dp
     val PrimaryHeight: Dp = 78.dp
     val PrimaryHeightCompact: Dp = 72.dp
-    val PrimaryCorner: Dp = 40.dp
     val ModeButtonWidth: Dp = 64.dp
     val ModeButtonWidthCompact: Dp = 60.dp
     val ModeButtonHeight: Dp = 42.dp
     val ModeButtonHeightCompact: Dp = 40.dp
+    val ModeIcon: Dp = 21.dp
+    val ModeIconCompact: Dp = 20.dp
+    val ModeIndicator: Dp = 4.dp
+    val ModeIndicatorTopInset: Dp = 7.dp
+    val ModeIndicatorEndInset: Dp = 8.dp
     val MainControlGap: Dp = 22.dp
     val MainControlGapCompact: Dp = 17.dp
+    val TransportStackSpacing: Dp = 14.dp
+    val TransportStackSpacingCompact: Dp = 12.dp
+    val ModeRowPadding: Dp = 12.dp
+    val ModeRowPaddingCompact: Dp = 8.dp
+    val ModeRailPadding: Dp = 17.dp
+    val ModeRailPaddingCompact: Dp = 13.dp
     val MinimumTouchTarget: Dp = 48.dp
 
     val Hairline: Dp = 1.dp
@@ -113,6 +125,7 @@ object LevyraPlayerDesign {
     val TransportBorder: Color = Color.White.copy(alpha = 0.13f)
     val ModeFill: Color = Color.Black.copy(alpha = 0.18f)
     val ModeDivider: Color = Color.White.copy(alpha = 0.13f)
+    val ScrubTooltipSurface: Color = Color(0xFF111116)
 
     val TextPrimary: Color = Color.White
     val TextSecondary: Color = Color.White.copy(alpha = 0.74f)
