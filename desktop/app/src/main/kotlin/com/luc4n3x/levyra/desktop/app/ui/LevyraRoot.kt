@@ -2,31 +2,19 @@ package com.luc4n3x.levyra.desktop.app.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
@@ -48,9 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -61,11 +47,10 @@ import com.luc4n3x.levyra.desktop.app.state.PlaybackUiState
 import com.luc4n3x.levyra.desktop.app.ui.components.DownloadActions
 import com.luc4n3x.levyra.desktop.app.ui.components.LocalDownloadActions
 import com.luc4n3x.levyra.desktop.app.ui.components.TrackActions
+import com.luc4n3x.levyra.desktop.app.ui.components.navigation.LevyraSidebar
 import com.luc4n3x.levyra.desktop.app.ui.components.tracksTextInputFocus
 import com.luc4n3x.levyra.desktop.app.ui.i18n.LocalStrings
 import com.luc4n3x.levyra.desktop.app.ui.i18n.stringsFor
-import com.luc4n3x.levyra.desktop.app.ui.icons.LevyraIcons
-import com.luc4n3x.levyra.desktop.app.ui.icons.OfflineIcons
 import com.luc4n3x.levyra.desktop.app.ui.player.PlayerBar
 import com.luc4n3x.levyra.desktop.app.ui.player.QueuePanel
 import com.luc4n3x.levyra.desktop.app.ui.screens.CollectionScreen
@@ -79,7 +64,6 @@ import com.luc4n3x.levyra.desktop.app.ui.screens.SearchScreen
 import com.luc4n3x.levyra.desktop.app.ui.screens.SettingsScreen
 import com.luc4n3x.levyra.desktop.app.ui.theme.ArtworkPalette
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraBrand
-import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraMotion
 import com.luc4n3x.levyra.desktop.app.ui.theme.LevyraTheme
 import com.luc4n3x.levyra.desktop.app.ui.theme.LocalAccentColor
 import com.luc4n3x.levyra.desktop.core.model.SearchFilter
@@ -236,8 +220,10 @@ fun LevyraRoot(model: LevyraAppModel) {
                                     .fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                NavigationSidebar(
+                                LevyraSidebar(
                                     destination = destination,
+                                    hasActiveTrack = playback.current != null,
+                                    isPlaying = playback.isPlaying,
                                     onNavigate = model::navigate
                                 )
 
@@ -561,7 +547,7 @@ private fun PlayerBarHost(
             .map(com.luc4n3x.levyra.desktop.app.state.PlaybackUiState::withoutTransientUiTicks)
             .distinctUntilChanged()
     }.collectAsState(initial = model.playbackController.state.value.withoutTransientUiTicks())
-    
+
     PlayerBar(
         state = playback,
         playbackStateFlow = model.playbackController.state,
@@ -597,173 +583,6 @@ private fun PlayerBarHost(
         onOpenNowPlaying = { model.navigate(Destination.NOW_PLAYING) },
         modifier = modifier
     )
-}
-
-@Composable
-private fun NavigationSidebar(
-    destination: Destination,
-    onNavigate: (Destination) -> Unit
-) {
-    val strings = LocalStrings.current
-    val accent = LocalAccentColor.current
-    Surface(
-        modifier = Modifier
-            .width(214.dp)
-            .fillMaxHeight(),
-        color = Color.Transparent
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 15.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 7.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(11.dp)
-            ) {
-                Surface(
-                    modifier = Modifier.size(40.dp),
-                    shape = CircleShape,
-                    color = accent.copy(alpha = 0.12f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Image(
-                            painter = painterResource("icons/levyra.png"),
-                            contentDescription = strings.appName,
-                            modifier = Modifier.size(34.dp)
-                        )
-                    }
-                }
-                Text(
-                    text = strings.appName,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-            SidebarSectionLabel(strings.navSectionExplore)
-            Spacer(modifier = Modifier.height(7.dp))
-
-            SidebarItem(
-                icon = LevyraIcons.Home,
-                label = strings.navHome,
-                selected = destination == Destination.HOME,
-                onClick = { onNavigate(Destination.HOME) }
-            )
-            SidebarItem(
-                icon = LevyraIcons.Chart,
-                label = strings.navDiscover,
-                selected = destination == Destination.DISCOVER,
-                onClick = { onNavigate(Destination.DISCOVER) }
-            )
-            SidebarItem(
-                icon = LevyraIcons.Search,
-                label = strings.navSearch,
-                selected = destination == Destination.SEARCH || destination == Destination.COLLECTION,
-                onClick = { onNavigate(Destination.SEARCH) }
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-            SidebarSectionLabel(strings.navSectionLibrary)
-            Spacer(modifier = Modifier.height(7.dp))
-
-            SidebarItem(
-                icon = OfflineIcons.Library,
-                label = strings.navLibrary,
-                selected = destination == Destination.LIBRARY || destination == Destination.PLAYLIST,
-                onClick = { onNavigate(Destination.LIBRARY) }
-            )
-            SidebarItem(
-                icon = LevyraIcons.Disc,
-                label = strings.navNowPlaying,
-                selected = destination == Destination.NOW_PLAYING,
-                onClick = { onNavigate(Destination.NOW_PLAYING) }
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            SidebarItem(
-                icon = LevyraIcons.Settings,
-                label = strings.navSettings,
-                selected = destination == Destination.SETTINGS,
-                onClick = { onNavigate(Destination.SETTINGS) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun SidebarSectionLabel(label: String) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 11.dp)
-    )
-}
-
-@Composable
-private fun SidebarItem(
-    icon: ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val accent = LocalAccentColor.current
-    val interactionSource = remember(label) { MutableInteractionSource() }
-    val hovered by interactionSource.collectIsHoveredAsState()
-    val focused by interactionSource.collectIsFocusedAsState()
-    val targetBackground = when {
-        selected -> accent.copy(alpha = LevyraMotion.SELECTED_ALPHA)
-        hovered || focused -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = LevyraMotion.HOVER_ALPHA)
-        else -> Color.Transparent
-    }
-    val background by androidx.compose.animation.animateColorAsState(targetValue = targetBackground)
-    val targetContentColor = when {
-        selected -> accent
-        hovered || focused -> MaterialTheme.colorScheme.onSurface
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val contentColor by androidx.compose.animation.animateColorAsState(targetValue = targetContentColor)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(45.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(background)
-            .hoverable(interactionSource)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .height(23.dp)
-                .clip(RoundedCornerShape(99.dp))
-                .background(if (selected) accent else Color.Transparent)
-        )
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = contentColor,
-            modifier = Modifier.size(19.dp)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            color = contentColor,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-        )
-    }
 }
 
 private fun PlaybackUiState.withoutTransientUiTicks(): PlaybackUiState = copy(
