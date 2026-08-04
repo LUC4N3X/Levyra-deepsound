@@ -9,17 +9,17 @@
 
 ## Verified current behavior and root cause
 
-`HomeRefreshStability.sectionIdentity()` reduced section titles to ASCII letters and digits. Distinct Arabic, Chinese, Japanese, Korean, Hebrew, Indic, Greek, and Cyrillic titles could therefore collapse to the same fallback identity (`section`). Because Home sanitization permits at most two occurrences of one identity, later valid localized shelves could be discarded as duplicates.
+`HomeRefreshStability.sectionIdentity()` reduced section titles to ASCII letters and digits. Distinct Arabic, Chinese, Japanese, Korean, Hebrew, Indic, Greek, Cyrillic, and Thai titles could therefore collapse to the same fallback identity (`section`). Because Home sanitization permits at most two occurrences of one identity, later valid localized shelves could be discarded as duplicates.
 
 `DemoCatalogRepository` had no callers and every method returned only empty or zero-valued placeholder data.
 
 ## Acceptance criteria
 
-- Home section identity preserves Unicode letters and numbers.
+- Home section identity preserves Unicode letters, combining marks, and numbers.
 - Compatibility-equivalent Unicode forms normalize deterministically.
 - Distinct non-Latin Home shelves are not discarded as duplicate fallback sections.
 - Whitespace and punctuation still normalize to stable separators.
-- Focused unit tests cover the original localized failure path.
+- Focused unit tests cover the original localized failure path and scripts that require combining marks.
 - The unused demo catalog stub is removed without replacing it with another source of truth.
 - Playback, queue, downloads, Room schemas, preferences, localization strings, Android and Desktop versions, workflows, signing, packaging, and releases remain unchanged.
 
@@ -28,7 +28,8 @@
 - [x] Inspect the current Home section sanitization and merge flow.
 - [x] Confirm the failure path against supported non-Latin locales.
 - [x] Replace ASCII-only identity filtering with Unicode-aware normalization.
-- [x] Add focused regression coverage for Arabic, Chinese, Japanese, and Korean shelf titles.
+- [x] Preserve combining marks used by Indic, Thai, Arabic, and other writing systems.
+- [x] Add focused regression coverage for Arabic, Chinese, Japanese, Korean, Hindi, and Thai shelf titles.
 - [x] Verify `DemoCatalogRepository` has no production or test callers.
 - [x] Remove the unused demo catalog stub.
 - [x] Inspect the branch diff for unrelated version, dependency, workflow, binary, generated-file, or secret changes.
@@ -43,7 +44,7 @@
 | Root cause reproduced by code inspection | Yes | Verified against the ASCII-only identity filter and duplicate cap |
 | Focused regression test added | Yes | Added; execution blocked because the connector environment has no repository checkout or Gradle runtime |
 | `DemoCatalogRepository` reference search | Yes | Verified: no callers outside the deleted file |
-| Complete branch diff inspection | Yes | Pending final comparison before pull-request creation |
+| Complete branch diff inspection | Yes | Verified: only the focused implementation, regression test, dead stub deletion, and active-task record changed |
 | `./gradlew --no-daemon :app:testDebugUnitTest` | Yes | Blocked in the connector environment |
 | `./gradlew --no-daemon :app:lintRelease` | Yes | Blocked in the connector environment |
 | `./gradlew --no-daemon --no-configuration-cache assembleRelease` | Applicable before merge | Blocked in the connector environment |
