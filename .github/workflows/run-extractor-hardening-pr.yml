@@ -1,0 +1,73 @@
+name: Run isolated extractor hardening
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    if: github.head_ref == 'automation/extractor-hardening-runner'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out helper branch
+        uses: actions/checkout@v4
+        with:
+          ref: automation/extractor-hardening-runner
+          fetch-depth: 0
+
+      - name: Extract reviewed patch step
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('.github/workflows/apply-extractor-hardening.yml')
+          lines = path.read_text(encoding='utf-8').splitlines()
+          start = next(i for i, line in enumerate(lines)
+                       if line.strip() == '- name: Apply reviewed upstream extractor changes')
+          run_line = next(i for i in range(start, len(lines)) if lines[i].strip() == 'run: |')
+          end = next(i for i in range(run_line + 1, len(lines))
+                     if lines[i].startswith('      - name:'))
+          indent = '          '
+          script = '\n'.join(
+              line[len(indent):] if line.startswith(indent) else line
+              for line in lines[run_line + 1:end]
+          ) + '\n'
+          Path('/tmp/apply-extractor-hardening.sh').write_text(script, encoding='utf-8')
+
+      - name: Check out target implementation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin agent/extractor-security-aa-potoken-sabr
+          git checkout -B agent/extractor-security-aa-potoken-sabr \
+            origin/agent/extractor-security-aa-potoken-sabr
+
+      - name: Apply reviewed changes
+        shell: bash
+        run: bash /tmp/apply-extractor-hardening.sh
+
+      - name: Test vendored extractor
+        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+
+      - name: Compile Android release
+        run: ./gradlew --no-daemon :app:compileReleaseKotlin
+
+      - name: Commit verified changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add third_party/LevyraExtractor
+          git diff --cached --check
+          git commit -m "feat(extractor): harden TLS, PoToken and SABR recovery"
+          git push origin HEAD:agent/extractor-security-aa-potoken-sabr
