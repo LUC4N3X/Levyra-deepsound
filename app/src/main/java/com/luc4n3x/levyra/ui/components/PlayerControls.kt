@@ -78,6 +78,94 @@ data class PlayerControlLabels(
     val repeat: String
 )
 
+@Immutable
+private data class PlayerTransportMetrics(
+    val transportSize: Dp,
+    val transportIconSize: Dp,
+    val primaryWidth: Dp,
+    val primaryHeight: Dp,
+    val controlGap: Dp,
+    val stackSpacing: Dp,
+    val modeRowPadding: Dp,
+    val modeRailPadding: Dp
+)
+
+@Immutable
+private data class PlayerModeMetrics(
+    val width: Dp,
+    val height: Dp,
+    val iconSize: Dp
+)
+
+@Immutable
+private data class PlayerModeTargetColors(
+    val fill: Color,
+    val tint: Color,
+    val border: Color
+)
+
+private fun playerTransportMetrics(compact: Boolean): PlayerTransportMetrics {
+    return if (compact) {
+        PlayerTransportMetrics(
+            transportSize = LevyraPlayerDesign.TransportButtonCompact,
+            transportIconSize = LevyraPlayerDesign.TransportIconCompact,
+            primaryWidth = LevyraPlayerDesign.PrimaryWidthCompact,
+            primaryHeight = LevyraPlayerDesign.PrimaryHeightCompact,
+            controlGap = LevyraPlayerDesign.MainControlGapCompact,
+            stackSpacing = LevyraPlayerDesign.TransportStackSpacingCompact,
+            modeRowPadding = LevyraPlayerDesign.ModeRowPaddingCompact,
+            modeRailPadding = LevyraPlayerDesign.ModeRailPaddingCompact
+        )
+    } else {
+        PlayerTransportMetrics(
+            transportSize = LevyraPlayerDesign.TransportButton,
+            transportIconSize = LevyraPlayerDesign.TransportIcon,
+            primaryWidth = LevyraPlayerDesign.PrimaryWidth,
+            primaryHeight = LevyraPlayerDesign.PrimaryHeight,
+            controlGap = LevyraPlayerDesign.MainControlGap,
+            stackSpacing = LevyraPlayerDesign.TransportStackSpacing,
+            modeRowPadding = LevyraPlayerDesign.ModeRowPadding,
+            modeRailPadding = LevyraPlayerDesign.ModeRailPadding
+        )
+    }
+}
+
+private fun playerModeMetrics(compact: Boolean): PlayerModeMetrics {
+    return if (compact) {
+        PlayerModeMetrics(
+            width = LevyraPlayerDesign.ModeButtonWidthCompact,
+            height = LevyraPlayerDesign.ModeButtonHeightCompact,
+            iconSize = LevyraPlayerDesign.ModeIconCompact
+        )
+    } else {
+        PlayerModeMetrics(
+            width = LevyraPlayerDesign.ModeButtonWidth,
+            height = LevyraPlayerDesign.ModeButtonHeight,
+            iconSize = LevyraPlayerDesign.ModeIcon
+        )
+    }
+}
+
+private fun playerModeTargetColors(
+    active: Boolean,
+    accent: Color,
+    activeTint: Color
+): PlayerModeTargetColors {
+    return if (active) {
+        PlayerModeTargetColors(
+            fill = accent.copy(alpha = 0.34f),
+            tint = activeTint,
+            border = accent.playerMix(Color.White, 0.28f).copy(alpha = 0.48f)
+        )
+    } else {
+        PlayerModeTargetColors(
+            fill = LevyraPlayerDesign.ModeFill,
+            tint = LevyraPlayerDesign.IconIdle,
+            border = LevyraPlayerDesign.ModeDivider
+        )
+    }
+}
+
 fun Modifier.playerGlass(
     shape: Shape,
     fill: Color = LevyraPlayerDesign.GlassFill,
@@ -87,9 +175,9 @@ fun Modifier.playerGlass(
     .background(
         brush = Brush.verticalGradient(
             listOf(
-                fill.playerMix(Color.White, 0.08f),
+                fill.playerMix(Color.White.copy(alpha = fill.alpha), 0.08f),
                 fill,
-                fill.playerMix(Color.Black, 0.08f)
+                fill.playerMix(Color.Black.copy(alpha = fill.alpha), 0.08f)
             )
         ),
         shape = shape
@@ -173,31 +261,12 @@ fun PlayerTransportControls(
     onRepeat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val transportSize = if (compact) {
-        LevyraPlayerDesign.TransportButtonCompact
-    } else {
-        LevyraPlayerDesign.TransportButton
-    }
-    val primaryWidth = if (compact) {
-        LevyraPlayerDesign.PrimaryWidthCompact
-    } else {
-        LevyraPlayerDesign.PrimaryWidth
-    }
-    val primaryHeight = if (compact) {
-        LevyraPlayerDesign.PrimaryHeightCompact
-    } else {
-        LevyraPlayerDesign.PrimaryHeight
-    }
-    val controlGap = if (compact) {
-        LevyraPlayerDesign.MainControlGapCompact
-    } else {
-        LevyraPlayerDesign.MainControlGap
-    }
+    val metrics = remember(compact) { playerTransportMetrics(compact) }
 
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 14.dp)
+        verticalArrangement = Arrangement.spacedBy(metrics.stackSpacing)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -207,8 +276,8 @@ fun PlayerTransportControls(
             PlayerGlassIconButton(
                 icon = Icons.Rounded.SkipPrevious,
                 contentDescription = labels.previous,
-                size = transportSize,
-                iconSize = if (compact) 28.dp else 30.dp,
+                size = metrics.transportSize,
+                iconSize = metrics.transportIconSize,
                 tint = LevyraPlayerDesign.TextPrimary,
                 fill = LevyraPlayerDesign.TransportFill,
                 borderTop = LevyraPlayerDesign.TransportBorder,
@@ -216,25 +285,25 @@ fun PlayerTransportControls(
                 shape = CircleShape,
                 onClick = onPrevious
             )
-            Spacer(modifier = Modifier.width(controlGap))
+            Spacer(modifier = Modifier.width(metrics.controlGap))
             PlayerPrimaryButton(
                 isPlaying = isPlaying,
                 isResolving = isResolving,
                 accentTarget = accents.primaryTarget,
                 accentSecondaryTarget = accents.secondaryTarget,
-                width = primaryWidth,
-                height = primaryHeight,
+                width = metrics.primaryWidth,
+                height = metrics.primaryHeight,
                 animated = animated,
                 playLabel = labels.play,
                 pauseLabel = labels.pause,
                 onClick = onToggle
             )
-            Spacer(modifier = Modifier.width(controlGap))
+            Spacer(modifier = Modifier.width(metrics.controlGap))
             PlayerGlassIconButton(
                 icon = Icons.Rounded.SkipNext,
                 contentDescription = labels.next,
-                size = transportSize,
-                iconSize = if (compact) 28.dp else 30.dp,
+                size = metrics.transportSize,
+                iconSize = metrics.transportIconSize,
                 tint = LevyraPlayerDesign.TextPrimary,
                 fill = LevyraPlayerDesign.TransportFill,
                 borderTop = LevyraPlayerDesign.TransportBorder,
@@ -247,7 +316,7 @@ fun PlayerTransportControls(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = if (compact) 8.dp else 12.dp),
+                .padding(horizontal = metrics.modeRowPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             PlayerModeToggleButton(
@@ -264,9 +333,10 @@ fun PlayerTransportControls(
                 primary = accents.primary,
                 secondary = accents.secondary,
                 active = shuffleOn || repeatOn,
+                animated = animated,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = if (compact) 13.dp else 17.dp)
+                    .padding(horizontal = metrics.modeRailPadding)
             )
             PlayerModeToggleButton(
                 icon = if (repeatOne) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
@@ -287,11 +357,14 @@ private fun PlayerModeRail(
     primary: Color,
     secondary: Color,
     active: Boolean,
+    animated: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val alphaSpec: AnimationSpec<Float> =
+        if (animated) LevyraPlayerDesign.standardTween(220) else snap()
     val alpha by animateFloatAsState(
         targetValue = if (active) 0.62f else 0.28f,
-        animationSpec = LevyraPlayerDesign.standardTween(220),
+        animationSpec = alphaSpec,
         label = "player-mode-rail-alpha"
     )
     Box(
@@ -321,32 +394,28 @@ private fun PlayerModeToggleButton(
     animated: Boolean,
     onClick: () -> Unit
 ) {
-    val width = if (compact) LevyraPlayerDesign.ModeButtonWidthCompact else LevyraPlayerDesign.ModeButtonWidth
-    val height = if (compact) LevyraPlayerDesign.ModeButtonHeightCompact else LevyraPlayerDesign.ModeButtonHeight
+    val metrics = remember(compact) { playerModeMetrics(compact) }
     val activeTint = remember(accentTarget) {
         Color.White.playerMix(accentTarget, 0.04f)
     }
+    val targets = remember(active, accent, activeTint) {
+        playerModeTargetColors(active, accent, activeTint)
+    }
+    val colorSpec: AnimationSpec<Color> =
+        if (animated) LevyraPlayerDesign.standardTween(180) else snap()
     val fill by animateColorAsState(
-        targetValue = if (active) {
-            accent.copy(alpha = 0.34f)
-        } else {
-            LevyraPlayerDesign.ModeFill
-        },
-        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        targetValue = targets.fill,
+        animationSpec = colorSpec,
         label = "player-mode-fill"
     )
     val tint by animateColorAsState(
-        targetValue = if (active) activeTint else LevyraPlayerDesign.IconIdle,
-        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        targetValue = targets.tint,
+        animationSpec = colorSpec,
         label = "player-mode-tint"
     )
     val border by animateColorAsState(
-        targetValue = if (active) {
-            accent.playerMix(Color.White, 0.28f).copy(alpha = 0.48f)
-        } else {
-            LevyraPlayerDesign.ModeDivider
-        },
-        animationSpec = if (animated) LevyraPlayerDesign.standardTween(180) else snap(),
+        targetValue = targets.border,
+        animationSpec = colorSpec,
         label = "player-mode-border"
     )
 
@@ -363,7 +432,7 @@ private fun PlayerModeToggleButton(
     ) {
         Box(
             modifier = Modifier
-                .size(width = width, height = height)
+                .size(width = metrics.width, height = metrics.height)
                 .background(fill, LevyraPlayerDesign.ShapePill)
                 .border(
                     BorderStroke(LevyraPlayerDesign.Hairline, border),
@@ -375,14 +444,17 @@ private fun PlayerModeToggleButton(
                 imageVector = icon,
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.size(if (compact) 20.dp else 21.dp)
+                modifier = Modifier.size(metrics.iconSize)
             )
             if (active) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .offset(x = (-8).dp, y = 7.dp)
-                        .size(4.dp)
+                        .padding(
+                            top = LevyraPlayerDesign.ModeIndicatorTopInset,
+                            end = LevyraPlayerDesign.ModeIndicatorEndInset
+                        )
+                        .size(LevyraPlayerDesign.ModeIndicator)
                         .background(tint, CircleShape)
                 )
             }
