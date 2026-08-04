@@ -125,10 +125,13 @@ internal object HomeRefreshStability {
         val unmatchedPrevious = previousEntries.toMutableList()
         return directEntries.map { directEntry ->
             val exactIndex = unmatchedPrevious.indexOfFirst { it.first == directEntry.first }
-            val matchedIndex = if (exactIndex >= 0) {
-                exactIndex
-            } else {
-                bestOverlapIndex(unmatchedPrevious, directEntry.second)
+            val sameTitleIndex = unmatchedPrevious.indexOfFirst { (_, previousSection) ->
+                sectionTitleIdentity(previousSection.title) == sectionTitleIdentity(directEntry.second.title)
+            }
+            val matchedIndex = when {
+                exactIndex >= 0 -> exactIndex
+                sameTitleIndex >= 0 -> sameTitleIndex
+                else -> bestOverlapIndex(unmatchedPrevious, directEntry.second)
             }
             if (matchedIndex < 0) {
                 directEntry
