@@ -90,7 +90,7 @@ internal object HomeRefreshStability {
     fun sectionIdentity(title: String): String {
         val normalized = Normalizer.normalize(title.trim(), Normalizer.Form.NFKC)
             .lowercase(Locale.ROOT)
-            .replace(Regex("[^\\p{L}\\p{N}]+"), "-")
+            .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), "-")
             .trim('-')
         return normalized.ifBlank { "section" }
     }
