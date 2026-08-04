@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Levyra" parent="android:style/Theme.Material.NoActionBar">
+    <style name="Theme.Levyra.Base" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowBackground">@color/levyra_black</item>
@@ -8,4 +8,6 @@
         <item name="android:statusBarColor">@color/levyra_black</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <style name="Theme.Levyra" parent="Theme.Levyra.Base" />
 </resources>
