@@ -10,7 +10,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.schabi.newpipe.extractor.exceptions.ParsingException
 import java.io.File
+import java.io.IOException
 import kotlin.io.path.createTempDirectory
 
 class YoutubeLocalDecoderTest {
@@ -201,6 +203,7 @@ class YoutubeLocalDecoderTest {
         assertNotNull(success.configs["c37d60f8"])
         assertFalse(success.configs.values.any { it.signatureTimestamp <= 0 })
     }
+
     @Test
     fun configParityFixturesMatchUpstreamVerdicts() {
         val accepted = listOf(
@@ -335,9 +338,137 @@ class YoutubeLocalDecoderTest {
         assertFalse(YoutubeLocalDecoderFeedbackPolicy.shouldRefresh("YouTube Web", now, now - 11L * 60L * 1000L))
     }
 
+    @Test
+    fun rendererRecoveryAllowsAttemptsBelowFailureThreshold() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 3, backoffMs = 60_000L)
+
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 0L))
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 1L))
+        policy.onFailure(RECOVERY_IDENTITY, 1L)
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 2L))
+    }
+
+    @Test
+    fun rendererRecoveryOpensBackoffWindowAfterConsecutiveFailures() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 3, backoffMs = 60_000L)
+
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 1_000L)
+
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 1_000L))
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 60_999L))
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 61_000L))
+    }
+
+    @Test
+    fun rendererRecoveryReArmsBackoffWhenRetryFailsAgain() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 2, backoffMs = 10_000L)
+
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 9_999L))
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 10_000L))
+
+        policy.onFailure(RECOVERY_IDENTITY, 10_000L)
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 10_000L))
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 20_000L))
+    }
+
+    @Test
+    fun rendererRecoverySuccessResetsPolicy() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 2, backoffMs = 10_000L)
+
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 5_000L))
+
+        policy.onSuccess()
+
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 5_000L))
+        policy.onFailure(RECOVERY_IDENTITY, 5_000L)
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 5_000L))
+    }
+
+    @Test
+    fun rendererRecoveryClearsBackoffWhenPlayerOrConfigIdentityChanges() {
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 2, backoffMs = 60_000L)
+
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        policy.onFailure(RECOVERY_IDENTITY, 0L)
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 5_000L))
+
+        assertTrue(policy.shouldAttempt("2182a2cc:8", 5_000L))
+        assertTrue(policy.shouldAttempt("90ed594f:7", 5_000L))
+
+        policy.onFailure("2182a2cc:8", 5_000L)
+        assertTrue(policy.shouldAttempt("2182a2cc:8", 5_000L))
+    }
+
+    @Test
+    fun rendererDeathReadyTimeoutAndEvaluationTimeoutCountAsRendererFailures() {
+        val classifier = YoutubeRendererFailureClassifier
+
+        assertTrue(classifier.countsAsRendererFailure(YoutubeRendererFailureException("Local decoder render process gone")))
+        assertTrue(classifier.countsAsRendererFailure(YoutubeRendererFailureException("Local decoder renderer ready timeout")))
+        assertTrue(classifier.countsAsRendererFailure(YoutubeRendererFailureException("Local decoder renderer evaluation timeout")))
+        assertTrue(classifier.countsAsRendererFailure(YoutubeRendererFailureException("Local player JS load failed: net::ERR_FAILED")))
+
+        val policy = YoutubeRendererRecoveryPolicy(maxConsecutiveFailures = 3, backoffMs = 60_000L)
+        repeat(3) { policy.onFailure(RECOVERY_IDENTITY, 0L) }
+
+        assertFalse(policy.shouldAttempt(RECOVERY_IDENTITY, 0L))
+        assertTrue(policy.shouldAttempt(RECOVERY_IDENTITY, 60_000L))
+    }
+
+    @Test
+    fun outerTimeoutCallerCancellationAndConfigErrorsAreNotRendererFailures() {
+        val classifier = YoutubeRendererFailureClassifier
+        val outerTimeout = runCatching {
+            runBlocking { withTimeout(1L) { delay(50L) } }
+        }.exceptionOrNull()
+
+        assertNotNull(outerTimeout)
+        assertTrue(outerTimeout is TimeoutCancellationException)
+        assertFalse(classifier.countsAsRendererFailure(outerTimeout!!))
+        assertFalse(classifier.countsAsRendererFailure(CancellationException("caller went away")))
+        assertFalse(classifier.countsAsRendererFailure(ParsingException("Local decoder exports unavailable sig=false")))
+        assertFalse(classifier.countsAsRendererFailure(YoutubeRendererBackoffException()))
+    }
+
+    @Test
+    fun onlyExplicitValidationFailuresRejectAnalyzedConfig() {
+        val classifier = YoutubeRendererFailureClassifier
+        val outerTimeout = runCatching {
+            runBlocking { withTimeout(1L) { delay(50L) } }
+        }.exceptionOrNull()
+
+        assertNotNull(outerTimeout)
+        assertFalse(classifier.provesAnalyzedConfigWrong(YoutubeRendererBackoffException()))
+        assertFalse(classifier.provesAnalyzedConfigWrong(YoutubeRendererFailureException("Local decoder render process gone")))
+        assertFalse(classifier.provesAnalyzedConfigWrong(CancellationException("caller went away")))
+        assertFalse(classifier.provesAnalyzedConfigWrong(outerTimeout!!))
+        assertFalse(classifier.provesAnalyzedConfigWrong(ParsingException("Unrelated decoder failure")))
+        assertFalse(classifier.provesAnalyzedConfigWrong(IOException("player cache unavailable")))
+        assertTrue(
+            classifier.provesAnalyzedConfigWrong(
+                YoutubeAnalyzedConfigFailureException("Local decoder exports unavailable sig=false")
+            )
+        )
+        assertTrue(
+            classifier.provesAnalyzedConfigWrong(
+                YoutubeAnalyzedConfigFailureException("Invalid local n-transform result")
+            )
+        )
+    }
+
     private fun parityResource(name: String): String {
         val resource = requireNotNull(javaClass.classLoader?.getResource("config-parity/$name"))
         return resource.readText()
     }
 
+    private companion object {
+        const val RECOVERY_IDENTITY = "2182a2cc:7"
+    }
 }
