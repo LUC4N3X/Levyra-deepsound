@@ -32,7 +32,10 @@ jobs:
           fetch-depth: 0
 
       - name: Apply transformation
-        run: python3 scripts/refine_player_layout.py
+        shell: bash
+        run: |
+          python3 scripts/patch_refine_player_selector.py
+          python3 scripts/refine_player_layout.py
 
       - name: Commit player layout
         shell: bash
