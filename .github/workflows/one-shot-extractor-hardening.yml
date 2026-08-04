@@ -20,17 +20,21 @@ jobs:
           ref: agent/extractor-security-aa-potoken-sabr
           fetch-depth: 0
 
-      - name: Merge selected PipePipe extractor updates
+      - name: Apply selected upstream changes
+        id: apply
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
-          upstream_dir="$(mktemp -d)"
-          git clone --filter=blob:none --no-checkout https://github.com/InfinityLoop1308/PipePipeExtractor.git "$upstream_dir"
-          git -C "$upstream_dir" fetch --no-tags origin \
-            64f864135d2133a6a13a9944608de5a2c3e7e851 \
-            7673caed56001d78aad65b48daf9198359b466aa
+          set -o pipefail
+          {
+            set -euo pipefail
+            upstream_dir="$(mktemp -d)"
+            git clone --filter=blob:none --no-checkout https://github.com/InfinityLoop1308/PipePipeExtractor.git "$upstream_dir"
+            git -C "$upstream_dir" fetch --no-tags origin \
+              64f864135d2133a6a13a9944608de5a2c3e7e851 \
+              7673caed56001d78aad65b48daf9198359b466aa
 
-          python3 - "$upstream_dir" <<'PY'
+            python3 - "$upstream_dir" <<'PY'
           from pathlib import Path
           import subprocess
           import sys
@@ -41,13 +45,9 @@ jobs:
           vendored_root = Path("third_party/LevyraExtractor")
 
           def git_text(*args: str) -> str:
-              return subprocess.check_output(
-                  ["git", "-C", str(upstream), *args],
-                  text=True,
-              )
+              return subprocess.check_output(["git", "-C", str(upstream), *args], text=True)
 
           changed = git_text("diff", "--name-only", base, tip).splitlines()
-          selected: list[str] = []
           exact = {
               "extractor/src/main/java/org/schabi/newpipe/extractor/NewPipe.java",
               "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/YoutubeParsingHelper.java",
@@ -57,24 +57,23 @@ jobs:
               "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/extractors/YoutubeStreamExtractor.java",
           }
           sabr_prefix = "extractor/src/main/java/org/schabi/newpipe/extractor/services/youtube/sabr/"
-          for path in changed:
-              if path in exact or (path.startswith(sabr_prefix) and path.endswith(".java")):
-                  selected.append(path)
-
-          required = exact - set(selected)
-          # Files introduced after the base are absent from git diff only if already removed upstream.
-          for path in sorted(required):
-              try:
-                  git_text("show", f"{tip}:{path}")
-              except subprocess.CalledProcessError:
-                  raise SystemExit(f"Required upstream file missing at tip: {path}")
-              selected.append(path)
+          selected = {
+              path for path in changed
+              if path in exact or (path.startswith(sabr_prefix) and path.endswith(".java"))
+          }
+          selected.update(exact)
 
           conflicts: list[str] = []
-          for relative in sorted(set(selected)):
+          work = Path(".git") / "levyra-merge-work"
+          work.mkdir(parents=True, exist_ok=True)
+          for relative in sorted(selected):
               target = vendored_root / relative
               target.parent.mkdir(parents=True, exist_ok=True)
-              theirs = git_text("show", f"{tip}:{relative}")
+              try:
+                  theirs = git_text("show", f"{tip}:{relative}")
+              except subprocess.CalledProcessError:
+                  print(f"SKIP removed upstream file: {relative}")
+                  continue
               try:
                   base_text = git_text("show", f"{base}:{relative}")
               except subprocess.CalledProcessError:
@@ -82,15 +81,13 @@ jobs:
 
               if not target.exists():
                   target.write_text(theirs, encoding="utf-8")
+                  print(f"ADD {relative}")
                   continue
 
-              current = target.read_text(encoding="utf-8")
-              work = Path(".git") / "levyra-merge-work"
-              work.mkdir(parents=True, exist_ok=True)
               ours_path = work / "ours"
               base_path = work / "base"
               theirs_path = work / "theirs"
-              ours_path.write_text(current, encoding="utf-8")
+              ours_path.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
               base_path.write_text(base_text, encoding="utf-8")
               theirs_path.write_text(theirs, encoding="utf-8")
               result = subprocess.run(
@@ -102,16 +99,17 @@ jobs:
                   raise SystemExit(f"git merge-file failed for {relative}: {result.stderr}")
               if result.returncode == 1 or "<<<<<<<" in result.stdout:
                   conflicts.append(relative)
-                  print(f"\n--- MERGE CONFLICT: {relative} ---\n{result.stdout}")
+                  print(f"CONFLICT {relative}")
                   continue
               target.write_text(result.stdout, encoding="utf-8")
+              print(f"MERGED {relative}")
 
           if conflicts:
-              raise SystemExit("Conflicts require manual selective port: " + ", ".join(conflicts))
+              raise SystemExit("Manual selective port required for: " + ", ".join(conflicts))
 
           new_pipe = vendored_root / "extractor/src/main/java/org/schabi/newpipe/extractor/NewPipe.java"
           text = new_pipe.read_text(encoding="utf-8")
-          forbidden_imports = [
+          for item in (
               "import javax.net.ssl.HostnameVerifier;\n",
               "import javax.net.ssl.HttpsURLConnection;\n",
               "import javax.net.ssl.SSLContext;\n",
@@ -120,8 +118,7 @@ jobs:
               "import java.security.SecureRandom;\n",
               "import java.security.cert.CertificateException;\n",
               "import java.security.cert.X509Certificate;\n",
-          ]
-          for item in forbidden_imports:
+          ):
               text = text.replace(item, "")
           text = text.replace("        trustEveryone();\n", "")
           marker = "    public static void trustEveryone() {\n"
@@ -138,30 +135,58 @@ jobs:
                           end = index + 1
                           break
               if end is None:
-                  raise SystemExit("Could not locate the end of trustEveryone()")
+                  raise SystemExit("Could not locate end of trustEveryone()")
               text = text[:start] + text[end:]
           if "trustEveryone" in text or "X509TrustManager" in text:
-              raise SystemExit("Insecure TLS override survived the patch")
+              raise SystemExit("Insecure TLS override survived")
           new_pipe.write_text(text.rstrip() + "\n", encoding="utf-8")
           PY
 
-          rm -rf .git/levyra-merge-work
-          git diff --check
+            rm -rf .git/levyra-merge-work
+            git diff --check
+          } 2>&1 | tee .github/extractor-hardening-report.txt
 
-      - name: Run vendored extractor tests
-        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test
+      - name: Test vendored extractor
+        id: extractor_tests
+        if: steps.apply.outcome == 'success'
+        continue-on-error: true
+        run: ./gradlew -p third_party/LevyraExtractor --no-daemon :extractor:test 2>&1 | tee -a .github/extractor-hardening-report.txt
 
       - name: Compile Android release sources
-        run: ./gradlew --no-daemon :app:compileReleaseKotlin
+        id: app_compile
+        if: steps.apply.outcome == 'success' && steps.extractor_tests.outcome == 'success'
+        continue-on-error: true
+        run: ./gradlew --no-daemon :app:compileReleaseKotlin 2>&1 | tee -a .github/extractor-hardening-report.txt
 
-      - name: Commit verified extractor changes
+      - name: Publish result to branch
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          rm .github/workflows/one-shot-extractor-hardening.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add third_party/LevyraExtractor .github/workflows/one-shot-extractor-hardening.yml
-          git diff --cached --check
-          git commit -m "Harden vendored extractor PoToken and SABR recovery"
+
+          if [[ "${{ steps.apply.outcome }}" == "success" && \
+                "${{ steps.extractor_tests.outcome }}" == "success" && \
+                "${{ steps.app_compile.outcome }}" == "success" ]]; then
+            rm -f .github/workflows/one-shot-extractor-hardening.yml \
+                  .github/extractor-hardening-trigger \
+                  .github/extractor-hardening-report.txt
+            git add third_party/LevyraExtractor \
+                    .github/workflows/one-shot-extractor-hardening.yml \
+                    .github/extractor-hardening-trigger \
+                    .github/extractor-hardening-report.txt
+            git diff --cached --check
+            git commit -m "Harden vendored extractor PoToken and SABR recovery"
+          else
+            git reset --hard HEAD
+            printf 'apply=%s\nextractor_tests=%s\napp_compile=%s\n\n' \
+              "${{ steps.apply.outcome }}" \
+              "${{ steps.extractor_tests.outcome }}" \
+              "${{ steps.app_compile.outcome }}" \
+              > .github/extractor-hardening-status.txt
+            test -f .github/extractor-hardening-report.txt || echo "No diagnostic output captured" > .github/extractor-hardening-report.txt
+            git add .github/extractor-hardening-status.txt .github/extractor-hardening-report.txt
+            git commit -m "chore: record extractor hardening diagnostics"
+          fi
           git push origin HEAD:agent/extractor-security-aa-potoken-sabr
