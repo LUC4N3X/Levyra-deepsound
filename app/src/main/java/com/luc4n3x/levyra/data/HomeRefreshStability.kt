@@ -88,7 +88,10 @@ internal object HomeRefreshStability {
     }
 
     fun sectionIdentity(title: String): String {
-        val normalized = Normalizer.normalize(title.trim(), Normalizer.Form.NFKC)
+        val compatibilityNormalized = Normalizer.normalize(title.trim(), Normalizer.Form.NFKC)
+        val latinFolded = Normalizer.normalize(compatibilityNormalized, Normalizer.Form.NFD)
+            .replace(Regex("(\\p{IsLatin})\\p{M}+")) { match -> match.groupValues[1] }
+        val normalized = Normalizer.normalize(latinFolded, Normalizer.Form.NFC)
             .lowercase(Locale.ROOT)
             .replace(Regex("[^\\p{L}\\p{M}\\p{N}]+"), "-")
             .trim('-')
