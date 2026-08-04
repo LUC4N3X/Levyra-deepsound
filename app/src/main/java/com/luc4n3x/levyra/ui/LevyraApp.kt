@@ -540,7 +540,7 @@ private fun RowScope.TabButton(
     val strings = LocalLevyraStrings.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val idleTint = if (LevyraIsLight) LevyraMuted else Color(0xFF8A8A93)
+    val idleTint = LevyraMuted
     val selectedProgress by animateFloatAsState(
         targetValue = if (isSelected) 1f else 0f,
         animationSpec = if (animationsEnabled) {
