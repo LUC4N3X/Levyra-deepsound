@@ -98,6 +98,21 @@ class HomeRefreshStabilityTest {
     }
 
     @Test
+    fun sameTitleCompleteRefreshKeepsTheExistingSectionKey() {
+        val previous = section("Made for you", "old")
+        val incoming = section("Made for you", "new")
+
+        val result = HomeRefreshStability.mergeSections(
+            previous = listOf(previous),
+            incoming = listOf(incoming),
+            allowStructuralChanges = false
+        )
+
+        assertEquals(incoming.tracks.map { it.id }, result.visible.single().tracks.map { it.id })
+        assertNull(result.deferredStructural)
+    }
+
+    @Test
     fun unrelatedSectionReplacementRemainsStructural() {
         val previous = section("Made for you", "old")
         val incoming = section("New shelf", "new")
