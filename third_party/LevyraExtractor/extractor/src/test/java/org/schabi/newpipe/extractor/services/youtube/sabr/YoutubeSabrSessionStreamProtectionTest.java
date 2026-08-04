@@ -143,13 +143,12 @@ class YoutubeSabrSessionStreamProtectionTest {
     }
 
     @Test
-    void fetchSegmentRotatesMediaBearingPendingAttestationBeforeReturningTarget()
+    void fetchSegmentAcceptsMediaBearingPendingAttestationWithoutRotation()
             throws Exception {
         final byte[] targetData = new byte[]{4, 5, 6, 7};
         final FakeDownloader downloader = new FakeDownloader(
                 protectionMediaResponse(SabrStreamProtectionStatus.ATTESTATION_PENDING,
-                        20, 2_000, 299, 1, targetData),
-                protectionResponse(1, 0, 0));
+                        20, 2_000, 299, 1, targetData));
         final AtomicInteger invalidations = new AtomicInteger();
         final AtomicInteger tokenRequests = new AtomicInteger();
         final SabrPoTokenProvider tokenProvider = new SabrPoTokenProvider() {
@@ -167,11 +166,7 @@ class YoutubeSabrSessionStreamProtectionTest {
                 return true;
             }
         };
-        final YoutubeSabrInfo freshInfo = sabrInfo(
-                "fresh-visitor", "https://example.com/fresh-sabr", true);
-        final Fixture fixture = createFixture(downloader, tokenProvider,
-                (videoId, profile, localization, contentCountry,
-                 rotationProvider) -> freshInfo);
+        final Fixture fixture = createFixture(downloader, tokenProvider);
         fixture.session.getStreamState().setPoToken(new byte[]{1, 2, 3});
         fixture.session.getStreamState().ingestInitializationData(
                 fixture.videoFormat, new byte[]{0});
@@ -180,18 +175,16 @@ class YoutubeSabrSessionStreamProtectionTest {
                 SabrSegmentRequest.media(fixture.videoFormat, 1), LOCALIZATION);
 
         assertArrayEquals(targetData, segment.getData());
-        assertEquals(1, invalidations.get());
-        assertEquals(1, tokenRequests.get());
-        assertEquals(List.of(
-                        "https://example.com/sabr?alr=yes&cpn=cpn&rn=0",
-                        "https://example.com/fresh-sabr?alr=yes&cpn=cpn&rn=0"),
+        assertEquals(0, invalidations.get());
+        assertEquals(0, tokenRequests.get());
+        assertArrayEquals(new byte[]{1, 2, 3}, fixture.session.getStreamState().getPoToken());
+        assertEquals(List.of("https://example.com/sabr?alr=yes&cpn=cpn&rn=0"),
                 downloader.requestUrls);
-        assertTrue(fixture.session.getDiagnosticTrace().contains(
-                "attestation_identity_rotation attempt=1 visitorChanged=true bytes=3"));
-        assertTrue(fixture.session.getDiagnosticTrace().contains("protection=1/0"));
+        assertFalse(fixture.session.getDiagnosticTrace().contains(
+                "attestation_identity_rotation attempt="));
+        assertEquals(SabrStreamProtectionStatus.ATTESTATION_PENDING,
+                fixture.session.getMaxStreamProtectionStatus());
         assertEquals(1, fixture.session.getStreamState().getMaxSegment(fixture.videoFormat));
-        assertTrue(fixture.session.getDiagnosticTrace().contains(
-                "ranges=itag=299:seq=1-1:time=0+1000:timescale=1000"));
     }
 
     @Test
@@ -275,18 +268,18 @@ class YoutubeSabrSessionStreamProtectionTest {
     }
 
     @Test
-    void fetchSegmentRejectsMediaBearingRequiredAttestationBeforeReturningTarget()
+    void fetchSegmentAcceptsMediaBearingRequiredStatus()
             throws Exception {
+        final byte[] targetData = new byte[]{4, 5, 6, 7};
         final FakeDownloader downloader = new FakeDownloader(
                 protectionMediaResponse(SabrStreamProtectionStatus.ATTESTATION_REQUIRED,
-                        20, 59_000, 299, 1, new byte[]{4, 5, 6, 7}));
+                        20, 59_000, 299, 1, targetData));
         final Fixture fixture = createFixture(downloader, null);
 
-        final SabrProtocolException failure = assertThrows(SabrProtocolException.class,
-                () -> fixture.session.fetchSegment(
-                        SabrSegmentRequest.media(fixture.videoFormat, 1), LOCALIZATION));
+        final SabrMediaSegment segment = fixture.session.fetchSegment(
+                SabrSegmentRequest.media(fixture.videoFormat, 1), LOCALIZATION);
 
-        assertTrue(failure.getMessage().contains("attestation required"));
+        assertArrayEquals(targetData, segment.getData());
         assertEquals(1, downloader.requestCount.get());
         assertEquals(SabrStreamProtectionStatus.ATTESTATION_REQUIRED,
                 fixture.session.getMaxStreamProtectionStatus());

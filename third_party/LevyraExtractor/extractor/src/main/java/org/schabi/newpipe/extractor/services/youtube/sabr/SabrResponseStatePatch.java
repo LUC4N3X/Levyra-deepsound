@@ -10,6 +10,7 @@ import java.util.List;
 public final class SabrResponseStatePatch {
     private static final int MAX_FORMATS = 64;
     private static final int MAX_LIVE_METADATA = 16;
+    private static final int MAX_MEDIA_HEADERS = 512;
     private static final int MAX_CONTEXT_UPDATES = 128;
 
     @Nullable private final SabrNextRequestPolicy nextRequestPolicy;
@@ -22,6 +23,7 @@ public final class SabrResponseStatePatch {
     private SabrResponseStatePatch(@Nonnull final Builder builder) {
         if (builder.liveMetadata.size() > MAX_LIVE_METADATA
                 || builder.formatMetadata.size() > MAX_FORMATS
+                || builder.mediaHeaders.size() > MAX_MEDIA_HEADERS
                 || builder.contextUpdates.size() > MAX_CONTEXT_UPDATES) {
             throw new IllegalArgumentException("SABR response state patch exceeded Host limit");
         }

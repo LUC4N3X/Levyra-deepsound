@@ -29,8 +29,17 @@ public final class SabrSessionPolicyHost implements AutoCloseable {
                                              @Nonnull final SabrSessionPolicy.Event event)
             throws SabrProtocolException {
         validateState(state);
-        final SabrSessionPolicy.Result result = policy.evaluate(state, event);
-        validateResult(state, event, result);
+        final SabrSessionPolicy.Result result;
+        try {
+            result = policy.evaluate(state, event);
+        } catch (final RuntimeException error) {
+            throw new SabrProtocolException("SABR policy evaluation failed", error);
+        }
+        try {
+            validateResult(state, event, result);
+        } catch (final RuntimeException error) {
+            throw new SabrProtocolException("SABR policy returned invalid state", error);
+        }
         if (transcript != null) transcript.record(state, event, result);
         return result;
     }

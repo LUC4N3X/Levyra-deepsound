@@ -21,7 +21,9 @@ import java.util.Map;
  */
 public final class SabrStreamingResponseReader {
     private static final int MAX_CONTROL_PARTS = 512;
+    private static final int MAX_MEDIA_SEGMENTS = 1024;
     private static final long MAX_CONTROL_PAYLOAD_BYTES = 512 * 1024L;
+    private static final long MAX_MEDIA_PAYLOAD_BYTES = 256L * 1024 * 1024;
 
     private SabrStreamingResponseReader() {
     }
@@ -93,6 +95,7 @@ public final class SabrStreamingResponseReader {
         final List<String> partSummaries = new ArrayList<>();
         final List<SabrMediaSegment> segments = new ArrayList<>();
         final int[] segmentCount = {0};
+        final int[] controlPartCount = {0};
         final long[] mediaPayloadBytes = {0};
         final long[] mediaPartPayloadBytes = {0};
         final long[] controlPayloadBytes = {0};
@@ -110,10 +113,21 @@ public final class SabrStreamingResponseReader {
                 SabrDecodedResponse.addPartSummary(partSummaries, type, size);
                 maxPartBytes[0] = Math.max(maxPartBytes[0], size);
                 totalPayloadBytes[0] += size;
-                if (type != mediaProtocol.getMediaPartType()
-                        && (controlParts.size() >= MAX_CONTROL_PARTS
+                final boolean controlPart = type != mediaProtocol.getMediaPartType()
+                        && type != mediaProtocol.getHeaderPartType()
+                        && type != mediaProtocol.getEndPartType();
+                if (controlPart
+                        && (controlPartCount[0] >= MAX_CONTROL_PARTS
                         || controlPayloadBytes[0] + size > MAX_CONTROL_PAYLOAD_BYTES)) {
                     throw new SabrProtocolException("SABR control response exceeded Host limit");
+                }
+                if (controlPart) {
+                    controlPartCount[0]++;
+                }
+                if (type == mediaProtocol.getMediaPartType()
+                        && mediaPartPayloadBytes[0] + size > MAX_MEDIA_PAYLOAD_BYTES) {
+                    throw new SabrProtocolException("SABR media response exceeded Host limit: bytes>"
+                            + MAX_MEDIA_PAYLOAD_BYTES);
                 }
                 if (type == mediaProtocol.getHeaderPartType()) {
                     final byte[] payload = readPayloadBytes(payloadStream, size);
@@ -157,6 +171,12 @@ public final class SabrStreamingResponseReader {
                     controlParts.add(new UmpPart(type, payload.length, payload));
                     if (segment != null) {
                         segmentCount[0]++;
+                        if (segmentCount[0] > MAX_MEDIA_SEGMENTS) {
+                            segment.delete();
+                            throw new SabrProtocolException(
+                                    "SABR response exceeded media segment limit: "
+                                            + MAX_MEDIA_SEGMENTS);
+                        }
                         maxSegmentBytes[0] = Math.max(maxSegmentBytes[0], segment.getLength());
                         if (segmentConsumer == null) {
                             segments.add(segment);

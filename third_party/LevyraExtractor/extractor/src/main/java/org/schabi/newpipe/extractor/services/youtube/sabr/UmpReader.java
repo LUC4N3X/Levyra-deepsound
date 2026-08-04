@@ -11,6 +11,8 @@ import java.util.List;
  * Reader for YouTube's UMP envelope. UMP uses its own compact integer format, not protobuf varints.
  */
 public final class UmpReader {
+    static final int MAX_UMP_PART_BYTES = 64 * 1024 * 1024;
+
     private UmpReader() {
     }
 
@@ -76,6 +78,10 @@ public final class UmpReader {
             final int size = readUmpInt(in, readByteOrThrow(in));
             if (type < 0 || size < 0) {
                 throw new SabrProtocolException("Invalid UMP part header");
+            }
+            if (size > MAX_UMP_PART_BYTES) {
+                throw new SabrProtocolException("UMP part exceeded Host limit: type="
+                        + type + ", size=" + size + ", limit=" + MAX_UMP_PART_BYTES);
             }
             final BoundedInputStream payload = new BoundedInputStream(in, size);
             final boolean keepGoing = consumer.accept(type, size, payload);
@@ -201,6 +207,10 @@ public final class UmpReader {
             final int size = cursor.readUmpInt();
             if (type < 0 || size < 0) {
                 throw new SabrProtocolException("Invalid UMP part header");
+            }
+            if (size > MAX_UMP_PART_BYTES) {
+                throw new SabrProtocolException("UMP part exceeded Host limit: type="
+                        + type + ", size=" + size + ", limit=" + MAX_UMP_PART_BYTES);
             }
             parts.add(new UmpPart(type, size, cursor.readBytes(size)));
         }

@@ -26,6 +26,8 @@ class LevyraApplication : Application() {
         LevyraArtworkCache.configure(this)
         YoutubeLocalDecoder.install(this)
         PlaybackNetworkStack.initialize(this)
+        runCatching { NewPipeRuntime.ensure(this) }
+            .onFailure { Timber.w(it, "Extractor initialization failed") }
         warmPlaybackPipeline()
         startupScope.launch {
             delay(1800L)
@@ -50,10 +52,6 @@ class LevyraApplication : Application() {
     }
 
     private fun warmPlaybackPipeline() {
-        startupScope.launch {
-            runCatching { NewPipeRuntime.ensure(this@LevyraApplication) }
-                .onFailure { Timber.w(it, "Extractor warmup failed") }
-        }
         startupScope.launch {
             runCatching { PlaybackResolver.getInstance(this@LevyraApplication).warmNetwork() }
                 .onFailure { Timber.w(it, "Network warmup failed") }

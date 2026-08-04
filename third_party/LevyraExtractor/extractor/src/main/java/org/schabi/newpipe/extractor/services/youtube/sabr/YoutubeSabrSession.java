@@ -566,9 +566,9 @@ public final class YoutubeSabrSession {
         if (getCachedSegment(target) != null) {
             return DemandResponseResult.NO_REQUEST;
         }
-        final long remainingBackoffMs = getDemandBackoffRemainingMs();
-        if (remainingBackoffMs > 0) {
-            return DemandResponseResult.NO_REQUEST;
+        long remainingBackoffMs;
+        while ((remainingBackoffMs = getDemandBackoffRemainingMs()) > 0) {
+            sleepBackoff((int) remainingBackoffMs, false);
         }
         final int[] targetTrackSegments = {0};
         final List<SabrSessionPolicy.DemandReturnedSegment> returnedSegments = new ArrayList<>();
@@ -1083,8 +1083,6 @@ public final class YoutubeSabrSession {
      */
     public void clearCache() {
         demandBackoffUntilNs = 0;
-        cacheClosed = true;
-        sessionPolicyHost.close();
         abortInFlightSegments("SABR session cache was cleared", null);
         for (final SabrMediaSegment segment : segmentCache.values()) {
             segment.delete();
@@ -1092,6 +1090,19 @@ public final class YoutubeSabrSession {
         segmentCache.clear();
         cacheOrder.clear();
         cachedBytes = 0;
+        synchronized (segmentAvailable) {
+            segmentAvailable.notifyAll();
+        }
+    }
+
+    /** Permanently close this session and release policy and media resources. */
+    public void close() {
+        if (cacheClosed) {
+            return;
+        }
+        cacheClosed = true;
+        clearCache();
+        sessionPolicyHost.close();
     }
 
     /**
@@ -1238,9 +1249,11 @@ public final class YoutubeSabrSession {
             inFlight.delete();
         }
         final SabrMediaSegment removed = segmentCache.remove(key);
-        if (removed != null && !removed.getHeader().isInitSegment()) {
-            cacheOrder.remove(key);
-            cachedBytes = Math.max(0, cachedBytes - removed.getLength());
+        if (removed != null) {
+            if (!removed.getHeader().isInitSegment()) {
+                cacheOrder.remove(key);
+                cachedBytes = Math.max(0, cachedBytes - removed.getLength());
+            }
             recordTraceDiscard(removed, "explicit");
             removed.delete();
         }
@@ -1534,6 +1547,7 @@ public final class YoutubeSabrSession {
             throw new IOException("Invalid SABR initialization range: itag="
                     + format.getItag() + ", start=" + start + ", end=" + end);
         }
+        validateSensitiveGoogleVideoUrl(initializationUrl);
         if (poToken.length == 0) {
             throw new IOException("Missing PO token for SABR initialization range: itag="
                     + format.getItag());
@@ -1563,6 +1577,21 @@ public final class YoutubeSabrSession {
         } catch (final ExtractionException e) {
             throw new IOException("SABR initialization range failed: itag="
                     + format.getItag(), e);
+        }
+    }
+
+    private static void validateSensitiveGoogleVideoUrl(@Nonnull final String url)
+            throws IOException {
+        try {
+            final URI uri = URI.create(url);
+            final String host = uri.getHost();
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || host == null
+                    || !(host.equals("googlevideo.com")
+                    || host.endsWith(".googlevideo.com"))) {
+                throw new IOException("SABR token URL escaped the GoogleVideo Host");
+            }
+        } catch (final IllegalArgumentException error) {
+            throw new IOException("Malformed SABR token URL", error);
         }
     }
 
@@ -1846,12 +1875,12 @@ public final class YoutubeSabrSession {
         if (rotationPoTokenProvider == null) {
             return false;
         }
-        attestationIdentityRotations++;
         if (!rotationPoTokenProvider.invalidatePoTokenIdentity(info)) {
-            addDiagnosticEvent("attestation_identity_rotation_unavailable attempt="
-                    + attestationIdentityRotations);
+            addDiagnosticEvent("attestation_identity_rotation_unavailable attempted="
+                    + (attestationIdentityRotations + 1));
             return false;
         }
+        attestationIdentityRotations++;
         final String previousVisitorData = info.getVisitorData();
         final ContentCountry contentCountry = localization.getCountryCode().isEmpty()
                 ? ContentCountry.DEFAULT

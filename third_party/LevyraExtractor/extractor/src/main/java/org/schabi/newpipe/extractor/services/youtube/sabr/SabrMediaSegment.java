@@ -10,9 +10,23 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.RandomAccessFile;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class SabrMediaSegment {
     private static final int COPY_BUFFER_SIZE = 8192;
+    private static final int MAX_LEGACY_MATERIALIZATION_BYTES = 8 * 1024 * 1024;
+    private static final long PROGRESSIVE_WAIT_SLICE_MS = 250L;
+    private static final long PROGRESSIVE_STALL_TIMEOUT_MS = 30_000L;
+    private static final long DELETE_GRACE_MS = 5_000L;
+    private static final ScheduledExecutorService DELETE_EXECUTOR =
+            Executors.newSingleThreadScheduledExecutor(runnable -> {
+                final Thread thread = new Thread(runnable, "sabr-spool-cleaner");
+                thread.setDaemon(true);
+                return thread;
+            });
 
     @Nonnull
     private final SabrMediaHeader header;
@@ -23,6 +37,7 @@ public final class SabrMediaSegment {
     private final int length;
     @Nullable
     private final ProgressiveFileState progressiveState;
+    private final AtomicBoolean deleteScheduled = new AtomicBoolean(false);
 
     SabrMediaSegment(@Nonnull final SabrMediaHeader header, @Nonnull final byte[] data) {
         this.header = header;
@@ -77,6 +92,10 @@ public final class SabrMediaSegment {
     public byte[] getData() {
         if (data != null) {
             return data;
+        }
+        if (length > MAX_LEGACY_MATERIALIZATION_BYTES) {
+            throw new IllegalStateException("Disk-backed SABR segment is too large for getData(); "
+                    + "use openStream(): bytes=" + length);
         }
         try (InputStream input = openStream();
              ByteArrayOutputStream output = new ByteArrayOutputStream(length)) {
@@ -143,8 +162,12 @@ public final class SabrMediaSegment {
 
     public void delete() {
         failProgressive(new IOException("SABR media segment was discarded"));
-        if (file != null && !file.delete() && file.exists()) {
-            file.deleteOnExit();
+        if (file != null && deleteScheduled.compareAndSet(false, true)) {
+            DELETE_EXECUTOR.schedule(() -> {
+                if (file.exists() && !file.delete()) {
+                    file.setLastModified(0L);
+                }
+            }, DELETE_GRACE_MS, TimeUnit.MILLISECONDS);
         }
     }
 
@@ -202,15 +225,28 @@ public final class SabrMediaSegment {
                 final long position,
                 @Nonnull final ProgressiveFileInputStream reader) throws IOException {
             int readable = readableBytes(position);
+            int observedBytes = bytesWritten;
+            long stallDeadlineNs = System.nanoTime()
+                    + TimeUnit.MILLISECONDS.toNanos(PROGRESSIVE_STALL_TIMEOUT_MS);
             while (readable <= 0 && !complete && failure == null && !reader.closed) {
                 try {
-                    wait();
+                    wait(PROGRESSIVE_WAIT_SLICE_MS);
                 } catch (final InterruptedException e) {
                     Thread.currentThread().interrupt();
                     final InterruptedIOException interrupted = new InterruptedIOException(
                             "Interrupted waiting for SABR media bytes");
                     interrupted.initCause(e);
                     throw interrupted;
+                }
+                if (bytesWritten != observedBytes) {
+                    observedBytes = bytesWritten;
+                    stallDeadlineNs = System.nanoTime()
+                            + TimeUnit.MILLISECONDS.toNanos(PROGRESSIVE_STALL_TIMEOUT_MS);
+                } else if (System.nanoTime() >= stallDeadlineNs) {
+                    failure = new IOException("SABR progressive media producer stalled for "
+                            + PROGRESSIVE_STALL_TIMEOUT_MS + " ms");
+                    notifyAll();
+                    throw failure;
                 }
                 readable = readableBytes(position);
             }
@@ -258,6 +294,7 @@ public final class SabrMediaSegment {
         private final RandomAccessFile input;
         @Nonnull
         private final ProgressiveFileState state;
+        private final Object inputLock = new Object();
         private long position;
         private volatile boolean closed;
 
@@ -289,11 +326,21 @@ public final class SabrMediaSegment {
                 if (available <= 0) {
                     return -1;
                 }
-                input.seek(position);
-                final int read = input.read(bytes, offset, Math.min(count, available));
+                final int read;
+                synchronized (inputLock) {
+                    if (closed) {
+                        throw new IOException("SABR media stream is closed");
+                    }
+                    input.seek(position);
+                    read = input.read(bytes, offset, Math.min(count, available));
+                }
                 if (read > 0) {
                     position += read;
                     return read;
+                }
+                if (read < 0) {
+                    throw new IOException("SABR spool file is shorter than advertised: position="
+                            + position + ", available=" + available);
                 }
             }
         }
@@ -309,7 +356,12 @@ public final class SabrMediaSegment {
             }
             final long skipped = Math.min(count, available);
             position += skipped;
-            input.seek(position);
+            synchronized (inputLock) {
+                if (closed) {
+                    throw new IOException("SABR media stream is closed");
+                }
+                input.seek(position);
+            }
             return skipped;
         }
 
@@ -326,7 +378,9 @@ public final class SabrMediaSegment {
             if (!closed) {
                 closed = true;
                 state.signalReaders();
-                input.close();
+                synchronized (inputLock) {
+                    input.close();
+                }
             }
         }
     }

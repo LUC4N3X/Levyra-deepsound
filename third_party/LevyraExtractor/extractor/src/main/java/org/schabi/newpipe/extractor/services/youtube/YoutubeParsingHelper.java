@@ -62,6 +62,9 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.CancellationException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -78,6 +81,8 @@ import static org.schabi.newpipe.extractor.utils.Utils.isNullOrEmpty;
 
 public final class
 YoutubeParsingHelper {
+    private static final Logger LOGGER = Logger.getLogger(YoutubeParsingHelper.class.getName());
+    private static final String PLAYER_ENDPOINT = "player";
 
     private YoutubeParsingHelper() {
     }
@@ -1691,7 +1696,7 @@ YoutubeParsingHelper {
         headers.put("X-YouTube-Client-Name", singletonList("1"));
         headers.put("X-Youtube-Client-Version", singletonList(SAFARI_CLIENT_VERSION));
         addLoggedInHeaders(headers);
-        final byte[] requestBody = "player".equals(endpoint)
+        final byte[] requestBody = PLAYER_ENDPOINT.equals(endpoint)
                 ? addSessionPoTokenToPlayerBody(body, localization,
                         NewPipe.getPreferredContentCountry())
                 : body;
@@ -1726,6 +1731,8 @@ YoutubeParsingHelper {
             @Nonnull final byte[] body,
             @Nonnull final Localization localization,
             @Nonnull final ContentCountry contentCountry) {
+        String originalVisitorData = null;
+        String clientVersion = null;
         try {
             final JsonObject request = JsonUtils.toJsonObject(new String(body,
                     StandardCharsets.UTF_8));
@@ -1734,26 +1741,30 @@ YoutubeParsingHelper {
             if (client == null) {
                 return new YoutubePlayerRequest(body, null, null);
             }
-            final String originalVisitorData = client.getString("visitorData");
+            originalVisitorData = client.getString("visitorData");
             final String clientName = client.getString("clientName", "");
-            final String clientVersion = client.getString("clientVersion", "");
+            clientVersion = client.getString("clientVersion", "");
             final String userAgent = client.getString("userAgent");
-            if ("TVHTML5".equals(clientName)) {
+            if (clientName.regionMatches(true, 0, "TVHTML5", 0, "TVHTML5".length())) {
                 return new YoutubePlayerRequest(body, originalVisitorData, clientVersion);
             }
             final JsonObject existingIntegrity = request.getObject("serviceIntegrityDimensions");
             final String existingPoToken = existingIntegrity == null
                     ? null : existingIntegrity.getString("poToken");
-            if (existingIntegrity != null
-                    && !isNullOrEmpty(existingPoToken)) {
+            if (existingIntegrity != null && !isNullOrEmpty(existingPoToken)) {
                 return new YoutubePlayerRequest(body, originalVisitorData, clientVersion);
             }
-
             if (isNullOrEmpty(clientName) || isNullOrEmpty(clientVersion)) {
                 return new YoutubePlayerRequest(body, originalVisitorData, clientVersion);
             }
+
+            ContentCountry requestCountry = contentCountry;
+            final String requestCountryCode = client.getString("gl");
+            if (!isNullOrEmpty(requestCountryCode)) {
+                requestCountry = new ContentCountry(requestCountryCode);
+            }
             final YoutubeSessionPoToken result = getSessionPoToken(clientName, clientVersion,
-                    userAgent, localization, contentCountry);
+                    userAgent, localization, requestCountry);
             if (result == null || isNullOrEmpty(result.getVisitorData())
                     || isNullOrEmpty(result.getPoToken())) {
                 return new YoutubePlayerRequest(body, originalVisitorData, clientVersion);
@@ -1767,10 +1778,11 @@ YoutubeParsingHelper {
             return new YoutubePlayerRequest(
                     JsonWriter.string(request).getBytes(StandardCharsets.UTF_8),
                     result.getVisitorData(), clientVersion);
+        } catch (final CancellationException error) {
+            throw error;
         } catch (final Exception error) {
-            System.err.println("Could not add visitor-bound YouTube PO token: "
-                    + error.getClass().getSimpleName() + ": " + error.getMessage());
-            return new YoutubePlayerRequest(body, null, null);
+            LOGGER.log(Level.FINE, "Could not add visitor-bound YouTube PO token", error);
+            return new YoutubePlayerRequest(body, originalVisitorData, clientVersion);
         }
     }
 
@@ -1789,9 +1801,10 @@ YoutubeParsingHelper {
         try {
             return provider.getSessionPoToken(clientName, clientVersion, userAgent,
                     localization, contentCountry, ServiceList.YouTube.hasTokens());
+        } catch (final CancellationException error) {
+            throw error;
         } catch (final Exception error) {
-            System.err.println("Could not obtain visitor-bound YouTube PO token: "
-                    + error.getClass().getSimpleName() + ": " + error.getMessage());
+            LOGGER.log(Level.FINE, "Could not obtain visitor-bound YouTube PO token", error);
             return null;
         }
     }
@@ -1840,7 +1853,7 @@ YoutubeParsingHelper {
 
         addLoggedInHeaders(headers);
 
-        final byte[] requestBody = "player".equals(endpoint) && !playerRequestPrepared
+        final byte[] requestBody = PLAYER_ENDPOINT.equals(endpoint) && !playerRequestPrepared
                 ? addSessionPoTokenToPlayerBody(body, localization,
                         NewPipe.getPreferredContentCountry())
                 : body;
@@ -1888,7 +1901,7 @@ YoutubeParsingHelper {
         headers.put("X-YouTube-Client-Name", singletonList(clientId));
         headers.put("X-Youtube-Client-Version", singletonList(clientVersion));
         addLoggedInHeaders(headers);
-        final byte[] requestBody = "player".equals(endpoint) && !playerRequestPrepared
+        final byte[] requestBody = PLAYER_ENDPOINT.equals(endpoint) && !playerRequestPrepared
                 ? addSessionPoTokenToPlayerBody(body, localization,
                         NewPipe.getPreferredContentCountry())
                 : body;
@@ -1898,9 +1911,10 @@ YoutubeParsingHelper {
 
     public static Response getWebPlayerResponseSync(@Nonnull final String videoId)
             throws IOException, ExtractionException {
-        Localization localization = new Localization("en");
+        final Localization localization = new Localization("en");
+        final ContentCountry contentCountry = NewPipe.getPreferredContentCountry();
         final byte[] body = JsonWriter.string(
-                        prepareDesktopJsonBuilder(localization, ContentCountry.DEFAULT)
+                        prepareDesktopJsonBuilder(localization, contentCountry)
                                 .value(VIDEO_ID, videoId)
                                 .value(CONTENT_CHECK_OK, true)
                                 .value(RACY_CHECK_OK, true)
@@ -1914,7 +1928,7 @@ YoutubeParsingHelper {
         headers.put("Content-Type", singletonList("application/json"));
         addLoggedInHeaders(headers);
         return getDownloader().post(url, headers,
-                addSessionPoTokenToPlayerBody(body, localization, ContentCountry.DEFAULT),
+                addSessionPoTokenToPlayerBody(body, localization, contentCountry),
                 localization);
     }
 

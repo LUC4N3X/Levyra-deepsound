@@ -19,6 +19,9 @@ import java.util.zip.GZIPInputStream;
 
 public final class SabrMediaSegmentCollector {
     private static final int MIN_PROGRESSIVE_SEGMENT_BYTES = 64 * 1024;
+    private static final int MAX_IN_MEMORY_SEGMENT_BYTES = 32 * 1024 * 1024;
+    private static final long STALE_SPOOL_AGE_MS = 24L * 60 * 60 * 1000;
+    private static long lastSpoolCleanupMs;
 
     private SabrMediaSegmentCollector() {
     }
@@ -94,6 +97,7 @@ public final class SabrMediaSegmentCollector {
                            @Nonnull final SabrMediaProtocol mediaProtocol) {
             this.spoolDirectory = spoolDirectory;
             this.mediaProtocol = mediaProtocol;
+            cleanupStaleSpoolFiles(spoolDirectory);
         }
 
         @Nullable
@@ -200,9 +204,11 @@ public final class SabrMediaSegmentCollector {
                 fixedData = null;
                 dynamicData = null;
             } else if (contentLength >= 0) {
-                if (contentLength > Integer.MAX_VALUE) {
-                    throw new SabrProtocolException("SABR media segment too large: headerId="
-                            + header.getHeaderId() + ", length=" + contentLength);
+                if (contentLength > MAX_IN_MEMORY_SEGMENT_BYTES) {
+                    throw new SabrRecoverableException(
+                            "SABR in-memory media segment exceeded Host limit: headerId="
+                                    + header.getHeaderId() + ", length=" + contentLength
+                                    + ", limit=" + MAX_IN_MEMORY_SEGMENT_BYTES);
                 }
                 fixedData = new byte[(int) contentLength];
                 dynamicData = null;
@@ -346,6 +352,14 @@ public final class SabrMediaSegmentCollector {
                 throw new SabrProtocolException("SABR media segment too large: headerId="
                         + header.getHeaderId() + ", length>" + Integer.MAX_VALUE);
             }
+            if (fileOutput == null
+                    && length + (long) count > MAX_IN_MEMORY_SEGMENT_BYTES) {
+                throw new SabrRecoverableException(
+                        "SABR in-memory media segment exceeded Host limit: headerId="
+                                + header.getHeaderId() + ", limit="
+                                + MAX_IN_MEMORY_SEGMENT_BYTES + ", actual>="
+                                + (length + (long) count));
+            }
         }
 
         private void ensureExpectedLengthNotExceeded(final int count)
@@ -442,6 +456,29 @@ public final class SabrMediaSegmentCollector {
             } catch (final IOException e) {
                 throw new SabrRecoverableException(
                         "Could not decompress brotli SABR media segment", e);
+            }
+        }
+    }
+
+    private static synchronized void cleanupStaleSpoolFiles(
+            @Nullable final File spoolDirectory) {
+        if (spoolDirectory == null || !spoolDirectory.isDirectory()) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        if (now - lastSpoolCleanupMs < 60L * 60 * 1000) {
+            return;
+        }
+        lastSpoolCleanupMs = now;
+        final File[] files = spoolDirectory.listFiles((directory, name) ->
+                name.startsWith("sabr-") && name.endsWith(".seg"));
+        if (files == null) {
+            return;
+        }
+        for (final File file : files) {
+            if (now - file.lastModified() >= STALE_SPOOL_AGE_MS
+                    && !file.delete()) {
+                file.setLastModified(0L);
             }
         }
     }

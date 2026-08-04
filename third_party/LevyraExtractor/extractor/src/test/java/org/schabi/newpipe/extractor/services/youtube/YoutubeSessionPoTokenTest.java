@@ -13,12 +13,14 @@ import org.schabi.newpipe.extractor.services.youtube.sabr.YoutubeSabrProbe;
 import org.schabi.newpipe.extractor.utils.JsonUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class YoutubeSessionPoTokenTest {
@@ -104,6 +106,50 @@ class YoutubeSessionPoTokenTest {
                 LOCALIZATION, CONTENT_COUNTRY);
 
         assertArrayEquals(body, decorated);
+    }
+
+    @Test
+    void providerCancellationPropagates() {
+        NewPipe.setYoutubeSessionPoTokenProvider((clientName, clientVersion, userAgent,
+                                                   localization, contentCountry, login) -> {
+            throw new CancellationException("cancelled");
+        });
+
+        assertThrows(CancellationException.class,
+                () -> YoutubeParsingHelper.addSessionPoTokenToPlayerBody(
+                        playerBody("WEB"), LOCALIZATION, CONTENT_COUNTRY));
+    }
+
+    @Test
+    void tokenProviderUsesCountryFromRequestClientContext() throws Exception {
+        final AtomicBoolean matched = new AtomicBoolean(false);
+        NewPipe.setYoutubeSessionPoTokenProvider((clientName, clientVersion, userAgent,
+                                                   localization, contentCountry, login) -> {
+            matched.set("DE".equals(contentCountry.getCountryCode()));
+            return new YoutubeSessionPoToken("visitor", "token");
+        });
+        final byte[] body = ("{\"context\":{\"client\":{\"clientName\":\"WEB\","
+                + "\"clientVersion\":\"2.test\",\"gl\":\"DE\"}},"
+                + "\"videoId\":\"video\"}").getBytes(StandardCharsets.UTF_8);
+
+        YoutubeParsingHelper.addSessionPoTokenToPlayerBody(body, LOCALIZATION, CONTENT_COUNTRY);
+
+        assertTrue(matched.get());
+    }
+
+    @Test
+    void allTvHtml5VariantsRemainTokenFree() {
+        final AtomicInteger calls = new AtomicInteger();
+        NewPipe.setYoutubeSessionPoTokenProvider((clientName, clientVersion, userAgent,
+                                                   localization, contentCountry, login) -> {
+            calls.incrementAndGet();
+            return new YoutubeSessionPoToken("visitor", "token");
+        });
+
+        final byte[] body = playerBody("TVHTML5_SIMPLY_EMBEDDED_PLAYER");
+        assertArrayEquals(body, YoutubeParsingHelper.addSessionPoTokenToPlayerBody(
+                body, LOCALIZATION, CONTENT_COUNTRY));
+        assertEquals(0, calls.get());
     }
 
     @Test

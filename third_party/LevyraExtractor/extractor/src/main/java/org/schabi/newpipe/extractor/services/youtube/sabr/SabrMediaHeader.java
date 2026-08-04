@@ -73,10 +73,27 @@ public final class SabrMediaHeader {
                                              final long timeRangeDurationTicks,
                                              final int timeRangeTimescale,
                                              final long sequenceLastModified) {
+        long normalizedStartMs = startMs;
+        long normalizedDurationMs = durationMs;
+        final boolean hasTimeRange = timeRangeStartTicks >= 0 || timeRangeDurationTicks >= 0;
+        if (hasTimeRange && timeRangeTimescale <= 0) {
+            throw new IllegalArgumentException("SABR media time range requires a positive timescale");
+        }
+        if (timeRangeTimescale > 0) {
+            if (normalizedStartMs < 0 && timeRangeStartTicks >= 0) {
+                normalizedStartMs = timeRangeStartTicks * 1000L / timeRangeTimescale;
+            }
+            if (normalizedDurationMs < 0 && timeRangeDurationTicks >= 0) {
+                normalizedDurationMs = timeRangeDurationTicks * 1000L / timeRangeTimescale;
+            }
+        }
+        if (normalizedStartMs < -1 || normalizedDurationMs < -1 || contentLength < -1) {
+            throw new IllegalArgumentException("Invalid SABR media header range");
+        }
         return new SabrMediaHeader(headerId, videoId, itag, lastModified, xtags, startRange,
-                compressionAlgorithm, initSegment, sequenceNumber, bitrateBps, startMs, durationMs,
-                contentLength, timeRangeStartTicks, timeRangeDurationTicks, timeRangeTimescale,
-                sequenceLastModified);
+                compressionAlgorithm, initSegment, sequenceNumber, bitrateBps,
+                normalizedStartMs, normalizedDurationMs, contentLength, timeRangeStartTicks,
+                timeRangeDurationTicks, timeRangeTimescale, sequenceLastModified);
     }
 
     @Nonnull

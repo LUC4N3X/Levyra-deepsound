@@ -133,6 +133,9 @@ public abstract class Downloader {
                                           @Nullable final Localization localization,
                                           final long timeoutMs)
             throws IOException, ReCaptchaException {
+        if (timeoutMs > 0) {
+            throw new IOException("Downloader does not implement timeout-aware streaming GET");
+        }
         return getStreaming(url, headers, localization);
     }
 

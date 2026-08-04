@@ -602,8 +602,8 @@ public final class YoutubeSabrProbe {
             final CountingInputStream body = new CountingInputStream(response.body());
             final SabrStreamingResponseReader.Result streamed =
                     timedConsumer == null && timedStartConsumer == null
-                            ? SabrStreamingResponseReader.readUntil(body, null, null, null,
-                            mediaProtocol)
+                            ? SabrStreamingResponseReader.readUntil(body, null, null,
+                            segmentSpoolDirectory, mediaProtocol)
                             : SabrStreamingResponseReader.readUntil(body, timedConsumer,
                                     timedStartConsumer, segmentSpoolDirectory, mediaProtocol);
             final long requestElapsedMs = elapsedMs(requestStartNs);

@@ -444,11 +444,13 @@ public final class SabrDecodedResponse {
     }
 
     public boolean isAttestationRequired() {
-        return streamProtectionStatus == SabrStreamProtectionStatus.ATTESTATION_REQUIRED;
+        return isNoMediaResponse()
+                && streamProtectionStatus >= SabrStreamProtectionStatus.ATTESTATION_REQUIRED;
     }
 
     public boolean isAttestationPending() {
-        return streamProtectionStatus == SabrStreamProtectionStatus.ATTESTATION_PENDING;
+        return isNoMediaResponse()
+                && streamProtectionStatus >= SabrStreamProtectionStatus.ATTESTATION_PENDING;
     }
 
     @Nonnull
